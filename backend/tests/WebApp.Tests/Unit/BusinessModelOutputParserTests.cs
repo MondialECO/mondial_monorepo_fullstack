@@ -69,4 +69,36 @@ public class BusinessModelOutputParserTests
         BusinessModelOutputParser.TryParse(invalid, out _, out var error).Should().BeFalse();
         error.Should().Contain("missing required field");
     }
+
+    [Fact]
+    public void TryParse_Normalizes_EvidenceLevel_And_Period()
+    {
+        var raw = """
+        {
+          "canvas": {},
+          "revenueTiers": [],
+          "unitEconomics": {
+            "arpu": { "amount": 100, "period": "month" }
+          },
+          "assumptions": [
+            { "category": "A", "assumption": "Test A", "evidenceLevel": "validated" },
+            { "category": "B", "assumption": "Test B", "evidenceLevel": "modeled" },
+            { "category": "C", "assumption": "Test C", "evidenceLevel": "observed" },
+            { "category": "D", "assumption": "Test D", "evidenceLevel": "completely_unknown_string" }
+          ]
+        }
+        """;
+
+        var ok = BusinessModelOutputParser.TryParse(raw, out var doc, out var error);
+        ok.Should().BeTrue();
+        error.Should().BeEmpty();
+
+        var assumptions = doc["assumptions"].AsBsonArray;
+        assumptions[0]["evidenceLevel"].AsString.Should().Be("evidenced"); // "validated" -> "evidenced"
+        assumptions[1]["evidenceLevel"].AsString.Should().Be("modelled");  // "modeled" -> "modelled"
+        assumptions[2]["evidenceLevel"].AsString.Should().Be("untested");  // "observed" -> "untested" (safe fallback)
+        assumptions[3]["evidenceLevel"].AsString.Should().Be("untested");  // unknown -> "untested" (safe fallback)
+
+        doc["unitEconomics"]["arpu"]["period"].AsString.Should().Be("monthly"); // "month" -> "monthly"
+    }
 }

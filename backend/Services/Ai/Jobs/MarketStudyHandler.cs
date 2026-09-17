@@ -131,7 +131,7 @@ namespace WebApp.Services.Ai.Jobs
                 ? sid.AsString
                 : null;
 
-            if (!MarketStudyOutputParser.TryParse(completion.Text, out var contract, out var parseError))
+            if (!MarketStudyOutputParser.TryParse(completion.Text, out var contract, out var parseError, _logger))
             {
                 _logger.LogWarning("MarketStudy output for request {RequestId} could not be parsed: {Error}",
                     request.Id, parseError);
@@ -172,7 +172,10 @@ namespace WebApp.Services.Ai.Jobs
             "marketSizing", "competitorLandscape", "demandSignals", "sizingRisks", "marketGapValidation"
         };
 
-        public static bool TryParse(string? rawText, out BsonDocument contract, out string error)
+        public static bool TryParse(string? rawText, out BsonDocument contract, out string error) =>
+            TryParse(rawText, out contract, out error, null);
+
+        public static bool TryParse(string? rawText, out BsonDocument contract, out string error, ILogger? logger)
         {
             contract = new BsonDocument();
             error = string.Empty;
@@ -210,9 +213,138 @@ namespace WebApp.Services.Ai.Jobs
                 }
             }
 
+            NormalizeMarketSizing(doc, logger);
+            NormalizeCompetitorLandscape(doc, logger);
+            NormalizeSizingRisks(doc, logger);
+            NormalizeMarketGapValidation(doc, logger);
+
             doc["schemaVersion"] = 1;
             contract = doc;
             return true;
+        }
+
+        private static void NormalizeMarketSizing(BsonDocument doc, ILogger? logger)
+        {
+            if (!doc.Contains("marketSizing") || !doc["marketSizing"].IsBsonDocument)
+                return;
+
+            var ms = doc["marketSizing"].AsBsonDocument;
+            var rawMethodology = ms.Contains("methodology") && ms["methodology"].IsString
+                ? ms["methodology"].AsString.Trim()
+                : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(rawMethodology))
+            {
+                logger?.LogWarning("MarketSizing methodology was empty; defaulted to 'triangulated'");
+                ms["methodology"] = "triangulated";
+            }
+            else
+            {
+                ms["methodology"] = rawMethodology;
+            }
+        }
+
+        private static void NormalizeCompetitorLandscape(BsonDocument doc, ILogger? logger)
+        {
+            if (!doc.Contains("competitorLandscape") || !doc["competitorLandscape"].IsBsonDocument)
+                return;
+
+            var cl = doc["competitorLandscape"].AsBsonDocument;
+            if (cl.Contains("indirectCompetitors") && cl["indirectCompetitors"].IsBsonArray)
+            {
+                foreach (var itemVal in cl["indirectCompetitors"].AsBsonArray)
+                {
+                    if (itemVal is not BsonDocument item)
+                        continue;
+
+                    var raw = item.Contains("threatLevel") && item["threatLevel"].IsString
+                        ? item["threatLevel"].AsString.Trim()
+                        : string.Empty;
+
+                    var lower = raw.ToLowerInvariant();
+                    string canonical = lower switch
+                    {
+                        "low" or "medium" or "high" => lower,
+                        "moderate" => "medium",
+                        "elevated" or "critical" or "severe" => "high",
+                        "minimal" or "negligible" => "low",
+                        _ => "medium" // Safe fallback
+                    };
+
+                    if (!string.Equals(raw, canonical, StringComparison.Ordinal))
+                    {
+                        var name = item.Contains("name") ? item["name"].ToString() : "unknown";
+                        logger?.LogWarning("Normalized indirect competitor threatLevel from non-canonical '{RawValue}' to '{CanonicalValue}' (name: '{Name}')",
+                            raw, canonical, name);
+                    }
+
+                    item["threatLevel"] = canonical;
+                }
+            }
+        }
+
+        private static void NormalizeSizingRisks(BsonDocument doc, ILogger? logger)
+        {
+            if (!doc.Contains("sizingRisks") || !doc["sizingRisks"].IsBsonArray)
+                return;
+
+            foreach (var itemVal in doc["sizingRisks"].AsBsonArray)
+            {
+                if (itemVal is not BsonDocument item)
+                    continue;
+
+                var raw = item.Contains("impactOnSom") && item["impactOnSom"].IsString
+                    ? item["impactOnSom"].AsString.Trim()
+                    : string.Empty;
+
+                var lower = raw.ToLowerInvariant();
+                string canonical = lower switch
+                {
+                    "low" or "medium" or "high" => lower,
+                    "moderate" => "medium",
+                    "elevated" or "critical" or "severe" => "high",
+                    "minimal" or "negligible" => "low",
+                    _ => "medium" // Safe fallback
+                };
+
+                if (!string.Equals(raw, canonical, StringComparison.Ordinal))
+                {
+                    var risk = item.Contains("risk") ? item["risk"].ToString() : "unknown";
+                    logger?.LogWarning("Normalized sizing risk impactOnSom from non-canonical '{RawValue}' to '{CanonicalValue}' (risk: '{Risk}')",
+                        raw, canonical, risk);
+                }
+
+                item["impactOnSom"] = canonical;
+            }
+        }
+
+        private static void NormalizeMarketGapValidation(BsonDocument doc, ILogger? logger)
+        {
+            if (!doc.Contains("marketGapValidation") || !doc["marketGapValidation"].IsBsonDocument)
+                return;
+
+            var mgv = doc["marketGapValidation"].AsBsonDocument;
+            var raw = mgv.Contains("confidenceLevel") && mgv["confidenceLevel"].IsString
+                ? mgv["confidenceLevel"].AsString.Trim()
+                : string.Empty;
+
+            var lower = raw.ToLowerInvariant();
+            string canonical = lower switch
+            {
+                "high" or "moderate" or "speculative" => lower,
+                "strong" or "very high" => "high",
+                "medium" => "moderate",
+                "low" or "tentative" or "exploratory" => "speculative",
+                _ => "speculative" // Safe fallback: never over-claims confidence
+            };
+
+            if (!string.Equals(raw, canonical, StringComparison.Ordinal))
+            {
+                logger?.LogWarning("Normalized marketGapValidation confidenceLevel from non-canonical '{RawValue}' to '{CanonicalValue}'",
+                    raw, canonical);
+            }
+
+            mgv["confidenceLevel"] = canonical;
         }
 
         private static string StripFences(string text)

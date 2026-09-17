@@ -132,7 +132,7 @@ namespace WebApp.Services.Ai.Jobs
                 ? sid.AsString
                 : null;
 
-            if (!BusinessModelOutputParser.TryParse(completion.Text, out var contract, out var parseError))
+            if (!BusinessModelOutputParser.TryParse(completion.Text, out var contract, out var parseError, _logger))
             {
                 _logger.LogWarning("BusinessModel output for request {RequestId} could not be parsed: {Error}",
                     request.Id, parseError);
@@ -173,7 +173,10 @@ namespace WebApp.Services.Ai.Jobs
             "canvas", "revenueTiers", "unitEconomics", "assumptions"
         };
 
-        public static bool TryParse(string? rawText, out BsonDocument contract, out string error)
+        public static bool TryParse(string? rawText, out BsonDocument contract, out string error) =>
+            TryParse(rawText, out contract, out error, null);
+
+        public static bool TryParse(string? rawText, out BsonDocument contract, out string error, ILogger? logger)
         {
             contract = new BsonDocument();
             error = string.Empty;
@@ -211,9 +214,80 @@ namespace WebApp.Services.Ai.Jobs
                 }
             }
 
+            NormalizeAssumptions(doc, logger);
+            NormalizeUnitEconomics(doc, logger);
+
             doc["schemaVersion"] = 1;
             contract = doc;
             return true;
+        }
+
+        private static void NormalizeAssumptions(BsonDocument doc, ILogger? logger)
+        {
+            if (!doc.Contains("assumptions") || !doc["assumptions"].IsBsonArray)
+                return;
+
+            var arr = doc["assumptions"].AsBsonArray;
+            foreach (var itemVal in arr)
+            {
+                if (itemVal is not BsonDocument item)
+                    continue;
+
+                var raw = item.Contains("evidenceLevel") && item["evidenceLevel"].IsString
+                    ? item["evidenceLevel"].AsString.Trim()
+                    : string.Empty;
+
+                var lower = raw.ToLowerInvariant();
+                string canonical = lower switch
+                {
+                    "evidenced" or "modelled" or "untested" => lower,
+                    "validated" or "proven" or "empirical" or "evidence" => "evidenced",
+                    "modeled" or "estimated" or "projected" or "simulated" => "modelled",
+                    "unverified" or "assumed" or "hypothesis" or "hypothesized" => "untested",
+                    _ => "untested" // Safe fallback: never over-claims evidence
+                };
+
+                if (!string.Equals(raw, canonical, StringComparison.Ordinal))
+                {
+                    var cat = item.Contains("category") ? item["category"].ToString() : "unknown";
+                    logger?.LogWarning("Normalized assumption evidenceLevel from non-canonical '{RawValue}' to '{CanonicalValue}' (category: '{Category}')",
+                        raw, canonical, cat);
+                }
+
+                item["evidenceLevel"] = canonical;
+            }
+        }
+
+        private static void NormalizeUnitEconomics(BsonDocument doc, ILogger? logger)
+        {
+            if (!doc.Contains("unitEconomics") || !doc["unitEconomics"].IsBsonDocument)
+                return;
+
+            var ue = doc["unitEconomics"].AsBsonDocument;
+            if (ue.Contains("arpu") && ue["arpu"].IsBsonDocument)
+            {
+                var arpu = ue["arpu"].AsBsonDocument;
+                var raw = arpu.Contains("period") && arpu["period"].IsString
+                    ? arpu["period"].AsString.Trim()
+                    : string.Empty;
+
+                var lower = raw.ToLowerInvariant();
+                string canonical = lower switch
+                {
+                    "monthly" or "annual" => lower,
+                    "month" or "mo" or "per_month" or "m" => "monthly",
+                    "year" or "yearly" or "annually" or "yr" or "per_year" or "a" => "annual",
+                    _ => "monthly"
+                };
+
+                if (!string.Equals(raw, canonical, StringComparison.Ordinal))
+                {
+                    logger?.LogWarning("Normalized unitEconomics.arpu.period from non-canonical '{RawValue}' to '{CanonicalValue}'",
+                        raw, canonical);
+                }
+
+                arpu["period"] = canonical;
+            }
         }
 
         private static string StripFences(string text)

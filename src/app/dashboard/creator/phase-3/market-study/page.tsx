@@ -463,10 +463,12 @@ export default function MarketStudyPage() {
                         ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                         : output.marketGapValidation.confidenceLevel === 'moderate'
                         ? 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                        : 'border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                        : output.marketGapValidation.confidenceLevel === 'speculative'
+                        ? 'border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                        : 'border-destructive/60 bg-destructive/10 text-destructive'
                     }`}
                   >
-                    Confidence: {output.marketGapValidation.confidenceLevel}
+                    Confidence: {output.marketGapValidation.confidenceLevel || 'UNKNOWN'}
                   </Badge>
                 </div>
                 <div className="space-y-3">
@@ -580,10 +582,12 @@ export default function MarketStudyPage() {
                                 ? 'border-destructive/40 text-destructive'
                                 : ind.threatLevel === 'medium'
                                 ? 'border-amber-500/40 text-amber-600 dark:text-amber-400'
-                                : 'border-border text-muted-foreground'
+                                : ind.threatLevel === 'low'
+                                ? 'border-border text-muted-foreground'
+                                : 'border-destructive/60 bg-destructive/10 text-destructive'
                             }`}
                           >
-                            {ind.threatLevel} threat
+                            {ind.threatLevel || 'UNKNOWN'} threat
                           </Badge>
                         </div>
                       ))}
@@ -650,10 +654,12 @@ export default function MarketStudyPage() {
                                 ? 'border-destructive/40 text-destructive'
                                 : risk.impactOnSom === 'medium'
                                 ? 'border-amber-500/40 text-amber-600 dark:text-amber-400'
-                                : 'border-border text-muted-foreground'
+                                : risk.impactOnSom === 'low'
+                                ? 'border-border text-muted-foreground'
+                                : 'border-destructive/60 bg-destructive/10 text-destructive'
                             }`}
                           >
-                            {risk.impactOnSom} SOM Impact
+                            {risk.impactOnSom || 'UNKNOWN'} SOM Impact
                           </Badge>
                         </div>
                         <div className="text-xs text-muted-foreground leading-relaxed">

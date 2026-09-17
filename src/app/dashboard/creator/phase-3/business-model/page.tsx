@@ -669,10 +669,12 @@ export default function BusinessModelPage() {
                             ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
                             : item.evidenceLevel === 'modelled'
                             ? 'border-amber-500/40 text-amber-600 dark:text-amber-400'
-                            : 'border-border text-muted-foreground'
+                            : item.evidenceLevel === 'untested'
+                            ? 'border-border text-muted-foreground'
+                            : 'border-destructive/60 bg-destructive/10 text-destructive'
                         }`}
                       >
-                        {item.evidenceLevel}
+                        {item.evidenceLevel || 'UNKNOWN'}
                       </Badge>
                     </div>
                   ))}

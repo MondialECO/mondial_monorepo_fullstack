@@ -63,4 +63,52 @@ public class MarketStudyOutputParserTests
         MarketStudyOutputParser.TryParse(invalid, out _, out var error).Should().BeFalse();
         error.Should().Contain("missing required field");
     }
+
+    [Fact]
+    public void TryParse_Normalizes_Enums_And_Methodology()
+    {
+        var raw = """
+        {
+          "marketSizing": {
+            "tam": { "value": 1000 },
+            "sam": { "value": 500 },
+            "som": { "value": 100 }
+          },
+          "competitorLandscape": {
+            "directCompetitors": [],
+            "indirectCompetitors": [
+              { "name": "A", "threatLevel": "elevated" },
+              { "name": "B", "threatLevel": "minimal" },
+              { "name": "C", "threatLevel": "random_threat" }
+            ]
+          },
+          "demandSignals": [],
+          "sizingRisks": [
+            { "risk": "R1", "impactOnSom": "critical" },
+            { "risk": "R2", "impactOnSom": "unknown_impact" }
+          ],
+          "marketGapValidation": {
+            "primaryGap": "Gap",
+            "confidenceLevel": "strong"
+          }
+        }
+        """;
+
+        var ok = MarketStudyOutputParser.TryParse(raw, out var doc, out var error);
+        ok.Should().BeTrue();
+        error.Should().BeEmpty();
+
+        doc["marketSizing"]["methodology"].AsString.Should().Be("triangulated");
+
+        var indirect = doc["competitorLandscape"]["indirectCompetitors"].AsBsonArray;
+        indirect[0]["threatLevel"].AsString.Should().Be("high");   // "elevated" -> "high"
+        indirect[1]["threatLevel"].AsString.Should().Be("low");    // "minimal" -> "low"
+        indirect[2]["threatLevel"].AsString.Should().Be("medium"); // unknown -> "medium" (safe fallback)
+
+        var risks = doc["sizingRisks"].AsBsonArray;
+        risks[0]["impactOnSom"].AsString.Should().Be("high");      // "critical" -> "high"
+        risks[1]["impactOnSom"].AsString.Should().Be("medium");    // unknown -> "medium" (safe fallback)
+
+        doc["marketGapValidation"]["confidenceLevel"].AsString.Should().Be("high"); // "strong" -> "high"
+    }
 }
