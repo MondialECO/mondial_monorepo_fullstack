@@ -79,7 +79,12 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
   useNotificationRealtime(!!token);
 
   // Exact latest 10 items to display
-  const latestTen = (notifications ?? []).slice(0, 10);
+  const rawList = Array.isArray(notifications)
+    ? notifications
+    : Array.isArray((notifications as unknown as { items?: AppNotification[] })?.items)
+      ? (notifications as unknown as { items: AppNotification[] }).items
+      : [];
+  const latestTen = rawList.slice(0, 10);
   const notificationsRoute = getNotificationRouteForRole(user?.role, pathname);
 
   const handleNotificationClick = (n: AppNotification) => {

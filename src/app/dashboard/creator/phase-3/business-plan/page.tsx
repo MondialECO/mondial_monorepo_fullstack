@@ -290,7 +290,7 @@ export default function BusinessPlanPage() {
   // already exists (any state — in-flight, failed, or completed) routes to the forecast
   // results page so the user sees it; only a truly-absent forecast goes to inputs.
   const handleNext = () => {
-    completeStep(3, 2);
+    completeStep(3, 3);
     router.push(cross.hasForecast
       ? '/dashboard/creator/phase-3/forecast'
       : '/dashboard/creator/phase-3/forecast-inputs');
@@ -309,7 +309,7 @@ export default function BusinessPlanPage() {
     />
     <Phase3SetupShell
       fullWidth
-      stepEyebrow=""
+      stepEyebrow="Step 3.3"
       title="AI Business Plan"
       description="Your plan in nine sections, drafted from your clarified idea. Edit any section or ask the AI to rewrite it."
     >
@@ -338,9 +338,18 @@ export default function BusinessPlanPage() {
               )}
             </div>
           )}
-          <Button onClick={handleStart} disabled={startBp.isPending || startError?.kind === 'credits' || insufficientCredits} className="gap-2">
-            {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Generate plan{planCost > 0 ? ` (${planCost} credits)` : ''}
-          </Button>
+          <div className="flex items-center justify-between border-t border-border pt-4 mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => router.push('/dashboard/creator/phase-3/business-model')}
+              className="text-xs font-bold text-muted-foreground"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
+            </Button>
+            <Button onClick={handleStart} disabled={startBp.isPending || startError?.kind === 'credits' || insufficientCredits} className="gap-2">
+              {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Generate plan{planCost > 0 ? ` (${planCost} credits)` : ''}
+            </Button>
+          </div>
           {insufficientCredits && (
             <p className="text-xs font-medium text-destructive">
               Insufficient credits: requires {planCost} credits (you have {credits.data?.balance ?? 0}).
@@ -526,7 +535,7 @@ export default function BusinessPlanPage() {
           <PlanAppendices bp={bpOutput} />
 
           <div className="flex items-center justify-between border-t border-border pt-6 mt-8">
-            <Button variant="ghost" size="lg" onClick={() => router.back()}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
+            <Button variant="ghost" size="lg" onClick={() => router.push('/dashboard/creator/phase-3/business-model')}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
             <Button onClick={handleNext} size="lg" className="gap-2">Process to Forecast <ArrowRight className="w-5 h-5" /></Button>
           </div>
         </div>

@@ -27,6 +27,8 @@ namespace WebApp.Services.Implementations
         // ids are linked at generation start, so a failed/pending job must not complete P3.
         private readonly IBusinessPlanSessionStore _businessPlans;
         private readonly IForecastSessionStore _forecasts;
+        private readonly IMarketStudySessionStore _marketStudies;
+        private readonly IBusinessModelSessionStore _businessModels;
         // Multi-idea STEP 2: mint the per-idea document at Phase-2 finalize and stamp the
         // anchoring clarifier. Additive — nothing reads CreatorIdeas / the anchor yet.
         private readonly ICreatorIdeaStore _creatorIdeas;
@@ -44,7 +46,9 @@ namespace WebApp.Services.Implementations
             IForecastSessionStore forecasts,
             ICreatorIdeaStore creatorIdeas,
             IClarifierSessionStore clarifiers,
-            IHttpContextAccessor httpContextAccessor = null)
+            IHttpContextAccessor httpContextAccessor = null,
+            IMarketStudySessionStore marketStudies = null,
+            IBusinessModelSessionStore businessModels = null)
         {
             _context = context;
             _businessPlans = businessPlans;
@@ -52,6 +56,8 @@ namespace WebApp.Services.Implementations
             _creatorIdeas = creatorIdeas;
             _clarifiers = clarifiers;
             _httpContextAccessor = httpContextAccessor;
+            _marketStudies = marketStudies;
+            _businessModels = businessModels;
         }
 
         // =================================================================
@@ -290,32 +296,51 @@ namespace WebApp.Services.Implementations
             // the AI job genuinely succeeded (Status=Completed with Content). A linked-but-
             // failed/pending session counts as started (keeps P3 in_progress + resumable),
             // but NOT as complete (so a failed job can't unlock Phase 4 with no real output).
+            bool marketStudyStarted = !string.IsNullOrEmpty(p3.MarketStudySessionId);
+            bool businessModelStarted = !string.IsNullOrEmpty(p3.BusinessModelSessionId);
             bool planStarted = !string.IsNullOrEmpty(p3.BusinessPlanSessionId);
             bool forecastStarted = !string.IsNullOrEmpty(p3.ForecastSessionId);
+
+            var marketStudySession = marketStudyStarted && _marketStudies != null ? await _marketStudies.GetOwnedAsync(p3.MarketStudySessionId, j.UserId) : null;
+            var businessModelSession = businessModelStarted && _businessModels != null ? await _businessModels.GetOwnedAsync(p3.BusinessModelSessionId, j.UserId) : null;
             var planSession = planStarted ? await _businessPlans.GetOwnedAsync(p3.BusinessPlanSessionId, j.UserId) : null;
             var forecastSession = forecastStarted ? await _forecasts.GetOwnedAsync(p3.ForecastSessionId, j.UserId) : null;
+
             // Shared predicate (AiSessionSuccess) — the masterplan endpoint uses the
             // SAME rule, so the engine and the endpoint cannot drift.
+            bool hasMarketStudy = marketStudySession != null
+                && WebApp.Services.Ai.AiSessionSuccess.IsComplete(marketStudySession.Status, marketStudySession.CurrentVersion);
+            bool hasBusinessModel = businessModelSession != null
+                && WebApp.Services.Ai.AiSessionSuccess.IsComplete(businessModelSession.Status, businessModelSession.CurrentVersion);
             bool hasPlan = planSession != null
                 && WebApp.Services.Ai.AiSessionSuccess.IsComplete(planSession.Status, planSession.CurrentVersion);
             bool hasForecast = forecastSession != null
                 && WebApp.Services.Ai.AiSessionSuccess.IsComplete(forecastSession.Status, forecastSession.CurrentVersion);
+
             // Legal checklist is ADVISORY: it never gates Phase-3 completion. The items
             // are pure self-attestation (checkbox cycling, no verification), so requiring
             // them added friction, not assurance. `legalPresent` (checklist generated)
             // still marks "in progress"; completion needs plan + forecast + formation only.
             bool legalPresent = p3.LegalChecklist != null;
             bool hasFormation = p3.FormationGenerator != null;
-            bool anyP3 = planStarted || forecastStarted || legalPresent || hasFormation;
+            bool anyP3 = marketStudyStarted || businessModelStarted || planStarted || forecastStarted || legalPresent || hasFormation;
 
             if (!p2Done) s.Phase3.Status = "locked";
-            else if (hasForecast && hasPlan && hasFormation) s.Phase3.Status = "completed";
+            else if (hasMarketStudy && hasBusinessModel && hasPlan && hasForecast && hasFormation) s.Phase3.Status = "completed";
+            else if (hasPlan && hasForecast && hasFormation) s.Phase3.Status = "completed"; // legacy creator bypass
             else if (anyP3) s.Phase3.Status = "in_progress";
             else s.Phase3.Status = "available";
-            // Step order: business plan (2) → forecast (3) → legal (4) → formation (5) → complete (6).
-            // Success-gated hasPlan/hasForecast; legal is advisory, so the cursor points at
-            // compliance only until the checklist is generated — outstanding items never trap it.
-            s.Phase3.CurrentStep = !hasPlan ? 2 : !hasForecast ? 3 : !legalPresent ? 4 : !hasFormation ? 5 : 6;
+
+            // Step order: Market Study (1) → Business Model (2) → Business Plan (3) → Financial Forecast (4) → Legal (5) → Formation (6) → Complete (7).
+            // If the creator already has a completed Business Plan (legacy or current), they are never pushed backwards to steps 1 or 2.
+            if (!hasPlan)
+            {
+                s.Phase3.CurrentStep = !hasMarketStudy ? 1 : !hasBusinessModel ? 2 : 3;
+            }
+            else
+            {
+                s.Phase3.CurrentStep = !hasForecast ? 4 : !legalPresent ? 5 : !hasFormation ? 6 : 7;
+            }
 
             bool p3Done = s.Phase3.Status == "completed";
 

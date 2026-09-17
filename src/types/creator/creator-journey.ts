@@ -40,6 +40,11 @@ export interface PhaseState {
   clarifierSessionId?: string | null;
   // Conversational clarifier transcript (persisted to CreatorJourneys.phase2Data).
   chatMessages?: Array<{ id: string; sender: 'ai' | 'user'; text: string; timestamp?: string }>;
+  // Phase 3 AI session IDs (backend-authoritative).
+  marketStudySessionId?: string | null;
+  businessModelSessionId?: string | null;
+  businessPlanSessionId?: string | null;
+  forecastSessionId?: string | null;
   // Phase-2 client-cached working state (not backend-authoritative; survives via
   // the localStorage draft). Populated by the Discovery + Naming flows.
   generatedConcepts?: Phase2Concept[];
@@ -139,17 +144,19 @@ export interface CreatorOutputVersion {
 
 /**
  * The forecast variant of {@link CreatorOutputVersion}. Consumers that read the
- * legacy optimistic forecast shape narrow to this with a typed assertion (a real
- * interface, not `as any`). Fields are optional because the authoritative forecast
- * is re-fetched live by sessionId; this is only the cached display copy.
+ * optimistic forecast cache can access these typed hints directly without casting.
  */
-export interface CreatorForecastVersion extends CreatorOutputVersion {
-  data?: Array<Record<string, string | number>>;
-  summary?: {
-    year3Revenue?: number;
-    estimatedBreakeven?: string;
-    ebitdaMargin?: string;
-  };
+export interface CreatorForecastOutputVersion extends CreatorOutputVersion {
+  sessionId?: string;
+  version?: number;
+  phase?: number;
+  revenueYear1?: number;
+  revenueYear2?: number;
+  revenueYear3?: number;
+  breakevenMonth?: number;
+  chartData?: Array<{ month: string; revenue: number; costs: number }>;
 }
 
+export type CreatorForecastVersion = CreatorForecastOutputVersion;
 export type CreatorOutputKey = keyof CreatorJourneyData['outputs'];
+

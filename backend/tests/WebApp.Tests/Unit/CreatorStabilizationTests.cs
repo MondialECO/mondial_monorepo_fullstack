@@ -41,7 +41,16 @@ public class CreatorStabilizationTests
     public CreatorStabilizationTests()
     {
         _creatorIdeas.Setup(x => x.GetOwnedAsync(IdeaAId, CreatorAId))
-            .ReturnsAsync(new CreatorIdea { Id = IdeaAId, UserId = CreatorAId });
+            .ReturnsAsync(new CreatorIdea
+            {
+                Id = IdeaAId,
+                UserId = CreatorAId,
+                Phase3Data = new CreatorPhase3Data
+                {
+                    MarketStudySessionId = "ms-session-test",
+                    BusinessModelSessionId = "bm-session-test"
+                }
+            });
         _creatorIdeas.Setup(x => x.GetOwnedAsync(IdeaBId, CreatorBId))
             .ReturnsAsync(new CreatorIdea { Id = IdeaBId, UserId = CreatorBId });
 

@@ -184,7 +184,7 @@ export default function FormationPage() {
         // Legacy formations (no declaration) start EMPTY — the old youHave was an echo of the
         // creator's own words, never a declaration. Only reload chips once truly declared.
         if (f.skillsDeclared) {
-          const hydratedSkills = f.youHave.filter((s) => (DECLARABLE_SKILLS as readonly string[]).includes(s));
+          const hydratedSkills = f.youHave?.filter((s) => (DECLARABLE_SKILLS as readonly string[]).includes(s)) ?? [];
           declaredSkillsRef.current = hydratedSkills;
           setDeclaredSkills(hydratedSkills);
         }
@@ -228,8 +228,8 @@ export default function FormationPage() {
 
   // Client-side gap derivation (same baseline as the backend) for live UX.
   const gaps = GAP_BASELINE.filter((g) => !declaredSkills.includes(g.skill));
-  const selectedOption = formation?.options.find((option) => option.code === formation.selectedType);
-  const recommendedOption = formation?.options.find((option) => option.code === formation.recommendedType);
+  const selectedOption = formation?.options?.find((option) => option.code === formation.selectedType);
+  const recommendedOption = formation?.options?.find((option) => option.code === formation.recommendedType);
   const cofounderDraft = (): CofounderDraft => ({ roleNeeded, equityRange, locationPreference });
 
   const saveCofounder = async () => {
@@ -268,7 +268,7 @@ export default function FormationPage() {
         cofounderDraft(),
         activeIdeaId,
       );
-      completeStep(3, 5); // local cursor only; status stays engine-derived
+      completeStep(3, 6); // local cursor only; status stays engine-derived
       router.push('/dashboard/creator/phase-3/complete');
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save your skills.");
@@ -346,7 +346,7 @@ export default function FormationPage() {
   return (
     <Phase3SetupShell
       compact
-      stepEyebrow=""
+      stepEyebrow="Step 3.6"
       title="Company Formation & Team"
       description="A suggested company structure to start from, and the skill areas to consider as you build."
       contentClassName="mt-8 space-y-0"
@@ -378,7 +378,7 @@ export default function FormationPage() {
             <div className="text-sm font-medium uppercase leading-5 text-muted-foreground">Suggested starting structure</div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {formation.options.map((option) => {
+              {formation.options?.map((option) => {
                 const isRec = formation.recommendedType === option.code;
                 const isSel = formation.selectedType === option.code;
                 return (

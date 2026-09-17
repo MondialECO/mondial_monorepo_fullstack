@@ -50,18 +50,29 @@ export function getNextCreatorAction(state: CreatorJourneyState): NextAction {
     };
   }
 
-  // Phase 3 Check: Project Intelligence
+  // Phase 3 Check: Project Intelligence (Canonical 7-Step Sequence):
+  //   Step 1: Market Study (/phase-3/market-study)
+  //   Step 2: Business Model (/phase-3/business-model)
+  //   Step 3: Business Plan (/phase-3/business-plan)
+  //   Step 4: Financial Forecast (Deterministic: /phase-3/forecast if forecastSessionId exists, else /phase-3/forecast-inputs)
+  //   Step 5: Legal & Compliance Checklist (/phase-3/compliance)
+  //   Step 6: Company Formation & Team (/phase-3/formation)
+  //   Step 7: Phase 3 Complete / Investor Readiness (/phase-3/complete)
   if (state.phase3.status !== 'completed') {
     const step = state.phase3.currentStep;
-    // Default = business plan (the new first screen). The removed 3.1 input screen means
-    // the derivation never emits step 1, but any unmapped/legacy value (incl. a stale
-    // local step 1) resolves here rather than the old /phase-3 root. Derivation steps are
-    // unchanged: business plan = 2 (from clarifier), forecast = 3 (consumes plan), etc.
-    let route = '/dashboard/creator/phase-3/business-plan';
-    if (step === 3) route = '/dashboard/creator/phase-3/forecast';
-    else if (step === 4) route = '/dashboard/creator/phase-3/compliance';
-    else if (step === 5) route = '/dashboard/creator/phase-3/formation';
-    else if (step === 6) route = '/dashboard/creator/phase-3/complete';
+
+    let route = '/dashboard/creator/phase-3/market-study';
+    if (step <= 1) route = '/dashboard/creator/phase-3/market-study';
+    else if (step === 2) route = '/dashboard/creator/phase-3/business-model';
+    else if (step === 3) route = '/dashboard/creator/phase-3/business-plan';
+    else if (step === 4) {
+      route = state.phase3.forecastSessionId
+        ? '/dashboard/creator/phase-3/forecast'
+        : '/dashboard/creator/phase-3/forecast-inputs';
+    }
+    else if (step === 5) route = '/dashboard/creator/phase-3/compliance';
+    else if (step === 6) route = '/dashboard/creator/phase-3/formation';
+    else if (step >= 7) route = '/dashboard/creator/phase-3/complete';
 
     return {
       targetPhase: 3,
