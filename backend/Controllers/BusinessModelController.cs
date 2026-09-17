@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -40,10 +39,7 @@ namespace WebApp.Controllers
         private readonly AiSettings _settings;
         private readonly ILogger<BusinessModelController> _logger;
 
-        private static readonly JsonSerializerOptions CamelCase = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        };
+
 
         public BusinessModelController(
             IBusinessModelSessionStore sessions,
@@ -326,7 +322,7 @@ namespace WebApp.Controllers
         {
             var active = session.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion);
             var output = active?.Content is not null
-                ? JsonSerializer.Deserialize<object>(active.Content.ToJson(), CamelCase)
+                ? BsonTypeMapper.MapToDotNetValue(active.Content)
                 : null;
 
             return new BusinessModelSessionDto
@@ -345,7 +341,7 @@ namespace WebApp.Controllers
                     IsEdited = v.IsEdited,
                     RequestId = v.RequestId,
                     Content = includeVersionContent && v.Content is not null
-                        ? JsonSerializer.Deserialize<object>(v.Content.ToJson(), CamelCase)
+                        ? BsonTypeMapper.MapToDotNetValue(v.Content)
                         : null,
                     CreatedAt = v.CreatedAt,
                     UpdatedAt = v.UpdatedAt,
