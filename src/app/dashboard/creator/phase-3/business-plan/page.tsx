@@ -145,9 +145,7 @@ function buildSections(
       rewritable: false,
       edited: false,
       sourceLabel: 'Financial Forecast (Step 3.4)',
-      sourceRoute: cross.hasForecast
-        ? '/dashboard/creator/phase-3/forecast'
-        : '/dashboard/creator/phase-3/forecast-inputs',
+      sourceRoute: '/dashboard/creator/phase-3/forecast',
       explanation: 'Calculated by the financial forecast engine in Step 3.4. Edit assumptions there to update.',
     },
     {
@@ -588,9 +586,7 @@ export default function BusinessPlanPage() {
 
   const handleNext = () => {
     completeStep(3, 3);
-    router.push(cross.hasForecast
-      ? '/dashboard/creator/phase-3/forecast'
-      : '/dashboard/creator/phase-3/forecast-inputs');
+    router.push('/dashboard/creator/phase-3/forecast');
   };
 
   return (
