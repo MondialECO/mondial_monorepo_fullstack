@@ -534,6 +534,14 @@ export interface MarketBenchmark {
   lastUpdatedAt: string;
 }
 
+export interface ReadinessDeduction {
+  dimension: string;
+  issue: string;
+  pointsLost: number;
+  remediationTitle: string;
+  remediationRoute: string;
+}
+
 export interface InvestorReadinessScore {
   total: number;
   label: string;
@@ -544,6 +552,7 @@ export interface InvestorReadinessScore {
     legalReadiness: number;
     teamCredibility: number;
   };
+  deductions?: ReadinessDeduction[];
 }
 
 export interface ProjectInterest {

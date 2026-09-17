@@ -274,6 +274,7 @@ namespace WebApp.Models.DatabaseModels
         public double Total { get; set; }
         public string Label { get; set; } // Not Ready | Developing | Strong | Investor-Ready
         public CreatorReadinessBreakdown Breakdown { get; set; } = new();
+        public List<CreatorReadinessDeduction> Deductions { get; set; } = new();
     }
 
     public class CreatorReadinessBreakdown
@@ -283,6 +284,15 @@ namespace WebApp.Models.DatabaseModels
         public double FinancialModel { get; set; }
         public double LegalReadiness { get; set; }
         public double TeamCredibility { get; set; }
+    }
+
+    public class CreatorReadinessDeduction
+    {
+        public string Dimension { get; set; } // ConceptClarity | MarketEvidence | FinancialModel | LegalReadiness | TeamCredibility
+        public string Issue { get; set; }
+        public double PointsLost { get; set; }
+        public string RemediationTitle { get; set; }
+        public string RemediationRoute { get; set; }
     }
 
     // ---------------- Phase 4 ----------------

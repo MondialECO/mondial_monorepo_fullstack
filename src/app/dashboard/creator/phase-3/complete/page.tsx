@@ -1,109 +1,158 @@
-"use client";
+'use client';
 
-import { useEffect, useState, type ComponentType } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type ComponentType } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
   BarChart3,
-  Check,
+  CheckCircle2,
+  ChevronRight,
   FileText,
+  HelpCircle,
+  Layers,
+  Lightbulb,
   Loader2,
-} from "lucide-react";
-import axios from "axios";
-import { Button } from "@/components/ui/button";
-import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
-import { creatorJourneyApi, type InvestorReadinessScore } from "@/lib/api-creator-journey";
-import type { ComputedJourneyStatus } from "@/types/creator/journey-api";
-import { cn } from "@/lib/utils";
+  Lock,
+  MinusCircle,
+  Rocket,
+  Scale,
+  ShieldAlert,
+  ShieldCheck,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
+import axios from 'axios';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
+import {
+  creatorJourneyApi,
+  type InvestorReadinessScore,
+  type ReadinessDeduction,
+} from '@/lib/api-creator-journey';
+import type { ComputedJourneyStatus } from '@/types/creator/journey-api';
+import { cn } from '@/lib/utils';
 
 type UnlockItem = {
   icon: ComponentType<{ className?: string }>;
   title: string;
   body: string;
-  tone: "blue" | "gold";
 };
 
 const UNLOCKS: UnlockItem[] = [
   {
     icon: BarChart3,
-    title: "Dynamic Pricing Calculator",
-    body: "Map tiers, calculate margins, and monetization.",
-    tone: "gold",
+    title: 'Commercial Pricing & Margin Calculator',
+    body: 'Structure subscription tiers, one-time fees, and unit margins against benchmark cost structures.',
   },
   {
     icon: FileText,
-    title: "Resource & Cost Modeling",
-    body: "Payroll, infra, legal, and marketing budgets.",
-    tone: "blue",
+    title: 'Resource & Budget Modeling',
+    body: 'Model headcount timeline, infra runway, and operational capital expenditure allocations.',
   },
   {
-    icon: ArrowRight,
-    title: "Go-To-Market",
-    body: "Launch sequence and acquisition channels.",
-    tone: "gold",
+    icon: Rocket,
+    title: 'Go-To-Market Execution Engine',
+    body: 'Deploy channel acquisition sequencing, customer payback milestones, and commercial rollout roadmap.',
   },
 ];
 
 const gradeForScore = (score?: number | null) => {
   const val = score ?? 0;
-  if (val >= 85) return "A";
-  if (val >= 70) return "B";
-  if (val >= 50) return "C";
-  return "D";
+  if (val >= 85) return 'A';
+  if (val >= 70) return 'B';
+  if (val >= 50) return 'C';
+  return 'D';
 };
 
 const displayScore = (score?: number | null) =>
-  typeof score === "number" && !isNaN(score)
+  typeof score === 'number' && !isNaN(score)
     ? Number.isInteger(score)
       ? score.toFixed(0)
       : score.toFixed(1)
-    : "0";
+    : '0';
 
-function ProgressTrack({ value, max, prominent = false }: { value: number; max: number; prominent?: boolean }) {
+function ProgressTrack({
+  value,
+  max,
+  prominent = false,
+}: {
+  value: number;
+  max: number;
+  prominent?: boolean;
+}) {
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
 
   return (
-    <div className={cn("overflow-hidden rounded-full bg-black/[0.08]", prominent ? "h-2" : "h-1")}>
-      <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${percentage}%` }} />
+    <div
+      className={cn(
+        'overflow-hidden rounded-full bg-muted border border-border/40',
+        prominent ? 'h-2.5' : 'h-1.5',
+      )}
+    >
+      <div
+        className={cn(
+          'h-full rounded-full transition-all duration-500',
+          percentage >= 80 ? 'bg-primary' : percentage >= 50 ? 'bg-amber-500' : 'bg-destructive/80',
+        )}
+        style={{ width: `${percentage}%` }}
+      />
     </div>
   );
 }
 
 export default function Phase3CompletePage() {
   const router = useRouter();
-  const { advancePhase } = useCreatorProgress();
+  const {
+    state: { activeIdeaId },
+    advancePhase,
+  } = useCreatorProgress();
 
   const [computed, setComputed] = useState<ComputedJourneyStatus | null>(null);
   const [readiness, setReadiness] = useState<InvestorReadinessScore | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isNavigating, setIsNavigating] = useState(false);
+  const hasCompletedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        try {
-          const { investorReadinessScore } = await creatorJourneyApi.completeMasterplan();
-          if (active) setReadiness(investorReadinessScore);
-        } catch (error) {
-          if (axios.isAxiosError(error) && error.response?.status === 422) {
-            const message = (error.response.data?.message as string) ?? "A module is missing.";
-            if (active) setMissing(message.replace("Missing module: ", ""));
+        if (!hasCompletedRef.current) {
+          hasCompletedRef.current = true;
+          try {
+            const { investorReadinessScore } = await creatorJourneyApi.completeMasterplan(activeIdeaId);
+            if (active) setReadiness(investorReadinessScore);
+          } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status === 422) {
+              const message = (error.response.data?.message as string) ?? 'A module is missing.';
+              if (active) setMissing(message.replace('Missing module: ', ''));
+            }
           }
         }
-        const { computedStatus } = await creatorJourneyApi.get();
-        if (active) setComputed(computedStatus);
+        const { journey, computedStatus } = await creatorJourneyApi.get(activeIdeaId);
+        if (active) {
+          setComputed(computedStatus);
+          const p3 = journey.phase3Data as { investorReadinessScore?: InvestorReadinessScore };
+          if (p3?.investorReadinessScore) {
+            setReadiness(p3.investorReadinessScore);
+          }
+        }
       } finally {
         if (active) setLoading(false);
       }
     })();
-    return () => { active = false; };
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [activeIdeaId]);
 
-  const canContinue = computed?.phase3.status === "completed" && computed?.phase4.status === "available";
+  const canContinue =
+    computed?.phase3.status === 'completed' && computed?.phase4.status === 'available';
 
   const handleContinue = async () => {
     if (!canContinue) return;
@@ -113,158 +162,295 @@ export default function Phase3CompletePage() {
     for (let attempt = 0; attempt < 10; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       try {
-        const { computedStatus } = await creatorJourneyApi.get();
-        if (computedStatus?.phase4?.status === "available") break;
+        const { computedStatus } = await creatorJourneyApi.get(activeIdeaId);
+        if (computedStatus?.phase4?.status === 'available') break;
       } catch {
         // Keep polling briefly; the destination performs its own backend gate too.
       }
     }
 
-    router.push("/dashboard/creator/offer-pricing");
+    router.push('/dashboard/creator/offer-pricing');
   };
 
-  const breakdown = readiness?.breakdown ? [
-    { label: "General Clarity", value: readiness.breakdown.conceptClarity ?? 0, max: 20 },
-    { label: "Market Evidence", value: readiness.breakdown.marketEvidence ?? 0, max: 20 },
-    { label: "Monetization", value: readiness.breakdown.financialModel ?? 0, max: 25 },
-    { label: "Legal Readiness", value: readiness.breakdown.legalReadiness ?? 0, max: 15 },
-    { label: "Team Credibility", value: readiness.breakdown.teamCredibility ?? 0, max: 20 },
-  ] : [];
+  const dimensions = readiness?.breakdown
+    ? [
+        {
+          key: 'ConceptClarity',
+          label: 'Concept Clarity & Differentiation',
+          icon: Lightbulb,
+          value: readiness.breakdown.conceptClarity ?? 0,
+          max: 20,
+          description: 'Idea validation score, clarity of value proposition, and competitive uniqueness.',
+        },
+        {
+          key: 'MarketEvidence',
+          label: 'Market Evidence & Opportunity Sizing',
+          icon: TrendingUp,
+          value: readiness.breakdown.marketEvidence ?? 0,
+          max: 20,
+          description: 'Canonical TAM addressability, customer segment specificity, and synthesized business plan.',
+        },
+        {
+          key: 'FinancialModel',
+          label: 'Financial Projections & Unit Economics',
+          icon: BarChart3,
+          value: readiness.breakdown.financialModel ?? 0,
+          max: 25,
+          description: '36-month bottom-up projections, break-even velocity, and LTV/CAC customer payback sustainability.',
+        },
+        {
+          key: 'LegalReadiness',
+          label: 'Legal & Compliance Governance',
+          icon: Scale,
+          value: readiness.breakdown.legalReadiness ?? 0,
+          max: 15,
+          description: 'Completion of statutory, corporate structure, IP protection, and data privacy milestones.',
+        },
+        {
+          key: 'TeamCredibility',
+          label: 'Team Credibility & Founder Advantage',
+          icon: Users,
+          value: readiness.breakdown.teamCredibility ?? 0,
+          max: 20,
+          description: 'Documented founder edge, specialist matching coverage, and execution capabilities.',
+        },
+      ]
+    : [];
+
+  const getDeductionsForDimension = (dimKey: string): ReadinessDeduction[] => {
+    if (!readiness?.deductions) return [];
+    return readiness.deductions.filter(
+      (d) => d.dimension.toLowerCase() === dimKey.toLowerCase(),
+    );
+  };
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40 px-5 py-12 text-foreground sm:px-8 lg:py-16">
-      <main className="mx-auto flex w-full max-w-[600px] flex-1 flex-col gap-10">
-        <header className="mx-auto flex w-full max-w-[503px] flex-col items-center gap-3 text-center">
-          <div className="flex size-[72px] items-center justify-center rounded-full border border-white bg-card">
-            <span className="flex size-8 items-center justify-center rounded-full bg-[#14835f] text-white">
-              <Check className="size-4 stroke-[3]" aria-hidden="true" />
-            </span>
+    <div className="flex min-h-screen w-full flex-col bg-muted/30 px-4 py-10 text-foreground sm:px-8 lg:py-14">
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8">
+        {/* Header - Diagnostic, Objective, Institutional */}
+        <header className="flex flex-col items-center gap-2.5 text-center max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary uppercase tracking-wider font-mono">
+            <span>Phase 3 Evaluation · Step 3.7</span>
           </div>
-          <span className="text-xs font-bold uppercase tracking-wider text-primary">Step 3.7</span>
-          <h1 className="text-[32px] font-semibold leading-10 tracking-normal text-foreground">
-            Project intelligence Ready
+
+          <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl font-sans">
+            Investor Readiness Audit
           </h1>
-          <p className="text-base leading-6 text-muted-foreground">
-            Your market study, business model, business plan, forecast, legal checklist and formation are assembled into your AI Masterplan.
+
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            An objective diagnostic evaluation of your venture intelligence. Review specific deductions and remediation paths before advancing to commercial setup.
           </p>
         </header>
 
         {loading && (
-          <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" /> Scoring your masterplan…
-          </div>
+          <Card className="flex items-center justify-center gap-3 py-16 border-border/70 bg-card text-muted-foreground">
+            <Loader2 className="size-6 animate-spin text-primary" />
+            <span className="text-sm font-medium">Computing institutional readiness score &amp; component breakdown…</span>
+          </Card>
         )}
 
         {!loading && missing && (
-          <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 p-4 text-sm text-warning">
-            <AlertTriangle className="size-5 shrink-0" />
-            <p>
-              One module still needs attention: <strong>{missing.replace(/_/g, " ")}</strong>. Finish it to unlock Phase 4.
-            </p>
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs leading-relaxed text-foreground">
+            <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div>
+              <span className="font-semibold text-amber-700 dark:text-amber-300">
+                Incomplete Phase 3 Prerequisite:
+              </span>{' '}
+              One module still requires completion: <strong>{missing.replace(/_/g, ' ')}</strong>. Complete it to unlock Phase 4.
+            </div>
           </div>
         )}
 
-        {!loading && (
-          <section className="space-y-3" aria-labelledby="investor-readiness-heading">
-            <h2 id="investor-readiness-heading" className="text-xs font-medium uppercase leading-4 text-primary">
-              Investor Readiness
-            </h2>
-
-            <div className="overflow-hidden rounded-[20px] border border-white bg-card/75">
-              {readiness ? (
-                <>
-                  <div className="space-y-4 border-b border-black/[0.06] p-6">
-                    <div className="flex items-end justify-between gap-4">
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium leading-4 text-muted-foreground">Overall Readiness</p>
-                        <p className="text-[56px] font-extrabold leading-[64px] text-foreground">
-                          {displayScore(readiness.total)}
-                        </p>
-                      </div>
-                      <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-primary/50 bg-primary/5 px-2.5 py-1.5 text-[11px] font-semibold leading-4 text-primary">
-                        <span>{gradeForScore(readiness.total)}</span>
-                        <span>{readiness.label}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs font-medium leading-4 text-muted-foreground">
-                        <span>Progress</span>
-                        <span>{displayScore(readiness.total)}%</span>
-                      </div>
-                      <ProgressTrack value={readiness.total} max={100} prominent />
-                    </div>
+        {!loading && readiness && (
+          <>
+            {/* Score Hero Summary Card */}
+            <Card className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8 space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-6 border-b border-border/70">
+                <div className="space-y-1">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Aggregated Readiness Score
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-5xl sm:text-6xl font-extrabold font-mono tracking-tight text-foreground">
+                      {displayScore(readiness.total)}
+                    </span>
+                    <span className="text-xl font-mono text-muted-foreground font-semibold">/ 100</span>
                   </div>
-
-                  <div>
-                    {breakdown.map((item, index) => (
-                      <div
-                        key={item.label}
-                        className={cn(
-                          "flex items-center justify-between gap-6 px-6 py-4",
-                          index < breakdown.length - 1 && "border-b border-black/[0.06]",
-                        )}
-                      >
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <h3 className="text-base font-medium leading-6 text-foreground">{item.label}</h3>
-                          <p className="text-xs leading-4 text-muted-foreground">
-                            {displayScore(item.value)} / {item.max}
-                          </p>
-                        </div>
-                        <div className="w-[42%] max-w-[220px] min-w-[120px]">
-                          <ProgressTrack value={item.value} max={item.max} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <p className="p-6 text-sm leading-6 text-muted-foreground">
-                  Complete the business plan, forecast, and formation modules to compute your readiness score.
-                </p>
-              )}
-            </div>
-          </section>
-        )}
-
-        <section className="space-y-3" aria-labelledby="unlocks-heading">
-          <h2 id="unlocks-heading" className="text-xs font-medium uppercase leading-4 text-primary">Unlock</h2>
-          <div className="space-y-3">
-            {UNLOCKS.map(({ icon: Icon, title, body, tone }) => (
-              <div key={title} className="flex items-center gap-2 rounded-xl border border-white bg-card/75 p-3">
-                <div
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-full border border-black/[0.08]",
-                    tone === "blue" ? "bg-primary/5 text-primary" : "bg-[#f9f2e8] text-[#a66a14]",
-                  )}
-                >
-                  <Icon className="size-4" aria-hidden="true" />
                 </div>
-                <div className="min-w-0 flex-1 space-y-1 text-xs leading-4">
-                  <h3 className="font-medium text-foreground">{title}</h3>
-                  <p className="text-muted-foreground">{body}</p>
+
+                <div className="flex flex-col sm:items-end gap-2">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/5 px-4 py-1.5 text-xs font-semibold text-primary">
+                    <span className="font-mono text-sm font-bold bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                      Grade {gradeForScore(readiness.total)}
+                    </span>
+                    <span>{readiness.label}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground max-w-[240px] sm:text-right">
+                    {readiness.total >= 85
+                      ? 'Exceeds standard institutional seed diligence thresholds.'
+                      : readiness.total >= 70
+                      ? 'Solid foundation with minor optimization opportunities identified below.'
+                      : 'Key venture weaknesses require remediation before institutional review.'}
+                  </p>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
 
+              {/* Progress Track */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-medium text-muted-foreground">
+                  <span>Audit Benchmark Trajectory</span>
+                  <span className="font-mono text-foreground font-semibold">
+                    {displayScore(readiness.total)}% Complete
+                  </span>
+                </div>
+                <ProgressTrack value={readiness.total} max={100} prominent />
+              </div>
+            </Card>
+
+            {/* Dimensional Breakdown & Per-Deduction Detail */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-foreground font-sans">
+                    Dimensional Diagnostic &amp; Deduction Breakdown
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Inspect the exact components costing points and tap remediation actions to repair them.
+                  </p>
+                </div>
+                <span className="text-xs font-mono text-muted-foreground">5 Evaluated Dimensions</span>
+              </div>
+
+              <div className="space-y-4">
+                {dimensions.map((dim) => {
+                  const Icon = dim.icon;
+                  const dimDeductions = getDeductionsForDimension(dim.key);
+                  const isPerfect = dimDeductions.length === 0 && dim.value >= dim.max;
+
+                  return (
+                    <Card
+                      key={dim.key}
+                      className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 shadow-sm space-y-4 transition-colors hover:border-border"
+                    >
+                      {/* Dimension Title & Score Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/5 text-primary">
+                            <Icon className="size-4" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-semibold text-foreground font-sans">
+                              {dim.label}
+                            </h3>
+                            <p className="text-xs text-muted-foreground">{dim.description}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center sm:flex-col sm:items-end gap-2 shrink-0">
+                          <span className="text-base font-bold font-mono text-foreground">
+                            {displayScore(dim.value)}{' '}
+                            <span className="text-xs font-normal text-muted-foreground">/ {dim.max}</span>
+                          </span>
+                          <div className="w-24 sm:w-28">
+                            <ProgressTrack value={dim.value} max={dim.max} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Deduction Detail or Perfect Status */}
+                      <div className="pt-2 border-t border-border/60">
+                        {dimDeductions.length > 0 ? (
+                          <div className="space-y-2.5">
+                            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                              <MinusCircle className="size-3.5 text-amber-600 dark:text-amber-400" />
+                              <span>Identified Weaknesses &amp; Point Deductions ({dimDeductions.length})</span>
+                            </div>
+
+                            <div className="space-y-2">
+                              {dimDeductions.map((deduction, dIdx) => (
+                                <div
+                                  key={dIdx}
+                                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-xs"
+                                >
+                                  <div className="flex items-start gap-2.5">
+                                    <span className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[11px] font-mono font-bold text-destructive bg-destructive/10 border border-destructive/20">
+                                      -{deduction.pointsLost} pts
+                                    </span>
+                                    <p className="text-foreground leading-snug">{deduction.issue}</p>
+                                  </div>
+
+                                  <Button
+                                    asChild
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 shrink-0 gap-1.5 rounded-lg border-primary/25 bg-card px-2.5 text-[11px] font-medium text-primary hover:bg-primary/5 shadow-none"
+                                  >
+                                    <Link href={deduction.remediationRoute}>
+                                      <span>{deduction.remediationTitle}</span>
+                                      <ChevronRight className="size-3" />
+                                    </Link>
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3">
+                            <CheckCircle2 className="size-4 shrink-0" />
+                            <span>Institutional standard met — no point deductions applied in this dimension.</span>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Unlocked Capabilities in Phase 4 */}
+            <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <Rocket className="size-4 text-primary" />
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground font-sans">
+                  Phase 4 Unlocks — Commercial &amp; Go-To-Market Execution
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {UNLOCKS.map(({ icon: Icon, title, body }) => (
+                  <div
+                    key={title}
+                    className="flex flex-col gap-2 rounded-xl border border-border/60 bg-muted/20 p-4"
+                  >
+                    <div className="flex size-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                      <Icon className="size-4" />
+                    </div>
+                    <h4 className="text-xs font-semibold text-foreground font-sans">{title}</h4>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">{body}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </>
+        )}
+
+        {/* Action Footer Navigation */}
         <div className="flex flex-col-reverse items-stretch justify-between gap-3 border-t border-border pt-6 sm:flex-row sm:items-center">
           <Button
             variant="outline"
-            onClick={() => router.push("/dashboard/creator/phase-3/formation")}
+            onClick={() => router.push('/dashboard/creator/phase-3/formation')}
             disabled={isNavigating}
             className="h-10 rounded-xl border-border px-4 text-sm font-medium text-muted-foreground shadow-none"
           >
-            <ArrowLeft className="size-4" /> Company Formation
+            <ArrowLeft className="size-4 mr-2" /> Company Formation
           </Button>
           <Button
             onClick={handleContinue}
             disabled={isNavigating || !canContinue}
-            className="h-10 gap-2 rounded-xl px-4 text-[13px] font-semibold disabled:opacity-60"
+            className="h-10 gap-2 rounded-xl px-5 text-sm font-semibold disabled:opacity-60"
           >
             {isNavigating && <Loader2 className="size-4 animate-spin" />}
-            Launch Offer &amp; Resource Setup
+            Proceed to Phase 4: Commercial Setup
             {!isNavigating && <ArrowRight className="size-4" />}
           </Button>
         </div>
