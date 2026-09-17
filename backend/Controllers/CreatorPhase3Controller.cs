@@ -658,6 +658,7 @@ namespace WebApp.Controllers
                     // status intentionally omitted — derived by the engine on next GET.
                 }));
             }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
@@ -715,6 +716,154 @@ namespace WebApp.Controllers
             double total = Math.Round(conceptClarity + marketEvidence + financialModel + legalReadiness + teamCredibility, 1);
             string label = total < 50 ? "Not Ready" : total < 70 ? "Developing" : total < 85 ? "Strong" : "Investor-Ready";
 
+            // Build detailed component deductions for each dimension with screen remediation links
+            var deductions = new List<CreatorReadinessDeduction>();
+
+            // 1. Concept Clarity (Max 20)
+            if (conceptClarity < 20)
+            {
+                var lost = Math.Round(20 - conceptClarity, 1);
+                deductions.Add(new CreatorReadinessDeduction
+                {
+                    Dimension = "ConceptClarity",
+                    Issue = $"Idea clarity score ({p.ClarityScore}%) is below institutional threshold (100%).",
+                    PointsLost = lost,
+                    RemediationTitle = "Refine Concept in Idea Clarifier",
+                    RemediationRoute = "/dashboard/creator/phase-2/clarifier",
+                });
+            }
+
+            // 2. Market Evidence (Max 20)
+            var tamScore = CreatorScoring.MarketEvidenceTamScore(tam, !string.IsNullOrWhiteSpace(p.MarketGap));
+            if (tamScore < 8)
+            {
+                var lost = 8 - tamScore;
+                deductions.Add(new CreatorReadinessDeduction
+                {
+                    Dimension = "MarketEvidence",
+                    Issue = tam == null
+                        ? "No canonical TAM specified in financial forecast."
+                        : $"TAM (${tam:N0}) is below $100M venture-scale threshold.",
+                    PointsLost = lost,
+                    RemediationTitle = "Update Market Sizing in Forecast",
+                    RemediationRoute = "/dashboard/creator/phase-3/forecast",
+                });
+            }
+            if (string.IsNullOrEmpty(p3.BusinessPlanSessionId))
+            {
+                deductions.Add(new CreatorReadinessDeduction
+                {
+                    Dimension = "MarketEvidence",
+                    Issue = "Business plan and competitor research not synthesized.",
+                    PointsLost = 6,
+                    RemediationTitle = "Generate Business Plan",
+                    RemediationRoute = "/dashboard/creator/phase-3/business-plan",
+                });
+            }
+            if (string.IsNullOrWhiteSpace(p.TargetUser))
+            {
+                deductions.Add(new CreatorReadinessDeduction
+                {
+                    Dimension = "MarketEvidence",
+                    Issue = "Target customer profile is not explicitly defined.",
+                    PointsLost = 6,
+                    RemediationTitle = "Define Target Audience in Clarifier",
+                    RemediationRoute = "/dashboard/creator/phase-2/clarifier",
+                });
+            }
+
+            // 3. Financial Model (Max 25)
+            bool reachedBreakEven = false;
+            try
+            {
+                var o = forecast?.Versions?
+                    .OrderByDescending(v => v.Version)
+                    .FirstOrDefault()?.Content;
+                if (o != null && o.TryGetValue("breakEvenAnalysis", out var be) && be.IsBsonDocument)
+                {
+                    var bm = be.AsBsonDocument.GetValue("breakEvenMonth", BsonNull.Value);
+                    if (bm.IsNumeric && bm.ToDouble() <= 24) reachedBreakEven = true;
+                }
+            }
+            catch { }
+
+            if (!reachedBreakEven)
+            {
+                deductions.Add(new CreatorReadinessDeduction
+                {
+                    Dimension = "FinancialModel",
+                    Issue = "Break-even horizon exceeds 24 months in forecast projection.",
+                    PointsLost = 8,
+                    RemediationTitle = "Optimize Growth & OPEX in Forecast",
+                    RemediationRoute = "/dashboard/creator/phase-3/forecast",
+                });
+            }
+
+            bool ltvHealthy = CreatorScoring.LtvCacHealthy(forecast?.Inputs?.Arpu, forecast?.Inputs?.MonthlyChurnPct);
+            if (!ltvHealthy)
+            {
+                deductions.Add(new CreatorReadinessDeduction
+                {
+                    Dimension = "FinancialModel",
+                    Issue = "LTV/CAC ratio is under 3.0x threshold (high churn or low ARPU).",
+                    PointsLost = 7,
+                    RemediationTitle = "Improve ARPU & Retention in Forecast",
+                    RemediationRoute = "/dashboard/creator/phase-3/forecast",
+                });
+            }
+
+            // 4. Legal Readiness (Max 15)
+            if (p3.LegalChecklist != null && p3.LegalChecklist.TotalCount > 0 && p3.LegalChecklist.CompletedCount < p3.LegalChecklist.TotalCount)
+            {
+                var remaining = p3.LegalChecklist.TotalCount - p3.LegalChecklist.CompletedCount;
+                var lost = Math.Round(15 - legalReadiness, 1);
+                deductions.Add(new CreatorReadinessDeduction
+                {
+                    Dimension = "LegalReadiness",
+                    Issue = $"{remaining} legal & compliance checklist items remain unverified.",
+                    PointsLost = lost,
+                    RemediationTitle = "Complete Legal & Compliance Items",
+                    RemediationRoute = "/dashboard/creator/phase-3/compliance",
+                });
+            }
+            else if (p3.LegalChecklist == null || p3.LegalChecklist.TotalCount == 0)
+            {
+                deductions.Add(new CreatorReadinessDeduction
+                {
+                    Dimension = "LegalReadiness",
+                    Issue = "Compliance checklist has not been generated or reviewed.",
+                    PointsLost = 15,
+                    RemediationTitle = "Review Compliance Checklist",
+                    RemediationRoute = "/dashboard/creator/phase-3/compliance",
+                });
+            }
+
+            // 5. Team Credibility (Max 20)
+            if (string.IsNullOrWhiteSpace(p.CreatorEdge))
+            {
+                deductions.Add(new CreatorReadinessDeduction
+                {
+                    Dimension = "TeamCredibility",
+                    Issue = "Founder unfair advantage or founder edge is not documented.",
+                    PointsLost = 14,
+                    RemediationTitle = "Articulate Founder Edge in Clarifier",
+                    RemediationRoute = "/dashboard/creator/phase-2/clarifier",
+                });
+            }
+
+            bool hasSpEngagement = ((p3.FormationGenerator?.MatchedSpIds?.Count ?? 0) > 0) || p.Branding?.BrandingMethod == "m50_designer";
+            if (!hasSpEngagement)
+            {
+                deductions.Add(new CreatorReadinessDeduction
+                {
+                    Dimension = "TeamCredibility",
+                    Issue = "No specialized partners or design providers engaged for venture gaps.",
+                    PointsLost = 6,
+                    RemediationTitle = "Review Skills & Match Specialists",
+                    RemediationRoute = "/dashboard/creator/phase-3/formation",
+                });
+            }
+
             return new CreatorInvestorReadinessScore
             {
                 Total = total,
@@ -727,6 +876,7 @@ namespace WebApp.Controllers
                     LegalReadiness = Math.Round(legalReadiness, 1),
                     TeamCredibility = teamCredibility,
                 },
+                Deductions = deductions,
             };
         }
 
