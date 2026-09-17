@@ -8,6 +8,7 @@ import {
   BarChart3,
   Sparkles,
   RotateCw,
+  RefreshCw,
   AlertTriangle,
   FileWarning,
   TrendingDown,
@@ -77,13 +78,16 @@ export default function MarketStudyPage() {
 
   const session = useMarketStudySessionTimed(marketStudySessionId);
   const output = (session.data as { output?: MarketStudyOutput } | undefined)?.output;
+  const sessionStatus = (session.data as { status?: import('@/types/creator/ai').AiSessionStatus })?.status;
   const completed =
     session.phase === 'terminal' &&
-    hasAiOutput((session.data as { status?: import('@/types/creator/ai').AiSessionStatus })?.status) &&
+    hasAiOutput(sessionStatus) &&
     !!output;
 
-  const studyError = (session.data as { error?: string | null } | undefined)?.error ?? null;
+  const isTimedOut = !!marketStudySessionId && session.phase === 'timedout';
   const terminalFailed = !!marketStudySessionId && session.phase === 'terminal' && !completed;
+  const hasFailed = terminalFailed || isTimedOut;
+  const studyError = (session.data as { error?: string | null } | undefined)?.error ?? null;
 
   useEffect(() => {
     let active = true;
@@ -151,8 +155,12 @@ export default function MarketStudyPage() {
   const sam = output?.marketSizing?.sam;
   const som = output?.marketSizing?.som;
 
-  const samPctOfTam = sam?.percentageOfTam ?? (tam?.value && sam?.value ? (sam.value / tam.value) * 100 : 35);
-  const somPctOfSam = som?.percentageOfSam ?? (sam?.value && som?.value ? (som.value / sam.value) * 100 : 15);
+  const tamVal = tam?.value;
+  const samVal = sam?.value;
+  const somVal = som?.value;
+
+  const samPctOfTam = sam?.percentageOfTam ?? (tamVal && samVal ? (samVal / tamVal) * 100 : 35);
+  const somPctOfSam = som?.percentageOfSam ?? (samVal && somVal ? (somVal / samVal) * 100 : 15);
 
   const samReductionPct = Math.max(0, Math.round(100 - samPctOfTam));
   const somReductionPct = Math.max(0, Math.round(100 - somPctOfSam));
@@ -176,14 +184,23 @@ export default function MarketStudyPage() {
           </div>
         )}
 
-        {terminalFailed && (
+        {hasFailed && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <FileWarning className="h-6 w-6 text-destructive shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <h4 className="text-sm font-semibold text-destructive">Market Study generation was interrupted</h4>
+                <h4 className="text-sm font-semibold text-destructive">
+                  {isTimedOut
+                    ? 'Market Study generation timed out'
+                    : 'Market Study generation was interrupted'}
+                </h4>
                 <p className="text-xs text-foreground/90">
-                  The AI generation did not finish. Your {marketStudyCost} credits have been automatically refunded to your balance.
+                  {isTimedOut
+                    ? 'The generation request took longer than expected to complete.'
+                    : 'The AI generation did not finish.'}{' '}
+                  {credits.data
+                    ? `Current balance: ${credits.data.balance} credits (generation cost: ${marketStudyCost} credits).`
+                    : `Generation cost: ${marketStudyCost} credits.`}
                 </p>
                 {studyError && (
                   <p className="text-[11px] text-muted-foreground font-mono">
@@ -192,18 +209,30 @@ export default function MarketStudyPage() {
                 )}
               </div>
             </div>
-            <Button
-              onClick={handleStart}
-              disabled={isGenerating || insufficientCredits}
-              className="gap-2 shrink-0 text-xs font-semibold"
-            >
-              <RotateCw className="w-3.5 h-3.5" /> Retry Generation
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              {isTimedOut && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => session.retry()}
+                  className="gap-1.5 text-xs font-medium"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Check Again
+                </Button>
+              )}
+              <Button
+                onClick={handleStart}
+                disabled={isGenerating || insufficientCredits}
+                className="gap-2 shrink-0 text-xs font-semibold"
+              >
+                <RotateCw className="w-3.5 h-3.5" /> Retry Generation
+              </Button>
+            </div>
           </div>
         )}
 
         {/* Pre-generation / Empty State */}
-        {!completed && !isGenerating && !terminalFailed && (
+        {!completed && !isGenerating && !hasFailed && (
           <Card className="rounded-2xl border border-border bg-card p-8 md:p-12 text-center max-w-3xl mx-auto space-y-6 shadow-sm">
             <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
               <BarChart3 className="w-7 h-7" />

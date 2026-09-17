@@ -8,7 +8,10 @@ namespace WebApp.Services.Repository.Ai
     {
         public AiResponseRepository(IMongoDatabase database) : base(database, "AIResponses")
         {
-            CreateIndexesAsync().GetAwaiter().GetResult();
+            if (_collection != null && database != null)
+            {
+                try { CreateIndexesAsync().GetAwaiter().GetResult(); } catch { }
+            }
         }
 
         private async Task CreateIndexesAsync()

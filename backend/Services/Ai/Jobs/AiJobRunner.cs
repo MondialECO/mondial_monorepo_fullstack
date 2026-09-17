@@ -95,7 +95,7 @@ namespace WebApp.Services.Ai.Jobs
             {
                 await _requests.SetProcessingAsync(requestId);
 
-                var jobType = Enum.Parse<AiJobType>(request.JobType);
+                var jobType = Enum.Parse<AiJobType>(request.JobType, ignoreCase: true);
                 var handler = _handlers.Resolve(jobType);
 
                 var prep = await handler.PrepareAsync(request);
@@ -197,16 +197,10 @@ namespace WebApp.Services.Ai.Jobs
         /// state without delivering a usable payload (exception or parser/schema rejection).
         /// Resolves the operation ID stamped into the job payload; falls back to sessionId ONLY
         /// where sessionId was demonstrably the debit key (BusinessPlan start path with CurrentVersion == 0).
-        /// Legacy jobs missing stamped identifiers are logged as reconciliation items.
+        /// Never skips refunding if JobType cannot be parsed.
         /// </summary>
         private async Task TryAutomaticRefundAsync(AiRequest request, string reason)
         {
-            if (!Enum.TryParse<AiJobType>(request.JobType, out var jobType))
-            {
-                _logger.LogWarning("AI job {RequestId} has unknown JobType '{JobType}'; skipping refund.", request.Id, request.JobType);
-                return;
-            }
-
             var creditOpId = request.InputPayload != null
                 && request.InputPayload.TryGetValue("creditOperationId", out var opVal)
                 && opVal.IsString
@@ -224,7 +218,10 @@ namespace WebApp.Services.Ai.Jobs
 
                 // Fallback ONLY where sessionId was demonstrably the debit key:
                 // BusinessPlan.Start path (session has CurrentVersion == 0 and input has no sectionId).
-                if (jobType == AiJobType.BusinessPlan
+                var isBusinessPlan = string.Equals(request.JobType, "BusinessPlan", StringComparison.OrdinalIgnoreCase)
+                    || (Enum.TryParse<AiJobType>(request.JobType, true, out var parsedJt) && parsedJt == AiJobType.BusinessPlan);
+
+                if (isBusinessPlan
                     && !string.IsNullOrEmpty(sessionId)
                     && (request.InputPayload == null || !request.InputPayload.Contains("sectionId")))
                 {
@@ -244,47 +241,63 @@ namespace WebApp.Services.Ai.Jobs
 
                 if (string.IsNullOrEmpty(creditOpId))
                 {
-                    _logger.LogWarning(
-                        "RECONCILIATION NEEDED: AI job {RequestId} ({JobType}) for user {UserId} ended without usable payload, but lacks a creditOperationId. Jobs debited prior to this change cannot be refunded automatically.",
+                    _logger.LogCritical(
+                        AiLogEvents.UnrefundedDebit,
+                        "CRITICAL [AI_UNREFUNDED_DEBIT]: AI job {RequestId} ({JobType}) for user {UserId} ended without usable payload, but lacks a creditOperationId. Automatic refund skipped.",
                         request.Id, request.JobType, request.OwnerUserId);
                     return;
                 }
             }
 
+            var taggedReason = $"[{AiReconciliationSource.RunnerAutomatic}] {reason}";
+
             try
             {
-                var result = await _creditService.RefundForJobAsync(request.OwnerUserId, jobType, creditOpId, reason);
+                CreditRefundResult result;
+                if (Enum.TryParse<AiJobType>(request.JobType, true, out var jobType))
+                {
+                    result = await _creditService.RefundForJobAsync(request.OwnerUserId, jobType, creditOpId, taggedReason);
+                }
+                else
+                {
+                    _logger.LogWarning("AI job {RequestId} has unparseable JobType '{JobType}'; falling back to direct operation refund for op {OperationId}.",
+                        request.Id, request.JobType, creditOpId);
+                    result = await _creditService.RefundOperationAsync(request.OwnerUserId, creditOpId, taggedReason);
+                }
+
                 switch (result)
                 {
                     case CreditRefundResult.Applied:
                         _logger.LogInformation("Refunded credits for AI job {RequestId} ({JobType}, op {OperationId}) to user {UserId}. Reason: {Reason}",
-                            request.Id, jobType, creditOpId, request.OwnerUserId, reason);
+                            request.Id, request.JobType, creditOpId, request.OwnerUserId, taggedReason);
                         break;
                     case CreditRefundResult.AlreadyRefunded:
                         _logger.LogInformation("AI job {RequestId} ({JobType}, op {OperationId}) was already refunded.",
-                            request.Id, jobType, creditOpId);
+                            request.Id, request.JobType, creditOpId);
                         break;
                     case CreditRefundResult.DebitNotFound:
-                        _logger.LogWarning("Debit not found for refund of AI job {RequestId} ({JobType}, op {OperationId}).",
-                            request.Id, jobType, creditOpId);
-                        break;
                     case CreditRefundResult.InvalidMismatch:
-                        _logger.LogWarning("Debit amount mismatch on refund of AI job {RequestId} ({JobType}, op {OperationId}).",
-                            request.Id, jobType, creditOpId);
+                        _logger.LogCritical(
+                            AiLogEvents.UnrefundedDebit,
+                            "CRITICAL [AI_UNREFUNDED_DEBIT]: Debit anomaly on refund of AI job {RequestId} ({JobType}, op {OperationId}) for user {UserId}. Result: {RefundResult}",
+                            request.Id, request.JobType, creditOpId, request.OwnerUserId, result);
                         break;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to apply automatic refund for AI job {RequestId} ({JobType}, op {OperationId}) to user {UserId}.",
-                    request.Id, jobType, creditOpId, request.OwnerUserId);
+                _logger.LogCritical(
+                    AiLogEvents.UnrefundedDebit,
+                    ex,
+                    "CRITICAL [AI_UNREFUNDED_DEBIT]: Failed to apply automatic refund for AI job {RequestId} ({JobType}, op {OperationId}) to user {UserId}.",
+                    request.Id, request.JobType, creditOpId, request.OwnerUserId);
             }
         }
 
         /// <summary>
         /// Marks the user-facing session document failed, keyed by job type. The session id
-        /// rides on the request input under "sessionId" (set by each controller). Best-effort:
-        /// a sync failure is logged but never masks the original job error. Probe has no session.
+        /// rides on the request input under "sessionId" (set by each controller). Robust against
+        /// case differences and unparseable enums, with critical logging if unmappable.
         /// </summary>
         private async Task MarkSessionFailedAsync(AiRequest request, string error)
         {
@@ -294,31 +307,73 @@ namespace WebApp.Services.Ai.Jobs
                 && v.IsString
                     ? v.AsString
                     : null;
-            if (string.IsNullOrEmpty(sessionId)) return;
-            if (!Enum.TryParse<AiJobType>(request.JobType, out var jobType)) return;
+
+            if (string.IsNullOrEmpty(sessionId))
+            {
+                return;
+            }
+
+            var jt = request.JobType?.Trim() ?? string.Empty;
 
             try
             {
-                switch (jobType)
+                if (jt.Equals("BusinessModel", StringComparison.OrdinalIgnoreCase))
                 {
-                    case AiJobType.IdeaGenerator:
-                        await _ideaGenerationSessions.SetFailedAsync(sessionId, error);
-                        break;
-                    case AiJobType.IdeaClarifier:
-                        await _clarifierSessions.SetFailedAsync(sessionId, error);
-                        break;
-                    case AiJobType.MarketStudy:
-                        await _marketStudySessions.SetFailedAsync(sessionId, error);
-                        break;
-                    case AiJobType.BusinessModel:
-                        await _businessModelSessions.SetFailedAsync(sessionId, error);
-                        break;
-                    case AiJobType.BusinessPlan:
-                        await _businessPlanSessions.SetFailedAsync(sessionId, error);
-                        break;
-                    case AiJobType.Forecast:
-                        await _forecastSessions.SetFailedAsync(sessionId, error);
-                        break;
+                    await _businessModelSessions.SetFailedAsync(sessionId, error);
+                }
+                else if (jt.Equals("MarketStudy", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _marketStudySessions.SetFailedAsync(sessionId, error);
+                }
+                else if (jt.Equals("BusinessPlan", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _businessPlanSessions.SetFailedAsync(sessionId, error);
+                }
+                else if (jt.Equals("Forecast", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _forecastSessions.SetFailedAsync(sessionId, error);
+                }
+                else if (jt.Equals("IdeaClarifier", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _clarifierSessions.SetFailedAsync(sessionId, error);
+                }
+                else if (jt.Equals("IdeaGenerator", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _ideaGenerationSessions.SetFailedAsync(sessionId, error);
+                }
+                else if (Enum.TryParse<AiJobType>(jt, true, out var parsedJobType))
+                {
+                    switch (parsedJobType)
+                    {
+                        case AiJobType.IdeaGenerator:
+                            await _ideaGenerationSessions.SetFailedAsync(sessionId, error);
+                            break;
+                        case AiJobType.IdeaClarifier:
+                            await _clarifierSessions.SetFailedAsync(sessionId, error);
+                            break;
+                        case AiJobType.MarketStudy:
+                            await _marketStudySessions.SetFailedAsync(sessionId, error);
+                            break;
+                        case AiJobType.BusinessModel:
+                            await _businessModelSessions.SetFailedAsync(sessionId, error);
+                            break;
+                        case AiJobType.BusinessPlan:
+                            await _businessPlanSessions.SetFailedAsync(sessionId, error);
+                            break;
+                        case AiJobType.Forecast:
+                            await _forecastSessions.SetFailedAsync(sessionId, error);
+                            break;
+                        default:
+                            _logger.LogInformation("JobType '{JobType}' has no corresponding session store; no session status update required.", request.JobType);
+                            break;
+                    }
+                }
+                else
+                {
+                    _logger.LogCritical(
+                        AiLogEvents.UnmappableSession,
+                        "CRITICAL [AI_UNMAPPABLE_SESSION]: Cannot mark session {SessionId} failed because JobType '{JobType}' does not map to any known session store for request {RequestId} (User {UserId}).",
+                        sessionId, request.JobType, request.Id, request.OwnerUserId);
                 }
             }
             catch (Exception ex)

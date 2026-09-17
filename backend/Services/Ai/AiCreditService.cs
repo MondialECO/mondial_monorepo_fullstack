@@ -34,6 +34,13 @@ namespace WebApp.Services.Ai
         Task<CreditRefundResult> RefundForJobAsync(string ownerUserId, AiJobType jobType, string operationId, string reason = "Generation failed before acceptance");
 
         /// <summary>
+        /// Compensates / refunds the exact debited amount recorded for <paramref name="operationId"/>
+        /// without requiring an <see cref="AiJobType"/> enum. Essential for safety handlers where job type
+        /// parsing failed or is unresolvable.
+        /// </summary>
+        Task<CreditRefundResult> RefundOperationAsync(string ownerUserId, string operationId, string reason = "Generation failed before acceptance");
+
+        /// <summary>
         /// Reads the user's available balance, lifetime totals, and the server-authoritative
         /// capability cost table from configuration. Guarantees starter credits if absent.
         /// </summary>
@@ -92,6 +99,28 @@ namespace WebApp.Services.Ai
                 return CreditRefundResult.Applied; // free job — no refund needed
 
             return await _credits.TryRefundAsync(ownerUserId, operationId, cost, reason);
+        }
+
+        public async Task<CreditRefundResult> RefundOperationAsync(string ownerUserId, string operationId, string reason = "Generation failed before acceptance")
+        {
+            if (string.IsNullOrWhiteSpace(ownerUserId) || string.IsNullOrWhiteSpace(operationId))
+                return CreditRefundResult.InvalidMismatch;
+
+            var ledger = await _credits.GetByOwnerAsync(ownerUserId);
+            if (ledger == null)
+                return CreditRefundResult.DebitNotFound;
+
+            var debit = ledger.Debits.FirstOrDefault(d => d.OperationId == operationId);
+            if (debit == null)
+                return CreditRefundResult.DebitNotFound;
+
+            if (debit.Refunded)
+                return CreditRefundResult.AlreadyRefunded;
+
+            if (debit.Amount <= 0)
+                return CreditRefundResult.Applied;
+
+            return await _credits.TryRefundAsync(ownerUserId, operationId, debit.Amount, reason);
         }
 
         public async Task<WebApp.Models.Dtos.Ai.AiCreditBalanceDto> GetBalanceAsync(string ownerUserId)

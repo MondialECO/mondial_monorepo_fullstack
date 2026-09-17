@@ -116,3 +116,29 @@ deploying, or startup validation aborts the boot (intended fail-fast).
 - All C-1 changes are additive (new collections/sections/endpoints); the only
   change to an existing entity is a new `Type = "AI"` value on notifications (no
   migration).
+
+---
+
+## 8. Failure Reconciliation & Audit System (Three-Tier Architecture)
+
+To guarantee financial correctness, prevent silent loss of debited credits, and recover from unhandled runtime or process restarts, the platform implements a three-tier safety architecture:
+
+### 8.1 Tier 1: Dedicated Critical Structured Logging (Active)
+- Emits distinct, high-priority log events (`AiLogEvents`) whenever an automatic refund is skipped or a session cannot be transitioned:
+  - `AiLogEvents.UnrefundedDebit` (EventId: `4001`) — Logged with `UserId`, `OperationId`, `RequestId`, `Amount`, and forensic evidence.
+  - `AiLogEvents.SessionStatusMappingFailed` (EventId: `4002`) — Logged when an unexpected job type or session collection cannot be resolved.
+  - `AiLogEvents.CriticalFailure` (EventId: `4003`) — Emitted on unhandled job runner failures.
+
+### 8.2 Tier 2: Startup Reconciliation Service (Active in Report-Only Mode)
+- **Hosted Service:** `AiStartupReconciliationService` executes on backend boot to inspect system state for discrepancies across all 6 AI session stores (`BusinessModelSessions`, `MarketStudySessions`, `BusinessPlanSessions`, `ForecastSessions`, `ClarifierSessions`, `IdeaGenerationSessions`) and `AIRequests`.
+- **Evidence Hierarchy:**
+  1. *Primary Signal:* Associated `AiRequest` reached a terminal status (`Failed` or `Completed`).
+  2. *Secondary Signal:* Associated Hangfire job is demonstrably inactive/terminal via `JobStorage.MonitoringApi`.
+  3. *Safety Constraint on Legacy Stale Rows:* Never guesses or flags orphans based on elapsed time alone when no terminal request signal or unrefunded debit damage is proven. Aged-out historical records are left untouched.
+- **Positive Real-User Verification:** Only accounts passing positive real-user signals (verified email, verified phone, and an active `CreatorJourneys` record) are evaluated for user reconciliation, preventing test harness debris from polluting audits.
+- **Audit Persistence:** Detected anomalies are written immutably to the `AiReconciliationAudits` MongoDB collection with `Source = "StartupReconciliation"` and full forensic evidence.
+- **Operational Mode:** Shipped strictly in **Report-Only Mode** (`DryRun = true`). Zero automated ledger balance modifications or session transitions occur unsupervised.
+
+### 8.3 Tier 3: Periodic Background Sweeps (Deliberately Deferred)
+- **Status:** **Deliberately Deferred.**
+- **Rationale:** A standing scheduled background sweep in non-production environments risks continuously processing synthetic test artifacts and mask real user telemetry. Tier 3 scheduled sweeps will be evaluated and configured prior to production rollout against verified production telemetry.

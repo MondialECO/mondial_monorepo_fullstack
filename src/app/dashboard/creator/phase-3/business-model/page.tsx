@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   Sparkles,
   RotateCw,
+  RefreshCw,
   AlertTriangle,
   FileWarning,
   DollarSign,
@@ -84,13 +85,16 @@ export default function BusinessModelPage() {
 
   const session = useBusinessModelSessionTimed(businessModelSessionId);
   const output = (session.data as { output?: BusinessModelOutput } | undefined)?.output;
+  const sessionStatus = (session.data as { status?: import('@/types/creator/ai').AiSessionStatus })?.status;
   const completed =
     session.phase === 'terminal' &&
-    hasAiOutput((session.data as { status?: import('@/types/creator/ai').AiSessionStatus })?.status) &&
+    hasAiOutput(sessionStatus) &&
     !!output;
 
-  const modelError = (session.data as { error?: string | null } | undefined)?.error ?? null;
+  const isTimedOut = !!businessModelSessionId && session.phase === 'timedout';
   const terminalFailed = !!businessModelSessionId && session.phase === 'terminal' && !completed;
+  const hasFailed = terminalFailed || isTimedOut;
+  const modelError = (session.data as { error?: string | null } | undefined)?.error ?? null;
 
   useEffect(() => {
     let active = true;
@@ -174,14 +178,23 @@ export default function BusinessModelPage() {
           </div>
         )}
 
-        {terminalFailed && (
+        {hasFailed && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <FileWarning className="h-6 w-6 text-destructive shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <h4 className="text-sm font-semibold text-destructive">Business Model generation was interrupted</h4>
+                <h4 className="text-sm font-semibold text-destructive">
+                  {isTimedOut
+                    ? 'Business Model generation timed out'
+                    : 'Business Model generation was interrupted'}
+                </h4>
                 <p className="text-xs text-foreground/90">
-                  The AI generation did not finish. Your {businessModelCost} credits have been automatically refunded to your balance.
+                  {isTimedOut
+                    ? 'The generation request took longer than expected to complete.'
+                    : 'The AI generation did not finish.'}{' '}
+                  {credits.data
+                    ? `Current balance: ${credits.data.balance} credits (generation cost: ${businessModelCost} credits).`
+                    : `Generation cost: ${businessModelCost} credits.`}
                 </p>
                 {modelError && (
                   <p className="text-[11px] text-muted-foreground font-mono">
@@ -190,18 +203,30 @@ export default function BusinessModelPage() {
                 )}
               </div>
             </div>
-            <Button
-              onClick={handleStart}
-              disabled={isGenerating || insufficientCredits}
-              className="gap-2 shrink-0 text-xs font-semibold"
-            >
-              <RotateCw className="w-3.5 h-3.5" /> Retry Generation
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              {isTimedOut && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => session.retry()}
+                  className="gap-1.5 text-xs font-medium"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Check Again
+                </Button>
+              )}
+              <Button
+                onClick={handleStart}
+                disabled={isGenerating || insufficientCredits}
+                className="gap-2 shrink-0 text-xs font-semibold"
+              >
+                <RotateCw className="w-3.5 h-3.5" /> Retry Generation
+              </Button>
+            </div>
           </div>
         )}
 
         {/* Pre-generation / Empty State */}
-        {!completed && !isGenerating && !terminalFailed && (
+        {!completed && !isGenerating && !hasFailed && (
           <Card className="rounded-2xl border border-border bg-card p-8 md:p-12 text-center max-w-3xl mx-auto space-y-6 shadow-sm">
             <div className="mx-auto w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
               <LayoutGrid className="w-7 h-7" />
