@@ -3,6 +3,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels;
 using WebApp.Services.Ai;
 using WebApp.Services.Ai.Providers;
@@ -12,17 +14,22 @@ namespace WebApp.Services.Creator.BrandKit.ColorEngine
 {
     public class ColorGenerationService : IColorGenerationService
     {
+        public const int DefaultMaxOutputTokens = 4500;
+
         private readonly IAiProvider? _aiProvider;
         private readonly IModelRouter? _modelRouter;
+        private readonly AiSettings _settings;
         private readonly ILogger<ColorGenerationService> _logger;
 
         public ColorGenerationService(
             IAiProvider? aiProvider = null,
             IModelRouter? modelRouter = null,
-            ILogger<ColorGenerationService>? logger = null)
+            ILogger<ColorGenerationService>? logger = null,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _aiProvider = aiProvider;
             _modelRouter = modelRouter;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger ?? NullLogger<ColorGenerationService>.Instance;
         }
 
@@ -79,54 +86,39 @@ namespace WebApp.Services.Creator.BrandKit.ColorEngine
             var currentPrimary = currentColors.FirstOrDefault(r => r.RoleName == BrandColorRoleNames.Primary)?.Hex ?? "#1A1A24";
 
             string? rawAiJson = null;
-            if (_aiProvider != null && _modelRouter != null)
+            if (_aiProvider == null)
             {
-                try
-                {
-                    rawAiJson = await QueryAiForColorPaletteAsync(brandName, strategy, kit?.Direction, currentColors, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "AI Color regeneration failed for {BrandName}. Falling back to harmonic synthesis.", brandName);
-                }
+                throw new InvalidOperationException("No AI provider configured in service container.");
+            }
+            if (_modelRouter == null)
+            {
+                throw new InvalidOperationException("No ModelRouter configured in service container.");
             }
 
-            string primaryHex = "#1A1A24";
-            string secondaryHex = "#3C61DD";
-            string accentHex = "#00D084";
-            string backgroundHex = "#FFFFFF";
-            string textHex = "#0F172A";
-            string provenance = "ai";
-
-            if (!string.IsNullOrWhiteSpace(rawAiJson) && TryParsePalette(rawAiJson, out var parsed))
+            try
             {
-                primaryHex = parsed.Primary;
-                secondaryHex = parsed.Secondary;
-                accentHex = parsed.Accent;
-                backgroundHex = parsed.Background;
-                textHex = parsed.Text;
+                rawAiJson = await QueryAiForColorPaletteAsync(brandName, strategy, kit?.Direction, currentColors, cancellationToken);
             }
-            else
+            catch (Exception ex)
             {
-                // Fallback deterministic harmonic rotation
-                provenance = "fallback";
-                var harmonic = SynthesizeHarmonicPalette(currentPrimary, kit?.Direction);
-                primaryHex = harmonic.Primary;
-                secondaryHex = harmonic.Secondary;
-                accentHex = harmonic.Accent;
-                backgroundHex = harmonic.Background;
-                textHex = harmonic.Text;
+                _logger.LogError(ex, "AI Color regeneration failed for {BrandName}: {Message}", brandName, ex.Message);
+                throw new InvalidOperationException($"Color palette AI generation failed: {ex.Message}", ex);
+            }
+
+            if (string.IsNullOrWhiteSpace(rawAiJson) || !TryParsePalette(rawAiJson, out var parsed))
+            {
+                throw new InvalidOperationException("Color palette AI generation did not return valid accessible 5-role hex colors.");
             }
 
             int nextRegenCount = (kit?.Colors?.RegenerateCount ?? 0) + 1;
             return BuildAndVerifyBrandColors(
-                primaryHex,
-                secondaryHex,
-                accentHex,
-                backgroundHex,
-                textHex,
+                parsed.Primary,
+                parsed.Secondary,
+                parsed.Accent,
+                parsed.Background,
+                parsed.Text,
                 regenerateCount: nextRegenCount,
-                provenance: provenance);
+                provenance: "ai");
         }
 
         private async Task<string?> QueryAiForColorPaletteAsync(
@@ -142,6 +134,10 @@ namespace WebApp.Services.Creator.BrandKit.ColorEngine
             var modelId = _modelRouter.Resolve("ColorGeneration");
             var prompt = BuildPrompt(brandName, strategy, direction, currentRoles);
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("ColorGeneration", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             var request = new AiCompletionRequest
             {
                 Model = modelId,
@@ -151,7 +147,7 @@ namespace WebApp.Services.Creator.BrandKit.ColorEngine
                     new AiMessage("user", prompt)
                 },
                 ResponseFormat = "json_object",
-                MaxTokens = 800,
+                MaxTokens = maxTokens,
                 Temperature = 0.7
             };
 
@@ -264,31 +260,6 @@ Output MUST be strict JSON with keys:
                 }
             }
             return null;
-        }
-
-        private static (string Primary, string Secondary, string Accent, string Background, string Text) SynthesizeHarmonicPalette(
-            string currentPrimary,
-            BrandDirection? direction)
-        {
-            var (r, g, b) = WcagContrastCalculator.HexToRgb(currentPrimary);
-            WcagContrastCalculator.RgbToHsl(r, g, b, out double h, out double s, out double l);
-
-            // Rotate hue by 60 degrees for a distinct triadic harmony
-            double newH = (h + 60.0) % 360.0;
-            double secH = (newH + 150.0) % 360.0;
-            double accH = (newH + 210.0) % 360.0;
-
-            WcagContrastCalculator.HslToRgb(newH, Math.Clamp(s, 0.4, 0.9), Math.Clamp(l, 0.2, 0.45), out int pR, out int pG, out int pB);
-            WcagContrastCalculator.HslToRgb(secH, Math.Clamp(s, 0.35, 0.75), Math.Clamp(l, 0.35, 0.55), out int sR, out int sG, out int sB);
-            WcagContrastCalculator.HslToRgb(accH, Math.Clamp(s, 0.6, 0.95), Math.Clamp(l, 0.45, 0.65), out int aR, out int aG, out int aB);
-
-            return (
-                WcagContrastCalculator.RgbToHex(pR, pG, pB),
-                WcagContrastCalculator.RgbToHex(sR, sG, sB),
-                WcagContrastCalculator.RgbToHex(aR, aG, aB),
-                "#FFFFFF",
-                "#0F172A"
-            );
         }
 
         private BrandColors BuildAndVerifyBrandColors(

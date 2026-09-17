@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos.Ai;
 using WebApp.Services.Ai.Prompts;
@@ -20,20 +22,23 @@ namespace WebApp.Services.Ai.Jobs
     /// </summary>
     public sealed class IdeaClarifierHandler : IAiTaskHandler
     {
-        private const int MaxOutputTokens = 3500;
+        public const int DefaultMaxOutputTokens = 3500;
         private const double Temperature = 0.3;
 
         private readonly IClarifierSessionStore _sessions;
         private readonly IAiInsightWriter _insights;
+        private readonly AiSettings _settings;
         private readonly ILogger<IdeaClarifierHandler> _logger;
 
         public IdeaClarifierHandler(
             IClarifierSessionStore sessions,
             IAiInsightWriter insights,
-            ILogger<IdeaClarifierHandler> logger)
+            ILogger<IdeaClarifierHandler> logger,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _sessions = sessions;
             _insights = insights;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger;
         }
 
@@ -74,12 +79,16 @@ namespace WebApp.Services.Ai.Jobs
                 "Clarify the business idea above into the structured opportunity " +
                 "defined by the output contract. Return only the JSON object.";
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("IdeaClarifier", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             return Task.FromResult(new AiHandlerRequest(
                 PromptKey: PromptTemplate.IdeaClarifier.Key,
                 TaskType: "IdeaClarifier",
                 UserContext: userContext,
                 Task: task,
-                MaxTokens: MaxOutputTokens,
+                MaxTokens: maxTokens,
                 Temperature: Temperature,
                 ResponseFormat: "json_object"));
         }

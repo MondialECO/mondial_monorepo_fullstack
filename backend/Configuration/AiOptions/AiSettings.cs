@@ -19,6 +19,9 @@ namespace WebApp.Configuration.AiOptions
         /// <summary>Default credit cost charged per AI job, by task type.</summary>
         public Dictionary<string, int> CreditCosts { get; set; } = new();
 
+        /// <summary>Configured max output token limit per AI job, by task type.</summary>
+        public Dictionary<string, int> OutputTokenLimits { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>Cache TTL (seconds) for cacheable AI responses.</summary>
         public int CacheTtlSeconds { get; set; } = 86400;
 

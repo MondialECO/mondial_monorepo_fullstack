@@ -22,6 +22,7 @@ namespace WebApp.Services.Repository.Ai
         Task EditCurrentVersionAsync(string id, int versionNumber, BsonDocument content);
         Task SetNeedsReviewAsync(string id, string error);
         Task SetFailedAsync(string id, string error);
+        Task ReleaseLockAsync(string id, string status = "Completed");
         Task DeleteAsync(string id);
         Task<(bool Created, BusinessModelSession Session)> TryCreateInFlightAsync(BusinessModelSession session);
         Task<BusinessModelSession?> FindInFlightByMarketStudyAsync(string ownerUserId, string marketStudySessionId);
@@ -189,6 +190,15 @@ namespace WebApp.Services.Repository.Ai
             var update = Builders<BusinessModelSession>.Update
                 .Set(x => x.Status, "Failed")
                 .Set(x => x.Error, error)
+                .Set(x => x.InFlightKey, null)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+            await _collection.UpdateOneAsync(x => x.Id == id, update);
+        }
+
+        public async Task ReleaseLockAsync(string id, string status = "Completed")
+        {
+            var update = Builders<BusinessModelSession>.Update
+                .Set(x => x.Status, status)
                 .Set(x => x.InFlightKey, null)
                 .Set(x => x.UpdatedAt, DateTime.UtcNow);
             await _collection.UpdateOneAsync(x => x.Id == id, update);

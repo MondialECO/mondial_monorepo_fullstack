@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Services.Ai.Prompts;
 using WebApp.Services.Ai.Providers;
@@ -9,14 +11,13 @@ namespace WebApp.Services.Ai.Jobs
 {
     /// <summary>
     /// Phase 3.2 Business Model handler (one-shot, single structured JSON completion).
-    /// Prepares context from the completed Market Study (authoritative input),
-    /// Canonical Idea Core, and Clarified Opportunity.
+    /// Prepares context from the MarketStudyOutput, CreatorIdea Project Core, and Clarifier opportunity.
     /// Parses the resulting JSON into the BusinessModelOutput contract and appends it as
     /// a new immutable version on the <see cref="BusinessModelSession"/>.
     /// </summary>
     public sealed class BusinessModelHandler : IAiTaskHandler
     {
-        private const int MaxOutputTokens = 5000;
+        public const int DefaultMaxOutputTokens = 8500;
         private const double Temperature = 0.4;
 
         private readonly IBusinessModelSessionStore _sessions;
@@ -25,6 +26,7 @@ namespace WebApp.Services.Ai.Jobs
         private readonly ICreatorIdeaStore _creatorIdeas;
         private readonly BusinessIdeasRepository _ideas;
         private readonly IAiInsightWriter _insights;
+        private readonly AiSettings _settings;
         private readonly ILogger<BusinessModelHandler> _logger;
 
         public BusinessModelHandler(
@@ -34,7 +36,8 @@ namespace WebApp.Services.Ai.Jobs
             ICreatorIdeaStore creatorIdeas,
             BusinessIdeasRepository ideas,
             IAiInsightWriter insights,
-            ILogger<BusinessModelHandler> logger)
+            ILogger<BusinessModelHandler> logger,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _sessions = sessions;
             _marketStudies = marketStudies;
@@ -42,6 +45,7 @@ namespace WebApp.Services.Ai.Jobs
             _creatorIdeas = creatorIdeas;
             _ideas = ideas;
             _insights = insights;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger;
         }
 
@@ -115,12 +119,16 @@ namespace WebApp.Services.Ai.Jobs
                 "assumptions by evidence level (evidenced, modelled, untested). Follow the output contract schema exactly. " +
                 "Return only the JSON object.";
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("BusinessModel", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             return new AiHandlerRequest(
                 PromptKey: PromptTemplate.BusinessModel.Key,
                 TaskType: "BusinessModel",
                 UserContext: userContext,
                 Task: task,
-                MaxTokens: MaxOutputTokens,
+                MaxTokens: maxTokens,
                 Temperature: Temperature,
                 ResponseFormat: "json_object");
         }
@@ -132,7 +140,7 @@ namespace WebApp.Services.Ai.Jobs
                 ? sid.AsString
                 : null;
 
-            if (!BusinessModelOutputParser.TryParse(completion.Text, out var contract, out var parseError))
+            if (!BusinessModelOutputParser.TryParse(completion.Text, out var contract, out var parseError, _logger))
             {
                 _logger.LogWarning("BusinessModel output for request {RequestId} could not be parsed: {Error}",
                     request.Id, parseError);
@@ -173,7 +181,10 @@ namespace WebApp.Services.Ai.Jobs
             "canvas", "revenueTiers", "unitEconomics", "assumptions"
         };
 
-        public static bool TryParse(string? rawText, out BsonDocument contract, out string error)
+        public static bool TryParse(string? rawText, out BsonDocument contract, out string error) =>
+            TryParse(rawText, out contract, out error, null);
+
+        public static bool TryParse(string? rawText, out BsonDocument contract, out string error, ILogger? logger)
         {
             contract = new BsonDocument();
             error = string.Empty;
@@ -211,9 +222,80 @@ namespace WebApp.Services.Ai.Jobs
                 }
             }
 
+            NormalizeAssumptions(doc, logger);
+            NormalizeUnitEconomics(doc, logger);
+
             doc["schemaVersion"] = 1;
             contract = doc;
             return true;
+        }
+
+        private static void NormalizeAssumptions(BsonDocument doc, ILogger? logger)
+        {
+            if (!doc.Contains("assumptions") || !doc["assumptions"].IsBsonArray)
+                return;
+
+            var arr = doc["assumptions"].AsBsonArray;
+            foreach (var itemVal in arr)
+            {
+                if (itemVal is not BsonDocument item)
+                    continue;
+
+                var raw = item.Contains("evidenceLevel") && item["evidenceLevel"].IsString
+                    ? item["evidenceLevel"].AsString.Trim()
+                    : string.Empty;
+
+                var lower = raw.ToLowerInvariant();
+                string canonical = lower switch
+                {
+                    "evidenced" or "modelled" or "untested" => lower,
+                    "validated" or "proven" or "empirical" or "evidence" => "evidenced",
+                    "modeled" or "estimated" or "projected" or "simulated" => "modelled",
+                    "unverified" or "assumed" or "hypothesis" or "hypothesized" => "untested",
+                    _ => "untested" // Safe fallback: never over-claims evidence
+                };
+
+                if (!string.Equals(raw, canonical, StringComparison.Ordinal))
+                {
+                    var cat = item.Contains("category") ? item["category"].ToString() : "unknown";
+                    logger?.LogWarning("Normalized assumption evidenceLevel from non-canonical '{RawValue}' to '{CanonicalValue}' (category: '{Category}')",
+                        raw, canonical, cat);
+                }
+
+                item["evidenceLevel"] = canonical;
+            }
+        }
+
+        private static void NormalizeUnitEconomics(BsonDocument doc, ILogger? logger)
+        {
+            if (!doc.Contains("unitEconomics") || !doc["unitEconomics"].IsBsonDocument)
+                return;
+
+            var ue = doc["unitEconomics"].AsBsonDocument;
+            if (ue.Contains("arpu") && ue["arpu"].IsBsonDocument)
+            {
+                var arpu = ue["arpu"].AsBsonDocument;
+                var raw = arpu.Contains("period") && arpu["period"].IsString
+                    ? arpu["period"].AsString.Trim()
+                    : string.Empty;
+
+                var lower = raw.ToLowerInvariant();
+                string canonical = lower switch
+                {
+                    "monthly" or "annual" => lower,
+                    "month" or "mo" or "per_month" or "m" => "monthly",
+                    "year" or "yearly" or "annually" or "yr" or "per_year" or "a" => "annual",
+                    _ => "monthly"
+                };
+
+                if (!string.Equals(raw, canonical, StringComparison.Ordinal))
+                {
+                    logger?.LogWarning("Normalized unitEconomics.arpu.period from non-canonical '{RawValue}' to '{CanonicalValue}'",
+                        raw, canonical);
+                }
+
+                arpu["period"] = canonical;
+            }
         }
 
         private static string StripFences(string text)

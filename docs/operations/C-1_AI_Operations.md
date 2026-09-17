@@ -12,8 +12,9 @@ dashboard, health, credits, observability and failure behaviour.
 |---|---|---|
 | `OpenRouter__ApiKey` | env var / user-secrets | **Required.** `StartupConfigValidation` fails fast if absent — the app refuses to boot. |
 | `OpenRouter:BaseUrl` | appsettings | Default `https://openrouter.ai/api/v1`. |
-| `Ai:ModelRouting:Models` | appsettings | task-type → model id (`IModelRouter`). All tasks route to `google/gemini-3.8-flash` with zero hardcoded model fallbacks in application code. Tasks include `Probe`, `IdeaClarifier`, `BusinessPlan`, `Forecast`, `DirectionGeneration`, `LogoParameterSelection`, `LogoConceptRegenerate`, `ColorGeneration`, `TypographyGeneration`. |
-| `Ai:CreditCosts` | appsettings | per-type credit cost config: `DirectionGeneration=7`, `LogoParameterSelection=4`, `LogoConceptRegenerate=2`, `ColorGeneration=2`, `TypographyGeneration=2`, `IdeaClarifier=20`, `BusinessPlan=33`, `Forecast=32`, `Probe=0`. |
+| `Ai:ModelRouting:Models` | appsettings | task-type → model id (`IModelRouter`). All tasks route to `google/gemini-3.8-flash` with zero hardcoded model fallbacks in application code. Tasks include `Probe`, `IdeaClarifier`, `BusinessPlan`, `Forecast`, `DirectionGeneration`, `LogoParameterSelection`, `ColorGeneration`, `TypographyGeneration`. |
+| `Ai:CreditCosts` | appsettings | per-type credit cost config: `DirectionGeneration=7`, `LogoParameterSelection=4`, `LogoConceptRegenerate=0`, `ColorGeneration=2`, `TypographyGeneration=2`, `IdeaClarifier=20`, `MarketStudy=20`, `BusinessModel=18`, `BusinessPlan=33`, `Forecast=32`, `Probe=0`. |
+| `Ai:OutputTokenLimits` | appsettings | per-type max output token ceilings (`IOptions<AiSettings>`): `IdeaGenerator=3500`, `IdeaClarifier=3500`, `MarketStudy=7500`, `BusinessModel=8500`, `BusinessPlan=7500`, `Forecast=8000`, `Probe=500`, `DirectionGeneration=4500`, `LogoParameterSelection=3000`, `ColorGeneration=4500`, `TypographyGeneration=2000`. Missing keys safely degrade to handler-internal `DefaultMaxOutputTokens` constants rather than 0 or unbounded requests. |
 | `Hangfire:WorkerCount` | appsettings | bounded worker count (default 4). |
 | `Ai:Enabled` | appsettings | master kill-switch for enqueue (rollback without redeploy). |
 
@@ -57,7 +58,7 @@ deploying, or startup validation aborts the boot (intended fail-fast).
 
 - Per-user balance in `AICredits` / `AiCreditLedgers` (one doc per user, unique `OwnerUserId`).
 - Single source of truth: `GET /api/ai/credits` returns balance, lifetime stats (`TotalGranted`, `TotalSpent`), and per-capability cost table.
-- Enqueue debits the configured cost atomically (`Balance >= cost`) before dispatch; insufficient balance → **402**. Cost-0 jobs (Probe, IdeaGenerator) are free and never touch the ledger.
+- Enqueue debits the configured cost atomically (`Balance >= cost`) before dispatch; insufficient balance → **402**. Cost-0 jobs (Probe, IdeaGenerator, LogoConceptRegenerate) are free and never touch the ledger.
 - **Automatic Refunds & Zero-Unfair-Debit:**
   - Any job failing in Hangfire or returning unparseable output automatically refunds the debited credits (`Balance += amount`).
   - Gross spent accounting: `TotalSpent` remains immutable lifetime consumption history; refunds are recorded in a dedicated `Refunds` subdocument array with original `DebitOperationId`.
@@ -71,10 +72,14 @@ deploying, or startup validation aborts the boot (intended fail-fast).
   touched, safe to leave on. Off by default.
 
 ### 4.1 Brand Kit Studio Generative Metering & Per-Element Caps
-- **Synchronous Debits:** Brand Kit generative calls (`DirectionGeneration`: 7, `LogoParameterSelection`: 4, `LogoConceptRegenerate`: 2, `ColorGeneration`: 2, `TypographyGeneration`: 2) are debited immediately before model execution in `CreatorBrandKitController`. All 5 operations are eligible for deduction against the starter credit grant (200 credits).
+- **Synchronous Debits:** Billed Brand Kit AI generative calls (`DirectionGeneration`: 7, `LogoParameterSelection`: 4, `ColorGeneration`: 2, `TypographyGeneration`: 2) are debited immediately before model execution in `CreatorBrandKitController`. Local SVG redraws (`LogoConceptRegenerate`: 0 credits) are unmetered and free. Billed operations are eligible for deduction against the starter credit grant (200 credits).
 - **Per-Element Regenerate Cap (Max 3):** Direction candidate generation, single logo concept regeneration, colour palette regeneration, and typography regeneration each track an individual `RegenerateCount`. When `RegenerateCount >= 3`, the request halts with HTTP 400 and **0 credits debited**.
 - **Hub Reset (`POST open-studio`):** Entering the visual identity studio hub resets all section regenerate counters to 0 (`Direction.RegenerateCount = 0`, `Logo.Concepts[i].RegenerateCount = 0`, `Colors.RegenerateCount = 0`, `Typography.RegenerateCount = 0`). Section `PATCH` updates do not reset counters.
-- **Compensating Refunds:** If an AI model call throws, times out, returns malformed parameters, or encounters an optimistic concurrency write conflict, `RefundForJobAsync(userId, jobType, opId, reason)` is synchronously dispatched with the matching `operationId`.
+- **Compensating Refunds & Option A Failure Handling:** If an AI model call throws, times out, returns malformed parameters, or encounters an optimistic concurrency write conflict:
+  1. The deterministic fallback generator is unreachable from billed paths (Option A).
+  2. The exception propagates cleanly, returning an honest HTTP 500 error naming the failure.
+  3. Upfront debited credits are refunded immediately via `RefundForJobAsync(userId, jobType, opId, reason)` with the matching `operationId`.
+  4. The section's `RegenerateCount` is left untouched, preserving the user's quota.
 
 
 

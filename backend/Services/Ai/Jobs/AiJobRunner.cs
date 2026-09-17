@@ -26,6 +26,8 @@ namespace WebApp.Services.Ai.Jobs
         private readonly IAiJobCompletionHandler _completion;
         private readonly IIdeaGenerationSessionRepository _ideaGenerationSessions;
         private readonly IClarifierSessionStore _clarifierSessions;
+        private readonly IMarketStudySessionStore _marketStudySessions;
+        private readonly IBusinessModelSessionStore _businessModelSessions;
         private readonly IBusinessPlanSessionStore _businessPlanSessions;
         private readonly IForecastSessionStore _forecastSessions;
         private readonly IAiCreditService _creditService;
@@ -43,6 +45,8 @@ namespace WebApp.Services.Ai.Jobs
             IAiJobCompletionHandler completion,
             IIdeaGenerationSessionRepository ideaGenerationSessions,
             IClarifierSessionStore clarifierSessions,
+            IMarketStudySessionStore marketStudySessions,
+            IBusinessModelSessionStore businessModelSessions,
             IBusinessPlanSessionStore businessPlanSessions,
             IForecastSessionStore forecastSessions,
             IAiCreditService creditService,
@@ -59,6 +63,8 @@ namespace WebApp.Services.Ai.Jobs
             _completion = completion;
             _ideaGenerationSessions = ideaGenerationSessions;
             _clarifierSessions = clarifierSessions;
+            _marketStudySessions = marketStudySessions;
+            _businessModelSessions = businessModelSessions;
             _businessPlanSessions = businessPlanSessions;
             _forecastSessions = forecastSessions;
             _creditService = creditService;
@@ -300,6 +306,12 @@ namespace WebApp.Services.Ai.Jobs
                         break;
                     case AiJobType.IdeaClarifier:
                         await _clarifierSessions.SetFailedAsync(sessionId, error);
+                        break;
+                    case AiJobType.MarketStudy:
+                        await _marketStudySessions.SetFailedAsync(sessionId, error);
+                        break;
+                    case AiJobType.BusinessModel:
+                        await _businessModelSessions.SetFailedAsync(sessionId, error);
                         break;
                     case AiJobType.BusinessPlan:
                         await _businessPlanSessions.SetFailedAsync(sessionId, error);

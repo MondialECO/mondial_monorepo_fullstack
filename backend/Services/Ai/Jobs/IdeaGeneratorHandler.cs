@@ -5,24 +5,30 @@ using WebApp.Services.Ai.Providers;
 using WebApp.Services.Ai.Prompts;
 using WebApp.Services.Repository.Ai;
 
+using Microsoft.Extensions.Options;
+using WebApp.Configuration.AiOptions;
+
 namespace WebApp.Services.Ai.Jobs
 {
     public sealed class IdeaGeneratorHandler : IAiTaskHandler
     {
-        private const int MaxOutputTokens = 2000;
+        public const int DefaultMaxOutputTokens = 3500;
         private const double Temperature = 0.7;
 
         private readonly IIdeaGenerationSessionRepository _sessions;
         private readonly IAiInsightWriter _insights;
+        private readonly AiSettings _settings;
         private readonly ILogger<IdeaGeneratorHandler> _logger;
 
         public IdeaGeneratorHandler(
             IIdeaGenerationSessionRepository sessions,
             IAiInsightWriter insights,
-            ILogger<IdeaGeneratorHandler> logger)
+            ILogger<IdeaGeneratorHandler> logger,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _sessions = sessions;
             _insights = insights;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger;
         }
 
@@ -57,12 +63,16 @@ namespace WebApp.Services.Ai.Jobs
                 "score (0-100), tam, saturation (Low/Medium/High), similarTo, targetUser, founderEdge }. " +
                 "No markdown, no code fences, no commentary.";
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("IdeaGenerator", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             return Task.FromResult(new AiHandlerRequest(
                 PromptKey: PromptTemplate.IdeaGenerator.Key,
                 TaskType: "IdeaGenerator",
                 UserContext: userContext,
                 Task: task,
-                MaxTokens: MaxOutputTokens,
+                MaxTokens: maxTokens,
                 Temperature: Temperature));
         }
 

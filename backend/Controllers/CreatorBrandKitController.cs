@@ -731,11 +731,11 @@ namespace WebApp.Controllers
                     throw;
                 }
 
-                if (candidates == null || candidates.Count == 0)
+                if (candidates == null || candidates.Count != 4 || candidates.Any(c => c.Provenance != "ai"))
                 {
                     if (_aiCreditService != null && creditOpId != null)
                     {
-                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.DirectionGeneration, creditOpId, "Empty direction candidates generated");
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.DirectionGeneration, creditOpId, "Invalid or fallback direction candidates generated");
                     }
                     return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Failed to generate visual direction candidates."));
                 }
@@ -1024,11 +1024,11 @@ namespace WebApp.Controllers
                     throw;
                 }
 
-                if (concepts == null || concepts.Count == 0)
+                if (concepts == null || concepts.Count != 6 || concepts.Any(c => c.Parameters == null || string.IsNullOrWhiteSpace(c.Parameters.Family)))
                 {
                     if (_aiCreditService != null && creditOpId != null)
                     {
-                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.LogoParameterSelection, creditOpId, "Empty logo concepts generated");
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.LogoParameterSelection, creditOpId, "Invalid logo concepts generated");
                     }
                     return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Failed to generate logo concepts."));
                 }
@@ -1093,25 +1093,7 @@ namespace WebApp.Controllers
                 if (_logoGenerationService == null)
                     return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Logo generation service is unavailable."));
 
-                if (_aiCreditService != null)
-                {
-                    creditOpId = Guid.NewGuid().ToString("N");
-                    await _aiCreditService.DebitForJobAsync(userId, AiJobType.LogoConceptRegenerate, creditOpId);
-                }
-
-                BrandLogoConcept? regeneratedConcept;
-                try
-                {
-                    regeneratedConcept = await _logoGenerationService.RegenerateSingleConceptAsync(idea, kit, conceptKey, cancellationToken);
-                }
-                catch
-                {
-                    if (_aiCreditService != null && creditOpId != null)
-                    {
-                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.LogoConceptRegenerate, creditOpId, "Single logo concept regeneration failed before persistence");
-                    }
-                    throw;
-                }
+                var regeneratedConcept = await _logoGenerationService.RegenerateSingleConceptAsync(idea, kit, conceptKey, cancellationToken);
 
                 var updateBuilder = Builders<BrandKit>.Update;
                 var arrayFilters = new List<ArrayFilterDefinition>
@@ -1131,10 +1113,6 @@ namespace WebApp.Controllers
                 var updated = await _brandKitStore.UpdateAsync(idea.Id, userId, update, expectedVersion, session: null, options: options);
                 if (!updated)
                 {
-                    if (_aiCreditService != null && creditOpId != null)
-                    {
-                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.LogoConceptRegenerate, creditOpId, "Optimistic concurrency conflict on logo single concept regeneration");
-                    }
                     return StatusCode(StatusCodes.Status409Conflict, ApiResponse.Error("This brand kit was updated in another tab. Refresh to load the latest version before continuing."));
                 }
 
@@ -1237,6 +1215,15 @@ namespace WebApp.Controllers
                         await _aiCreditService.RefundForJobAsync(userId, AiJobType.ColorGeneration, creditOpId, "Color regeneration failed before persistence");
                     }
                     throw;
+                }
+
+                if (colors == null || colors.Roles == null || colors.Roles.Count != 5 || colors.Roles.Any(r => r.Provenance != "ai"))
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.ColorGeneration, creditOpId, "Invalid or fallback colors generated");
+                    }
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Failed to regenerate brand colours."));
                 }
 
                 var updateBuilder = Builders<BrandKit>.Update;
@@ -1462,6 +1449,16 @@ namespace WebApp.Controllers
                         await _aiCreditService.RefundForJobAsync(userId, AiJobType.TypographyGeneration, creditOpId, "Typography regeneration failed before persistence");
                     }
                     throw;
+                }
+
+                if (typography == null || typography.Roles == null || typography.Roles.Count != 4 ||
+                    typography.Roles.Where(r => r.RoleName != BrandTypographyRoleNames.LogoType).Any(r => r.Provenance != "ai"))
+                {
+                    if (_aiCreditService != null && creditOpId != null)
+                    {
+                        await _aiCreditService.RefundForJobAsync(userId, AiJobType.TypographyGeneration, creditOpId, "Invalid or fallback typography generated");
+                    }
+                    return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error("Failed to regenerate brand typography."));
                 }
 
                 var updateBuilder = Builders<BrandKit>.Update;

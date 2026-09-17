@@ -173,7 +173,13 @@ namespace WebApp.Tests.Creator.Unit
             var (controller, _, _, mockCredits, mockDirectionGen, _, _, _) = SetupController(kit);
 
             mockDirectionGen.Setup(d => d.GenerateCandidatesAsync(It.IsAny<CreatorIdea>(), It.IsAny<BrandKitModel>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<BrandDirectionCandidate> { new() { Key = "dir1", Name = "Candidate 1" } });
+                .ReturnsAsync(new List<BrandDirectionCandidate>
+                {
+                    new() { Key = "dir1", Name = "Candidate 1", Provenance = "ai" },
+                    new() { Key = "dir2", Name = "Candidate 2", Provenance = "ai" },
+                    new() { Key = "dir3", Name = "Candidate 3", Provenance = "ai" },
+                    new() { Key = "dir4", Name = "Candidate 4", Provenance = "ai" }
+                });
 
             var result = await controller.GenerateDirections(TestIdeaId);
 
@@ -188,7 +194,15 @@ namespace WebApp.Tests.Creator.Unit
             var (controller, _, _, mockCredits, _, mockLogoGen, _, _) = SetupController(kit);
 
             mockLogoGen.Setup(l => l.GenerateConceptsAsync(It.IsAny<CreatorIdea>(), It.IsAny<BrandKitModel>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<BrandLogoConcept> { new() { Key = "c1", DescriptorLine = "Concept 1" } });
+                .ReturnsAsync(new List<BrandLogoConcept>
+                {
+                    new() { Key = "c1", DescriptorLine = "Concept 1", Parameters = new() { Family = "monogram" } },
+                    new() { Key = "c2", DescriptorLine = "Concept 2", Parameters = new() { Family = "abstract_mark" } },
+                    new() { Key = "c3", DescriptorLine = "Concept 3", Parameters = new() { Family = "geometric" } },
+                    new() { Key = "c4", DescriptorLine = "Concept 4", Parameters = new() { Family = "minimal_badge" } },
+                    new() { Key = "c5", DescriptorLine = "Concept 5", Parameters = new() { Family = "wordmark_accent" } },
+                    new() { Key = "c6", DescriptorLine = "Concept 6", Parameters = new() { Family = "iconic_symbol" } }
+                });
 
             var result = await controller.GenerateLogoConcepts(TestIdeaId);
 
@@ -197,18 +211,18 @@ namespace WebApp.Tests.Creator.Unit
         }
 
         [Fact]
-        public async Task RegenerateSingleLogoConcept_Debits_LogoConceptRegenerate_JobType()
+        public async Task RegenerateSingleLogoConcept_IsFree_Zero_Debits()
         {
             var kit = CreateSeededKit();
             var (controller, _, _, mockCredits, _, mockLogoGen, _, _) = SetupController(kit);
 
             mockLogoGen.Setup(l => l.RegenerateSingleConceptAsync(It.IsAny<CreatorIdea>(), It.IsAny<BrandKitModel>(), "concept_1", It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new BrandLogoConcept { Key = "concept_1", DescriptorLine = "Regenerated Concept", RegenerateCount = 1 });
+                .ReturnsAsync(new BrandLogoConcept { Key = "concept_1", DescriptorLine = "Regenerated Concept", RegenerateCount = 1, Parameters = new() { Family = "monogram" } });
 
             var result = await controller.RegenerateSingleLogoConcept("concept_1", TestIdeaId);
 
             result.Should().BeOfType<OkObjectResult>();
-            mockCredits.Verify(c => c.DebitForJobAsync(TestUserId, AiJobType.LogoConceptRegenerate, It.IsAny<string>()), Times.Once);
+            mockCredits.Verify(c => c.DebitForJobAsync(TestUserId, It.IsAny<AiJobType>(), It.IsAny<string>()), Times.Never);
         }
 
         [Fact]
@@ -218,7 +232,18 @@ namespace WebApp.Tests.Creator.Unit
             var (controller, _, _, mockCredits, _, _, mockColorGen, _) = SetupController(kit);
 
             mockColorGen.Setup(c => c.RegenerateColorsAsync(It.IsAny<BrandKitModel>(), It.IsAny<CreatorIdea>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new BrandColors { RegenerateCount = 1, Roles = kit.Colors.Roles });
+                .ReturnsAsync(new BrandColors
+                {
+                    RegenerateCount = 1,
+                    Roles = new List<BrandColorRole>
+                    {
+                        new() { RoleName = BrandColorRoleNames.Primary, Hex = "#0052FF", Provenance = "ai" },
+                        new() { RoleName = BrandColorRoleNames.Secondary, Hex = "#0F172A", Provenance = "ai" },
+                        new() { RoleName = BrandColorRoleNames.Accent, Hex = "#38BDF8", Provenance = "ai" },
+                        new() { RoleName = BrandColorRoleNames.Background, Hex = "#FFFFFF", Provenance = "ai" },
+                        new() { RoleName = BrandColorRoleNames.Text, Hex = "#0F172A", Provenance = "ai" }
+                    }
+                });
 
             var result = await controller.RegenerateColors(TestIdeaId);
 
@@ -233,7 +258,17 @@ namespace WebApp.Tests.Creator.Unit
             var (controller, _, _, mockCredits, _, _, _, mockTypoGen) = SetupController(kit);
 
             mockTypoGen.Setup(t => t.RegenerateTypographyAsync(It.IsAny<BrandKitModel>(), It.IsAny<CreatorIdea>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new BrandTypography { RegenerateCount = 1, Roles = kit.Typography.Roles });
+                .ReturnsAsync(new BrandTypography
+                {
+                    RegenerateCount = 1,
+                    Roles = new List<BrandTypographyRole>
+                    {
+                        new() { RoleName = BrandTypographyRoleNames.LogoType, Family = "Plus Jakarta Sans", IsLocked = true, Provenance = "stated" },
+                        new() { RoleName = BrandTypographyRoleNames.Heading, Family = "Space Grotesk", IsLocked = false, Provenance = "ai" },
+                        new() { RoleName = BrandTypographyRoleNames.Body, Family = "Plus Jakarta Sans", IsLocked = false, Provenance = "ai" },
+                        new() { RoleName = BrandTypographyRoleNames.ButtonAndLabel, Family = "Plus Jakarta Sans", IsLocked = false, Provenance = "ai" }
+                    }
+                });
 
             var result = await controller.RegenerateTypography(TestIdeaId);
 

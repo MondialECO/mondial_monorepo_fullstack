@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels;
 using WebApp.Services.Ai;
 using WebApp.Services.Ai.Providers;
@@ -10,17 +12,22 @@ namespace WebApp.Services.Creator.BrandKit.TypographyEngine
 {
     public class TypographyGenerationService : ITypographyGenerationService
     {
+        public const int DefaultMaxOutputTokens = 2000;
+
         private readonly IAiProvider? _aiProvider;
         private readonly IModelRouter? _modelRouter;
+        private readonly AiSettings _settings;
         private readonly ILogger<TypographyGenerationService> _logger;
 
         public TypographyGenerationService(
             IAiProvider? aiProvider = null,
             IModelRouter? modelRouter = null,
-            ILogger<TypographyGenerationService>? logger = null)
+            ILogger<TypographyGenerationService>? logger = null,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _aiProvider = aiProvider;
             _modelRouter = modelRouter;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger ?? NullLogger<TypographyGenerationService>.Instance;
         }
 
@@ -66,38 +73,33 @@ namespace WebApp.Services.Creator.BrandKit.TypographyEngine
             var currentBody = kit?.Typography?.Roles?.FirstOrDefault(r => r.RoleName == BrandTypographyRoleNames.Body)?.Family
                               ?? kit?.Typography?.Families?.TextFamily?.Name ?? "Plus Jakarta Sans";
 
-            string headingFamily = string.Empty;
-            string bodyFamily = string.Empty;
-            string provenance = "ai";
-
-            if (_aiProvider != null && _modelRouter != null)
+            if (_aiProvider == null)
             {
-                try
-                {
-                    var (aiHeading, aiBody) = await QueryAiForTypographyPairingAsync(brandName, kit?.Strategy, kit?.Direction, currentHeading, currentBody, cancellationToken);
-                    if (FontMetadataRegistry.IsBundledFont(aiHeading) && FontMetadataRegistry.IsBundledFont(aiBody))
-                    {
-                        // Ensure it differs from current in at least one family
-                        if (!string.Equals(aiHeading, currentHeading, StringComparison.OrdinalIgnoreCase) ||
-                            !string.Equals(aiBody, currentBody, StringComparison.OrdinalIgnoreCase))
-                        {
-                            headingFamily = aiHeading;
-                            bodyFamily = aiBody;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "AI Typography regeneration failed for {BrandName}. Falling back to alternative bundled pairing.", brandName);
-                }
+                throw new InvalidOperationException("No AI provider configured in service container.");
+            }
+            if (_modelRouter == null)
+            {
+                throw new InvalidOperationException("No ModelRouter configured in service container.");
             }
 
-            if (string.IsNullOrEmpty(headingFamily) || string.IsNullOrEmpty(bodyFamily))
+            string aiHeading;
+            string aiBody;
+            try
             {
-                provenance = "fallback";
-                var (fbHeading, fbBody) = SelectAlternativePairing(currentHeading, currentBody);
-                headingFamily = fbHeading;
-                bodyFamily = fbBody;
+                var pairing = await QueryAiForTypographyPairingAsync(brandName, kit?.Strategy, kit?.Direction, currentHeading, currentBody, cancellationToken);
+                aiHeading = pairing.Heading;
+                aiBody = pairing.Body;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI Typography regeneration failed for {BrandName}: {Message}", brandName, ex.Message);
+                throw new InvalidOperationException($"Typography pairing AI generation failed: {ex.Message}", ex);
+            }
+
+            if (string.IsNullOrWhiteSpace(aiHeading) || string.IsNullOrWhiteSpace(aiBody) ||
+                !FontMetadataRegistry.IsBundledFont(aiHeading) || !FontMetadataRegistry.IsBundledFont(aiBody))
+            {
+                throw new InvalidOperationException("Typography pairing AI generation did not return valid bundled fonts from the allowable list.");
             }
 
             int nextRegenCount = (kit?.Typography?.RegenerateCount ?? 0) + 1;
@@ -105,11 +107,11 @@ namespace WebApp.Services.Creator.BrandKit.TypographyEngine
                 kit,
                 idea,
                 logoFamily: logoFamily,
-                headingFamily: headingFamily,
-                bodyFamily: bodyFamily,
-                buttonFamily: bodyFamily,
+                headingFamily: aiHeading,
+                bodyFamily: aiBody,
+                buttonFamily: aiBody,
                 regenerateCount: nextRegenCount,
-                provenance: provenance);
+                provenance: "ai");
         }
 
         private static string ResolveApprovedLogoFamily(BrandKitModel kit)
@@ -152,6 +154,10 @@ namespace WebApp.Services.Creator.BrandKit.TypographyEngine
             var modelId = _modelRouter.Resolve("TypographyGeneration");
             var prompt = BuildPrompt(brandName, strategy, direction, currentHeading, currentBody);
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("TypographyGeneration", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             var request = new AiCompletionRequest
             {
                 Model = modelId,
@@ -161,7 +167,7 @@ namespace WebApp.Services.Creator.BrandKit.TypographyEngine
                     new AiMessage("user", prompt)
                 },
                 ResponseFormat = "json_object",
-                MaxTokens = 600,
+                MaxTokens = maxTokens,
                 Temperature = 0.7
             };
 
@@ -223,30 +229,6 @@ Output MUST be strict JSON:
   ""body_font"": ""ExactFontName"",
   ""rationale"": ""Brief reason for this typographic pairing""
 }}";
-        }
-
-        private static (string Heading, string Body) SelectAlternativePairing(string currentHeading, string currentBody)
-        {
-            var candidates = new (string Heading, string Body)[]
-            {
-                ("Syne", "Plus Jakarta Sans"),
-                ("Space Grotesk", "Plus Jakarta Sans"),
-                ("Cinzel", "Plus Jakarta Sans"),
-                ("Plus Jakarta Sans", "Space Grotesk"),
-                ("Space Grotesk", "JetBrains Mono"),
-                ("Syne", "Space Grotesk")
-            };
-
-            foreach (var pair in candidates)
-            {
-                if (!string.Equals(pair.Heading, currentHeading, StringComparison.OrdinalIgnoreCase) ||
-                    !string.Equals(pair.Body, currentBody, StringComparison.OrdinalIgnoreCase))
-                {
-                    return pair;
-                }
-            }
-
-            return ("Space Grotesk", "Plus Jakarta Sans");
         }
 
         private static BrandTypography BuildBrandTypography(

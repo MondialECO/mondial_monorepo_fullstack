@@ -2,6 +2,8 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels;
 using WebApp.Services.Ai;
 using WebApp.Services.Ai.Providers;
@@ -11,10 +13,13 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
 {
     public class LogoGenerationService : ILogoGenerationService
     {
+        public const int DefaultMaxOutputTokens = 3000;
+
         private readonly ILogoMarkRendererRegistry _rendererRegistry;
         private readonly IAiProvider? _aiProvider;
         private readonly IModelRouter? _modelRouter;
         private readonly IWebHostEnvironment? _env;
+        private readonly AiSettings _settings;
         private readonly ILogger<LogoGenerationService> _logger;
 
         public LogoGenerationService(
@@ -22,12 +27,14 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             IAiProvider? aiProvider = null,
             IModelRouter? modelRouter = null,
             IWebHostEnvironment? env = null,
-            ILogger<LogoGenerationService>? logger = null)
+            ILogger<LogoGenerationService>? logger = null,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _rendererRegistry = rendererRegistry ?? throw new ArgumentNullException(nameof(rendererRegistry));
             _aiProvider = aiProvider;
             _modelRouter = modelRouter;
             _env = env;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger ?? NullLogger<LogoGenerationService>.Instance;
         }
 
@@ -45,21 +52,28 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
 
             List<BrandLogoConceptParameters>? rawParamSets = null;
 
-            if (_aiProvider != null)
+            if (_aiProvider == null)
             {
-                try
-                {
-                    rawParamSets = await QueryAiForParameterSetsAsync(brandName, strategy, direction, selectedCand, avoidList, selectedLogoType, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "AI parameter generation failed for brand '{BrandName}'. Falling back to deterministic generation.", brandName);
-                }
+                throw new InvalidOperationException("No AI provider configured in service container.");
+            }
+            if (_modelRouter == null)
+            {
+                throw new InvalidOperationException("No ModelRouter configured in service container.");
+            }
+
+            try
+            {
+                rawParamSets = await QueryAiForParameterSetsAsync(brandName, strategy, direction, selectedCand, avoidList, selectedLogoType, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AI parameter generation failed for brand '{BrandName}': {Message}", brandName, ex.Message);
+                throw new InvalidOperationException($"Logo concept parameter AI generation failed: {ex.Message}", ex);
             }
 
             if (rawParamSets == null || rawParamSets.Count < 6 || !ValidateSetDiversity(rawParamSets, avoidList, selectedLogoType))
             {
-                rawParamSets = GenerateDeterministicParameterSets(brandName, strategy, direction, selectedCand, avoidList, selectedLogoType);
+                throw new InvalidOperationException("Logo concept parameter AI generation did not produce 6 valid diverse parameter sets.");
             }
 
             var palette = selectedCand?.ColorPalette ?? new List<string>();
@@ -181,6 +195,10 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             var modelId = _modelRouter.Resolve("LogoParameterSelection");
             var prompt = BuildPrompt(brandName, strategy, direction, candidate, avoidList, selectedLogoType);
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("LogoParameterSelection", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             var request = new AiCompletionRequest
             {
                 Model = modelId,
@@ -190,7 +208,7 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
                     new AiMessage("user", prompt)
                 },
                 ResponseFormat = "json_object",
-                MaxTokens = 1200,
+                MaxTokens = maxTokens,
                 Temperature = 0.4
             };
 

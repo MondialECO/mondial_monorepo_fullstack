@@ -74,8 +74,10 @@ Two backfills run on every boot (`Program.cs`, non-fatal): the **idea backfill**
 **1.6.8 REMOVED — must not return: the journey mirror.**
 During the cutover, every idea write also mirrored to the journey (dual-write) as a rollback net. It was removed (commit `d27abd9`) because **mirroring is undefined once a user has two ideas** — one journey cannot mirror both, and the interleaved copy poisons any rollback. **FORBIDDEN:** do not reintroduce journey phase-block writes, "for safety" or otherwise. The journey's frozen blocks are historical residue, not a fallback store.
 
-### 1.7 AI credit metering & starter grant
-Capabilities are credit-metered against server-authoritative balance and capability costs (`GET /api/ai/credits`). Current standard starter grant is **200 credits** on onboarding or first AI call (`Ai:StarterCredits = 200`). Current costs: IdeaClarifier: **20**, BusinessPlan: **33**, Financial Forecast: **32** (provisional), Probe: **0**. Exhaustion triggers HTTP 402; failed generations auto-refund.
+### 1.7 AI credit metering, token limits & starter grant
+Capabilities are credit-metered against server-authoritative balance and capability costs (`GET /api/ai/credits`). Current standard starter grant is **200 credits** on onboarding or first AI call (`Ai:StarterCredits = 200`). Current costs: `IdeaClarifier`: **20**, `MarketStudy`: **20**, `BusinessModel`: **18**, `BusinessPlan`: **33**, `Forecast`: **32** (provisional), `IdeaGenerator`: **0**, `Probe`: **0**, `DirectionGeneration`: **7**, `LogoParameterSelection`: **4**, `LogoConceptRegenerate`: **0** (free local SVG redraw), `ColorGeneration`: **2**, `TypographyGeneration`: **2**. Exhaustion triggers HTTP 402; failed generations auto-refund under Option A without deterministic fallback substitution.
+
+Output token ceilings are dynamically configured via `Ai:OutputTokenLimits` in `appsettings.json` (`IdeaGenerator: 3500`, `IdeaClarifier: 3500`, `MarketStudy: 7500`, `BusinessModel: 8500`, `BusinessPlan: 7500`, `Forecast: 8000`, `Probe: 500`, `DirectionGeneration: 4500`, `LogoParameterSelection: 3000`, `ColorGeneration: 4500`, `TypographyGeneration: 2000`) with safe fallback constants in handlers.
 
 ---
 
@@ -323,14 +325,18 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
 - **Config-Driven Pricing:** Configured under `Ai:CreditCosts` in `appsettings.json`:
   - Direction Generation (4 candidates): **7 credits** (`AiJobType.DirectionGeneration`)
   - Logo Batch Generation (6 concepts): **4 credits** (`AiJobType.LogoParameterSelection`)
-  - Logo Single Concept Regeneration: **2 credits** (`AiJobType.LogoConceptRegenerate`)
+  - Logo Single Concept Regeneration: **0 credits (Free)** (Local SVG parametric redraw, not an AI job)
   - Color Palette Regeneration: **2 credits** (`AiJobType.ColorGeneration`)
-  - Typography System Regeneration: **2 credits** (`AiJobType.TypographyGeneration`) *(Note: Known frontend UI badge discrepancy — `TypographySystemModal.tsx:285` displays a "5 Credits" chip while backend authoritatively debits 2 credits per config).*
+  - Typography System Regeneration: **2 credits** (`AiJobType.TypographyGeneration`)
   - Deterministic Initial Derivations & Derived Variations: **0 credits (Free)**
-  - Total credits spent during full E2E walkthrough is exactly **13 credits** (7 for Direction + 4 for Logo concepts + 2 for single concept regeneration).
+  - Total credits spent during full E2E walkthrough is exactly **11 credits** (7 for Direction + 4 for Logo concepts).
   - All generative operations are free-tier eligible per the platform's starter credits model (200 credits granted on onboarding/first AI call).
 - **Per-Element Cap (Max 3):** Direction, Logo Concepts, Colors, and Typography each enforce `RegenerateCount <= 3`. Reaching the cap halts further generation with HTTP 400 and **0 credits debited**.
-- **Compensating Refunds:** Debits occur before model execution. If an AI call fails, times out, or encounters an optimistic concurrency conflict, `RefundForJobAsync` is immediately dispatched.
+- **Compensating Refunds & Option A Failure Handling:** Debits occur before model execution. If an AI call fails, parse fails, or encounters an optimistic concurrency conflict:
+  1. The error propagates cleanly (Option A); deterministic fallbacks are permanently deleted from billed paths.
+  2. The controller returns an honest HTTP 500 error naming the failure.
+  3. `RefundForJobAsync` is immediately dispatched, refunding the user's credits atomically.
+  4. The section's `RegenerateCount` is not incremented.
 - **Studio Reset & First-Time Provisioning (`POST open-studio`):**
   - Handles missing and existing kits consistently: if no `BrandKit` exists for an idea, `POST open-studio` auto-provisions a fresh draft kit using the shared `GetOrCreateBrandKitAsync` method (matching `CreateKit`), returning HTTP 200 rather than 404.
   - When invoked for an existing kit upon re-entering from the Hub, it resets all `RegenerateCount` counters (`Direction`, `Logo`, `Logo.Concepts[*]`, `Colors`, `Typography`) to 0. Normal section `PATCH` saves do not reset counters.
@@ -378,13 +384,14 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Inputs Consumed:** `ClarifierSessionId` (from Phase 2, required) and `BusinessIdeaId` (optional/context).
 - **Backend Architecture & Benchmark Reuse:** `MarketStudyHandler` reuses `IMarketBenchmarkResolver` (which until now was Phase-4-only) to query sector-specific benchmarks, tailwinds, and median multiples, injecting rich quantitative baselines into the generative prompt.
 - **Output Schema (`MarketStudyOutput`, Schema Version 1):**
-  1. `marketSizing`: `tam` (`value`, `currency`, `label`, `derivation`, `sourceAttribution`), `sam` (`value`, `currency`, `label`, `percentageOfTam`, `derivation`, `sourceAttribution`), `som` (`value`, `currency`, `label`, `percentageOfSam`, `derivation`, `sourceAttribution`), and `methodology` (bottom-up derivation formula and arithmetic string).
+  1. `marketSizing`: `tam` (`value`, `currency`, `label`, `derivation`, `sourceAttribution`), `sam` (`value`, `currency`, `label`, `percentageOfTam`, `derivation`, `sourceAttribution`), `som` (`value`, `currency`, `label`, `percentageOfSam`, `derivation`, `sourceAttribution`), and `methodology` (freeform descriptive string explaining bottom-up calculation and triangulation arithmetic; parser defaults to `"triangulated"` if empty).
   2. `competitorLandscape`: `summary`, `directCompetitors` array (`name`, `estimatedMarketShare`, `pricingModel`, `strengths`, `weaknesses`, `exploitableGap`, `sourceAttribution`), and `indirectCompetitors` array (`name`, `substituteApproach`, `threatLevel`: `low` | `medium` | `high`).
   3. `demandSignals`: Array of signals with `signal`, `evidence`, `sourceAttribution`, and `relevanceScore` (integer 1–10).
   4. `sizingRisks`: Array of sensitivity risks with `risk`, `impactOnSom` (`low` | `medium` | `high`), and `mitigation`.
   5. `marketGapValidation`: `primaryGap`, `validationRationale`, and `confidenceLevel` (`high` | `moderate` | `speculative`).
+- **Parser Normalisation & Logging:** Constrained enum fields (`threatLevel`, `impactOnSom`, `confidenceLevel`) are normalized at the parser layer before persisting to MongoDB using safe, conservative fallbacks that never overstate certainty (`threatLevel`/`impactOnSom` default to `medium`, `confidenceLevel` defaults to `speculative`). Non-canonical raw values that undergo coercion are recorded as backend warnings via `ILogger.LogWarning`.
 - **Credit Cost:** **20 credits** (`AiJobType.MarketStudy`).
-- **UI Presentation:** Proportional horizontal funnel bars with step reduction percentage bridges, bottom-up methodology strip, competitor benchmarking matrix, demand signals, and sensitivity risk cards. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support.
+- **UI Presentation:** Proportional horizontal funnel bars with step reduction percentage bridges, bottom-up methodology strip, competitor benchmarking matrix, demand signals, and sensitivity risk cards. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support. Out-of-contract strings reaching the frontend are styled with destructive visual tokens rather than silently absorbed.
 
 ### 5.2 Step 3.2 — Business Model & Monetization Canvas (LIVE)
 - **Route:** `/dashboard/creator/phase-3/business-model`
@@ -395,8 +402,9 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   2. `revenueTiers`: Array of pricing packages with `tierName`, `pricing`, `targetSegment`, `features`, and `projectedContributionPct`.
   3. `unitEconomics`: `arpu` (`amount`, `currency`, `period`: `monthly` | `annual`, `isModelled`), `cac` (`amount`, `currency`, `isModelled`), `ltv` (`amount`, `currency`, `isModelled`), `ltvToCacRatio`, `paybackPeriodMonths`, and `commentary`.
   4. `assumptions`: Array of core model assumptions with `category`, `assumption`, and `evidenceLevel` (`evidenced` | `modelled` | `untested`).
+- **Parser Normalisation & Logging:** `assumptions[].evidenceLevel` is normalized at the parser layer to canonical values (`evidenced`, `modelled`, `untested`), conservatively mapping genuine synonyms while routing ambiguous inputs (e.g. `observed`) to the safe fallback `untested` to prevent over-claiming validation. `arpu.period` is normalized to `monthly` | `annual` (fallback `monthly`). All coercions are logged as backend warnings via `ILogger.LogWarning`.
 - **Credit Cost:** **18 credits** (`AiJobType.BusinessModel`).
-- **UI Presentation:** Canonical single Osterwalder grid with hairline dividers (5 top columns: Key Partners flanking left, Key Activities over Key Resources, Value Propositions centered with prominent focal emphasis and zero background tint, Customer Relationships over Channels, Customer Segments flanking right; 2 bottom columns: Cost Structure 50% and Revenue Streams 50%), modelled unit economics telemetry strip, and pricing tiers. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support.
+- **UI Presentation:** Canonical single Osterwalder grid with hairline dividers (5 top columns: Key Partners flanking left, Key Activities over Key Resources, Value Propositions centered with prominent focal emphasis and zero background tint, Customer Relationships over Channels, Customer Segments flanking right; 2 bottom columns: Cost Structure 50% and Revenue Streams 50%), modelled unit economics telemetry strip, and pricing tiers. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support. Out-of-contract strings reaching the frontend are styled with destructive visual tokens rather than silently absorbed.
 
 ### 5.3 Step 3.3 — Business Plan (C-3, LIVE)
 - **Route:** `/dashboard/creator/phase-3/business-plan`
@@ -539,6 +547,11 @@ The rule: matchmaking is unavailable across P1–P5 and unlocks only at P6. The 
 ---
 
 ## 11. Changelog
+
+**2026-09-17 — Phase 3 Market Study & Business Model: Enum Normalisation & Logging.**
+- **Lenient Normalisation with Conservative Fallbacks:** `BusinessModelOutputParser` and `MarketStudyOutputParser` normalize LLM output strings to canonical enums (`evidenceLevel`: `evidenced`/`modelled`/`untested` with `untested` safe fallback; `confidenceLevel`: `high`/`moderate`/`speculative` with `speculative` fallback; `threatLevel`/`impactOnSom`: `low`/`medium`/`high` with `medium` fallback; `period`: `monthly`/`annual` with `monthly` fallback). Coerced values are recorded via `ILogger.LogWarning`.
+- **Methodology Canon Alignment:** Clarified `marketSizing.methodology` as a freeform descriptive string explaining derivation arithmetic and triangulation formulas, with a parser fallback of `"triangulated"`.
+- **Frontend Error Visibility:** `MarketStudyPage` and `BusinessModelPage` badges explicitly style canonical values and render unexpected out-of-contract strings with destructive styling (`border-destructive/60 bg-destructive/10 text-destructive`) rather than quietly absorbing them in neutral styling.
 
 **2026-07-24 — legal checklist demoted to guidance (Phase-3 gate removed).**
 - **Rule:** Phase 3 completes on **plan + forecast + formation**; mandatory legal items no longer block the derivation engine or the masterplan endpoint (both readers changed together; the shared `MandatoryItemsDone` predicate deleted as dead code). Rationale: pure self-attestation — the gate produced checkbox-cycling friction, not assurance. §2, §5.3, §5.7.

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -40,10 +39,7 @@ namespace WebApp.Controllers
         private readonly AiSettings _settings;
         private readonly ILogger<BusinessModelController> _logger;
 
-        private static readonly JsonSerializerOptions CamelCase = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        };
+
 
         public BusinessModelController(
             IBusinessModelSessionStore sessions,
@@ -263,9 +259,40 @@ namespace WebApp.Controllers
             var (acquired, activeSession) = await _sessions.TryAcquireRegenerateLockAsync(sessionId, owner);
             if (!acquired)
             {
-                _logger.LogInformation("In-flight BusinessModel regenerate joined for session {SessionId} by user {UserId}.",
+                AiRequest? activeRequest = null;
+                if (!string.IsNullOrWhiteSpace(session.RequestId))
+                {
+                    activeRequest = await _jobService.GetStatusAsync(session.RequestId, owner);
+                }
+
+                var isGenuinelyInFlight = activeRequest != null &&
+                    (string.Equals(activeRequest.Status, "Pending", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(activeRequest.Status, "Processing", StringComparison.OrdinalIgnoreCase));
+
+                if (isGenuinelyInFlight)
+                {
+                    _logger.LogInformation("In-flight BusinessModel regenerate rejected (already running) for session {SessionId} by user {UserId}.",
+                        sessionId, owner);
+                    return Conflict(ApiResponse.Error("A business model generation is already in progress for this session.", HttpContext.TraceIdentifier));
+                }
+
+                _logger.LogWarning("Orphaned BusinessModel session {SessionId} detected during regenerate by user {UserId}; releasing stale lock.",
                     sessionId, owner);
-                return Ok(ApiResponse.Ok("Business model regeneration started.", new { sessionId = activeSession!.Id, jobId = activeSession.RequestId }));
+
+                if (session.Versions != null && session.Versions.Count > 0)
+                {
+                    await _sessions.ReleaseLockAsync(sessionId, "Completed");
+                }
+                else
+                {
+                    await _sessions.SetFailedAsync(sessionId, activeRequest?.Error ?? "Previous generation was interrupted.");
+                }
+
+                (acquired, activeSession) = await _sessions.TryAcquireRegenerateLockAsync(sessionId, owner);
+                if (!acquired)
+                {
+                    return Conflict(ApiResponse.Error("Unable to acquire regeneration lock. Please retry.", HttpContext.TraceIdentifier));
+                }
             }
 
             var operationId = ObjectId.GenerateNewId().ToString();
@@ -326,7 +353,7 @@ namespace WebApp.Controllers
         {
             var active = session.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion);
             var output = active?.Content is not null
-                ? JsonSerializer.Deserialize<object>(active.Content.ToJson(), CamelCase)
+                ? BsonTypeMapper.MapToDotNetValue(active.Content)
                 : null;
 
             return new BusinessModelSessionDto
@@ -345,7 +372,7 @@ namespace WebApp.Controllers
                     IsEdited = v.IsEdited,
                     RequestId = v.RequestId,
                     Content = includeVersionContent && v.Content is not null
-                        ? JsonSerializer.Deserialize<object>(v.Content.ToJson(), CamelCase)
+                        ? BsonTypeMapper.MapToDotNetValue(v.Content)
                         : null,
                     CreatedAt = v.CreatedAt,
                     UpdatedAt = v.UpdatedAt,

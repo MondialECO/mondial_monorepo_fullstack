@@ -24,24 +24,27 @@ Key architectural guarantees:
 
 All capabilities route authoritatively to `google/gemini-3.8-flash` in base configuration (`backend/appsettings.json`), enforced by physical-file binding tests (`ModelRouterTests.cs`):
 
-| Capability | Model | Credit Cost | Description |
-|---|---|---|---|
-| **`IdeaClarifier`** (`C-2`) | `google/gemini-3.8-flash` | **20 credits** | Problem, audience, alternative analysis, clarity scoring (locked baseline; pre-ceiling benchmark median 3,105 tokens) |
-| **`MarketStudy`** (`3.1`) | `google/gemini-3.8-flash` | **20 credits** | TAM/SAM/SOM market sizing funnel, validated gap, competitor benchmarking, demand signals, sizing sensitivity risks |
-| **`BusinessModel`** (`3.2`) | `google/gemini-3.8-flash` | **18 credits** | Canonical 9-block Osterwalder canvas, pricing tier architecture, modelled unit economics (ARPU/CAC/LTV/Payback) |
-| **`BusinessPlan`** (`C-3`) | `google/gemini-3.8-flash` | **33 credits** | 9-section enterprise business plan (locked; pre-ceiling benchmark median 5,182 tokens, ratio 1.6689) |
-| **`Forecast`** (`C-4`) | `google/gemini-3.8-flash` | **32 credits** *(Provisional)* | 36-month projections (12 AI + 24 algorithmic projection; post-8k ceiling, post-trim benchmark median 5,001 tokens, ratio 1.6106) |
-| **`DirectionGeneration`** | `google/gemini-3.8-flash` | **7 credits** | 4-candidate strategic brand direction generator (archetypes, motifs, rationales) |
-| **`LogoParameterSelection`**| `google/gemini-3.8-flash` | **4 credits** | 6-concept parametric logo batch generator across 6 mark families |
-| **`LogoConceptRegenerate`** | `google/gemini-3.8-flash` | **2 credits** | Single logo concept regeneration (distinct geometry and layout) |
-| **`ColorGeneration`** | `google/gemini-3.8-flash` | **2 credits** | 5-role colour palette regeneration (contrast, harmony, and luminance enforcement) |
-| **`TypographyGeneration`** | `google/gemini-3.8-flash` | **2 credits** | 4-role typography system regeneration (distinct pairing validation; known UI badge discrepancy: `TypographySystemModal.tsx:280` renders 5 credits chip while backend authoritatively debits 2) |
-| **`IdeaGenerator`** | `google/gemini-3.8-flash` | **0 credits** | Unmetered discovery generator |
-| **`Probe`** | `google/gemini-3.8-flash` | **0 credits** | Operational health self-test |
-| **Deterministic Derivations** | — | **0 credits** | Free initial color/typography derivations, derived variations, section patches |
+| Capability | Model | Credit Cost | Output Token Ceiling | Description |
+|---|---|---|---|---|
+| **`IdeaClarifier`** (`C-2`) | `google/gemini-3.8-flash` | **20 credits** | **3,500 tokens** | Problem, audience, alternative analysis, clarity scoring (locked baseline; pre-ceiling benchmark median 3,105 tokens) |
+| **`MarketStudy`** (`3.1`) | `google/gemini-3.8-flash` | **20 credits** | **7,500 tokens** | TAM/SAM/SOM market sizing funnel, validated gap, competitor benchmarking, demand signals, sizing sensitivity risks |
+| **`BusinessModel`** (`3.2`) | `google/gemini-3.8-flash` | **18 credits** | **8,500 tokens** | Canonical 9-block Osterwalder canvas, pricing tier architecture, modelled unit economics (ARPU/CAC/LTV/Payback) |
+| **`BusinessPlan`** (`C-3`) | `google/gemini-3.8-flash` | **33 credits** | **7,500 tokens** | 9-section enterprise business plan (pre-ceiling benchmark median 5,182 tokens) |
+| **`Forecast`** (`C-4`) | `google/gemini-3.8-flash` | **32 credits** *(Provisional)* | **8,000 tokens** | 36-month projections (12 AI + 24 algorithmic projection; post-8k ceiling, post-trim benchmark median 5,001 tokens, ratio 1.6106) |
+| **`DirectionGeneration`** | `google/gemini-3.8-flash` | **7 credits** | **4,500 tokens** | 4-candidate strategic brand direction generator (archetypes, motifs, rationales; observed peak 2,827 tokens) |
+| **`LogoParameterSelection`**| `google/gemini-3.8-flash` | **4 credits** | **3,000 tokens** | 6-concept parametric logo batch generator across 6 mark families (observed peak 1,649 tokens) |
+| **`LogoConceptRegenerate`** | — | **0 credits** | — | Single logo concept regeneration (free deterministic in-memory SVG parametric redraw) |
+| **`ColorGeneration`** | `google/gemini-3.8-flash` | **2 credits** | **4,500 tokens** | 5-role colour palette regeneration (contrast, harmony, and luminance enforcement; observed peak 3,228 tokens) |
+| **`TypographyGeneration`** | `google/gemini-3.8-flash` | **2 credits** | **2,000 tokens** | 4-role typography system regeneration (distinct pairing validation; observed peak 457 tokens) |
+| **`IdeaGenerator`** | `google/gemini-3.8-flash` | **0 credits** | **3,500 tokens** | Unmetered discovery generator |
+| **`Probe`** | `google/gemini-3.8-flash` | **0 credits** | **500 tokens** | Operational health self-test |
+| **Deterministic Derivations** | — | **0 credits** | — | Free initial color/typography derivations, derived variations, section patches |
 
 > [!NOTE]
-> **Free-Tier Starter Credit Eligibility**: All 5 Brand Kit generative operations (`DirectionGeneration`, `LogoParameterSelection`, `LogoConceptRegenerate`, `ColorGeneration`, `TypographyGeneration`) are fully eligible for consumption against the user's standard 200 starter credit grant (`Ai:StarterCredits = 200`), enabling creators to build their first brand identity kit end-to-end at zero monetary cost.
+> **Dynamic Configuration & Safe Fallback Degradation**: Token ceilings are configurable via `appsettings.json` under `Ai:OutputTokenLimits` (or `AI__OUTPUTTOKENLIMITS__<JOBTYPE>` env vars). Job handlers inject `IOptions<AiSettings>` and resolve the active ceiling at runtime. If a configuration key is absent or zero, the handler degrades safely to an internal `DefaultMaxOutputTokens` constants rather than 0 or unbounded requests.
+
+> [!NOTE]
+> **Free-Tier Starter Credit Eligibility & Option A Failure Handling**: All billed Brand Kit AI operations (`DirectionGeneration`, `LogoParameterSelection`, `ColorGeneration`, `TypographyGeneration`) are fully eligible for consumption against the user's standard 200 starter credit grant (`Ai:StarterCredits = 200`). Under Option A, any AI model failure or validation failure immediately propagates an honest HTTP 500 error, automatically refunds debited credits via `IAiCreditService.RefundForJobAsync`, preserves regenerate caps, and never substitutes deterministic fallbacks. Single logo concept regeneration is fully local and free (0 credits).
 
 
 ---

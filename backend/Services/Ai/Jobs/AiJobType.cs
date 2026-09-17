@@ -16,6 +16,11 @@ namespace WebApp.Services.Ai.Jobs
         Probe,
         DirectionGeneration,
         LogoParameterSelection,
+        /// <summary>
+        /// [Legacy/Deprecated] Deterministic SVG operation; now free and executes locally without AI routing.
+        /// Retained for historical ledger and request document deserialization.
+        /// </summary>
+        [System.Obsolete("Deterministic SVG operation. Retained for historical document deserialization.")]
         LogoConceptRegenerate,
         ColorGeneration,
         TypographyGeneration,
