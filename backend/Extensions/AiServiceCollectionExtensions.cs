@@ -56,6 +56,14 @@ public static class AiServiceCollectionExtensions
         services.AddSingleton<IClarifierSessionStore>(sp => sp.GetRequiredService<ClarifierSessionRepository>());
         services.AddSingleton<Services.Ai.Jobs.IAiInsightWriter, Services.Ai.Jobs.AiInsightWriter>();
 
+        // ---- Phase 3.1 Market Study (source-of-truth session store) ----
+        services.AddSingleton<MarketStudySessionRepository>();
+        services.AddSingleton<IMarketStudySessionStore>(sp => sp.GetRequiredService<MarketStudySessionRepository>());
+
+        // ---- Phase 3.2 Business Model (source-of-truth session store) ----
+        services.AddSingleton<BusinessModelSessionRepository>();
+        services.AddSingleton<IBusinessModelSessionStore>(sp => sp.GetRequiredService<BusinessModelSessionRepository>());
+
         // ---- C-3 Business Plan (source-of-truth session store) ----
         services.AddSingleton<BusinessPlanSessionRepository>();
         services.AddSingleton<IBusinessPlanSessionStore>(sp => sp.GetRequiredService<BusinessPlanSessionRepository>());
@@ -77,6 +85,8 @@ public static class AiServiceCollectionExtensions
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.NoOpProbeHandler>();
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.IdeaGeneratorHandler>();   // Phase 2 Discovery
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.IdeaClarifierHandler>(); // C-2
+        services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.MarketStudyHandler>();   // Phase 3.1
+        services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.BusinessModelHandler>();  // Phase 3.2
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.BusinessPlanHandler>();  // C-3
         services.AddScoped<Services.Ai.Jobs.IAiTaskHandler, Services.Ai.Jobs.ForecastHandler>();      // C-4
         services.AddScoped<Services.Ai.Jobs.AiTaskHandlerRegistry>();

@@ -621,5 +621,138 @@ public class InFlightDuplicateGuardUnitTests
         credits.Verify(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>()), Times.Once);
         jobs.Verify(j => j.EnqueueAsync(AiJobType.BusinessPlan, UserId, It.IsAny<BsonDocument>()), Times.Once);
     }
+
+    // ==========================================
+    // 4. MARKET STUDY IN-FLIGHT DUPLICATE GUARD
+    // ==========================================
+
+    [Fact]
+    public async Task MarketStudy_Start_WhenDuplicateInFlight_ReturnsExistingSession_AndDebitsZeroCredits()
+    {
+        var sessionStore = new Mock<IMarketStudySessionStore>();
+        var clarifierStore = new Mock<IClarifierSessionStore>();
+        var creatorIdeas = new Mock<WebApp.Services.Repository.ICreatorIdeaStore>();
+        var jobs = new Mock<IAiJobService>();
+        var credits = new Mock<IAiCreditService>();
+        var audit = new Mock<IAuditLogger>();
+
+        clarifierStore.Setup(c => c.GetOwnedAsync(_clarifierId, UserId))
+            .ReturnsAsync(new ClarifierSession { Id = _clarifierId, OwnerUserId = UserId, Status = "Completed", Output = new BsonDocument("v", 1) });
+
+        var inFlightSession = new MarketStudySession
+        {
+            Id = "existing-ms-session",
+            OwnerUserId = UserId,
+            ClarifierSessionId = _clarifierId,
+            Status = "Processing",
+            RequestId = "existing-job-ms"
+        };
+
+        sessionStore.Setup(s => s.TryCreateInFlightAsync(It.IsAny<MarketStudySession>()))
+            .ReturnsAsync((false, inFlightSession));
+
+        var settings = new AiSettings
+        {
+            Enabled = true,
+            Features = new AiFeatureFlags { MarketStudy = true },
+            CreditCosts = new Dictionary<string, int> { ["MarketStudy"] = 20 }
+        };
+
+        var controller = new MarketStudyController(
+            sessionStore.Object,
+            clarifierStore.Object,
+            creatorIdeas.Object,
+            jobs.Object,
+            credits.Object,
+            audit.Object,
+            Options.Create(settings),
+            NullLogger<MarketStudyController>.Instance);
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, UserId) }))
+            }
+        };
+
+        var result = await controller.Start(new StartMarketStudyRequest { ClarifierSessionId = _clarifierId });
+
+        result.Should().BeOfType<OkObjectResult>();
+        credits.Verify(c => c.DebitForJobAsync(It.IsAny<string>(), It.IsAny<AiJobType>(), It.IsAny<string>()), Times.Never);
+        jobs.Verify(j => j.EnqueueAsync(It.IsAny<AiJobType>(), It.IsAny<string>(), It.IsAny<BsonDocument>()), Times.Never);
+    }
+
+    // ==========================================
+    // 5. BUSINESS MODEL IN-FLIGHT DUPLICATE GUARD
+    // ==========================================
+
+    [Fact]
+    public async Task BusinessModel_Start_WhenDuplicateInFlight_ReturnsExistingSession_AndDebitsZeroCredits()
+    {
+        var sessionStore = new Mock<IBusinessModelSessionStore>();
+        var marketStudyStore = new Mock<IMarketStudySessionStore>();
+        var clarifierStore = new Mock<IClarifierSessionStore>();
+        var creatorIdeas = new Mock<WebApp.Services.Repository.ICreatorIdeaStore>();
+        var jobs = new Mock<IAiJobService>();
+        var credits = new Mock<IAiCreditService>();
+        var audit = new Mock<IAuditLogger>();
+
+        var msId = ObjectId.GenerateNewId().ToString();
+        marketStudyStore.Setup(c => c.GetOwnedAsync(msId, UserId))
+            .ReturnsAsync(new MarketStudySession
+            {
+                Id = msId,
+                OwnerUserId = UserId,
+                ClarifierSessionId = _clarifierId,
+                Status = "Completed",
+                Versions = new List<MarketStudyVersion> { new MarketStudyVersion { Version = 1 } }
+            });
+
+        var inFlightSession = new BusinessModelSession
+        {
+            Id = "existing-bm-session",
+            OwnerUserId = UserId,
+            MarketStudySessionId = msId,
+            Status = "Processing",
+            RequestId = "existing-job-bm"
+        };
+
+        sessionStore.Setup(s => s.TryCreateInFlightAsync(It.IsAny<BusinessModelSession>()))
+            .ReturnsAsync((false, inFlightSession));
+
+        var settings = new AiSettings
+        {
+            Enabled = true,
+            Features = new AiFeatureFlags { BusinessModel = true },
+            CreditCosts = new Dictionary<string, int> { ["BusinessModel"] = 18 }
+        };
+
+        var controller = new BusinessModelController(
+            sessionStore.Object,
+            marketStudyStore.Object,
+            clarifierStore.Object,
+            creatorIdeas.Object,
+            jobs.Object,
+            credits.Object,
+            audit.Object,
+            Options.Create(settings),
+            NullLogger<BusinessModelController>.Instance);
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, UserId) }))
+            }
+        };
+
+        var result = await controller.Start(new StartBusinessModelRequest { MarketStudySessionId = msId });
+
+        result.Should().BeOfType<OkObjectResult>();
+        credits.Verify(c => c.DebitForJobAsync(It.IsAny<string>(), It.IsAny<AiJobType>(), It.IsAny<string>()), Times.Never);
+        jobs.Verify(j => j.EnqueueAsync(It.IsAny<AiJobType>(), It.IsAny<string>(), It.IsAny<BsonDocument>()), Times.Never);
+    }
 }
+
 

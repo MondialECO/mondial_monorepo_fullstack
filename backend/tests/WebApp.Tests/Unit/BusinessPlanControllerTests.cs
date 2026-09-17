@@ -8,6 +8,7 @@ using MongoDB.Bson;
 using Moq;
 using WebApp.Configuration.AiOptions;
 using WebApp.Controllers;
+using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos.Ai;
 using WebApp.Services.Ai;
@@ -399,4 +400,111 @@ public class BusinessPlanControllerTests
         _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, true, It.IsAny<object>()), Times.Once);
         _audit.Verify(a => a.Record("BusinessPlan.Start", UserId, false, It.IsAny<object>()), Times.Never);
     }
+
+    // ---- K. Prerequisite Gate Branching ----
+
+    [Fact]
+    public async Task Start_FreshCreator_MissingMarketStudyOrBusinessModel_Returns422UnprocessableEntity()
+    {
+        var ideaId = ObjectId.GenerateNewId().ToString();
+        SetupCompletedClarifier(_clarifierId);
+        _clarifiers.Setup(c => c.GetOwnedAsync(_clarifierId, UserId))
+            .ReturnsAsync(new ClarifierSession
+            {
+                Id = _clarifierId,
+                OwnerUserId = UserId,
+                BusinessIdeaId = ideaId,
+                Status = "Completed",
+                Output = new BsonDocument("schemaVersion", 1)
+            });
+
+        _creatorIdeas.Setup(i => i.GetOwnedAsync(ideaId, UserId))
+            .ReturnsAsync(new CreatorIdea
+            {
+                Id = ideaId,
+                UserId = UserId,
+                Phase3Data = new CreatorPhase3Data
+                {
+                    BusinessPlanSessionId = null!,
+                    MarketStudySessionId = null!,
+                    BusinessModelSessionId = null!
+                }
+            });
+
+        var controller = BuildController();
+        var result = await controller.Start(new StartBusinessPlanRequest { ClarifierSessionId = _clarifierId, BusinessIdeaId = ideaId });
+
+        result.Should().BeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task Start_FreshCreator_WithMarketStudyAndBusinessModel_Succeeds()
+    {
+        var ideaId = ObjectId.GenerateNewId().ToString();
+        SetupCompletedClarifier(_clarifierId);
+        _clarifiers.Setup(c => c.GetOwnedAsync(_clarifierId, UserId))
+            .ReturnsAsync(new ClarifierSession
+            {
+                Id = _clarifierId,
+                OwnerUserId = UserId,
+                BusinessIdeaId = ideaId,
+                Status = "Completed",
+                Output = new BsonDocument("schemaVersion", 1)
+            });
+
+        _creatorIdeas.Setup(i => i.GetOwnedAsync(ideaId, UserId))
+            .ReturnsAsync(new CreatorIdea
+            {
+                Id = ideaId,
+                UserId = UserId,
+                Phase3Data = new CreatorPhase3Data
+                {
+                    BusinessPlanSessionId = null!,
+                    MarketStudySessionId = "ms-1",
+                    BusinessModelSessionId = "bm-1"
+                }
+            });
+        _jobs.Setup(j => j.EnqueueAsync(AiJobType.BusinessPlan, UserId, It.IsAny<BsonDocument>())).ReturnsAsync("job-123");
+
+        var controller = BuildController();
+        var result = await controller.Start(new StartBusinessPlanRequest { ClarifierSessionId = _clarifierId, BusinessIdeaId = ideaId });
+
+        result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task Start_LegacyCreator_WithExistingBusinessPlan_AllowsRegenerateWithoutNewModules()
+    {
+        var ideaId = ObjectId.GenerateNewId().ToString();
+        SetupCompletedClarifier(_clarifierId);
+        _clarifiers.Setup(c => c.GetOwnedAsync(_clarifierId, UserId))
+            .ReturnsAsync(new ClarifierSession
+            {
+                Id = _clarifierId,
+                OwnerUserId = UserId,
+                BusinessIdeaId = ideaId,
+                Status = "Completed",
+                Output = new BsonDocument("schemaVersion", 1)
+            });
+
+        _creatorIdeas.Setup(i => i.GetOwnedAsync(ideaId, UserId))
+            .ReturnsAsync(new CreatorIdea
+            {
+                Id = ideaId,
+                UserId = UserId,
+                Phase3Data = new CreatorPhase3Data
+                {
+                    BusinessPlanSessionId = "bp-legacy-1",
+                    MarketStudySessionId = null!,
+                    BusinessModelSessionId = null!
+                }
+            });
+        _jobs.Setup(j => j.EnqueueAsync(AiJobType.BusinessPlan, UserId, It.IsAny<BsonDocument>())).ReturnsAsync("job-123");
+
+        var controller = BuildController();
+        var result = await controller.Start(new StartBusinessPlanRequest { ClarifierSessionId = _clarifierId, BusinessIdeaId = ideaId });
+
+        result.Should().BeOfType<OkObjectResult>();
+    }
 }
+

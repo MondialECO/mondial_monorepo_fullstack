@@ -228,7 +228,120 @@ namespace WebApp.Services.Ai.Prompts
                 "must be present. Do not include extra fields.",
         };
 
+        /// <summary>
+        /// Phase 3.1 Market Study (one-shot, single structured JSON completion). Produces
+        /// TAM/SAM/SOM with arithmetic derivation, percentage reductions, competitor landscape
+        /// with market shares and exploitable gaps, demand signals, sizing risks, and market gap validation.
+        /// </summary>
+        public static readonly PromptTemplate MarketStudy = new()
+        {
+            Key = "market-study",
+            Version = 1,
+            SystemText =
+                "You are Mondial's Lead Market Research Analyst. In a single pass, analyze " +
+                "a business opportunity and generate a rigorous, data-grounded Market Study. " +
+                "Evaluate the Total Addressable Market (TAM), Serviceable Addressable Market (SAM), " +
+                "and Serviceable Obtainable Market (SOM) using realistic arithmetic derivations and " +
+                "percentage reductions. Name direct and indirect competitors with estimated market " +
+                "shares, strengths, weaknesses, and specifically exploitable gaps. Identify concrete " +
+                "demand signals with relevance scoring (1-10), key sizing risks, and validate the core " +
+                "market gap. Every data point and claim must have honest source attribution (e.g. industry benchmarks, " +
+                "historical comparables, or founder assumptions if unverified). Do not fabricate false certainty — " +
+                "clearly indicate confidence levels (high, moderate, or speculative).",
+            OutputContract =
+                "Respond with ONE JSON object and nothing else — no markdown, no code " +
+                "fences, no commentary before or after. It MUST match this schema " +
+                "exactly (camelCase keys, all keys present; arrays may be empty but " +
+                "must not be omitted; add no extra keys):\n" +
+                "{\n" +
+                "  \"schemaVersion\": 1,\n" +
+                "  \"marketSizing\": {\n" +
+                "    \"tam\": { \"value\": number, \"currency\": string, \"label\": string, \"derivation\": string, \"sourceAttribution\": string },\n" +
+                "    \"sam\": { \"value\": number, \"currency\": string, \"label\": string, \"percentageOfTam\": number, \"derivation\": string, \"sourceAttribution\": string },\n" +
+                "    \"som\": { \"value\": number, \"currency\": string, \"label\": string, \"percentageOfSam\": number, \"derivation\": string, \"sourceAttribution\": string },\n" +
+                "    \"methodology\": string\n" +
+                "  },\n" +
+                "  \"competitorLandscape\": {\n" +
+                "    \"summary\": string,\n" +
+                "    \"directCompetitors\": [\n" +
+                "      { \"name\": string, \"estimatedMarketShare\": string, \"pricingModel\": string, \"strengths\": [string], \"weaknesses\": [string], \"exploitableGap\": string, \"sourceAttribution\": string }\n" +
+                "    ],\n" +
+                "    \"indirectCompetitors\": [\n" +
+                "      { \"name\": string, \"substituteApproach\": string, \"threatLevel\": \"low\" | \"medium\" | \"high\" }\n" +
+                "    ]\n" +
+                "  },\n" +
+                "  \"demandSignals\": [\n" +
+                "    { \"signal\": string, \"evidence\": string, \"sourceAttribution\": string, \"relevanceScore\": integer (1-10) }\n" +
+                "  ],\n" +
+                "  \"sizingRisks\": [\n" +
+                "    { \"risk\": string, \"impactOnSom\": \"low\" | \"medium\" | \"high\", \"mitigation\": string }\n" +
+                "  ],\n" +
+                "  \"marketGapValidation\": {\n" +
+                "    \"primaryGap\": string,\n" +
+                "    \"validationRationale\": string,\n" +
+                "    \"confidenceLevel\": \"high\" | \"moderate\" | \"speculative\"\n" +
+                "  }\n" +
+                "}\n" +
+                "schemaVersion MUST be 1. threatLevel and impactOnSom MUST be one of low, medium, high. confidenceLevel MUST be one of high, moderate, speculative.",
+        };
+
+        /// <summary>
+        /// Phase 3.2 Business Model (one-shot, single structured JSON completion). Generates
+        /// a comprehensive 9-block Business Model Canvas (with value propositions emphasized and
+        /// market study footnotes), tiered revenue breakdown, modelled unit economics (ARPU, CAC,
+        /// LTV, LTV:CAC, payback period), and categorized assumptions with evidence levels.
+        /// </summary>
+        public static readonly PromptTemplate BusinessModel = new()
+        {
+            Key = "business-model",
+            Version = 1,
+            SystemText =
+                "You are Mondial's Business Model Architect. In a single pass, synthesize " +
+                "a venture's clarified opportunity and market study into a complete, viable Business Model. " +
+                "Construct the 9 core Business Model Canvas blocks, specifically linking Value Propositions, " +
+                "Customer Segments, and Revenue Streams back to the Market Study with explicit footnotes. " +
+                "Define structured revenue tiers with projected percentage contributions. Formulate grounded " +
+                "unit economics (ARPU, CAC, LTV, LTV:CAC ratio, and payback period in months) with explicit " +
+                "isModelled flags. Categorize all core assumptions by category and evidence level (evidenced, " +
+                "modelled, or untested). Maintain realism and internal mathematical consistency across pricing, " +
+                "margins, and customer acquisition channels.",
+            OutputContract =
+                "Respond with ONE JSON object and nothing else — no markdown, no code " +
+                "fences, no commentary before or after. It MUST match this schema " +
+                "exactly (camelCase keys, all keys present; arrays may be empty but " +
+                "must not be omitted; add no extra keys):\n" +
+                "{\n" +
+                "  \"schemaVersion\": 1,\n" +
+                "  \"canvas\": {\n" +
+                "    \"keyPartners\": [string],\n" +
+                "    \"keyActivities\": [string],\n" +
+                "    \"keyResources\": [string],\n" +
+                "    \"valuePropositions\": [ { \"headline\": string, \"details\": string, \"marketStudyFootnote\": string } ],\n" +
+                "    \"customerRelationships\": [string],\n" +
+                "    \"channels\": [string],\n" +
+                "    \"customerSegments\": [ { \"segment\": string, \"marketStudyFootnote\": string } ],\n" +
+                "    \"costStructure\": [string],\n" +
+                "    \"revenueStreams\": [ { \"stream\": string, \"marketStudyFootnote\": string } ]\n" +
+                "  },\n" +
+                "  \"revenueTiers\": [\n" +
+                "    { \"tierName\": string, \"pricing\": string, \"targetSegment\": string, \"features\": [string], \"projectedContributionPct\": number }\n" +
+                "  ],\n" +
+                "  \"unitEconomics\": {\n" +
+                "    \"arpu\": { \"amount\": number, \"currency\": string, \"period\": \"monthly\" | \"annual\", \"isModelled\": boolean },\n" +
+                "    \"cac\": { \"amount\": number, \"currency\": string, \"isModelled\": boolean },\n" +
+                "    \"ltv\": { \"amount\": number, \"currency\": string, \"isModelled\": boolean },\n" +
+                "    \"ltvToCacRatio\": number,\n" +
+                "    \"paybackPeriodMonths\": number,\n" +
+                "    \"commentary\": string\n" +
+                "  },\n" +
+                "  \"assumptions\": [\n" +
+                "    { \"category\": string, \"assumption\": string, \"evidenceLevel\": \"evidenced\" | \"modelled\" | \"untested\" }\n" +
+                "  ]\n" +
+                "}\n" +
+                "schemaVersion MUST be 1. period MUST be monthly or annual. evidenceLevel MUST be one of evidenced, modelled, untested. All unit economics values must be realistic planning numbers.",
+        };
+
         /// <summary>All in-code templates seeded into <c>PromptVersions</c> on startup.</summary>
-        public static readonly IReadOnlyList<PromptTemplate> All = new[] { Probe, IdeaGenerator, IdeaClarifier, BusinessPlan, Forecast };
+        public static readonly IReadOnlyList<PromptTemplate> All = new[] { Probe, IdeaGenerator, IdeaClarifier, MarketStudy, BusinessModel, BusinessPlan, Forecast };
     }
 }
