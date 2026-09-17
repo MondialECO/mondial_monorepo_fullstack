@@ -180,11 +180,16 @@ export default function MarketStudyPage() {
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <FileWarning className="h-6 w-6 text-destructive shrink-0 mt-0.5" />
-              <div>
+              <div className="space-y-1">
                 <h4 className="text-sm font-semibold text-destructive">Market Study generation was interrupted</h4>
-                <p className="text-xs text-foreground/80 mt-0.5">
-                  {studyError || 'The AI job did not finish successfully. Any deducted credits have been refunded.'}
+                <p className="text-xs text-foreground/90">
+                  The AI generation did not finish. Your {marketStudyCost} credits have been automatically refunded to your balance.
                 </p>
+                {studyError && (
+                  <p className="text-[11px] text-muted-foreground font-mono">
+                    Detail: {studyError}
+                  </p>
+                )}
               </div>
             </div>
             <Button

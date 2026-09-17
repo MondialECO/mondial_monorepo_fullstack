@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Services.Ai.Prompts;
 using WebApp.Services.Ai.Providers;
@@ -9,14 +11,13 @@ namespace WebApp.Services.Ai.Jobs
 {
     /// <summary>
     /// Phase 3.2 Business Model handler (one-shot, single structured JSON completion).
-    /// Prepares context from the completed Market Study (authoritative input),
-    /// Canonical Idea Core, and Clarified Opportunity.
+    /// Prepares context from the MarketStudyOutput, CreatorIdea Project Core, and Clarifier opportunity.
     /// Parses the resulting JSON into the BusinessModelOutput contract and appends it as
     /// a new immutable version on the <see cref="BusinessModelSession"/>.
     /// </summary>
     public sealed class BusinessModelHandler : IAiTaskHandler
     {
-        private const int MaxOutputTokens = 5000;
+        public const int DefaultMaxOutputTokens = 8500;
         private const double Temperature = 0.4;
 
         private readonly IBusinessModelSessionStore _sessions;
@@ -25,6 +26,7 @@ namespace WebApp.Services.Ai.Jobs
         private readonly ICreatorIdeaStore _creatorIdeas;
         private readonly BusinessIdeasRepository _ideas;
         private readonly IAiInsightWriter _insights;
+        private readonly AiSettings _settings;
         private readonly ILogger<BusinessModelHandler> _logger;
 
         public BusinessModelHandler(
@@ -34,7 +36,8 @@ namespace WebApp.Services.Ai.Jobs
             ICreatorIdeaStore creatorIdeas,
             BusinessIdeasRepository ideas,
             IAiInsightWriter insights,
-            ILogger<BusinessModelHandler> logger)
+            ILogger<BusinessModelHandler> logger,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _sessions = sessions;
             _marketStudies = marketStudies;
@@ -42,6 +45,7 @@ namespace WebApp.Services.Ai.Jobs
             _creatorIdeas = creatorIdeas;
             _ideas = ideas;
             _insights = insights;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger;
         }
 
@@ -115,12 +119,16 @@ namespace WebApp.Services.Ai.Jobs
                 "assumptions by evidence level (evidenced, modelled, untested). Follow the output contract schema exactly. " +
                 "Return only the JSON object.";
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("BusinessModel", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             return new AiHandlerRequest(
                 PromptKey: PromptTemplate.BusinessModel.Key,
                 TaskType: "BusinessModel",
                 UserContext: userContext,
                 Task: task,
-                MaxTokens: MaxOutputTokens,
+                MaxTokens: maxTokens,
                 Temperature: Temperature,
                 ResponseFormat: "json_object");
         }

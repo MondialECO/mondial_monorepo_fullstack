@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos.Ai;
 using WebApp.Services.Ai.Prompts;
@@ -23,7 +25,7 @@ namespace WebApp.Services.Ai.Jobs
     /// </summary>
     public sealed class BusinessPlanHandler : IAiTaskHandler
     {
-        private const int MaxOutputTokens = 5000;
+        public const int DefaultMaxOutputTokens = 7500;
         private const double Temperature = 0.4;
 
         private readonly IBusinessPlanSessionStore _sessions;
@@ -31,6 +33,7 @@ namespace WebApp.Services.Ai.Jobs
         private readonly ICreatorIdeaStore _creatorIdeas;
         private readonly BusinessIdeasRepository _ideas;
         private readonly IAiInsightWriter _insights;
+        private readonly AiSettings _settings;
         private readonly ILogger<BusinessPlanHandler> _logger;
 
         public BusinessPlanHandler(
@@ -39,13 +42,15 @@ namespace WebApp.Services.Ai.Jobs
             ICreatorIdeaStore creatorIdeas,
             BusinessIdeasRepository ideas,
             IAiInsightWriter insights,
-            ILogger<BusinessPlanHandler> logger)
+            ILogger<BusinessPlanHandler> logger,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _sessions = sessions;
             _clarifiers = clarifiers;
             _creatorIdeas = creatorIdeas;
             _ideas = ideas;
             _insights = insights;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger;
         }
 
@@ -110,6 +115,10 @@ namespace WebApp.Services.Ai.Jobs
 
             var userContext = string.Join("\n\n", contextLines);
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("BusinessPlan", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             // Single-section rewrite (audit P1.8): regenerate ONLY the requested C-3
             // field, with the existing plan as consistency context. InterpretAsync
             // splices just that field back, so the other sections never change.
@@ -140,7 +149,7 @@ namespace WebApp.Services.Ai.Jobs
                     TaskType: "BusinessPlan",
                     UserContext: singleUserContext,
                     Task: singleTask,
-                    MaxTokens: MaxOutputTokens,
+                    MaxTokens: maxTokens,
                     Temperature: Temperature,
                     ResponseFormat: "json_object");
             }
@@ -157,7 +166,7 @@ namespace WebApp.Services.Ai.Jobs
                 TaskType: "BusinessPlan",
                 UserContext: userContext,
                 Task: task,
-                MaxTokens: MaxOutputTokens,
+                MaxTokens: maxTokens,
                 Temperature: Temperature,
                 ResponseFormat: "json_object");
         }

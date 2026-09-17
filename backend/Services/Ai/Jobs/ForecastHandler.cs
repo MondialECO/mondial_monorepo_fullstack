@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos.Ai;
 using WebApp.Services.Ai.Prompts;
@@ -22,23 +24,26 @@ namespace WebApp.Services.Ai.Jobs
     /// </summary>
     public sealed class ForecastHandler : IAiTaskHandler
     {
-        private const int MaxOutputTokens = 8000;
+        public const int DefaultMaxOutputTokens = 8000;
         private const double Temperature = 0.3;
 
         private readonly IForecastSessionStore _sessions;
         private readonly IBusinessPlanSessionStore _businessPlans;
         private readonly IAiInsightWriter _insights;
+        private readonly AiSettings _settings;
         private readonly ILogger<ForecastHandler> _logger;
 
         public ForecastHandler(
             IForecastSessionStore sessions,
             IBusinessPlanSessionStore businessPlans,
             IAiInsightWriter insights,
-            ILogger<ForecastHandler> logger)
+            ILogger<ForecastHandler> logger,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _sessions = sessions;
             _businessPlans = businessPlans;
             _insights = insights;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger;
         }
 
@@ -96,12 +101,16 @@ namespace WebApp.Services.Ai.Jobs
                 "numeric monthly arrays, no funding ask. Keep summaries, notes, and narrative concise. State driving assumptions. " +
                 "Return only the JSON object.";
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("Forecast", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             return new AiHandlerRequest(
                 PromptKey: PromptTemplate.Forecast.Key,
                 TaskType: "Forecast",
                 UserContext: userContext,
                 Task: task,
-                MaxTokens: MaxOutputTokens,
+                MaxTokens: maxTokens,
                 Temperature: Temperature,
                 ResponseFormat: "json_object");
         }

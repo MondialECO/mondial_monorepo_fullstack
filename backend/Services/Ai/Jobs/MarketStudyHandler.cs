@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using MongoDB.Bson;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Services.Ai.Prompts;
 using WebApp.Services.Ai.Providers;
@@ -17,7 +19,7 @@ namespace WebApp.Services.Ai.Jobs
     /// </summary>
     public sealed class MarketStudyHandler : IAiTaskHandler
     {
-        private const int MaxOutputTokens = 5000;
+        public const int DefaultMaxOutputTokens = 7500;
         private const double Temperature = 0.4;
 
         private readonly IMarketStudySessionStore _sessions;
@@ -26,6 +28,7 @@ namespace WebApp.Services.Ai.Jobs
         private readonly BusinessIdeasRepository _ideas;
         private readonly IMarketBenchmarkResolver _benchmarks;
         private readonly IAiInsightWriter _insights;
+        private readonly AiSettings _settings;
         private readonly ILogger<MarketStudyHandler> _logger;
 
         public MarketStudyHandler(
@@ -35,7 +38,8 @@ namespace WebApp.Services.Ai.Jobs
             BusinessIdeasRepository ideas,
             IMarketBenchmarkResolver benchmarks,
             IAiInsightWriter insights,
-            ILogger<MarketStudyHandler> logger)
+            ILogger<MarketStudyHandler> logger,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _sessions = sessions;
             _clarifiers = clarifiers;
@@ -43,6 +47,7 @@ namespace WebApp.Services.Ai.Jobs
             _ideas = ideas;
             _benchmarks = benchmarks;
             _insights = insights;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger;
         }
 
@@ -114,12 +119,16 @@ namespace WebApp.Services.Ai.Jobs
                 "list demand signals, evaluate sizing risks, and validate the market gap. " +
                 "Follow the output contract schema exactly. Return only the JSON object.";
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("MarketStudy", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             return new AiHandlerRequest(
                 PromptKey: PromptTemplate.MarketStudy.Key,
                 TaskType: "MarketStudy",
                 UserContext: userContext,
                 Task: task,
-                MaxTokens: MaxOutputTokens,
+                MaxTokens: maxTokens,
                 Temperature: Temperature,
                 ResponseFormat: "json_object");
         }
