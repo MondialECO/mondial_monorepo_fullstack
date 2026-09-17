@@ -606,9 +606,17 @@ export interface FormationOption {
   estimatedCost: string;
 }
 
+export interface FormationRecommendationFactor {
+  category: string;
+  signal: string;
+  implication: string;
+}
+
 export interface FormationGenerator {
   recommendedType: FormationTypeCode;
   recommendationReason?: string | null;
+  recommendationFactors?: FormationRecommendationFactor[];
+  isOverride?: boolean;
   forecastBasis?: {
     forecastSessionId: string;
     monthlyGrowthPct?: number | null;

@@ -65,11 +65,7 @@ export function getNextCreatorAction(state: CreatorJourneyState): NextAction {
     if (step <= 1) route = '/dashboard/creator/phase-3/market-study';
     else if (step === 2) route = '/dashboard/creator/phase-3/business-model';
     else if (step === 3) route = '/dashboard/creator/phase-3/business-plan';
-    else if (step === 4) {
-      route = state.phase3.forecastSessionId
-        ? '/dashboard/creator/phase-3/forecast'
-        : '/dashboard/creator/phase-3/forecast-inputs';
-    }
+    else if (step === 4) route = '/dashboard/creator/phase-3/forecast';
     else if (step === 5) route = '/dashboard/creator/phase-3/compliance';
     else if (step === 6) route = '/dashboard/creator/phase-3/formation';
     else if (step >= 7) route = '/dashboard/creator/phase-3/complete';

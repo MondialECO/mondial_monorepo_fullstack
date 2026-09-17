@@ -2,12 +2,32 @@
 
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, ArrowLeft, ArrowRight, Loader2, RotateCw, AlertTriangle, FileWarning, Sparkles, Pencil, Check, Lock, ChevronDown, FileDown, BookOpen } from 'lucide-react';
+import {
+  FileText,
+  ArrowLeft,
+  ArrowRight,
+  Loader2,
+  RotateCw,
+  AlertTriangle,
+  FileWarning,
+  Sparkles,
+  Pencil,
+  Check,
+  ExternalLink,
+  FileDown,
+  Info,
+  Layers,
+  TrendingUp,
+  Users,
+  Banknote,
+  Activity,
+  ShieldAlert,
+  ChevronRight
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
@@ -17,22 +37,22 @@ import { creatorAiApi } from '@/lib/api-creator-ai';
 import { hasAiOutput, type BusinessPlanOutput, type ForecastOutput } from '@/types/creator/ai';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 
-type SectionBadge = 'auto_built_phase2' | 'ai_researched' | 'auto_built_43' | 'auto_filled_31' | 'used_in_phase5' | null;
-const BADGE_LABEL: Record<NonNullable<SectionBadge>, string> = {
-  auto_built_phase2: 'Auto-built · Phase 2',
-  ai_researched: 'AI-researched',
-  auto_built_43: 'Auto-built · 4.3',
-  auto_filled_31: 'Auto-filled · 3.1',
-  used_in_phase5: 'Used in Phase 5',
-};
+type SectionOwnershipType = 'owned_editable' | 'external_linked' | 'external_scheduled' | 'owned_full_plan';
 
-// `rewritable` mirrors the backend BusinessPlanSections.Map (the 5 real C-3 fields
-// RewriteSection accepts). The other 4 are DERIVED from another module — not editable
-// here; `derivedSource` names where they actually come from (for the disabled hint).
-interface DisplaySection { id: string; title: string; number: string; body: string; badge: SectionBadge; rewritable: boolean; edited: boolean; derivedSource?: string; }
+interface DisplaySection {
+  id: string;
+  number: string;
+  title: string;
+  body: string;
+  ownership: SectionOwnershipType;
+  rewritable: boolean;
+  edited: boolean;
+  sourceLabel?: string;
+  sourceRoute?: string;
+  explanation?: string;
+}
 
 // Frontend display-section id → C-3 field (the 5 rewritable/editable sections only).
-// Mirrors the server-side BusinessPlanSections.Map so the splice round-trips cleanly.
 const FIELD_BY_SECTION: Record<string, string> = {
   executive: 'executiveSummary',
   'target-market': 'marketAnalysis',
@@ -41,7 +61,6 @@ const FIELD_BY_SECTION: Record<string, string> = {
   gtm: 'goToMarket',
 };
 
-// Map C-3 BusinessPlanOutput (7 fields) + cross-module data → 9 display sections.
 function buildSections(
   bp: BusinessPlanOutput | undefined,
   project: { problem: string; solution: string; targetUser: string },
@@ -51,28 +70,136 @@ function buildSections(
   const isEdited = (sectionId: string) =>
     bp?._sectionMeta?.[FIELD_BY_SECTION[sectionId]]?.status === 'edited';
   const sectionNum = (n: number) => String(n).padStart(2, '0');
+
   const opsOverview = bp?.operationsPlan?.overview ?? '';
-  const risksContent = bp?.risks?.length ? bp.risks.map((r) => `${r.category ?? 'Risk'}: ${r.description ?? ''}`).join('\n') : '';
+  const risksSummary = bp?.risks?.length
+    ? `${bp.risks.length} primary risk factors evaluated with active mitigations.`
+    : '';
+
   return [
-    { id: 'executive', number: sectionNum(1), title: 'Executive Summary', body: bp?.executiveSummary?.overview ?? '', badge: null, rewritable: true, edited: isEdited('executive') },
-    { id: 'problem-solution', number: sectionNum(2), title: 'Problem & Solution', body: join(project.problem, '—', project.solution), badge: 'auto_built_phase2', rewritable: false, edited: false, derivedSource: 'your clarified idea (Phase 2)' },
-    { id: 'target-market', number: sectionNum(3), title: 'Target Market', body: join(project.targetUser, bp?.marketAnalysis?.overview), badge: 'auto_built_phase2', rewritable: true, edited: isEdited('target-market') },
-    { id: 'business-model', number: sectionNum(4), title: 'Business Model', body: bp?.revenueModel?.summary ?? '', badge: null, rewritable: true, edited: isEdited('business-model') },
-    { id: 'competitive', number: sectionNum(5), title: 'Competitive Landscape', body: bp?.competitorAnalysis?.overview ?? '', badge: 'ai_researched', rewritable: true, edited: isEdited('competitive') },
-    { id: 'gtm', number: sectionNum(6), title: 'Go-to-Market', body: bp?.goToMarket?.strategy ?? '', badge: cross.hasGtm ? 'auto_built_43' : null, rewritable: true, edited: isEdited('gtm') },
-    // Option (a): plan generates with a placeholder here; the forecast step (next)
-    // back-fills it. The plan precedes the forecast, so it can't bind one yet at plan time.
-    { id: 'financials', number: sectionNum(7), title: 'Financial Projections', body: cross.hasForecast ? 'Bound to your live forecast — revenue, costs, cash flow, and break-even.' : 'Your forecast (the next step) will populate this section.', badge: 'auto_filled_31', rewritable: false, edited: false, derivedSource: 'your forecast' },
-    { id: 'team', number: sectionNum(8), title: 'Team Needs', body: cross.youNeed.length ? `Key hires: ${cross.youNeed.join(', ')}.` : 'Run the Formation Generator (3.4) to identify team needs.', badge: null, rewritable: false, edited: false, derivedSource: 'the Formation Generator (3.4)' },
-    { id: 'funding', number: sectionNum(9), title: 'Funding Requirements', body: cross.seedAsk ? `Target raise: €${cross.seedAsk.toLocaleString()}.` : 'Defined later in Phase 5 (seed funding).', badge: cross.seedAsk ? 'used_in_phase5' : null, rewritable: false, edited: false, derivedSource: 'your Phase 5 seed funding' },
-    { id: 'operations', number: sectionNum(10), title: 'Operations & Milestones', body: opsOverview, badge: null, rewritable: false, edited: false, derivedSource: 'your operations plan' },
-    { id: 'risks', number: sectionNum(11), title: 'Risk Register', body: risksContent, badge: null, rewritable: false, edited: false, derivedSource: 'your risk assessment' },
+    {
+      id: 'executive',
+      number: sectionNum(1),
+      title: 'Executive Summary',
+      body: bp?.executiveSummary?.overview ?? '',
+      ownership: 'owned_editable',
+      rewritable: true,
+      edited: isEdited('executive'),
+    },
+    {
+      id: 'problem-solution',
+      number: sectionNum(2),
+      title: 'Problem & Solution',
+      body: project.problem || project.solution ? join(project.problem, '—', project.solution) : '',
+      ownership: 'external_linked',
+      rewritable: false,
+      edited: false,
+      sourceLabel: 'Idea Clarifier (Phase 2)',
+      sourceRoute: '/dashboard/creator/phase-2/clarifier',
+      explanation: 'Authored in the Phase 2 Idea Clarifier. Changes made there automatically synchronize here.',
+    },
+    {
+      id: 'target-market',
+      number: sectionNum(3),
+      title: 'Target Market',
+      body: join(project.targetUser, bp?.marketAnalysis?.overview),
+      ownership: 'owned_editable',
+      rewritable: true,
+      edited: isEdited('target-market'),
+    },
+    {
+      id: 'business-model',
+      number: sectionNum(4),
+      title: 'Business Model',
+      body: bp?.revenueModel?.summary ?? '',
+      ownership: 'owned_editable',
+      rewritable: true,
+      edited: isEdited('business-model'),
+    },
+    {
+      id: 'competitive',
+      number: sectionNum(5),
+      title: 'Competitive Landscape',
+      body: bp?.competitorAnalysis?.overview ?? '',
+      ownership: 'owned_editable',
+      rewritable: true,
+      edited: isEdited('competitive'),
+    },
+    {
+      id: 'gtm',
+      number: sectionNum(6),
+      title: 'Go-to-Market',
+      body: bp?.goToMarket?.strategy ?? '',
+      ownership: 'owned_editable',
+      rewritable: true,
+      edited: isEdited('gtm'),
+    },
+    {
+      id: 'financials',
+      number: sectionNum(7),
+      title: 'Financial Projections',
+      body: cross.hasForecast
+        ? 'Bound to your live multi-year financial model — revenue growth, fixed/variable cost structures, and break-even milestones.'
+        : 'Your financial forecast (Step 3.4) models dynamic revenue and cost trajectories.',
+      ownership: 'external_linked',
+      rewritable: false,
+      edited: false,
+      sourceLabel: 'Financial Forecast (Step 3.4)',
+      sourceRoute: '/dashboard/creator/phase-3/forecast',
+      explanation: 'Calculated by the financial forecast engine in Step 3.4. Edit assumptions there to update.',
+    },
+    {
+      id: 'team',
+      number: sectionNum(8),
+      title: 'Team Needs & Structure',
+      body: cross.youNeed.length
+        ? `Identified key hiring requirements: ${cross.youNeed.join(', ')}.`
+        : 'Team capability and co-founder/executive requirements derived from your venture profile.',
+      ownership: 'external_linked',
+      rewritable: false,
+      edited: false,
+      sourceLabel: 'Company Formation (Step 3.6)',
+      sourceRoute: '/dashboard/creator/phase-3/formation',
+      explanation: 'Derived from your skills evaluation and legal entity structure in Step 3.6.',
+    },
+    {
+      id: 'funding',
+      number: sectionNum(9),
+      title: 'Funding Requirements',
+      body: cross.seedAsk
+        ? `Target seed round ask: €${cross.seedAsk.toLocaleString()}.`
+        : 'Target seed funding requirements and valuation parameters are established during Phase 5.',
+      ownership: 'external_scheduled',
+      rewritable: false,
+      edited: false,
+      sourceLabel: 'Phase 5 (Seed Funding)',
+      explanation: 'This figure is set during Phase 5 (Seed Funding) and will appear here once you reach that step.',
+    },
+    {
+      id: 'operations',
+      number: sectionNum(10),
+      title: 'Operations & Milestones',
+      body: opsOverview,
+      ownership: 'owned_full_plan',
+      rewritable: false,
+      edited: false,
+      sourceLabel: 'Full Plan Synthesis',
+      explanation: 'This section is produced as part of the full business plan synthesis and updates whenever the plan is regenerated.',
+    },
+    {
+      id: 'risks',
+      number: sectionNum(11),
+      title: 'Risk Register & Mitigations',
+      body: risksSummary,
+      ownership: 'owned_full_plan',
+      rewritable: false,
+      edited: false,
+      sourceLabel: 'Full Plan Synthesis',
+      explanation: 'This section is produced as part of the full business plan synthesis and updates whenever the plan is regenerated.',
+    },
   ];
 }
 
-// Friendly handler for the backend's 422 section_not_editable guard. The UI now
-// prevents the confused click, but a stale UI / race / direct call can still trip it —
-// translate it to the "update its source" message instead of a raw error string.
 function friendlyError(e: unknown, fallback: string): string {
   const res = (e as { response?: { status?: number; data?: { message?: string } } } | undefined)?.response;
   if (res?.status === 422 && res.data?.message === 'section_not_editable') {
@@ -81,66 +208,224 @@ function friendlyError(e: unknown, fallback: string): string {
   return e instanceof Error ? e.message : fallback;
 }
 
-// ---- Read-only nested plan content (matches the PDF's field selection; the two read the
-// same BusinessPlanOutput so they don't drift). Shown BELOW a section's editable prose;
-// Edit/Rewrite still operate only on the prose field — arrays are display-only. ----
 const has = (s?: string | null): s is string => !!s && s.trim().length > 0;
 const arr2 = <T,>(a?: T[] | null): a is T[] => Array.isArray(a) && a.length > 0;
 
 function Extras({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="space-y-1">
-      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</h4>
+    <div className="space-y-1.5 pt-1">
+      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground font-sans">{label}</h4>
       {children}
     </div>
   );
 }
+
 function Bullets({ items }: { items: string[] }) {
-  return <ul className="list-disc pl-5 text-sm text-muted-foreground leading-relaxed space-y-0.5">{items.map((x, i) => <li key={i}>{x}</li>)}</ul>;
+  return (
+    <ul className="list-disc pl-5 text-sm text-muted-foreground leading-relaxed space-y-1 font-sans">
+      {items.map((x, i) => (
+        <li key={i}>{x}</li>
+      ))}
+    </ul>
+  );
 }
 
-// The nested arrays for an editable AI section, keyed by the section id used in buildSections.
 function SectionExtras({ id, bp }: { id: string; bp?: BusinessPlanOutput }) {
   if (!bp) return null;
   const blocks: ReactNode[] = [];
-  const es = bp.executiveSummary, ma = bp.marketAnalysis, ca = bp.competitorAnalysis, rm = bp.revenueModel, gtm = bp.goToMarket;
-  if (id === 'executive') {
-    if (has(es?.valueProposition)) blocks.push(<Extras key="vp" label="Value proposition"><p className="text-sm text-muted-foreground leading-relaxed">{es!.valueProposition}</p></Extras>);
-    if (arr2(es?.highlights)) blocks.push(<Extras key="hl" label="Highlights"><Bullets items={es!.highlights!} /></Extras>);
-  } else if (id === 'target-market') {
-    if (arr2(ma?.targetSegments)) blocks.push(<Extras key="seg" label="Segments"><Bullets items={ma!.targetSegments!} /></Extras>);
-    if (has(ma?.marketSizeQualitative)) blocks.push(<Extras key="size" label="Market size"><p className="text-sm text-muted-foreground leading-relaxed">{ma!.marketSizeQualitative}</p></Extras>);
-    if (arr2(ma?.trends)) blocks.push(<Extras key="tr" label="Trends"><Bullets items={ma!.trends!} /></Extras>);
-  } else if (id === 'business-model') {
-    if (arr2(rm?.revenueStreams)) blocks.push(<Extras key="rs" label="Revenue streams"><Bullets items={rm!.revenueStreams!.map((s) => [s.name, s.description].filter(Boolean).join(' — '))} /></Extras>);
-    if (has(rm?.pricingStrategy)) blocks.push(<Extras key="ps" label="Pricing strategy"><p className="text-sm text-muted-foreground leading-relaxed">{rm!.pricingStrategy}</p></Extras>);
-    if (arr2(rm?.keyMetrics)) blocks.push(<Extras key="km" label="Key metrics"><Bullets items={rm!.keyMetrics!} /></Extras>);
-  } else if (id === 'competitive') {
-    if (arr2(ca?.competitors)) blocks.push(
-      <Extras key="cmp" label="Competitors">
-        <div className="space-y-2">
-          {ca!.competitors!.map((c, i) => (
-            <div key={i} className="rounded-lg border border-border p-3 space-y-0.5">
-              <div className="text-sm font-semibold text-foreground">{c.name ?? 'Competitor'}{has(c.positioning) ? ` — ${c.positioning}` : ''}</div>
-              {arr2(c.strengths) && <div className="text-xs text-muted-foreground"><span className="font-semibold">Strengths:</span> {c.strengths!.join(', ')}</div>}
-              {arr2(c.weaknesses) && <div className="text-xs text-muted-foreground"><span className="font-semibold">Weaknesses:</span> {c.weaknesses!.join(', ')}</div>}
-              {has(c.ourAdvantage) && <div className="text-xs text-foreground"><span className="font-semibold">Our advantage:</span> {c.ourAdvantage}</div>}
-            </div>
-          ))}
-        </div>
-      </Extras>,
-    );
-  } else if (id === 'gtm') {
-    if (arr2(gtm?.channels)) blocks.push(<Extras key="ch" label="Channels"><Bullets items={gtm!.channels!} /></Extras>);
-    if (arr2(gtm?.phases)) blocks.push(<Extras key="ph" label="Phases"><Bullets items={gtm!.phases!.map((p) => [p.name, p.description].filter(Boolean).join(' — '))} /></Extras>);
-  }
-  if (blocks.length === 0) return null;
-  return <div className="mt-3 space-y-3 border-t border-border/60 pt-3">{blocks}</div>;
-}
+  const es = bp.executiveSummary;
+  const ma = bp.marketAnalysis;
+  const ca = bp.competitorAnalysis;
+  const rm = bp.revenueModel;
+  const gtm = bp.goToMarket;
+  const ops = bp.operationsPlan;
+  const risks = bp.risks;
 
-// operationsPlan + risks — now sections 10-11; skipping appendix rendering
-function PlanAppendices({ bp }: { bp?: BusinessPlanOutput }) {
-  return null;
+  if (id === 'executive') {
+    if (has(es?.valueProposition)) {
+      blocks.push(
+        <Extras key="vp" label="Value Proposition">
+          <p className="text-sm text-foreground/90 leading-relaxed font-sans">{es!.valueProposition}</p>
+        </Extras>,
+      );
+    }
+    if (arr2(es?.highlights)) {
+      blocks.push(
+        <Extras key="hl" label="Core Highlights">
+          <Bullets items={es!.highlights!} />
+        </Extras>,
+      );
+    }
+  } else if (id === 'target-market') {
+    if (arr2(ma?.targetSegments)) {
+      blocks.push(
+        <Extras key="seg" label="Target Customer Segments">
+          <Bullets items={ma!.targetSegments!} />
+        </Extras>,
+      );
+    }
+    if (has(ma?.marketSizeQualitative)) {
+      blocks.push(
+        <Extras key="size" label="Market Scope & Dynamics">
+          <p className="text-sm text-foreground/90 leading-relaxed font-sans">{ma!.marketSizeQualitative}</p>
+        </Extras>,
+      );
+    }
+    if (arr2(ma?.trends)) {
+      blocks.push(
+        <Extras key="tr" label="Key Sector Trends">
+          <Bullets items={ma!.trends!} />
+        </Extras>,
+      );
+    }
+  } else if (id === 'business-model') {
+    if (arr2(rm?.revenueStreams)) {
+      blocks.push(
+        <Extras key="rs" label="Revenue Streams">
+          <Bullets
+            items={rm!.revenueStreams!.map((s) => [s.name, s.description].filter(Boolean).join(' — '))}
+          />
+        </Extras>,
+      );
+    }
+    if (has(rm?.pricingStrategy)) {
+      blocks.push(
+        <Extras key="ps" label="Pricing Architecture">
+          <p className="text-sm text-foreground/90 leading-relaxed font-sans">{rm!.pricingStrategy}</p>
+        </Extras>,
+      );
+    }
+    if (arr2(rm?.keyMetrics)) {
+      blocks.push(
+        <Extras key="km" label="Monitored Unit Economics & Metrics">
+          <Bullets items={rm!.keyMetrics!} />
+        </Extras>,
+      );
+    }
+  } else if (id === 'competitive') {
+    if (arr2(ca?.competitors)) {
+      blocks.push(
+        <Extras key="cmp" label="Direct & Indirect Competitor Matrix">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+            {ca!.competitors!.map((c, i) => (
+              <div key={i} className="rounded-xl border border-border bg-card/60 p-3.5 space-y-1.5 shadow-sm">
+                <div className="text-sm font-semibold text-foreground flex items-center justify-between">
+                  <span>{c.name ?? 'Competitor'}</span>
+                  {has(c.positioning) && (
+                    <Badge variant="secondary" className="text-[10px] font-normal">
+                      {c.positioning}
+                    </Badge>
+                  )}
+                </div>
+                {arr2(c.strengths) && (
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground/80">Strengths:</span> {c.strengths!.join(', ')}
+                  </div>
+                )}
+                {arr2(c.weaknesses) && (
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground/80">Weaknesses:</span> {c.weaknesses!.join(', ')}
+                  </div>
+                )}
+                {has(c.ourAdvantage) && (
+                  <div className="text-xs text-primary font-medium pt-0.5">
+                    <span className="font-semibold text-foreground/80">Our Edge:</span> {c.ourAdvantage}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Extras>,
+      );
+    }
+  } else if (id === 'gtm') {
+    if (arr2(gtm?.channels)) {
+      blocks.push(
+        <Extras key="ch" label="Distribution & Acquisition Channels">
+          <Bullets items={gtm!.channels!} />
+        </Extras>,
+      );
+    }
+    if (arr2(gtm?.phases)) {
+      blocks.push(
+        <Extras key="ph" label="Rollout Phases">
+          <Bullets
+            items={gtm!.phases!.map((p) => [p.name, p.description].filter(Boolean).join(' — '))}
+          />
+        </Extras>,
+      );
+    }
+  } else if (id === 'operations') {
+    if (arr2(ops?.keyActivities)) {
+      blocks.push(
+        <Extras key="ops-act" label="Key Operational Activities">
+          <Bullets items={ops!.keyActivities!} />
+        </Extras>,
+      );
+    }
+    if (arr2(ops?.resources)) {
+      blocks.push(
+        <Extras key="ops-res" label="Critical Resources">
+          <Bullets items={ops!.resources!} />
+        </Extras>,
+      );
+    }
+    if (arr2(ops?.milestones)) {
+      blocks.push(
+        <Extras key="ops-ms" label="Target Milestones">
+          <div className="space-y-2 mt-1">
+            {ops!.milestones!.map((m, i) => (
+              <div key={i} className="flex items-start gap-2.5 rounded-lg border border-border bg-card/40 p-2.5 text-xs font-sans">
+                <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-mono text-[10px] font-bold">
+                  {i + 1}
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-foreground flex items-center justify-between">
+                    <span>{m.title ?? 'Milestone'}</span>
+                    {has(m.timeframe) && <span className="text-muted-foreground font-mono">{m.timeframe}</span>}
+                  </div>
+                  {has(m.description) && <p className="text-muted-foreground mt-0.5">{m.description}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Extras>,
+      );
+    }
+  } else if (id === 'risks') {
+    if (arr2(risks)) {
+      blocks.push(
+        <Extras key="risk-grid" label="Evaluated Risk Matrix & Mitigation Strategy">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+            {risks!.map((r, i) => (
+              <div key={i} className="rounded-xl border border-border bg-card/60 p-3.5 space-y-1.5 shadow-sm font-sans">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wider">
+                    {r.category ?? 'Risk'}
+                  </Badge>
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
+                    {has(r.likelihood) && <span>Likelihood: <strong className="text-foreground">{r.likelihood}</strong></span>}
+                    {has(r.impact) && <span>• Impact: <strong className="text-foreground">{r.impact}</strong></span>}
+                  </div>
+                </div>
+                {has(r.description) && (
+                  <p className="text-xs text-foreground/90 font-medium">{r.description}</p>
+                )}
+                {has(r.mitigation) && (
+                  <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2 mt-1">
+                    <span className="font-semibold text-foreground/80">Mitigation:</span> {r.mitigation}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Extras>,
+      );
+    }
+  }
+
+  if (blocks.length === 0) return null;
+  return <div className="mt-4 space-y-3.5 border-t border-border/60 pt-3.5">{blocks}</div>;
 }
 
 export default function BusinessPlanPage() {
@@ -155,35 +440,26 @@ export default function BusinessPlanPage() {
   const [showExport, setShowExport] = useState(false);
   const [cross, setCross] = useState({ hasForecast: false, hasGtm: false, youNeed: [] as string[], seedAsk: null as number | null });
   const [startError, setStartError] = useState<AiError | null>(null);
-  // The section being AI-rewritten + the plan version at rewrite-start, so we can clear
-  // the single-section skeleton once the new (incremented) version lands.
+  const [activeSectionId, setActiveSectionId] = useState<string>('executive');
+
   const [rewriting, setRewriting] = useState<{ sectionId: string; baseVersion: number } | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
-  // Per-section manual-edit save state: 'saving' | 'saved' | 'error'.
   const [editState, setEditState] = useState<{ id: string; state: 'saving' | 'saved' | 'error'; message?: string } | null>(null);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(() => new Set(['executive']));
 
   const startBp = useStartBusinessPlan();
   const credits = useAiCredits();
   const planCost = credits.data?.costs?.BusinessPlan ?? 0;
   const insufficientCredits = credits.data ? credits.data.balance < planCost : false;
   const session = useBusinessPlanSessionTimed(bpSessionId);
-  // Reuse the existing forecast hook so the export can render the real §7 forecast.
   const forecastSession = useForecastSessionTimed(forecastSessionId);
   const forecastOutput = (forecastSession.data as { output?: ForecastOutput } | undefined)?.output ?? null;
   const currentVersion = (session.data as { currentVersion?: number } | undefined)?.currentVersion ?? 0;
 
-  // A single-section rewrite re-enters Processing; clear the skeleton only once the
-  // server has appended the new version (currentVersion advances past the baseline).
   useEffect(() => {
     if (rewriting && currentVersion > rewriting.baseVersion) setRewriting(null);
   }, [currentVersion, rewriting]);
 
-  // FAILED rewrite: the session returns terminal WITHOUT a new version (the backend
-  // guard restores Completed and keeps the plan intact). Clear the skeleton and
-  // surface an honest error — never an endless skeleton with disabled buttons.
-  // Mutually exclusive with the success effect above (version did NOT advance).
   useEffect(() => {
     if (rewriting && session.phase === 'terminal' && currentVersion <= rewriting.baseVersion) {
       setRewriting(null);
@@ -206,7 +482,12 @@ export default function BusinessPlanPage() {
         setBpSessionId(p3?.businessPlanSessionId ?? null);
         setForecastSessionId(p3?.forecastSessionId ?? null);
         setClarifierSessionId(p3?.clarifierSessionId ?? p2?.clarifierSessionId ?? null);
-        setProject({ name: journey.project?.name ?? '', problem: journey.project?.problem ?? '', solution: journey.project?.solution ?? '', targetUser: journey.project?.targetUser ?? '' });
+        setProject({
+          name: journey.project?.name ?? '',
+          problem: journey.project?.problem ?? '',
+          solution: journey.project?.solution ?? '',
+          targetUser: journey.project?.targetUser ?? '',
+        });
         setCross({
           hasForecast: !!p3?.forecastSessionId,
           hasGtm: !!(journey.phase4Data as { gtmSetup?: unknown })?.gtmSetup,
@@ -220,21 +501,30 @@ export default function BusinessPlanPage() {
     return () => { active = false; };
   }, []);
 
+  // Track active section via scroll listener
+  useEffect(() => {
+    const handleScroll = () => {
+      const sectionElements = document.querySelectorAll<HTMLElement>('[data-section-anchor]');
+      const scrollPos = window.scrollY + 200;
+      sectionElements.forEach((el) => {
+        const top = el.offsetTop;
+        const height = el.offsetHeight;
+        const id = el.getAttribute('data-section-anchor');
+        if (id && scrollPos >= top && scrollPos < top + height) {
+          setActiveSectionId(id);
+        }
+      });
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const bpOutput = (session.data as { output?: BusinessPlanOutput } | undefined)?.output;
   const completed = session.phase === 'terminal' && hasAiOutput((session.data as { status?: import('@/types/creator/ai').AiSessionStatus })?.status) && !!bpOutput;
-  // Keep the section grid visible during a single-section rewrite (the session briefly
-  // re-enters Processing) so only the rewritten section shows a skeleton, not the page.
-  const showGrid = completed || (!!rewriting && !!bpOutput);
+  const showDocument = completed || (!!rewriting && !!bpOutput);
 
-  // Terminal but no usable plan → the linked session settled as Failed (or the rare
-  // null-output). Parse issues become NeedsReview (which HAS output and renders), so
-  // this bucket is an AI-service request failure — never a blank body. Mutually
-  // exclusive with showGrid (both derive from `completed`).
   const bpError = (session.data as { error?: string | null } | undefined)?.error ?? null;
   const terminalFailed = !!bpSessionId && session.phase === 'terminal' && !completed && !rewriting;
-  // A provider-side 402 ("OpenRouter error (402): …") is OUR billing gap — never
-  // the user's credits; presenting it as theirs is wrong and unactionable. Only a
-  // local-ledger failure ("Insufficient credits.") gets the credits copy.
   const failedIsProviderBilling = /openrouter error \(402\)/i.test(bpError ?? '');
   const failedIsCredits = !failedIsProviderBilling && /402|credit|insufficient|payment/i.test(bpError ?? '');
 
@@ -245,13 +535,15 @@ export default function BusinessPlanPage() {
 
   const handleStart = async () => {
     setStartError(null);
-    if (!clarifierSessionId) { setStartError({ kind: 'other', message: 'Complete the Idea Clarifier first — the plan builds on it.' }); return; }
+    if (!clarifierSessionId) {
+      setStartError({ kind: 'other', message: 'Complete the Idea Clarifier first — the plan builds on it.' });
+      return;
+    }
     try {
       const res = await startBp.mutateAsync({ clarifierSessionId });
       await creatorJourneyApi.setPhase3Session('businessPlan', res.sessionId);
       setBpSessionId(res.sessionId);
     } catch (e) {
-      // 402 (your credits are out) vs 503/429 (provider/rate-limit) read differently.
       setStartError(toAiError(e, 'Could not start the business plan.'));
     }
   };
@@ -262,8 +554,6 @@ export default function BusinessPlanPage() {
     setRewriting({ sectionId, baseVersion: currentVersion });
     try {
       await creatorAiApi.rewriteSection(bpSessionId, sectionId);
-      // The session re-enters Processing; the timed poller resumes automatically.
-      // The skeleton clears via the version-increment effect once the splice lands.
       session.retry();
     } catch (e) {
       setStartError({ kind: 'other', message: friendlyError(e, 'Rewrite failed.') });
@@ -271,14 +561,12 @@ export default function BusinessPlanPage() {
     }
   };
 
-  // Durable per-section manual edit: PATCH → server splice (status "edited"), then
-  // refetch so the canonical (incremented) version shows. Survives reload.
   const saveEdit = async (sectionId: string) => {
     if (!bpSessionId) return;
     setEditState({ id: sectionId, state: 'saving' });
     try {
       await creatorAiApi.editSection(bpSessionId, sectionId, editDraft);
-      session.retry(); // refetch the canonical plan (Completed → stays terminal, no poll)
+      session.retry();
       setEditing(null);
       setEditState({ id: sectionId, state: 'saved' });
     } catch (e) {
@@ -286,261 +574,442 @@ export default function BusinessPlanPage() {
     }
   };
 
-  // Business plan is step 2; the forecast (step 3) consumes it next. A forecast that
-  // already exists (any state — in-flight, failed, or completed) routes to the forecast
-  // results page so the user sees it; only a truly-absent forecast goes to inputs.
+  const scrollToSection = (id: string) => {
+    setActiveSectionId(id);
+    const element = document.getElementById(`doc-section-${id}`);
+    if (element) {
+      const yOffset = -90;
+      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
+
   const handleNext = () => {
     completeStep(3, 3);
-    router.push(cross.hasForecast
-      ? '/dashboard/creator/phase-3/forecast'
-      : '/dashboard/creator/phase-3/forecast-inputs');
+    router.push('/dashboard/creator/phase-3/forecast');
   };
 
   return (
     <>
-    <PlanForecastPrintView
-      open={showExport}
-      onClose={() => setShowExport(false)}
-      projectName={project.name}
-      project={project}
-      plan={bpOutput}
-      forecast={forecastOutput}
-      cross={{ youNeed: cross.youNeed, seedAsk: cross.seedAsk }}
-    />
-    <Phase3SetupShell
-      fullWidth
-      stepEyebrow="Step 3.3"
-      title="AI Business Plan"
-      description="Your plan in nine sections, drafted from your clarified idea. Edit any section or ask the AI to rewrite it."
-    >
-      {loading && <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Loading…</div>}
-
-      {!loading && !bpSessionId && (
-        <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
-          <h3 className="font-bold text-sm">
-            {startError?.kind === 'credits'
-              ? "You've used all your AI credits"
-              : "Generate your business plan"}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {startError?.kind === 'credits'
-              ? "You've used all your AI credits."
-              : "We'll build an 11-section plan from your clarified idea (C-3)."}
-          </p>
-          {startError && startError.kind !== 'credits' && (
-            <div className="space-y-2">
-              <p className="text-sm text-destructive">{startError.message}</p>
-              {/* Provider/rate-limit issues are transient — offer a retry, not an upgrade. */}
-              {(startError.kind === 'service' || startError.kind === 'rateLimited') && (
-                <Button variant="outline" size="sm" onClick={handleStart} disabled={startBp.isPending} className="gap-1.5">
-                  <RotateCw className="h-3.5 w-3.5" /> Try again
-                </Button>
-              )}
-            </div>
-          )}
-          <div className="flex items-center justify-between border-t border-border pt-4 mt-4">
-            <Button
-              variant="ghost"
-              onClick={() => router.push('/dashboard/creator/phase-3/business-model')}
-              className="text-xs font-bold text-muted-foreground"
-            >
-              <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
-            </Button>
-            <Button onClick={handleStart} disabled={startBp.isPending || startError?.kind === 'credits' || insufficientCredits} className="gap-2">
-              {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />} Generate plan{planCost > 0 ? ` (${planCost} credits)` : ''}
-            </Button>
+      <PlanForecastPrintView
+        open={showExport}
+        onClose={() => setShowExport(false)}
+        projectName={project.name}
+        project={project}
+        plan={bpOutput}
+        forecast={forecastOutput}
+        cross={{ youNeed: cross.youNeed, seedAsk: cross.seedAsk }}
+      />
+      <Phase3SetupShell
+        fullWidth
+        stepEyebrow="Step 3.3"
+        title="AI Business Plan"
+        description="Your comprehensive 11-section business plan. Edit owned sections directly or navigate to authoritative source modules."
+      >
+        {loading && (
+          <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center">
+            <Loader2 className="h-5 w-5 animate-spin" /> Loading business plan…
           </div>
-          {insufficientCredits && (
-            <p className="text-xs font-medium text-destructive">
-              Insufficient credits: requires {planCost} credits (you have {credits.data?.balance ?? 0}).
-            </p>
-          )}
-        </Card>
-      )}
+        )}
 
-      {bpSessionId && session.phase === 'polling' && !rewriting && (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-24 w-full rounded-2xl border border-border bg-card animate-pulse" />)}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Drafting your plan…</div>
-        </div>
-      )}
-
-      {bpSessionId && session.phase === 'timedout' && (
-        <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <FileWarning className="h-8 w-8 text-warning" />
-          <p className="text-sm text-muted-foreground">This is taking longer than expected. The job may still finish.</p>
-          <Button variant="outline" onClick={session.retry} className="gap-2"><RotateCw className="h-4 w-4" /> Resume</Button>
-        </div>
-      )}
-
-      {bpSessionId && session.isError && session.phase !== 'polling' && (
-        <div className="flex flex-col items-center gap-3 py-12 text-center">
-          <AlertTriangle className="h-8 w-8 text-destructive" />
-          <p className="text-sm text-destructive">The plan failed to load.</p>
-          <Button variant="outline" onClick={session.retry} className="gap-2"><RotateCw className="h-4 w-4" /> Retry</Button>
-        </div>
-      )}
-
-      {terminalFailed && (
-        <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            <h3 className="font-bold text-sm">
-              {startError?.kind === 'credits' || failedIsCredits
+        {!loading && !bpSessionId && (
+          <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl mx-auto shadow-sm">
+            <h3 className="font-bold text-base font-sans">
+              {startError?.kind === 'credits'
                 ? "You've used all your AI credits"
-                : "We couldn't generate your business plan"}
+                : 'Generate your business plan'}
             </h3>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {startError?.kind === 'credits' || failedIsCredits
-              ? "You've used all your AI credits."
-              : failedIsProviderBilling
-              ? 'The AI service is temporarily unavailable on our side, so your plan couldn’t be generated. This isn’t your credits and there’s nothing you need to buy — please try again shortly.'
-              : 'The AI service was temporarily unavailable (a provider error, rate limit, or timeout), so your plan didn’t finish. This isn’t anything you did — please try again.'}
-          </p>
-          {startError && startError.kind !== 'credits' && (
-            <div className="space-y-1">
-              <p className="text-sm text-destructive">{startError.message}</p>
-            </div>
-          )}
-          <Button
-            onClick={handleStart}
-            disabled={startBp.isPending || startError?.kind === 'credits' || failedIsCredits}
-            className="gap-2"
-          >
-            {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Generate again
-          </Button>
-        </Card>
-      )}
-
-      {showGrid && (
-        <div className="space-y-4 border-t border-border p-5 rounded-lg bg-card/70">
-          {/* Document preview card */}
-          <Card className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3 flex-1">
-                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-sm text-foreground">{project.name} — Business Plan</h3>
-                  <p className="text-xs text-muted-foreground mt-1">Draft 1 • Live Preview • 12,402 Bytes Generated</p>
-                </div>
-              </div>
-              <div className="flex gap-3 shrink-0">
-                <button onClick={() => setShowExport(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
-                  <FileDown className="h-4 w-4" /> PDF
-                </button>
-                {/* <button onClick={() => setShowExport(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted transition-colors">
-                  <FileDown className="h-4 w-4" /> DOCS
-                </button> */}
-              </div>
-            </div>
-          </Card>
-
-          {/* Rewrite/start errors surface HERE too — previously invisible in the grid. */}
-          {startError && <p className="text-sm text-destructive">{startError.message}</p>}
-          {sections.map((s) => {
-            const isRewriting = rewriting?.sectionId === s.id;
-            const saving = editState?.id === s.id && editState.state === 'saving';
-            const saved = editState?.id === s.id && editState.state === 'saved';
-            const saveError = editState?.id === s.id && editState.state === 'error';
-            // Derived (4) sections are computed from another module — not editable here.
-            // Section 7 (forecast) gets a forecast-specific hint until a forecast runs.
-            const needsForecast = s.id === 'financials' && !cross.hasForecast;
-            const derivedHint = needsForecast
-              ? 'Run your forecast first — this section is built from it.'
-              : `Built automatically from ${s.derivedSource ?? 'another module'}. Update that to change it.`;
-            const isExpanded = expandedSections.has(s.id);
-            const toggleExpanded = () => {
-              const newExpanded = new Set(expandedSections);
-              if (isExpanded) newExpanded.delete(s.id);
-              else newExpanded.add(s.id);
-              setExpandedSections(newExpanded);
-            };
-            return (
-            <Card key={s.id} className="rounded-2xl border border-border bg-card overflow-hidden">
-              <button onClick={toggleExpanded} className="w-full p-5 flex items-center justify-between gap-3 hover:bg-muted/30 transition-colors">
-                <div className="flex items-center gap-3 flex-1 text-left">
-                  <ChevronDown className={`h-5 w-5 text-muted-foreground shrink-0 transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-bold text-sm"><span className="text-muted-foreground">{s.number}</span> {s.title}</h3>
-                    {s.badge && <Badge variant="outline" className="gap-1 text-[10px]"><Sparkles className="h-3 w-3" /> {BADGE_LABEL[s.badge]}</Badge>}
-                    {!s.rewritable && (
-                      <Badge variant="outline" className="gap-1 text-[10px] text-muted-foreground"><Lock className="h-3 w-3" /> Auto-generated</Badge>
-                    )}
-                    {s.edited && <Badge variant="outline" className="gap-1 text-[10px]"><Pencil className="h-3 w-3" /> Edited</Badge>}
-                  </div>
-                </div>
-              </button>
-
-              {isExpanded && (
-              <div className="px-5 pb-5 space-y-3 border-t border-border">
-                <div className="flex items-center justify-end gap-1.5 shrink-0 pt-4">
-                  {s.rewritable ? (
-                    <Button variant="ghost" size="sm" className="gap-1" disabled={isRewriting || saving} onClick={() => { setEditing(s.id); setEditDraft(s.body); setEditState(null); }}>
-                      <Pencil className="h-3.5 w-3.5" /> Edit
-                    </Button>
-                  ) : (
-                    // Derived: disabled control + teaching hint (the 422 stays the
-                    // authoritative guard; this just stops the confused click).
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span tabIndex={0} className="inline-flex">
-                          <Button variant="ghost" size="sm" className="gap-1 pointer-events-none text-muted-foreground" disabled>
-                            <Lock className="h-3.5 w-3.5" /> {needsForecast ? 'Run forecast first' : 'Auto-generated'}
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-[220px]">{derivedHint}</TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-                {isRewriting ? (
-                  <div className="space-y-2" aria-busy="true">
-                    <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
-                    <div className="h-4 w-full rounded bg-muted animate-pulse" />
-                    <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Rewriting this section…</div>
-                  </div>
-                ) : editing === s.id ? (
-                  <div className="space-y-2">
-                    <Textarea rows={4} value={editDraft} onChange={(e) => setEditDraft(e.target.value)} className="text-sm" disabled={saving} />
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs">
-                        {saving && <span className="flex items-center gap-1 text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Saving…</span>}
-                        {saveError && <span className="text-destructive">{editState?.message}</span>}
-                      </span>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => { setEditing(null); setEditState(null); }} disabled={saving}>Cancel</Button>
-                        <Button size="sm" onClick={() => saveEdit(s.id)} disabled={saving}>Save</Button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{s.body || <span className="italic">Not generated yet.</span>}</p>
-                    <SectionExtras id={s.id} bp={bpOutput} />
-                    {saved && <span className="flex items-center gap-1 text-xs text-success-text"><Check className="h-3 w-3" /> Saved</span>}
-                    {saveError && <span className="text-xs text-destructive">{editState?.message}</span>}
-                  </>
+            <p className="text-sm text-muted-foreground font-sans leading-relaxed">
+              {startError?.kind === 'credits'
+                ? "You've used all your AI credits."
+                : 'We will synthesize an 11-section investor-ready document from your clarified idea and venture core.'}
+            </p>
+            {startError && startError.kind !== 'credits' && (
+              <div className="space-y-2">
+                <p className="text-sm text-destructive">{startError.message}</p>
+                {(startError.kind === 'service' || startError.kind === 'rateLimited') && (
+                  <Button variant="outline" size="sm" onClick={handleStart} disabled={startBp.isPending} className="gap-1.5">
+                    <RotateCw className="h-3.5 w-3.5" /> Try again
+                  </Button>
                 )}
               </div>
-              )}
-            </Card>
-            );
-          })}
+            )}
+            <div className="flex items-center justify-between border-t border-border pt-4 mt-4">
+              <Button
+                variant="ghost"
+                onClick={() => router.push('/dashboard/creator/phase-3/business-model')}
+                className="text-xs font-bold text-muted-foreground font-sans"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Business Model
+              </Button>
+              <Button
+                onClick={handleStart}
+                disabled={startBp.isPending || startError?.kind === 'credits' || insufficientCredits}
+                className="gap-2 font-sans font-semibold"
+              >
+                {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                Generate plan{planCost > 0 ? ` (${planCost} credits)` : ''}
+              </Button>
+            </div>
+            {insufficientCredits && (
+              <p className="text-xs font-medium text-destructive">
+                Insufficient credits: requires {planCost} credits (you have {credits.data?.balance ?? 0}).
+              </p>
+            )}
+          </Card>
+        )}
 
-          {/* operationsPlan + risks — read-only appendices (not among the 9 sections). */}
-          <PlanAppendices bp={bpOutput} />
-
-          <div className="flex items-center justify-between border-t border-border pt-6 mt-8">
-            <Button variant="ghost" size="lg" onClick={() => router.push('/dashboard/creator/phase-3/business-model')}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
-            <Button onClick={handleNext} size="lg" className="gap-2">Process to Forecast <ArrowRight className="w-5 h-5" /></Button>
+        {bpSessionId && session.phase === 'polling' && !rewriting && (
+          <div className="space-y-4 max-w-4xl mx-auto py-8">
+            <div className="flex items-center justify-center gap-3 text-sm font-medium text-foreground py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              Synthesizing 11-section business plan across market, operations, and financials…
+            </div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-28 w-full rounded-2xl border border-border bg-card/60 animate-pulse" />
+            ))}
           </div>
-        </div>
-      )}
-    </Phase3SetupShell>
+        )}
+
+        {bpSessionId && session.phase === 'timedout' && (
+          <div className="flex flex-col items-center gap-3 py-16 text-center max-w-md mx-auto">
+            <FileWarning className="h-10 w-10 text-warning" />
+            <h3 className="font-bold text-base">Generation timed out</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              This generation is taking longer than expected. The job may still finish in the background.
+            </p>
+            <Button variant="outline" onClick={session.retry} className="gap-2 mt-2">
+              <RotateCw className="h-4 w-4" /> Check Status
+            </Button>
+          </div>
+        )}
+
+        {bpSessionId && session.isError && session.phase !== 'polling' && (
+          <div className="flex flex-col items-center gap-3 py-16 text-center max-w-md mx-auto">
+            <AlertTriangle className="h-10 w-10 text-destructive" />
+            <h3 className="font-bold text-base text-destructive">Unable to load business plan</h3>
+            <p className="text-sm text-muted-foreground">An error occurred while retrieving the session data.</p>
+            <Button variant="outline" onClick={session.retry} className="gap-2 mt-2">
+              <RotateCw className="h-4 w-4" /> Retry
+            </Button>
+          </div>
+        )}
+
+        {terminalFailed && (
+          <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl mx-auto shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <h3 className="font-bold text-base font-sans">
+                {startError?.kind === 'credits' || failedIsCredits
+                  ? "You've used all your AI credits"
+                  : 'We couldn’t generate your business plan'}
+              </h3>
+            </div>
+            <p className="text-sm text-muted-foreground font-sans leading-relaxed">
+              {startError?.kind === 'credits' || failedIsCredits
+                ? "You've used all your AI credits."
+                : failedIsProviderBilling
+                ? 'The AI service is temporarily unavailable on our side. Your credits have been safeguarded — please try again shortly.'
+                : 'The AI service was temporarily unavailable (provider rate limit or timeout). Please try generating again.'}
+            </p>
+            {startError && startError.kind !== 'credits' && (
+              <div className="space-y-1">
+                <p className="text-sm text-destructive">{startError.message}</p>
+              </div>
+            )}
+            <Button
+              onClick={handleStart}
+              disabled={startBp.isPending || startError?.kind === 'credits' || failedIsCredits}
+              className="gap-2 font-sans font-semibold"
+            >
+              {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Generate again
+            </Button>
+          </Card>
+        )}
+
+        {showDocument && (
+          <div className="space-y-6">
+            {/* Header Document Controls Card */}
+            <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5 flex-1">
+                  <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-base sm:text-lg text-foreground font-sans">
+                      {project.name || 'Venture'} — Comprehensive Business Plan
+                    </h2>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap font-sans">
+                      <span className="font-mono text-foreground/80 font-medium">Version {currentVersion || 1}</span>
+                      <span>•</span>
+                      <span>11 Continuous Sections</span>
+                      <span>•</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                        <Check className="h-3.5 w-3.5" /> Investor Document Format
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowExport(true)}
+                    className="gap-2 font-sans text-xs font-semibold rounded-xl"
+                  >
+                    <FileDown className="h-4 w-4" /> Export Document (PDF)
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
+            {/* Main Document Layout: Sticky Sidebar Index + Continuous Document Canvas */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Sticky Sidebar Index */}
+              <aside className="hidden lg:block lg:col-span-4 sticky top-24 space-y-3">
+                <Card className="rounded-2xl border border-border bg-card/90 backdrop-blur p-4 shadow-sm">
+                  <div className="flex items-center justify-between pb-3 mb-2 border-b border-border/70">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans flex items-center gap-1.5">
+                      <Layers className="h-3.5 w-3.5" /> Document Index
+                    </h3>
+                    <span className="text-[11px] font-mono text-muted-foreground">11 Sections</span>
+                  </div>
+                  <nav className="space-y-1">
+                    {sections.map((s) => {
+                      const isActive = activeSectionId === s.id;
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => scrollToSection(s.id)}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-between group ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className={`font-mono text-[11px] ${isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                              {s.number}
+                            </span>
+                            <span className="truncate">{s.title}</span>
+                          </div>
+                          {s.ownership === 'external_linked' && (
+                            <ExternalLink className={`h-3 w-3 shrink-0 opacity-60 ${isActive ? 'text-primary-foreground' : ''}`} />
+                          )}
+                          {s.edited && (
+                            <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-primary-foreground' : 'bg-primary'} shrink-0`} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </Card>
+              </aside>
+
+              {/* Continuous Document Canvas */}
+              <main className="lg:col-span-8 space-y-6">
+                {startError && (
+                  <div className="p-3.5 rounded-xl bg-destructive/10 text-destructive text-sm border border-destructive/20 font-sans">
+                    {startError.message}
+                  </div>
+                )}
+
+                <Card className="rounded-2xl border border-border bg-card shadow-sm p-6 sm:p-8 space-y-10">
+                  {sections.map((s, idx) => {
+                    const isRewriting = rewriting?.sectionId === s.id;
+                    const isEditing = editing === s.id;
+                    const saving = editState?.id === s.id && editState.state === 'saving';
+                    const saved = editState?.id === s.id && editState.state === 'saved';
+                    const saveError = editState?.id === s.id && editState.state === 'error';
+
+                    return (
+                      <section
+                        key={s.id}
+                        id={`doc-section-${s.id}`}
+                        data-section-anchor={s.id}
+                        className={`space-y-3.5 scroll-mt-24 ${idx > 0 ? 'pt-8 border-t border-border/60' : ''}`}
+                      >
+                        {/* Section Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <span className="font-mono text-xs font-bold text-primary px-2 py-0.5 rounded bg-primary/10">
+                              {s.number}
+                            </span>
+                            <h3 className="font-bold text-base sm:text-lg text-foreground font-sans tracking-tight">
+                              {s.title}
+                            </h3>
+                            {s.ownership === 'owned_editable' && (
+                              <Badge variant="outline" className="text-[10px] font-sans font-medium text-muted-foreground">
+                                Direct Editable
+                              </Badge>
+                            )}
+                            {s.ownership === 'external_linked' && (
+                              <Badge variant="secondary" className="text-[10px] font-sans font-medium gap-1 text-primary">
+                                <ExternalLink className="h-2.5 w-2.5" /> {s.sourceLabel}
+                              </Badge>
+                            )}
+                            {s.ownership === 'external_scheduled' && (
+                              <Badge variant="outline" className="text-[10px] font-sans font-medium text-amber-600 dark:text-amber-400 border-amber-500/30">
+                                Phase 5 Scope
+                              </Badge>
+                            )}
+                            {s.ownership === 'owned_full_plan' && (
+                              <Badge variant="outline" className="text-[10px] font-sans font-medium text-muted-foreground">
+                                Full Plan Synthesis
+                              </Badge>
+                            )}
+                            {s.edited && (
+                              <Badge variant="outline" className="text-[10px] font-sans font-medium gap-1 border-primary/40 text-primary">
+                                <Pencil className="h-2.5 w-2.5" /> User Edited
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Section Action Controls */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {s.ownership === 'owned_editable' && !isEditing && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={isRewriting || saving}
+                                  onClick={() => {
+                                    setEditing(s.id);
+                                    setEditDraft(s.body);
+                                    setEditState(null);
+                                  }}
+                                  className="h-8 text-xs gap-1.5 font-sans font-medium text-muted-foreground hover:text-foreground"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" /> Edit
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={isRewriting || saving}
+                                  onClick={() => handleRewrite(s.id)}
+                                  className="h-8 text-xs gap-1.5 font-sans font-medium text-primary hover:text-primary/90"
+                                >
+                                  <Sparkles className="h-3.5 w-3.5" /> AI Rewrite
+                                </Button>
+                              </>
+                            )}
+
+                            {s.ownership === 'external_linked' && s.sourceRoute && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.push(s.sourceRoute!)}
+                                className="h-8 text-xs gap-1.5 font-sans font-medium text-muted-foreground hover:text-foreground rounded-lg"
+                              >
+                                Edit at Source <ChevronRight className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Section Content Rendering */}
+                        {isRewriting ? (
+                          <div className="space-y-2 py-3" aria-busy="true">
+                            <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+                            <div className="h-4 w-full rounded bg-muted animate-pulse" />
+                            <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
+                            <div className="flex items-center gap-2 text-xs text-primary font-medium pt-1">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Rewriting {s.title} with AI…
+                            </div>
+                          </div>
+                        ) : isEditing ? (
+                          <div className="space-y-2.5 pt-1">
+                            <Textarea
+                              rows={5}
+                              value={editDraft}
+                              onChange={(e) => setEditDraft(e.target.value)}
+                              className="text-sm font-sans leading-relaxed resize-y focus-visible:ring-1"
+                              disabled={saving}
+                              placeholder={`Enter updated ${s.title.toLowerCase()} content…`}
+                            />
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-xs">
+                                {saving && (
+                                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving changes…
+                                  </span>
+                                )}
+                                {saveError && <span className="text-destructive font-medium">{editState?.message}</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditing(null);
+                                    setEditState(null);
+                                  }}
+                                  disabled={saving}
+                                  className="text-xs"
+                                >
+                                  Cancel
+                                </Button>
+                                <Button size="sm" onClick={() => saveEdit(s.id)} disabled={saving} className="text-xs font-semibold">
+                                  Save Section
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5">
+                            {s.body ? (
+                              <p className="text-sm text-foreground/90 leading-relaxed font-sans whitespace-pre-line">
+                                {s.body}
+                              </p>
+                            ) : (
+                              <p className="text-sm text-muted-foreground italic font-sans">
+                                Content not generated yet.
+                              </p>
+                            )}
+
+                            {/* Section Explanatory Note for External & Scheduled Sections */}
+                            {s.explanation && (
+                              <div className="flex items-start gap-2 rounded-xl bg-muted/40 border border-border/50 p-3 text-xs text-muted-foreground font-sans mt-2">
+                                <Info className="h-4 w-4 shrink-0 text-muted-foreground/80 mt-0.5" />
+                                <span>{s.explanation}</span>
+                              </div>
+                            )}
+
+                            {/* Render Detailed Structured Sub-Arrays & Appendices */}
+                            <SectionExtras id={s.id} bp={bpOutput} />
+
+                            {saved && (
+                              <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                <Check className="h-3.5 w-3.5" /> Section saved successfully
+                              </span>
+                            )}
+                            {saveError && <span className="text-xs text-destructive font-medium">{editState?.message}</span>}
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })}
+                </Card>
+
+                {/* Bottom Stepper Navigation */}
+                <div className="flex items-center justify-between border-t border-border pt-6 mt-8">
+                  <Button
+                    variant="ghost"
+                    size="lg"
+                    onClick={() => router.push('/dashboard/creator/phase-3/business-model')}
+                    className="font-sans font-semibold gap-1.5"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Back to Business Model
+                  </Button>
+                  <Button onClick={handleNext} size="lg" className="gap-2 font-sans font-semibold">
+                    Proceed to Financial Forecast <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </main>
+            </div>
+          </div>
+        )}
+      </Phase3SetupShell>
     </>
   );
 }

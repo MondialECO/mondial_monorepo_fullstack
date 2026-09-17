@@ -162,8 +162,8 @@ namespace WebApp.Services.Repository.Ai
                 Version = nextVersion,
                 GeneratedContent = content,
                 Content = (BsonDocument)content.DeepClone(), // editable copy starts == generated
-                RequestId = requestId,
-                IsEdited = false,
+                RequestId = ObjectId.TryParse(requestId, out _) ? requestId : null,
+                IsEdited = requestId == "manual-edit",
                 CreatedAt = now,
                 UpdatedAt = now,
             };

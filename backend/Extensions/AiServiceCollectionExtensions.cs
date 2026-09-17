@@ -47,6 +47,7 @@ public static class AiServiceCollectionExtensions
         services.AddSingleton<AiFeedbackRepository>();
         services.AddSingleton<AiInsightRepository>();
         services.AddSingleton<AiCreditLedgerRepository>();
+        services.AddSingleton<AiReconciliationAuditRepository>();
 
         // ---- Phase 2 Discovery: Idea Generator (source-of-truth session store) ----
         services.AddSingleton<Services.Repository.Ai.IIdeaGenerationSessionRepository, Services.Repository.Ai.IdeaGenerationSessionRepository>();
@@ -105,6 +106,9 @@ public static class AiServiceCollectionExtensions
 
         // ---- Operational: idempotent starter-credit backfill (Phase 7) ----
         services.AddScoped<Services.Ai.IAiCreditSeeder, Services.Ai.AiCreditSeeder>();
+
+        // ---- Tier 2: AI Startup Reconciliation (Report-Only) ----
+        services.AddHostedService<Services.Ai.Reconciliation.AiStartupReconciliationService>();
 
         // ---- Durable legacy-job persistence (dedicated BackgroundJobs collection) ----
         // Singleton to match the IMongoDatabase lifetime and create indexes once.
