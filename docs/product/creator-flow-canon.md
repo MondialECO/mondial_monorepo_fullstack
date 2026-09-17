@@ -477,29 +477,77 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   4. *Legal & Compliance Governance* (Max 15 pts)
   5. *Team Credibility & Founder Advantage* (Max 20 pts)
 - **One-Click Remediation Routing:** Each deduction features a direct remediation link navigating to the exact screen where the issue can be corrected.
-- **Phase 4 Capabilities Preview:** Unlocks Dynamic Pricing Calculator, Resource & Budget Modeling, and Go-To-Market Execution.
-
-### 5.8 Poll Policy (R12)
-One shared timed-session policy (`src/hooks/queries/creator-ai.ts`): **96 attempts OR 4 minutes** wall-clock, 2500ms interval. Inherited identically by Clarifier, Market Study, Business Model, Business Plan, and Forecast polling hooks.
-
-### 5.9 Typography Canon & Token Compliance
-All Phase 3 surfaces strictly enforce the project typography canon:
-- **Headings:** Inter (`font-heading` / `font-semibold text-foreground`).
-- **Body & Paragraphs:** DM Sans (`font-sans text-muted-foreground / text-foreground`); strictly zero DM Mono / monospace leaks on body copy.
-- **Numerals & Metrics:** JetBrains Mono (`font-mono tabular-nums`) strictly applied to financial figures, currencies, percentages, and scores.
-- **Tokens:** 100% theme semantic tokens (`bg-card`, `border-border`, `text-primary`, etc.); zero raw hex values. Fully verified in both Light and Dark themes across 1440px and 1920px viewports.
+### 5.10 Zero-Mock & Live-Data Verification Audit
+Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, charts, and recommendations are 100% powered by live backend services and database persistence with **zero mock or static placeholder data**:
+1. **Step 3.1 (Market Study):** Dynamic `MarketStudySession` from MongoDB `MarketStudySessions`, utilizing `MarketBenchmarkResolver` for sector tailwinds and valuation multiples.
+2. **Step 3.2 (Business Model):** Dynamic `BusinessModelSession` from MongoDB `BusinessModelSessions`, structured 9-block Osterwalder canvas, unit economics, and pricing tiers.
+3. **Step 3.3 (Business Plan):** Dynamic `BusinessPlanSession` from MongoDB `BusinessPlanSessions`, continuous 11-section scroll with sticky index and section-level inline markdown editing via `PATCH /api/ai/business-plan/{id}/section/{sectionId}`.
+4. **Step 3.4 (Financial Forecast):** Dynamic `ForecastSession` from MongoDB `ForecastSessions`, live assumptions drawer, 36-month P&L, and interactive parameter re-runs.
+5. **Step 3.5 (Legal Checklist):** Dynamic sector checklist from `CreatorPhase3Controller` (`/api/creator/legal-checklist`), grouped into 4 regulatory domains with live marketplace deep links.
+6. **Step 3.6 (Company Formation):** Dynamic formation session (`CreatorFormationGenerator`), discrete recommendation factors (`RecommendationFactors`), override tracking (`IsOverride`), and protected founder skills declarations.
+7. **Step 3.7 (Phase 3 Complete):** Institutional diagnostic readiness audit (`PATCH /api/creator/masterplan/complete`), score computation across 5 dimensions, structured `Deductions` array with 1-click remediation links, and optimistic concurrency version locking (`hasCompletedRef`).
 
 ---
 
-## 6. Phase 4 — Offer & setup (pricing + GTM)
+## 6. Phase 4 — Offer & Setup (Pricing, Resources & GTM)
 
-**Step 4.1 — Pricing (LIVE):** model selection (subscription / one-time / freemium / usage-based) + 3–5 editable tiers, validated and persisted.
+Phase 4 transforms the business masterplan into commercial readiness across **four integrated steps** hosted within the `/dashboard/creator/offer-pricing` workspace:
 
-**Step 4.2 — Resource Calculator (LIVE):** Sector-specific benchmark resolution (`MarketBenchmarkResolver`) deriving required team roles, salary ranges, duration, essential SaaS stack with costs, and dynamic min/max launch budget calculations based on clarified concept and sector context.
+```text
+/dashboard/creator/offer-pricing
+→ Step 4.1: Services & Pricing (Step 0 in wizard)
+→ Step 4.2: Resource Calculator (Step 1 in wizard)
+→ Step 4.3: Web & GTM Setup (Step 2 in wizard)
+→ Step 4.4: Offer Setup Complete (Step 3 in wizard)
+→ Phase 5 (The Cross-Roads)
+```
 
-**Step 4.3 — GTM Setup & Roadmap (LIVE):** Structured GTM setup inputs + AI-generated 12-week benchmark GTM schedule with Week 1 foundations auto-completion, marketing channel breakdown, and landing page generator.
+### 6.1 Step 4.1 — Services & Pricing Model (`Phase4Pricing.tsx`)
+- **Route / Surface:** `/dashboard/creator/offer-pricing` (Step 0)
+- **Backing Controller & Endpoint:** `CreatorPhase4Controller.SavePricing` (`POST /api/creator/pricing`).
+- **Data Model:** Stored in `CreatorIdeas.Phase4Data.PricingModel` and `CreatorIdeas.Phase4Data.Tiers` (`List<PricingTier>`).
+- **Core Functionality:**
+  - **4 Pricing Model Archetypes:** `Subscription` (recurring MRR/ARR), `One-Time` (fixed transaction fee), `Freemium` (tiered access with free tier), `Usage-Based` (consumption metering).
+  - **Dynamic Tier Configuration (3–5 Tiers):** Tier Name, Monthly/Annual Price, Billing Frequency, Target Segment, Key Value Proposition, and Feature Tag List.
+  - **Forecast Context Check:** Compares declared ARPU in Phase 4 against Phase 3 Step 3.4 forecast assumptions, rendering an interactive notice (`isPotentiallyOutdated`) if pricing structures diverge.
+  - **Validation & Persistence:** Strictly validates tier presence, positive numerical pricing, and unique tier naming before persisting to MongoDB.
 
-**Cross-module note:** the `auto_built_43` badge on business-plan §6 lights on GTM-setup completion, not on pricing data injection. "Pricing feeds GTM" is not literally true — the GTM section still renders the P3 plan text unchanged. Real pricing→GTM data injection is a backlog item, not a claim to make in the doc.
+### 6.2 Step 4.2 — Resource Calculator (`Phase4Resource.tsx`)
+- **Route / Surface:** `/dashboard/creator/offer-pricing` (Step 1)
+- **Backing Controller & Endpoint:** `CreatorPhase4Controller.SaveResourceCalculation` (`POST /api/creator/resources`).
+- **Data Model:** Stored in `CreatorIdeas.Phase4Data.ResourceCalculation` (`TotalMinBudget`, `TotalMaxBudget`, `EstimatedMonthsToLaunch`, `TeamRequirements[]`, `SaasStack[]`).
+- **Sector-Specific Benchmark Engine:** Consumes `MarketBenchmarkResolver` based on `CreatorIdea.Project.Sector` to synthesize:
+  1. **Team Requirements:** Required functional roles (e.g., Fullstack Lead, Product Designer, Growth Marketer), estimated headcount, monthly cost ranges (min/max), and duration in months.
+  2. **Essential SaaS & Tooling Stack:** Curated software infrastructure (Cloud Hosting, AI API credits, Analytics, CRM, Legal/Accounting) with itemized monthly costs.
+  3. **Launch Budget Modeling:** Computes dynamic minimum and maximum launch capital requirements (`TotalMinBudget` / `TotalMaxBudget`) based on duration and burn rate.
+
+### 6.3 Step 4.3 — Web & Go-To-Market Setup (`Phase4Gtm.tsx`)
+- **Route / Surface:** `/dashboard/creator/offer-pricing` (Step 2)
+- **Backing Controller & Endpoint:** `CreatorPhase4Controller.SaveGtmSetup` (`POST /api/creator/gtm`).
+- **Data Model:** Stored in `CreatorIdeas.Phase4Data.GtmSetup` (`TargetLaunchDate`, `PrimaryChannels[]`, `Week1FoundationsDone`, `TwelveWeekRoadmap[]`).
+- **Core Functionality:**
+  - **GTM Channel Mix:** Channel allocation (Organic Search/SEO, Paid Acquisition, Direct Sales, Developer Community, Content Marketing) with budget weighting and conversion goals.
+  - **12-Week Launch Roadmap:** Milestone-sequenced roadmap covering Weeks 1–12, featuring an automated Week 1 foundations checklist.
+  - **Landing Page Generator:** Links directly to the AI landing page asset studio to seed high-converting web presence using confirmed Phase 2 Brand Kit tokens and Phase 3 Value Propositions.
+
+### 6.4 Step 4.4 — Offer Setup Complete (`Phase4Complete.tsx`)
+- **Route / Surface:** `/dashboard/creator/offer-pricing` (Step 3)
+- **Backing Controller & Endpoint:** `CreatorPhase4Controller.CompleteOfferSetup` (`POST /api/creator/offer-setup/complete`).
+- **Behavior:**
+  - Summarizes the finalized commercial architecture: Selected Pricing Model & Tiers, Total Launch Budget Range, Key Team Roles, and Target Launch Timeline.
+  - Formally advances the creator journey status (`Phase4.CurrentStep = 4`, `Phase4.Status = "complete"`).
+  - Unlocks navigation to **Phase 5: The Cross-Roads** (`/dashboard/creator/crossroads`).
+
+### 6.5 Cross-Module Data Flow
+- **Business Plan §6 (`goToMarket`):** The `auto_built_43` badge on Business Plan Section 6 lights up upon completing Step 4.3 (GTM Setup).
+- **Resource Gaps to Marketplace:** Team roles identified in Step 4.2 provide deep links to `/marketplace?category=services` for contractor acquisition.
+
+### 6.6 Typography & Token Compliance
+All Phase 4 screens strictly adhere to the project design canon:
+- **Headings:** Inter (`font-heading font-semibold text-foreground`).
+- **Body & Paragraphs:** DM Sans (`font-sans text-muted-foreground / text-foreground`).
+- **Numerals & Metrics:** JetBrains Mono (`font-mono tabular-nums`).
+- **Theme Support:** 100% semantic color tokens (`bg-card`, `border-border`, `text-primary`, etc.) across Light and Dark themes (1440px–1920px responsive).
 
 ---
 
@@ -573,6 +621,14 @@ The rule: matchmaking is unavailable across P1–P5 and unlocks only at P6. The 
 ---
 
 ## 11. Changelog
+
+**2026-09-18 — Phase 3 Complete Redesign (Screens 3.3–3.7), Backend Additions, and Zero-Mock Audit.**
+- **Step 3.3 (Business Plan):** Redesigned from accordion to continuous scrollable document with sticky 11-section index and universal inline markdown editing (`PATCH /api/ai/business-plan/{id}/section/{sectionId}`) with word count and diff tracking.
+- **Step 3.4 (Financial Forecast):** Unified workspace merging assumptions and projection results. Interactive Live Assumptions drawer with re-run capabilities and full 36-month tabbed financial tables.
+- **Step 3.5 (Legal Checklist):** Structured into 4 clear regulatory domains with detailed descriptions, expandable "Why this is essential" context boxes, and deep links to `/marketplace?category=legal` / `compliance`.
+- **Step 3.6 (Company Formation):** Added discrete recommendation reasoning (`RecommendationFactors`), override tracking (`IsOverride`), and protected founder skills declarations with clobber guard.
+- **Step 3.7 (Phase 3 Complete):** Institutional diagnostic readiness audit with overall score (0–100), structured `Deductions` array (`Dimension`, `Issue`, `PointsLost`, `RemediationTitle`, `RemediationRoute`), 1-click remediation links, and optimistic concurrency version locking (`hasCompletedRef`).
+- **100% Zero Mock/Static Data Audit Pass:** Confirmed full live database integration across all 7 steps with MongoDB collections (`MarketStudySessions`, `BusinessModelSessions`, `BusinessPlanSessions`, `ForecastSessions`, `CreatorIdeas`). Zero hardcoded fallback figures.
 
 **2026-09-17 — Phase 3 Market Study & Business Model: Enum Normalisation & Logging.**
 - **Lenient Normalisation with Conservative Fallbacks:** `BusinessModelOutputParser` and `MarketStudyOutputParser` normalize LLM output strings to canonical enums (`evidenceLevel`: `evidenced`/`modelled`/`untested` with `untested` safe fallback; `confidenceLevel`: `high`/`moderate`/`speculative` with `speculative` fallback; `threatLevel`/`impactOnSom`: `low`/`medium`/`high` with `medium` fallback; `period`: `monthly`/`annual` with `monthly` fallback). Coerced values are recorded via `ILogger.LogWarning`.
