@@ -63,6 +63,7 @@ function useTimedSession<T extends { status: AiSessionStatus }>(
   const [timedOut, setTimedOut] = useState(false);
   const startRef = useRef<number | null>(null);
   const attemptsRef = useRef(0);
+  const lastSeenStatusRef = useRef<AiSessionStatus | null>(null);
   /** Guards one-shot credit invalidation per session. */
   const creditInvalidatedRef = useRef<string | null>(null);
 
@@ -71,6 +72,8 @@ function useTimedSession<T extends { status: AiSessionStatus }>(
     startRef.current = sessionId ? Date.now() : null;
     attemptsRef.current = 0;
     setTimedOut(false);
+    lastSeenStatusRef.current = null;
+    creditInvalidatedRef.current = null;
   }, [sessionId]);
 
   const query = useQuery<T>({
@@ -80,7 +83,19 @@ function useTimedSession<T extends { status: AiSessionStatus }>(
     refetchOnWindowFocus: false,
     refetchInterval: (q) => {
       const status = q.state.data?.status;
-      if (isTerminalStatus(status)) return false;
+      if (isTerminalStatus(status)) {
+        lastSeenStatusRef.current = status ?? null;
+        return false;
+      }
+      // If we observed a transition from a terminal status back to active (e.g. regenerate triggered)
+      if (lastSeenStatusRef.current && isTerminalStatus(lastSeenStatusRef.current) && !isTerminalStatus(status)) {
+        startRef.current = Date.now();
+        attemptsRef.current = 0;
+        setTimedOut(false);
+        creditInvalidatedRef.current = null;
+      }
+      lastSeenStatusRef.current = status ?? null;
+
       attemptsRef.current += 1;
       const elapsed = startRef.current ? Date.now() - startRef.current : 0;
       if (attemptsRef.current >= POLL_MAX_ATTEMPTS || elapsed >= POLL_MAX_MS) {
@@ -90,6 +105,20 @@ function useTimedSession<T extends { status: AiSessionStatus }>(
       return POLL_INTERVAL_MS;
     },
   });
+
+  // Track status changes outside refetchInterval (e.g. initial fetch or query invalidation)
+  useEffect(() => {
+    const currentStatus = query.data?.status;
+    if (!currentStatus) return;
+
+    if (lastSeenStatusRef.current && isTerminalStatus(lastSeenStatusRef.current) && !isTerminalStatus(currentStatus)) {
+      startRef.current = Date.now();
+      attemptsRef.current = 0;
+      setTimedOut(false);
+      creditInvalidatedRef.current = null;
+    }
+    lastSeenStatusRef.current = currentStatus;
+  }, [query.data?.status]);
 
   // When the session reaches a terminal state, refresh the credit balance
   // so the badge reflects any refund (Failed) or confirms the debit (Completed).
@@ -109,6 +138,7 @@ function useTimedSession<T extends { status: AiSessionStatus }>(
     startRef.current = Date.now();
     attemptsRef.current = 0;
     setTimedOut(false);
+    creditInvalidatedRef.current = null;
     void query.refetch();
   };
 

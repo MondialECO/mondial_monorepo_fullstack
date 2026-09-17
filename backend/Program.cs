@@ -313,7 +313,7 @@ builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
 // Busess ideas, investments, transactions services and repositories
 builder.Services.AddScoped<IBusinessIdeasService, BusinessIdeasService>();
-builder.Services.AddScoped<BusinessIdeasRepository>();
+builder.Services.AddSingleton<BusinessIdeasRepository>();
 
 // Multi-idea Creator foundation (STEP 1, additive). Repo owns its collection + indexes
 // (session-repo pattern); singleton so indexes are created once. Nothing reads it yet.
@@ -348,23 +348,23 @@ builder.Services.AddScoped<WebApp.Services.Migrations.IDealLifecycleReconciliati
 
 // Investments
 builder.Services.AddScoped<IInvestmentsService, InvestmentsService>();
-builder.Services.AddScoped<InvestmentsRepository>();
+builder.Services.AddSingleton<InvestmentsRepository>();
 
 // Transactions
 builder.Services.AddScoped<ITransactionsService, TransactionsService>();
-builder.Services.AddScoped<TransactionsRepository>();
+builder.Services.AddSingleton<TransactionsRepository>();
 
 // Web Push service and repositories
 builder.Services.AddScoped<IPushSubscriptionEntity, PushSubscriptionEntityService>();
-builder.Services.AddScoped<PushSubscriptionEntityRepository>();
+builder.Services.AddSingleton<PushSubscriptionEntityRepository>();
 
 // Chat services and repositories
-builder.Services.AddScoped<MessagesRepository>();
-builder.Services.AddScoped<ConversationRepository>();
+builder.Services.AddSingleton<MessagesRepository>();
+builder.Services.AddSingleton<ConversationRepository>();
 builder.Services.AddScoped<IChatService, ChatService>();
 // Notification services and repositories
 builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<NotificationRepository>();
+builder.Services.AddSingleton<NotificationRepository>();
 // Web Push service
 builder.Services.AddScoped<WebPushService>();
 

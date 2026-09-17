@@ -48,6 +48,8 @@ public class AiJobEngineIntegrationTests : IClassFixture<AppFixture>
         Services.GetRequiredService<IAiJobCompletionHandler>(),
         new IdeaGenerationSessionRepository(Db),
         Services.GetRequiredService<IClarifierSessionStore>(),
+        Services.GetRequiredService<IMarketStudySessionStore>(),
+        Services.GetRequiredService<IBusinessModelSessionStore>(),
         Services.GetRequiredService<IBusinessPlanSessionStore>(),
         Services.GetRequiredService<IForecastSessionStore>(),
         Services.GetRequiredService<IAiCreditService>(),

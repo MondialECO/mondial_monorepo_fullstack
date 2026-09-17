@@ -250,9 +250,40 @@ namespace WebApp.Controllers
             var (acquired, activeSession) = await _sessions.TryAcquireRegenerateLockAsync(sessionId, owner);
             if (!acquired)
             {
-                _logger.LogInformation("In-flight MarketStudy regenerate joined for session {SessionId} by user {UserId}.",
+                AiRequest? activeRequest = null;
+                if (!string.IsNullOrWhiteSpace(session.RequestId))
+                {
+                    activeRequest = await _jobService.GetStatusAsync(session.RequestId, owner);
+                }
+
+                var isGenuinelyInFlight = activeRequest != null &&
+                    (string.Equals(activeRequest.Status, "Pending", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(activeRequest.Status, "Processing", StringComparison.OrdinalIgnoreCase));
+
+                if (isGenuinelyInFlight)
+                {
+                    _logger.LogInformation("In-flight MarketStudy regenerate rejected (already running) for session {SessionId} by user {UserId}.",
+                        sessionId, owner);
+                    return Conflict(ApiResponse.Error("A market study generation is already in progress for this session.", HttpContext.TraceIdentifier));
+                }
+
+                _logger.LogWarning("Orphaned MarketStudy session {SessionId} detected during regenerate by user {UserId}; releasing stale lock.",
                     sessionId, owner);
-                return Ok(ApiResponse.Ok("Market study regeneration started.", new { sessionId = activeSession!.Id, jobId = activeSession.RequestId }));
+
+                if (session.Versions != null && session.Versions.Count > 0)
+                {
+                    await _sessions.ReleaseLockAsync(sessionId, "Completed");
+                }
+                else
+                {
+                    await _sessions.SetFailedAsync(sessionId, activeRequest?.Error ?? "Previous generation was interrupted.");
+                }
+
+                (acquired, activeSession) = await _sessions.TryAcquireRegenerateLockAsync(sessionId, owner);
+                if (!acquired)
+                {
+                    return Conflict(ApiResponse.Error("Unable to acquire regeneration lock. Please retry.", HttpContext.TraceIdentifier));
+                }
             }
 
             var operationId = ObjectId.GenerateNewId().ToString();
