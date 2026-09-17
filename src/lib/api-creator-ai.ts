@@ -1,5 +1,5 @@
 /**
- * Creator AI client — C-2 Idea Clarifier, C-3 Business Plan, C-4 Forecast.
+ * Creator AI client — C-2 Idea Clarifier, Phase 3.1 Market Study, Phase 3.2 Business Model, C-3 Business Plan, C-4 Forecast.
  *
  * These controllers wrap responses in the shared `ApiResponse` envelope
  * ({ success, message, data, traceId }), so we unwrap `res.data.data` here
@@ -11,14 +11,18 @@ import api from "@/lib/axios";
 import { getCreatorWorkspaceIdea } from "@/lib/api-creator-journey";
 import type {
   AiCreditBalance,
+  BusinessModelSession,
   BusinessPlanSession,
   ClarifierSession,
   ForecastSession,
   IdeaGenerationSession,
+  MarketStudySession,
+  StartBusinessModelRequest,
   StartBusinessPlanRequest,
   StartClarifierRequest,
   StartForecastRequest,
   StartIdeaGenerationRequest,
+  StartMarketStudyRequest,
   StartSessionResult,
 } from "@/types/creator/ai";
 
@@ -71,6 +75,72 @@ export const creatorAiApi = {
       params: businessIdeaId ? { businessIdeaId } : undefined,
     });
     return unwrap<ClarifierSession[]>(res.data) ?? [];
+  },
+
+  // ---------- Phase 3.1 Market Study ----------
+  startMarketStudy: async (
+    payload: StartMarketStudyRequest,
+  ): Promise<StartSessionResult> => {
+    const res = await api.post("/ai/market-study", payload);
+    return unwrap<StartSessionResult>(res.data);
+  },
+
+  getMarketStudy: async (sessionId: string): Promise<MarketStudySession> => {
+    const res = await api.get(`/ai/market-study/${sessionId}`);
+    return unwrap<MarketStudySession>(res.data);
+  },
+
+  listMarketStudies: async (
+    clarifierSessionId?: string,
+    businessIdeaId?: string,
+  ): Promise<MarketStudySession[]> => {
+    const res = await api.get("/ai/market-study", {
+      params: {
+        ...(clarifierSessionId ? { clarifierSessionId } : {}),
+        ...(businessIdeaId ? { businessIdeaId } : {}),
+      },
+    });
+    return unwrap<MarketStudySession[]>(res.data) ?? [];
+  },
+
+  regenerateMarketStudy: async (
+    sessionId: string,
+  ): Promise<StartSessionResult> => {
+    const res = await api.post(`/ai/market-study/${sessionId}/regenerate`);
+    return unwrap<StartSessionResult>(res.data);
+  },
+
+  // ---------- Phase 3.2 Business Model ----------
+  startBusinessModel: async (
+    payload: StartBusinessModelRequest,
+  ): Promise<StartSessionResult> => {
+    const res = await api.post("/ai/business-model", payload);
+    return unwrap<StartSessionResult>(res.data);
+  },
+
+  getBusinessModel: async (sessionId: string): Promise<BusinessModelSession> => {
+    const res = await api.get(`/ai/business-model/${sessionId}`);
+    return unwrap<BusinessModelSession>(res.data);
+  },
+
+  listBusinessModels: async (
+    marketStudySessionId?: string,
+    businessIdeaId?: string,
+  ): Promise<BusinessModelSession[]> => {
+    const res = await api.get("/ai/business-model", {
+      params: {
+        ...(marketStudySessionId ? { marketStudySessionId } : {}),
+        ...(businessIdeaId ? { businessIdeaId } : {}),
+      },
+    });
+    return unwrap<BusinessModelSession[]>(res.data) ?? [];
+  },
+
+  regenerateBusinessModel: async (
+    sessionId: string,
+  ): Promise<StartSessionResult> => {
+    const res = await api.post(`/ai/business-model/${sessionId}/regenerate`);
+    return unwrap<StartSessionResult>(res.data);
   },
 
   // ---------- C-3 Business Plan ----------

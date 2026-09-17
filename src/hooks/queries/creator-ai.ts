@@ -12,23 +12,25 @@ import {
   isTerminalStatus,
   type AiCreditBalance,
   type AiSessionStatus,
+  type BusinessModelSession,
   type BusinessPlanSession,
   type ClarifierSession,
   type ForecastSession,
+  type MarketStudySession,
+  type StartBusinessModelRequest,
   type StartBusinessPlanRequest,
   type StartClarifierRequest,
   type StartForecastRequest,
+  type StartMarketStudyRequest,
 } from "@/types/creator/ai";
 
 // ===== ONE shared AI-session polling policy (audit R12) =====
-// Every creator AI session (Clarifier, Business Plan, Forecast, and any future
-// one) inherits this single timeout. Do NOT copy these numbers elsewhere —
-// import them.
+// Every creator AI session (Clarifier, Market Study, Business Model, Business Plan, Forecast)
+// inherits this single timeout. Do NOT copy these numbers elsewhere — import them.
 export const POLL_INTERVAL_MS = 2500;
 // Ceiling must outlast the backend worst case: Hangfire pickup (~15s) + the 120s
-// OpenRouter HTTP timeout + parse/36-month-extension/persist (~1s) ≈ 136s. 96 polls ×
-// 2500ms = 240s gives a ~100s margin so the poll never abandons a job that still
-// succeeds. Fast jobs are unaffected — every poller exits on terminal status, not the cap.
+// OpenRouter HTTP timeout + parse/persist (~1s) ≈ 136s. 96 polls × 2500ms = 240s
+// gives a ~100s margin so the poll never abandons a job that still succeeds.
 export const POLL_MAX_ATTEMPTS = 96;          // 96 polls × 2500ms ≈ 240s
 export const POLL_MAX_MS = 4 * 60 * 1000;     // …or 4 minutes wall-clock
 
@@ -184,6 +186,126 @@ export const useStartClarifier = () => {
       creatorAiApi.startClarifier(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["creator-ai", "clarifier", "list"] });
+      qc.invalidateQueries({ queryKey: creditKeys.balance });
+    },
+  });
+};
+
+// ---------- Phase 3.1 Market Study ----------
+
+export const marketStudyKeys = {
+  list: (clarifierSessionId?: string, businessIdeaId?: string) =>
+    ["creator-ai", "market-study", "list", clarifierSessionId ?? null, businessIdeaId ?? null] as const,
+  detail: (sessionId: string | null) =>
+    ["creator-ai", "market-study", "detail", sessionId] as const,
+};
+
+export const useMarketStudySessions = (clarifierSessionId?: string, businessIdeaId?: string) =>
+  useQuery<MarketStudySession[]>({
+    queryKey: marketStudyKeys.list(clarifierSessionId, businessIdeaId),
+    queryFn: () => creatorAiApi.listMarketStudies(clarifierSessionId, businessIdeaId),
+    enabled: !!clarifierSessionId || !!businessIdeaId,
+    select: byNewest,
+  });
+
+export const useMarketStudySession = (sessionId: string | null) =>
+  useQuery<MarketStudySession>({
+    queryKey: marketStudyKeys.detail(sessionId),
+    queryFn: () => creatorAiApi.getMarketStudy(sessionId as string),
+    enabled: !!sessionId,
+    refetchInterval: (query) =>
+      sessionRefetchInterval(query.state.data?.status),
+    refetchOnWindowFocus: false,
+  });
+
+/** Market Study polling with the shared R12 timeout. */
+export const useMarketStudySessionTimed = (sessionId: string | null) =>
+  useTimedSession<MarketStudySession>(
+    sessionId,
+    marketStudyKeys.detail(sessionId),
+    creatorAiApi.getMarketStudy,
+  );
+
+export const useStartMarketStudy = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: StartMarketStudyRequest) =>
+      creatorAiApi.startMarketStudy(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creator-ai", "market-study", "list"] });
+      qc.invalidateQueries({ queryKey: creditKeys.balance });
+    },
+  });
+};
+
+export const useRegenerateMarketStudy = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) =>
+      creatorAiApi.regenerateMarketStudy(sessionId),
+    onSuccess: (_, sessionId) => {
+      qc.invalidateQueries({ queryKey: marketStudyKeys.detail(sessionId) });
+      qc.invalidateQueries({ queryKey: ["creator-ai", "market-study", "list"] });
+      qc.invalidateQueries({ queryKey: creditKeys.balance });
+    },
+  });
+};
+
+// ---------- Phase 3.2 Business Model ----------
+
+export const businessModelKeys = {
+  list: (marketStudySessionId?: string, businessIdeaId?: string) =>
+    ["creator-ai", "business-model", "list", marketStudySessionId ?? null, businessIdeaId ?? null] as const,
+  detail: (sessionId: string | null) =>
+    ["creator-ai", "business-model", "detail", sessionId] as const,
+};
+
+export const useBusinessModelSessions = (marketStudySessionId?: string, businessIdeaId?: string) =>
+  useQuery<BusinessModelSession[]>({
+    queryKey: businessModelKeys.list(marketStudySessionId, businessIdeaId),
+    queryFn: () => creatorAiApi.listBusinessModels(marketStudySessionId, businessIdeaId),
+    enabled: !!marketStudySessionId || !!businessIdeaId,
+    select: byNewest,
+  });
+
+export const useBusinessModelSession = (sessionId: string | null) =>
+  useQuery<BusinessModelSession>({
+    queryKey: businessModelKeys.detail(sessionId),
+    queryFn: () => creatorAiApi.getBusinessModel(sessionId as string),
+    enabled: !!sessionId,
+    refetchInterval: (query) =>
+      sessionRefetchInterval(query.state.data?.status),
+    refetchOnWindowFocus: false,
+  });
+
+/** Business Model polling with the shared R12 timeout. */
+export const useBusinessModelSessionTimed = (sessionId: string | null) =>
+  useTimedSession<BusinessModelSession>(
+    sessionId,
+    businessModelKeys.detail(sessionId),
+    creatorAiApi.getBusinessModel,
+  );
+
+export const useStartBusinessModel = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: StartBusinessModelRequest) =>
+      creatorAiApi.startBusinessModel(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creator-ai", "business-model", "list"] });
+      qc.invalidateQueries({ queryKey: creditKeys.balance });
+    },
+  });
+};
+
+export const useRegenerateBusinessModel = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) =>
+      creatorAiApi.regenerateBusinessModel(sessionId),
+    onSuccess: (_, sessionId) => {
+      qc.invalidateQueries({ queryKey: businessModelKeys.detail(sessionId) });
+      qc.invalidateQueries({ queryKey: ["creator-ai", "business-model", "list"] });
       qc.invalidateQueries({ queryKey: creditKeys.balance });
     },
   });
