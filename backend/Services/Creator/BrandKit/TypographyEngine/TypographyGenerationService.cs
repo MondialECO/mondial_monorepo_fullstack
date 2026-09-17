@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels;
 using WebApp.Services.Ai;
 using WebApp.Services.Ai.Providers;
@@ -10,17 +12,22 @@ namespace WebApp.Services.Creator.BrandKit.TypographyEngine
 {
     public class TypographyGenerationService : ITypographyGenerationService
     {
+        public const int DefaultMaxOutputTokens = 2000;
+
         private readonly IAiProvider? _aiProvider;
         private readonly IModelRouter? _modelRouter;
+        private readonly AiSettings _settings;
         private readonly ILogger<TypographyGenerationService> _logger;
 
         public TypographyGenerationService(
             IAiProvider? aiProvider = null,
             IModelRouter? modelRouter = null,
-            ILogger<TypographyGenerationService>? logger = null)
+            ILogger<TypographyGenerationService>? logger = null,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _aiProvider = aiProvider;
             _modelRouter = modelRouter;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger ?? NullLogger<TypographyGenerationService>.Instance;
         }
 
@@ -152,6 +159,10 @@ namespace WebApp.Services.Creator.BrandKit.TypographyEngine
             var modelId = _modelRouter.Resolve("TypographyGeneration");
             var prompt = BuildPrompt(brandName, strategy, direction, currentHeading, currentBody);
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("TypographyGeneration", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             var request = new AiCompletionRequest
             {
                 Model = modelId,
@@ -161,7 +172,7 @@ namespace WebApp.Services.Creator.BrandKit.TypographyEngine
                     new AiMessage("user", prompt)
                 },
                 ResponseFormat = "json_object",
-                MaxTokens = 600,
+                MaxTokens = maxTokens,
                 Temperature = 0.7
             };
 

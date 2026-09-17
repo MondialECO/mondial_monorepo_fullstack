@@ -3,6 +3,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels;
 using WebApp.Services.Ai;
 using WebApp.Services.Ai.Providers;
@@ -12,17 +14,22 @@ namespace WebApp.Services.Creator.BrandKit.DirectionEngine
 {
     public class DirectionGenerationService : IDirectionGenerationService
     {
+        public const int DefaultMaxOutputTokens = 4500;
+
         private readonly IAiProvider? _aiProvider;
         private readonly IModelRouter? _modelRouter;
+        private readonly AiSettings _settings;
         private readonly ILogger<DirectionGenerationService> _logger;
 
         public DirectionGenerationService(
             IAiProvider? aiProvider = null,
             IModelRouter? modelRouter = null,
-            ILogger<DirectionGenerationService>? logger = null)
+            ILogger<DirectionGenerationService>? logger = null,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _aiProvider = aiProvider;
             _modelRouter = modelRouter;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger ?? NullLogger<DirectionGenerationService>.Instance;
         }
 
@@ -112,6 +119,10 @@ namespace WebApp.Services.Creator.BrandKit.DirectionEngine
             var modelId = _modelRouter.Resolve("DirectionGeneration");
             var prompt = BuildPrompt(brandName, strategy, avoidList);
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("DirectionGeneration", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             var request = new AiCompletionRequest
             {
                 Model = modelId,
@@ -121,7 +132,7 @@ namespace WebApp.Services.Creator.BrandKit.DirectionEngine
                     new AiMessage("user", prompt)
                 },
                 ResponseFormat = "json_object",
-                MaxTokens = 1600,
+                MaxTokens = maxTokens,
                 Temperature = 0.5
             };
 

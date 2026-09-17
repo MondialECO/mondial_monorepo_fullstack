@@ -3,6 +3,8 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using WebApp.Configuration.AiOptions;
 using WebApp.Models.DatabaseModels;
 using WebApp.Services.Ai;
 using WebApp.Services.Ai.Providers;
@@ -12,17 +14,22 @@ namespace WebApp.Services.Creator.BrandKit.ColorEngine
 {
     public class ColorGenerationService : IColorGenerationService
     {
+        public const int DefaultMaxOutputTokens = 4500;
+
         private readonly IAiProvider? _aiProvider;
         private readonly IModelRouter? _modelRouter;
+        private readonly AiSettings _settings;
         private readonly ILogger<ColorGenerationService> _logger;
 
         public ColorGenerationService(
             IAiProvider? aiProvider = null,
             IModelRouter? modelRouter = null,
-            ILogger<ColorGenerationService>? logger = null)
+            ILogger<ColorGenerationService>? logger = null,
+            IOptions<AiSettings>? aiSettings = null)
         {
             _aiProvider = aiProvider;
             _modelRouter = modelRouter;
+            _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger ?? NullLogger<ColorGenerationService>.Instance;
         }
 
@@ -142,6 +149,10 @@ namespace WebApp.Services.Creator.BrandKit.ColorEngine
             var modelId = _modelRouter.Resolve("ColorGeneration");
             var prompt = BuildPrompt(brandName, strategy, direction, currentRoles);
 
+            var maxTokens = _settings.OutputTokenLimits.TryGetValue("ColorGeneration", out var limit) && limit > 0
+                ? limit
+                : DefaultMaxOutputTokens;
+
             var request = new AiCompletionRequest
             {
                 Model = modelId,
@@ -151,7 +162,7 @@ namespace WebApp.Services.Creator.BrandKit.ColorEngine
                     new AiMessage("user", prompt)
                 },
                 ResponseFormat = "json_object",
-                MaxTokens = 800,
+                MaxTokens = maxTokens,
                 Temperature = 0.7
             };
 
