@@ -378,11 +378,11 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Inputs Consumed:** `ClarifierSessionId` (from Phase 2, required) and `BusinessIdeaId` (optional/context).
 - **Backend Architecture & Benchmark Reuse:** `MarketStudyHandler` reuses `IMarketBenchmarkResolver` (which until now was Phase-4-only) to query sector-specific benchmarks, tailwinds, and median multiples, injecting rich quantitative baselines into the generative prompt.
 - **Output Schema (`MarketStudyOutput`, Schema Version 1):**
-  1. `marketSizing`: Hierarchical TAM, SAM, and SOM figures with label, currency, derivation rationale, source attribution, and step reduction percentages (`percentageOfTam`, `percentageOfSam`), plus the bottom-up arithmetic methodology string.
-  2. `competitorLandscape`: Summary prose, `directCompetitors` array (name, market share, pricing model, strengths, weaknesses, exploitable gap, source attribution), and `indirectCompetitors` array (name, substitute approach, threat level: `low`/`medium`/`high`).
-  3. `demandSignals`: Array of signals with headline, real-world evidence, source attribution, and numeric `relevanceScore` (0–100).
-  4. `sizingRisks`: Array of sensitivity risks with impact on SOM (`low`/`medium`/`high`) and concrete mitigation strategies.
-  5. `marketGapValidation`: Primary market opportunity, validation rationale, and confidence level (`high`/`moderate`/`speculative`).
+  1. `marketSizing`: `tam` (`value`, `currency`, `label`, `derivation`, `sourceAttribution`), `sam` (`value`, `currency`, `label`, `percentageOfTam`, `derivation`, `sourceAttribution`), `som` (`value`, `currency`, `label`, `percentageOfSam`, `derivation`, `sourceAttribution`), and `methodology` (bottom-up derivation formula and arithmetic string).
+  2. `competitorLandscape`: `summary`, `directCompetitors` array (`name`, `estimatedMarketShare`, `pricingModel`, `strengths`, `weaknesses`, `exploitableGap`, `sourceAttribution`), and `indirectCompetitors` array (`name`, `substituteApproach`, `threatLevel`: `low` | `medium` | `high`).
+  3. `demandSignals`: Array of signals with `signal`, `evidence`, `sourceAttribution`, and `relevanceScore` (integer 1–10).
+  4. `sizingRisks`: Array of sensitivity risks with `risk`, `impactOnSom` (`low` | `medium` | `high`), and `mitigation`.
+  5. `marketGapValidation`: `primaryGap`, `validationRationale`, and `confidenceLevel` (`high` | `moderate` | `speculative`).
 - **Credit Cost:** **20 credits** (`AiJobType.MarketStudy`).
 - **UI Presentation:** Proportional horizontal funnel bars with step reduction percentage bridges, bottom-up methodology strip, competitor benchmarking matrix, demand signals, and sensitivity risk cards. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support.
 
@@ -391,10 +391,10 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Backing Entity & Controller:** `BusinessModelSession` stored in `BusinessModelSessions` collection via `BusinessModelController` (`/api/ai/business-model`).
 - **Inputs Consumed:** `MarketStudySessionId` (from Step 3.1, required) and `BusinessIdeaId` (optional/context).
 - **Output Schema (`BusinessModelOutput`, Schema Version 1):**
-  1. `canvas`: Canonical 9-block Osterwalder layout (`keyPartners`, `keyActivities`, `keyResources`, `valuePropositions`, `customerRelationships`, `channels`, `customerSegments`, `costStructure`, `revenueStreams`). Grounded in Step 3.1 with explicit `marketStudyFootnote` cross-references on Value Propositions, Customer Segments, and Revenue Streams.
-  2. `revenueTiers`: Array of pricing packages with tier name, target segment, pricing model, feature inclusions, and projected contribution percentage.
-  3. `unitEconomics`: Modelled ARPU (monthly/annual), blended CAC, customer LTV, LTV:CAC ratio, CAC payback period (months), and operational commentary.
-  4. `assumptions`: Key model assumptions categorized with evidence ratings (`evidenced`/`modelled`/`untested`).
+  1. `canvas`: Canonical 9-block Osterwalder layout (`keyPartners` [string], `keyActivities` [string], `keyResources` [string], `valuePropositions` [{ `headline`, `details`, `marketStudyFootnote` }], `customerRelationships` [string], `channels` [string], `customerSegments` [{ `segment`, `marketStudyFootnote` }], `costStructure` [string], `revenueStreams` [{ `stream`, `marketStudyFootnote` }]).
+  2. `revenueTiers`: Array of pricing packages with `tierName`, `pricing`, `targetSegment`, `features`, and `projectedContributionPct`.
+  3. `unitEconomics`: `arpu` (`amount`, `currency`, `period`: `monthly` | `annual`, `isModelled`), `cac` (`amount`, `currency`, `isModelled`), `ltv` (`amount`, `currency`, `isModelled`), `ltvToCacRatio`, `paybackPeriodMonths`, and `commentary`.
+  4. `assumptions`: Array of core model assumptions with `category`, `assumption`, and `evidenceLevel` (`evidenced` | `modelled` | `untested`).
 - **Credit Cost:** **18 credits** (`AiJobType.BusinessModel`).
 - **UI Presentation:** Canonical single Osterwalder grid with hairline dividers (5 top columns: Key Partners flanking left, Key Activities over Key Resources, Value Propositions centered with prominent focal emphasis and zero background tint, Customer Relationships over Channels, Customer Segments flanking right; 2 bottom columns: Cost Structure 50% and Revenue Streams 50%), modelled unit economics telemetry strip, and pricing tiers. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support.
 
