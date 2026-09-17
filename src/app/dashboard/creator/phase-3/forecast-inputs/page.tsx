@@ -115,7 +115,7 @@ export default function ForecastInputsPage() {
 
   return (
     <Phase3SetupShell
-      stepEyebrow="Step 3.3"
+      stepEyebrow="Step 3.4"
       title="Forecast Inputs"
       description="Set the assumptions for your 36-month forecast, then generate it."
     >

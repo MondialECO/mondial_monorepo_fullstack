@@ -84,6 +84,198 @@ export interface ClarifierSession {
   updatedAt: string;
 }
 
+// ---------- Phase 3.1 Market Study ----------
+
+export interface MarketSizingNode {
+  value: number;
+  currency: string;
+  label: string;
+  derivation: string;
+  sourceAttribution: string;
+  percentageOfTam?: number;
+  percentageOfSam?: number;
+}
+
+export interface DirectCompetitor {
+  name: string;
+  estimatedMarketShare?: string;
+  pricingModel?: string;
+  strengths: string[];
+  weaknesses: string[];
+  exploitableGap: string;
+  sourceAttribution?: string;
+}
+
+export interface IndirectCompetitor {
+  name: string;
+  substituteApproach: string;
+  threatLevel: "low" | "medium" | "high";
+}
+
+export interface CompetitorLandscape {
+  summary: string;
+  directCompetitors: DirectCompetitor[];
+  indirectCompetitors: IndirectCompetitor[];
+}
+
+export interface DemandSignal {
+  signal: string;
+  evidence: string;
+  sourceAttribution: string;
+  relevanceScore: number;
+}
+
+export interface SizingRisk {
+  risk: string;
+  impactOnSom: "low" | "medium" | "high";
+  mitigation: string;
+}
+
+export interface MarketGapValidation {
+  primaryGap: string;
+  validationRationale: string;
+  confidenceLevel: "high" | "moderate" | "speculative";
+}
+
+export interface MarketStudyOutput {
+  schemaVersion?: number;
+  marketSizing?: {
+    tam?: MarketSizingNode;
+    sam?: MarketSizingNode;
+    som?: MarketSizingNode;
+    methodology?: string;
+  };
+  competitorLandscape?: CompetitorLandscape;
+  demandSignals?: DemandSignal[];
+  sizingRisks?: SizingRisk[];
+  marketGapValidation?: MarketGapValidation;
+}
+
+export interface MarketStudyVersion {
+  version: number;
+  isEdited?: boolean;
+  requestId?: string;
+  content?: MarketStudyOutput | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MarketStudySession {
+  sessionId: string;
+  status: AiSessionStatus;
+  clarifierSessionId: string;
+  businessIdeaId?: string | null;
+  currentVersion: number;
+  schemaVersion: number;
+  output?: MarketStudyOutput | null;
+  versions?: MarketStudyVersion[];
+  error?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StartMarketStudyRequest {
+  clarifierSessionId: string;
+  businessIdeaId?: string;
+}
+
+// ---------- Phase 3.2 Business Model ----------
+
+export interface CanvasValueProposition {
+  headline: string;
+  details: string;
+  marketStudyFootnote?: string;
+}
+
+export interface CanvasCustomerSegment {
+  segment: string;
+  marketStudyFootnote?: string;
+}
+
+export interface CanvasRevenueStream {
+  stream: string;
+  marketStudyFootnote?: string;
+}
+
+export interface BusinessModelCanvas {
+  keyPartners?: string[];
+  keyActivities?: string[];
+  keyResources?: string[];
+  valuePropositions?: CanvasValueProposition[];
+  customerRelationships?: string[];
+  channels?: string[];
+  customerSegments?: CanvasCustomerSegment[];
+  costStructure?: string[];
+  revenueStreams?: CanvasRevenueStream[];
+}
+
+export interface RevenueTier {
+  tierName: string;
+  pricing: string;
+  targetSegment: string;
+  features: string[];
+  projectedContributionPct?: number;
+}
+
+export interface UnitEconomicsMetric {
+  amount: number;
+  currency: string;
+  period?: "monthly" | "annual";
+  isModelled?: boolean;
+}
+
+export interface UnitEconomics {
+  arpu?: UnitEconomicsMetric;
+  cac?: UnitEconomicsMetric;
+  ltv?: UnitEconomicsMetric;
+  ltvToCacRatio?: number;
+  paybackPeriodMonths?: number;
+  commentary?: string;
+}
+
+export interface BusinessModelAssumption {
+  category: string;
+  assumption: string;
+  evidenceLevel: "evidenced" | "modelled" | "untested";
+}
+
+export interface BusinessModelOutput {
+  schemaVersion?: number;
+  canvas?: BusinessModelCanvas;
+  revenueTiers?: RevenueTier[];
+  unitEconomics?: UnitEconomics;
+  assumptions?: BusinessModelAssumption[];
+}
+
+export interface BusinessModelVersion {
+  version: number;
+  isEdited?: boolean;
+  requestId?: string;
+  content?: BusinessModelOutput | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BusinessModelSession {
+  sessionId: string;
+  status: AiSessionStatus;
+  marketStudySessionId: string;
+  clarifierSessionId?: string;
+  businessIdeaId?: string | null;
+  currentVersion: number;
+  schemaVersion: number;
+  output?: BusinessModelOutput | null;
+  versions?: BusinessModelVersion[];
+  error?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StartBusinessModelRequest {
+  marketStudySessionId: string;
+  businessIdeaId?: string;
+}
+
 // ---------- C-3 Business Plan ----------
 
 export interface StartBusinessPlanRequest {

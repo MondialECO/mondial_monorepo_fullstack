@@ -80,8 +80,18 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/creator/journey/phase2/brand-kit/typography/regenerate`: AI generative typography system regeneration with distinctness enforcement (2 credits, max 3 cap).
   - `POST /api/creator/journey/phase2/brand-kit/snapshot`: Create concurrency-guarded backup snapshot (bounded to 3 newest).
   - `POST /api/creator/journey/phase2/brand-kit/snapshot/restore`: Restore historical snapshot by index with automatic pre-restore backup.
+- **`MarketStudyController`** (`/api/ai/market-study`):
+  - `POST /api/ai/market-study`: Start AI market study generation (Step 3.1, requires completed clarifier session; debits 20 credits).
+  - `GET /api/ai/market-study/{sessionId}`: Read a single market study session with version content.
+  - `GET /api/ai/market-study`: List market study sessions filtered by clarifierSessionId or businessIdeaId.
+  - `POST /api/ai/market-study/{sessionId}/regenerate`: Regenerate market study (appends new version, debits 20 credits).
+- **`BusinessModelController`** (`/api/ai/business-model`):
+  - `POST /api/ai/business-model`: Start AI business model generation (Step 3.2, requires completed market study session; debits 18 credits).
+  - `GET /api/ai/business-model/{sessionId}`: Read a single business model session with version content.
+  - `GET /api/ai/business-model`: List business model sessions filtered by marketStudySessionId or businessIdeaId.
+  - `POST /api/ai/business-model/{sessionId}/regenerate`: Regenerate business model (appends new version, debits 18 credits).
 - **`BusinessPlanController`** (`/api/ai/business-plan`):
-  - `POST /api/ai/business-plan`: Start AI business plan generation (C-3, requires clarifier session).
+  - `POST /api/ai/business-plan`: Start AI business plan generation (Step 3.3, requires completed clarifier session; enforces Step 3.1 & 3.2 prerequisite gate on fresh creators; debits 33 credits).
   - `GET /api/ai/business-plan/{sessionId}`: Read a single business plan session with version content.
   - `GET /api/ai/business-plan`: List all business plan sessions for the authenticated user.
   - `POST /api/ai/business-plan/{sessionId}/regenerate`: Regenerate business plan (new version, append-only).
@@ -89,7 +99,7 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `PATCH /api/ai/business-plan/{sessionId}/section`: Manual per-section text edit (shared splice path).
   - `PUT /api/ai/business-plan/{sessionId}`: Full content update on the current version.
 - **`ForecastController`** (`/api/ai/forecast`):
-  - `POST /api/ai/forecast`: Start AI forecast generation (C-4, requires completed business plan).
+  - `POST /api/ai/forecast`: Start AI forecast generation (Step 3.4, requires completed business plan; debits 32 credits).
   - `GET /api/ai/forecast/{sessionId}`: Read a single forecast session with version content.
   - `GET /api/ai/forecast`: List all forecast sessions for the authenticated user.
   - `POST /api/ai/forecast/{sessionId}/regenerate`: Regenerate forecast (new version, append-only).

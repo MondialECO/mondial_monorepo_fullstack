@@ -17,6 +17,8 @@ import {
   type ChecklistStatus,
 } from '@/lib/api-creator-journey';
 
+
+
 const NEXT_STATUS: Record<ChecklistStatus, ChecklistStatus> = {
   pending: 'done',
   in_progress: 'done',
@@ -62,24 +64,23 @@ export default function CompliancePage() {
   };
 
   const handleContinue = () => {
-    completeStep(3, 4); // local cursor only; status derived server-side
+    completeStep(3, 5); // canonical Step 3.5
     router.push('/dashboard/creator/phase-3/formation');
   };
 
-  const mandatory = checklist?.items.filter((i) => i.category === 'mandatory') ?? [];
+  const items = Array.isArray(checklist?.items) ? checklist.items : [];
+  const mandatory = items.filter((i) => i.category === 'mandatory');
   // ADVISORY: legal items no longer gate Phase-3 completion (backend gate removed —
   // the checklist is pure self-attestation). Counts below are guidance only.
   const mandatoryDone = mandatory.filter((i) => i.status === 'done').length;
   const mandatoryRemaining = mandatory.length - mandatoryDone;
   const pct = checklist && checklist.totalCount > 0 ? Math.round((checklist.completedCount / checklist.totalCount) * 100) : 0;
-  const orderedItems = checklist
-    ? [...checklist.items].sort((a, b) => Number(b.status === 'done') - Number(a.status === 'done'))
-    : [];
+  const orderedItems = [...items].sort((a, b) => Number(b.status === 'done') - Number(a.status === 'done'));
 
   return (
     <Phase3SetupShell
       compact
-      stepEyebrow=""
+      stepEyebrow="Step 3.5"
       title="Legal & Compliance Checklist"
       description="A tailored checklist for your sector. Mark items as you progress - you can finish these anytime."
       headerAlign="left"
@@ -196,7 +197,7 @@ export default function CompliancePage() {
               </p>
             )}
             <div className="flex items-center justify-between border-t border-border pt-6">
-              <Button variant="ghost" onClick={() => router.push('/dashboard/creator/phase-3')}>
+              <Button variant="ghost" onClick={() => router.push('/dashboard/creator/phase-3/forecast')}>
                 <ArrowLeft className="size-4" /> Back
               </Button>
               <Button onClick={handleContinue} className="gap-2">

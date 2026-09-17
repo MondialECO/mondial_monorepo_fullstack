@@ -47,6 +47,8 @@ namespace WebApp.Configuration.AiOptions
     {
         public bool IdeaGenerator { get; set; } = true;
         public bool Clarifier { get; set; } = true;
+        public bool MarketStudy { get; set; } = true;
+        public bool BusinessModel { get; set; } = true;
         public bool BusinessPlan { get; set; } = true;
         public bool Forecast { get; set; } = true;
     }

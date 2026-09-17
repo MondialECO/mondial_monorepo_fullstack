@@ -104,8 +104,27 @@ namespace WebApp.Controllers
 
             if (!string.IsNullOrWhiteSpace(businessIdeaId))
             {
-                if (!ObjectId.TryParse(businessIdeaId, out _) || await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner) == null)
+                if (!ObjectId.TryParse(businessIdeaId, out _))
                     return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+
+                var idea = await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner);
+                if (idea == null)
+                    return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+
+                // Completion-gate branching: fresh creators must complete Market Study and Business Model first
+                var p3 = idea.Phase3Data;
+                bool hasExistingCompletedPlan = !string.IsNullOrEmpty(p3?.BusinessPlanSessionId);
+                if (!hasExistingCompletedPlan)
+                {
+                    bool hasMarketStudy = !string.IsNullOrEmpty(p3?.MarketStudySessionId);
+                    bool hasBusinessModel = !string.IsNullOrEmpty(p3?.BusinessModelSessionId);
+                    if (!hasMarketStudy || !hasBusinessModel)
+                    {
+                        return UnprocessableEntity(ApiResponse.Error(
+                            "Market Study and Business Model must be completed before generating a Business Plan.",
+                            HttpContext.TraceIdentifier));
+                    }
+                }
             }
 
             // Pre-allocate the session ID so it serves as the stable idempotency key for debit and compensation

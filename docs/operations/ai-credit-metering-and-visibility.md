@@ -27,6 +27,8 @@ All capabilities route authoritatively to `google/gemini-3.8-flash` in base conf
 | Capability | Model | Credit Cost | Description |
 |---|---|---|---|
 | **`IdeaClarifier`** (`C-2`) | `google/gemini-3.8-flash` | **20 credits** | Problem, audience, alternative analysis, clarity scoring (locked baseline; pre-ceiling benchmark median 3,105 tokens) |
+| **`MarketStudy`** (`3.1`) | `google/gemini-3.8-flash` | **20 credits** | TAM/SAM/SOM market sizing funnel, validated gap, competitor benchmarking, demand signals, sizing sensitivity risks |
+| **`BusinessModel`** (`3.2`) | `google/gemini-3.8-flash` | **18 credits** | Canonical 9-block Osterwalder canvas, pricing tier architecture, modelled unit economics (ARPU/CAC/LTV/Payback) |
 | **`BusinessPlan`** (`C-3`) | `google/gemini-3.8-flash` | **33 credits** | 9-section enterprise business plan (locked; pre-ceiling benchmark median 5,182 tokens, ratio 1.6689) |
 | **`Forecast`** (`C-4`) | `google/gemini-3.8-flash` | **32 credits** *(Provisional)* | 36-month projections (12 AI + 24 algorithmic projection; post-8k ceiling, post-trim benchmark median 5,001 tokens, ratio 1.6106) |
 | **`DirectionGeneration`** | `google/gemini-3.8-flash` | **7 credits** | 4-candidate strategic brand direction generator (archetypes, motifs, rationales) |

@@ -46,14 +46,20 @@ const UNLOCKS: UnlockItem[] = [
   },
 ];
 
-const gradeForScore = (score: number) => {
-  if (score >= 85) return "A";
-  if (score >= 70) return "B";
-  if (score >= 50) return "C";
+const gradeForScore = (score?: number | null) => {
+  const val = score ?? 0;
+  if (val >= 85) return "A";
+  if (val >= 70) return "B";
+  if (val >= 50) return "C";
   return "D";
 };
 
-const displayScore = (score: number) => Number.isInteger(score) ? score.toFixed(0) : score.toFixed(1);
+const displayScore = (score?: number | null) =>
+  typeof score === "number" && !isNaN(score)
+    ? Number.isInteger(score)
+      ? score.toFixed(0)
+      : score.toFixed(1)
+    : "0";
 
 function ProgressTrack({ value, max, prominent = false }: { value: number; max: number; prominent?: boolean }) {
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
@@ -117,28 +123,29 @@ export default function Phase3CompletePage() {
     router.push("/dashboard/creator/offer-pricing");
   };
 
-  const breakdown = readiness ? [
-    { label: "General Clarity", value: readiness.breakdown.conceptClarity, max: 20 },
-    { label: "Market Evidence", value: readiness.breakdown.marketEvidence, max: 20 },
-    { label: "Monetization", value: readiness.breakdown.financialModel, max: 25 },
-    { label: "Legal Readiness", value: readiness.breakdown.legalReadiness, max: 15 },
-    { label: "Team Credibility", value: readiness.breakdown.teamCredibility, max: 20 },
+  const breakdown = readiness?.breakdown ? [
+    { label: "General Clarity", value: readiness.breakdown.conceptClarity ?? 0, max: 20 },
+    { label: "Market Evidence", value: readiness.breakdown.marketEvidence ?? 0, max: 20 },
+    { label: "Monetization", value: readiness.breakdown.financialModel ?? 0, max: 25 },
+    { label: "Legal Readiness", value: readiness.breakdown.legalReadiness ?? 0, max: 15 },
+    { label: "Team Credibility", value: readiness.breakdown.teamCredibility ?? 0, max: 20 },
   ] : [];
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40 px-5 py-12 text-foreground sm:px-8 lg:py-16">
       <main className="mx-auto flex w-full max-w-[600px] flex-1 flex-col gap-10">
-        <header className="mx-auto flex w-full max-w-[503px] flex-col items-center gap-4 text-center">
+        <header className="mx-auto flex w-full max-w-[503px] flex-col items-center gap-3 text-center">
           <div className="flex size-[72px] items-center justify-center rounded-full border border-white bg-card">
             <span className="flex size-8 items-center justify-center rounded-full bg-[#14835f] text-white">
               <Check className="size-4 stroke-[3]" aria-hidden="true" />
             </span>
           </div>
+          <span className="text-xs font-bold uppercase tracking-wider text-primary">Step 3.7</span>
           <h1 className="text-[32px] font-semibold leading-10 tracking-normal text-foreground">
             Project intelligence Ready
           </h1>
           <p className="text-base leading-6 text-muted-foreground">
-            Your forecast, business plan, legal checklist and information are assembled into your AI Masterplan
+            Your market study, business model, business plan, forecast, legal checklist and formation are assembled into your AI Masterplan.
           </p>
         </header>
 
@@ -245,11 +252,11 @@ export default function Phase3CompletePage() {
         <div className="flex flex-col-reverse items-stretch justify-between gap-3 border-t border-border pt-6 sm:flex-row sm:items-center">
           <Button
             variant="outline"
-            onClick={() => router.push("/dashboard/creator")}
+            onClick={() => router.push("/dashboard/creator/phase-3/formation")}
             disabled={isNavigating}
             className="h-10 rounded-xl border-border px-4 text-sm font-medium text-muted-foreground shadow-none"
           >
-            <ArrowLeft className="size-4" /> Back to Dashboard
+            <ArrowLeft className="size-4" /> Company Formation
           </Button>
           <Button
             onClick={handleContinue}

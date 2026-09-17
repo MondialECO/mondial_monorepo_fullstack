@@ -9,6 +9,8 @@ namespace WebApp.Services.Ai.Jobs
     {
         IdeaGenerator,
         IdeaClarifier,
+        MarketStudy,
+        BusinessModel,
         BusinessPlan,
         Forecast,
         Probe,

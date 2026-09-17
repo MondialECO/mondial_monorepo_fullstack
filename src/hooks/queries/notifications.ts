@@ -58,7 +58,12 @@ export function useNotifications(limit = 10, skip = 0) {
     staleTime: 1000 * 30,
   });
 
-  const notifications = listQuery.data ?? [];
+  const rawData = listQuery.data;
+  const notifications = Array.isArray(rawData)
+    ? rawData
+    : Array.isArray((rawData as unknown as { items?: AppNotification[] })?.items)
+      ? (rawData as unknown as { items: AppNotification[] }).items
+      : [];
   // Fallback to local list calculation only if unreadQuery is not yet available
   const unreadCount = unreadQuery.data ?? notifications.reduce(
     (n, item) => (item.isRead ? n : n + 1),

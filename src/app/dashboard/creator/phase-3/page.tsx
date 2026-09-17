@@ -1,9 +1,22 @@
-import { redirect } from 'next/navigation';
+"use client";
 
-// The former "Financial Modeling Inputs" (3.1) screen was removed: it collected five
-// numeric inputs it never persisted, and the forecast step re-collects its own. Phase 3
-// now starts at the business plan. This root redirects so bookmarks, the Phase 2 →
-// Phase 3 transition, and any legacy step-1 resolution all land cleanly here.
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+
+// Canonical Phase 3 starts at Step 3.1: Market Study.
+// This root redirects bookmarks, Phase 2 completion, and phase navigation here.
 export default function Phase3IndexPage() {
-  redirect('/dashboard/creator/phase-3/business-plan');
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/dashboard/creator/phase-3/market-study");
+  }, [router]);
+
+  return (
+    <div className="w-full flex-1 flex flex-col min-h-screen items-center justify-center gap-3 bg-background">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <p className="text-sm text-muted-foreground">Entering Step 3.1: Market Study...</p>
+    </div>
+  );
 }

@@ -14,7 +14,7 @@ export default function MessageIcon() {
   const pathname = usePathname();
   const { user } = useAuth();
   const { data: conversations } = useConversations();
-  const unreadCount = (conversations ?? []).reduce(
+  const unreadCount = (Array.isArray(conversations) ? conversations : []).reduce(
     (n, c) => n + (c.unreadCount ?? 0),
     0
   );

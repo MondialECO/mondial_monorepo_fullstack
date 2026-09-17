@@ -117,7 +117,7 @@ export default function ForecastResultsPage() {
     />
     <Phase3SetupShell
       fullWidth
-      stepEyebrow="Step 3.3"
+      stepEyebrow="Step 3.4"
       title="Financial Projections & Simulations"
       description="A 36-month forecast computed from your inputs — revenue, costs, cash flow, and break-even."
     >
@@ -295,7 +295,7 @@ export default function ForecastResultsPage() {
           <ForecastView output={output} />
 
           <div className="flex justify-between border-t border-border pt-6">
-            <Button variant="ghost" onClick={() => router.back()}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
+            <Button variant="ghost" onClick={() => router.push('/dashboard/creator/phase-3/business-plan')}><ArrowLeft className="w-4 h-4 mr-1.5" /> Back</Button>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowExport(true)} className="gap-2"><FileDown className="h-4 w-4" /> Download Report</Button>
               <Button onClick={handleNext} className="gap-1.5">Proceed to Compliance <ArrowRight className="w-4 h-4" /></Button>

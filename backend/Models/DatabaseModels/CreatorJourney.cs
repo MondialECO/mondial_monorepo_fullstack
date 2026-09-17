@@ -174,6 +174,8 @@ namespace WebApp.Models.DatabaseModels
 
     public class CreatorPhase3Data
     {
+        public string MarketStudySessionId { get; set; }
+        public string BusinessModelSessionId { get; set; }
         public string ForecastSessionId { get; set; }
         public string BusinessPlanSessionId { get; set; }
         public CreatorLegalChecklist LegalChecklist { get; set; }
