@@ -13,7 +13,8 @@ dashboard, health, credits, observability and failure behaviour.
 | `OpenRouter__ApiKey` | env var / user-secrets | **Required.** `StartupConfigValidation` fails fast if absent — the app refuses to boot. |
 | `OpenRouter:BaseUrl` | appsettings | Default `https://openrouter.ai/api/v1`. |
 | `Ai:ModelRouting:Models` | appsettings | task-type → model id (`IModelRouter`). All tasks route to `google/gemini-3.8-flash` with zero hardcoded model fallbacks in application code. Tasks include `Probe`, `IdeaClarifier`, `BusinessPlan`, `Forecast`, `DirectionGeneration`, `LogoParameterSelection`, `LogoConceptRegenerate`, `ColorGeneration`, `TypographyGeneration`. |
-| `Ai:CreditCosts` | appsettings | per-type credit cost config: `DirectionGeneration=7`, `LogoParameterSelection=4`, `LogoConceptRegenerate=2`, `ColorGeneration=2`, `TypographyGeneration=2`, `IdeaClarifier=20`, `BusinessPlan=33`, `Forecast=32`, `Probe=0`. |
+| `Ai:CreditCosts` | appsettings | per-type credit cost config: `DirectionGeneration=7`, `LogoParameterSelection=4`, `LogoConceptRegenerate=2`, `ColorGeneration=2`, `TypographyGeneration=2`, `IdeaClarifier=20`, `MarketStudy=20`, `BusinessModel=18`, `BusinessPlan=33`, `Forecast=32`, `Probe=0`. |
+| `Ai:OutputTokenLimits` | appsettings | per-type max output token ceilings (`IOptions<AiSettings>`): `IdeaGenerator=3500`, `IdeaClarifier=3500`, `MarketStudy=7500`, `BusinessModel=8500`, `BusinessPlan=7500`, `Forecast=8000`, `Probe=500`, and Brand Kit generators (`DirectionGeneration`, `LogoParameterSelection`, `LogoConceptRegenerate`, `ColorGeneration`, `TypographyGeneration`)=`2000`. Missing keys safely degrade to handler-internal `DefaultMaxOutputTokens` constants rather than 0 or unbounded requests. |
 | `Hangfire:WorkerCount` | appsettings | bounded worker count (default 4). |
 | `Ai:Enabled` | appsettings | master kill-switch for enqueue (rollback without redeploy). |
 

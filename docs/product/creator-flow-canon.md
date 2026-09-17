@@ -74,8 +74,10 @@ Two backfills run on every boot (`Program.cs`, non-fatal): the **idea backfill**
 **1.6.8 REMOVED — must not return: the journey mirror.**
 During the cutover, every idea write also mirrored to the journey (dual-write) as a rollback net. It was removed (commit `d27abd9`) because **mirroring is undefined once a user has two ideas** — one journey cannot mirror both, and the interleaved copy poisons any rollback. **FORBIDDEN:** do not reintroduce journey phase-block writes, "for safety" or otherwise. The journey's frozen blocks are historical residue, not a fallback store.
 
-### 1.7 AI credit metering & starter grant
-Capabilities are credit-metered against server-authoritative balance and capability costs (`GET /api/ai/credits`). Current standard starter grant is **200 credits** on onboarding or first AI call (`Ai:StarterCredits = 200`). Current costs: IdeaClarifier: **20**, BusinessPlan: **33**, Financial Forecast: **32** (provisional), Probe: **0**. Exhaustion triggers HTTP 402; failed generations auto-refund.
+### 1.7 AI credit metering, token limits & starter grant
+Capabilities are credit-metered against server-authoritative balance and capability costs (`GET /api/ai/credits`). Current standard starter grant is **200 credits** on onboarding or first AI call (`Ai:StarterCredits = 200`). Current costs: `IdeaClarifier`: **20**, `MarketStudy`: **20**, `BusinessModel`: **18**, `BusinessPlan`: **33**, `Forecast`: **32** (provisional), `IdeaGenerator`: **0**, `Probe`: **0**, `DirectionGeneration`: **7**, `LogoParameterSelection`: **4**, `LogoConceptRegenerate`: **2`, `ColorGeneration`: **2`, `TypographyGeneration`: **2**. Exhaustion triggers HTTP 402; failed generations auto-refund.
+
+Output token ceilings are dynamically configured via `Ai:OutputTokenLimits` in `appsettings.json` (`IdeaGenerator: 3500`, `IdeaClarifier: 3500`, `MarketStudy: 7500`, `BusinessModel: 8500`, `BusinessPlan: 7500`, `Forecast: 8000`, `Probe: 500`, Brand Kit: `2000`) with safe fallback constants in handlers.
 
 ---
 
