@@ -549,150 +549,102 @@ export default function MarketStudyPage() {
 
             {/* 02 // COMPETITIVE LANDSCAPE & SHARE ANALYSIS */}
             {output.competitorLandscape && (
-              <Card className="rounded-xl border border-[#e5e7eb] dark:border-border/80 bg-white dark:bg-card p-6 md:p-8 space-y-6 shadow-none">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#eeeeee] dark:border-border/60 pb-4">
+              <Card className="rounded-xl border border-[#e5e7eb] dark:border-border/80 bg-white dark:bg-card shadow-none overflow-hidden">
+                <div className="px-6 pt-6 pb-4 border-b border-[#eeeeee] dark:border-border/60 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#f3f4f6] dark:bg-muted text-[#111827] dark:text-foreground">
+                    <span className="w-5 h-5 rounded-[4px] bg-[#f3f4f6] dark:bg-muted flex items-center justify-center text-[10px] font-mono font-semibold text-[#111827] dark:text-foreground">
                       02
                     </span>
                     <h3 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#6b7280] dark:text-muted-foreground">
                       COMPETITIVE LANDSCAPE &amp; SHARE ANALYSIS
                     </h3>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-mono uppercase bg-[#f3f4f6] dark:bg-muted text-[#6b7280] dark:text-muted-foreground border border-[#e5e7eb] dark:border-border/60 shrink-0">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium uppercase bg-[#f3f4f6] dark:bg-muted text-[#6b7280] dark:text-muted-foreground">
                     {output.competitorLandscape.directCompetitors?.length ?? 5} BENCHMARKED PLAYERS
                   </span>
                 </div>
 
-                {/* Direct Competitors Dense Table */}
+                {/* Direct Competitors Dense Table matching Figma 1:1 */}
                 {output.competitorLandscape.directCompetitors?.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="w-full overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="border-b border-[#e5e7eb] dark:border-border/70 bg-[#fafafc] dark:bg-muted/20 text-[11px] font-mono font-semibold uppercase tracking-wider text-[#6b7280] dark:text-muted-foreground">
-                            <th className="py-2.5 px-3">COMPANY</th>
-                            <th className="py-2.5 px-3">SEGMENT</th>
-                            <th className="py-2.5 px-3 max-w-[200px]">PRICING MODEL</th>
-                            <th className="py-2.5 px-3">EST. SHARE</th>
-                            <th className="py-2.5 px-3">VULNERABILITY / GAP</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#e5e7eb] dark:divide-border/60">
-                          {output.competitorLandscape.directCompetitors.map((comp, idx) => {
-                            const parsedShare = parseShareNumber(comp.estimatedMarketShare);
-                            const segmentTints = [
-                              'bg-[#f3f4f6] text-[#1f2937] border-transparent dark:bg-muted dark:text-foreground',
-                              'bg-[#eff6ff] text-[#1e40af] border-[#dbeafe] dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
-                              'bg-[#fef3c7] text-[#92400e] border-[#fde68a] dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
-                              'bg-[#f3e8ff] text-[#6b21a8] border-[#e9d5ff] dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800',
-                              'bg-[#ecfdf5] text-[#065f46] border-[#a7f3d0] dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
-                            ];
-                            const tintClass = segmentTints[idx % segmentTints.length];
+                  <div className="w-full overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-[#e5e7eb] dark:border-border/70 bg-[#fafafc] dark:bg-muted/30 text-[11px] font-mono font-semibold uppercase tracking-wider text-[#6b7280] dark:text-muted-foreground">
+                          <th className="py-3.5 px-6 w-[21%]">COMPANY</th>
+                          <th className="py-3.5 px-6 w-[20%]">SEGMENT</th>
+                          <th className="py-3.5 px-6 w-[18%]">PRICING MODEL</th>
+                          <th className="py-3.5 px-6 w-[16%]">EST. SHARE</th>
+                          <th className="py-3.5 px-6 w-[25%]">VULNERABILITY / GAP</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#e5e7eb] dark:divide-border/60 bg-white dark:bg-card">
+                        {output.competitorLandscape.directCompetitors.map((comp, idx) => {
+                          const parsedShare = parseShareNumber(comp.estimatedMarketShare);
+                          const segmentTints = [
+                            'bg-[#f3f4f6] text-[#1f2937] border-[#e5e7eb] dark:bg-muted dark:text-foreground dark:border-border',
+                            'bg-[#eff6ff] text-[#1e40af] border-[#dbeafe] dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
+                            'bg-[#fffbeb] text-[#78350f] border-[#fde68a] dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
+                            'bg-[#faf5ff] text-[#6b21a8] border-[#f3e8ff] dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800',
+                            'bg-[#f0fdfa] text-[#115e59] border-[#ccfbf1] dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+                          ];
+                          const tintClass = segmentTints[idx % segmentTints.length];
 
-                            return (
-                              <tr key={idx} className="transition-colors hover:bg-[#fafafc] dark:hover:bg-muted/30">
-                                <td className="py-3 px-3 align-top min-w-[160px]">
-                                  <div className="text-[14px] font-semibold text-[#111827] dark:text-foreground font-sans">
-                                    {comp.name}
-                                  </div>
-                                  <div className="text-[10px] text-[#9ca3af] font-mono pt-0.5">
-                                    {comp.segment ? `${comp.segment.split('/')[0].trim()} · ${displayRegion}` : `${displaySector} · ${displayRegion}`}
-                                  </div>
-                                </td>
-                                <td className="py-3 px-3 align-top whitespace-nowrap">
-                                  {comp.segment ? (
-                                    <span className={`inline-block px-2.5 py-0.5 text-[12px] font-sans font-medium rounded-full border ${tintClass}`}>
-                                      {comp.segment}
+                          return (
+                            <tr key={idx} className="transition-colors hover:bg-[#fafafc] dark:hover:bg-muted/20">
+                              {/* Company */}
+                              <td className="py-4 px-6 align-top">
+                                <div className="text-[14px] font-semibold text-[#111827] dark:text-foreground font-sans leading-tight">
+                                  {comp.name}
+                                </div>
+                                <div className="text-[10px] text-[#9ca3af] font-sans pt-1">
+                                  {comp.segment ? `${comp.segment.split('/')[0].trim()} · ${displayRegion}` : `${displaySector} · ${displayRegion}`}
+                                </div>
+                              </td>
+
+                              {/* Segment Pill */}
+                              <td className="py-4 px-6 align-top whitespace-nowrap">
+                                {comp.segment ? (
+                                  <span className={`inline-block px-2.5 py-0.5 text-[12px] font-sans font-medium rounded-[6px] border ${tintClass}`}>
+                                    {comp.segment}
+                                  </span>
+                                ) : (
+                                  <span className="text-[#9ca3af] font-mono">—</span>
+                                )}
+                              </td>
+
+                              {/* Pricing Model */}
+                              <td className="py-4 px-6 text-[#6b7280] dark:text-muted-foreground font-mono text-[13px] leading-relaxed align-top whitespace-pre-line">
+                                {comp.pricingModel || '—'}
+                              </td>
+
+                              {/* Est. Share */}
+                              <td className="py-4 px-6 font-mono align-top whitespace-nowrap">
+                                {comp.estimatedMarketShare ? (
+                                  <div className="flex items-center gap-3 pt-0.5">
+                                    <div className="w-[80px] h-2 bg-[#f3f4f6] dark:bg-muted border border-[#e5e7eb] dark:border-border/60 rounded-full overflow-hidden shrink-0 flex items-center p-[1px]">
+                                      <div
+                                        className="h-full bg-[#111827] dark:bg-foreground rounded-full"
+                                        style={{ width: `${Math.min(100, Math.max(3, parsedShare))}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[13px] font-mono font-semibold text-[#111827] dark:text-foreground">
+                                      {comp.estimatedMarketShare}
                                     </span>
-                                  ) : (
-                                    <span className="text-[#9ca3af] font-mono">—</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-3 text-[#6b7280] dark:text-muted-foreground font-mono text-[13px] align-top max-w-[200px] leading-relaxed">
-                                  {comp.pricingModel || '—'}
-                                </td>
-                                <td className="py-3 px-3 font-mono align-top whitespace-nowrap">
-                                  {comp.estimatedMarketShare ? (
-                                    <div className="flex items-center gap-2.5 pt-0.5">
-                                      <div className="w-14 h-1.5 bg-[#f3f4f6] dark:bg-muted rounded-full overflow-hidden shrink-0">
-                                        <div
-                                          className="h-full bg-[#111827] dark:bg-foreground rounded-full"
-                                          style={{ width: `${Math.min(100, Math.max(8, parsedShare * 2.2))}%` }}
-                                        />
-                                      </div>
-                                      <span className="text-[13px] font-mono font-semibold text-[#111827] dark:text-foreground">
-                                        {comp.estimatedMarketShare}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-[#9ca3af] font-mono">—</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-3 text-[#6b7280] dark:text-muted-foreground font-mono text-[13px] leading-relaxed align-top">
-                                  <p>{comp.exploitableGap}</p>
-                                  {(comp.strengths?.length > 0 || comp.weaknesses?.length > 0) && (
-                                    <div className="text-[11px] text-[#9ca3af] pt-1 space-y-0.5 font-sans">
-                                      {comp.strengths?.length > 0 && (
-                                        <p><span className="font-medium text-[#6b7280]">Strengths:</span> {comp.strengths.join(', ')}</p>
-                                      )}
-                                      {comp.weaknesses?.length > 0 && (
-                                        <p><span className="font-medium text-[#6b7280]">Weaknesses:</span> {comp.weaknesses.join(', ')}</p>
-                                      )}
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
+                                  </div>
+                                ) : (
+                                  <span className="text-[#9ca3af] font-mono">—</span>
+                                )}
+                              </td>
 
-                {/* Indirect Substitutes & Alternatives Table */}
-                {output.competitorLandscape.indirectCompetitors?.length > 0 && (
-                  <div className="space-y-3 pt-2">
-                    <h4 className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#9ca3af]">
-                      INDIRECT SUBSTITUTES &amp; ALTERNATIVES
-                    </h4>
-                    <div className="w-full overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="border-b border-[#e5e7eb] dark:border-border/70 bg-[#fafafc] dark:bg-muted/20 text-[10px] font-mono uppercase tracking-wider text-[#6b7280] dark:text-muted-foreground">
-                            <th className="py-2.5 px-3 font-semibold w-1/4">Substitute</th>
-                            <th className="py-2.5 px-3 font-semibold w-1/2">Alternative Approach</th>
-                            <th className="py-2.5 px-3 font-semibold w-1/4 text-right">Threat Level</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#e5e7eb] dark:divide-border/60">
-                          {output.competitorLandscape.indirectCompetitors.map((ind, idx) => (
-                            <tr key={idx} className="transition-colors hover:bg-[#fafafc] dark:hover:bg-muted/30">
-                              <td className="py-2.5 px-3 font-medium text-[#111827] dark:text-foreground font-sans align-top">
-                                {ind.name}
-                              </td>
-                              <td className="py-2.5 px-3 text-[#6b7280] dark:text-muted-foreground font-sans align-top">
-                                {ind.substituteApproach}
-                              </td>
-                              <td className="py-2.5 px-3 font-mono text-xs text-right uppercase align-top">
-                                <span
-                                  className={
-                                    ind.threatLevel === 'high'
-                                      ? 'text-[#be123c] font-medium'
-                                      : ind.threatLevel === 'medium'
-                                        ? 'text-[#b45309] font-medium'
-                                        : 'text-[#6b7280]'
-                                  }
-                                >
-                                  {ind.threatLevel || 'Low'}
-                                </span>
+                              {/* Vulnerability / Gap */}
+                              <td className="py-4 px-6 text-[#6b7280] dark:text-muted-foreground font-mono text-[13px] leading-relaxed align-top">
+                                <p>{comp.exploitableGap}</p>
                               </td>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </Card>
