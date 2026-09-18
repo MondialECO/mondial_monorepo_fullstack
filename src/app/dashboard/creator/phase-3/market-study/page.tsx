@@ -460,21 +460,21 @@ export default function MarketStudyPage() {
                 {/* BAR 3: SOM */}
                 <div
                   style={{ width: `${Math.max(34, Math.min(52, (samPctOfTam * (somPctOfSam / 100)) > 10 ? (samPctOfTam * (somPctOfSam / 100)) : 34))}%` }}
-                  className="rounded-xl border border-emerald-700 bg-emerald-800 dark:bg-emerald-900/90 text-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-sm"
+                  className="rounded-xl border border-[#0f766e] bg-gradient-to-r from-[#0f766e] to-[#0d9488] text-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-sm"
                 >
                   <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-1 self-stretch rounded-full bg-emerald-400/60 shrink-0 min-h-[36px]" />
+                    <div className="w-1 self-stretch rounded-full bg-teal-200/60 shrink-0 min-h-[36px]" />
                     <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-semibold text-white font-sans">SOM</span>
-                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-emerald-900 dark:bg-emerald-950 text-emerald-100 uppercase tracking-wider">
+                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-black/20 text-white uppercase tracking-wider">
                           Y1–Y3
                         </span>
-                        <span className="text-xs text-emerald-100/90 font-sans">
+                        <span className="text-xs text-teal-100 font-sans">
                           Serviceable Obtainable
                         </span>
                       </div>
-                      <div className="text-xs text-emerald-100/80 font-mono break-words">
+                      <div className="text-xs text-teal-50 font-mono break-words">
                         {som?.label || 'Direct self-serve conversion'}
                       </div>
                     </div>
@@ -483,7 +483,7 @@ export default function MarketStudyPage() {
                     <div className="text-xl sm:text-2xl font-semibold font-mono text-white tracking-tight">
                       {formatCurrency(som?.value, som?.currency)}
                     </div>
-                    <div className="text-[10px] font-mono text-emerald-100/90 uppercase">
+                    <div className="text-[10px] font-mono text-teal-100 uppercase">
                       {formatPct(somPctOfSam)}% OF SAM
                     </div>
                   </div>
@@ -496,7 +496,7 @@ export default function MarketStudyPage() {
                   {/* Left Column: Model Methodology */}
                   <div className="lg:col-span-5 space-y-1.5 border-b lg:border-b-0 lg:border-r border-border/60 pb-4 lg:pb-0 lg:pr-6">
                     <div className="flex items-center gap-2 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-600 dark:bg-teal-400 shrink-0" />
                       <span>MODEL METHODOLOGY</span>
                     </div>
                     <h4 className="text-sm font-semibold text-foreground font-sans">
@@ -543,7 +543,7 @@ export default function MarketStudyPage() {
                   <div className="font-sans truncate max-w-2xl">
                     Sources: {sourceAttributions.length > 0 ? sourceAttributions.join(', ') : `Eurostat SBS 2025, Mondial sector benchmark (${displaySector}, rev. Jan 2026)`}
                   </div>
-                  <div className="shrink-0 font-mono text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase">
+                  <div className="shrink-0 font-mono text-[10px] font-semibold text-teal-600 dark:text-teal-400 uppercase">
                     CONFIDENCE SCORE: {output.marketGapValidation?.confidenceLevel === 'high' ? '94.2%' : output.marketGapValidation?.confidenceLevel === 'moderate' ? '78.5%' : '65.0%'}
                   </div>
                 </div>
@@ -585,8 +585,8 @@ export default function MarketStudyPage() {
                           {output.competitorLandscape.directCompetitors.map((comp, idx) => {
                             const parsedShare = parseShareNumber(comp.estimatedMarketShare);
                             const segmentTints = [
+                              'bg-muted/80 text-foreground/80 border-border',
                               'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/25',
-                              'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/25',
                               'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25',
                               'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/25',
                               'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
@@ -802,7 +802,7 @@ export default function MarketStudyPage() {
 
             {/* SECTION 4: GAP VALIDATION (Full-width card with green left border accent) */}
             {output.marketGapValidation && (
-              <Card className="rounded-xl border border-border/70 border-l-4 border-l-emerald-500 bg-card p-6 md:p-8 space-y-5 shadow-none">
+              <Card className="rounded-xl border border-border/70 border-l-4 border-l-[#0f766e] dark:border-l-[#0d9488] bg-card p-6 md:p-8 space-y-5 shadow-none">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-mono font-semibold uppercase tracking-wider text-foreground">
@@ -813,8 +813,8 @@ export default function MarketStudyPage() {
                       YOUR STATED GAP
                     </span>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-sans font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-sans font-medium bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/25 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-600 dark:bg-teal-400 shrink-0" />
                     Supported by benchmark data
                   </span>
                 </div>
@@ -841,8 +841,8 @@ export default function MarketStudyPage() {
                     <p className="text-xs font-mono text-muted-foreground leading-relaxed">
                       {output.marketGapValidation.primaryGap}
                     </p>
-                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 p-3.5 flex items-start gap-2.5 text-xs text-foreground/90 font-mono leading-relaxed">
-                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <div className="rounded-lg border border-teal-500/20 bg-teal-500/5 dark:bg-teal-500/10 p-3.5 flex items-start gap-2.5 text-xs text-foreground/90 font-mono leading-relaxed">
+                      <Check className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
                       <span>{output.marketGapValidation.validationRationale}</span>
                     </div>
                   </div>
