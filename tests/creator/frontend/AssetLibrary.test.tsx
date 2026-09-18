@@ -109,10 +109,10 @@ describe('AssetLibraryPage', () => {
     // v1 Downloadable cards have action buttons
     expect(screen.getByRole('button', { name: /download zip/i })).toBeInTheDocument();
     const exportPdfButtons = screen.getAllByRole('button', { name: /export pdf/i });
-    expect(exportPdfButtons.length).toBe(3); // Market study, Business Plan, Forecast
+    expect(exportPdfButtons.length).toBe(4); // Market study, Business Model, Business Plan, Forecast
 
     // Non-downloadable cards display clear explanatory note
-    expect(screen.getByText(/Document generated and accessible in project · Standalone PDF export is not yet supported for this format./i)).toBeInTheDocument();
+    expect(screen.getByText(/Entity structure and skills configured · Standalone PDF export is not yet supported for this format./i)).toBeInTheDocument();
   });
 
   it('lazily fetches Market Study and opens print overlay on click', async () => {
@@ -144,6 +144,52 @@ describe('AssetLibraryPage', () => {
 
     expect(getStudySpy).toHaveBeenCalledWith('session-ms-123');
     expect(await screen.findByText(/Print \/ Save as PDF/i)).toBeInTheDocument();
+  });
+
+  it('lazily fetches Business Model and opens print overlay on click', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(creatorJourneyApiModule.creatorJourneyApi, 'get').mockResolvedValue(mockPopulatedJourney as any);
+    vi.spyOn(brandKitApiModule.brandKitApi, 'getBrandKit').mockResolvedValue(mockBrandKit as any);
+
+    const mockBmDetail = {
+      sessionId: 'session-bm-123',
+      status: 'Completed',
+      currentVersion: 1,
+      output: {
+        schemaVersion: 1,
+        canvas: {
+          keyPartners: ['Stripe', 'PEPPOL Authority'],
+          valuePropositions: [{ headline: 'Automated VAT', details: 'Direct e-invoicing compliance' }],
+        },
+        unitEconomics: {
+          arpu: { amount: 120, currency: 'EUR', isModelled: true },
+          cac: { amount: 350, currency: 'EUR', isModelled: true },
+          ltv: { amount: 1440, currency: 'EUR', isModelled: true },
+          ltvToCacRatio: 4.1,
+          paybackPeriodMonths: 3,
+        },
+        revenueTiers: [
+          { tierName: 'Pro Tier', pricing: '€99/mo', targetSegment: 'SMBs', features: ['Core API'] },
+        ],
+        assumptions: [
+          { category: 'Pricing', assumption: '€99 pricing is accepted', evidenceLevel: 'evidenced' },
+        ],
+      },
+    };
+    const getBmSpy = vi.spyOn(creatorAiApiModule.creatorAiApi, 'getBusinessModel').mockResolvedValue(mockBmDetail as any);
+
+    render(<AssetLibraryPage />);
+
+    expect(await screen.findByText('Business Model Canvas & Unit Economics')).toBeInTheDocument();
+    expect(getBmSpy).not.toHaveBeenCalled();
+
+    const exportButtons = screen.getAllByRole('button', { name: /export pdf/i });
+    await user.click(exportButtons[1]); // Second export PDF button is Business Model
+
+    expect(getBmSpy).toHaveBeenCalledWith('session-bm-123');
+    expect(await screen.findByText(/01 \/\/ Canonical Osterwalder Business Model Canvas/i)).toBeInTheDocument();
+    expect(screen.getByText('Automated VAT')).toBeInTheDocument();
+    expect(screen.getByText('Pro Tier')).toBeInTheDocument();
   });
 
   it('triggers Brand Kit ZIP export on Download ZIP click', async () => {

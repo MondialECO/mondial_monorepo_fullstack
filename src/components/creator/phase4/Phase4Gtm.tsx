@@ -128,7 +128,6 @@ export function Phase4Gtm({ ideaId, initial, benchmark, onSaved, onNext, onBack 
                     setProviderError(message ?? (caught instanceof Error ? caught.message : "Couldn't open a workroom."));
                   }
                 }}>Hire SP Designer</Button>
-                <Button variant="ghost" size="sm" disabled title="Platform Builder coming soon">Use Platform Builder</Button>
               </div>
             )}
           </div>

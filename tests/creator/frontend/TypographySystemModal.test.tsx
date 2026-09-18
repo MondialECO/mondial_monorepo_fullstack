@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { TypographySystemModal } from '@/components/creator/brand-kit/TypographySystemModal';
 import { apiCreatorBrandKit, brandKitApi } from '@/lib/api-creator-brand-kit';
+import { creatorAiApi } from '@/lib/api-creator-ai';
 import { BrandKit } from '@/types/creator/brand-kit';
 
 const mockTypographyKit: BrandKit = {
@@ -150,6 +151,10 @@ const mockTypographyKit: BrandKit = {
 describe('TypographySystemModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(creatorAiApi, 'getCredits').mockResolvedValue({
+      balance: 100,
+      costs: { TypographyGeneration: 2 },
+    } as any);
   });
 
   it('renders all 4 exact canonical roles and bundled family summaries', () => {
@@ -258,6 +263,7 @@ describe('TypographySystemModal', () => {
 
     // Click Suggest pairings
     const regenButton = screen.getByRole('button', { name: /Suggest (other )?pairings/i });
+    await waitFor(() => expect(regenButton).not.toBeDisabled());
     fireEvent.click(regenButton);
 
     await waitFor(() => {

@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { DirectionBoardModal } from '@/components/creator/brand-kit/DirectionBoardModal';
 import { brandKitApi } from '@/lib/api-creator-brand-kit';
+import { creatorAiApi } from '@/lib/api-creator-ai';
 import { BrandKit, BrandDirectionCandidate } from '@/types/creator/brand-kit';
 
 const mockCandidates: BrandDirectionCandidate[] = [
@@ -104,9 +105,13 @@ const mockBrandKit: BrandKit = {
 describe('DirectionBoardModal Component', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(creatorAiApi, 'getCredits').mockResolvedValue({
+      balance: 100,
+      costs: { DirectionGeneration: 7 },
+    } as any);
   });
 
-  it('renders all 4 candidate cards with style specimens, rationales, and 4-swatch palettes', () => {
+  it('renders all 4 candidate cards with style specimens, rationales, and 4-swatch palettes', async () => {
     const handleClose = vi.fn();
     const handleSuccess = vi.fn();
 
@@ -139,7 +144,7 @@ describe('DirectionBoardModal Component', () => {
 
     // Check regenerate cap badge shows 3/3 LEFT
     expect(screen.getByText('3/3 LEFT')).toBeInTheDocument();
-    expect(screen.getByText('7 CREDITS')).toBeInTheDocument();
+    expect(await screen.findByText('7 CREDITS')).toBeInTheDocument();
   });
 
   it('allows selecting another direction and updates active selection', () => {
@@ -244,13 +249,14 @@ describe('DirectionBoardModal Component', () => {
     );
 
     const regenBtn = screen.getByRole('button', { name: /Regenerate all four/i });
+    await waitFor(() => expect(regenBtn).not.toBeDisabled());
     fireEvent.click(regenBtn);
 
     await waitFor(() => {
       expect(
         screen.getByText(/Insufficient AI credits \(7 credits required\)\./i)
       ).toBeInTheDocument();
-      expect(screen.getByText(/Top up credits/i)).toBeInTheDocument();
+      expect(screen.getByText(/Credit top-ups are currently unavailable/i)).toBeInTheDocument();
     });
   });
 

@@ -116,10 +116,12 @@ export function CrossroadsPathA({
   const [isSigningModalOpen, setIsSigningModalOpen] = useState(false);
   const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
   const [isPartnershipModalOpen, setIsPartnershipModalOpen] = useState(false);
+  const [interestsError, setInterestsError] = useState<string | null>(null);
 
   const loadInterests = useCallback(async () => {
     try {
       setLoadingInterests(true);
+      setInterestsError(null);
       const [res, dealRes] = await Promise.all([
         creatorJourneyApi.getInterests(ideaId),
         ideaId ? marketplaceProjectsApi.getMyDeal(ideaId).catch(() => null) : null,
@@ -129,7 +131,7 @@ export function CrossroadsPathA({
         setActiveDeal(dealRes.deal);
       }
     } catch {
-      // Non-blocking
+      setInterestsError("Couldn't load buyer inquiries. Please check your connection and retry.");
     } finally {
       setLoadingInterests(false);
     }
@@ -170,8 +172,8 @@ export function CrossroadsPathA({
         setDealModes(["full_buyout"]);
         setIsEditing(false);
       }
-      loadInterests();
     }
+    loadInterests();
   }, [initial, ideaId, hydratedIdeaId, loadInterests]);
 
   useEffect(() => {
@@ -183,18 +185,18 @@ export function CrossroadsPathA({
     }
   }, [selectedInterestId, interests]);
 
+  const hasBuyout = dealModes.includes("full_buyout");
+  const hasEquity = dealModes.includes("equity_partnership");
+
   const toggleMode = (mode: string) => {
+    setPubError(null);
     if (dealModes.includes(mode)) {
-      if (dealModes.length > 1) {
-        setDealModes(dealModes.filter((m) => m !== mode));
-      }
+      if (dealModes.length === 1) return; // Must keep at least one
+      setDealModes(dealModes.filter((m) => m !== mode));
     } else {
       setDealModes([...dealModes, mode]);
     }
   };
-
-  const hasBuyout = dealModes.includes("full_buyout");
-  const hasEquity = dealModes.includes("equity_partnership");
 
   const runValuation = async () => {
     setValuing(true);
@@ -215,12 +217,19 @@ export function CrossroadsPathA({
   };
 
   const publish = async () => {
-    if (dealModes.length === 0) return;
-    if (hasBuyout && askingPrice <= 0) return;
-
-    setPublishing(true);
     setPubError(null);
     setFeedback(null);
+
+    if (dealModes.length === 0) {
+      setPubError("Select at least one deal mode (Full Buyout or Co-founder/Equity).");
+      return;
+    }
+    if (hasBuyout && (!askingPrice || askingPrice <= 0)) {
+      setPubError("Enter an asking price greater than zero for a Full Buyout listing.");
+      return;
+    }
+
+    setPublishing(true);
     try {
       const res = await creatorJourneyApi.publishMarketplace(
         {
@@ -582,9 +591,16 @@ export function CrossroadsPathA({
                   type="number"
                   min="1"
                   value={askingPrice || ""}
-                  onChange={(e) => setAskingPrice(Number(e.target.value))}
+                  onChange={(e) => {
+                    setAskingPrice(Number(e.target.value));
+                    if (pubError) setPubError(null);
+                  }}
                   placeholder="e.g. 50000"
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 outline-none focus:border-primary"
+                  className={`mt-1 w-full rounded-lg border bg-background px-3 py-2 outline-none focus:border-primary ${
+                    pubError && hasBuyout && (!askingPrice || askingPrice <= 0)
+                      ? "border-destructive ring-1 ring-destructive"
+                      : "border-border"
+                  }`}
                 />
               </label>
             )}
@@ -615,13 +631,13 @@ export function CrossroadsPathA({
               ))}
             </div>
 
-            {pubError && <p className="text-sm text-destructive">{pubError}</p>}
+            {pubError && <p className="text-sm text-destructive" role="alert">{pubError}</p>}
 
             {published ? (
               <div className="flex items-center gap-2 pt-2">
                 <Button
                   onClick={publish}
-                  disabled={publishing || (hasBuyout && askingPrice <= 0)}
+                  disabled={publishing}
                   className="gap-2"
                 >
                   {publishing && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -643,7 +659,7 @@ export function CrossroadsPathA({
             ) : (
               <Button
                 onClick={publish}
-                disabled={publishing || (hasBuyout && askingPrice <= 0)}
+                disabled={publishing}
                 className="w-full sm:w-auto gap-2"
               >
                 {publishing && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -664,7 +680,14 @@ export function CrossroadsPathA({
           {loadingInterests && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
         </div>
 
-        {interests.length === 0 ? (
+        {interestsError ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-xs space-y-2">
+            <p className="text-destructive font-medium">{interestsError}</p>
+            <Button variant="outline" size="sm" onClick={loadInterests} className="text-xs">
+              Retry Inquiries
+            </Button>
+          </div>
+        ) : !loadingInterests && interests.length === 0 ? (
           <p className="text-xs text-muted-foreground py-2">
             No inquiries received yet. When entrepreneurs express interest in your project, they will appear here.
           </p>

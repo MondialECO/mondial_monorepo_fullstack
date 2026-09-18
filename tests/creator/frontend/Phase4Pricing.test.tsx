@@ -57,4 +57,52 @@ describe("Phase4Pricing", () => {
 
     await waitFor(() => expect(api.pricingInsights).toHaveBeenCalledTimes(2));
   });
+
+  it("dynamically adds and removes packages clamped between 3 and 5", async () => {
+    render(<Phase4Pricing ideaId="idea-1" onNext={vi.fn()} />);
+
+    expect(screen.getByText("(3/5)")).toBeInTheDocument();
+    // Cannot delete when at minimum 3 tiers
+    expect(screen.queryByTitle("Delete package")).not.toBeInTheDocument();
+
+    // Add 4th package
+    fireEvent.click(screen.getByRole("button", { name: /add package/i }));
+    expect(screen.getByText("(4/5)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Package 4 name")).toBeInTheDocument();
+    expect(screen.getAllByTitle("Delete package")).toHaveLength(4);
+
+    // Add 5th package
+    fireEvent.click(screen.getByRole("button", { name: /add package/i }));
+    expect(screen.getByText("(5/5)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Package 5 name")).toBeInTheDocument();
+
+    // Clamped at 5: Add Package CTA disappears
+    expect(screen.queryByRole("button", { name: /add package/i })).not.toBeInTheDocument();
+
+    // Delete a package
+    const deleteButtons = screen.getAllByTitle("Delete package");
+    fireEvent.click(deleteButtons[4]); // remove Package 5
+    expect(screen.getByText("(4/5)")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Package 5 name")).not.toBeInTheDocument();
+  });
+
+  it("derives forecast divergence live when entry pricing differs from forecast ARPU", async () => {
+    render(
+      <Phase4Pricing
+        ideaId="idea-1"
+        initial={{
+          tiers: [
+            { id: "1", name: "Starter", price: 50, billingCycle: "monthly", features: ["A"], isHighlighted: false },
+            { id: "2", name: "Pro", price: 100, billingCycle: "monthly", features: ["B"], isHighlighted: true },
+            { id: "3", name: "Enterprise", price: 200, billingCycle: "monthly", features: ["C"], isHighlighted: false },
+          ],
+        }}
+        onNext={vi.fn()}
+      />
+    );
+
+    // Forecast context has ARPU 30, starter price is 50 -> divergence >= 10% -> live warning banner appears
+    await screen.findByText(/Your selected entry price differs from your forecast ARPU/i);
+    expect(screen.getByText(/Update Forecast when you're ready/i)).toBeInTheDocument();
+  });
 });

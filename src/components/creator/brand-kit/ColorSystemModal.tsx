@@ -205,17 +205,35 @@ export function ColorSystemModal({
   const [error, setError] = useState<string | null>(null);
   const [creditError, setCreditError] = useState<string | null>(null);
   const [copiedRole, setCopiedRole] = useState<string | null>(null);
-  const [colorCost, setColorCost] = useState<number>(2);
+  const [colorCost, setColorCost] = useState<number | null>(null);
+  const [isCostLoading, setIsCostLoading] = useState<boolean>(true);
+  const [isCostError, setIsCostError] = useState<boolean>(false);
 
   useEffect(() => {
+    let mounted = true;
+    setIsCostLoading(true);
+    setIsCostError(false);
     creatorAiApi
       .getCredits()
       .then((res) => {
+        if (!mounted) return;
         if (res?.costs?.ColorGeneration != null) {
           setColorCost(res.costs.ColorGeneration);
+        } else {
+          setIsCostError(true);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!mounted) return;
+        setIsCostError(true);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setIsCostLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Background hex reference for contrast calculation
@@ -632,21 +650,18 @@ export function ColorSystemModal({
               <AlertTriangle className="size-4 shrink-0 text-amber-600" />
               <span>{creditError}</span>
             </div>
-            <a
-              href="/dashboard/creator/billing"
-              target="_blank"
-              className="font-bold underline ml-3 shrink-0 hover:text-amber-700"
-            >
-              Top up credits
-            </a>
+            <span className="text-[11px] font-semibold opacity-80 ml-3 shrink-0">
+              (Credit top-ups are currently unavailable)
+            </span>
           </div>
         )}
 
-        {/* Modal Scrolling Body */}
-        <div className="p-6 overflow-y-auto space-y-6">
+        {/* Modal Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
           {roles.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-12 text-center flex flex-col items-center justify-center max-w-xl mx-auto my-8">
-              <div className="size-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 text-primary">
+            /* Un-generated Empty State — Requires User Confirmation */
+            <div className="flex flex-col items-center justify-center min-h-[380px] p-8 sm:p-12 text-center max-w-lg mx-auto space-y-5 rounded-2xl border border-dashed border-border bg-muted/20">
+              <div className="size-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-xs">
                 <Palette className="size-8" />
               </div>
               <h3 className="font-heading text-lg font-bold tracking-tight mb-2">
@@ -657,12 +672,12 @@ export function ColorSystemModal({
               </p>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/20 text-xs font-mono font-medium text-primary mb-6">
                 <Sparkles className="size-3.5" />
-                <span>Cost: {colorCost} AI credits</span>
+                <span>Cost: {isCostLoading ? "Loading cost…" : isCostError || colorCost == null ? "Unavailable" : `${colorCost} AI credits`}</span>
               </div>
               <Button
                 size="lg"
                 onClick={handleGenerateInitial}
-                disabled={isLoadingInitial}
+                disabled={isLoadingInitial || isCostLoading || isCostError || colorCost == null}
                 className="gap-2 font-mono text-sm px-6 shadow-sm"
               >
                 {isLoadingInitial ? (
@@ -673,7 +688,7 @@ export function ColorSystemModal({
                 ) : (
                   <>
                     <Sparkles className="size-4" />
-                    <span>Generate Colour System ({colorCost} credits)</span>
+                    <span>{isCostLoading ? "Loading cost…" : isCostError || colorCost == null ? "Cost unavailable" : `Generate Colour System (${colorCost} credits)`}</span>
                   </>
                 )}
               </Button>

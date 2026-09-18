@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Star, MessageSquare, Loader2, Rocket, Users, Info, CheckCircle2 } from "lucide-react";
+import { Star, MessageSquare, Loader2, Rocket, Users, Info, CheckCircle2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,37 +33,62 @@ function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
   };
 
   const startButton = (
-    <Button variant="outline" size="sm" onClick={startConversation} disabled={!reachable || createConversation.isPending} className="gap-1.5">
-      {createConversation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />} Start Conversation
+    <Button
+      variant={featured ? "default" : "outline"}
+      size="sm"
+      className="gap-1.5"
+      disabled={!reachable || createConversation.isPending}
+      onClick={startConversation}
+    >
+      {createConversation.isPending ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <MessageSquare className="h-3.5 w-3.5" />
+      )}
+      Message
     </Button>
   );
 
   return (
-    <Card className={`rounded-2xl border bg-card p-5 ${featured ? "border-primary" : "border-border"}`}>
-      <div className="flex items-center justify-between">
-        <div>
+    <Card className={`rounded-2xl border bg-card p-5 space-y-3 ${featured ? "border-primary/50 shadow-md" : "border-border"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-bold">{m.name}</h3>
-            {featured && <Badge className="bg-primary text-primary-foreground gap-1"><Star className="h-3 w-3" /> Featured</Badge>}
-            <Badge variant="outline" className="capitalize">{m.type?.replace(/_/g, " ")}</Badge>
+            <span className="font-semibold text-base">{m.name}</span>
+            {featured && (
+              <Badge className="bg-primary text-primary-foreground gap-1 text-[11px] font-semibold">
+                <Star className="h-3 w-3" /> Featured Match
+              </Badge>
+            )}
+            <Badge variant="outline" className="text-xs">{m.type}</Badge>
           </div>
-          <div className="text-xs text-muted-foreground mt-1">Match {m.finalScore}%</div>
+          <p className="text-xs text-muted-foreground">{m.focus}</p>
         </div>
-        {reachable ? startButton : (
-          // Honest "not reachable yet" — never a fake thread or silent no-op.
+        <div className="text-right">
+          <div className="text-sm font-bold text-primary">{m.checkSize}</div>
+          <div className="text-[11px] text-muted-foreground">Typical check</div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>Match score: <strong className="text-foreground">{m.matchScore}%</strong></span>
+          <span>•</span>
+          <span>Stage: <strong className="text-foreground">{m.stage}</strong></span>
+        </div>
+
+        {reachable ? (
+          startButton
+        ) : (
           <Tooltip>
-            <TooltipTrigger asChild><span tabIndex={0} className="inline-flex">{startButton}</span></TooltipTrigger>
-            <TooltipContent className="max-w-[220px]">This investor isn&apos;t reachable for messaging yet.</TooltipContent>
+            <TooltipTrigger asChild>
+              <span tabIndex={0} className="inline-block">{startButton}</span>
+            </TooltipTrigger>
+            <TooltipContent>This catalog investor isn't on the chat network yet.</TooltipContent>
           </Tooltip>
         )}
       </div>
-      <div className="grid grid-cols-4 gap-2 mt-3">
-        {([["Sector", m.breakdown.sectorMatch], ["Stage", m.breakdown.stageMatch], ["Geo", m.breakdown.geographyMatch], ["Ticket", m.breakdown.ticketMatch]] as const).map(([l, v]) => (
-          <div key={l} className="rounded-lg border border-border p-2 text-center"><div className="text-[10px] text-muted-foreground">{l}</div><div className="text-sm font-bold">{v}</div></div>
-        ))}
-      </div>
-      {!reachable && <p className="text-xs text-muted-foreground mt-2">Not reachable for messaging yet.</p>}
-      {error && <p className="text-xs text-destructive mt-2">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </Card>
   );
 }
@@ -71,7 +96,7 @@ function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
 export default function InvestorsPage() {
   const router = useRouter();
   const { state: { activeIdeaId } } = useCreatorProgress();
-  const [data, setData] = useState<{ featured: SmartMatch | null; qualified: SmartMatch[]; matchingTip: string; isEmpty: boolean } | null>(null);
+  const [data, setData] = useState<{ featured?: SmartMatch; qualified: SmartMatch[]; isEmpty: boolean; matchingTip?: string } | null>(null);
   const [readiness, setReadiness] = useState<CreatorReadiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +119,7 @@ export default function InvestorsPage() {
       <header className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4">
         <h1 className="text-sm font-bold">Growth, readiness & matching</h1>
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Sparkles className="h-3 w-3" /> Investor matching
+          <Users className="h-3 w-3" /> Investor matching
         </div>
       </header>
 
@@ -131,7 +156,7 @@ export default function InvestorsPage() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <Badge className="bg-primary text-primary-foreground font-bold gap-1 shadow-sm">
-                      <Sparkles className="h-3 w-3" /> CO-FOUNDED
+                      <Building2 className="h-3 w-3" /> CO-FOUNDED
                     </Badge>
                     <Badge variant="outline" className="border-success-strong/40 text-success-strong bg-success-light font-medium">
                       Partnership Active ✓

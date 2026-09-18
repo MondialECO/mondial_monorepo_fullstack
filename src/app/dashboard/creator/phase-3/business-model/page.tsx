@@ -26,11 +26,13 @@ import {
   Target,
   Truck,
   HeartHandshake,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
+import BusinessModelPrintView from '@/components/creator/BusinessModelPrintView';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import {
   useAiCredits,
@@ -76,12 +78,19 @@ export default function BusinessModelPage() {
   const [marketStudySessionId, setMarketStudySessionId] = useState<string | null>(null);
   const [businessIdeaId, setBusinessIdeaId] = useState<string | null>(null);
   const [startError, setStartError] = useState<AiError | null>(null);
+  const [isPrintOpen, setIsPrintOpen] = useState(false);
+  const [projectName, setProjectName] = useState<string | null>(null);
+  const [sector, setSector] = useState<string | null>(null);
+  const [geography, setGeography] = useState<string | null>(null);
+  const [creatorMarketGap, setCreatorMarketGap] = useState<string | null>(null);
 
   const startMutation = useStartBusinessModel();
   const regenerateMutation = useRegenerateBusinessModel();
   const credits = useAiCredits();
-  const businessModelCost = credits.data?.costs?.BusinessModel ?? 18;
-  const insufficientCredits = credits.data ? credits.data.balance < businessModelCost : false;
+  const isCostLoading = credits.isLoading;
+  const isCostError = credits.isError || (!isCostLoading && credits.data?.costs?.BusinessModel == null);
+  const businessModelCost = credits.data?.costs?.BusinessModel ?? null;
+  const insufficientCredits = credits.data != null && businessModelCost != null ? credits.data.balance < businessModelCost : false;
 
   const session = useBusinessModelSessionTimed(businessModelSessionId);
   const output = (session.data as { output?: BusinessModelOutput } | undefined)?.output;
@@ -110,6 +119,10 @@ export default function BusinessModelPage() {
         setBusinessModelSessionId(p3?.businessModelSessionId ?? null);
         setMarketStudySessionId(p3?.marketStudySessionId ?? null);
         setBusinessIdeaId(getCreatorWorkspaceIdea());
+        setCreatorMarketGap(journey.project?.marketGap ?? null);
+        setSector(journey.project?.sector ?? null);
+        setGeography(journey.project?.geography ?? null);
+        setProjectName((journey.project as { name?: string; title?: string } | undefined)?.name ?? (journey.project as { name?: string; title?: string } | undefined)?.title ?? null);
       } finally {
         if (active) setLoading(false);
       }
@@ -149,6 +162,11 @@ export default function BusinessModelPage() {
     }
   };
 
+  const handleExport = () => {
+    if (!output) return;
+    setIsPrintOpen(true);
+  };
+
   const handleNext = () => {
     completeStep(3, 2);
     router.push('/dashboard/creator/phase-3/business-plan');
@@ -162,9 +180,33 @@ export default function BusinessModelPage() {
   return (
     <Phase3SetupShell
       fullWidth
+      headerAlign="left"
       stepEyebrow="Step 3.2"
       title="Business Model & Monetization Canvas"
       description="Canonical Osterwalder canvas, pricing tier architecture, and ground-truth unit economics."
+      headerActions={
+        completed && output ? (
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/70 rounded-lg shadow-none"
+            >
+              <Download className="w-3.5 h-3.5" /> Export PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRegenerate}
+              disabled={isGenerating || insufficientCredits}
+              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/70 rounded-lg shadow-none"
+            >
+              <RotateCw className="w-3.5 h-3.5" /> Regenerate ({businessModelCost} credits)
+            </Button>
+          </div>
+        ) : undefined
+      }
     >
       <div className="w-full max-w-7xl mx-auto space-y-8 pb-12">
         {/* Error Banners */}
@@ -245,7 +287,7 @@ export default function BusinessModelPage() {
                 <Sparkles className="w-3.5 h-3.5 text-primary" />
                 Cost:{' '}
                 <span className="font-mono font-medium text-foreground">
-                  {businessModelCost} credits
+                  {isCostLoading ? 'Loading cost…' : isCostError ? 'Unavailable' : `${businessModelCost} credits`}
                 </span>
                 {credits.data && (
                   <span className="text-muted-foreground/80">
@@ -265,11 +307,11 @@ export default function BusinessModelPage() {
               </Button>
               <Button
                 onClick={handleStart}
-                disabled={isGenerating || insufficientCredits || !marketStudySessionId}
+                disabled={isGenerating || insufficientCredits || !marketStudySessionId || isCostLoading || isCostError}
                 className="w-full sm:w-auto gap-2 text-xs font-semibold px-6"
               >
                 <Sparkles className="w-4 h-4" />
-                Generate Business Model
+                {isCostLoading ? 'Loading cost…' : isCostError ? 'Cost unavailable' : 'Generate Business Model'}
               </Button>
             </div>
 
@@ -739,6 +781,22 @@ export default function BusinessModelPage() {
           </div>
         )}
       </div>
+
+      {completed && output && (
+        <BusinessModelPrintView
+          open={isPrintOpen}
+          onClose={() => setIsPrintOpen(false)}
+          projectName={projectName || undefined}
+          project={{
+            sector: sector || undefined,
+            geography: geography || undefined,
+            marketGap: creatorMarketGap || undefined,
+          }}
+          output={output}
+          version={session.data?.currentVersion ?? 1}
+          updatedAt={session.data?.updatedAt || session.data?.createdAt}
+        />
+      )}
     </Phase3SetupShell>
   );
 }

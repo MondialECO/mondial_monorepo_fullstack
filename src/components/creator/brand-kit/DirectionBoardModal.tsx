@@ -6,7 +6,6 @@ import {
   RefreshCw,
   Check,
   AlertCircle,
-  ArrowUpRight,
   Sliders,
   X,
   Type,
@@ -24,7 +23,6 @@ import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import creatorAiApi from "@/lib/api-creator-ai";
 import { RegenerateCapBadge } from "./RegenerateCapBadge";
 import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
-import Link from "next/link";
 
 interface DirectionBoardModalProps {
   isOpen: boolean;
@@ -210,21 +208,39 @@ export function DirectionBoardModal({
 
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [directionCost, setDirectionCost] = useState<number>(7);
+  const [directionCost, setDirectionCost] = useState<number | null>(null);
+  const [isCostLoading, setIsCostLoading] = useState<boolean>(true);
+  const [isCostError, setIsCostError] = useState<boolean>(false);
   const [error, setError] = useState<{
     type: "credits" | "cap" | "network";
     message: string;
   } | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+    setIsCostLoading(true);
+    setIsCostError(false);
     creatorAiApi
       .getCredits()
       .then((res) => {
+        if (!mounted) return;
         if (res?.costs?.DirectionGeneration != null) {
           setDirectionCost(res.costs.DirectionGeneration);
+        } else {
+          setIsCostError(true);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!mounted) return;
+        setIsCostError(true);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setIsCostLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Synchronize state when kit updates
@@ -424,12 +440,16 @@ export function DirectionBoardModal({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={isGenerating || isCapExhausted}
+                disabled={isGenerating || isCapExhausted || isCostLoading || isCostError || directionCost == null}
                 onClick={handleGenerate}
                 className="h-8 px-3 text-xs font-medium gap-1.5 hover:bg-muted text-foreground disabled:opacity-50 font-sans cursor-pointer"
                 title={
                   isCapExhausted
                     ? "Regeneration cap reached (3/3)"
+                    : isCostLoading
+                    ? "Loading credit cost…"
+                    : isCostError || directionCost == null
+                    ? "Credit cost unavailable"
                     : `Regenerate all 4 directions (${directionCost} credits, ${remainingCap} left)`
                 }
               >
@@ -442,7 +462,7 @@ export function DirectionBoardModal({
               {/* Dynamic CREDITS chip */}
               <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/60">
                 <Sparkles className="size-3 text-primary" />
-                {directionCost} CREDITS
+                {isCostLoading ? "..." : isCostError || directionCost == null ? "—" : `${directionCost} CREDITS`}
               </span>
 
               {/* Amber Cap Badge */}
@@ -521,13 +541,7 @@ export function DirectionBoardModal({
               <span className="font-medium">{error.message}</span>
             </div>
             {error.type === "credits" && (
-              <Link
-                href="/dashboard/creator/credits"
-                target="_blank"
-                className="inline-flex items-center gap-1 font-semibold underline hover:opacity-85"
-              >
-                Top up credits <ArrowUpRight className="size-3" />
-              </Link>
+              <span className="text-[11px] opacity-80 font-medium">(Credit top-ups are currently unavailable)</span>
             )}
           </div>
         )}
@@ -550,16 +564,16 @@ export function DirectionBoardModal({
               </div>
               <div className="flex items-center gap-2 font-mono text-xs font-semibold px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                 <Sparkles className="size-3.5" />
-                <span>Cost: {directionCost} AI Credits</span>
+                <span>Cost: {isCostLoading ? "Loading cost…" : isCostError || directionCost == null ? "Unavailable" : `${directionCost} AI Credits`}</span>
               </div>
               <Button
                 type="button"
                 onClick={handleGenerate}
-                disabled={isGenerating}
+                disabled={isGenerating || isCostLoading || isCostError || directionCost == null}
                 className="h-11 px-7 font-sans font-semibold gap-2 shadow-sm text-sm cursor-pointer"
               >
                 <Sparkles className="size-4" />
-                Generate 4 Directions ({directionCost} credits)
+                {isCostLoading ? "Loading cost…" : isCostError || directionCost == null ? "Cost unavailable" : `Generate 4 Directions (${directionCost} credits)`}
               </Button>
             </div>
           )}
