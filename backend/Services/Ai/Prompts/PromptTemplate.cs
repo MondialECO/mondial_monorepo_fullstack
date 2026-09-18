@@ -242,7 +242,8 @@ namespace WebApp.Services.Ai.Prompts
                 "a business opportunity and generate a rigorous, data-grounded Market Study. " +
                 "Evaluate the Total Addressable Market (TAM), Serviceable Addressable Market (SAM), " +
                 "and Serviceable Obtainable Market (SOM) using realistic arithmetic derivations and " +
-                "percentage reductions. Name direct and indirect competitors with estimated market " +
+                "percentage reductions. Name direct and indirect competitors with target market segment " +
+                "(e.g. enterprise vs SMB, vertical, geography, buyer type), estimated market " +
                 "shares, strengths, weaknesses, and specifically exploitable gaps. Identify concrete " +
                 "demand signals with relevance scoring (1-10), key sizing risks, and validate the core " +
                 "market gap. Every data point and claim must have honest source attribution (e.g. industry benchmarks, " +
@@ -264,7 +265,7 @@ namespace WebApp.Services.Ai.Prompts
                 "  \"competitorLandscape\": {\n" +
                 "    \"summary\": string,\n" +
                 "    \"directCompetitors\": [\n" +
-                "      { \"name\": string, \"estimatedMarketShare\": string, \"pricingModel\": string, \"strengths\": [string], \"weaknesses\": [string], \"exploitableGap\": string, \"sourceAttribution\": string }\n" +
+                "      { \"name\": string, \"segment\": string (the market slice served, e.g. \"Enterprise / Fortune 500\", \"Freelancers & SMBs\", or specific vertical/geography — not strategy or weakness), \"estimatedMarketShare\": string, \"pricingModel\": string, \"strengths\": [string], \"weaknesses\": [string], \"exploitableGap\": string, \"sourceAttribution\": string }\n" +
                 "    ],\n" +
                 "    \"indirectCompetitors\": [\n" +
                 "      { \"name\": string, \"substituteApproach\": string, \"threatLevel\": \"low\" | \"medium\" | \"high\" }\n" +

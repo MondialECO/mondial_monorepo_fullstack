@@ -16,7 +16,7 @@ import { VariationSetModal } from "./VariationSetModal";
 import { ColorSystemModal } from "./ColorSystemModal";
 import { TypographySystemModal } from "./TypographySystemModal";
 import { Button } from "@/components/ui/button";
-import JSZip from "jszip";
+import { exportBrandKitZip } from "@/lib/brand-kit-export";
 import {
   Download,
   ExternalLink,
@@ -78,6 +78,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
   const [selectedSnapshotIndex, setSelectedSnapshotIndex] = useState<number | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const brandName =
     kit.strategy?.nameDisplayForm ||
@@ -209,125 +210,12 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
   const handleDownloadBrandKit = async () => {
     if (isZipping) return;
     setIsZipping(true);
-
+    setExportError(null);
     try {
-      const zip = new JSZip();
-      const slug = brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "brand";
-      const rootFolder = zip.folder(`${slug}-brand-kit`) || zip;
-
-      // 1. Logos Folder
-      const logosFolder = rootFolder.folder("logos");
-      const variations = kit.logo?.variations ?? {};
-
-      for (const [key, variation] of Object.entries(variations)) {
-        const fileKey = key.replace(/_/g, "-");
-        if (variation.svgUri) {
-          if (variation.svgUri.startsWith("data:image/svg+xml;base64,")) {
-            const base64Data = variation.svgUri.split(",")[1];
-            logosFolder?.file(`${slug}-${fileKey}.svg`, base64Data, { base64: true });
-          } else if (variation.svgUri.startsWith("data:image/svg+xml,")) {
-            const rawSvg = decodeURIComponent(variation.svgUri.replace("data:image/svg+xml,", ""));
-            logosFolder?.file(`${slug}-${fileKey}.svg`, rawSvg);
-          } else if (variation.svgUri.startsWith("<svg")) {
-            logosFolder?.file(`${slug}-${fileKey}.svg`, variation.svgUri);
-          } else if (variation.svgUri.startsWith("/") || variation.svgUri.startsWith("http")) {
-            try {
-              const fetchUrl = variation.svgUri.startsWith("http")
-                ? variation.svgUri
-                : `${API_ORIGIN}${variation.svgUri}`;
-              const res = await fetch(fetchUrl);
-              if (res.ok) {
-                const svgText = await res.text();
-                if (svgText && svgText.includes("<svg")) {
-                  logosFolder?.file(`${slug}-${fileKey}.svg`, svgText);
-                }
-              }
-            } catch (err) {
-              console.warn(`Failed to fetch SVG asset for ${fileKey}:`, err);
-            }
-          }
-        }
-      }
-
-      // 2. Tokens Folder: colors.json
-      const tokensFolder = rootFolder.folder("tokens");
-      const colorTokens = {
-        brandName,
-        paletteName: kit.direction?.candidates?.find((c) => c.key === kit.direction?.selectedDirectionKey)?.name || "Primary Palette",
-        roles: (kit.colors?.roles ?? []).map((r) => ({
-          role: r.roleName,
-          hex: r.hex,
-          rgb: r.rgb,
-          contrastAgainstGround: r.contrastRatio ? `${r.contrastRatio}:1` : "Ground",
-          wcagVerdict: r.contrastVerdict || "N/A",
-          usageNote: r.usageNote,
-        })),
-      };
-      tokensFolder?.file("colors.json", JSON.stringify(colorTokens, null, 2));
-
-      // 3. Tokens Folder: typography.json
-      const typographyTokens = {
-        brandName,
-        families: {
-          display: kit.typography?.families?.displayFamily || { name: "Syne" },
-          text: kit.typography?.families?.textFamily || { name: "DM Sans" },
-        },
-        roles: (kit.typography?.roles ?? []).map((r) => ({
-          role: r.roleName,
-          family: r.family,
-          weight: r.weight,
-          size: r.size,
-          lineHeight: r.lineHeight,
-          specimenText: r.specimenText,
-          isPermanent: r.roleName === "Logo type",
-        })),
-      };
-      tokensFolder?.file("typography.json", JSON.stringify(typographyTokens, null, 2));
-
-      // 4. Tokens Folder: brand-tokens.css
-      const cssTokens = `:root {
-  /* Brand Colours */
-  --brand-primary: ${kit.colors?.roles?.find((r) => r.roleName === "Primary")?.hex || "#1B365D"};
-  --brand-secondary: ${kit.colors?.roles?.find((r) => r.roleName === "Secondary")?.hex || "#4B6B94"};
-  --brand-accent: ${kit.colors?.roles?.find((r) => r.roleName === "Accent")?.hex || "#2EC4B6"};
-  --brand-background: ${kit.colors?.roles?.find((r) => r.roleName === "Background")?.hex || "#F8FAFC"};
-  --brand-text: ${kit.colors?.roles?.find((r) => r.roleName === "Text")?.hex || "#0F172A"};
-
-  /* Typography Families */
-  --font-brand-display: "${kit.typography?.families?.displayFamily?.name || "Syne"}", sans-serif;
-  --font-brand-text: "${kit.typography?.families?.textFamily?.name || "DM Sans"}", sans-serif;
-}
-`;
-      tokensFolder?.file("brand-tokens.css", cssTokens);
-
-      // 5. README.md Summary
-      const readmeContent = `# ${brandName} — Brand Identity Kit
-
-**Industry**: ${kit.strategy?.industry?.value || "N/A"}
-**Positioning**: ${kit.strategy?.positioning?.value || "N/A"}
-**Tone**: ${kit.strategy?.tonePosition || "Balanced"}
-**Status**: All 6 identity steps confirmed.
-
----
-### Included Assets:
-1. \`/logos/\`: 6 production-grade logo mark lockup variations (SVG).
-2. \`/tokens/colors.json\`: Harmonized 5-role WCAG contrast color palette.
-3. \`/tokens/typography.json\`: Optical typography scales and role assignments.
-4. \`/tokens/brand-tokens.css\`: Ready-to-use CSS Custom Properties.
-`;
-      rootFolder.file("README.md", readmeContent);
-
-      const zipBlob = await zip.generateAsync({ type: "blob" });
-      const downloadUrl = URL.createObjectURL(zipBlob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = `${slug}-brand-kit.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(downloadUrl);
+      await exportBrandKitZip(kit, brandName);
     } catch (err: any) {
       console.error("ZIP packaging error:", err);
+      setExportError(err?.message || "Failed to package Brand Kit ZIP.");
     } finally {
       setIsZipping(false);
     }
@@ -369,6 +257,23 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
       {feedbackMessage && (
         <div className="bg-emerald-600 text-white px-6 py-2.5 text-xs font-semibold text-center sticky top-0 z-50 shadow-sm">
           {feedbackMessage}
+        </div>
+      )}
+
+      {/* Export Error Banner */}
+      {exportError && (
+        <div className="bg-destructive text-destructive-foreground px-6 py-3 text-xs font-semibold flex items-center justify-between gap-3 sticky top-0 z-50 shadow-sm">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 shrink-0" />
+            <span>{exportError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExportError(null)}
+            className="hover:underline text-[11px] uppercase tracking-wider font-mono shrink-0 cursor-pointer"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 

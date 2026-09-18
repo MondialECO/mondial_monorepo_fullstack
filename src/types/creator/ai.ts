@@ -98,6 +98,7 @@ export interface MarketSizingNode {
 
 export interface DirectCompetitor {
   name: string;
+  segment?: string;
   estimatedMarketShare?: string;
   pricingModel?: string;
   strengths: string[];
