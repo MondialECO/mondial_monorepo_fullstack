@@ -155,13 +155,13 @@ export default function CreatorPhase1Client() {
                       stroke="currentColor"
                     />
                   </svg>
-                  <span className="absolute text-[10px] font-bold text-foreground">
+                  <span className="absolute text-badge font-bold text-foreground">
                     {progressPercent}%
                   </span>
                 </div>
                 <div className="text-left hidden sm:block">
                   <div className="text-xs font-bold text-foreground">Phase 1 of 6</div>
-                  <div className="text-[10px] font-medium text-muted-foreground">Identity verification</div>
+                  <div className="text-caption font-medium text-muted-foreground">Identity verification</div>
                 </div>
               </div>
             </div>
@@ -197,7 +197,7 @@ export default function CreatorPhase1Client() {
                 {activeAccordion === 1 && (
                   <div className="px-4 pb-4 pt-0 border-t border-border/40 mt-1">
                     <div className="mt-4 space-y-4">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Mandatory Steps</div>
+                      <div className="text-label font-semibold uppercase tracking-wider text-muted-foreground mb-2">Mandatory Steps</div>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Step 1: Role Selection */}
@@ -285,7 +285,7 @@ export default function CreatorPhase1Client() {
                       <span className="block text-sm sm:text-base font-bold text-muted-foreground truncate">
                         {p.title}
                       </span>
-                      <span className="block text-[10px] text-muted-foreground/80 font-medium mt-0.5">
+                      <span className="block text-caption text-muted-foreground/80 font-medium mt-0.5">
                         Complete Phase {p.num - 1} to unlock this phase.
                       </span>
                     </div>

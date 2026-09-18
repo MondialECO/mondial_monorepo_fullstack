@@ -209,7 +209,7 @@ export function ForecastView({ output }: { output: ForecastOutput }) {
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <span className="font-semibold text-foreground text-sm">{i + 1}. {r.category}</span>
                     {r.likelihood && (
-                      <Badge className={`text-[10px] ${likelihoodVariant(r.likelihood)}`}>{r.likelihood}</Badge>
+                      <Badge className={`text-badge ${likelihoodVariant(r.likelihood)}`}>{r.likelihood}</Badge>
                     )}
                   </div>
                   {r.description && (

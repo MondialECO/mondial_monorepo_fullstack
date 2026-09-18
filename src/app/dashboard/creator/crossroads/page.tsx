@@ -94,9 +94,9 @@ export default function CrossroadsPage() {
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/10 text-warning"><Store className="h-6 w-6" /></div>
                   <div className="flex items-center gap-1.5">
                     {isSold ? (
-                      <Badge variant="destructive" className="font-bold text-[10px]">SOLD</Badge>
+                      <Badge variant="destructive" className="font-bold text-badge">SOLD</Badge>
                     ) : isPublished ? (
-                      <Badge className={`text-[10px] font-bold ${isPaused ? "bg-warning/10 text-warning border-warning/30" : "bg-success-light text-success-strong border-success-strong/30"}`}>
+                      <Badge className={`text-badge font-bold ${isPaused ? "bg-warning/10 text-warning border-warning/30" : "bg-success-light text-success-strong border-success-strong/30"}`}>
                         {isPaused ? "PAUSED" : "LIVE"}
                       </Badge>
                     ) : null}
@@ -132,13 +132,13 @@ export default function CrossroadsPage() {
                       </div>
                     )}
                     {listing?.publishedAt && (
-                      <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                      <div className="flex items-center justify-between text-muted-foreground text-caption">
                         <span>Published:</span>
                         <span>{new Date(listing.publishedAt).toLocaleDateString()}</span>
                       </div>
                     )}
                     {listing?.updatedAt && (
-                      <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                      <div className="flex items-center justify-between text-muted-foreground text-caption">
                         <span>Last updated:</span>
                         <span>{new Date(listing.updatedAt).toLocaleDateString()}</span>
                       </div>

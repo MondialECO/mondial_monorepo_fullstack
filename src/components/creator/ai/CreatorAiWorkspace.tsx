@@ -238,7 +238,7 @@ export function CreatorAiWorkspace() {
     <div className="w-full max-w-[960px] mx-auto space-y-6 pb-10">
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="flex items-center gap-2 text-[28px] font-bold leading-tight text-foreground">
+        <h1 className="flex items-center gap-2 text-page-heading font-bold leading-tight text-foreground">
           <Sparkles className="h-7 w-7 text-primary" />
           AI Studio
         </h1>

@@ -33,7 +33,7 @@ function SourceBadge({ source, benchmark }: { source: ValueSource; benchmark?: M
         : benchmark?.displayLabel ?? "Benchmark";
 
   return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-badge font-medium ${
       source === "benchmark" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
     }`}>
       {label}

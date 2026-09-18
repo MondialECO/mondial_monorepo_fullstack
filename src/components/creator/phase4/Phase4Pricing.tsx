@@ -385,7 +385,7 @@ export function Phase4Pricing({
       )}
 
       <div className="mt-8 flex justify-end border-t border-border pt-4">
-        <Button onClick={save} disabled={saving} className="h-11 min-w-[199px] gap-2 rounded-md px-5 text-[13px]">
+        <Button onClick={save} disabled={saving} className="h-11 min-w-[199px] gap-2 rounded-md px-5 text-button">
           {saving ? <Loader2 className="size-4 animate-spin" /> : null}
           Save &amp; continue
           {!saving && <Image src={`${ASSET_ROOT}/arrow-right.svg`} alt="" width={16} height={16} className="size-4" />}

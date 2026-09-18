@@ -241,19 +241,19 @@ export default function MySalesPage() {
                             {deal.projectName || "Untitled Venture"}
                           </h3>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
+                            <span className="inline-flex items-center gap-1 text-caption font-semibold text-primary">
                               <Layers className="h-3 w-3" />
                               Full Buyout
                             </span>
                             <span className="text-muted-foreground/60 text-xs">•</span>
-                            <span className="text-[11px] text-muted-foreground">
+                            <span className="text-caption text-muted-foreground">
                               Rev #{deal.currentRevisionNumber || 1}
                             </span>
                           </div>
                         </div>
 
                         <Badge
-                          className={`${stageInfo.badgeClass} text-[10px] font-bold uppercase tracking-wider shrink-0 px-2.5 py-0.5 rounded-full border`}
+                          className={`${stageInfo.badgeClass} text-badge font-bold uppercase tracking-wider shrink-0 px-2.5 py-0.5 rounded-full border`}
                         >
                           {stageInfo.label}
                         </Badge>
@@ -262,7 +262,7 @@ export default function MySalesPage() {
                       {/* METRICS GRID */}
                       <div className="grid grid-cols-2 gap-3 pt-2">
                         <div className="p-3 bg-background border border-border rounded-xl">
-                          <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider block">
+                          <span className="text-label text-muted-foreground uppercase font-semibold tracking-wider block">
                             Purchase Price
                           </span>
                           <span className="text-base font-extrabold text-foreground mt-0.5 block">
@@ -273,7 +273,7 @@ export default function MySalesPage() {
                         </div>
 
                         <div className="p-3 bg-background border border-border rounded-xl">
-                          <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider block">
+                          <span className="text-label text-muted-foreground uppercase font-semibold tracking-wider block">
                             Last Updated
                           </span>
                           <span className="text-xs font-bold text-foreground mt-1 block truncate">
@@ -363,7 +363,7 @@ export default function MySalesPage() {
                           Ref: {sale.auditReference || sale.dealId.slice(0, 8)}
                         </p>
                       </div>
-                      <Badge className="bg-success-light text-success-strong border-success-strong/30 text-[10px] font-black uppercase tracking-wider shrink-0 px-2.5 py-0.5 rounded-full border">
+                      <Badge className="bg-success-light text-success-strong border-success-strong/30 text-badge font-black uppercase tracking-wider shrink-0 px-2.5 py-0.5 rounded-full border">
                         {sale.status || "SOLD"}
                       </Badge>
                     </div>
@@ -371,7 +371,7 @@ export default function MySalesPage() {
                     {/* METRICS GRID */}
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div className="p-3 bg-background border border-border rounded-xl">
-                        <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider block">
+                        <span className="text-label text-muted-foreground uppercase font-semibold tracking-wider block">
                           Sale Price
                         </span>
                         <span className="text-base font-extrabold text-foreground mt-0.5 block">
@@ -380,7 +380,7 @@ export default function MySalesPage() {
                       </div>
 
                       <div className="p-3 bg-background border border-border rounded-xl">
-                        <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider block">
+                        <span className="text-label text-muted-foreground uppercase font-semibold tracking-wider block">
                           Sold Date
                         </span>
                         <span className="text-xs font-bold text-foreground mt-1 block truncate">

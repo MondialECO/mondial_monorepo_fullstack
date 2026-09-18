@@ -367,29 +367,29 @@ export function CrossroadsPathA({
                       This project has been sold via Full Buyout. The marketplace listing is permanently closed.
                     </p>
                   </div>
-                  <Badge variant="destructive" className="font-bold text-[10px]">
+                  <Badge variant="destructive" className="font-bold text-badge">
                     SOLD
                   </Badge>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
                   <div className="rounded-xl border border-border bg-background/50 p-3">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">Deal Types</span>
+                    <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground block">Deal Types</span>
                     <span className="text-xs font-bold text-foreground capitalize">
                       {dealModes.map((m) => m.replace(/_/g, " ")).join(", ")}
                     </span>
                   </div>
                   {hasBuyout && (
                     <div className="rounded-xl border border-border bg-background/50 p-3">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">Asking Price</span>
+                      <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground block">Asking Price</span>
                       <span className="text-xs font-bold text-primary">€{askingPrice.toLocaleString()}</span>
                     </div>
                   )}
                   <div className="rounded-xl border border-border bg-background/50 p-3">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">Visibility</span>
+                    <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground block">Visibility</span>
                     <span className="text-xs font-bold text-foreground capitalize">{audience}</span>
                   </div>
                   <div className="rounded-xl border border-border bg-background/50 p-3">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">Dates</span>
+                    <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground block">Dates</span>
                     <span className="text-xs font-medium text-muted-foreground block truncate">
                       {publishedAt ? `Published ${new Date(publishedAt).toLocaleDateString()}` : "Published"}
                       {updatedAt ? ` · Updated ${new Date(updatedAt).toLocaleDateString()}` : ""}
@@ -417,7 +417,7 @@ export function CrossroadsPathA({
                     </p>
                   </div>
                   <Badge
-                    className={`text-[10px] font-bold ${
+                    className={`text-badge font-bold ${
                       listingStatus === "paused"
                         ? "bg-warning/10 text-warning border-warning/30"
                         : "bg-success-light text-success-strong border-success-strong/30"
@@ -429,23 +429,23 @@ export function CrossroadsPathA({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2">
                   <div className="rounded-xl border border-border bg-background/50 p-3">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">Deal Types</span>
+                    <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground block">Deal Types</span>
                     <span className="text-xs font-bold text-foreground capitalize">
                       {dealModes.map((m) => m.replace(/_/g, " ")).join(", ")}
                     </span>
                   </div>
                   {hasBuyout && (
                     <div className="rounded-xl border border-border bg-background/50 p-3">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">Asking Price</span>
+                      <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground block">Asking Price</span>
                       <span className="text-xs font-bold text-primary">€{askingPrice.toLocaleString()}</span>
                     </div>
                   )}
                   <div className="rounded-xl border border-border bg-background/50 p-3">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">Visibility</span>
+                    <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground block">Visibility</span>
                     <span className="text-xs font-bold text-foreground capitalize">{audience}</span>
                   </div>
                   <div className="rounded-xl border border-border bg-background/50 p-3">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">Dates</span>
+                    <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground block">Dates</span>
                     <span className="text-xs font-medium text-muted-foreground block truncate">
                       {publishedAt ? `Published ${new Date(publishedAt).toLocaleDateString()}` : "Published"}
                       {updatedAt ? ` · Updated ${new Date(updatedAt).toLocaleDateString()}` : ""}
@@ -499,7 +499,7 @@ export function CrossroadsPathA({
               {published && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-primary text-primary-foreground font-bold text-[10px]">Editing Live Listing</Badge>
+                    <Badge className="bg-primary text-primary-foreground font-bold text-badge">Editing Live Listing</Badge>
                     <span className="text-muted-foreground">You are editing a live marketplace listing. Changes update the public listing only. Existing accepted deal terms will not be changed.</span>
                   </div>
                   <Button
@@ -551,7 +551,7 @@ export function CrossroadsPathA({
                   />
                   <div>
                     <div className="text-xs font-bold text-foreground">Full Buyout</div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                    <p className="text-caption text-muted-foreground mt-0.5 leading-snug">
                       Sell 100% of project IP and assets directly.
                     </p>
                   </div>
@@ -574,7 +574,7 @@ export function CrossroadsPathA({
                   />
                   <div>
                     <div className="text-xs font-bold text-foreground">Co-founder / Equity</div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                    <p className="text-caption text-muted-foreground mt-0.5 leading-snug">
                       Partner with an entrepreneur in exchange for co-founder equity.
                     </p>
                   </div>
@@ -726,7 +726,7 @@ export function CrossroadsPathA({
                       </span>
                       <Badge
                         variant="secondary"
-                        className={`text-[9px] uppercase font-bold tracking-wider ${
+                        className={`text-badge uppercase font-bold tracking-wider ${
                           isFullBuyout && isEquity
                             ? "bg-secondary text-secondary-foreground border-border"
                             : isFullBuyout
@@ -744,7 +744,7 @@ export function CrossroadsPathA({
                             ? "secondary"
                             : "outline"
                         }
-                        className={`text-[10px] uppercase font-semibold tracking-wider ${
+                        className={`text-badge uppercase font-semibold tracking-wider ${
                           interest.status === "pending"
                             ? "text-warning border-warning/30 bg-warning/10"
                             : interest.status === "accepted"
@@ -760,7 +760,7 @@ export function CrossroadsPathA({
                       {interest.status === "accepted" && (
                         <Badge
                           variant="outline"
-                          className={`text-[10px] ${
+                          className={`text-badge ${
                             interest.accessGranted || interest.ndaSigned
                               ? "text-success-strong border-success-strong/30 bg-success-light"
                               : interest.ndaRequired
@@ -779,7 +779,7 @@ export function CrossroadsPathA({
                     {interest.note && (
                       <p className="text-xs text-muted-foreground italic">"{interest.note}"</p>
                     )}
-                    <div className="text-[10px] text-muted-foreground">
+                    <div className="text-caption text-muted-foreground">
                       Received: {new Date(interest.createdAt).toLocaleDateString()}
                     </div>
                   </div>
@@ -853,7 +853,7 @@ export function CrossroadsPathA({
                                       Legal & Transfer Review
                                     </div>
                                     {activeDeal.dealStage === "BUYOUT_LEGAL_REVIEW_PENDING" && (
-                                      <div className="text-[10px] font-medium text-primary mt-0.5">
+                                      <div className="text-caption font-medium text-primary mt-0.5">
                                         Current Step
                                       </div>
                                     )}
@@ -883,7 +883,7 @@ export function CrossroadsPathA({
                                       Agreement Signing
                                     </div>
                                     {activeDeal.dealStage === "BUYOUT_SIGNATURE_PENDING" && (
-                                      <div className="text-[10px] font-medium text-primary mt-0.5">
+                                      <div className="text-caption font-medium text-primary mt-0.5">
                                         Current Step
                                       </div>
                                     )}
@@ -913,7 +913,7 @@ export function CrossroadsPathA({
                                       Closing & Payment
                                     </div>
                                     {activeDeal.dealStage === "BUYOUT_CLOSING_PENDING" && (
-                                      <div className="text-[10px] font-medium text-primary mt-0.5">
+                                      <div className="text-caption font-medium text-primary mt-0.5">
                                         Current Step
                                       </div>
                                     )}
@@ -943,7 +943,7 @@ export function CrossroadsPathA({
                                       Asset Handover
                                     </div>
                                     {activeDeal.dealStage === "BUYOUT_HANDOVER_PENDING" && (
-                                      <div className="text-[10px] font-medium text-primary mt-0.5">
+                                      <div className="text-caption font-medium text-primary mt-0.5">
                                         Current Step
                                       </div>
                                     )}
@@ -1010,7 +1010,7 @@ export function CrossroadsPathA({
                                       Role & Responsibility Agreement
                                     </div>
                                     {activeDeal.dealStage === "ROLES_PENDING" && (
-                                      <div className="text-[10px] font-medium text-primary mt-0.5">
+                                      <div className="text-caption font-medium text-primary mt-0.5">
                                         Current Step
                                       </div>
                                     )}
@@ -1040,7 +1040,7 @@ export function CrossroadsPathA({
                                       Equity & Cap Table Structure
                                     </div>
                                     {activeDeal.dealStage === "CAP_TABLE_PENDING" && (
-                                      <div className="text-[10px] font-medium text-primary mt-0.5">
+                                      <div className="text-caption font-medium text-primary mt-0.5">
                                         Current Step
                                       </div>
                                     )}
@@ -1070,7 +1070,7 @@ export function CrossroadsPathA({
                                       Legal & Shareholder Review
                                     </div>
                                     {activeDeal.dealStage === "LEGAL_REVIEW_PENDING" && (
-                                      <div className="text-[10px] font-medium text-primary mt-0.5">
+                                      <div className="text-caption font-medium text-primary mt-0.5">
                                         Current Step
                                       </div>
                                     )}
@@ -1100,7 +1100,7 @@ export function CrossroadsPathA({
                                       Final Agreement Signing
                                     </div>
                                     {activeDeal.dealStage === "SIGNATURE_PENDING" && (
-                                      <div className="text-[10px] font-medium text-primary mt-0.5">
+                                      <div className="text-caption font-medium text-primary mt-0.5">
                                         Current Step
                                       </div>
                                     )}
@@ -1130,7 +1130,7 @@ export function CrossroadsPathA({
                                       Company & Project Activation
                                     </div>
                                     {activeDeal.dealStage === "ACTIVATION_PENDING" && (
-                                      <div className="text-[10px] font-medium text-primary mt-0.5">
+                                      <div className="text-caption font-medium text-primary mt-0.5">
                                         Current Step
                                       </div>
                                     )}
@@ -1151,7 +1151,7 @@ export function CrossroadsPathA({
                                     <div className="text-sm font-semibold text-foreground leading-snug font-sans">
                                       Active Partnership & Workspace
                                     </div>
-                                    <div className="text-[10px] font-medium text-primary mt-0.5">
+                                    <div className="text-caption font-medium text-primary mt-0.5">
                                       Current Step
                                     </div>
                                   </div>

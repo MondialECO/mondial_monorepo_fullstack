@@ -56,7 +56,7 @@ function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
           <div className="flex items-center gap-2">
             <span className="font-semibold text-base">{m.name}</span>
             {featured && (
-              <Badge className="bg-primary text-primary-foreground gap-1 text-[11px] font-semibold">
+              <Badge className="bg-primary text-primary-foreground gap-1 text-badge font-semibold">
                 <Star className="h-3 w-3" /> Featured Match
               </Badge>
             )}
@@ -66,7 +66,7 @@ function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
         </div>
         <div className="text-right">
           <div className="text-sm font-bold text-primary">{m.checkSize}</div>
-          <div className="text-[11px] text-muted-foreground">Typical check</div>
+          <div className="text-caption text-muted-foreground">Typical check</div>
         </div>
       </div>
 
@@ -167,7 +167,7 @@ export default function InvestorsPage() {
 
                 <div className="flex items-center gap-4 text-right">
                   <div className="rounded-xl border border-border bg-muted/30 px-4 py-2 text-center">
-                    <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Your Equity</div>
+                    <div className="text-label font-semibold text-muted-foreground uppercase tracking-wider">Your Equity</div>
                     <div className="text-lg font-black text-primary">{readiness.creatorEquityPercent ?? 0}%</div>
                   </div>
                 </div>
@@ -214,9 +214,9 @@ export default function InvestorsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold flex items-center justify-between">
                         <span className="truncate">{req.label}</span>
-                        {req.complete && <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold ml-2 shrink-0">✓ Verified</span>}
+                        {req.complete && <span className="text-badge text-emerald-600 dark:text-emerald-400 font-bold ml-2 shrink-0">✓ Verified</span>}
                       </div>
-                      {req.details && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{req.details}</p>}
+                      {req.details && <p className="text-caption text-muted-foreground mt-0.5 line-clamp-1">{req.details}</p>}
                     </div>
                   </div>
                 ))}

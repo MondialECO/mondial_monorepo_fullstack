@@ -115,7 +115,7 @@ export default function MyPartnershipsPage() {
               <Card className="group p-6 border-border hover:border-primary/50 rounded-2xl transition duration-200 shadow-sm relative overflow-hidden bg-card hover:bg-muted/20 cursor-pointer">
                 <div className="flex items-center justify-between pb-4 border-b border-border">
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-success-light text-success-strong border-success-strong/30 text-[11px] font-bold">
+                    <Badge className="bg-success-light text-success-strong border-success-strong/30 text-badge font-bold">
                       {p.outcomeBadge}
                     </Badge>
                     <span className="text-xs text-muted-foreground font-medium">
@@ -138,25 +138,25 @@ export default function MyPartnershipsPage() {
 
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <div className="p-3 bg-background border border-border rounded-xl space-y-1">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">
+                      <span className="text-label text-muted-foreground uppercase tracking-wider font-bold">
                         Your Equity
                       </span>
                       <p className="text-lg font-black text-primary font-mono">
                         {p.creatorEquityPercent}%
                       </p>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-caption text-muted-foreground">
                         {p.creatorShares.toLocaleString()} shares
                       </span>
                     </div>
 
                     <div className="p-3 bg-background border border-border rounded-xl space-y-1">
-                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">
+                      <span className="text-label text-muted-foreground uppercase tracking-wider font-bold">
                         Partner
                       </span>
                       <p className="text-sm font-bold text-foreground truncate">
                         {p.entrepreneurName}
                       </p>
-                      <span className="text-[10px] text-muted-foreground truncate block">
+                      <span className="text-caption text-muted-foreground truncate block">
                         {p.entrepreneurRole}
                       </span>
                     </div>

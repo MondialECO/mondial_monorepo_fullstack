@@ -123,7 +123,7 @@ export default function OfferPricingPage() {
     <div className="min-h-[calc(100vh-68px)] bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">
       <main className="mx-auto w-full max-w-7xl">
         <header className="space-y-2">
-          <h1 className="font-heading text-[32px] font-semibold leading-10 tracking-[-0.02em] text-foreground">
+          <h1 className="font-heading text-page-heading font-semibold leading-10 tracking-[-0.02em] text-foreground">
             {STEP_COPY[step].title}
           </h1>
           <p className="text-base leading-6 text-muted-foreground">{STEP_COPY[step].description}</p>
@@ -143,7 +143,7 @@ export default function OfferPricingPage() {
                   aria-current={active ? "step" : undefined}
                 >
                   <span
-                    className={`flex size-5 items-center justify-center rounded-full text-[11px] font-medium leading-4 ${
+                    className={`flex size-5 items-center justify-center rounded-full text-badge font-medium leading-4 ${
                       active
                         ? "border border-[#a7b9f5] bg-primary text-primary-foreground"
                         : "bg-[#606060] text-white"

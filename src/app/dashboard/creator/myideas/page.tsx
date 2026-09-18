@@ -243,20 +243,20 @@ export default function MyIdeasPage() {
                   {idea.name || "Untitled idea"}
                 </span>
                 {idea.projectOutcome === "SOLD" ? (
-                  <Badge className="bg-success-light border border-success-strong/30 text-success-strong text-[10px] font-bold uppercase">
+                  <Badge className="bg-success-light border border-success-strong/30 text-success-strong text-badge font-bold uppercase">
                     SOLD
                   </Badge>
                 ) : idea.projectOutcome === "CO_FOUNDED" ? (
-                  <Badge className="bg-primary/10 border border-primary/30 text-primary text-[10px] font-bold uppercase">
+                  <Badge className="bg-primary/10 border border-primary/30 text-primary text-badge font-bold uppercase">
                     CO-FOUNDED
                   </Badge>
                 ) : (
                   <>
                     {idea.isActive && (
-                      <Badge className="bg-primary/10 hover:bg-primary/10 border-0 text-primary text-[10px] font-bold">Active</Badge>
+                      <Badge className="bg-primary/10 hover:bg-primary/10 border-0 text-primary text-badge font-bold">Active</Badge>
                     )}
                     {idea.isLeveledUp && (
-                      <Badge className="bg-success-light hover:bg-success-light border-0 text-success-strong text-[10px] font-bold">Leveled up</Badge>
+                      <Badge className="bg-success-light hover:bg-success-light border-0 text-success-strong text-badge font-bold">Leveled up</Badge>
                     )}
                   </>
                 )}
@@ -274,7 +274,7 @@ export default function MyIdeasPage() {
                   idea.concept || idea.problem || "No concept yet — continue to define it."
                 )}
               </p>
-              <p className="text-[10px] text-muted-foreground font-semibold mt-1">
+              <p className="text-caption text-muted-foreground font-semibold mt-1">
                 {idea.projectOutcome === "SOLD"
                   ? `Completed Sale · Finalized ${idea.soldAt ? new Date(idea.soldAt).toLocaleDateString() : new Date(idea.lastActiveAt).toLocaleDateString()}`
                   : `${PHASE_LABEL[idea.phaseReached] ?? "Phase 2 · Identity"} · Last active ${new Date(idea.lastActiveAt).toLocaleDateString()}`}
@@ -414,7 +414,7 @@ export default function MyIdeasPage() {
 
           <div className="grid grid-cols-2 gap-4 border-y border-border py-4 text-xs">
             <div>
-              <span className="text-muted-foreground uppercase tracking-wider block font-bold text-[10px]">Current Step</span>
+              <span className="text-muted-foreground uppercase tracking-wider block font-bold text-label">Current Step</span>
               <span className="text-foreground font-bold text-sm mt-1 block">{currentStepLabel}</span>
             </div>
           </div>
@@ -521,7 +521,7 @@ export default function MyIdeasPage() {
                 <Flame className="w-4 h-4 text-primary" />
                 Your Idea — First Draft
               </h3>
-              <Badge variant="outline" className="text-muted-foreground border-border text-[10px] font-bold">
+              <Badge variant="outline" className="text-muted-foreground border-border text-badge font-bold">
                 AI Structured
               </Badge>
             </div>
@@ -529,29 +529,29 @@ export default function MyIdeasPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 border border-border rounded-xl overflow-hidden divide-y md:divide-y-0 md:divide-x divide-border">
               <div className="divide-y divide-border flex flex-col">
                 <div className="p-4 flex-1">
-                  <span className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase block">Concept</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Concept</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.concept || "—"}</p>
                 </div>
                 <div className="p-4 flex-1">
-                  <span className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase block">Core Problem</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Core Problem</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.problem || "—"}</p>
                 </div>
                 <div className="p-4 flex-1">
-                  <span className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase block">Market Gap</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Market Gap</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.marketGap || "—"}</p>
                 </div>
               </div>
               <div className="divide-y divide-border flex flex-col">
                 <div className="p-4 flex-1">
-                  <span className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase block">Target User</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Target User</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.targetUser || "—"}</p>
                 </div>
                 <div className="p-4 flex-1">
-                  <span className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase block">Your Solution</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Your Solution</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.solution || "—"}</p>
                 </div>
                 <div className="p-4 flex-1">
-                  <span className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase block">Your Edge</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Your Edge</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.creatorEdge || "—"}</p>
                 </div>
               </div>
@@ -582,7 +582,7 @@ export default function MyIdeasPage() {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="font-extrabold text-base text-foreground leading-none">{project.clarityScore || 0}</span>
-                  <span className="text-[8px] text-muted-foreground font-bold mt-0.5">/ 100</span>
+                  <span className="text-footnote text-muted-foreground font-bold mt-0.5">/ 100</span>
                 </div>
               </div>
 
@@ -625,11 +625,11 @@ export default function MyIdeasPage() {
               </div>
               <div className="flex flex-wrap gap-1.5 justify-center">
                 {project.category && (
-                  <Badge variant="outline" className="text-[10px] font-semibold bg-warning/5 text-warning border-warning/10">
+                  <Badge variant="outline" className="text-badge font-semibold bg-warning/5 text-warning border-warning/10">
                     {project.category}
                   </Badge>
                 )}
-                <Badge className="bg-green-500/10 hover:bg-green-500/10 border-0 text-green-600 dark:text-green-400 text-[10px] font-bold">
+                <Badge className="bg-green-500/10 hover:bg-green-500/10 border-0 text-green-600 dark:text-green-400 text-badge font-bold">
                   ✓ Identity ready
                 </Badge>
               </div>
@@ -638,7 +638,7 @@ export default function MyIdeasPage() {
             <div className="space-y-3">
               {/* Target Audience */}
               <div className="bg-muted/30 p-3 rounded-xl space-y-1">
-                <span className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase">Target Audience</span>
+                <span className="text-label text-muted-foreground font-bold tracking-wider uppercase">Target Audience</span>
                 <p className="text-xs text-foreground font-semibold leading-relaxed">
                   {project.targetUser || "—"}
                 </p>
@@ -646,7 +646,7 @@ export default function MyIdeasPage() {
 
               {/* Branding */}
               <div className="bg-muted/30 p-3 rounded-xl space-y-2">
-                <span className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase block">Branding</span>
+                <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Branding</span>
                 <div className="flex items-center justify-between text-xs font-semibold">
                   <span className="text-foreground">{brandingMethod}</span>
                   {project.branding.colorPalette && project.branding.colorPalette.length > 0 && (
@@ -662,9 +662,9 @@ export default function MyIdeasPage() {
 
               {isPhase3Complete && (
                 <div className="bg-primary/5 border border-primary/10 p-3 rounded-xl space-y-1">
-                  <span className="text-[9px] text-primary font-bold tracking-wider uppercase">Project Intelligence</span>
+                  <span className="text-label text-primary font-bold tracking-wider uppercase">Project Intelligence</span>
                   <div className="text-xs font-bold text-foreground">Phase 3 complete</div>
-                  <span className="text-[10px] text-muted-foreground block font-medium">
+                  <span className="text-caption text-muted-foreground block font-medium">
                     {(latestForecast?.summary as any)?.year3Revenue
                       ? `Forecast saved with Year 3 revenue €${(latestForecast?.summary as any)?.year3Revenue.toLocaleString()}.`
                       : 'Forecast, business plan, compliance, and team recommendations are saved.'}
