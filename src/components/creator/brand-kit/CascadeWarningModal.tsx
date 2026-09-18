@@ -59,7 +59,7 @@ export function CascadeWarningModal({
         <div className="flex items-start justify-between border-b border-border/60 px-6 py-4 bg-amber-500/10">
           <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
             <AlertTriangle className="size-5 shrink-0" />
-            <span className="font-mono text-xs font-bold uppercase tracking-wider">
+            <span className="font-mono text-badge font-bold uppercase tracking-wider">
               Cascade Invalidation Warning
             </span>
           </div>
@@ -76,11 +76,11 @@ export function CascadeWarningModal({
 
         {/* Content */}
         <div className="p-6 space-y-4">
-          <h3 id="cascade-warning-title" className="text-lg font-bold text-foreground">
+          <h3 id="cascade-warning-title" className="text-card-title font-bold text-foreground">
             {title}
           </h3>
 
-          <p className="text-xs text-muted-foreground leading-relaxed">
+          <p className="text-body text-muted-foreground leading-relaxed">
             {isDirection
               ? "Because Visual Direction anchors your entire visual identity system, altering it will invalidate and require rebuilding downstream decisions:"
               : isLogo
@@ -89,12 +89,12 @@ export function CascadeWarningModal({
           </p>
 
           <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 space-y-2">
-            <span className="font-mono text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
+            <span className="font-mono text-badge font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
               AFFECTED DOWNSTREAM ASSETS
             </span>
             <ul className="space-y-1.5">
               {invalidations.map((item, idx) => (
-                <li key={idx} className="flex items-center gap-2 text-xs text-foreground font-medium">
+                <li key={idx} className="flex items-center gap-2 text-body text-foreground font-medium">
                   <RefreshCw className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
                   <span>{item}</span>
                 </li>
@@ -102,7 +102,7 @@ export function CascadeWarningModal({
             </ul>
           </div>
 
-          <p className="text-[11px] text-muted-foreground italic">
+          <p className="text-caption text-muted-foreground italic">
             A version snapshot of your current brand kit will be automatically saved in Version History before entering Studio.
           </p>
         </div>
@@ -112,14 +112,14 @@ export function CascadeWarningModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="px-4 py-2 rounded-lg text-button font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-button font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-colors"
           >
             <span>Proceed to Studio</span>
             <ArrowRight className="size-3.5" />

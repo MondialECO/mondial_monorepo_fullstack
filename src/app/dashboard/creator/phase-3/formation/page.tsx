@@ -488,7 +488,7 @@ export default function FormationPage() {
                     className="flex flex-col justify-between rounded-xl border border-border/60 bg-muted/30 p-3.5 space-y-1.5 transition-colors hover:border-primary/30"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-semibold text-primary tracking-wide uppercase">
+                      <span className="text-label font-semibold text-primary tracking-wide uppercase">
                         {factor.category}
                       </span>
                       <span className="text-xs font-mono font-medium text-foreground bg-card px-2 py-0.5 rounded border border-border/50">
@@ -507,7 +507,7 @@ export default function FormationPage() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground/80 pt-1">
+            <div className="flex items-center gap-2 text-footnote text-muted-foreground/80 pt-1">
               <Lightbulb className="size-3.5 shrink-0 text-amber-500" />
               <span>
                 Changing upstream parameters (e.g. updating forecast TAM/Growth or adding co-founders) dynamically updates this baseline.
@@ -568,7 +568,7 @@ export default function FormationPage() {
                         {isSel && (
                           <span
                             className={cn(
-                              'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border',
+                              'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-badge font-semibold border',
                               isOptionOverride
                                 ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
                                 : 'border-primary/20 bg-primary/10 text-primary',
@@ -580,7 +580,7 @@ export default function FormationPage() {
                         )}
 
                         {!isSel && isRec && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-badge font-semibold text-primary">
                             <CheckCircle2 className="size-3" />
                             Suggested
                           </span>
@@ -611,7 +611,7 @@ export default function FormationPage() {
               })}
             </div>
 
-            <p className="text-[11px] text-muted-foreground/70 italic pt-1">
+            <p className="text-footnote text-muted-foreground/70 italic pt-1">
               * Indicative timelines and capital thresholds based on standard registry filings. No statutory state fees are charged at this stage.
             </p>
           </div>
@@ -742,14 +742,14 @@ export default function FormationPage() {
                       >
                         <div>
                           <div className="text-xs font-semibold text-foreground">{gap.label}</div>
-                          <div className="text-[11px] text-muted-foreground">{gap.skill}</div>
+                          <div className="text-badge text-muted-foreground">{gap.skill}</div>
                         </div>
 
                         <Button
                           asChild
                           variant="outline"
                           size="sm"
-                          className="h-7 shrink-0 gap-1.5 rounded-full border-border px-3 text-[11px] font-semibold text-primary shadow-none hover:border-primary"
+                          className="h-7 shrink-0 gap-1.5 rounded-full border-border px-3 text-badge font-semibold text-primary shadow-none hover:border-primary"
                         >
                           <Link
                             href={`/marketplace?category=${gap.specialty}`}

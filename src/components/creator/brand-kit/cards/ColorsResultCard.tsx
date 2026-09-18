@@ -26,7 +26,7 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
   const getContrastBadge = (role: BrandColorRole) => {
     if (role.roleName === "Background") {
       return (
-        <span className="text-[10px] font-mono text-muted-foreground">
+        <span className="text-badge font-mono text-muted-foreground">
           Ground canvas
         </span>
       );
@@ -37,7 +37,7 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
 
     if (verdict === "AAA") {
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+        <span className="inline-flex items-center gap-1 text-badge font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
           <ShieldCheck className="size-3" />
           {ratio} AAA
         </span>
@@ -46,7 +46,7 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
 
     if (verdict === "AA" || verdict === "AA_LARGE") {
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-500/20">
+        <span className="inline-flex items-center gap-1 text-badge font-mono font-bold px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-500/20">
           <ShieldCheck className="size-3" />
           {ratio} {verdict === "AA_LARGE" ? "AA Large" : "AA"}
         </span>
@@ -55,7 +55,7 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
 
     if (verdict === "FAIL") {
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+        <span className="inline-flex items-center gap-1 text-badge font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
           <AlertTriangle className="size-3" />
           {ratio} FAIL
         </span>
@@ -63,7 +63,7 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
     }
 
     return (
-      <span className="text-[10px] font-mono text-muted-foreground">
+      <span className="text-badge font-mono text-muted-foreground">
         {ratio || "Evaluated"}
       </span>
     );
@@ -81,20 +81,20 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-muted/20">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] font-bold text-muted-foreground tracking-wider uppercase">
+          <span className="font-mono text-badge font-bold text-muted-foreground tracking-wider uppercase">
             STEP 5
           </span>
-          <span className="text-xs font-semibold text-foreground">
+          <span className="text-card-title font-semibold text-foreground">
             Harmonized Colour System
           </span>
         </div>
         {isConfirmed ? (
-          <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+          <span className="inline-flex items-center gap-1 font-mono text-badge font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
             <Check className="size-3 stroke-[3]" />
             CONFIRMED
           </span>
         ) : (
-          <span className="font-mono text-[10px] text-muted-foreground">
+          <span className="font-mono text-badge text-muted-foreground">
             Draft
           </span>
         )}
@@ -116,13 +116,13 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
                 )}
               </div>
               <div className="flex flex-col">
-                <span className="text-[11px] font-semibold text-foreground truncate">
+                <span className="text-caption font-semibold text-foreground truncate">
                   {role.roleName}
                 </span>
                 <button
                   type="button"
                   onClick={(e) => handleCopy(e, role.hex, role.roleName)}
-                  className="inline-flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-foreground group/copy text-left"
+                  className="inline-flex items-center gap-1 text-badge font-mono text-muted-foreground hover:text-foreground group/copy text-left cursor-pointer"
                 >
                   <span>{role.hex}</span>
                   {copiedRole === role.roleName ? (
@@ -141,14 +141,14 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
           {roles.slice(0, 3).map((role) => (
             <div
               key={role.roleName}
-              className="flex items-center justify-between text-xs"
+              className="flex items-center justify-between text-caption"
             >
               <div className="flex items-center gap-2">
                 <span
                   className="size-2.5 rounded-full border border-black/10 shrink-0"
                   style={{ backgroundColor: role.hex }}
                 />
-                <span className="font-medium text-[11px] text-foreground">
+                <span className="font-medium text-caption text-foreground">
                   {role.roleName}
                 </span>
               </div>

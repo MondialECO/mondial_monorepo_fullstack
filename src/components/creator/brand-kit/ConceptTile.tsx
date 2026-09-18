@@ -96,7 +96,7 @@ export const ConceptTile = memo(function ConceptTile({
         {isRegenerating && (
           <div className="absolute inset-0 bg-background/85 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-20">
             <RefreshCw className="size-6 text-primary animate-spin" />
-            <span className="text-xs font-medium text-foreground font-sans">
+            <span className="text-badge font-medium text-foreground font-sans">
               Redrawing concept...
             </span>
           </div>
@@ -114,7 +114,7 @@ export const ConceptTile = memo(function ConceptTile({
                 className="size-full object-contain filter drop-shadow-2xs transition-transform duration-200 group-hover:scale-105"
               />
             </div>
-            <span className="text-xs font-semibold text-foreground font-heading tracking-tight opacity-90 truncate max-w-[200px]">
+            <span className="text-caption font-semibold text-foreground font-heading tracking-tight opacity-90 truncate max-w-[200px]">
               {businessName}
             </span>
           </div>
@@ -141,12 +141,12 @@ export const ConceptTile = memo(function ConceptTile({
 
       {/* 2. Tile Inline Error (if any) */}
       {error && (
-        <div className="mx-4 mt-3 p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-[11px] flex items-start gap-1.5 shrink-0">
+        <div className="mx-4 mt-3 p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-caption flex items-start gap-1.5 shrink-0">
           <AlertCircle className="size-3.5 mt-0.5 shrink-0" />
           <div className="flex-1">
             <span>{error.message}</span>
             {error.type === "credits" && (
-              <span className="ml-1 opacity-80 text-[10px]">(Credit top-ups are currently unavailable)</span>
+              <span className="ml-1 opacity-80 text-badge">(Credit top-ups are currently unavailable)</span>
             )}
           </div>
         </div>
@@ -157,19 +157,19 @@ export const ConceptTile = memo(function ConceptTile({
         {/* Left: Concept Tag & Descriptor Line */}
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            <span className="font-mono text-badge font-semibold text-muted-foreground uppercase tracking-wider">
               {conceptTag}
             </span>
             {isExhausted && (
               <span
-                className="font-mono text-[9px] font-semibold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                className="font-mono text-badge font-semibold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
                 title="Redraw limit reached for this concept"
               >
                 0/3 LEFT
               </span>
             )}
           </div>
-          <span className="text-xs font-sans text-foreground/90 font-medium truncate mt-0.5" title={descriptor}>
+          <span className="text-caption font-sans text-foreground/90 font-medium truncate mt-0.5" title={descriptor}>
             {isExhausted ? "Redraw limit reached for this concept" : descriptor}
           </span>
         </div>
@@ -177,7 +177,7 @@ export const ConceptTile = memo(function ConceptTile({
         {/* Right: Selected Badge & Action Buttons */}
         <div className="flex items-center gap-1.5 shrink-0">
           {isSelected && !isCompareMode && (
-            <span className="font-sans text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wider">
+            <span className="font-sans text-badge font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wider">
               SELECTED
             </span>
           )}

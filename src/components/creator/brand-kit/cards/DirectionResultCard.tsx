@@ -35,13 +35,13 @@ export function DirectionResultCard({ direction, onEdit }: DirectionResultCardPr
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-semibold text-primary uppercase tracking-wider">
+              <span className="font-mono text-badge font-semibold text-primary uppercase tracking-wider">
                 STEP 2
               </span>
-              <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground font-medium">Visual Direction</span>
+              <span className="text-badge text-muted-foreground">•</span>
+              <span className="text-caption text-muted-foreground font-medium">Visual Direction</span>
             </div>
-            <h3 className="text-base font-bold text-foreground tracking-tight">
+            <h3 className="text-card-title font-bold text-foreground tracking-tight">
               {candidate.name}
             </h3>
           </div>
@@ -53,7 +53,7 @@ export function DirectionResultCard({ direction, onEdit }: DirectionResultCardPr
             e.stopPropagation();
             onEdit?.();
           }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-button font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
         >
           <Edit3 className="size-3.5" />
           Review & Edit
@@ -64,10 +64,10 @@ export function DirectionResultCard({ direction, onEdit }: DirectionResultCardPr
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Feel Line */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3.5 flex flex-col justify-between">
-          <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+          <span className="text-badge font-mono font-semibold uppercase tracking-wider text-muted-foreground mb-1">
             Direction Feel
           </span>
-          <p className="text-xs text-foreground font-medium leading-relaxed">
+          <p className="text-body text-foreground font-medium leading-relaxed">
             {candidate.feelLine}
           </p>
         </div>
@@ -76,7 +76,7 @@ export function DirectionResultCard({ direction, onEdit }: DirectionResultCardPr
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3.5 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
             <Palette className="size-3.5 text-primary" />
-            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">
+            <span className="text-badge font-mono font-semibold uppercase tracking-wider">
               Harmonized Palette
             </span>
           </div>
@@ -96,15 +96,15 @@ export function DirectionResultCard({ direction, onEdit }: DirectionResultCardPr
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3.5 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
             <Type className="size-3.5 text-primary" />
-            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">
+            <span className="text-badge font-mono font-semibold uppercase tracking-wider">
               Type Pairing
             </span>
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-xs font-semibold text-foreground">
+            <span className="text-caption font-semibold text-foreground">
               {candidate.displayTypeface}
             </span>
-            <span className="text-[11px] text-muted-foreground font-medium">
+            <span className="text-badge text-muted-foreground font-medium">
               Body: {candidate.textTypeface}
             </span>
           </div>

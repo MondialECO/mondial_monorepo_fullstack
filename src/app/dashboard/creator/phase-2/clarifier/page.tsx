@@ -471,7 +471,7 @@ export default function AIClarifierPage() {
                     >
                       {/* "Editing" tag on the answer currently pulled into the input */}
                       {isEditing && (
-                        <span className="mb-1 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "var(--primary)" }}>
+                        <span className="mb-1 text-badge font-semibold uppercase tracking-wide" style={{ color: "var(--primary)" }}>
                           Editing…
                         </span>
                       )}
@@ -480,7 +480,7 @@ export default function AIClarifierPage() {
                           label distinguishes them for assistive tech. The answer being
                           edited gets a --primary border to tie it to the input below. */}
                       <div
-                        className={`rounded-2xl border px-[18px] py-[14px] text-sm leading-relaxed ${isUser ? "max-w-[548px]" : "max-w-[580px]"}`}
+                        className={`rounded-2xl border px-[18px] py-[14px] text-body leading-relaxed ${isUser ? "max-w-[548px]" : "max-w-[580px]"}`}
                         style={{
                           backgroundColor: isError ? "color-mix(in srgb, var(--destructive) 8%, transparent)" : "var(--card)",
                           borderColor: isEditing ? "var(--primary)" : isError ? "var(--destructive)" : "var(--border)",
@@ -501,7 +501,7 @@ export default function AIClarifierPage() {
                             onClick={() => handleEditStart(index)}
                             disabled={isTyping || finalizing}
                             aria-label="Edit your answer"
-                            className="inline-flex items-center text-[11px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="inline-flex items-center text-badge transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                             style={{ color: "var(--muted-foreground)" }}
                             onMouseEnter={(e) => { if (!isTyping && !finalizing) e.currentTarget.style.color = "var(--foreground)"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
@@ -511,7 +511,7 @@ export default function AIClarifierPage() {
                           <button
                             onClick={() => handleCopy(msg.id, msg.text)}
                             aria-label="Copy your answer"
-                            className="inline-flex items-center gap-1 text-[11px] transition-colors"
+                            className="inline-flex items-center gap-1 text-badge transition-colors"
                             style={{ color: copiedId === msg.id ? "var(--p8-green)" : "var(--muted-foreground)" }}
                             onMouseEnter={(e) => { if (copiedId !== msg.id) e.currentTarget.style.color = "var(--foreground)"; }}
                             onMouseLeave={(e) => { if (copiedId !== msg.id) e.currentTarget.style.color = "var(--muted-foreground)"; }}
@@ -539,7 +539,7 @@ export default function AIClarifierPage() {
                     >
                       <span className="sr-only">Assistant is typing</span>
                       <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--primary)" }} />
-                      <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                      <span className="text-body" style={{ color: "var(--muted-foreground)" }}>
                         Thinking…
                       </span>
                     </div>
@@ -557,12 +557,12 @@ export default function AIClarifierPage() {
               <div className="mt-4 shrink-0">
                 {editingIndex !== null && (
                   <div className="mb-2 flex items-center justify-between px-1">
-                    <span className="text-[11px] font-medium" style={{ color: "var(--primary)" }}>
+                    <span className="text-badge font-medium" style={{ color: "var(--primary)" }}>
                       Editing your answer
                     </span>
                     <button
                       onClick={handleEditCancel}
-                      className="inline-flex items-center gap-1 text-[11px] transition-colors"
+                      className="inline-flex items-center gap-1 text-badge transition-colors"
                       style={{ color: "var(--muted-foreground)" }}
                       onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
                       onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted-foreground)")}
@@ -582,7 +582,7 @@ export default function AIClarifierPage() {
                     placeholder={editingIndex !== null ? "Revise your answer..." : "Type your answer..."}
                     rows={1}
                     disabled={isTyping}
-                    className="flex-1 resize-none bg-transparent outline-none border-none px-3 py-2.5 text-sm min-h-[40px] max-h-[120px] placeholder:text-muted-foreground"
+                    className="flex-1 resize-none bg-transparent outline-none border-none px-3 py-2.5 text-input min-h-[40px] max-h-[120px] placeholder:text-muted-foreground"
                     style={{ color: "var(--foreground)" }}
                   />
                   <button
@@ -601,7 +601,7 @@ export default function AIClarifierPage() {
                     )}
                   </button>
                 </div>
-                <p className="mt-2 text-center text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+                <p className="mt-2 text-center text-caption" style={{ color: "var(--muted-foreground)" }}>
                   {editingIndex !== null
                     ? "Press Enter to save your edit"
                     : "Press Enter to send  Shift + Enter for new line"}
@@ -621,20 +621,20 @@ export default function AIClarifierPage() {
                   <X className="h-5 w-5" strokeWidth={3} style={{ color: "var(--destructive)" }} />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                  <h3 className="text-card-title font-semibold" style={{ color: "var(--foreground)" }}>
                     We couldn&apos;t finish that
                   </h3>
-                  <p className="text-xs max-w-xs" style={{ color: "var(--destructive)" }}>
+                  <p className="text-caption max-w-xs" style={{ color: "var(--destructive)" }}>
                     {finalizeError}
                   </p>
-                  <p className="text-[11px] max-w-xs mx-auto" style={{ color: "var(--muted-foreground)" }}>
+                  <p className="text-caption max-w-xs mx-auto" style={{ color: "var(--muted-foreground)" }}>
                     Your answers are saved — nothing was lost. You can try again.
                   </p>
                 </div>
                 <button
                   onClick={handleComplete}
                   disabled={finalizing}
-                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-opacity disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-button font-semibold transition-opacity disabled:opacity-60"
                   style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
                   Try again <ArrowRight className="h-4 w-4" />
@@ -652,10 +652,10 @@ export default function AIClarifierPage() {
                 >
                   <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--muted-foreground)" }} />
                 </div>
-                <h3 className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                <h3 className="text-card-title font-semibold" style={{ color: "var(--foreground)" }}>
                   Clarifying your idea…
                 </h3>
-                <p className="text-xs max-w-xs" style={{ color: "var(--muted-foreground)" }}>
+                <p className="text-caption max-w-xs" style={{ color: "var(--muted-foreground)" }}>
                   {finalizeSlow
                     ? "Still working — this is taking longer than usual. Hang tight."
                     : "Analyzing your answers and scoring clarity. This can take a moment."}
@@ -675,10 +675,10 @@ export default function AIClarifierPage() {
                   <Check className="h-5 w-5" strokeWidth={3} style={{ color: "var(--p8-green)" }} />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                  <h3 className="text-card-title font-semibold" style={{ color: "var(--foreground)" }}>
                     All questions answered
                   </h3>
-                  <p className="text-xs max-w-sm mx-auto" style={{ color: "var(--muted-foreground)" }}>
+                  <p className="text-caption max-w-sm mx-auto" style={{ color: "var(--muted-foreground)" }}>
                     Finalizing runs the AI analysis to score your idea&apos;s clarity and build your
                     concept canvas, then takes you to your summary. You&apos;re not done until you do this.
                   </p>
@@ -686,7 +686,7 @@ export default function AIClarifierPage() {
                 <button
                   onClick={handleComplete}
                   disabled={finalizing}
-                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition-opacity disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-button font-semibold transition-opacity disabled:opacity-60"
                   style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
                   Generate my summary <ArrowRight className="h-4 w-4" />
@@ -727,7 +727,7 @@ export default function AIClarifierPage() {
                   </span>
                 </div>
               </div>
-              <span className="text-xs font-medium uppercase tracking-wide" style={{ color: band.color }}>
+              <span className="text-badge font-medium uppercase tracking-wide" style={{ color: band.color }}>
                 {band.label}
               </span>
 
@@ -739,13 +739,13 @@ export default function AIClarifierPage() {
                   ring reaching full is therefore always paired with one or the other. */}
               {summaryReady ? (
                 <div className="w-full flex flex-col items-center gap-2 pt-1">
-                  <p className="text-[11px] text-center" style={{ color: "var(--muted-foreground)" }}>
+                  <p className="text-caption text-center" style={{ color: "var(--muted-foreground)" }}>
                     You&apos;re not done yet — finalize to save your clarity score.
                   </p>
                   <button
                     onClick={handleComplete}
                     disabled={finalizing}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-semibold transition-opacity disabled:opacity-60"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-badge font-semibold transition-opacity disabled:opacity-60"
                     style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                   >
                     {finalizing ? (
@@ -762,7 +762,7 @@ export default function AIClarifierPage() {
               ) : answeredCount >= totalQuestions ? (
                 <div className="w-full flex flex-col items-center gap-1.5 pt-1">
                   <Loader2 className="h-4 w-4 animate-spin" style={{ color: band.color }} />
-                  <p className="text-[11px] text-center" style={{ color: "var(--muted-foreground)" }}>
+                  <p className="text-caption text-center" style={{ color: "var(--muted-foreground)" }}>
                     Saving your final answer…
                   </p>
                 </div>
@@ -774,7 +774,7 @@ export default function AIClarifierPage() {
 
             {/* ── Progress line + step list ── */}
             <div className="flex flex-col gap-3">
-              <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+              <p className="text-label font-medium" style={{ color: "var(--foreground)" }}>
                 {summaryReady
                   ? `All ${totalQuestions} questions answered`
                   : `Progress: Question ${currentQuestion} of ${totalQuestions}`}
@@ -805,7 +805,7 @@ export default function AIClarifierPage() {
                           <Check className="h-3.5 w-3.5" strokeWidth={3} style={{ color: "var(--p8-green)" }} />
                         ) : (
                           <span
-                            className="text-[11px] leading-none"
+                            className="text-badge leading-none font-mono"
                             style={{ color: current ? "var(--primary-foreground)" : "var(--muted-foreground)" }}
                           >
                             {stepNum}
@@ -816,13 +816,13 @@ export default function AIClarifierPage() {
                           drop it — a completed step relies on the tick) */}
                       <div className="flex items-center gap-1 min-w-0">
                         <span
-                          className={`text-xs ${current ? "font-medium" : ""}`}
+                          className={`text-badge ${current ? "font-medium" : ""}`}
                           style={{ color: "var(--foreground)" }}
                         >
                           {label}
                         </span>
                         {!done && !current && (
-                          <span className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+                          <span className="text-badge" style={{ color: "var(--muted-foreground)" }}>
                             (Unlocks after Q{stepNum - 1})
                           </span>
                         )}
@@ -842,12 +842,12 @@ export default function AIClarifierPage() {
               className="mt-auto rounded-xl border p-4 flex flex-col gap-2"
               style={{ backgroundColor: "var(--muted)", borderColor: "var(--border)" }}
             >
-              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
+              <span className="text-badge font-semibold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
                 Idea Journal
               </span>
               <div className="flex items-start gap-2">
                 <FileText className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "var(--muted-foreground)" }} />
-                <p className="text-xs leading-relaxed line-clamp-4" style={{ color: "var(--muted-foreground)" }}>
+                <p className="text-caption leading-relaxed line-clamp-4 font-sans" style={{ color: "var(--muted-foreground)" }}>
                   {journalText}
                 </p>
               </div>

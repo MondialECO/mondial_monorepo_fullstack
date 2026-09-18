@@ -230,10 +230,10 @@ export default function ConceptNamePage() {
                       >
                         {selected && <span className="rounded-full" style={{ width: 10, height: 10, backgroundColor: "var(--primary)" }} />}
                       </span>
-                      <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                      <span className="text-label font-semibold" style={{ color: "var(--foreground)" }}>
                         {suggestion.name}
                       </span>
-                      <span className="text-[13px] w-full truncate" style={{ color: "var(--muted-foreground)" }}>
+                      <span className="text-caption w-full truncate" style={{ color: "var(--muted-foreground)" }}>
                         {suggestion.tagline}
                       </span>
                     </button>
@@ -248,7 +248,7 @@ export default function ConceptNamePage() {
             <button
               type="button"
               onClick={() => setUseCustom(!useCustom)}
-              className="flex items-center gap-3 text-sm font-semibold transition-colors"
+              className="flex items-center gap-3 text-label font-semibold transition-colors"
               style={{ color: useCustom ? "var(--primary)" : "var(--muted-foreground)" }}
             >
               <span
@@ -270,7 +270,7 @@ export default function ConceptNamePage() {
             {useCustom && (
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
+                  <label className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
                     Project Name
                   </label>
                   <input
@@ -278,12 +278,12 @@ export default function ConceptNamePage() {
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value)}
                     placeholder="e.g. My Custom Brand"
-                    className="w-full rounded-xl px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                    className="w-full rounded-xl px-4 py-3.5 text-input outline-none focus:ring-2 focus:ring-[var(--ring)]"
                     style={{ backgroundColor: "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--border)", color: "var(--foreground)" }}
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
+                  <label className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
                     Tagline / Value Proposition
                   </label>
                   <input
@@ -291,7 +291,7 @@ export default function ConceptNamePage() {
                     value={customTagline}
                     onChange={(e) => setCustomTagline(e.target.value)}
                     placeholder="e.g. A localized inventory tool for neighborhood grocery stores."
-                    className="w-full rounded-xl px-4 py-3.5 text-sm outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                    className="w-full rounded-xl px-4 py-3.5 text-input outline-none focus:ring-2 focus:ring-[var(--ring)]"
                     style={{ backgroundColor: "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--border)", color: "var(--foreground)" }}
                   />
                 </div>
@@ -303,7 +303,7 @@ export default function ConceptNamePage() {
           <div className="flex flex-col md:flex-row gap-6">
             {/* Category */}
             <div className="flex-1 min-w-0 flex flex-col gap-3">
-              <span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
+              <span className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
                 Project Category
               </span>
               <div className="flex flex-wrap gap-3">
@@ -314,7 +314,7 @@ export default function ConceptNamePage() {
                       key={cat}
                       type="button"
                       onClick={() => setCategory(cat)}
-                      className="rounded-full px-4 py-2.5 text-[13px] font-medium transition-colors"
+                      className="rounded-full px-4 py-2.5 text-badge font-medium transition-colors"
                       style={{
                         backgroundColor: active ? "var(--secondary)" : "var(--popover)",
                         borderWidth: "1px",
@@ -332,12 +332,12 @@ export default function ConceptNamePage() {
 
             {/* Next phases */}
             <div className="flex-1 min-w-0 flex flex-col gap-3">
-              <span className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
+              <span className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
                 Next Phases (Skippable):
               </span>
               <div className="flex flex-col gap-3">
                 {NEXT_PHASES.map((phase) => (
-                  <span key={phase} className="text-[13px]" style={{ color: "var(--muted-foreground)" }}>
+                  <span key={phase} className="text-body" style={{ color: "var(--muted-foreground)" }}>
                     {phase}
                   </span>
                 ))}
@@ -350,7 +350,7 @@ export default function ConceptNamePage() {
             <Button
               onClick={handleProceed}
               disabled={!canProceed || savingName}
-              className="w-full rounded-xl py-4 h-auto text-base font-medium flex items-center justify-center gap-2 disabled:opacity-40"
+              className="w-full rounded-xl py-4 h-auto text-button font-medium flex items-center justify-center gap-2 disabled:opacity-40"
             >
               {savingName ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Continue to Branding

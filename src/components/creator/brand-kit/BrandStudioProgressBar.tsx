@@ -45,16 +45,16 @@ export function BrandStudioProgressBar({
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground h-8 px-2.5 font-sans cursor-pointer"
+          className="gap-1.5 text-button font-semibold text-muted-foreground hover:text-foreground h-8 px-2.5 font-sans cursor-pointer"
         >
           <ArrowLeft className="size-3.5" />
           Back
         </Button>
         <div className="hidden sm:flex flex-col">
-          <span className="text-[11px] font-bold text-foreground line-clamp-1 font-heading">
+          <span className="text-badge font-bold text-foreground line-clamp-1 font-heading">
             {brandName}
           </span>
-          <span className="text-[10px] text-muted-foreground font-sans">
+          <span className="text-badge text-muted-foreground font-sans">
             Visual Identity Studio
           </span>
         </div>
@@ -74,7 +74,7 @@ export function BrandStudioProgressBar({
                 type="button"
                 disabled={isLocked}
                 onClick={() => onSelectStep(seg.key)}
-                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all font-sans ${
+                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-badge font-medium transition-all font-sans ${
                   isSelected
                     ? "bg-primary/10 text-foreground border border-primary/30 shadow-2xs font-semibold"
                     : isComplete
@@ -91,7 +91,7 @@ export function BrandStudioProgressBar({
               >
                 {/* Status Indicator Icon */}
                 <div
-                  className={`flex size-4 items-center justify-center rounded-full text-[9px] ${
+                  className={`flex size-4.5 items-center justify-center rounded-full text-badge font-mono leading-none ${
                     isComplete
                       ? "bg-emerald-500 text-white"
                       : isSelected || isActive
@@ -108,7 +108,7 @@ export function BrandStudioProgressBar({
                   )}
                 </div>
 
-                <span className="hidden md:inline text-xs tracking-tight font-sans">
+                <span className="hidden md:inline text-badge tracking-tight font-sans">
                   {seg.label}
                 </span>
               </button>
@@ -131,12 +131,12 @@ export function BrandStudioProgressBar({
         {inFlightStatus ? (
           <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary animate-pulse">
             <Loader2 className="size-3 animate-spin" />
-            <span className="text-[11px] font-medium font-mono line-clamp-1">
+            <span className="text-badge font-medium font-mono line-clamp-1">
               {inFlightStatus}
             </span>
           </div>
         ) : (
-          <span className="text-[11px] text-muted-foreground font-sans hidden sm:inline">
+          <span className="text-badge text-muted-foreground font-sans hidden sm:inline">
             Studio Live
           </span>
         )}

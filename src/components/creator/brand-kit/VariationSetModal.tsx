@@ -116,7 +116,7 @@ export function VariationSetModal({
 
   // Client-side ZIP bundle packaging
   const handleDownloadAllZip = async () => {
-    if (isZipping) return;
+    if (isZipping || !initialKit) return;
 
     setIsZipping(true);
     setError(null);
@@ -227,7 +227,7 @@ export function VariationSetModal({
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="size-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground font-mono">
+              <p className="text-body text-muted-foreground font-sans">
                 Generating and loading variation assets...
               </p>
             </div>
@@ -238,10 +238,10 @@ export function VariationSetModal({
                 <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs">
                   {/* SOURCE */}
                   <div className="flex items-center">
-                    <span className="font-sans text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
+                    <span className="font-sans text-badge uppercase font-semibold text-muted-foreground tracking-wider">
                       SOURCE
                     </span>
-                    <span className="font-mono text-[13px] font-medium text-foreground ml-2">
+                    <span className="font-mono text-body font-medium text-foreground ml-2">
                       {conceptLabel}
                     </span>
                   </div>
@@ -250,10 +250,10 @@ export function VariationSetModal({
 
                   {/* VARIATIONS */}
                   <div className="flex items-center">
-                    <span className="font-sans text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
+                    <span className="font-sans text-badge uppercase font-semibold text-muted-foreground tracking-wider">
                       VARIATIONS
                     </span>
-                    <span className="font-sans text-[13px] font-semibold text-foreground ml-2">
+                    <span className="font-sans text-body font-semibold text-foreground ml-2">
                       7
                     </span>
                   </div>
@@ -262,10 +262,10 @@ export function VariationSetModal({
 
                   {/* FORMATS */}
                   <div className="flex items-center">
-                    <span className="font-sans text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
+                    <span className="font-sans text-badge uppercase font-semibold text-muted-foreground tracking-wider">
                       FORMATS
                     </span>
-                    <span className="font-sans text-[13px] font-semibold text-foreground ml-2">
+                    <span className="font-sans text-body font-semibold text-foreground ml-2">
                       SVG + PNG
                     </span>
                   </div>
@@ -274,10 +274,10 @@ export function VariationSetModal({
 
                   {/* COST */}
                   <div className="flex items-center">
-                    <span className="font-sans text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
+                    <span className="font-sans text-badge uppercase font-semibold text-muted-foreground tracking-wider">
                       COST
                     </span>
-                    <span className="font-mono text-[13px] text-foreground ml-2">
+                    <span className="font-sans text-body text-foreground ml-2">
                       Free, derived
                     </span>
                   </div>

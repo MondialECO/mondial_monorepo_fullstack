@@ -421,7 +421,7 @@ export function TypographySystemModal({
                   }`}
                 />
                 <span>Suggest other pairings</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                <span className="px-1.5 py-0.5 rounded text-badge font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
                   {Math.max(0, 3 - regenerateCount)}/3 LEFT
                 </span>
               </Button>
@@ -443,7 +443,7 @@ export function TypographySystemModal({
               <AlertCircle className="size-4 shrink-0 text-amber-600" />
               <span>Insufficient AI credits to suggest alternative pairings.</span>
             </div>
-            <span className="text-[11px] font-semibold opacity-80 ml-3 shrink-0">
+            <span className="text-caption font-semibold opacity-80 ml-3 shrink-0">
               (Credit top-ups are currently unavailable)
             </span>
           </div>
@@ -491,11 +491,11 @@ export function TypographySystemModal({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
+                    <span className="text-caption font-mono font-bold tracking-wider text-muted-foreground uppercase">
                       PICK A PAIRING
                     </span>
                     <span className="hidden sm:inline text-xs text-muted-foreground">·</span>
-                    <span className="text-[11px] font-mono text-muted-foreground">
+                    <span className="text-caption font-mono text-muted-foreground">
                       DISPLAY FAMILY: <strong className="text-foreground font-semibold">{displayFamilyName}</strong> · TEXT FAMILY: <strong className="text-foreground font-semibold">{textFamilyName}</strong>
                     </span>
                   </div>
@@ -529,7 +529,7 @@ export function TypographySystemModal({
                       )}
 
                       <h4
-                        className="text-2xl sm:text-[28px] font-bold tracking-tight text-foreground truncate"
+                        className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground truncate"
                         style={{ fontFamily: preset.display }}
                       >
                         {brandName}
@@ -549,15 +549,15 @@ export function TypographySystemModal({
                           {preset.display} + {preset.text}
                         </span>
                         <p className="text-xs font-sans text-muted-foreground mt-1 leading-normal">
-                          {preset.description}
+                          {preset.reason}
                         </p>
                       </div>
 
                       {/* Footer Metadata */}
-                      <div className="flex items-center gap-2 pt-2 border-t border-border/60 text-[10px] font-mono text-muted-foreground">
+                      <div className="flex items-center gap-2 pt-2 border-t border-border/60 text-badge font-mono text-muted-foreground">
                         <span>{preset.license}</span>
                         <span>·</span>
-                        <span>{preset.weightCount} weights</span>
+                        <span>{preset.displayWeights.length + preset.textWeights.length} weights</span>
                         <span>·</span>
                         <span>{preset.bundleKb}kb</span>
                       </div>
@@ -571,7 +571,7 @@ export function TypographySystemModal({
           {/* SECTION B: FOUR ROLES SPECIMEN EDITOR ("FOUR ROLES") */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
+              <span className="text-caption font-mono font-bold tracking-wider text-muted-foreground uppercase">
                 FOUR ROLES
               </span>
               <span className="text-xs font-mono text-muted-foreground">
@@ -589,14 +589,14 @@ export function TypographySystemModal({
                     <span className="text-base font-bold font-heading text-foreground">
                       Logo type
                     </span>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">
+                    <span className="inline-flex items-center gap-1 text-badge font-mono font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">
                       <Lock className="size-2.5" /> LOCKED
                     </span>
                   </div>
                   <p className="text-xs font-sans text-muted-foreground leading-normal">
                     Locked to your wordmark. Changing this would redraw your logo.
                   </p>
-                  <span className="text-[10px] font-mono text-muted-foreground block pt-0.5">
+                  <span className="text-badge font-mono text-muted-foreground block pt-0.5">
                     Bound to approved logo concept
                   </span>
                 </div>
@@ -604,11 +604,11 @@ export function TypographySystemModal({
                 {/* Right Specimen */}
                 <div className="flex-1 flex flex-col items-start md:items-end gap-1.5 min-w-[280px]">
                   <span className="text-xs font-mono text-muted-foreground">
-                    {displayFamilyName} · Bold · {logoTypeRole?.size || "40px"} / {logoTypeRole?.lineHeight || "1.1"}
+                    Custom Vector Font · Display · Bold
                   </span>
                   <div
-                    className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground"
-                    style={{ fontFamily: displayFamilyName }}
+                    className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground md:text-right"
+                    style={{ fontFamily: "var(--font-heading)" }}
                   >
                     {brandName}
                   </div>
@@ -627,7 +627,7 @@ export function TypographySystemModal({
                   
                   {/* Step Font Controls */}
                   <div className="flex items-center gap-2 pt-2">
-                    <label className="text-[10px] font-mono text-muted-foreground">
+                    <label className="text-badge font-mono text-muted-foreground">
                       Heading font weight:
                     </label>
                     <select
@@ -673,7 +673,7 @@ export function TypographySystemModal({
 
                   {/* Step Font Controls */}
                   <div className="flex items-center gap-2 pt-2">
-                    <label className="text-[10px] font-mono text-muted-foreground">
+                    <label className="text-badge font-mono text-muted-foreground">
                       Body font weight:
                     </label>
                     <select

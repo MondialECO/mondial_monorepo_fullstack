@@ -134,14 +134,14 @@ export default function IdeaSummaryPage() {
                     border: "2px solid color-mix(in srgb, var(--primary) 50%, transparent)",
                   }}
                 />
-                <span className="text-[11px] font-medium" style={{ color: "var(--primary)" }}>
+                <span className="text-badge font-medium" style={{ color: "var(--primary)" }}>
                   Synthesis Complete
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
+              <h1 className="text-page-heading font-semibold" style={{ color: "var(--foreground)" }}>
                 Your Idea - First draft.
               </h1>
-              <p className="text-base max-w-[548px]" style={{ color: "var(--muted-foreground)" }}>
+              <p className="text-body max-w-[548px]" style={{ color: "var(--muted-foreground)" }}>
                 Extracted from your own insights. AI provided the structure — the ownership is yours.
               </p>
             </div>
@@ -159,10 +159,10 @@ export default function IdeaSummaryPage() {
                     className="rounded-xl border px-4 py-3 flex flex-col gap-1.5"
                     style={{ backgroundColor: "var(--popover)", borderColor: "var(--stroke-10)" }}
                   >
-                    <span className="text-[13px] font-medium uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
+                    <span className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
                       {block.title}
                     </span>
-                    <p className="text-[13px] leading-relaxed line-clamp-2" style={{ color: "var(--muted-foreground)" }}>
+                    <p className="text-body leading-relaxed line-clamp-2" style={{ color: "var(--muted-foreground)" }}>
                       {block.value}
                     </p>
                   </div>
@@ -179,7 +179,7 @@ export default function IdeaSummaryPage() {
                   className="flex flex-col items-center justify-center gap-4 p-5 sm:p-7 shrink-0 border-b md:border-b-0 md:border-r"
                   style={{ borderColor: "var(--stroke-10)" }}
                 >
-                  <span className="text-[13px] font-medium" style={{ color: "var(--foreground)" }}>
+                  <span className="text-label font-medium" style={{ color: "var(--foreground)" }}>
                     iDeal Clarity Score
                   </span>
                   <div className="relative" style={{ width: 100, height: 100 }}>
@@ -200,14 +200,14 @@ export default function IdeaSummaryPage() {
                       />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-3xl font-medium tabular-nums" style={{ color: "var(--foreground)" }}>
+                      <span className="text-3xl font-medium tabular-nums font-mono" style={{ color: "var(--foreground)" }}>
                         {clarityScore}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3 h-3" style={{ color: "var(--p8-green)" }} />
-                    <span className="text-xs font-medium" style={{ color: "var(--p8-green)" }}>
+                    <span className="text-badge font-medium" style={{ color: "var(--p8-green)" }}>
                       Ready For Naming
                     </span>
                   </div>
@@ -216,7 +216,7 @@ export default function IdeaSummaryPage() {
                 {/* Right: synthesis progression + stats */}
                 <div className="flex-1 min-w-0 flex flex-col justify-center gap-5 p-5 sm:p-7">
                   <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between gap-4 text-sm">
+                    <div className="flex items-center justify-between gap-4 text-body">
                       <span style={{ color: "var(--muted-foreground)" }}>Synthesis Progression</span>
                       <span className="font-semibold" style={{ color: "var(--primary)" }}>{progressionLabel}</span>
                     </div>
@@ -228,7 +228,7 @@ export default function IdeaSummaryPage() {
                       />
                     </div>
                     {/* Axis labels */}
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center justify-between text-caption">
                       <span className="flex-1" style={{ color: "var(--muted-foreground)" }}>Vague</span>
                       <span className="flex-1 text-center" style={{ color: "var(--primary)" }}>Developing</span>
                       <span className="flex-1 text-right" style={{ color: "var(--p8-green)" }}>Sharp</span>
@@ -241,15 +241,15 @@ export default function IdeaSummaryPage() {
                       className="flex-1 min-w-0 rounded-lg border p-3 flex flex-col gap-2"
                       style={{ backgroundColor: "var(--card)", borderColor: "var(--stroke-10)" }}
                     >
-                      <span className="text-[13px]" style={{ color: "var(--muted-foreground)" }}>AI confidence</span>
-                      <span className="text-base font-semibold text-center tabular-nums" style={{ color: "var(--foreground)" }}>89.4%</span>
+                      <span className="text-caption" style={{ color: "var(--muted-foreground)" }}>AI confidence</span>
+                      <span className="text-base font-semibold text-center tabular-nums font-mono" style={{ color: "var(--foreground)" }}>89.4%</span>
                     </div>
                     <div
                       className="flex-1 min-w-0 rounded-lg border p-3 flex flex-col gap-2"
                       style={{ backgroundColor: "var(--card)", borderColor: "var(--stroke-10)" }}
                     >
-                      <span className="text-[13px]" style={{ color: "var(--muted-foreground)" }}>Latency</span>
-                      <span className="text-base font-semibold text-center tabular-nums" style={{ color: "var(--foreground)" }}>89.4%</span>
+                      <span className="text-caption" style={{ color: "var(--muted-foreground)" }}>Latency</span>
+                      <span className="text-base font-semibold text-center tabular-nums font-mono" style={{ color: "var(--foreground)" }}>89.4%</span>
                     </div>
                   </div>
                 </div>

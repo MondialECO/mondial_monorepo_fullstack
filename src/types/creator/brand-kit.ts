@@ -74,11 +74,11 @@ export interface BrandDirectionAdjustments {
 
 export interface BrandLogo {
   logoType?: string;
-  concepts: BrandLogoConcept[];
+  concepts?: BrandLogoConcept[];
   selectedConceptKey?: string | null;
   variations?: Record<string, BrandLogoVariation>;
   refinementSettings?: BrandLogoRefinementSettings;
-  regenerateCount: number;
+  regenerateCount?: number;
   approvedAt?: string | null;
 }
 

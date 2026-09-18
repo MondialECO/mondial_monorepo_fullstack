@@ -628,7 +628,7 @@ export function ColorSystemModal({
               >
                 <RefreshCw className={`size-3.5 text-muted-foreground ${isRegenerating ? "animate-spin text-primary" : ""}`} />
                 <span>Regenerate Palette</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                <span className="px-1.5 py-0.5 rounded text-badge font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
                   {Math.max(0, 3 - regenerateCount)}/3 LEFT
                 </span>
               </Button>
@@ -650,7 +650,7 @@ export function ColorSystemModal({
               <AlertTriangle className="size-4 shrink-0 text-amber-600" />
               <span>{creditError}</span>
             </div>
-            <span className="text-[11px] font-semibold opacity-80 ml-3 shrink-0">
+            <span className="text-badge font-semibold opacity-80 ml-3 shrink-0">
               (Credit top-ups are currently unavailable)
             </span>
           </div>
@@ -699,7 +699,7 @@ export function ColorSystemModal({
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-muted/30 border border-border/80">
                 <div className="flex items-center gap-2.5">
                   <SlidersHorizontal className="size-4 text-muted-foreground shrink-0" />
-                  <span className="text-[11px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
+                  <span className="text-footnote font-mono font-bold tracking-wider text-muted-foreground uppercase">
                     PALETTE MOOD:
                   </span>
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -786,19 +786,19 @@ export function ColorSystemModal({
                         </span>
 
                         {isPrimary && (
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                          <span className="text-badge font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
                             Core Brand
                           </span>
                         )}
 
                         {role.isLocked && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">
+                          <span className="inline-flex items-center gap-1 text-badge font-mono font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">
                             <Lock className="size-2.5" /> LOCKED
                           </span>
                         )}
 
                         {isEdited && !role.isLocked && (
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 uppercase">
+                          <span className="text-badge font-mono font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 uppercase">
                             EDITED
                           </span>
                         )}
@@ -966,12 +966,12 @@ export function ColorSystemModal({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3 text-[11px] font-medium" style={{ color: textColor }}>
+                    <div className="flex items-center gap-3 text-footnote font-medium" style={{ color: textColor }}>
                       <span className="opacity-80">Platform</span>
                       <span className="opacity-80">Solutions</span>
                       <span className="opacity-80">Pricing</span>
                       <span
-                        className="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
+                        className="px-2 py-0.5 rounded text-badge font-mono font-bold"
                         style={{
                           backgroundColor: `${accentColor}15`,
                           color: accentColor,
@@ -1023,7 +1023,7 @@ export function ColorSystemModal({
                   </div>
 
                   {/* Footer Stats Strip */}
-                  <div className="flex items-center gap-6 pt-2 border-t border-black/10 text-[10px] font-mono" style={{ color: textColor, opacity: 0.65 }}>
+                  <div className="flex items-center gap-6 pt-2 border-t border-black/10 text-footnote font-mono" style={{ color: textColor, opacity: 0.65 }}>
                     <span>99.99% Uptime SLA</span>
                     <span>·</span>
                     <span>Zero-Trust Architecture</span>
@@ -1059,11 +1059,11 @@ export function ColorSystemModal({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px]" style={{ color: textColor, opacity: 0.7 }}>
+                      <span className="font-mono text-footnote" style={{ color: textColor, opacity: 0.7 }}>
                         #INV-2026-089
                       </span>
                       <span
-                        className="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
+                        className="px-2 py-0.5 rounded text-badge font-mono font-bold"
                         style={{
                           backgroundColor: `${accentColor}15`,
                           color: accentColor,
@@ -1077,7 +1077,7 @@ export function ColorSystemModal({
 
                   {/* Line Items Table */}
                   <div className="space-y-1.5 py-2">
-                    <div className="flex justify-between font-mono text-[11px] pb-1 border-b border-black/5" style={{ color: textColor, opacity: 0.6 }}>
+                    <div className="flex justify-between font-mono text-table-header pb-1 border-b border-black/5" style={{ color: textColor, opacity: 0.6 }}>
                       <span>DESCRIPTION</span>
                       <span>AMOUNT</span>
                     </div>
@@ -1093,7 +1093,7 @@ export function ColorSystemModal({
 
                   {/* Invoice Total */}
                   <div className="flex items-center justify-between pt-2 border-t border-black/10">
-                    <span className="text-[11px] font-mono" style={{ color: textColor, opacity: 0.7 }}>
+                    <span className="text-footnote font-mono" style={{ color: textColor, opacity: 0.7 }}>
                       DUE UPON RECEIPT
                     </span>
                     <div className="flex items-center gap-2">
@@ -1116,7 +1116,7 @@ export function ColorSystemModal({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span
-                        className="px-2 py-0.5 rounded text-[10px] font-mono font-bold"
+                        className="px-2 py-0.5 rounded text-badge font-mono font-bold"
                         style={{
                           backgroundColor: `${accentColor}15`,
                           color: accentColor,
@@ -1158,7 +1158,7 @@ export function ColorSystemModal({
                       <span className="text-base font-bold font-mono" style={{ color: primaryColor }}>
                         +142%
                       </span>
-                      <span className="text-[10px] font-mono" style={{ color: textColor, opacity: 0.7 }}>
+                      <span className="text-footnote font-mono" style={{ color: textColor, opacity: 0.7 }}>
                         MoM Growth
                       </span>
                     </div>
@@ -1172,7 +1172,7 @@ export function ColorSystemModal({
                       <span className="text-base font-bold font-mono" style={{ color: accentColor }}>
                         99.4%
                       </span>
-                      <span className="text-[10px] font-mono" style={{ color: textColor, opacity: 0.7 }}>
+                      <span className="text-footnote font-mono" style={{ color: textColor, opacity: 0.7 }}>
                         Retention Rate
                       </span>
                     </div>
@@ -1186,7 +1186,7 @@ export function ColorSystemModal({
                       <span className="text-base font-bold font-mono" style={{ color: secondaryColor }}>
                         $4.2M
                       </span>
-                      <span className="text-[10px] font-mono" style={{ color: textColor, opacity: 0.7 }}>
+                      <span className="text-footnote font-mono" style={{ color: textColor, opacity: 0.7 }}>
                         Annual ARR Run-Rate
                       </span>
                     </div>

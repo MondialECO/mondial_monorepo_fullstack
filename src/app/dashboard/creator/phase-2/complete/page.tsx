@@ -227,6 +227,13 @@ export default function Phase2CompletePage() {
     selectedConcept?.markAssetUri ||
     primaryVariationSvg;
 
+  const logoForms = {
+    horizontal: brandKit?.logo?.variations?.horizontal?.svgUri || brandKit?.logo?.variations?.primary?.svgUri || selectedConcept?.lockupAssetUri || primaryVariationSvg,
+    stacked: brandKit?.logo?.variations?.stacked?.svgUri || selectedConcept?.lockupAssetUri || primaryVariationSvg,
+    mark: brandKit?.logo?.variations?.icon_only?.svgUri || selectedConcept?.markAssetUri || iconOnlySvg,
+    wordmark: brandKit?.logo?.variations?.wordmark_only?.svgUri || primaryVariationSvg,
+  };
+
   const CANONICAL_ROLES = ["Primary", "Secondary", "Accent", "Background", "Text"] as const;
   const rawColorRoles = brandKit?.colors?.roles ?? [];
 
@@ -394,14 +401,14 @@ export default function Phase2CompletePage() {
               <h2 className="text-xl font-bold font-heading text-foreground">Your Brand Kit</h2>
 
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1 rounded-full bg-muted/70 text-[11px] font-semibold text-muted-foreground border border-border/60 uppercase tracking-wider font-mono">
+                <span className="px-3 py-1 rounded-full bg-muted/70 text-badge font-semibold text-muted-foreground border border-border/60 uppercase tracking-wider font-mono">
                   {logoCount} LOGOS · {colorCount} COLOURS · {fontCount} FONTS
                 </span>
 
                 <button
                   type="button"
                   onClick={() => router.push(hubUrl)}
-                  className="text-xs sm:text-sm font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1"
+                  className="text-badge sm:text-body font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1"
                 >
                   <span>Open Brand Kit</span>
                   <ExternalLink className="size-3" />
@@ -435,7 +442,7 @@ export default function Phase2CompletePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/60 pt-2 gap-6 md:gap-0">
               {/* Column 1: COLOURS */}
               <div className="md:pr-6 space-y-3 pt-4 md:pt-0">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
                   COLOURS
                 </span>
                 <div className="flex items-center gap-2">
@@ -448,14 +455,14 @@ export default function Phase2CompletePage() {
                     />
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground font-sans">
+                <p className="text-caption text-muted-foreground font-sans">
                   Primary, Secondary, Accent, Background, Text
                 </p>
               </div>
 
               {/* Column 2: TYPOGRAPHY */}
               <div className="md:px-6 space-y-3 pt-4 md:pt-0">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
                   TYPOGRAPHY
                 </span>
                 <div className="flex items-baseline gap-2 text-lg sm:text-xl font-medium text-foreground">
@@ -463,14 +470,14 @@ export default function Phase2CompletePage() {
                   <span className="text-muted-foreground text-sm font-sans">+</span>
                   <span className="font-sans">{textFont}</span>
                 </div>
-                <p className="text-xs text-muted-foreground font-sans">
+                <p className="text-caption text-muted-foreground font-sans">
                   Display and text, open licence
                 </p>
               </div>
 
               {/* Column 3: LOGO FORMS */}
               <div className="md:pl-6 space-y-3 pt-4 md:pt-0">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
                   LOGO FORMS
                 </span>
                 <div className="flex items-center gap-2">
@@ -479,146 +486,142 @@ export default function Phase2CompletePage() {
                     className="w-10 h-8 rounded-lg border border-border/80 bg-white dark:bg-zinc-900 flex items-center justify-center p-1 shadow-2xs shrink-0"
                     title="Horizontal Lockup"
                   >
-                    <div className="flex items-center gap-1">
-                      <div className="size-2 rounded-xs bg-primary" />
-                      <div className="h-1 w-3 rounded-full bg-muted-foreground/60" />
-                    </div>
+                    {logoForms?.horizontal ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={resolveMediaUrl(logoForms.horizontal)}
+                        alt="Horizontal"
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    ) : (
+                      <span className="text-badge text-muted-foreground font-mono">H</span>
+                    )}
                   </div>
-
                   {/* 2. Stacked */}
                   <div
                     className="w-10 h-8 rounded-lg border border-border/80 bg-white dark:bg-zinc-900 flex items-center justify-center p-1 shadow-2xs shrink-0"
                     title="Stacked Lockup"
                   >
-                    <div className="flex flex-col items-center gap-0.5">
-                      <div className="size-2 rounded-xs bg-primary" />
-                      <div className="h-0.5 w-3 rounded-full bg-muted-foreground/60" />
-                    </div>
-                  </div>
-
-                  {/* 3. Icon-only */}
-                  <div
-                    className="w-10 h-8 rounded-lg border border-border/80 bg-white dark:bg-zinc-900 flex items-center justify-center p-1 shadow-2xs shrink-0"
-                    title="Icon-only Mark"
-                  >
-                    {iconOnlySvg ? (
+                    {logoForms?.stacked ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
-                        src={resolveMediaUrl(iconOnlySvg)}
-                        alt="Mark"
-                        className="max-h-5 max-w-5 object-contain"
+                        src={resolveMediaUrl(logoForms.stacked)}
+                        alt="Stacked"
+                        className="max-h-full max-w-full object-contain"
                       />
                     ) : (
-                      <div className="size-2.5 rounded-xs bg-primary" />
+                      <span className="text-badge text-muted-foreground font-mono">V</span>
                     )}
                   </div>
-
-                  {/* 4. Inverse / Dark */}
+                  {/* 3. Mark */}
                   <div
-                    className="w-10 h-8 rounded-lg border border-zinc-700 bg-zinc-950 flex items-center justify-center p-1 shadow-2xs shrink-0"
-                    title="Dark Inverse Lockup"
+                    className="w-10 h-8 rounded-lg border border-border/80 bg-white dark:bg-zinc-900 flex items-center justify-center p-1 shadow-2xs shrink-0"
+                    title="Symbol / Icon Mark"
                   >
-                    {iconOnlySvg ? (
+                    {logoForms?.mark ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
-                        src={resolveMediaUrl(iconOnlySvg)}
-                        alt="Dark Mark"
-                        className="max-h-5 max-w-5 object-contain brightness-200"
+                        src={resolveMediaUrl(logoForms.mark)}
+                        alt="Mark"
+                        className="max-h-full max-w-full object-contain"
                       />
                     ) : (
-                      <div className="size-2.5 rounded-xs bg-white" />
+                      <span className="text-badge text-muted-foreground font-mono">M</span>
+                    )}
+                  </div>
+                  {/* 4. Wordmark */}
+                  <div
+                    className="w-10 h-8 rounded-lg border border-border/80 bg-white dark:bg-zinc-900 flex items-center justify-center p-1 shadow-2xs shrink-0"
+                    title="Wordmark"
+                  >
+                    {logoForms?.wordmark ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={resolveMediaUrl(logoForms.wordmark)}
+                        alt="Wordmark"
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    ) : (
+                      <span className="text-badge text-muted-foreground font-mono">W</span>
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground font-sans">
-                  Seven variations, SVG and PNG
+                <p className="text-caption text-muted-foreground font-sans">
+                  Horizontal, stacked, mark, wordmark
                 </p>
               </div>
             </div>
           </section>
 
           {/* =========================================================================
-              CARD 2: PROJECT SUMMARY (white card, 16px radius, 28px padding)
+              CARD 2: CORE BRAND IDENTITY (white card, 16px radius, standard padding)
              ========================================================================= */}
-          <section className="rounded-2xl border border-border/80 bg-card p-6 sm:p-7 shadow-xs space-y-5 text-card-foreground">
+          <section className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-xs space-y-6 text-card-foreground">
             {/* Header row */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="size-11 rounded-xl bg-white dark:bg-zinc-900 border border-border/80 flex items-center justify-center p-2 shadow-xs shrink-0">
-                  {iconOnlySvg ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={resolveMediaUrl(iconOnlySvg)}
-                      alt={`${brandName} Icon`}
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  ) : (
-                    <span className="text-foreground font-bold text-base font-heading">
-                      {brandName.charAt(0)}
-                    </span>
-                  )}
-                </div>
+              <h3 className="text-card-title font-bold font-heading text-foreground">
+                Core Brand Identity
+              </h3>
 
-                <div className="space-y-0.5">
-                  <h3 className="text-lg sm:text-xl font-bold font-heading text-foreground">
-                    {brandName}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground font-sans">
-                    {brandTagline}
-                  </p>
-                </div>
-              </div>
-
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border border-teal-500/30 bg-teal-500/10 text-teal-700 dark:text-teal-300 self-start sm:self-auto">
-                {industry}
-              </span>
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/creator/phase-2/brand-studio?step=strategy")}
+                className="text-badge sm:text-body font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>Edit Strategy</span>
+                <ArrowRight className="size-3" />
+              </button>
             </div>
 
-            {/* Hairline divider */}
-            <div className="border-t border-border/60" />
+            {/* Tagline callout banner */}
+            <div className="rounded-xl border border-border/60 bg-muted/30 p-4 sm:p-5">
+              <p className="text-base sm:text-lg font-medium text-foreground italic font-sans leading-relaxed">
+                &ldquo;{brandTagline}&rdquo;
+              </p>
+            </div>
 
             {/* 2x2 grid of four facts */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
               {/* TARGET AUDIENCE */}
               <div className="space-y-1">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
                   TARGET AUDIENCE
                 </span>
-                <p className="text-xs sm:text-sm text-foreground font-sans leading-relaxed">
+                <p className="text-body text-foreground font-sans leading-relaxed">
                   {targetAudience}
                 </p>
               </div>
 
               {/* POSITIONING */}
               <div className="space-y-1">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
                   POSITIONING
                 </span>
-                <p className="text-xs sm:text-sm text-foreground font-sans leading-relaxed">
+                <p className="text-body text-foreground font-sans leading-relaxed">
                   {positioning}
                 </p>
               </div>
 
               {/* CORE PROBLEM */}
               <div className="space-y-1">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
                   CORE PROBLEM
                 </span>
-                <p className="text-xs sm:text-sm text-foreground font-sans leading-relaxed">
+                <p className="text-body text-foreground font-sans leading-relaxed">
                   {coreProblem}
                 </p>
               </div>
 
               {/* PERSONALITY */}
               <div className="space-y-1">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
                   PERSONALITY
                 </span>
                 <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                   {personalityTraits.map((trait) => (
                     <span
                       key={trait}
-                      className="px-2.5 py-0.5 rounded-full border border-border/80 bg-muted/40 text-xs text-muted-foreground font-sans"
+                      className="px-2.5 py-0.5 rounded-full border border-border/80 bg-muted/40 text-badge text-muted-foreground font-sans"
                     >
                       {trait}
                     </span>
@@ -634,10 +637,10 @@ export default function Phase2CompletePage() {
           <section className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4 text-card-foreground">
             {/* Header row */}
             <div className="flex items-center justify-between">
-              <h4 className="text-base font-semibold font-heading text-foreground">
+              <h4 className="text-card-title font-semibold font-heading text-foreground">
                 Next: Phase 3 — Business plan
               </h4>
-              <span className="px-2.5 py-0.5 rounded-full bg-muted text-[11px] font-semibold text-muted-foreground border border-border/60 uppercase font-mono">
+              <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-semibold text-muted-foreground border border-border/60 uppercase font-mono">
                 4 TOOLS
               </span>
             </div>
@@ -657,8 +660,8 @@ export default function Phase2CompletePage() {
                 >
                   <Icon className="size-4.5 text-muted-foreground shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <span className="text-xs font-semibold text-foreground block">{title}</span>
-                    <span className="text-[11px] text-muted-foreground block font-sans">
+                    <span className="text-label font-semibold text-foreground block">{title}</span>
+                    <span className="text-caption text-muted-foreground block font-sans">
                       {subtitle}
                     </span>
                   </div>
@@ -667,7 +670,7 @@ export default function Phase2CompletePage() {
             </div>
 
             {/* Beneath row note */}
-            <p className="text-xs text-muted-foreground font-sans pt-1 border-t border-border/40">
+            <p className="text-caption text-muted-foreground font-sans pt-1 border-t border-border/40">
               Each one reads from your Brand Kit automatically.
             </p>
           </section>

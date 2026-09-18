@@ -35,20 +35,20 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-muted/20">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] font-bold text-muted-foreground tracking-wider uppercase">
+          <span className="font-mono text-badge font-bold text-muted-foreground tracking-wider uppercase">
             STEP 6
           </span>
-          <span className="text-xs font-semibold text-foreground">
+          <span className="text-card-title font-semibold text-foreground">
             Typography System
           </span>
         </div>
         {isConfirmed ? (
-          <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+          <span className="inline-flex items-center gap-1 font-mono text-badge font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
             <Check className="size-3 stroke-[3]" />
             CONFIRMED
           </span>
         ) : (
-          <span className="font-mono text-[10px] text-muted-foreground">
+          <span className="font-mono text-badge text-muted-foreground">
             Draft
           </span>
         )}
@@ -57,25 +57,25 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
       {/* Families Overview */}
       <div className="grid grid-cols-2 gap-2 p-3 bg-muted/10 border-b border-border/40">
         <div className="p-2 rounded-lg bg-background/80 border border-border/60">
-          <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground mb-0.5">
+          <div className="flex items-center justify-between text-badge font-mono text-muted-foreground mb-0.5">
             <span>DISPLAY FAMILY</span>
             {families?.displayFamily?.license && (
               <span className="truncate max-w-[80px]">{families.displayFamily.license}</span>
             )}
           </div>
-          <div className="text-sm font-bold text-foreground truncate" style={{ fontFamily: `"${displayFamily}", sans-serif` }}>
+          <div className="text-card-title font-bold text-foreground truncate" style={{ fontFamily: `"${displayFamily}", sans-serif` }}>
             {displayFamily}
           </div>
         </div>
 
         <div className="p-2 rounded-lg bg-background/80 border border-border/60">
-          <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground mb-0.5">
+          <div className="flex items-center justify-between text-badge font-mono text-muted-foreground mb-0.5">
             <span>TEXT FAMILY</span>
             {families?.textFamily?.license && (
               <span className="truncate max-w-[80px]">{families.textFamily.license}</span>
             )}
           </div>
-          <div className="text-sm font-bold text-foreground truncate" style={{ fontFamily: `"${textFamily}", sans-serif` }}>
+          <div className="text-card-title font-bold text-foreground truncate" style={{ fontFamily: `"${textFamily}", sans-serif` }}>
             {textFamily}
           </div>
         </div>
@@ -85,23 +85,23 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
       <div className="p-3 space-y-2.5">
         {/* 1. Logo Type */}
         <div className="p-2 rounded-lg bg-muted/20 border border-border/40">
-          <div className="flex items-center justify-between text-[10px] mb-1">
+          <div className="flex items-center justify-between text-badge mb-1">
             <div className="flex items-center gap-1.5 font-medium text-foreground">
               <Type className="size-3 text-muted-foreground" />
               <span>Logo type</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="font-mono text-[10px] text-muted-foreground font-semibold">
+              <span className="font-mono text-badge text-muted-foreground font-semibold">
                 {logoTypeRole?.family || "Plus Jakarta Sans"}
               </span>
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground text-[9px] font-mono">
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground text-badge font-mono">
                 <Lock className="size-2.5 text-muted-foreground" />
                 Permanent
               </span>
             </div>
           </div>
           <div
-            className="text-base font-bold text-foreground truncate"
+            className="text-card-title font-bold text-foreground truncate"
             style={{
               fontFamily: `"${logoTypeRole?.family || "Plus Jakarta Sans"}", sans-serif`,
               fontWeight: logoTypeRole?.weight || "700",
@@ -113,14 +113,14 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
 
         {/* 2. Heading */}
         <div className="p-2 rounded-lg bg-muted/20 border border-border/40">
-          <div className="flex items-center justify-between text-[10px] mb-1">
+          <div className="flex items-center justify-between text-badge mb-1">
             <span className="font-medium text-foreground">Heading</span>
-            <span className="font-mono text-[10px] text-muted-foreground">
+            <span className="font-mono text-badge text-muted-foreground">
               {headingRole?.family || displayFamily} · {headingRole?.weight || "700"} · {headingRole?.size || "32px"}
             </span>
           </div>
           <div
-            className="text-sm font-bold text-foreground truncate"
+            className="text-card-title font-bold text-foreground truncate"
             style={{
               fontFamily: `"${headingRole?.family || displayFamily}", sans-serif`,
               fontWeight: headingRole?.weight || "700",
@@ -132,14 +132,14 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
 
         {/* 3. Body */}
         <div className="p-2 rounded-lg bg-muted/20 border border-border/40">
-          <div className="flex items-center justify-between text-[10px] mb-1">
+          <div className="flex items-center justify-between text-badge mb-1">
             <span className="font-medium text-foreground">Body</span>
-            <span className="font-mono text-[10px] text-muted-foreground">
+            <span className="font-mono text-badge text-muted-foreground">
               {bodyRole?.family || textFamily} · {bodyRole?.weight || "400"} · {bodyRole?.size || "16px"}
             </span>
           </div>
           <div
-            className="text-xs text-muted-foreground line-clamp-2 leading-relaxed"
+            className="text-body text-muted-foreground line-clamp-2 leading-relaxed"
             style={{
               fontFamily: `"${bodyRole?.family || textFamily}", sans-serif`,
               fontWeight: bodyRole?.weight || "400",
@@ -151,15 +151,15 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
 
         {/* 4. Button & label */}
         <div className="p-2 rounded-lg bg-muted/20 border border-border/40">
-          <div className="flex items-center justify-between text-[10px] mb-1">
+          <div className="flex items-center justify-between text-badge mb-1">
             <span className="font-medium text-foreground">Button & label</span>
-            <span className="font-mono text-[10px] text-muted-foreground">
+            <span className="font-mono text-badge text-muted-foreground">
               {buttonRole?.family || textFamily} · {buttonRole?.weight || "600"} · {buttonRole?.size || "14px"}
             </span>
           </div>
           <div className="flex items-center gap-2 pt-0.5">
             <span
-              className="inline-block px-3 py-1 rounded bg-primary text-primary-foreground text-xs font-semibold"
+              className="inline-block px-3 py-1 rounded bg-primary text-primary-foreground text-button font-semibold"
               style={{
                 fontFamily: `"${buttonRole?.family || textFamily}", sans-serif`,
                 fontWeight: buttonRole?.weight || "600",
@@ -172,8 +172,8 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
       </div>
 
       {/* Footer */}
-      <div className="mt-auto flex items-center justify-between border-t border-border/60 px-4 py-2 bg-muted/10 text-[11px] text-muted-foreground">
-        <span className="font-mono text-[10px]">
+      <div className="mt-auto flex items-center justify-between border-t border-border/60 px-4 py-2 bg-muted/10 text-caption text-muted-foreground">
+        <span className="font-mono text-badge">
           {roles.length} roles active
         </span>
         <span className="font-medium text-primary group-hover:underline">

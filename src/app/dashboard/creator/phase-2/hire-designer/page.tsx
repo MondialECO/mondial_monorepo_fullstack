@@ -162,7 +162,7 @@ export default function HireDesignerPage() {
               A private channel with <span className="font-extrabold">{bookedDesigner.name}</span> has been created in your Messenger.
             </p>
             <div className="bg-card border border-border rounded-xl p-4 text-xs space-y-1">
-              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Auto-sent to designer</span>
+              <span className="text-badge font-bold text-muted-foreground uppercase tracking-wider block">Auto-sent to designer</span>
               <p className="text-foreground font-medium italic">
                 &quot;Hi {bookedDesigner.name}, I would like to book you for the branding design of my concept: {state.project.name || "my project"}. Let&apos;s discuss requirements.&quot;
               </p>
@@ -178,23 +178,23 @@ export default function HireDesignerPage() {
         {!bookedDesigner && (
           <div className="space-y-4">
             {loading ? (
-              <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+              <div className="flex items-center justify-center gap-2 py-16 text-body text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Finding matched designers…
               </div>
             ) : loadError ? (
-              <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
+              <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-body text-destructive">
                 {loadError}
               </div>
             ) : designers.length === 0 ? (
               <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-3">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-body text-muted-foreground">
                   No verified designers matched your sector yet. You can use the AI logo tool or skip branding for now.
                 </p>
                 <Button
                   variant="outline"
                   onClick={() => router.push("/dashboard/creator/phase-2/branding")}
-                  className="rounded-xl text-xs font-bold"
+                  className="rounded-xl text-button font-bold"
                 >
                   Back to Branding Options
                 </Button>
@@ -202,7 +202,7 @@ export default function HireDesignerPage() {
             ) : (
               <>
                 {bookError && (
-                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-body text-destructive">
                     {bookError}
                   </div>
                 )}
@@ -219,15 +219,15 @@ export default function HireDesignerPage() {
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="min-w-0">
                             <h4 className="font-bold text-base text-foreground leading-tight">{designer.name}</h4>
-                            <span className="text-xs text-muted-foreground font-medium block mt-0.5">{designer.role}</span>
+                            <span className="text-badge text-muted-foreground font-medium block mt-0.5">{designer.role}</span>
                           </div>
-                          <Badge className="bg-green-500/10 text-green-600 border-0 text-[10px] font-bold py-0.5 px-2.5 shrink-0">
+                          <Badge className="bg-green-500/10 text-green-600 border-0 text-badge font-bold py-0.5 px-2.5 shrink-0">
                             Tier {designer.tier} ✓
                           </Badge>
                         </div>
 
                         {/* Metadata tags */}
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground font-semibold">
+                        <div className="flex flex-wrap items-center gap-3 text-caption text-muted-foreground font-semibold">
                           <span className="flex items-center gap-1">
                             <Star className="w-3.5 h-3.5 fill-current text-amber-500" /> {designer.rating}
                           </span>
@@ -242,7 +242,7 @@ export default function HireDesignerPage() {
                         {/* Tags row */}
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {designer.tags.map((tag) => (
-                            <span key={tag} className="rounded-full bg-muted px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                            <span key={tag} className="rounded-full bg-muted px-2.5 py-0.5 text-badge font-bold uppercase tracking-wider text-muted-foreground">
                               {tag}
                             </span>
                           ))}

@@ -665,8 +665,8 @@ export default function MyIdeasPage() {
                   <span className="text-[9px] text-primary font-bold tracking-wider uppercase">Project Intelligence</span>
                   <div className="text-xs font-bold text-foreground">Phase 3 complete</div>
                   <span className="text-[10px] text-muted-foreground block font-medium">
-                    {latestForecast?.summary?.year3Revenue
-                      ? `Forecast saved with Year 3 revenue €${latestForecast.summary.year3Revenue.toLocaleString()}.`
+                    {(latestForecast?.summary as any)?.year3Revenue
+                      ? `Forecast saved with Year 3 revenue €${(latestForecast?.summary as any)?.year3Revenue.toLocaleString()}.`
                       : 'Forecast, business plan, compliance, and team recommendations are saved.'}
                   </span>
                 </div>

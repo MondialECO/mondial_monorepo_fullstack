@@ -261,7 +261,7 @@ export default function AssetLibraryPage() {
   };
 
   // Build the 8 artifact models
-  const isBrandKitReady = Boolean(brandKit && (brandKit.isConfirmed || brandKit.logo?.selectedConceptKey));
+  const isBrandKitReady = Boolean(brandKit && (brandKit.status === "complete" || (brandKit as any).isConfirmed || brandKit.logo?.selectedConceptKey));
   const isMarketStudyReady = Boolean(phase3?.marketStudySessionId);
   const isBusinessModelReady = Boolean(phase3?.businessModelSessionId);
   const isBusinessPlanReady = Boolean(phase3?.businessPlanSessionId);

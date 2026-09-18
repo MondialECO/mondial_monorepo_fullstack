@@ -421,6 +421,10 @@ export interface SmartMatch {
   finalScore: number;
   isFeatured: boolean;
   breakdown: { sectorMatch: number; stageMatch: number; geographyMatch: number; ticketMatch: number };
+  focus?: string;
+  checkSize?: string;
+  matchScore?: number;
+  stage?: string;
 }
 export interface LevelUpResult {
   levelUpComplete: boolean;

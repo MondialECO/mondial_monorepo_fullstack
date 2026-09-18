@@ -280,7 +280,7 @@ export default function ForecastPage() {
                     className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     placeholder="49"
                   />
-                  <span className="text-[11px] font-normal text-muted-foreground block">Target blended ARPU / seat price.</span>
+                  <span className="text-body font-normal text-muted-foreground block">Target blended ARPU / seat price.</span>
                 </label>
 
                 <label className="text-xs font-semibold font-sans space-y-1.5">
@@ -293,7 +293,7 @@ export default function ForecastPage() {
                     className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     placeholder="8000"
                   />
-                  <span className="text-[11px] font-normal text-muted-foreground block">Initial fixed team &amp; infrastructure costs.</span>
+                  <span className="text-body font-normal text-muted-foreground block">Initial fixed team &amp; infrastructure costs.</span>
                 </label>
 
                 <label className="text-xs font-semibold font-sans space-y-1.5">
@@ -307,7 +307,7 @@ export default function ForecastPage() {
                     className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     placeholder="12"
                   />
-                  <span className="text-[11px] font-normal text-muted-foreground block">Target MoM compounded user/revenue expansion.</span>
+                  <span className="text-body font-normal text-muted-foreground block">Target MoM compounded user/revenue expansion.</span>
                 </label>
 
                 <label className="text-xs font-semibold font-sans space-y-1.5">
@@ -321,7 +321,7 @@ export default function ForecastPage() {
                     className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     placeholder="5"
                   />
-                  <span className="text-[11px] font-normal text-muted-foreground block">Expected monthly customer/revenue attrition.</span>
+                  <span className="text-body font-normal text-muted-foreground block">Expected monthly customer/revenue attrition.</span>
                 </label>
 
                 <label className="text-xs font-semibold font-sans space-y-1.5 sm:col-span-2">
@@ -334,7 +334,7 @@ export default function ForecastPage() {
                     className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     placeholder="50000000"
                   />
-                  <span className="text-[11px] font-normal text-muted-foreground block">Total annual market size for sizing ceilings.</span>
+                  <span className="text-body font-normal text-muted-foreground block">Total annual market size for sizing ceilings.</span>
                 </label>
               </div>
 
@@ -447,7 +447,7 @@ export default function ForecastPage() {
                     <span className="font-mono text-xs font-bold text-primary px-2.5 py-0.5 rounded-full bg-primary/10">
                       36-Month Horizon
                     </span>
-                    <Badge variant="outline" className="text-[10px] font-sans font-medium text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                    <Badge variant="outline" className="text-badge font-sans font-medium text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
                       <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> Multi-Year Active Model
                     </Badge>
                   </div>
@@ -485,7 +485,7 @@ export default function ForecastPage() {
                     <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans flex items-center gap-1.5">
                       <Layers className="h-3.5 w-3.5" /> Live Simulation Parameters
                     </h4>
-                    <span className="text-[11px] text-muted-foreground font-sans">
+                    <span className="text-body text-muted-foreground font-sans">
                       Modifying values will re-simulate a fresh 36-month trajectory
                     </span>
                   </div>
@@ -498,7 +498,8 @@ export default function ForecastPage() {
                         min={1}
                         value={inputs.arpu}
                         onChange={(e) => setInputs((s) => ({ ...s, arpu: Number(e.target.value) }))}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        placeholder="49"
                       />
                     </label>
 
@@ -509,42 +510,44 @@ export default function ForecastPage() {
                         min={100}
                         value={inputs.opex}
                         onChange={(e) => setInputs((s) => ({ ...s, opex: Number(e.target.value) }))}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        placeholder="8000"
                       />
                     </label>
 
                     <label className="text-xs font-medium font-sans space-y-1">
-                      <span className="text-muted-foreground">Growth (% MoM)</span>
+                      <span className="text-muted-foreground">Growth (%/mo)</span>
                       <input
                         type="number"
                         min={0}
                         max={100}
                         value={inputs.growth}
                         onChange={(e) => setInputs((s) => ({ ...s, growth: Number(e.target.value) }))}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        placeholder="12"
                       />
                     </label>
 
                     <label className="text-xs font-medium font-sans space-y-1">
-                      <span className="text-muted-foreground">Monthly Churn (%)</span>
+                      <span className="text-muted-foreground">Churn (%/mo)</span>
                       <input
                         type="number"
                         min={0}
                         max={50}
                         value={inputs.churn}
                         onChange={(e) => setInputs((s) => ({ ...s, churn: Number(e.target.value) }))}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        placeholder="5"
                       />
                     </label>
 
                     <label className="text-xs font-medium font-sans space-y-1">
-                      <span className="text-muted-foreground">TAM (€)</span>
+                      <span className="text-muted-foreground">Horizon (Mo)</span>
                       <input
                         type="number"
-                        min={10000}
-                        value={inputs.tam}
-                        onChange={(e) => setInputs((s) => ({ ...s, tam: Number(e.target.value) }))}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                        disabled
+                        value={36}
+                        className="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm font-mono opacity-80 cursor-not-allowed"
                       />
                     </label>
                   </div>
@@ -571,7 +574,7 @@ export default function ForecastPage() {
                       className="gap-1.5 text-xs font-semibold rounded-xl"
                     >
                       {startForecast.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}
-                      Re-run Simulation {forecastCost > 0 ? `(${forecastCost} credits)` : ''}
+                      Re-run Simulation {(forecastCost ?? 0) > 0 ? `(${forecastCost} credits)` : ''}
                     </Button>
                   </div>
                 </div>
@@ -583,12 +586,12 @@ export default function ForecastPage() {
               <Card className="rounded-2xl border border-border bg-card p-5 space-y-2 shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-sans">Year 3 ARR</span>
-                  <Badge variant="outline" className="text-[10px] font-mono">M36 Run-Rate</Badge>
+                  <Badge variant="outline" className="text-badge font-mono">M36 Run-Rate</Badge>
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold font-mono text-foreground tracking-tight">
                   {fmt(year3Arr, rev?.currency)}
                 </div>
-                <p className="text-[11px] text-muted-foreground font-sans">
+                <p className="text-body text-muted-foreground font-sans">
                   Annualized run-rate at month 36 (€{Math.round(month36Revenue).toLocaleString()}/mo).
                 </p>
               </Card>
@@ -597,11 +600,11 @@ export default function ForecastPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-sans">Break-Even Point</span>
                   {breakEvenMonth ? (
-                    <Badge variant="outline" className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                    <Badge variant="outline" className="text-badge font-mono text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
                       Achieved
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="text-[10px] font-mono text-amber-600 dark:text-amber-400 border-amber-500/30">
+                    <Badge variant="outline" className="text-badge font-mono text-amber-600 dark:text-amber-400 border-amber-500/30">
                       In Horizon
                     </Badge>
                   )}
@@ -609,7 +612,7 @@ export default function ForecastPage() {
                 <div className="text-2xl sm:text-3xl font-bold font-mono text-foreground tracking-tight">
                   {breakEvenMonth ? `Month ${breakEvenMonth}` : '> 36 Months'}
                 </div>
-                <p className="text-[11px] text-muted-foreground font-sans">
+                <p className="text-body text-muted-foreground font-sans">
                   {breakEvenMonth ? `Crosses cumulative break-even in Year ${Math.ceil(breakEvenMonth / 12)}.` : 'Requires additional scale to achieve positive monthly cash flow.'}
                 </p>
               </Card>
@@ -617,12 +620,12 @@ export default function ForecastPage() {
               <Card className="rounded-2xl border border-border bg-card p-5 space-y-2 shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-sans">Month 36 Balance</span>
-                  <Badge variant="outline" className="text-[10px] font-mono">Net Runway</Badge>
+                  <Badge variant="outline" className="text-badge font-mono">Net Runway</Badge>
                 </div>
                 <div className={`text-2xl sm:text-3xl font-bold font-mono tracking-tight ${month36Cash < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
                   {fmt(month36Cash, cash?.currency)}
                 </div>
-                <p className="text-[11px] text-muted-foreground font-sans">
+                <p className="text-body text-muted-foreground font-sans">
                   Cumulative liquidity position across the modeled 3-year timeline.
                 </p>
               </Card>
@@ -630,12 +633,12 @@ export default function ForecastPage() {
               <Card className="rounded-2xl border border-border bg-card p-5 space-y-2 shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-sans">Unit Economics</span>
-                  <Badge variant="outline" className="text-[10px] font-mono">Target</Badge>
+                  <Badge variant="outline" className="text-badge font-mono">Target</Badge>
                 </div>
                 <div className="text-2xl sm:text-3xl font-bold font-mono text-foreground tracking-tight">
                   €{inputs.arpu} <span className="text-xs font-sans text-muted-foreground font-normal">/ {inputs.churn}% churn</span>
                 </div>
-                <p className="text-[11px] text-muted-foreground font-sans">
+                <p className="text-body text-muted-foreground font-sans">
                   Blended user ARPU with estimated {inputs.churn}% monthly attrition.
                 </p>
               </Card>
@@ -671,7 +674,7 @@ export default function ForecastPage() {
                   </Button>
                 </div>
 
-                <span className="text-[11px] font-mono text-muted-foreground hidden sm:inline">
+                <span className="text-badge font-mono text-muted-foreground hidden sm:inline">
                   36 Data Points Modeled
                 </span>
               </div>
@@ -838,7 +841,7 @@ export default function ForecastPage() {
                               <td className={`px-4 py-2.5 text-right font-bold ${row.EndingBalance < 0 ? 'text-destructive' : 'text-foreground'}`}>
                                 {fmt(row.EndingBalance, cash?.currency)}
                               </td>
-                              <td className="px-4 py-2.5 text-left text-[11px] font-sans text-muted-foreground truncate max-w-[200px]">
+                              <td className="px-4 py-2.5 text-left text-body font-sans text-muted-foreground truncate max-w-[200px]">
                                 {note || '—'}
                               </td>
                             </tr>
@@ -917,14 +920,14 @@ export default function ForecastPage() {
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-semibold text-foreground">{r.category ?? 'Financial Risk'}</span>
                                 {r.likelihood && (
-                                  <Badge variant="outline" className={`text-[10px] font-mono ${likelihoodVariant(r.likelihood)}`}>
+                                  <Badge variant="outline" className={`text-badge font-mono ${likelihoodVariant(r.likelihood)}`}>
                                     {r.likelihood} Likelihood
                                   </Badge>
                                 )}
                               </div>
                               {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
                               {r.mitigation && (
-                                <p className="text-[11px] text-muted-foreground bg-muted/40 p-2 rounded mt-1">
+                                <p className="text-body text-muted-foreground bg-muted/40 p-2 rounded mt-1 font-sans">
                                   <strong className="text-foreground">Mitigation:</strong> {r.mitigation}
                                 </p>
                               )}

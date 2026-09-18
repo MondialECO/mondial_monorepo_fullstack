@@ -98,11 +98,11 @@ function Sub({ children }: { children: React.ReactNode }) {
   return <h3 className="mb-1 mt-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">{children}</h3>;
 }
 function Body({ children }: { children: React.ReactNode }) {
-  return <p className="mb-2 text-[13px] leading-relaxed text-foreground">{children}</p>;
+  return <p className="mb-2 text-body leading-relaxed text-foreground">{children}</p>;
 }
 function Bullets({ items }: { items: string[] }) {
   return (
-    <ul className="mb-2 list-disc pl-5 text-[13px] leading-relaxed text-foreground">
+    <ul className="mb-2 list-disc pl-5 text-body leading-relaxed text-foreground">
       {items.map((x, i) => <li key={i}>{x}</li>)}
     </ul>
   );
@@ -291,10 +291,10 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
             {has(ca?.overview) && <Body>{ca!.overview}</Body>}
             {arr(ca?.competitors) && ca!.competitors!.map((c, i) => (
               <div key={i} className="print-row mb-2 rounded-md border border-border p-3">
-                <div className="text-[13px] font-bold text-foreground">{c.name ?? "Competitor"}{has(c.positioning) ? ` - ${c.positioning}` : ""}</div>
-                {arr(c.strengths) && <div className="text-[12px] text-muted-foreground"><span className="font-semibold">Strengths:</span> {c.strengths!.join(", ")}</div>}
-                {arr(c.weaknesses) && <div className="text-[12px] text-muted-foreground"><span className="font-semibold">Weaknesses:</span> {c.weaknesses!.join(", ")}</div>}
-                {has(c.ourAdvantage) && <div className="text-[12px] text-foreground"><span className="font-semibold">Our advantage:</span> {c.ourAdvantage}</div>}
+                <div className="text-body font-bold text-foreground">{c.name ?? "Competitor"}{has(c.positioning) ? ` - ${c.positioning}` : ""}</div>
+                {arr(c.strengths) && <div className="text-footnote text-muted-foreground"><span className="font-semibold">Strengths:</span> {c.strengths!.join(", ")}</div>}
+                {arr(c.weaknesses) && <div className="text-footnote text-muted-foreground"><span className="font-semibold">Weaknesses:</span> {c.weaknesses!.join(", ")}</div>}
+                {has(c.ourAdvantage) && <div className="text-footnote text-foreground"><span className="font-semibold">Our advantage:</span> {c.ourAdvantage}</div>}
               </div>
             ))}
           </Section>
@@ -363,17 +363,17 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
                   <div className="grid grid-cols-3 gap-2">
                     <div className="rounded-md border border-border p-2">
                       <div className="text-[9px] font-semibold uppercase text-muted-foreground">Timing</div>
-                      <div className="mt-1 text-[13px] font-bold">{breakEvenMonth ? `Month ${breakEvenMonth}` : "Not achieved"}</div>
+                      <div className="mt-1 text-card-title font-bold">{breakEvenMonth ? `Month ${breakEvenMonth}` : "Not achieved"}</div>
                       <div className="text-[9px] text-muted-foreground">{fcTotal > 0 ? `${fcTotal}-month forecast` : "Horizon unavailable"}</div>
                     </div>
                     <div className="rounded-md border border-border p-2">
                       <div className="text-[9px] font-semibold uppercase text-muted-foreground">{breakEvenMonth ? "Revenue at break-even" : `Revenue at month ${analysisMonth ?? "-"}`}</div>
-                      <div className="mt-1 text-[13px] font-bold">{money(analysisRow?.revenue)}</div>
+                      <div className="mt-1 text-card-title font-bold">{money(analysisRow?.revenue)}</div>
                       <div className="text-[9px] text-muted-foreground">Forecast monthly revenue</div>
                     </div>
                     <div className="rounded-md border border-border p-2">
                       <div className="text-[9px] font-semibold uppercase text-muted-foreground">{breakEvenMonth ? "Total cost at break-even" : `Total cost at month ${analysisMonth ?? "-"}`}</div>
-                      <div className="mt-1 text-[13px] font-bold">{money(analysisRow?.totalCost)}</div>
+                      <div className="mt-1 text-card-title font-bold">{money(analysisRow?.totalCost)}</div>
                       <div className="text-[9px] text-muted-foreground">Fixed and variable costs</div>
                     </div>
                   </div>
@@ -382,7 +382,7 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
               )}
 
               {has(forecast.advisoryNotice) && (
-                <div className="print-row mt-3 rounded-md border border-border bg-neutral-50 p-3 text-[11px] leading-relaxed text-foreground">
+                <div className="print-row mt-3 rounded-md border border-border bg-neutral-50 p-3 text-footnote leading-relaxed text-foreground">
                   <span className="font-semibold">Advisory notice:</span> {forecast.advisoryNotice}
                 </div>
               )}
@@ -429,19 +429,19 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
           <Section>
             <Heading>Appendix C · Risk Register</Heading>
             {arr(planRisks) && planRisks!.map((r, i) => (
-              <div key={`p${i}`} className="print-row mb-1.5 text-[12px] text-foreground">
+              <div key={`p${i}`} className="print-row mb-1.5 text-body text-foreground">
                 <span className="font-semibold">{r.category ?? "Risk"}:</span> {r.description ?? ""}{has(r.mitigation) ? ` - Mitigation: ${r.mitigation}` : ""}
               </div>
             ))}
             {arr(forecast?.risks) && forecast!.risks!.map((r, i) => (
-              <div key={`f${i}`} className="print-row mb-1.5 text-[12px] text-foreground">
+              <div key={`f${i}`} className="print-row mb-1.5 text-body text-foreground">
                 <div><span className="font-semibold">{r.category ?? "Risk"}:</span> {r.description ?? ""}</div>
                 {(has(r.likelihood) || has(r.impact)) && (
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="text-footnote text-muted-foreground">
                     {[has(r.likelihood) ? `Likelihood: ${r.likelihood}` : "", has(r.impact) ? `Impact: ${r.impact}` : ""].filter(Boolean).join(" | ")}
                   </div>
                 )}
-                {has(r.mitigation) && <div className="text-[11px]"><span className="font-semibold">Mitigation:</span> {r.mitigation}</div>}
+                {has(r.mitigation) && <div className="text-footnote"><span className="font-semibold">Mitigation:</span> {r.mitigation}</div>}
               </div>
             ))}
           </Section>
