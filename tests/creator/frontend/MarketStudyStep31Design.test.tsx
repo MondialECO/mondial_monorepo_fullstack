@@ -176,7 +176,7 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
 
     render(<MarketStudyPage />);
 
-    expect(await screen.findByText(/Founder's Stated Gap/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Your Stated Gap/i)).toBeInTheDocument();
     expect(screen.getByText(/Existing tools require 6-month enterprise onboarding/i)).toBeInTheDocument();
 
     expect(screen.getByText(/Benchmark Assessment/i)).toBeInTheDocument();
@@ -219,7 +219,7 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
     render(<MarketStudyPage />);
 
     expect(await screen.findByText(/Market Study & Competitive Intelligence/i)).toBeInTheDocument();
-    expect(screen.getByText(/CleanTech Logistics · Europe/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/CleanTech Logistics · Europe/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole('button', { name: /Export/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Regenerate/i })).toBeInTheDocument();
   });

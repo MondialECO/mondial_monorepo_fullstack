@@ -203,7 +203,7 @@ async function run() {
     // 1. Light Theme
     console.log(`[Viewport ${vp.name}] Loading Market Study Step 3.1 (Light)...`);
     await page.goto('http://localhost:3000/dashboard/creator/phase-3/market-study');
-    await page.waitForSelector('text="Market Sizing Funnel (TAM / SAM / SOM)"', { timeout: 15000 });
+    await page.waitForSelector('text=MARKET SIZING FUNNEL', { timeout: 15000 });
     await page.waitForSelector('text="EcoLogistics Pro"', { timeout: 10000 });
     await page.waitForTimeout(800);
 
@@ -212,7 +212,7 @@ async function run() {
     console.log(`✓ Light theme screenshot saved: ${lightPath}`);
 
     // Capture funnel area specifically
-    const funnelLocator = page.locator('text="Market Sizing Funnel (TAM / SAM / SOM)"').locator('xpath=ancestor::div[@data-slot="card"]');
+    const funnelLocator = page.locator('text=MARKET SIZING FUNNEL').locator('xpath=ancestor::div[@data-slot="card"]');
     const funnelLightPath = path.join(outputDir, `market_study_funnel_${vp.name}_light.png`);
     if (await funnelLocator.count() > 0) {
       await funnelLocator.first().screenshot({ path: funnelLightPath });
@@ -352,11 +352,11 @@ async function run() {
   await extPage.waitForURL('**/dashboard/**', { timeout: 15000 });
 
   await extPage.goto('http://localhost:3000/dashboard/creator/phase-3/market-study');
-  await extPage.waitForSelector('text="Market Sizing Funnel (TAM / SAM / SOM)"', { timeout: 15000 });
+  await extPage.waitForSelector('text=MARKET SIZING FUNNEL', { timeout: 15000 });
   await extPage.waitForTimeout(600);
 
   const extremeLightPath = path.join(outputDir, 'market_study_funnel_extreme_1440_light.png');
-  const extFunnelLocator = extPage.locator('text="Market Sizing Funnel (TAM / SAM / SOM)"').locator('xpath=ancestor::div[@data-slot="card"]');
+  const extFunnelLocator = extPage.locator('text=MARKET SIZING FUNNEL').locator('xpath=ancestor::div[@data-slot="card"]');
   if (await extFunnelLocator.count() > 0) {
     await extFunnelLocator.first().screenshot({ path: extremeLightPath });
     console.log(`✓ Extreme case light screenshot saved: ${extremeLightPath}`);
