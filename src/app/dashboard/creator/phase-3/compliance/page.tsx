@@ -439,8 +439,8 @@ export default function CompliancePage() {
                                   )}
 
                                   {item.aiGenerable && (
-                                    <Badge variant="secondary" className="text-[10px] font-sans font-medium gap-1 text-primary">
-                                      <WandSparkles className="h-2.5 w-2.5" /> AI Template
+                                    <Badge variant="secondary" className="text-[10px] font-sans font-medium gap-1 text-muted-foreground border border-border">
+                                      <FileText className="h-2.5 w-2.5" /> Standard Template
                                     </Badge>
                                   )}
                                 </div>

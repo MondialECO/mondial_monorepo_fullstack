@@ -22,6 +22,9 @@ import {
   FileText,
   Layout,
   Presentation,
+  Palette,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 
 export interface ColorSystemModalProps {
@@ -241,40 +244,15 @@ export function ColorSystemModal({
     return currentKit.logo?.variations?.["primary"]?.svgUri || null;
   }, [currentKit.logo]);
 
-  // 1. Initial Generation if roles missing
+  // 1. Initial State Population (No Auto-Generate)
   useEffect(() => {
-    let isMounted = true;
     if ((kit.colors?.roles?.length ?? 0) >= 5) {
       setRoles(kit.colors!.roles);
       setRegenerateCount(kit.colors?.regenerateCount ?? 0);
-      return;
+    } else {
+      setRoles([]);
+      setRegenerateCount(kit.colors?.regenerateCount ?? 0);
     }
-
-    async function loadOrGenerateColors() {
-      try {
-        setIsLoadingInitial(true);
-        setError(null);
-        const updated = await brandKitApi.generateColors(ideaId, kit.version);
-        if (!isMounted) return;
-        setCurrentKit(updated);
-        setRoles(updated.colors?.roles ?? []);
-        setRegenerateCount(updated.colors?.regenerateCount ?? 0);
-      } catch (err: any) {
-        if (!isMounted) return;
-        setError(
-          err?.response?.data?.message ||
-            err?.message ||
-            "Failed to generate initial color system."
-        );
-      } finally {
-        if (isMounted) setIsLoadingInitial(false);
-      }
-    }
-
-    loadOrGenerateColors();
-    return () => {
-      isMounted = false;
-    };
   }, [ideaId, kit]);
 
   // 2. Copy Hex Utility
@@ -445,7 +423,39 @@ export function ColorSystemModal({
     }
   };
 
-  // 6. Whole-Palette Regeneration (Paid, 3-Cap)
+  // 6. Initial Generation (Paid)
+  const handleGenerateInitial = async () => {
+    try {
+      setIsLoadingInitial(true);
+      setError(null);
+      setCreditError(null);
+
+      const updated = await brandKitApi.generateColors(
+        ideaId,
+        currentKit.version
+      );
+      setCurrentKit(updated);
+      setRoles(updated.colors?.roles ?? []);
+      setRegenerateCount(updated.colors?.regenerateCount ?? 0);
+      setSelectedMood("as_generated");
+    } catch (err: any) {
+      if (err?.response?.status === 402) {
+        setCreditError(
+          `Insufficient AI credits to generate colour system (${colorCost} credits required). Please top up credits to continue.`
+        );
+      } else {
+        setError(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Colour system generation did not finish."
+        );
+      }
+    } finally {
+      setIsLoadingInitial(false);
+    }
+  };
+
+  // 7. Whole-Palette Regeneration (Paid, 3-Cap)
   const handleRegeneratePalette = async () => {
     if (regenerateCount >= 3) return;
 
@@ -477,7 +487,7 @@ export function ColorSystemModal({
     }
   };
 
-  // 7. Confirm Step
+  // 8. Confirm Step
   const handleConfirm = async () => {
     try {
       setIsConfirming(true);
@@ -506,7 +516,7 @@ export function ColorSystemModal({
       setError(
         err?.response?.data?.message ||
           err?.message ||
-          "Failed to confirm colour system."
+          "Failed to save color system."
       );
     } finally {
       setIsConfirming(false);
@@ -585,19 +595,21 @@ export function ColorSystemModal({
           currentStep={5}
           onClose={onClose}
           headerActions={
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRegeneratePalette}
-              disabled={isRegenerating || regenerateCount >= 3}
-              className="gap-2 text-xs font-mono font-medium h-8 border-border bg-background hover:bg-muted/60"
-            >
-              <RefreshCw className={`size-3.5 text-muted-foreground ${isRegenerating ? "animate-spin text-primary" : ""}`} />
-              <span>Regenerate Palette</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                {Math.max(0, 3 - regenerateCount)}/3 LEFT
-              </span>
-            </Button>
+            roles.length > 0 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRegeneratePalette}
+                disabled={isRegenerating || regenerateCount >= 3}
+                className="gap-2 text-xs font-mono font-medium h-8 border-border bg-background hover:bg-muted/60"
+              >
+                <RefreshCw className={`size-3.5 text-muted-foreground ${isRegenerating ? "animate-spin text-primary" : ""}`} />
+                <span>Regenerate Palette</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                  {Math.max(0, 3 - regenerateCount)}/3 LEFT
+                </span>
+              </Button>
+            ) : undefined
           }
         />
 
@@ -627,67 +639,102 @@ export function ColorSystemModal({
 
         {/* Modal Scrolling Body */}
         <div className="p-6 overflow-y-auto space-y-6">
-          
-          {/* VARIANT ROW: Palette Mood Filter Strip */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-muted/30 border border-border/80">
-            <div className="flex items-center gap-2.5">
-              <SlidersHorizontal className="size-4 text-muted-foreground shrink-0" />
-              <span className="text-[11px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
-                PALETTE MOOD:
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {(
-                  [
-                    { key: "as_generated", label: "As generated" },
-                    { key: "calmer", label: "Calmer" },
-                    { key: "warmer", label: "Warmer" },
-                    { key: "higher_contrast", label: "Higher contrast" },
-                  ] as const
-                ).map((mood) => (
-                  <button
-                    key={mood.key}
-                    type="button"
-                    onClick={() => handleSelectMood(mood.key)}
-                    className={`px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
-                      selectedMood === mood.key
-                        ? "bg-foreground text-background shadow-xs font-semibold"
-                        : "bg-background text-foreground/80 hover:bg-muted border border-border/80"
-                    }`}
-                  >
-                    {mood.label}
-                  </button>
-                ))}
+          {roles.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-12 text-center flex flex-col items-center justify-center max-w-xl mx-auto my-8">
+              <div className="size-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 text-primary">
+                <Palette className="size-8" />
               </div>
+              <h3 className="font-heading text-lg font-bold tracking-tight mb-2">
+                Generate Colour System
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-md">
+                Generate a 5-role colour palette (Primary, Secondary, Accent, Background, and Text) derived from your brand direction and logo, tuned for accessible contrast.
+              </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/20 text-xs font-mono font-medium text-primary mb-6">
+                <Sparkles className="size-3.5" />
+                <span>Cost: {colorCost} AI credits</span>
+              </div>
+              <Button
+                size="lg"
+                onClick={handleGenerateInitial}
+                disabled={isLoadingInitial}
+                className="gap-2 font-mono text-sm px-6 shadow-sm"
+              >
+                {isLoadingInitial ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    <span>Generating colour system...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-4" />
+                    <span>Generate Colour System ({colorCost} credits)</span>
+                  </>
+                )}
+              </Button>
             </div>
+          ) : (
+            <>
+              {/* VARIANT ROW: Palette Mood Filter Strip */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-muted/30 border border-border/80">
+                <div className="flex items-center gap-2.5">
+                  <SlidersHorizontal className="size-4 text-muted-foreground shrink-0" />
+                  <span className="text-[11px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
+                    PALETTE MOOD:
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {(
+                      [
+                        { key: "as_generated", label: "As generated" },
+                        { key: "calmer", label: "Calmer" },
+                        { key: "warmer", label: "Warmer" },
+                        { key: "higher_contrast", label: "Higher contrast" },
+                      ] as const
+                    ).map((mood) => (
+                      <button
+                        key={mood.key}
+                        type="button"
+                        onClick={() => handleSelectMood(mood.key)}
+                        className={`px-3 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+                          selectedMood === mood.key
+                            ? "bg-foreground text-background shadow-xs font-semibold"
+                            : "bg-background text-foreground/80 hover:bg-muted border border-border/80"
+                        }`}
+                      >
+                        {mood.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            <span className="text-xs font-mono text-muted-foreground">
-              Switching mood is free — it doesn't use a regenerate.
-            </span>
-          </div>
+                <span className="text-xs font-mono text-muted-foreground">
+                  Switching mood is free — it doesn't use a regenerate.
+                </span>
+              </div>
 
-          {/* SECTION A: 5 CANONICAL ROLE ROWS (Figma Node 57004:11484) */}
-          <div className="rounded-xl border border-border bg-card divide-y divide-border/80 overflow-hidden shadow-2xs">
-            {roles.map((role) => {
-              const isPrimary = role.roleName === "Primary";
-              const isSecondary = role.roleName === "Secondary";
-              const isAccent = role.roleName === "Accent";
-              const isBg = role.roleName === "Background";
-              const isEdited = role.provenance === "user_edited" || role.provenance === "user_tuned";
+              {/* SECTION A: 5 CANONICAL ROLE ROWS (Figma Node 57004:11484) */}
+              <div className="rounded-xl border border-border bg-card divide-y divide-border/80 overflow-hidden shadow-2xs">
+                {roles.map((role) => {
+                  const isPrimary = role.roleName === "Primary";
+                  const isSecondary = role.roleName === "Secondary";
+                  const isAccent = role.roleName === "Accent";
+                  const isBg = role.roleName === "Background";
+                  const isEdited = role.provenance === "user_edited" || role.provenance === "user_tuned";
 
-              const usageNote =
-                role.usageNote ||
-                CANONICAL_ROLE_NOTES[role.roleName] ||
-                `Canonical ${role.roleName.toLowerCase()} brand tone`;
+                  const usageNote =
+                    role.usageNote ||
+                    CANONICAL_ROLE_NOTES[role.roleName] ||
+                    `Canonical ${role.roleName.toLowerCase()} brand tone`;
 
-              return (
-                <div
-                  key={role.roleName}
-                  className={`group relative flex flex-col md:flex-row md:items-center justify-between p-4.5 gap-4 transition-colors ${
-                    isAccent && isEdited
-                      ? "bg-primary/5 border-l-2 border-l-primary"
-                      : "hover:bg-muted/30"
-                  }`}
-                >
+                  return (
+                    <div
+                      key={role.roleName}
+                      className={`group relative flex flex-col md:flex-row md:items-center justify-between p-4.5 gap-4 transition-colors ${
+                        isAccent && isEdited
+                          ? "bg-primary/5 border-l-2 border-l-primary"
+                          : "hover:bg-muted/30"
+                      }`}
+                    >
                   {/* Left: 68x68 Swatch Well + Text Block */}
                   <div className="flex items-center gap-4 min-w-[280px]">
                     {/* 68x68 Swatch Well */}
@@ -1128,6 +1175,8 @@ export function ColorSystemModal({
               )}
             </div>
           </div>
+        </>
+      )}
 
         </div>
 
@@ -1144,7 +1193,7 @@ export function ColorSystemModal({
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={isConfirming || isLoadingInitial}
+              disabled={isConfirming || isLoadingInitial || roles.length === 0}
               className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-5"
             >
               <span>{isConfirming ? "Confirming..." : "Confirm Colour System"}</span>

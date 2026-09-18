@@ -54,7 +54,7 @@ export function getNextCreatorAction(state: CreatorJourneyState): NextAction {
   //   Step 1: Market Study (/phase-3/market-study)
   //   Step 2: Business Model (/phase-3/business-model)
   //   Step 3: Business Plan (/phase-3/business-plan)
-  //   Step 4: Financial Forecast (Deterministic: /phase-3/forecast if forecastSessionId exists, else /phase-3/forecast-inputs)
+  //   Step 4: Financial Forecast (/phase-3/forecast)
   //   Step 5: Legal & Compliance Checklist (/phase-3/compliance)
   //   Step 6: Company Formation & Team (/phase-3/formation)
   //   Step 7: Phase 3 Complete / Investor Readiness (/phase-3/complete)

@@ -184,14 +184,14 @@ export default function ConceptNamePage() {
               Name Your Project
             </h1>
             <p className="text-base" style={{ color: "var(--muted-foreground)" }}>
-              AI has suggested 5 names based on your idea description. Pick one or define your own custom name.
+              5 name ideas generated from your concept description. Pick one or define your own custom name.
             </p>
           </div>
 
-          {/* AI Suggestions */}
+          {/* Suggested Names */}
           <div className="flex flex-col gap-4">
             <span className="text-sm font-semibold" style={{ color: "var(--muted-foreground)" }}>
-              AI SUGGESTIONS
+              SUGGESTED NAMES
             </span>
             {nameError && <p className="text-xs" style={{ color: "var(--destructive)" }}>{nameError}</p>}
 

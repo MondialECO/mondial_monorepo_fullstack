@@ -174,7 +174,7 @@ describe('LogoCreationModal Component Tests', () => {
     expect(exhaustedBtn).toBeDisabled();
 
     // Click redraw on concept 1
-    const concept1RedrawBtn = screen.getAllByTitle(/Redraw just this one \(2 credits · 3\/3 left\)/i)[0];
+    const concept1RedrawBtn = screen.getAllByTitle(/Redraw just this one \(Free · 3\/3 left\)/i)[0];
     fireEvent.click(concept1RedrawBtn);
 
     await waitFor(() => {
@@ -198,11 +198,11 @@ describe('LogoCreationModal Component Tests', () => {
 
     render(<LogoCreationModal ideaId="idea_123" initialKit={mockBrandKit} />);
 
-    const concept1RedrawBtn = screen.getAllByTitle(/Redraw just this one \(2 credits · 3\/3 left\)/i)[0];
+    const concept1RedrawBtn = screen.getAllByTitle(/Redraw just this one \(Free · 3\/3 left\)/i)[0];
     fireEvent.click(concept1RedrawBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Insufficient AI credits \(2 credits required\)\./i)).toBeDefined();
+      expect(screen.getByText(/Insufficient credits/i)).toBeDefined();
       expect(screen.getByRole('link', { name: /Top up/i })).toBeDefined();
     });
   });

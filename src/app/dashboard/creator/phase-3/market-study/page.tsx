@@ -275,7 +275,7 @@ export default function MarketStudyPage() {
                 className="w-full sm:w-auto gap-2 text-xs font-semibold px-6"
               >
                 <Sparkles className="w-4 h-4" />
-                Generate Market Study
+                Generate Market Study ({marketStudyCost} credits)
               </Button>
             </div>
 

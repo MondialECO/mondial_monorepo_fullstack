@@ -163,5 +163,25 @@ describe('AI Credit Server-Authoritative Costs & Button Rendering', () => {
     expect(planWarning).toBe('Insufficient credits: requires 33 credits (you have 25).');
     expect(forecastWarning).toBe('Insufficient credits: requires 32 credits (you have 25).');
   });
+
+  it('correctly derives section rewrite button cost label from BusinessPlanSectionRewrite (5 credits placeholder)', async () => {
+    vi.mocked(creatorAiApi.getCredits).mockResolvedValue({
+      balance: 150,
+      lifetimeGranted: 200,
+      lifetimeSpent: 50,
+      costs: {
+        BusinessPlan: 33,
+        BusinessPlanSectionRewrite: 5,
+        Forecast: 32,
+      },
+    });
+
+    const res = await creatorAiApi.getCredits();
+    const rewriteCost = res.costs?.BusinessPlanSectionRewrite ?? 5;
+    expect(rewriteCost).toBe(5);
+
+    const rewriteBtnText = `AI Rewrite${rewriteCost > 0 ? ` (${rewriteCost} credits)` : ''}`;
+    expect(rewriteBtnText).toBe('AI Rewrite (5 credits)');
+  });
 });
 

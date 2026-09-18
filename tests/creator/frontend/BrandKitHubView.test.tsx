@@ -257,7 +257,7 @@ describe('BrandKitHubView', () => {
     fireEvent.click(editStudioBtn);
 
     // Verify Strategy Review Modal is opened
-    expect(screen.getByText(/What we know about CyberLock Sentinel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Review what we derived from your idea/i)).toBeInTheDocument();
   });
 
   it('triggers Cascade Warning modal on upstream edit actions', async () => {

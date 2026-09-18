@@ -301,7 +301,7 @@ public class BusinessPlanControllerTests
         _sessions.Setup(s => s.GetOwnedAsync(sessionId, UserId))
             .ReturnsAsync(new BusinessPlanSession { Id = sessionId, OwnerUserId = UserId, ClarifierSessionId = _clarifierId, CurrentVersion = 1 });
         SetupCompletedClarifier(_clarifierId);
-        _credits.Setup(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>()))
+        _credits.Setup(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlanSectionRewrite, It.IsAny<string>()))
             .ThrowsAsync(new InsufficientCreditsException("Insufficient credits", 402));
 
         var controller = BuildController();
@@ -324,7 +324,7 @@ public class BusinessPlanControllerTests
         _sessions.Setup(s => s.GetOwnedAsync(sessionId, UserId))
             .ReturnsAsync(new BusinessPlanSession { Id = sessionId, OwnerUserId = UserId, ClarifierSessionId = _clarifierId, CurrentVersion = 1 });
         SetupCompletedClarifier(_clarifierId);
-        _credits.Setup(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>())).Returns(Task.CompletedTask);
+        _credits.Setup(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlanSectionRewrite, It.IsAny<string>())).Returns(Task.CompletedTask);
         _jobs.Setup(j => j.EnqueueAsync(AiJobType.BusinessPlan, UserId, It.IsAny<BsonDocument>()))
             .ThrowsAsync(new InvalidOperationException("Hangfire queue unreachable"));
 
@@ -336,8 +336,8 @@ public class BusinessPlanControllerTests
         });
 
         result.Should().BeOfType<ObjectResult>().Which.StatusCode.Should().Be(500);
-        _credits.Verify(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>()), Times.Once);
-        _credits.Verify(c => c.RefundForJobAsync(UserId, AiJobType.BusinessPlan, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        _credits.Verify(c => c.DebitForJobAsync(UserId, AiJobType.BusinessPlanSectionRewrite, It.IsAny<string>()), Times.Once);
+        _credits.Verify(c => c.RefundForJobAsync(UserId, AiJobType.BusinessPlanSectionRewrite, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         _audit.Verify(a => a.Record("BusinessPlan.RewriteSection", UserId, true, It.IsAny<object>()), Times.Never);
         _audit.Verify(a => a.Record("BusinessPlan.RewriteSection", UserId, false, It.IsAny<object>()), Times.Once);
     }

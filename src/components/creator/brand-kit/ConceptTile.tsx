@@ -219,7 +219,7 @@ export const ConceptTile = memo(function ConceptTile({
                 title={
                   isExhausted
                     ? "Redraw limit reached for this concept (0/3 left)"
-                    : `Redraw just this one (${remaining}/3 left)`
+                    : `Redraw just this one (Free · ${remaining}/3 left)`
                 }
               >
                 <RefreshCw className={`size-3.5 ${isRegenerating ? "animate-spin text-primary" : ""}`} />

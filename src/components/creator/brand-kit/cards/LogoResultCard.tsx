@@ -1,7 +1,7 @@
 import React from "react";
 import { BrandLogo } from "@/types/creator/brand-kit";
 import { resolveMediaUrl } from "@/lib/brand-kit-media";
-import { CheckCircle2, Edit3, Layers, Sparkles } from "lucide-react";
+import { CheckCircle2, Edit3, Layers } from "lucide-react";
 
 interface LogoResultCardProps {
   logo?: BrandLogo;
@@ -31,7 +31,7 @@ export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResult
       <div className="flex items-center justify-between border-b border-border/60 pb-3 mb-4">
         <div className="flex items-center gap-2.5">
           <div className={`flex size-7 items-center justify-center rounded-full ${isApproved ? "bg-emerald-500/10 text-emerald-600" : "bg-blue-500/10 text-blue-600"}`}>
-            {isApproved ? <CheckCircle2 className="size-4" /> : <Sparkles className="size-4" />}
+            {isApproved ? <CheckCircle2 className="size-4" /> : <Layers className="size-4" />}
           </div>
           <div>
             <div className="flex items-center gap-2">
