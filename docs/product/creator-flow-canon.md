@@ -84,6 +84,16 @@ The sparkle glyph (`Sparkles`, `WandSparkles`) and any `"AI-powered"` or `"AI ge
 
 Deterministic rule engines (corporate formation structures, partner skill matching), algorithmic string manipulation (concept name suggestions), and static pre-authored files (legal contract templates) must **never** carry the sparkle glyph or be represented as AI work.
 
+### 1.9 Single Source of Truth & Zero Bypassing (Permanent Standing Check)
+Across the codebase, frontend components, handlers, and export routines must **NEVER** construct parallel ad-hoc logic, hardcoded fallback constants, or manual string concatenations when a canonical backend API, configuration key, or shared resolver exists in the repository.
+
+Three historical drift incidents establish this permanent architectural mandate:
+1. **Credit Costs**: UI labels must never hardcode credit amounts (e.g. `"7 credits"`); costs are dynamic and must be fetched from `GET /api/ai/credits` (`Ai:CreditCosts`).
+2. **Output Token Ceilings**: Handlers and prompt engines must never define hardcoded token limits; ceilings must be loaded dynamically from `Ai:OutputTokenLimits` in `appsettings.json`.
+3. **Media & Asset URLs**: UI components and export packagers must never hand-assemble asset URLs (e.g. `/brand-assets/...` or ad-hoc origins); all brand and media URLs must strictly resolve via `resolveMediaUrl(uri, version)`.
+
+**Standing Check**: When reviewing or implementing any feature, verify that existing canonical resolvers, configs, and APIs are consumed rather than bypassed.
+
 ---
 
 ## 2. Flow overview (P1 → P6)
@@ -324,19 +334,22 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
   - Transparently itemizes all downstream artifacts that will be recalculated or invalidated if upstream choices change.
 - **Downstream Generators Status:**
   - Honestly displays "Not connected yet" across all 4 generator integrations (Business Plan, Landing Page, Pitch Deck, Invoices & Receipts).
-- **Download Brand Kit (.zip) Packaging:**
+- **Download Brand Kit (.zip) Packaging Engine (`src/lib/brand-kit-export.ts`):**
+  - **Single Shared Exporter (`exportBrandKitZip`):** Consumed by `BrandKitHubView`, `VariationSetModal`, and `AssetLibraryPage`.
   - Client-side ZIP generated via `JSZip` containing:
-    1. `/logos/`: 7 canonical SVG assets (`{brand}-primary.svg`, `{brand}-horizontal.svg`, `{brand}-stacked.svg`, `{brand}-icon_only.svg`, `{brand}-black.svg`, `{brand}-white.svg`, `{brand}-transparent.svg`). `BrandKitHubView.tsx` fetches URL-based `/brand-assets/logos/...` SVGs using `API_ORIGIN` (as well as inline SVGs), ensuring all 7 variation files are extracted with non-zero byte size.
+    1. `/logos/`: Vector lockups and icon variations (`primary.svg`, `horizontal.svg`, `stacked.svg`, `icon-only.svg`, `black.svg`, `white.svg`, `transparent.svg`). Fetches vector assets using canonical `resolveMediaUrl`.
     2. `/tokens/colors.json`: 5-role color tokens with hex, rgb, and WCAG contrast ratios.
     3. `/tokens/typography.json`: 4-role typography tokens with family, weight, size, line-height, and specimen text.
     4. `/tokens/brand-tokens.css`: Ready-to-use CSS Custom Properties (`:root { --brand-primary: ... }`).
     5. `/README.md`: Brand identity summary document.
+  - **Concept Fallback Matrix:** When Step 3b variations have not yet been derived, automatically falls back to approved concept mark/lockup assets (`approvedConcept.lockupAssetUri`, `approvedConcept.markAssetUri`) so confirmed visual identities are exportable immediately.
+  - **Fail-Loud Error Policy:** A failed asset fetch (404, network failure, invalid XML/SVG) MUST NEVER produce an empty `/logos/` folder or silent incomplete ZIP. The engine aborts immediately, throws an explicit error naming the failed assets, and renders a dismissible on-screen error banner in the UI.
 
 - **Brand Kit Asset Delivery & Origin Resolution:**
-  - **Single Shared Helper (`resolveMediaUrl`):** All components displaying brand assets (Concept Tiles, Variation Tiles, MicroScaleViewer, MultiScaleIconViewer, Invoice Mock, Compare Overlay, Hub Logo Grid, and Phase 2 Complete identity card) consume `resolveMediaUrl(uri?: string | null): string` from `src/lib/brand-kit-media.ts`.
-  - **Dynamic URL Normalization:** Converts relative paths (`/brand-assets/logos/...`) served by ASP.NET backend to absolute origin (`http://localhost:5093/brand-assets/...` in local development via `NEXT_PUBLIC_API_ORIGIN`), while passing data URIs and existing `http://`/`https://` absolute URLs through untouched.
+  - **Single Shared Helper (`resolveMediaUrl`):** All components displaying or fetching brand assets (Concept Tiles, Variation Tiles, MicroScaleViewer, MultiScaleIconViewer, Invoice Mock, Compare Overlay, Color System Modal, Hub Logo Grid, Phase 2 Complete summary card, and Brand Kit ZIP exporter) consume `resolveMediaUrl(uri?: string | null, version?: number): string` from `src/lib/brand-kit-media.ts`.
+  - **Dynamic URL Normalization:** Converts relative paths (`/brand-assets/logos/...`) served by ASP.NET backend to absolute origin (`http://localhost:5093/brand-assets/...` in local development via `NEXT_PUBLIC_API_ORIGIN` / `API_ORIGIN`), while passing data URIs and existing `http://`/`https://` absolute URLs through untouched.
   - **Next.js Reverse Proxy Rewrite (Defense-in-Depth):** `next.config.ts` includes an `async rewrites()` rule proxying `/brand-assets/:path*` directly to `http://localhost:5093/brand-assets/:path*`, ensuring direct HTTP asset fetches by browser or client-side libraries never 404 across port boundaries.
-  - **Clean Standard Image Tags:** `BrandKitHubView.tsx` and `Phase2CompletePage.tsx` use standard `<img src={resolveMediaUrl(...)} />` elements instead of insecure or brittle `dangerouslySetInnerHTML` attempts on relative asset file paths.
+  - **Clean Standard Image Tags:** `BrandKitHubView.tsx`, `ColorSystemModal.tsx`, and `Phase2CompletePage.tsx` use standard `<img src={resolveMediaUrl(...)} />` elements instead of insecure or brittle `dangerouslySetInnerHTML` attempts on relative asset file paths.
 - **Version History & Snapshot Policy:**
   - **Non-Destructive In-Wizard Candidate Exploration:** During initial Studio progression (Steps 1–6), candidate generation and per-tile regeneration (`RegenerateCount`) are non-destructive and tracked via element-level counters. No version snapshots are created during initial creation.
   - **Destructive Hub Re-Edits & Backups:** Bounded history snapshots (`BrandKitSnapshot`, up to 3 retained) are strictly captured when destructive changes occur to an already-approved/completed kit (e.g. changing an approved Visual Direction or Logo Concept from the Hub), or as automated pre-restore backups.
@@ -382,8 +395,8 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
 ## 5. Phase 3 — Business Architecture & Masterplan (Canonical 7-Step Sequence — LIVE, CLOSED & STABLE)
 
 > [!IMPORTANT]
-> **Phase 3 Closure Notice (2026-09-18):**
-> Phase 3 is declared **CLOSED and STABLE**. All seven steps, backend controllers, and completion mechanics are verified at HEAD, 100% honest-labelled, zero-mock, and frozen against feature additions and visual redesigns. Critical bug fixes only.
+> **Phase 3 Closure & Defect Repair Policy (2026-09-18):**
+> Phase 3 was declared **CLOSED and STABLE**. Subsequent design-conformance fixes against approved Figma designs (such as the Step 3.1 Market Study visual rebuild to match true design specifications) are classified as **defect repair against spec** rather than feature scope additions or unbounded redesigns. The Phase 3 closure declaration remains in force: zero new steps, zero unapproved visual redesigns, and strict conformance to canonical contracts.
 >
 > **Out-of-Scope Items for Phase 3 Closure (Explicitly Tracked):**
 > 1. *Provisional Section Rewrite Cost:* Single-section AI rewrite is configured and functioning at **5 credits** (`AiJobType.BusinessPlanSectionRewrite`); price remains provisional pending the platform-wide credit cost table review.
@@ -410,16 +423,24 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Route:** `/dashboard/creator/phase-3/market-study`
 - **Backing Entity & Controller:** `MarketStudySession` stored in `MarketStudySessions` collection via `MarketStudyController` (`/api/ai/market-study`).
 - **Inputs Consumed:** `ClarifierSessionId` (from Phase 2, required) and `BusinessIdeaId` (optional/context).
-- **Backend Architecture & Benchmark Reuse:** `MarketStudyHandler` reuses `IMarketBenchmarkResolver` (which until now was Phase-4-only) to query sector-specific benchmarks, tailwinds, and median multiples, injecting rich quantitative baselines into the generative prompt.
+- **Backend Architecture & Benchmark Reuse:** `MarketStudyHandler` reuses `IMarketBenchmarkResolver` to query sector-specific benchmarks, tailwinds, and median multiples, injecting rich quantitative baselines into the generative prompt.
 - **Output Schema (`MarketStudyOutput`, Schema Version 1):**
-  1. `marketSizing`: `tam` (`value`, `currency`, `label`, `derivation`, `sourceAttribution`), `sam` (`value`, `currency`, `label`, `percentageOfTam`, `derivation`, `sourceAttribution`), `som` (`value`, `currency`, `label`, `percentageOfSam`, `derivation`, `sourceAttribution`), and `methodology` (freeform descriptive string explaining bottom-up calculation and triangulation arithmetic; parser defaults to `"triangulated"` if empty).
-  2. `competitorLandscape`: `summary`, `directCompetitors` array (`name`, `estimatedMarketShare`, `pricingModel`, `strengths`, `weaknesses`, `exploitableGap`, `sourceAttribution`), and `indirectCompetitors` array (`name`, `substituteApproach`, `threatLevel`: `low` | `medium` | `high`).
+  1. `marketSizing`: `tam`, `sam`, `som` (each with `value`, `currency`, `label`, `derivation`, `sourceAttribution`, plus `percentageOfTam` / `percentageOfSam`), and `methodology` (freeform descriptive string explaining bottom-up calculation and triangulation arithmetic).
+  2. `competitorLandscape`: `summary`, `directCompetitors` array (`name`, `segment`, `estimatedMarketShare`, `pricingModel`, `strengths`, `weaknesses`, `exploitableGap`, `sourceAttribution`), and `indirectCompetitors` array (`name`, `substituteApproach`, `threatLevel`: `low` | `medium` | `high`).
+     - **Competitor Segment Field:** The `segment` field is included in prompt contracts, MongoDB entity models, JSON parsers, and TypeScript types. It is **optional** so omitting LLM completions never fail a paid generation; legacy studies generated prior to this field render an honest empty placeholder (`—`).
   3. `demandSignals`: Array of signals with `signal`, `evidence`, `sourceAttribution`, and `relevanceScore` (integer 1–10).
   4. `sizingRisks`: Array of sensitivity risks with `risk`, `impactOnSom` (`low` | `medium` | `high`), and `mitigation`.
   5. `marketGapValidation`: `primaryGap`, `validationRationale`, and `confidenceLevel` (`high` | `moderate` | `speculative`).
-- **Parser Normalisation & Logging:** Constrained enum fields (`threatLevel`, `impactOnSom`, `confidenceLevel`) are normalized at the parser layer before persisting to MongoDB using safe, conservative fallbacks that never overstate certainty (`threatLevel`/`impactOnSom` default to `medium`, `confidenceLevel` defaults to `speculative`). Non-canonical raw values that undergo coercion are recorded as backend warnings via `ILogger.LogWarning`.
+- **UI Presentation & Permanent Architectural Decisions:**
+  - **Truly Proportional Funnel Bars (Zero Clamping):** TAM, SAM, and SOM bars render at true mathematical widths (`width: 100%`, `width: SAM%`, `width: SOM%`) without artificial minimum-width floors.
+  - **Permanent Decision 1 — No Minimum-Width Floor:** The funnel must NEVER enforce a `minWidth` floor (e.g. clamping small SOMs to 15%). Doing so visually distorts market realities, making a tiny obtainable market look deceptively large and dangerously misleading the founder.
+  - **Adaptive Narrow-Tier Content Layout:** When a tier (such as SOM < 5% or narrow containers) is too narrow to hold its internal label, value, and step-reduction badge, content shifts outside the card via connecting reference rather than stacking into a crushed, unreadable column or clipping text.
+  - **Audit-Trace Derivations:** The three derivation sentences (`tam.derivation`, `sam.derivation`, `som.derivation`) live strictly inside the bottom audit-trace container (`"How this was calculated"`), eliminating duplicate text from the top funnel cards.
+  - **Permanent Decision 2 — Honest Derivation Sentences:** The sizing methodology box displays the three genuine derivation sentences rather than a fabricated arithmetic line, because no mathematical equation is stored in backend contracts and fabricating one would represent dishonest placeholder content.
+  - **Dense Competitor Benchmarking Matrix:** Full-width multi-column comparison table featuring direct competitor names, segments, estimated market share, pricing models, verified strengths, exploitable gaps, and source attributions.
+  - **Structured Signals & Risks Rows:** Two-column grid contrasting verified market demand signals (with 1–10 relevance score bars) against operational sizing risks (with threat impact chips and mitigation strategies).
+  - **Closing Founder Gap Validation:** Market gap validation is positioned at the bottom of the workspace as the closing foundation, with sections cleanly renumbered.
 - **Credit Cost:** **20 credits** (`AiJobType.MarketStudy`).
-- **UI Presentation:** Proportional horizontal funnel bars with step reduction percentage bridges, bottom-up methodology strip, competitor benchmarking matrix, demand signals, and sensitivity risk cards. Responsive across 1440px–1920px with Inter headings, DM Sans body copy, JetBrains Mono numerals/metrics, and full dark theme support. Out-of-contract strings reaching the frontend are styled with destructive visual tokens rather than silently absorbed.
 
 ### 5.2 Step 3.2 — Business Model & Monetization Canvas (LIVE)
 - **Route:** `/dashboard/creator/phase-3/business-model`
@@ -515,7 +536,37 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
 4. **Step 3.4 (Financial Forecast):** Dynamic `ForecastSession` from MongoDB `ForecastSessions`, live assumptions drawer, 36-month P&L, and interactive parameter re-runs.
 5. **Step 3.5 (Legal Checklist):** Dynamic sector checklist from `CreatorPhase3Controller` (`/api/creator/legal-checklist`), grouped into 4 regulatory domains with live marketplace deep links.
 6. **Step 3.6 (Company Formation):** Dynamic formation session (`CreatorFormationGenerator`), discrete recommendation factors (`RecommendationFactors`), override tracking (`IsOverride`), and protected founder skills declarations.
-7. **Step 3.7 (Phase 3 Complete):** Institutional diagnostic readiness audit (`PATCH /api/creator/masterplan/complete`), score computation across 5 dimensions, structured `Deductions` array with 1-click remediation links, and optimistic concurrency version locking (`hasCompletedRef`).
+### 5.11 Creator Asset Library (`/dashboard/creator/asset-library`)
+- **Route:** `/dashboard/creator/asset-library`
+- **Purpose & Register:** An on-demand venture filing cabinet listing all 8 core project artifacts across Phase 2, Phase 3, and Phase 4. Documents are never stored as static files; they are compiled in the browser at the exact moment the creator requests them.
+- **Architectural Rules**:
+  1. **Route Reconciliation**: The sidebar navigation item (`CreatorSidebar.tsx`) already existed and previously pointed at an unrouted 404 URL; this page provides the complete, authoritative destination.
+  2. **Single-Fetch Mount**: Performs exactly one journey fetch (`creatorJourneyApi.get(activeIdeaId)`) and one brand kit query on mount to determine readiness states and timestamps.
+  3. **Lazy Hydration**: Specific detailed sessions (`MarketStudySession`, `BusinessPlanSession`, `ForecastSession`) are loaded lazily only when the creator clicks to view or download that specific document.
+  4. **The 8-Artifact Catalog (4 Downloadable, 4 In-App Viewable)**:
+     - *Phase 2 Brand Identity Kit* (`.ZIP`, Downloadable): Exported via `exportBrandKitZip` with 7 SVG lockups and JSON/CSS tokens.
+     - *Step 3.1 Market Study* (`.PDF`, Downloadable): Rendered via `MarketStudyPrintView.tsx` with full sizing funnel, competitor matrix, and clean print styles.
+     - *Step 3.2 Business Model Canvas* (`IN_APP`, Viewable): Direct deep link to `/phase-3/business-model`. Displays honest non-downloadable explanation without roadmap version numbers.
+     - *Step 3.3 Executive Business Plan* (`.PDF`, Downloadable): Rendered via `PlanForecastPrintView.tsx` with continuous scroll and executive styling.
+     - *Step 3.4 Financial Forecast* (`.PDF`, Downloadable): Rendered via `PlanForecastPrintView.tsx` with 36-month P&L tables and telemetry.
+     - *Step 3.5 Legal Checklist* (`IN_APP`, Viewable): Direct deep link to `/phase-3/compliance`.
+     - *Step 3.6 Formation Memo* (`IN_APP`, Viewable): Direct deep link to `/phase-3/formation`.
+     - *Phase 4 Investor Readiness Summary* (`IN_APP`, Viewable): Direct deep link to `/offer-pricing`.
+  5. **Honest Copy & Clear Alerts**:
+     - No tabs; all 8 artifacts are listed in a unified, phase-grouped filing cabinet.
+     - Un-downloadable items state plainly that the document exists and can be viewed in the project.
+     - Export or fetch failures trigger visible on-screen dismissible alert banners rather than silent incomplete downloads.
+
+### 5.12 Document & PDF Export Infrastructure
+- **Browser-Generated Print Documents:** Exports are compiled directly on-demand in the client browser, eliminating static file storage so exports always reflect the latest live project data:
+  1. **Market Study Print View (`MarketStudyPrintView.tsx`):** Standalone clean printable document layout for Step 3.1 containing the full sizing funnel, methodology audit trail, competitor matrix, demand signals, and founder gap validation. Accessible via "Export PDF" from `/dashboard/creator/phase-3/market-study` and the Creator Asset Library.
+  2. **Plan & Forecast Print View (`PlanForecastPrintView.tsx`):** Printable document layout for Step 3.3 (Executive Business Plan) and Step 3.4 (Financial Forecast).
+  3. **Brand Kit ZIP Exporter (`exportBrandKitZip`):** Client-side JSZip engine packaging 7 vector SVGs, 3 token manifests, and README.md.
+
+### 5.13 Design References & Conformance Status
+- **Phase 2 Brand Studio:** 100% verified against approved Figma node dumps (`figma_creator_identity_nodes.json`, Nodes `57004:...`, `57012:...`).
+- **Step 3.1 Market Study:** 100% verified against approved Figma design reference with responsive 1440px–1920px verification.
+- **Steps 3.2 through 3.7:** **No approved Figma design references exist in the repository** for Screens 3.2 (Business Model), 3.3 (Business Plan), 3.4 (Forecast), 3.5 (Legal Checklist), 3.6 (Formation Generator), or 3.7 (Phase 3 Complete). These screens conform strictly to technical schema contracts and typography canon, but have not yet been audited against formal pixel-level Figma references.
 
 ---
 

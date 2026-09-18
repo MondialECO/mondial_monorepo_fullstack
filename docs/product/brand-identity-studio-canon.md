@@ -223,9 +223,9 @@ The **Brand Identity Studio** is an enterprise-grade visual identity creation en
 
 ---
 
-## 3. Vector Generation Engine (`backend/Services/Creator/BrandKit/LogoEngine`)
+## 3. Vector Generation Engine & Asset Export Pipeline
 
-- **C# Parametric Renderers**:
+- **C# Parametric Renderers** (`backend/Services/Creator/BrandKit/LogoEngine`):
   - `SymbolPlusNameLogoRenderer.cs`: Smart initial ligatures, primary/accent dual tones.
   - `MonogramLogoRenderer.cs`: Dual-letter architectural frames (`bracket_frame`, `chamfer_box`, `solid_disc`).
   - `AbstractLogoRenderer.cs`: 3D faceted diamonds, isometric optical cubes, Mobius loops.
@@ -234,13 +234,38 @@ The **Brand Identity Studio** is an enterprise-grade visual identity creation en
 - **Rasterization & Variations**:
   - `LogoVariationService.cs`: Uses SkiaSharp (`SKSvg` and `SKBitmap`) to generate pixel-perfect PNGs and vector SVGs directly on disk (`wwwroot/brand-assets/logos/{ideaId}/variations/`).
 
+### 3.1 Canonical Media URL Resolution (`resolveMediaUrl`)
+- **Single Resolver Canon**: All surfaces rendering or fetching brand assets MUST route relative and absolute URIs through `resolveMediaUrl(uri, version)` from `@/lib/brand-kit-media`.
+- **Origin Handling**: Prepends `API_ORIGIN` (e.g. `http://localhost:5093` in development) to server-relative asset paths (`/brand-assets/logos/...`), while preserving data URIs and external URLs untouched.
+- **Applies Uniformly To**: Concept tiles, variation tiles, color system modals, compare overlays, logo cards, invoice mocks, micro-scale proofers, Brand Kit Hub, and Phase 2 Complete summary cards.
+
+### 3.2 Canonical ZIP Export Engine (`src/lib/brand-kit-export.ts`)
+- **Single Source of Truth**: All export actions across the application (`BrandKitHubView`, `VariationSetModal`, and the Creator `AssetLibraryPage`) delegate exclusively to `exportBrandKitZip(kit, customBrandName)`.
+- **ZIP File Structure**:
+  1. `/logos/`: Vector lockups and icon variations (`primary.svg`, `horizontal.svg`, `stacked.svg`, `icon-only.svg`, `black.svg`, `white.svg`, `transparent.svg`).
+  2. `/tokens/colors.json`: 5-role WCAG contrast color palette definitions with HEX, RGB, and contrast ratios.
+  3. `/tokens/typography.json`: Display and text font family definitions with role sizes, weights, line-heights, and specimens.
+  4. `/tokens/brand-tokens.css`: Ready-to-use CSS Custom Properties (`:root { --brand-primary: ... }`).
+  5. `/README.md`: Complete brand identity summary document with strategy metadata.
+
+### 3.3 Concept Fallback & Fail-Loud Error Transparency
+- **Concept Fallback Matrix**: If Step 3b logo variations have not yet been derived, `exportBrandKitZip` deterministically falls back to the approved concept mark and lockup assets (`approvedConcept.lockupAssetUri`, `approvedConcept.markAssetUri`) so creators can immediately export their confirmed visual identity.
+- **Fail-Loud Error Policy**:
+  - A failed asset fetch (404, network error, non-SVG response) MUST NEVER produce an empty `/logos/` folder or silently incomplete ZIP.
+  - If any logo asset fails to fetch, `exportBrandKitZip` aborts the download immediately and throws an explicit error naming the failed variations and HTTP reasons: `Failed to export brand kit: could not retrieve logo assets for <variationKey> (<reason>)`.
+  - Both `BrandKitHubView` and `AssetLibraryPage` catch this and display a prominent, dismissible on-screen error banner.
+
 ---
 
 ## 4. Testing & Verification Canon
-- All Brand Studio components are covered by Vitest unit and integration suites:
+- All Brand Studio components and export pipelines are covered by automated Vitest unit and integration suites:
+  - `tests/creator/frontend/BrandKitExport.test.ts` (Canonical resolver, concept fallback, and fail-loud error verification)
+  - `tests/creator/frontend/AssetLibrary.test.tsx` (Asset library rendering, lazy session loading, ZIP download, and error alert rendering)
   - `tests/creator/frontend/BrandKitLogoCreationModal.test.tsx`
   - `tests/creator/frontend/BrandKitVariationSetModal.test.tsx`
   - `tests/creator/frontend/LogoTypeChooserModal.test.tsx`
   - `tests/creator/frontend/BrandKitHubView.test.tsx`
   - `tests/creator/frontend/BrandStudioShell.test.tsx`
-- **Strict Rule**: Zero mock data; all components read and write directly to MongoDB and C# backend.
+- **Real Browser Verification**:
+  - `scripts/verify_brand_kit_real_browser.mjs`: Automated Playwright test verifying Case A (full variations download & ZIP unpacking), Case B (concept fallback ZIP unpacking), and Case C (deliberate 404 injection & on-screen error banner confirmation).
+
