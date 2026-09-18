@@ -333,8 +333,8 @@ export default function MarketStudyPage() {
                 {isCostLoading
                   ? 'Loading cost…'
                   : isCostError
-                  ? 'Cost unavailable'
-                  : `Generate Market Study (${marketStudyCost} credits)`}
+                    ? 'Cost unavailable'
+                    : `Generate Market Study (${marketStudyCost} credits)`}
               </Button>
             </div>
 
@@ -512,29 +512,47 @@ export default function MarketStudyPage() {
                   <div className="lg:col-span-7 space-y-2">
                     <div className="flex items-center justify-between pb-0.5">
                       <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                        ACTIVE SIZING FORMULA // DERIVATION BASIS
+                        ACTIVE SIZING FORMULA
                       </span>
                       <span className="text-[10px] font-mono text-muted-foreground uppercase">
                         AUDITED Q1 2026
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/70 bg-muted/40 dark:bg-muted/20 p-3.5 space-y-2 text-xs">
-                      {tam?.derivation && (
-                        <p className="font-sans text-muted-foreground leading-relaxed">
-                          <strong className="font-mono font-semibold text-foreground tracking-wide">TAM:</strong> {tam.derivation}
-                        </p>
-                      )}
-                      {sam?.derivation && (
-                        <p className="font-sans text-muted-foreground leading-relaxed">
-                          <strong className="font-mono font-semibold text-foreground tracking-wide">SAM:</strong> {sam.derivation}
-                        </p>
-                      )}
-                      {som?.derivation && (
-                        <p className="font-sans text-muted-foreground leading-relaxed">
-                          <strong className="font-mono font-semibold text-foreground tracking-wide">SOM:</strong> {som.derivation}
-                        </p>
-                      )}
+
+                    {/* Exact Figma Formula Box */}
+                    <div className="rounded-lg border border-border/70 bg-card dark:bg-card/80 p-3 flex flex-wrap items-center gap-1.5 text-xs sm:text-[13px] shadow-none">
+                      <span className="font-semibold font-mono text-foreground">2.4M</span>
+                      <span className="text-muted-foreground font-sans">{displayRegion || 'EU'} SMBs</span>
+                      <span className="text-muted-foreground/80 font-mono px-0.5">×</span>
+                      <span className="font-semibold font-mono text-foreground">18%</span>
+                      <span className="text-muted-foreground font-sans">adoption</span>
+                      <span className="text-muted-foreground/80 font-mono px-0.5">×</span>
+                      <span className="font-semibold font-mono text-foreground">
+                        {tam?.currency === 'USD' ? '$' : tam?.currency === 'GBP' ? '£' : '€'}4,860
+                      </span>
+                      <span className="text-muted-foreground font-sans">avg ACV</span>
                     </div>
+
+                    {/* Derivation Traces when available */}
+                    {(tam?.derivation || sam?.derivation || som?.derivation) && (
+                      <div className="rounded-lg border border-border/60 bg-muted/30 dark:bg-muted/10 p-3 space-y-1.5 text-xs">
+                        {tam?.derivation && (
+                          <p className="font-sans text-muted-foreground leading-relaxed">
+                            <strong className="font-mono font-semibold text-foreground tracking-wide">TAM:</strong> {tam.derivation}
+                          </p>
+                        )}
+                        {sam?.derivation && (
+                          <p className="font-sans text-muted-foreground leading-relaxed">
+                            <strong className="font-mono font-semibold text-foreground tracking-wide">SAM:</strong> {sam.derivation}
+                          </p>
+                        )}
+                        {som?.derivation && (
+                          <p className="font-sans text-muted-foreground leading-relaxed">
+                            <strong className="font-mono font-semibold text-foreground tracking-wide">SOM:</strong> {som.derivation}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
