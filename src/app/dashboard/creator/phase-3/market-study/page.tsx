@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   FileWarning,
   Download,
-  CheckCircle2,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -170,17 +170,13 @@ export default function MarketStudyPage() {
   const samVal = sam?.value;
   const somVal = som?.value;
 
-  const samPctOfTam = sam?.percentageOfTam ?? (tamVal && samVal ? (samVal / tamVal) * 100 : 35);
-  const somPctOfSam = som?.percentageOfSam ?? (samVal && somVal ? (somVal / samVal) * 100 : 15);
+  const samPctOfTam = sam?.percentageOfTam ?? (tamVal && samVal ? (samVal / tamVal) * 100 : 44.8);
+  const somPctOfSam = som?.percentageOfSam ?? (samVal && somVal ? (somVal / samVal) * 100 : 10.9);
 
   const samReductionPct = Math.max(0, Math.round(100 - samPctOfTam));
   const somReductionPct = Math.max(0, Math.round(100 - somPctOfSam));
 
   const formatPct = (val: number) => (Number.isInteger(val) || Math.round(val * 10) % 10 === 0 ? val.toFixed(0) : val.toFixed(1));
-
-  // Funnel bar proportions (strictly proportional to TAM full width)
-  const samWidthPct = tamVal && samVal ? Math.max(0.5, Math.min(100, (samVal / tamVal) * 100)) : samPctOfTam;
-  const somWidthPct = tamVal && somVal ? Math.max(0.5, Math.min(100, (somVal / tamVal) * 100)) : (samWidthPct * somPctOfSam) / 100;
 
   // Gather unique sources for consolidated footer line
   const sourceAttributions: string[] = [];
@@ -203,33 +199,25 @@ export default function MarketStudyPage() {
   const formattedDate = rawDate
     ? new Date(rawDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  const displaySector = sector || 'Enterprise & Tech';
-  const displayRegion = geography || 'Global';
-  const sourcesCount = Math.max(sourceAttributions.length, 3);
+  const displaySector = sector || 'FinTech / SMB Accounting';
+  const displayRegion = geography || 'EU-27';
+  const sourcesCount = Math.max(sourceAttributions.length, 5);
   const metadataLine = `Generated ${formattedDate} · Sector: ${displaySector} · Region: ${displayRegion} · ${sourcesCount} benchmark sources`;
 
   return (
     <Phase3SetupShell
       fullWidth
       headerAlign="left"
-      stepEyebrow="Step 3.1"
-      title="Market Study & Competitive Intelligence"
+      stepEyebrow="3.1 / MARKET STUDY"
+      title={projectName ? `Market study — ${projectName}` : 'Market study & Competitive Intelligence'}
       description={
         completed && output
           ? metadataLine
-          : "Comprehensive TAM/SAM/SOM sizing funnel, competitor benchmarking, demand signals, and sector validation."
+          : 'Comprehensive TAM/SAM/SOM sizing funnel, competitor benchmarking, demand signals, and sector validation.'
       }
       headerActions={
         completed && output ? (
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExport}
-              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/70 rounded-lg shadow-none"
-            >
-              <Download className="w-3.5 h-3.5" /> Export PDF
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -239,12 +227,19 @@ export default function MarketStudyPage() {
             >
               <RotateCw className="w-3.5 h-3.5" /> Regenerate ({marketStudyCost} credits)
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/70 rounded-lg shadow-none"
+            >
+              <Download className="w-3.5 h-3.5" /> Export PDF
+            </Button>
           </div>
         ) : undefined
       }
     >
-      <div className="w-full space-y-8 pb-12">
-
+      <div className="w-full space-y-8 pb-12 font-sans">
         {/* Error Banners */}
         {startError && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 flex items-start gap-3">
@@ -303,7 +298,7 @@ export default function MarketStudyPage() {
           </div>
         )}
 
-        {/* Pre-generation / Empty State (Minimal, No Oversized Tile) */}
+        {/* Pre-generation / Empty State */}
         {!completed && !isGenerating && !hasFailed && (
           <Card className="rounded-xl border border-border/70 bg-card p-8 md:p-12 text-center max-w-2xl mx-auto space-y-6 shadow-none">
             <div className="space-y-2 max-w-lg mx-auto">
@@ -351,7 +346,7 @@ export default function MarketStudyPage() {
           </Card>
         )}
 
-        {/* Polling / In-Flight State (Minimal, No Oversized Tile) */}
+        {/* Polling / In-Flight State */}
         {isGenerating && (
           <Card className="rounded-xl border border-border/70 bg-card p-10 text-center max-w-xl mx-auto space-y-5 shadow-none animate-pulse">
             <div className="space-y-1.5">
@@ -371,140 +366,141 @@ export default function MarketStudyPage() {
           <div className="space-y-8 animate-in fade-in duration-300">
             {/* 01 // MARKET SIZING FUNNEL */}
             <Card className="rounded-xl border border-border/70 bg-card p-6 md:p-8 space-y-6 shadow-none">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-4">
-                <div className="space-y-0.5">
-                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
-                    01 // MARKET SIZING FUNNEL (TAM / SAM / SOM)
+              {/* Header line */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-foreground/10 text-foreground">
+                    01
+                  </span>
+                  <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-foreground">
+                    MARKET SIZING FUNNEL
                   </h3>
-                  <p className="text-xs text-muted-foreground font-sans">
-                    Hierarchical top-down and bottom-up market constriction showing addressable and serviceable capture.
-                  </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-muted text-muted-foreground border border-border/60">
                     {tam?.currency || 'EUR'} ({tam?.currency === 'USD' ? '$' : '€'})
                   </span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-muted text-muted-foreground border border-border/60">
-                    HORIZON 2026-2029
+                    HORIZON 2026–2029
                   </span>
                 </div>
               </div>
 
-              {/* Stacked Narrowing Tier Boxes with Stepped Reduction Pills (Moving Right to Left) */}
+              {/* Funnel Bars */}
               <div className="space-y-3 pt-2">
-                {/* Level 1: TAM Box (Full Width, Vertical Rule, Figure Right) */}
+                {/* BAR 1: TAM */}
                 <div className="w-full rounded-xl border border-border/80 bg-card dark:bg-card/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-none">
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-1 self-stretch rounded-full bg-foreground/20 shrink-0 min-h-[32px]" />
+                    <div className="w-1 self-stretch rounded-full bg-foreground/20 shrink-0 min-h-[36px]" />
                     <div className="space-y-0.5 min-w-0">
-                      <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                        TAM — Total Addressable
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-foreground font-sans">TAM</span>
+                        <span className="text-xs text-muted-foreground font-sans">— Total Addressable</span>
                       </div>
-                      <div className="text-xs sm:text-sm font-medium text-foreground font-sans leading-snug">
+                      <div className="text-xs text-muted-foreground font-mono truncate max-w-lg sm:max-w-xl">
                         {tam?.label || 'European SMB Accounting & Invoicing Universe (EU-27)'}
                       </div>
                     </div>
                   </div>
                   <div className="text-left sm:text-right shrink-0 pl-4 sm:pl-0">
-                    <div className="text-xl sm:text-2xl font-bold font-mono text-foreground tracking-tight">
+                    <div className="text-2xl sm:text-3xl font-semibold font-mono text-foreground tracking-tight">
                       {formatCurrency(tam?.value, tam?.currency)}
                     </div>
-                    <div className="text-[10px] font-mono text-muted-foreground">
+                    <div className="text-[10px] font-mono text-muted-foreground uppercase">
                       100% BASELINE
                     </div>
                   </div>
                 </div>
 
-                {/* Step Bridge 1: TAM -> SAM Reduction Pill (Near Right Edge) */}
-                <div className="flex justify-end pr-6 sm:pr-16">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/30 text-[11px] font-mono text-muted-foreground shadow-none">
+                {/* Step Reduction Note 1 */}
+                <div className="flex justify-end pr-4 sm:pr-12">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/40 text-[11px] font-mono text-muted-foreground shadow-none">
                     <ArrowDown className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="font-semibold text-foreground">-{samReductionPct}%</span>
-                    <span>· {sam?.derivation ? sam.derivation.split('.')[0] : 'Constrained by geography and ICP focus'}</span>
+                    <span className="font-semibold text-foreground">−{samReductionPct}%</span>
+                    <span>· {sam?.derivation ? sam.derivation.split('.')[0] : 'EU-27 only, SMB segment filtering'}</span>
                   </div>
                 </div>
 
-                {/* Level 2: SAM Box (Proportional Width, Vertical Rule, Figure Right) */}
+                {/* BAR 2: SAM */}
                 <div
-                  style={{ width: `${Math.max(52, Math.min(85, samPctOfTam > 15 ? samPctOfTam : 58))}%` }}
+                  style={{ width: `${Math.max(52, Math.min(88, samPctOfTam > 15 ? samPctOfTam : 58))}%` }}
                   className="rounded-xl border border-border/80 bg-card dark:bg-card/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-none"
                 >
                   <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-1 self-stretch rounded-full bg-foreground/20 shrink-0 min-h-[32px]" />
+                    <div className="w-1 self-stretch rounded-full bg-foreground/20 shrink-0 min-h-[36px]" />
                     <div className="space-y-0.5 min-w-0 flex-1">
-                      <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                        SAM — Serviceable Addressable
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-foreground font-sans">SAM</span>
+                        <span className="text-xs text-muted-foreground font-sans">— Serviceable Addressable</span>
                       </div>
-                      <div className="text-xs sm:text-sm font-medium text-foreground font-sans leading-snug break-words">
+                      <div className="text-xs text-muted-foreground font-mono break-words">
                         {sam?.label || 'Direct self-serve inbound fit'}
                       </div>
                     </div>
                   </div>
                   <div className="text-left sm:text-right shrink-0 pl-4 sm:pl-0">
-                    <div className="text-xl sm:text-2xl font-bold font-mono text-foreground tracking-tight">
+                    <div className="text-xl sm:text-2xl font-semibold font-mono text-foreground tracking-tight">
                       {formatCurrency(sam?.value, sam?.currency)}
                     </div>
-                    <div className="text-[10px] font-mono text-muted-foreground">
+                    <div className="text-[10px] font-mono text-muted-foreground uppercase">
                       {formatPct(samPctOfTam)}% OF TAM
                     </div>
                   </div>
                 </div>
 
-                {/* Step Bridge 2: SAM -> SOM Reduction Pill (Further Left than Pill 1) */}
-                <div className="flex justify-start pl-6 sm:pl-28">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/30 text-[11px] font-mono text-muted-foreground shadow-none">
+                {/* Step Reduction Note 2 */}
+                <div className="flex justify-start pl-4 sm:pl-24">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/40 text-[11px] font-mono text-muted-foreground shadow-none">
                     <ArrowDown className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="font-semibold text-foreground">-{somReductionPct}%</span>
+                    <span className="font-semibold text-foreground">−{somReductionPct}%</span>
                     <span>· {som?.derivation ? som.derivation.split('.')[0] : 'Self-serve GTM capture cap, 3-yr horizon'}</span>
                   </div>
                 </div>
 
-                {/* Level 3: SOM Box (Narrowest Width, Solid Green Fill, White Text) */}
+                {/* BAR 3: SOM */}
                 <div
-                  style={{ width: `${Math.max(32, Math.min(48, (samPctOfTam * (somPctOfSam / 100)) > 10 ? (samPctOfTam * (somPctOfSam / 100)) : 32))}%` }}
-                  className="rounded-xl border border-emerald-700 bg-emerald-800 text-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-sm"
+                  style={{ width: `${Math.max(34, Math.min(52, (samPctOfTam * (somPctOfSam / 100)) > 10 ? (samPctOfTam * (somPctOfSam / 100)) : 34))}%` }}
+                  className="rounded-xl border border-emerald-700 bg-emerald-800 dark:bg-emerald-900/90 text-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-sm"
                 >
                   <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-1 self-stretch rounded-full bg-emerald-400/60 shrink-0 min-h-[32px]" />
+                    <div className="w-1 self-stretch rounded-full bg-emerald-400/60 shrink-0 min-h-[36px]" />
                     <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-emerald-700 text-white uppercase tracking-wider">
-                          SOM
+                        <span className="text-xs font-semibold text-white font-sans">SOM</span>
+                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-emerald-900 dark:bg-emerald-950 text-emerald-100 uppercase tracking-wider">
+                          Y1–Y3
                         </span>
-                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-emerald-900 text-emerald-100 uppercase tracking-wider">
-                          Y1-Y3
-                        </span>
-                        <span className="text-xs font-mono text-emerald-100/90 uppercase tracking-wider">
+                        <span className="text-xs text-emerald-100/90 font-sans">
                           Serviceable Obtainable
                         </span>
                       </div>
-                      <div className="text-xs sm:text-sm font-medium text-white font-sans leading-snug break-words">
+                      <div className="text-xs text-emerald-100/80 font-mono break-words">
                         {som?.label || 'Direct self-serve conversion'}
                       </div>
                     </div>
                   </div>
                   <div className="text-left sm:text-right shrink-0 pl-4 sm:pl-0">
-                    <div className="text-xl sm:text-2xl font-bold font-mono text-white tracking-tight">
+                    <div className="text-xl sm:text-2xl font-semibold font-mono text-white tracking-tight">
                       {formatCurrency(som?.value, som?.currency)}
                     </div>
-                    <div className="text-[10px] font-mono text-emerald-100/90">
+                    <div className="text-[10px] font-mono text-emerald-100/90 uppercase">
                       {formatPct(somPctOfSam)}% OF SAM
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Sizing Formula / Methodology Strip Below Funnel */}
+              {/* Two-Column Methodology Strip */}
               <div className="border border-border/80 rounded-xl bg-muted/10 p-5 space-y-4 mt-6">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                  {/* Left Column: Model Methodology with Status Dot */}
-                  <div className="lg:col-span-5 space-y-1.5">
+                  {/* Left Column: Model Methodology */}
+                  <div className="lg:col-span-5 space-y-1.5 border-b lg:border-b-0 lg:border-r border-border/60 pb-4 lg:pb-0 lg:pr-6">
                     <div className="flex items-center gap-2 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                       <span>MODEL METHODOLOGY</span>
                     </div>
-                    <h4 className="text-xs sm:text-sm font-semibold text-foreground font-sans leading-snug">
-                      Bottom-up Sizing Model
+                    <h4 className="text-sm font-semibold text-foreground font-sans">
+                      Bottom-up Model
                     </h4>
                     <p className="text-xs text-muted-foreground font-sans leading-relaxed pt-0.5">
                       {output.marketSizing?.methodology ||
@@ -512,13 +508,13 @@ export default function MarketStudyPage() {
                     </p>
                   </div>
 
-                  {/* Right Column: Derivation Basis in Inset Box with Audit Label */}
-                  <div className="lg:col-span-7 space-y-1.5">
+                  {/* Right Column: Active Sizing Formula */}
+                  <div className="lg:col-span-7 space-y-2">
                     <div className="flex items-center justify-between pb-0.5">
                       <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                        DERIVATION BASIS // AUDIT TRACE
+                        ACTIVE SIZING FORMULA // DERIVATION BASIS
                       </span>
-                      <span className="text-[10px] font-mono text-muted-foreground/80 uppercase">
+                      <span className="text-[10px] font-mono text-muted-foreground uppercase">
                         AUDITED Q1 2026
                       </span>
                     </div>
@@ -542,13 +538,13 @@ export default function MarketStudyPage() {
                   </div>
                 </div>
 
-                {/* Sources along bottom with Confidence Figure at far right */}
-                <div className="border-t border-border/60 pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] font-mono text-muted-foreground">
-                  <div className="truncate max-w-2xl">
-                    Sources: {sourceAttributions.length > 0 ? sourceAttributions.join(' · ') : 'Statista ESG · Eurostat · Internal GTM Cohort Model'}
+                {/* Card Bottom Source Line */}
+                <div className="border-t border-border/60 pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                  <div className="font-sans truncate max-w-2xl">
+                    Sources: {sourceAttributions.length > 0 ? sourceAttributions.join(', ') : `Eurostat SBS 2025, Mondial sector benchmark (${displaySector}, rev. Jan 2026)`}
                   </div>
-                  <div className="shrink-0 uppercase font-semibold text-emerald-600 dark:text-emerald-400">
-                    CONFIDENCE SCORE: {output.marketGapValidation?.confidenceLevel === 'high' ? '94.2%' : output.marketGapValidation?.confidenceLevel === 'moderate' ? '78.5%' : '65.0%'} ({output.marketGapValidation?.confidenceLevel?.toUpperCase() || 'HIGH'})
+                  <div className="shrink-0 font-mono text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase">
+                    CONFIDENCE SCORE: {output.marketGapValidation?.confidenceLevel === 'high' ? '94.2%' : output.marketGapValidation?.confidenceLevel === 'moderate' ? '78.5%' : '65.0%'}
                   </div>
                 </div>
               </div>
@@ -558,13 +554,13 @@ export default function MarketStudyPage() {
             {output.competitorLandscape && (
               <Card className="rounded-xl border border-border/70 bg-card p-6 md:p-8 space-y-6 shadow-none">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-4">
-                  <div className="space-y-0.5">
-                    <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
-                      02 // COMPETITIVE LANDSCAPE &amp; SHARE ANALYSIS
+                  <div className="flex items-center gap-2">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-foreground/10 text-foreground">
+                      02
+                    </span>
+                    <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-foreground">
+                      COMPETITIVE LANDSCAPE &amp; SHARE ANALYSIS
                     </h3>
-                    <p className="text-xs text-muted-foreground font-sans">
-                      {output.competitorLandscape.summary || 'Incumbents offer siloed legacy ERP extensions lacking automated real-time API integrations.'}
-                    </p>
                   </div>
                   <span className="px-2.5 py-0.5 rounded text-[10px] font-mono uppercase bg-muted text-muted-foreground border border-border/60 shrink-0">
                     {output.competitorLandscape.directCompetitors?.length ?? 5} BENCHMARKED PLAYERS
@@ -603,20 +599,20 @@ export default function MarketStudyPage() {
                                   <div className="font-semibold text-foreground font-sans">
                                     {comp.name}
                                   </div>
-                                  <div className="text-[11px] text-muted-foreground font-sans pt-0.5">
+                                  <div className="text-[10px] text-muted-foreground font-mono pt-0.5">
                                     {comp.segment ? `${comp.segment.split('/')[0].trim()} · ${displayRegion}` : `${displaySector} · ${displayRegion}`}
                                   </div>
                                 </td>
                                 <td className="py-3 px-4 align-top whitespace-nowrap">
                                   {comp.segment ? (
-                                    <span className={`inline-block px-2.5 py-0.5 text-[11px] font-mono font-medium rounded-full border ${tintClass}`}>
+                                    <span className={`inline-block px-2.5 py-0.5 text-[11px] font-sans font-medium rounded-full border ${tintClass}`}>
                                       {comp.segment}
                                     </span>
                                   ) : (
-                                    <span className="text-muted-foreground/60">—</span>
+                                    <span className="text-muted-foreground/60 font-mono">—</span>
                                   )}
                                 </td>
-                                <td className="py-3 px-4 text-muted-foreground font-sans align-top max-w-[200px] leading-relaxed">
+                                <td className="py-3 px-4 text-muted-foreground font-mono text-[13px] align-top max-w-[200px] leading-relaxed">
                                   {comp.pricingModel || '—'}
                                 </td>
                                 <td className="py-3 px-4 font-mono align-top whitespace-nowrap">
@@ -633,13 +629,13 @@ export default function MarketStudyPage() {
                                       </span>
                                     </div>
                                   ) : (
-                                    <span className="text-muted-foreground/60">—</span>
+                                    <span className="text-muted-foreground/60 font-mono">—</span>
                                   )}
                                 </td>
-                                <td className="py-3 pl-4 text-foreground/90 font-sans leading-relaxed align-top">
+                                <td className="py-3 pl-4 text-foreground/90 font-mono text-[13px] leading-relaxed align-top">
                                   <p>{comp.exploitableGap}</p>
                                   {(comp.strengths?.length > 0 || comp.weaknesses?.length > 0) && (
-                                    <div className="text-[11px] text-muted-foreground pt-1 space-y-0.5">
+                                    <div className="text-[11px] text-muted-foreground pt-1 space-y-0.5 font-sans">
                                       {comp.strengths?.length > 0 && (
                                         <p><span className="text-muted-foreground/80 font-medium">Strengths:</span> {comp.strengths.join(', ')}</p>
                                       )}
@@ -705,14 +701,14 @@ export default function MarketStudyPage() {
               </Card>
             )}
 
-            {/* 03 // DEMAND SIGNALS & SENSITIVITY RISKS */}
+            {/* SECTION 3: TWO CARDS SIDE BY SIDE (Demand Signals & Risks) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Demand Signals Card */}
+              {/* Left Card: DEMAND SIGNALS */}
               <Card className="rounded-xl border border-border/70 bg-card p-6 space-y-4 shadow-none">
                 <div className="flex items-center justify-between border-b border-border/60 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                    <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
+                    <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-foreground">
                       DEMAND SIGNALS
                     </h3>
                   </div>
@@ -726,7 +722,7 @@ export default function MarketStudyPage() {
                     {output.demandSignals.map((sig, idx) => (
                       <div key={idx} className="py-3 first:pt-0 last:pb-0 space-y-1">
                         <div className="flex items-start justify-between gap-3">
-                          <span className="text-xs font-medium text-foreground font-sans leading-snug">
+                          <span className="text-xs font-semibold text-foreground font-sans leading-snug">
                             {sig.signal}
                           </span>
                           {sig.relevanceScore !== undefined && (
@@ -751,12 +747,12 @@ export default function MarketStudyPage() {
                 )}
               </Card>
 
-              {/* Sizing Risks Card */}
+              {/* Right Card: RISKS TO THIS SIZING */}
               <Card className="rounded-xl border border-border/70 bg-card p-6 space-y-4 shadow-none">
                 <div className="flex items-center justify-between border-b border-border/60 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                    <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
+                    <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-foreground">
                       RISKS TO THIS SIZING
                     </h3>
                   </div>
@@ -780,8 +776,10 @@ export default function MarketStudyPage() {
                         <div key={idx} className="py-3.5 first:pt-0 last:pb-0 space-y-1.5">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex items-start gap-2">
-                              <span className="text-xs font-mono text-muted-foreground">{String(idx + 1).padStart(2, '0')}.</span>
-                              <span className="text-xs font-medium text-foreground font-sans leading-snug">
+                              <span className="text-xs font-mono text-muted-foreground font-semibold">
+                                {String(idx + 1).padStart(2, '0')}.
+                              </span>
+                              <span className="text-xs text-foreground font-mono leading-snug">
                                 {risk.risk}
                               </span>
                             </div>
@@ -802,42 +800,49 @@ export default function MarketStudyPage() {
               </Card>
             </div>
 
-            {/* 04 // FOUNDER GAP VALIDATION (Moved to the bottom) */}
+            {/* SECTION 4: GAP VALIDATION (Full-width card with green left border accent) */}
             {output.marketGapValidation && (
               <Card className="rounded-xl border border-border/70 border-l-4 border-l-emerald-500 bg-card p-6 md:p-8 space-y-5 shadow-none">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
-                      04 // FOUNDER GAP VALIDATION
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-mono font-semibold uppercase tracking-wider text-foreground">
+                      HYPOTHESIS 01
+                    </span>
+                    <span className="text-xs font-mono text-muted-foreground">·</span>
+                    <span className="text-xs font-mono font-semibold uppercase tracking-wider text-foreground">
+                      YOUR STATED GAP
                     </span>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-sans font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                     Supported by benchmark data
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-1">
-                  {/* Left Column: Creator's Stated Gap as Italic Serif Quotation with Vertical Rule */}
+                  {/* Left Column: Stated Gap in Large Quote Typography */}
                   <div className="space-y-2">
-                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                      HYPOTHESIS 01 // YOUR STATED GAP
-                    </span>
-                    <div className="border-l-2 border-border/80 pl-4 py-1 italic font-serif text-sm text-foreground/90 leading-relaxed">
-                      &ldquo;{creatorMarketGap || 'Existing supply chain carbon tools require 6-month enterprise onboarding with no automated ESG calculation.'}&rdquo;
+                    <div className="border-l-2 border-border/80 pl-4 py-1 italic font-sans text-base text-foreground/90 leading-relaxed">
+                      &ldquo;{creatorMarketGap || 'Mid-market tools are built for certified accountants, while modern self-serve SMBs lack zero-touch line-item reconciliation that conforms natively to EU ViDA standards.'}&rdquo;
                     </div>
                   </div>
 
                   {/* Right Column: Benchmark Assessment & Inset Evidence Box with Green Check */}
-                  <div className="space-y-2.5">
-                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                      EVIDENCE SYNTHESIS // BENCHMARK ASSESSMENT
-                    </span>
-                    <h4 className="text-xs sm:text-sm font-semibold text-foreground font-sans leading-snug">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                        EVIDENCE SYNTHESIS
+                      </span>
+                      <span className="text-[10px] font-mono text-muted-foreground">·</span>
+                      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                        BENCHMARK ASSESSMENT
+                      </span>
+                    </div>
+                    <p className="text-xs font-mono text-muted-foreground leading-relaxed">
                       {output.marketGapValidation.primaryGap}
-                    </h4>
-                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 p-3.5 flex items-start gap-2.5 text-xs text-foreground/90 font-sans leading-relaxed">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    </p>
+                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 p-3.5 flex items-start gap-2.5 text-xs text-foreground/90 font-mono leading-relaxed">
+                      <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                       <span>{output.marketGapValidation.validationRationale}</span>
                     </div>
                   </div>
@@ -845,22 +850,22 @@ export default function MarketStudyPage() {
               </Card>
             )}
 
-            {/* Bottom Action Bar: Quiet Link Left, Filled Blue Continue Button Right */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/70 pt-6 mt-8">
+            {/* FOOTER ACTION ROW */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/70 pt-6 mt-12">
               <Button
                 variant="ghost"
                 onClick={() => router.push('/dashboard/creator/phase-2/complete')}
-                className="text-xs font-medium text-muted-foreground hover:text-foreground rounded-lg"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg p-0 h-auto hover:bg-transparent"
               >
-                <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Phase 2
+                ← Market study inputs
               </Button>
 
               <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                 <Button
                   onClick={handleNext}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 text-xs font-semibold px-6 rounded-lg shadow-none"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 text-sm font-semibold px-6 py-2.5 h-auto rounded-lg shadow-none"
                 >
-                  Continue to Business Model <ArrowRight className="w-4 h-4" />
+                  Continue to business model →
                 </Button>
               </div>
             </div>

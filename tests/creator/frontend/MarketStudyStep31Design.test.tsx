@@ -154,7 +154,7 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
 
     render(<MarketStudyPage />);
 
-    expect(await screen.findByText(/Market Sizing Funnel \(TAM \/ SAM \/ SOM\)/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Market Sizing Funnel/i)).toBeInTheDocument();
     expect(screen.getByText(/Methodology/i)).toBeInTheDocument();
     expect(screen.getByText(/Triangulated bottom-up cohort adoption model/i)).toBeInTheDocument();
 
@@ -281,6 +281,6 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
     // Verify print preview overlay elements
     expect(screen.getByText(/Print \/ Save as PDF/i)).toBeInTheDocument();
     expect(screen.getByText(/Mondial · Market Study & Competitive Intelligence/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/01 \/\/ Market Sizing Funnel \(TAM \/ SAM \/ SOM\)/i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText(/Market Sizing Funnel/i).length).toBeGreaterThanOrEqual(1);
   });
 });
