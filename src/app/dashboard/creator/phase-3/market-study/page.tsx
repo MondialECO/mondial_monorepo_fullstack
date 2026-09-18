@@ -30,6 +30,8 @@ import {
 } from '@/types/creator/ai';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 import MarketStudyPrintView from '@/components/creator/MarketStudyPrintView';
+import { brandKitApi } from '@/lib/api-creator-brand-kit';
+import { resolveMediaUrl } from '@/lib/brand-kit-media';
 
 function formatCurrency(amount?: number, currency = 'USD'): string {
   if (amount === undefined || amount === null || Number.isNaN(amount)) return '—';
@@ -69,6 +71,7 @@ export default function MarketStudyPage() {
   const [projectName, setProjectName] = useState<string | null>(null);
   const [startError, setStartError] = useState<AiError | null>(null);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   const startMutation = useStartMarketStudy();
   const regenerateMutation = useRegenerateMarketStudy();
@@ -110,6 +113,28 @@ export default function MarketStudyPage() {
         setSector(journey.project?.sector ?? null);
         setGeography(journey.project?.geography ?? null);
         setProjectName((journey.project as { name?: string; title?: string } | undefined)?.name ?? (journey.project as { name?: string; title?: string } | undefined)?.title ?? null);
+
+        // Fetch brand kit logo for PDF export (prefer transparent variation)
+        try {
+          const kit = await brandKitApi.getBrandKit();
+          const selectedKey = kit?.logo?.selectedConceptKey;
+          const concepts = kit?.logo?.concepts || [];
+          const approvedConcept = selectedKey
+            ? concepts.find(c => c.key === selectedKey)
+            : concepts[0];
+          const variations = kit?.logo?.variations || {};
+          const transparentUri =
+            variations.transparent?.svgUri ||
+            variations.transparent?.pngUri ||
+            variations.badge_stamp?.svgUri ||
+            variations.badge_stamp?.pngUri;
+          const rawUri = transparentUri || approvedConcept?.lockupAssetUri || approvedConcept?.markAssetUri;
+          if (rawUri) {
+            setLogoUrl(resolveMediaUrl(rawUri, kit.version));
+          }
+        } catch {
+          // Logo is optional — silently skip if brand kit isn't available yet
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -835,6 +860,7 @@ export default function MarketStudyPage() {
           open={isPrintOpen}
           onClose={() => setIsPrintOpen(false)}
           projectName={projectName || undefined}
+          logoUrl={logoUrl || undefined}
           project={{
             sector: sector || undefined,
             geography: geography || undefined,
