@@ -2,7 +2,7 @@
 
 Source of truth for development and architecture of the **Brand Identity Studio (Creator Phase 2 / Visual Identity)**.
 
-**Last reconciled with code: 2026-09-17.**
+**Last reconciled with code: 2026-09-19.**
 
 ---
 
@@ -20,9 +20,16 @@ The **Brand Identity Studio** is an enterprise-grade visual identity creation en
 5. **Step 5: Color System** (`ColorSystemModal.tsx`) — Figma Node `57004:11600`
 6. **Step 6: Typography System** (`TypographySystemModal.tsx`) — Figma Node `57004:12100`
 
-### 1.1 Viewport Responsiveness & Typography Canon
-- **Viewport Scaling**: Authored at 1440px desktop base, but engineered to stay fluidly responsive from 1440px up to 1920px (and down to mobile viewports).
-- **Typography Canon**: Headings and titles use `font-heading` (Inter), body copy and card descriptions use `font-sans` (DM Sans — note that DM Mono was a defect fixed on the branding entry screen), and numerals/telemetry badges use `font-mono` (JetBrains Mono).
+### 1.1 Viewport Responsiveness & Stage 2 Typography Scale
+- **Viewport Scaling**: Authored at 1440px desktop base, engineered to stay fluidly responsive from 1440px up to 1920px (and down to mobile viewports).
+- **Modal Scroll Behavior**: All 7 studio modals constrain height to `max-h-[90vh]` with fixed header/footer strips and internal `overflow-y-auto` body containers:
+  - At 1440×900: All modals scroll smoothly with internal overflow (~70px–510px).
+  - At 1920×1080: Strategy Review, Direction Board, and Logo Creation fit fully within viewport without scroll; Color, Typography, and Variation Set modals scroll cleanly.
+  - Light & Dark theme parity: 100% token-based scrollbars and container borders.
+- **Typography Scale Canon (Zero Arbitrary Brackets)**:
+  - All arbitrary bracket sizes (`text-[9px]`, `text-[10px]`, `text-[11px]`, `text-[13px]`, `text-[15px]`) are eliminated across Phase 2 and Brand Studio.
+  - Role-based semantic tokens in use: `text-page-heading` (30px), `text-section-title` (16px), `text-card-title` (18px), `text-body` (14px), `text-label` (12px), `text-input` (14px), `text-button` (14px), `text-caption` (12px), `text-table-header` (11px), `text-footnote` (11px), `text-badge` (10px).
+  - **Mono-on-Prose Rule**: `font-mono` is strictly prohibited on descriptive prose paragraphs (Audience, Positioning, Concept summaries). `font-mono` is exclusively reserved for HEX/RGB color values, character counts, file sizes, step numbers, and raw telemetry tokens.
 - **Design Tokens**: 100% theme token classes (`bg-background`, `text-foreground`, `bg-card`, `border-border/80`, `bg-primary`, `text-primary-foreground`, `text-muted-foreground`), zero raw hex.
 
 ---
