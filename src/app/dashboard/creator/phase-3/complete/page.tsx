@@ -285,7 +285,7 @@ export default function Phase3CompletePage() {
                     </span>
                     <span>{readiness.label}</span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground max-w-[240px] sm:text-right">
+                  <p className="text-body text-muted-foreground max-w-[240px] sm:text-right">
                     {readiness.total >= 85
                       ? 'Exceeds standard institutional seed diligence thresholds.'
                       : readiness.total >= 70
@@ -361,7 +361,7 @@ export default function Phase3CompletePage() {
                       <div className="pt-2 border-t border-border/60">
                         {dimDeductions.length > 0 ? (
                           <div className="space-y-2.5">
-                            <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                            <div className="flex items-center gap-1.5 text-label font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
                               <MinusCircle className="size-3.5 text-amber-600 dark:text-amber-400" />
                               <span>Identified Weaknesses &amp; Point Deductions ({dimDeductions.length})</span>
                             </div>
@@ -373,7 +373,7 @@ export default function Phase3CompletePage() {
                                   className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-xs"
                                 >
                                   <div className="flex items-start gap-2.5">
-                                    <span className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[11px] font-mono font-bold text-destructive bg-destructive/10 border border-destructive/20">
+                                    <span className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-badge font-mono font-bold text-destructive bg-destructive/10 border border-destructive/20">
                                       -{deduction.pointsLost} pts
                                     </span>
                                     <p className="text-foreground leading-snug">{deduction.issue}</p>
@@ -383,7 +383,7 @@ export default function Phase3CompletePage() {
                                     asChild
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 shrink-0 gap-1.5 rounded-lg border-primary/25 bg-card px-2.5 text-[11px] font-medium text-primary hover:bg-primary/5 shadow-none"
+                                    className="h-7 shrink-0 gap-1.5 rounded-lg border-primary/25 bg-card px-2.5 text-badge font-medium text-primary hover:bg-primary/5 shadow-none"
                                   >
                                     <Link href={deduction.remediationRoute}>
                                       <span>{deduction.remediationTitle}</span>
@@ -426,7 +426,7 @@ export default function Phase3CompletePage() {
                       <Icon className="size-4" />
                     </div>
                     <h4 className="text-xs font-semibold text-foreground font-sans">{title}</h4>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">{body}</p>
+                    <p className="text-body text-muted-foreground leading-relaxed">{body}</p>
                   </div>
                 ))}
               </div>

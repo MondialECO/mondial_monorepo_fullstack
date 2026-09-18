@@ -297,14 +297,14 @@ export function StrategyReviewModal({
             <div className="lg:col-span-7 space-y-4">
               <div className="flex items-center justify-between pb-1">
                 <div>
-                  <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight font-heading">
+                  <h2 className="text-section-heading font-semibold text-foreground tracking-tight font-heading">
                     Review what we derived from your idea
                   </h2>
-                  <p className="text-xs text-muted-foreground font-sans">
+                  <p className="text-caption text-muted-foreground font-sans">
                     Click any field to correct — changes update downstream steps.
                   </p>
                 </div>
-                <span className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-muted/70 text-foreground/80 border border-border/60 font-sans">
+                <span className="px-2.5 py-1 rounded-md text-badge font-medium bg-muted/70 text-foreground/80 border border-border/60 font-sans">
                   <span className="font-mono font-semibold text-foreground">5</span> FIELDS
                 </span>
               </div>
@@ -312,11 +312,11 @@ export function StrategyReviewModal({
               {/* Field 1: Business Name */}
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-2 transition-all hover:border-border">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground font-heading">
+                  <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
                     BUSINESS NAME
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium border font-sans ${
+                    <span className={`px-2 py-0.5 rounded text-badge font-medium border font-sans ${
                       isBusinessNameEdited
                         ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
                         : "bg-muted/60 text-muted-foreground border-border/50"
@@ -343,29 +343,29 @@ export function StrategyReviewModal({
                         setBusinessName(e.target.value);
                         setEditedFields((prev) => ({ ...prev, businessName: true }));
                       }}
-                      className="w-full rounded-lg border border-primary bg-background px-3 py-1.5 text-sm font-medium text-foreground focus:outline-none"
+                      className="w-full rounded-lg border border-primary bg-background px-3 py-1.5 text-body font-medium text-foreground focus:outline-none font-sans"
                     />
                     <Button
                       size="sm"
                       onClick={() => setEditingField(null)}
-                      className="h-8 px-3 text-xs bg-primary text-primary-foreground"
+                      className="h-8 px-3 text-button bg-primary text-primary-foreground cursor-pointer font-sans"
                     >
                       Done
                     </Button>
                   </div>
                 ) : (
-                  <p className="text-sm font-medium text-foreground font-sans">{businessName}</p>
+                  <p className="text-body font-medium text-foreground font-sans">{businessName}</p>
                 )}
               </div>
 
               {/* Field 2: One-Line Concept */}
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-2 transition-all hover:border-border">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground font-heading">
+                  <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
                     ONE-LINE CONCEPT
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium border font-sans ${
+                    <span className={`px-2 py-0.5 rounded text-badge font-medium border font-sans ${
                       isConceptEdited
                         ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
                         : "bg-muted/60 text-muted-foreground border-border/50"
@@ -392,21 +392,21 @@ export function StrategyReviewModal({
                         setConcept(e.target.value);
                         setEditedFields((prev) => ({ ...prev, concept: true }));
                       }}
-                      className="w-full rounded-lg border border-primary bg-background p-2.5 text-sm font-sans text-foreground focus:outline-none leading-relaxed"
+                      className="w-full rounded-lg border border-primary bg-background p-2.5 text-body font-sans text-foreground focus:outline-none leading-relaxed"
                     />
                     <Button
                       size="sm"
                       onClick={() => setEditingField(null)}
-                      className="h-8 px-3 text-xs bg-primary text-primary-foreground"
+                      className="h-8 px-3 text-button bg-primary text-primary-foreground cursor-pointer font-sans"
                     >
                       Done
                     </Button>
                   </div>
                 ) : (
                   <div>
-                    <p className="text-sm font-sans text-foreground/90 leading-relaxed">{concept}</p>
+                    <p className="text-body font-sans text-foreground/90 leading-relaxed">{concept}</p>
                     {conceptEditedTime && (
-                      <p className="text-[10px] font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
+                      <p className="text-badge font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
                         {conceptEditedTime}
                       </p>
                     )}
@@ -417,11 +417,11 @@ export function StrategyReviewModal({
               {/* Field 3: Target Audience */}
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-2 transition-all hover:border-border">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground font-heading">
+                  <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
                     TARGET AUDIENCE
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium border font-sans ${
+                    <span className={`px-2 py-0.5 rounded text-badge font-medium border font-sans ${
                       isAudienceEdited
                         ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
                         : "bg-muted/60 text-muted-foreground border-border/50"
@@ -448,21 +448,21 @@ export function StrategyReviewModal({
                         setTargetAudience(e.target.value);
                         setEditedFields((prev) => ({ ...prev, targetAudience: true }));
                       }}
-                      className="w-full rounded-lg border border-primary bg-background p-2.5 text-sm font-sans text-foreground focus:outline-none leading-relaxed"
+                      className="w-full rounded-lg border border-primary bg-background p-2.5 text-body font-sans text-foreground focus:outline-none leading-relaxed"
                     />
                     <Button
                       size="sm"
                       onClick={() => setEditingField(null)}
-                      className="h-8 px-3 text-xs bg-primary text-primary-foreground"
+                      className="h-8 px-3 text-button bg-primary text-primary-foreground cursor-pointer font-sans"
                     >
                       Done
                     </Button>
                   </div>
                 ) : (
                   <div>
-                    <p className="text-sm font-sans text-foreground/90 leading-relaxed">{targetAudience}</p>
+                    <p className="text-body font-sans text-foreground/90 leading-relaxed">{targetAudience}</p>
                     {audienceEditedTime && (
-                      <p className="text-[10px] font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
+                      <p className="text-badge font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
                         {audienceEditedTime}
                       </p>
                     )}
@@ -473,11 +473,11 @@ export function StrategyReviewModal({
               {/* Field 4: Industry */}
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-2 transition-all hover:border-border">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground font-heading">
+                  <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
                     INDUSTRY
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium border font-sans ${
+                    <span className={`px-2 py-0.5 rounded text-badge font-medium border font-sans ${
                       isIndustryEdited
                         ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
                         : "bg-muted/60 text-muted-foreground border-border/50"
@@ -504,12 +504,12 @@ export function StrategyReviewModal({
                         setIndustry(e.target.value);
                         setEditedFields((prev) => ({ ...prev, industry: true }));
                       }}
-                      className="w-full rounded-lg border border-primary bg-background px-3 py-1.5 text-sm font-medium text-foreground focus:outline-none"
+                      className="w-full rounded-lg border border-primary bg-background px-3 py-1.5 text-body font-medium text-foreground focus:outline-none font-sans"
                     />
                     <Button
                       size="sm"
                       onClick={() => setEditingField(null)}
-                      className="h-8 px-3 text-xs bg-primary text-primary-foreground"
+                      className="h-8 px-3 text-button bg-primary text-primary-foreground cursor-pointer font-sans"
                     >
                       Done
                     </Button>
@@ -517,15 +517,15 @@ export function StrategyReviewModal({
                 ) : (
                   <div>
                     <div className="flex flex-wrap items-center gap-2.5">
-                      <span className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-xs font-medium font-sans">
+                      <span className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-caption font-medium font-sans">
                         {industry}
                       </span>
-                      <span className="text-xs text-muted-foreground font-sans">
+                      <span className="text-caption text-muted-foreground font-sans">
                         Used to shortlist visual directions.
                       </span>
                     </div>
                     {industryEditedTime && (
-                      <p className="text-[10px] font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
+                      <p className="text-badge font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
                         {industryEditedTime}
                       </p>
                     )}
@@ -536,11 +536,11 @@ export function StrategyReviewModal({
               {/* Field 5: Positioning */}
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-2 transition-all hover:border-border">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground font-heading">
+                  <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
                     POSITIONING
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-medium border font-sans ${
+                    <span className={`px-2 py-0.5 rounded text-badge font-medium border font-sans ${
                       isPositioningEdited
                         ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
                         : "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
@@ -567,21 +567,21 @@ export function StrategyReviewModal({
                         setPositioning(e.target.value);
                         setEditedFields((prev) => ({ ...prev, positioning: true }));
                       }}
-                      className="w-full rounded-lg border border-primary bg-background p-2.5 text-sm font-sans text-foreground focus:outline-none leading-relaxed"
+                      className="w-full rounded-lg border border-primary bg-background p-2.5 text-body font-sans text-foreground focus:outline-none leading-relaxed"
                     />
                     <Button
                       size="sm"
                       onClick={() => setEditingField(null)}
-                      className="h-8 px-3 text-xs bg-primary text-primary-foreground"
+                      className="h-8 px-3 text-button bg-primary text-primary-foreground cursor-pointer font-sans"
                     >
                       Done
                     </Button>
                   </div>
                 ) : (
                   <div>
-                    <p className="text-sm font-sans text-foreground/90 leading-relaxed">{positioning}</p>
+                    <p className="text-body font-sans text-foreground/90 leading-relaxed">{positioning}</p>
                     {positioningEditedTime && (
-                      <p className="text-[10px] font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
+                      <p className="text-badge font-medium text-muted-foreground/75 uppercase tracking-wider font-sans pt-1">
                         {positioningEditedTime}
                       </p>
                     )}
@@ -594,14 +594,14 @@ export function StrategyReviewModal({
             <div className="lg:col-span-5 space-y-4">
               <div className="flex items-center justify-between pb-1">
                 <div>
-                  <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight font-heading">
+                  <h2 className="text-section-heading font-semibold text-foreground tracking-tight font-heading">
                     What we need from you
                   </h2>
-                  <p className="text-xs text-muted-foreground font-sans">
+                  <p className="text-caption text-muted-foreground font-sans">
                     Six quick choices — nothing to type
                   </p>
                 </div>
-                <span className="px-2.5 py-1 rounded-md text-[11px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 font-sans">
+                <span className="px-2.5 py-1 rounded-md text-badge font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 font-sans">
                   <span className="font-mono font-semibold">{remainingCount}</span> LEFT
                 </span>
               </div>
@@ -609,7 +609,7 @@ export function StrategyReviewModal({
               {/* Choice Card A: Name Display Form */}
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground font-heading">
+                  <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
                     NAME DISPLAY FORM
                   </span>
                   {nameDisplayForm && (
@@ -635,7 +635,7 @@ export function StrategyReviewModal({
                         key={variant.id}
                         type="button"
                         onClick={() => setNameDisplayForm(variant.label)}
-                        className={`px-3 py-2.5 rounded-lg border text-xs font-medium transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer font-sans ${
+                        className={`px-3 py-2.5 rounded-lg border text-caption font-medium transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer font-sans ${
                           isSelected
                             ? "border-primary bg-primary/10 text-foreground font-semibold shadow-2xs"
                             : "border-border/70 bg-card/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -648,7 +648,7 @@ export function StrategyReviewModal({
                   })}
                 </div>
 
-                <p className="text-xs text-muted-foreground font-sans">
+                <p className="text-caption text-muted-foreground font-sans">
                   How your name will be set in the logo.
                 </p>
               </div>
@@ -656,7 +656,7 @@ export function StrategyReviewModal({
               {/* Choice Card B: Brand Personality */}
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground font-heading">
+                  <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
                     BRAND PERSONALITY
                   </span>
                   {traits.length >= 3 && (
@@ -671,7 +671,7 @@ export function StrategyReviewModal({
                   {traits.map((trait) => (
                     <span
                       key={trait}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-primary/10 text-foreground border border-primary/25 font-sans"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-caption font-medium bg-primary/10 text-foreground border border-primary/25 font-sans"
                     >
                       <span>{trait}</span>
                       <button
@@ -691,7 +691,7 @@ export function StrategyReviewModal({
                       key={trait}
                       type="button"
                       onClick={() => handleAddTrait(trait)}
-                      className="px-2.5 py-1 rounded-md text-xs font-medium bg-card border border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer font-sans"
+                      className="px-2.5 py-1 rounded-md text-caption font-medium bg-card border border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer font-sans"
                     >
                       {trait}
                     </button>
@@ -711,13 +711,13 @@ export function StrategyReviewModal({
                             handleAddTrait(newTraitInput);
                           }
                         }}
-                        className="w-20 rounded-md border border-primary bg-background px-2 py-0.5 text-xs font-sans text-foreground focus:outline-none"
+                        className="w-20 rounded-md border border-primary bg-background px-2 py-0.5 text-caption font-sans text-foreground focus:outline-none"
                         autoFocus
                       />
                       <button
                         type="button"
                         onClick={() => handleAddTrait(newTraitInput)}
-                        className="p-1 rounded bg-primary text-primary-foreground text-xs"
+                        className="p-1 rounded bg-primary text-primary-foreground text-caption cursor-pointer"
                       >
                         <Plus className="size-3" />
                       </button>
@@ -726,14 +726,14 @@ export function StrategyReviewModal({
                     <button
                       type="button"
                       onClick={() => setShowAddTraitInput(true)}
-                      className="px-2.5 py-1 rounded-md text-xs font-medium border border-dashed border-border/90 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer font-sans"
+                      className="px-2.5 py-1 rounded-md text-caption font-medium border border-dashed border-border/90 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer font-sans"
                     >
                       + Add your own
                     </button>
                   )}
                 </div>
 
-                <p className="text-xs text-muted-foreground font-sans">
+                <p className="text-caption text-muted-foreground font-sans">
                   Pick <span className="font-mono font-medium text-foreground">3</span>-<span className="font-mono font-medium text-foreground">5</span>. This is the strongest signal for how your brand looks.
                 </p>
               </div>
@@ -741,7 +741,7 @@ export function StrategyReviewModal({
               {/* Choice Card C: Tone */}
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground font-heading">
+                  <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
                     TONE
                   </span>
                   {toneScale && (
@@ -752,7 +752,7 @@ export function StrategyReviewModal({
                 </div>
 
                 <div className="space-y-2 pt-1">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground font-sans">
+                  <div className="flex items-center justify-between text-caption text-muted-foreground font-sans">
                     <span className={toneScale <= 2 ? "text-foreground font-semibold" : ""}>Formal</span>
                     <span className={toneScale >= 4 ? "text-foreground font-semibold" : ""}>Casual</span>
                   </div>
@@ -783,7 +783,7 @@ export function StrategyReviewModal({
                   </div>
                 </div>
 
-                <p className="text-xs text-muted-foreground font-sans">
+                <p className="text-caption text-muted-foreground font-sans">
                   {targetAudience ? `Tailored for ${targetAudience}.` : "Calibrate how your brand speaks to your target audience."}
                 </p>
               </div>
@@ -791,7 +791,7 @@ export function StrategyReviewModal({
               {/* Choice Card D: First Place It Appears */}
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground font-heading">
+                  <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
                     FIRST PLACE IT APPEARS
                   </span>
                   {firstAppearance && (
@@ -810,7 +810,7 @@ export function StrategyReviewModal({
                         key={opt.id}
                         type="button"
                         onClick={() => setFirstAppearance(opt.id)}
-                        className={`h-11 px-3 rounded-lg border text-xs font-medium transition-all flex items-center gap-2 cursor-pointer font-sans ${
+                        className={`h-11 px-3 rounded-lg border text-caption font-medium transition-all flex items-center gap-2 cursor-pointer font-sans ${
                           isSelected
                             ? "border-primary bg-primary/10 text-foreground font-semibold shadow-2xs"
                             : "border-border/70 bg-card/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -829,8 +829,8 @@ export function StrategyReviewModal({
 
         {/* Modal Sticky Footer */}
         <div className="px-6 sm:px-8 py-4 border-t border-border/80 bg-card/90 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground font-sans">
-            <span className="font-mono text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+          <div className="flex items-center gap-2 text-caption text-muted-foreground font-sans">
+            <span className="font-mono text-badge font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
               <span className="font-mono font-semibold">0</span> CREDITS
             </span>
             <span>Refining strategy is free of charge. Everything cascades automatically.</span>
@@ -841,7 +841,7 @@ export function StrategyReviewModal({
               variant="outline"
               size="sm"
               onClick={onClose}
-              className="rounded-xl border-border/80 text-xs font-medium font-sans cursor-pointer"
+              className="rounded-xl border-border/80 text-button font-medium font-sans cursor-pointer"
             >
               Cancel
             </Button>
@@ -849,7 +849,7 @@ export function StrategyReviewModal({
               size="sm"
               onClick={handleSaveAndConfirm}
               disabled={isSubmitting || !businessName.trim()}
-              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium h-9 px-5 inline-flex items-center gap-2 cursor-pointer transition-all shadow-xs"
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-button font-medium h-9 px-5 inline-flex items-center gap-2 cursor-pointer transition-all shadow-xs font-sans"
             >
               {isSubmitting ? (
                 <>

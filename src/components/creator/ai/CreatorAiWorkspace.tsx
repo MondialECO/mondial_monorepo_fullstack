@@ -287,8 +287,8 @@ export function CreatorAiWorkspace() {
             {!clarifierId && !clarifierData ? (
               <ClarifierForm
                 isSubmitting={startClarifier.isPending}
-                cost={clarifierCost}
-                insufficientCredits={credits.data ? balance < clarifierCost : false}
+                cost={clarifierCost ?? undefined}
+                insufficientCredits={credits.data && clarifierCost != null ? balance < clarifierCost : false}
                 onSubmit={(rawIdea) =>
                   startClarifier.mutate(
                     { rawIdea },

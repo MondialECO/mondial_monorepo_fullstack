@@ -47,16 +47,16 @@ export function Phase3SetupShell({
         >
           <div className="space-y-1.5">
             {stepEyebrow && (
-              <span className="text-xs font-mono font-medium uppercase tracking-wider text-muted-foreground">
+              <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                 {stepEyebrow}
               </span>
             )}
-            <h1 className={cn("text-2xl sm:text-3xl font-bold tracking-tight text-foreground font-sans", titleClassName)}>
+            <h1 className={cn("text-page-heading font-bold tracking-tight text-foreground font-sans", titleClassName)}>
               {title}
             </h1>
             {description && (
               typeof description === "string" ? (
-                <p className={cn(headerAlign === "left" ? "text-xs font-sans text-muted-foreground pt-0.5" : "text-sm leading-7 text-muted-foreground sm:text-base", descriptionClassName)}>
+                <p className={cn(headerAlign === "left" ? "text-body font-sans text-muted-foreground pt-0.5" : "text-body leading-relaxed text-muted-foreground", descriptionClassName)}>
                   {description}
                 </p>
               ) : (

@@ -270,7 +270,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
           <button
             type="button"
             onClick={() => setExportError(null)}
-            className="hover:underline text-[11px] uppercase tracking-wider font-mono shrink-0 cursor-pointer"
+            className="hover:underline text-badge uppercase tracking-wider font-mono shrink-0 cursor-pointer"
           >
             Dismiss
           </button>
@@ -356,7 +356,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
           {/* Metadata Metric Row (4 columns split by vertical hairlines - Figma Node 57004:12057) */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:divide-x md:divide-border/60 text-xs">
             <div className="space-y-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
+              <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
                 CREATED
               </span>
               <p className="font-semibold font-mono text-foreground uppercase">
@@ -365,7 +365,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             </div>
 
             <div className="space-y-1 md:pl-6">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
+              <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
                 UPDATED
               </span>
               <p className="font-semibold font-mono text-foreground uppercase">
@@ -374,7 +374,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             </div>
 
             <div className="space-y-1 md:pl-6">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
+              <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
                 VERSION
               </span>
               <p className="font-semibold font-mono text-foreground uppercase">
@@ -383,7 +383,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             </div>
 
             <div className="space-y-1 md:pl-6">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
+              <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
                 ASSETS
               </span>
               <p className="font-semibold font-mono text-foreground uppercase">
@@ -404,7 +404,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             </h2>
 
             <div className="flex items-center gap-3">
-              <span className="px-2.5 py-0.5 rounded-full bg-muted text-[11px] font-mono font-semibold text-muted-foreground">
+              <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-mono font-semibold text-muted-foreground">
                 7 VARIATIONS
               </span>
               <button
@@ -443,7 +443,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             )}
 
             {/* Active Lockup Tag Pill */}
-            <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-md bg-background/90 backdrop-blur-xs border border-border/70 text-[10px] font-mono font-semibold shadow-xs">
+            <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-md bg-background/90 backdrop-blur-xs border border-border/70 text-badge font-mono font-semibold shadow-xs">
               {activeLockup.label} · SVG
             </div>
           </div>
@@ -492,7 +492,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                     </div>
                   </button>
 
-                  <span className="text-[10px] font-mono uppercase font-semibold text-muted-foreground tracking-wider">
+                  <span className="text-badge font-mono uppercase font-semibold text-muted-foreground tracking-wider">
                     {v.label}
                   </span>
                 </div>
@@ -512,10 +512,10 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             </h2>
 
             <div className="flex items-center gap-3">
-              <span className="px-2.5 py-0.5 rounded-full bg-muted text-[11px] font-mono font-semibold text-muted-foreground">
+              <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-mono font-semibold text-muted-foreground">
                 5 ROLES
               </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-[11px] font-mono font-medium flex items-center gap-1 border border-emerald-500/20">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-badge font-mono font-medium flex items-center gap-1 border border-emerald-500/20">
                 <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
                 <span>Contrast checked</span>
               </span>
@@ -549,7 +549,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                     <button
                       type="button"
                       onClick={() => handleCopyHex(hex)}
-                      className="px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-xs text-white text-[11px] font-mono font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 shadow-sm cursor-pointer"
+                      className="px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-xs text-white text-badge font-mono font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 shadow-sm cursor-pointer"
                       title="Copy HEX code"
                     >
                       {isCopied ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
@@ -576,12 +576,12 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                           {isCopied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
                         </button>
                       </div>
-                      <span className="text-[11px] font-mono text-muted-foreground block mt-0.5">
+                      <span className="text-badge font-mono text-muted-foreground block mt-0.5">
                         {color.rgb ? `RGB ${color.rgb.replace(/rgb\(|\)/g, "")}` : "RGB 0, 0, 0"}
                       </span>
                     </div>
 
-                    <p className="text-[11px] text-muted-foreground leading-relaxed pt-2 border-t border-border/50">
+                    <p className="text-caption text-muted-foreground leading-relaxed pt-2 border-t border-border/50">
                       {color.usageNote || "Design system token"}
                     </p>
                   </div>
@@ -602,10 +602,10 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             </h2>
 
             <div className="flex items-center gap-3">
-              <span className="px-2.5 py-0.5 rounded-full bg-muted text-[11px] font-mono font-semibold text-muted-foreground">
+              <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-mono font-semibold text-muted-foreground">
                 4 ROLES · 2 FAMILIES
               </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-[11px] font-mono font-medium flex items-center gap-1 border border-emerald-500/20">
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-badge font-mono font-medium flex items-center gap-1 border border-emerald-500/20">
                 <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
                 <span>Open licence</span>
               </span>
@@ -728,7 +728,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             {/* Left Column: BUSINESS NAME, AUDIENCE, POSITIONING */}
             <div className="space-y-6">
               <div className="space-y-1">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
+                <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
                   BUSINESS NAME
                 </span>
                 <p className="font-semibold font-mono text-foreground text-sm">
@@ -737,19 +737,19 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
               </div>
 
               <div className="space-y-1">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
+                <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
                   AUDIENCE
                 </span>
-                <p className="font-mono text-foreground leading-relaxed">
+                <p className="font-sans text-body text-foreground leading-relaxed">
                   {kit.strategy?.targetAudience?.value || "Freelancers and 2-10 person agencies who bill hourly."}
                 </p>
               </div>
 
               <div className="space-y-1">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
+                <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
                   POSITIONING
                 </span>
-                <p className="font-mono text-foreground leading-relaxed">
+                <p className="font-sans text-body text-foreground leading-relaxed">
                   {kit.strategy?.positioning?.value || "The invoicing tool that does the awkward follow-up for you."}
                 </p>
               </div>
@@ -758,16 +758,16 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             {/* Right Column: CONCEPT, INDUSTRY, PERSONALITY */}
             <div className="space-y-6">
               <div className="space-y-1">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
+                <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
                   CONCEPT
                 </span>
-                <p className="font-mono text-foreground leading-relaxed">
+                <p className="font-sans text-body text-foreground leading-relaxed">
                   {kit.strategy?.concept?.value || "Automated invoicing and payment chasing for freelance teams."}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
+                <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
                   INDUSTRY
                 </span>
                 <div>
@@ -778,7 +778,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
               </div>
 
               <div className="space-y-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
+                <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
                   PERSONALITY
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -809,7 +809,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
               Used by
             </h2>
 
-            <span className="px-2.5 py-0.5 rounded-full bg-muted text-[11px] font-mono font-semibold text-muted-foreground uppercase">
+            <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-mono font-semibold text-muted-foreground uppercase">
               {connectedCount} OF 4 CONNECTED
             </span>
           </div>
@@ -832,12 +832,12 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
 
                   <div>
                     {item.isApplied ? (
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-[10px] font-medium flex items-center gap-1 w-fit border border-emerald-500/20">
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-badge font-medium flex items-center gap-1 w-fit border border-emerald-500/20">
                         <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
                         <span>Applied</span>
                       </span>
                     ) : (
-                      <span className="text-[11px] font-sans text-muted-foreground">
+                      <span className="text-caption font-sans text-muted-foreground">
                         Not generated yet
                       </span>
                     )}
@@ -861,7 +861,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                   Brand assets
                 </h3>
               </div>
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-sans font-medium text-amber-700 dark:text-amber-400">
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-badge font-sans font-medium text-amber-700 dark:text-amber-400">
                 Coming soon
               </span>
             </div>
@@ -879,7 +879,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                   Brand guidelines PDF
                 </h3>
               </div>
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-sans font-medium text-amber-700 dark:text-amber-400">
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-badge font-sans font-medium text-amber-700 dark:text-amber-400">
                 Coming soon
               </span>
             </div>
@@ -901,7 +901,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                   Version History
                 </h2>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-muted text-[11px] font-mono font-semibold text-muted-foreground">
+              <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-mono font-semibold text-muted-foreground">
                 {kit.snapshots.length} SNAPSHOT{kit.snapshots.length > 1 ? "S" : ""}
               </span>
             </div>
@@ -916,7 +916,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                     <p className="font-semibold text-foreground">
                       {snap.description || `Snapshot #${idx + 1}`}
                     </p>
-                    <p className="text-[11px] font-mono text-muted-foreground">
+                    <p className="text-caption font-mono text-muted-foreground">
                       {new Date(snap.timestamp).toLocaleString("en-US", {
                         month: "short",
                         day: "numeric",

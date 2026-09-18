@@ -140,7 +140,7 @@ export function VariationTile({
         {/* Primary Green Pill Badge */}
         {isPrimary && (
           <div className="absolute top-3.5 right-3.5 z-10">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[10px] font-semibold tracking-wider uppercase">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-badge font-semibold tracking-wider uppercase">
               PRIMARY
             </span>
           </div>
@@ -149,7 +149,7 @@ export function VariationTile({
         {/* Transparent Alpha Pill Chip */}
         {isTransparentStage && (
           <div className="absolute top-3.5 right-3.5 z-10">
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-background/80 dark:bg-background/90 backdrop-blur-xs border border-border/60 text-muted-foreground font-sans text-[9px] font-semibold tracking-wider">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-background/80 dark:bg-background/90 backdrop-blur-xs border border-border/60 text-muted-foreground font-sans text-badge font-semibold tracking-wider">
               PNG · ALPHA
             </span>
           </div>
@@ -183,7 +183,7 @@ export function VariationTile({
               >
                 <RefreshCw className={`size-3.5 ${isRedrawing ? "animate-spin text-primary" : ""}`} />
               </button>
-              <div className="absolute right-0 top-full mt-1.5 hidden group-hover/btn:block z-30 whitespace-nowrap px-2 py-1 rounded bg-popover text-popover-foreground text-[11px] font-mono shadow-md border border-border">
+              <div className="absolute right-0 top-full mt-1.5 hidden group-hover/btn:block z-30 whitespace-nowrap px-2 py-1 rounded bg-popover text-popover-foreground text-badge font-mono shadow-md border border-border">
                 Redraw just this variation
               </div>
             </div>
@@ -215,7 +215,7 @@ export function VariationTile({
                     <img src={assetUri} alt="64px proof" className="size-full object-contain" />
                   )}
                 </div>
-                <span className="font-sans text-[9px] text-muted-foreground">64px</span>
+                <span className="font-sans text-badge text-muted-foreground">64px</span>
               </div>
 
               {/* 32px */}
@@ -226,7 +226,7 @@ export function VariationTile({
                     <img src={assetUri} alt="32px proof" className="size-full object-contain" />
                   )}
                 </div>
-                <span className="font-sans text-[9px] text-muted-foreground">32px</span>
+                <span className="font-sans text-badge text-muted-foreground">32px</span>
               </div>
 
               {/* 16px */}
@@ -237,7 +237,7 @@ export function VariationTile({
                     <img src={assetUri} alt="16px proof" className="size-full object-contain" />
                   )}
                 </div>
-                <span className="font-sans text-[9px] text-muted-foreground">16px</span>
+                <span className="font-sans text-badge text-muted-foreground">16px</span>
               </div>
             </div>
           </div>
@@ -263,16 +263,16 @@ export function VariationTile({
       <div className="p-4 flex flex-col justify-between bg-card text-card-foreground">
         {/* Title + Ratio Badge */}
         <div className="flex items-center gap-2">
-          <span className="font-sans text-[11px] font-bold text-foreground tracking-wider uppercase">
+          <span className="font-sans text-badge font-bold text-foreground tracking-wider uppercase">
             {meta.title}
           </span>
-          <span className="font-sans text-[10px] text-muted-foreground bg-muted/70 px-1.5 py-0.2 rounded border border-border/60">
+          <span className="font-sans text-badge text-muted-foreground bg-muted/70 px-1.5 py-0.2 rounded border border-border/60">
             {meta.aspectRatio}
           </span>
         </div>
 
         {/* Subtitle / Usage line */}
-        <p className="font-mono text-[13px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+        <p className="font-sans text-caption text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
           {meta.subtitle}
         </p>
       </div>

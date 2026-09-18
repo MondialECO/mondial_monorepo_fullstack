@@ -168,7 +168,7 @@ const LOGO_TYPE_OPTIONS: LogoTypeOption[] = [
           <span className="font-heading text-base font-bold text-foreground tracking-tight">
             {brandName || "Northline"}
           </span>
-          <span className="text-[9px] text-muted-foreground font-mono tracking-widest uppercase">
+          <span className="text-footnote text-muted-foreground font-mono tracking-widest uppercase">
             STUDIO
           </span>
         </div>
@@ -363,7 +363,7 @@ export function LogoTypeChooserModal({
             <div className="flex flex-wrap items-center gap-5 sm:gap-8">
               {/* Context 1: Your Name */}
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                <span className="text-footnote font-semibold text-muted-foreground uppercase tracking-wider font-mono">
                   YOUR NAME
                 </span>
                 <span className="text-xs sm:text-sm font-semibold text-foreground font-sans">
@@ -373,7 +373,7 @@ export function LogoTypeChooserModal({
 
               {/* Context 2: First Appears On */}
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                <span className="text-footnote font-semibold text-muted-foreground uppercase tracking-wider font-mono">
                   FIRST APPEARS ON
                 </span>
                 <span className="text-xs sm:text-sm font-semibold text-foreground font-sans capitalize">
@@ -383,7 +383,7 @@ export function LogoTypeChooserModal({
 
               {/* Context 3: Direction */}
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider font-mono">
+                <span className="text-footnote font-semibold text-muted-foreground uppercase tracking-wider font-mono">
                   DIRECTION
                 </span>
                 <span className="text-xs sm:text-sm font-semibold text-foreground font-sans">
@@ -440,7 +440,7 @@ export function LogoTypeChooserModal({
                         <h3 className="text-base sm:text-lg font-heading font-semibold text-foreground tracking-tight">
                           {option.name}
                         </h3>
-                        <p className="text-xs sm:text-[13px] font-sans text-muted-foreground mt-1 leading-relaxed">
+                        <p className="text-caption font-sans text-muted-foreground mt-1 leading-relaxed">
                           {option.explanation}
                         </p>
                       </div>
@@ -466,7 +466,7 @@ export function LogoTypeChooserModal({
                     <div className="pt-3 border-t border-border/50 space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
                         <span
-                          className={`font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badgeStyle}`}
+                          className={`font-mono text-badge font-semibold px-2 py-0.5 rounded-full border ${badgeStyle}`}
                         >
                           {fit.badgeLabel}
                         </span>
@@ -480,7 +480,7 @@ export function LogoTypeChooserModal({
                           {isSelected ? "Selected" : "Select"}
                         </span>
                       </div>
-                      <p className="text-[11px] font-sans text-muted-foreground leading-relaxed">
+                      <p className="text-caption font-sans text-muted-foreground leading-relaxed">
                         {fit.reason}
                       </p>
                     </div>

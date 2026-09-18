@@ -48,7 +48,7 @@ export function MultiScaleIconViewer({
                 />
               ) : null}
             </div>
-            <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+            <span className="text-badge font-mono text-muted-foreground tabular-nums">
               {label}
             </span>
           </div>

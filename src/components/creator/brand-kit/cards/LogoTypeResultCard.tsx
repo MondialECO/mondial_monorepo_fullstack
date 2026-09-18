@@ -41,13 +41,13 @@ export function LogoTypeResultCard({ logo, onEdit }: LogoTypeResultCardProps) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-semibold text-primary uppercase tracking-wider">
+              <span className="font-mono text-badge font-semibold text-primary uppercase tracking-wider">
                 STEP 3
               </span>
-              <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground font-medium">Logo Type Archetype</span>
+              <span className="text-badge text-muted-foreground">•</span>
+              <span className="text-caption text-muted-foreground font-medium">Logo Type Archetype</span>
             </div>
-            <h3 className="text-base font-bold text-foreground tracking-tight">
+            <h3 className="text-card-title font-bold text-foreground tracking-tight">
               {formattedType}
             </h3>
           </div>
@@ -59,7 +59,7 @@ export function LogoTypeResultCard({ logo, onEdit }: LogoTypeResultCardProps) {
             e.stopPropagation();
             onEdit?.();
           }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-button font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
         >
           <Edit3 className="size-3.5" />
           Review & Edit
@@ -72,10 +72,10 @@ export function LogoTypeResultCard({ logo, onEdit }: LogoTypeResultCardProps) {
             <Compass className="size-5" />
           </div>
           <div>
-            <span className="text-xs font-semibold text-foreground">
+            <span className="text-body font-semibold text-foreground">
               Selected Family: {formattedType}
             </span>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               Directs parametric geometry generation across the 6 candidate concept models.
             </p>
           </div>

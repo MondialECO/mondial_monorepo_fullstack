@@ -24,7 +24,7 @@ export function MicroScaleViewer({ markUri, conceptName }: MicroScaleViewerProps
               className="size-full object-contain"
             />
           </div>
-          <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+          <span className="text-badge font-mono text-muted-foreground tabular-nums">
             16×16px
           </span>
         </div>
@@ -50,12 +50,12 @@ export function MicroScaleViewer({ markUri, conceptName }: MicroScaleViewerProps
               className="size-full object-contain relative z-10 filter drop-shadow-2xs"
             />
           </div>
-          <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+          <span className="text-badge font-mono text-muted-foreground tabular-nums">
             4× Inspection
           </span>
         </div>
       </div>
-      <p className="text-[11px] text-muted-foreground text-center">
+      <p className="text-caption text-muted-foreground text-center">
         Micro-scale favicon and taskbar legibility preview
       </p>
     </div>

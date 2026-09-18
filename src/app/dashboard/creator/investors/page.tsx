@@ -96,7 +96,7 @@ function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
 export default function InvestorsPage() {
   const router = useRouter();
   const { state: { activeIdeaId } } = useCreatorProgress();
-  const [data, setData] = useState<{ featured?: SmartMatch; qualified: SmartMatch[]; isEmpty: boolean; matchingTip?: string } | null>(null);
+  const [data, setData] = useState<{ featured?: SmartMatch | null; qualified: SmartMatch[]; isEmpty: boolean; matchingTip?: string } | null>(null);
   const [readiness, setReadiness] = useState<CreatorReadiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

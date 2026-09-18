@@ -38,11 +38,11 @@ export function ModalWorkflowHeader({
       {/* Top Header Row */}
       <div className="flex items-start justify-between gap-4 pb-4">
         <div className="space-y-1.5 max-w-2xl">
-          <h1 className="text-2xl sm:text-[26px] font-semibold tracking-tight text-foreground font-heading">
+          <h1 className="text-page-heading font-semibold tracking-tight text-foreground font-heading">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-sm text-muted-foreground font-sans leading-relaxed">
+            <p className="text-caption text-muted-foreground font-sans leading-relaxed">
               {subtitle}
             </p>
           )}
@@ -52,7 +52,7 @@ export function ModalWorkflowHeader({
           {headerActions}
 
           {/* Step Counter Pill (Strict Digit Monospace Isolation) */}
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-muted/80 text-foreground/80 border border-border/70 font-sans">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-badge font-medium bg-muted/80 text-foreground/80 border border-border/70 font-sans">
             STEP{" "}
             <span className="font-mono font-semibold text-foreground mx-1">
               {currentStep}
@@ -100,7 +100,7 @@ export function ModalWorkflowHeader({
 
               {/* Step Label with Status Icon */}
               <div
-                className={`flex items-center justify-center gap-1 text-[11px] sm:text-xs font-medium transition-colors font-sans truncate ${
+                className={`flex items-center justify-center gap-1 text-badge font-medium transition-colors font-sans truncate ${
                   isCurrent
                     ? "text-foreground font-semibold"
                     : isComplete

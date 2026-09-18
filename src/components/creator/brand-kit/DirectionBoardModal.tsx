@@ -460,14 +460,14 @@ export function DirectionBoardModal({
               </Button>
 
               {/* Dynamic CREDITS chip */}
-              <span className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/60">
+              <span className="inline-flex items-center gap-1 font-mono text-badge font-semibold text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/60">
                 <Sparkles className="size-3 text-primary" />
                 {isCostLoading ? "..." : isCostError || directionCost == null ? "—" : `${directionCost} CREDITS`}
               </span>
 
               {/* Amber Cap Badge */}
               <span
-                className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 tabular-nums shrink-0"
+                className="inline-flex items-center gap-1 font-mono text-badge font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 tabular-nums shrink-0"
                 title={`${remainingCap} of 3 regenerations left`}
               >
                 {`${remainingCap}/3 LEFT`}
@@ -479,7 +479,7 @@ export function DirectionBoardModal({
         {/* Section - Visual direction filters (Figma Node 57012:9066) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 sm:px-8 py-3.5 border-b border-border/70 bg-muted/15 shrink-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-semibold text-muted-foreground tracking-wider uppercase font-sans pr-1">
+            <span className="text-badge font-semibold text-muted-foreground tracking-wider uppercase font-sans pr-1">
               SHOW ME
             </span>
             <button
@@ -541,7 +541,7 @@ export function DirectionBoardModal({
               <span className="font-medium">{error.message}</span>
             </div>
             {error.type === "credits" && (
-              <span className="text-[11px] opacity-80 font-medium">(Credit top-ups are currently unavailable)</span>
+              <span className="text-caption opacity-80 font-medium">(Credit top-ups are currently unavailable)</span>
             )}
           </div>
         )}
@@ -647,7 +647,7 @@ export function DirectionBoardModal({
                     >
                       {/* Top Row: Specimen Tag & Pinned Check Badge */}
                       <div className="relative z-10 flex items-center justify-between">
-                        <span className="font-mono text-[10px] tracking-wider uppercase font-semibold opacity-75">
+                        <span className="font-mono text-badge tracking-wider uppercase font-semibold opacity-75">
                           {specimenTag}
                         </span>
 
@@ -694,7 +694,7 @@ export function DirectionBoardModal({
                         </div>
 
                         <div className="text-right shrink-0">
-                          <span className="font-mono text-[11px] font-medium tracking-wider uppercase opacity-90 block">
+                          <span className="font-mono text-badge font-medium tracking-wider uppercase opacity-90 block">
                             {specimenSub}
                           </span>
                         </div>
@@ -722,7 +722,7 @@ export function DirectionBoardModal({
                             {candidate.name}
                           </h3>
                           {isSelected && (
-                            <span className="font-sans text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wider">
+                            <span className="font-sans text-badge font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wider">
                               ACTIVE SELECTION
                             </span>
                           )}
@@ -735,10 +735,10 @@ export function DirectionBoardModal({
 
                         {/* WHY THIS FITS section */}
                         <div className="pt-3 border-t border-border/50 space-y-1">
-                          <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground block">
+                          <span className="text-badge font-mono font-semibold uppercase tracking-wider text-muted-foreground block">
                             WHY THIS FITS
                           </span>
-                          <p className="text-[13px] font-sans text-foreground/80 leading-relaxed">
+                          <p className="text-body font-sans text-foreground/80 leading-relaxed">
                             {candidate.rationale}
                           </p>
                         </div>
@@ -791,11 +791,11 @@ export function DirectionBoardModal({
                   <span className="font-heading text-xs font-bold text-foreground">
                     Fine-tune Selected Direction ({selectedCandidate.name})
                   </span>
-                  <span className="text-[10px] font-mono uppercase bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full font-semibold border border-emerald-500/20">
+                  <span className="text-badge font-mono uppercase bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full font-semibold border border-emerald-500/20">
                     Free / No Credits
                   </span>
                 </div>
-                <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                <span className="text-caption text-muted-foreground hidden sm:inline">
                   Adjustments do not count against your 3/3 regenerate cap
                 </span>
               </div>
@@ -803,7 +803,7 @@ export function DirectionBoardModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
                 {/* Palette Variant */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono font-medium text-muted-foreground">
+                  <label className="text-caption font-mono font-medium text-muted-foreground">
                     Palette Variant
                   </label>
                   <div className="grid grid-cols-3 gap-1">
@@ -831,7 +831,7 @@ export function DirectionBoardModal({
 
                 {/* Contrast Position */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono font-medium text-muted-foreground">
+                  <label className="text-caption font-mono font-medium text-muted-foreground">
                     Contrast Balance
                   </label>
                   <div className="grid grid-cols-3 gap-1">
@@ -859,7 +859,7 @@ export function DirectionBoardModal({
 
                 {/* Type Weight */}
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono font-medium text-muted-foreground">
+                  <label className="text-caption font-mono font-medium text-muted-foreground">
                     Display Weight
                   </label>
                   <div className="grid grid-cols-3 gap-1">

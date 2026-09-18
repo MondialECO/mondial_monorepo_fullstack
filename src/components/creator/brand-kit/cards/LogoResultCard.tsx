@@ -35,13 +35,13 @@ export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResult
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-semibold text-primary uppercase tracking-wider">
+              <span className="font-mono text-badge font-semibold text-primary uppercase tracking-wider">
                 STEP 4
               </span>
-              <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground font-medium">Brand Logo & Variations</span>
+              <span className="text-badge text-muted-foreground">•</span>
+              <span className="text-caption text-muted-foreground font-medium">Brand Logo & Variations</span>
             </div>
-            <h3 className="text-base font-bold text-foreground tracking-tight">
+            <h3 className="text-card-title font-bold text-foreground tracking-tight">
               {concept?.descriptorLine || "Approved Vector Mark"}
             </h3>
           </div>
@@ -53,7 +53,7 @@ export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResult
             e.stopPropagation();
             onEdit?.();
           }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-button font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
         >
           <Edit3 className="size-3.5" />
           {isApproved ? "Review Variations" : "Continue Selection"}
@@ -72,23 +72,23 @@ export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResult
               className="max-h-full max-w-full object-contain"
             />
           ) : (
-            <span className="text-xs text-muted-foreground">Logo Asset</span>
+            <span className="text-caption text-muted-foreground">Logo Asset</span>
           )}
         </div>
 
         <div className="flex flex-col gap-1.5 flex-1">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-semibold font-mono">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-badge font-semibold font-mono">
               <Layers className="size-3" />
               {variationCount >= 7 ? "7/7 VARIATIONS DERIVED" : "CONCEPT SELECTED"}
             </span>
             {isApproved && (
-              <span className="text-[11px] text-emerald-600 font-medium">
+              <span className="text-caption text-emerald-600 font-medium">
                 • Production Approved
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
+          <p className="text-body text-muted-foreground leading-relaxed">
             {isApproved
               ? "All 7 canonical formats (Primary, Horizontal, Stacked, Icon Only, Black, White, Transparent) verified and synced to Project Branding."
               : "Concept selected. Open Variations review to finalize full 7-asset production set."}

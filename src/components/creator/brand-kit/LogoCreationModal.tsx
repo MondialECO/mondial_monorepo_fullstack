@@ -101,9 +101,9 @@ export function LogoCreationModal({
     // If initialKit is already provided with 6 concepts, populate state directly
     if (initialKit && (initialKit.logo?.concepts?.length ?? 0) >= 6) {
       setKit(initialKit);
-      setConcepts(initialKit.logo!.concepts);
+      setConcepts(initialKit.logo!.concepts!);
       setSelectedConceptKey(
-        initialKit.logo?.selectedConceptKey || initialKit.logo!.concepts[0].key
+        initialKit.logo?.selectedConceptKey || initialKit.logo!.concepts![0].key
       );
       return;
     }
@@ -392,7 +392,7 @@ export function LogoCreationModal({
               </Button>
 
               <span
-                className={`inline-flex items-center gap-1 font-mono text-[10px] font-semibold px-2 py-0.5 rounded-full border tabular-nums shrink-0 ${
+                className={`inline-flex items-center gap-1 font-mono text-badge font-semibold px-2 py-0.5 rounded-full border tabular-nums shrink-0 ${
                   isBatchCapExhausted
                     ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
                     : "bg-muted text-muted-foreground border-border/60"
@@ -409,7 +409,7 @@ export function LogoCreationModal({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 sm:px-8 py-2.5 border-b border-border/70 bg-muted/15 shrink-0">
           {/* Left: SHOW AS chips */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-semibold text-muted-foreground tracking-wider uppercase font-mono pr-1">
+            <span className="text-footnote font-semibold text-muted-foreground tracking-wider uppercase font-mono pr-1">
               SHOW AS
             </span>
             <button
@@ -467,7 +467,7 @@ export function LogoCreationModal({
               <span>{isCompareMode ? "Exit compare" : "Compare two"}</span>
             </Button>
 
-            <span className="font-mono text-[10px] font-semibold bg-muted/60 text-muted-foreground px-2 py-0.5 rounded border border-border/60 uppercase">
+            <span className="font-mono text-badge font-semibold bg-muted/60 text-muted-foreground px-2 py-0.5 rounded border border-border/60 uppercase">
               6 CONCEPTS
             </span>
           </div>
@@ -481,7 +481,7 @@ export function LogoCreationModal({
               <span className="font-medium">{globalError.message}</span>
             </div>
             {globalError.type === "credits" && (
-              <span className="text-[11px] opacity-80 font-medium">(Credit top-ups are currently unavailable)</span>
+              <span className="text-footnote opacity-80 font-medium">(Credit top-ups are currently unavailable)</span>
             )}
           </div>
         )}

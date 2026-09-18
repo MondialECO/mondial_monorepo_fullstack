@@ -232,7 +232,7 @@ export default function BusinessModelPage() {
                     : `Generation cost: ${businessModelCost} credits.`}
                 </p>
                 {modelError && (
-                  <p className="text-[11px] text-muted-foreground font-mono">
+                  <p className="text-badge text-muted-foreground font-mono">
                     Detail: {modelError}
                   </p>
                 )}
@@ -343,11 +343,11 @@ export default function BusinessModelPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-border">
                 {/* Column 1: Key Partners (Full Height) */}
                 <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
-                  <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                  <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                     Key Partners
                   </h4>
                   {canvas?.keyPartners && canvas.keyPartners.length > 0 ? (
-                    <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
+                    <ul className="text-body text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
                       {canvas.keyPartners.map((item, idx) => (
                         <li key={idx} className="break-words">
                           {item}
@@ -355,7 +355,7 @@ export default function BusinessModelPage() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                    <p className="text-caption text-muted-foreground italic font-sans">None defined</p>
                   )}
                 </div>
 
@@ -363,11 +363,11 @@ export default function BusinessModelPage() {
                 <div className="flex flex-col divide-y divide-border min-w-0">
                   {/* Key Activities */}
                   <div className="p-5 flex-1 space-y-3 min-w-0">
-                    <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                    <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                       Key Activities
                     </h4>
                     {canvas?.keyActivities && canvas.keyActivities.length > 0 ? (
-                      <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
+                      <ul className="text-body text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
                         {canvas.keyActivities.map((item, idx) => (
                           <li key={idx} className="break-words">
                             {item}
@@ -375,17 +375,17 @@ export default function BusinessModelPage() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                      <p className="text-caption text-muted-foreground italic font-sans">None defined</p>
                     )}
                   </div>
 
                   {/* Key Resources */}
                   <div className="p-5 flex-1 space-y-3 min-w-0">
-                    <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                    <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                       Key Resources
                     </h4>
                     {canvas?.keyResources && canvas.keyResources.length > 0 ? (
-                      <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
+                      <ul className="text-body text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
                         {canvas.keyResources.map((item, idx) => (
                           <li key={idx} className="break-words">
                             {item}
@@ -393,14 +393,14 @@ export default function BusinessModelPage() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                      <p className="text-caption text-muted-foreground italic font-sans">None defined</p>
                     )}
                   </div>
                 </div>
 
                 {/* Column 3: Value Propositions (Full Height, Blue Left Border & Heavier Weight) */}
                 <div className="p-5 flex flex-col justify-start space-y-3 border-l-2 border-primary bg-card/60 relative min-w-0">
-                  <h4 className="text-[10px] font-semibold uppercase tracking-wider text-primary font-sans">
+                  <h4 className="text-label font-semibold uppercase tracking-wider text-primary font-sans">
                     Value Propositions
                   </h4>
 
@@ -408,14 +408,14 @@ export default function BusinessModelPage() {
                     <div className="space-y-4">
                       {canvas.valuePropositions.map((vp, idx) => (
                         <div key={idx} className="space-y-1">
-                          <h5 className="text-[13px] font-medium text-foreground leading-snug font-sans break-words">
+                          <h5 className="text-body font-medium text-foreground leading-snug font-sans break-words">
                             {vp.headline}
                           </h5>
-                          <p className="text-[12px] text-muted-foreground leading-relaxed font-sans break-words">
+                          <p className="text-caption text-muted-foreground leading-relaxed font-sans break-words">
                             {vp.details}
                           </p>
                           {vp.marketStudyFootnote && (
-                            <div className="text-[10px] text-muted-foreground font-mono pt-1 break-words">
+                            <div className="text-footnote text-muted-foreground font-mono pt-1 break-words">
                               ← {vp.marketStudyFootnote}
                             </div>
                           )}
@@ -423,12 +423,12 @@ export default function BusinessModelPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                    <p className="text-caption text-muted-foreground italic font-sans">None defined</p>
                   )}
 
                   {/* Quiet Footnote at bottom */}
                   {(!canvas?.valuePropositions?.some((v) => v.marketStudyFootnote)) && (
-                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4 break-words">
+                    <div className="text-footnote text-muted-foreground font-mono mt-auto pt-4 break-words">
                       ← 3.1 §4
                     </div>
                   )}
@@ -438,11 +438,11 @@ export default function BusinessModelPage() {
                 <div className="flex flex-col divide-y divide-border min-w-0">
                   {/* Customer Relationships */}
                   <div className="p-5 flex-1 space-y-3 min-w-0">
-                    <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                    <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                       Customer Relationships
                     </h4>
                     {canvas?.customerRelationships && canvas.customerRelationships.length > 0 ? (
-                      <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
+                      <ul className="text-body text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
                         {canvas.customerRelationships.map((item, idx) => (
                           <li key={idx} className="break-words">
                             {item}
@@ -450,17 +450,17 @@ export default function BusinessModelPage() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                      <p className="text-caption text-muted-foreground italic font-sans">None defined</p>
                     )}
                   </div>
 
                   {/* Channels */}
                   <div className="p-5 flex-1 space-y-3 min-w-0">
-                    <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                    <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                       Channels
                     </h4>
                     {canvas?.channels && canvas.channels.length > 0 ? (
-                      <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
+                      <ul className="text-body text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
                         {canvas.channels.map((item, idx) => (
                           <li key={idx} className="break-words">
                             {item}
@@ -468,25 +468,25 @@ export default function BusinessModelPage() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                      <p className="text-caption text-muted-foreground italic font-sans">None defined</p>
                     )}
                   </div>
                 </div>
 
                 {/* Column 5: Customer Segments (Full Height) */}
                 <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
-                  <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                  <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                     Customer Segments
                   </h4>
                   {canvas?.customerSegments && canvas.customerSegments.length > 0 ? (
                     <div className="space-y-3">
                       {canvas.customerSegments.map((seg, idx) => (
                         <div key={idx} className="space-y-0.5">
-                          <div className="text-[13px] text-foreground/90 font-sans break-words leading-snug">
+                          <div className="text-body text-foreground/90 font-sans break-words leading-snug">
                             {seg.segment}
                           </div>
                           {seg.marketStudyFootnote && (
-                            <div className="text-[10px] text-muted-foreground font-mono break-words">
+                            <div className="text-footnote text-muted-foreground font-mono break-words">
                               ← {seg.marketStudyFootnote}
                             </div>
                           )}
@@ -494,12 +494,12 @@ export default function BusinessModelPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                    <p className="text-caption text-muted-foreground italic font-sans">None defined</p>
                   )}
 
                   {/* Quiet Footnote at bottom */}
                   {(!canvas?.customerSegments?.some((s) => s.marketStudyFootnote)) && (
-                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4 break-words">
+                    <div className="text-footnote text-muted-foreground font-mono mt-auto pt-4 break-words">
                       ← 3.1 §2
                     </div>
                   )}
@@ -510,11 +510,11 @@ export default function BusinessModelPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border border-t border-border">
                 {/* Cost Structure */}
                 <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
-                  <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                  <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                     Cost Structure
                   </h4>
                   {canvas?.costStructure && canvas.costStructure.length > 0 ? (
-                    <ul className="text-[13px] text-foreground/90 space-y-2 leading-relaxed font-sans list-disc pl-4">
+                    <ul className="text-body text-foreground/90 space-y-2 leading-relaxed font-sans list-disc pl-4">
                       {canvas.costStructure.map((item, idx) => (
                         <li key={idx} className="break-words">
                           {item}
@@ -522,24 +522,24 @@ export default function BusinessModelPage() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                    <p className="text-caption text-muted-foreground italic font-sans">None defined</p>
                   )}
                 </div>
 
                 {/* Revenue Streams */}
                 <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
-                  <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                  <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                     Revenue Streams
                   </h4>
                   {canvas?.revenueStreams && canvas.revenueStreams.length > 0 ? (
                     <div className="space-y-2.5">
                       {canvas.revenueStreams.map((rev, idx) => (
                         <div key={idx} className="space-y-0.5">
-                          <div className="text-[13px] text-foreground/90 font-sans break-words leading-snug">
+                          <div className="text-body text-foreground/90 font-sans break-words leading-snug">
                             {rev.stream}
                           </div>
                           {rev.marketStudyFootnote && (
-                            <div className="text-[10px] text-muted-foreground font-mono break-words">
+                            <div className="text-footnote text-muted-foreground font-mono break-words">
                               ← {rev.marketStudyFootnote}
                             </div>
                           )}
@@ -547,12 +547,12 @@ export default function BusinessModelPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                    <p className="text-caption text-muted-foreground italic font-sans">None defined</p>
                   )}
 
                   {/* Quiet Footnote at bottom */}
                   {(!canvas?.revenueStreams?.some((r) => r.marketStudyFootnote)) && (
-                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4 break-words">
+                    <div className="text-footnote text-muted-foreground font-mono mt-auto pt-4 break-words">
                       ← 3.1 §1
                     </div>
                   )}
@@ -568,7 +568,7 @@ export default function BusinessModelPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-border">
                   {/* Metric 1: ARPU */}
                   <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
+                    <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans break-words">
                       ARPU
                     </span>
                     <div className="flex items-baseline gap-1 flex-wrap">
@@ -579,66 +579,66 @@ export default function BusinessModelPage() {
                         / mo
                       </span>
                     </div>
-                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
+                    <span className="text-caption text-muted-foreground font-sans block break-words leading-snug">
                       {unitEconomics.arpu?.period ? `Tier mix ${unitEconomics.arpu.period}` : 'Tier mix 60-30-10'}
                     </span>
                   </div>
 
                   {/* Metric 2: CAC */}
                   <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
+                    <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans break-words">
                       CAC
                     </span>
                     <div className="text-2xl font-bold font-mono text-foreground tracking-tight break-all">
                       {formatCurrencyAmount(unitEconomics.cac?.amount, unitEconomics.cac?.currency)}
                     </div>
-                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
+                    <span className="text-caption text-muted-foreground font-sans block break-words leading-snug">
                       {unitEconomics.cac?.isModelled ? 'Blended, self-serve + content' : 'Baseline acquisition'}
                     </span>
                   </div>
 
                   {/* Metric 3: LTV */}
                   <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
+                    <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans break-words">
                       LTV
                     </span>
                     <div className="text-2xl font-bold font-mono text-foreground tracking-tight break-all">
                       {formatCurrencyAmount(unitEconomics.ltv?.amount, unitEconomics.ltv?.currency)}
                     </div>
-                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
+                    <span className="text-caption text-muted-foreground font-sans block break-words leading-snug">
                       22-mo avg retention
                     </span>
                   </div>
 
                   {/* Metric 4: LTV:CAC (Only figure in GREEN) */}
                   <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
+                    <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans break-words">
                       LTV:CAC
                     </span>
                     <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight break-all">
                       {unitEconomics.ltvToCacRatio !== undefined ? `${unitEconomics.ltvToCacRatio.toFixed(1)}x` : '—'}
                     </div>
-                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
+                    <span className="text-caption text-muted-foreground font-sans block break-words leading-snug">
                       Healthy above 3x
                     </span>
                   </div>
 
                   {/* Metric 5: PAYBACK */}
                   <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
+                    <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans break-words">
                       PAYBACK
                     </span>
                     <div className="text-2xl font-bold font-mono text-foreground tracking-tight break-all">
                       {unitEconomics.paybackPeriodMonths !== undefined ? `${unitEconomics.paybackPeriodMonths} mo` : '—'}
                     </div>
-                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
+                    <span className="text-caption text-muted-foreground font-sans block break-words leading-snug">
                       Gross-margin adjusted
                     </span>
                   </div>
                 </div>
 
                 {/* Muted caption stating figures are modelled rather than validated */}
-                <div className="pt-3 border-t border-border/50 text-[11px] text-muted-foreground font-sans break-words leading-relaxed">
+                <div className="pt-3 border-t border-border/50 text-caption text-muted-foreground font-sans break-words leading-relaxed">
                   Modelled from pricing assumptions — not yet validated against real customers.
                 </div>
               </div>
@@ -652,10 +652,10 @@ export default function BusinessModelPage() {
               <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
                 {/* Card Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-border">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground font-sans">
+                  <h3 className="text-card-title font-semibold uppercase tracking-wider text-foreground font-sans">
                     Revenue Model Detail
                   </h3>
-                  <span className="text-[11px] font-mono text-muted-foreground">
+                  <span className="text-badge font-mono text-muted-foreground">
                     EUR (€)
                   </span>
                 </div>
@@ -663,37 +663,37 @@ export default function BusinessModelPage() {
                 {/* Table with natural wrapping on long target segments, tier names and feature lists */}
                 {output.revenueTiers && output.revenueTiers.length > 0 ? (
                   <div className="w-full">
-                    <table className="w-full text-left text-xs table-auto">
+                    <table className="w-full text-left text-body table-auto">
                       <thead>
-                        <tr className="border-b border-border text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
-                          <th className="pb-2.5 pr-3 font-medium">Tier</th>
-                          <th className="pb-2.5 pr-3 font-medium">Price</th>
-                          <th className="pb-2.5 pr-3 font-medium">Target Segment</th>
-                          <th className="pb-2.5 font-medium text-right whitespace-nowrap">% of Revenue</th>
+                        <tr className="border-b border-border text-table-header font-semibold uppercase tracking-wider text-muted-foreground font-sans">
+                          <th className="pb-2.5 pr-3 font-semibold">Tier</th>
+                          <th className="pb-2.5 pr-3 font-semibold">Price</th>
+                          <th className="pb-2.5 pr-3 font-semibold">Target Segment</th>
+                          <th className="pb-2.5 font-semibold text-right whitespace-nowrap">% of Revenue</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/60">
                         {output.revenueTiers.map((tier, idx) => (
                           <tr key={idx}>
                             <td className="py-3 pr-3 align-top">
-                              <div className="font-medium text-[13px] text-foreground font-sans break-words leading-snug">
+                              <div className="font-medium text-body text-foreground font-sans break-words leading-snug">
                                 {tier.tierName}
                               </div>
                               {tier.features && tier.features.length > 0 && (
-                                <div className="text-[11px] text-muted-foreground/80 font-sans mt-1 leading-relaxed break-words">
+                                <div className="text-caption text-muted-foreground/80 font-sans mt-1 leading-relaxed break-words">
                                   {tier.features.join(' · ')}
                                 </div>
                               )}
                             </td>
-                            <td className="py-3 pr-3 align-top font-mono font-medium text-[13px] text-foreground break-words leading-snug">
+                            <td className="py-3 pr-3 align-top font-mono font-medium text-body text-foreground break-words leading-snug">
                               {tier.pricing}
                             </td>
-                            <td className="py-3 pr-3 align-top text-[13px] text-muted-foreground font-sans break-words leading-relaxed">
+                            <td className="py-3 pr-3 align-top text-body text-muted-foreground font-sans break-words leading-relaxed">
                               {tier.targetSegment}
                             </td>
                             <td className="py-3 align-top text-right whitespace-nowrap">
                               <div className="inline-flex items-center justify-end gap-2">
-                                <span className="font-mono text-[13px] font-medium text-foreground">
+                                <span className="font-mono text-body font-medium text-foreground">
                                   {tier.projectedContributionPct !== undefined ? `${tier.projectedContributionPct}%` : '—'}
                                 </span>
                                 {tier.projectedContributionPct !== undefined && (
@@ -712,7 +712,7 @@ export default function BusinessModelPage() {
                     </table>
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground italic font-sans py-4">No pricing tiers defined.</p>
+                  <p className="text-caption text-muted-foreground italic font-sans py-4">No pricing tiers defined.</p>
                 )}
               </div>
 
@@ -720,10 +720,10 @@ export default function BusinessModelPage() {
               <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
                 {/* Card Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-border">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground font-sans">
+                  <h3 className="text-card-title font-semibold uppercase tracking-wider text-foreground font-sans">
                     Model Assumptions to Test
                   </h3>
-                  <span className="text-[11px] font-mono text-muted-foreground">
+                  <span className="text-badge font-mono text-muted-foreground">
                     {output.assumptions?.length ?? 0} ACTIVE
                   </span>
                 </div>
@@ -738,15 +738,15 @@ export default function BusinessModelPage() {
                       return (
                         <div
                           key={idx}
-                          className="flex items-start justify-between gap-3 text-xs leading-relaxed min-w-0"
+                          className="flex items-start justify-between gap-3 text-body leading-relaxed min-w-0"
                         >
                           <div className="flex items-start gap-2 min-w-0 flex-1">
-                            <span className="font-mono text-xs text-muted-foreground shrink-0 pt-0.5">
+                            <span className="font-mono text-badge text-muted-foreground shrink-0 pt-0.5">
                               {idx + 1}.
                             </span>
-                            <div className="text-[13px] text-foreground/90 font-sans break-words leading-relaxed min-w-0 flex-1">
+                            <div className="text-body text-foreground/90 font-sans break-words leading-relaxed min-w-0 flex-1">
                               {item.category && (
-                                <span className="font-mono text-[10px] uppercase font-semibold text-muted-foreground mr-1.5 break-words">
+                                <span className="font-mono text-footnote uppercase font-semibold text-muted-foreground mr-1.5 break-words">
                                   [{item.category}]
                                 </span>
                               )}
@@ -757,15 +757,15 @@ export default function BusinessModelPage() {
                           {/* Right-aligned mapped evidence label with design colors */}
                           <div className="shrink-0 pt-0.5 ml-2">
                             {isBenchmark ? (
-                              <span className="text-[11px] font-medium text-teal-600 dark:text-teal-400 font-sans whitespace-nowrap">
+                              <span className="text-badge font-medium text-teal-600 dark:text-teal-400 font-sans whitespace-nowrap">
                                 Benchmark-backed
                               </span>
                             ) : isModelled ? (
-                              <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 font-sans whitespace-nowrap">
+                              <span className="text-badge font-medium text-amber-600 dark:text-amber-400 font-sans whitespace-nowrap">
                                 Modelled
                               </span>
                             ) : (
-                              <span className="text-[11px] font-medium text-muted-foreground font-sans whitespace-nowrap">
+                              <span className="text-badge font-medium text-muted-foreground font-sans whitespace-nowrap">
                                 Untested
                               </span>
                             )}
@@ -775,7 +775,7 @@ export default function BusinessModelPage() {
                     })}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground italic font-sans py-4">No model assumptions registered.</p>
+                  <p className="text-caption text-muted-foreground italic font-sans py-4">No model assumptions registered.</p>
                 )}
               </div>
             </div>
@@ -787,7 +787,7 @@ export default function BusinessModelPage() {
               <button
                 type="button"
                 onClick={() => router.push('/dashboard/creator/phase-3/market-study')}
-                className="text-[13px] font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors font-sans"
+                className="text-body font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors font-sans"
               >
                 <ArrowLeft className="w-4 h-4" /> Market study
               </button>
@@ -795,7 +795,7 @@ export default function BusinessModelPage() {
               <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                 <Button
                   onClick={handleNext}
-                  className="gap-2 text-xs font-semibold px-6 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                  className="gap-2 text-button font-semibold px-6 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                 >
                   Continue to business plan <ArrowRight className="w-4 h-4" />
                 </Button>

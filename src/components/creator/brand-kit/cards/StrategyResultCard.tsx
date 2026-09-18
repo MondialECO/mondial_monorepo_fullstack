@@ -32,8 +32,8 @@ export function StrategyResultCard({ strategy, onEdit }: StrategyResultCardProps
             <CheckCircle2 className="size-3.5" />
           </div>
           <div>
-            <h3 className="font-heading text-sm font-semibold tracking-tight">Brand Strategy Foundations</h3>
-            <span className="text-[11px] font-mono text-muted-foreground">CONFIRMED · 6 PILLARS</span>
+            <h3 className="font-heading text-card-title font-semibold tracking-tight">Brand Strategy Foundations</h3>
+            <span className="text-badge font-mono text-muted-foreground">CONFIRMED · 6 PILLARS</span>
           </div>
         </div>
 
@@ -41,7 +41,7 @@ export function StrategyResultCard({ strategy, onEdit }: StrategyResultCardProps
           <button
             type="button"
             onClick={onEdit}
-            className="flex items-center gap-1 text-xs font-sans text-muted-foreground hover:text-primary transition-colors cursor-pointer px-2.5 py-1 rounded-lg hover:bg-muted"
+            className="flex items-center gap-1 text-button font-sans text-muted-foreground hover:text-primary transition-colors cursor-pointer px-2.5 py-1 rounded-lg hover:bg-muted"
           >
             <Edit3 className="size-3" />
             <span>Edit</span>
@@ -55,54 +55,54 @@ export function StrategyResultCard({ strategy, onEdit }: StrategyResultCardProps
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
             <Lightbulb className="size-3.5 text-primary" />
-            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Concept</span>
+            <span className="text-badge font-mono font-semibold uppercase tracking-wider">Concept</span>
           </div>
-          <p className="text-xs text-foreground font-medium line-clamp-2">{concept}</p>
+          <p className="text-body text-foreground font-medium line-clamp-2">{concept}</p>
         </div>
 
         {/* 2. Target Audience */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
             <Users className="size-3.5 text-blue-500" />
-            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Audience</span>
+            <span className="text-badge font-mono font-semibold uppercase tracking-wider">Audience</span>
           </div>
-          <p className="text-xs text-foreground font-medium line-clamp-2">{audience}</p>
+          <p className="text-body text-foreground font-medium line-clamp-2">{audience}</p>
         </div>
 
         {/* 3. Industry / Sector */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
             <Shield className="size-3.5 text-purple-500" />
-            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Industry</span>
+            <span className="text-badge font-mono font-semibold uppercase tracking-wider">Industry</span>
           </div>
-          <p className="text-xs text-foreground font-medium line-clamp-2">{industry}</p>
+          <p className="text-body text-foreground font-medium line-clamp-2">{industry}</p>
         </div>
 
         {/* 4. Market Positioning */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
             <Target className="size-3.5 text-amber-500" />
-            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Positioning</span>
+            <span className="text-badge font-mono font-semibold uppercase tracking-wider">Positioning</span>
           </div>
-          <p className="text-xs text-foreground font-medium line-clamp-2">{positioning}</p>
+          <p className="text-body text-foreground font-medium line-clamp-2">{positioning}</p>
         </div>
 
         {/* 5. Personality Traits */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
             <Tag className="size-3.5 text-emerald-500" />
-            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Traits</span>
+            <span className="text-badge font-mono font-semibold uppercase tracking-wider">Traits</span>
           </div>
-          <p className="text-xs text-foreground font-medium line-clamp-1">{personality}</p>
+          <p className="text-body text-foreground font-medium line-clamp-1">{personality}</p>
         </div>
 
         {/* 6. Avoid List */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
             <Ban className="size-3.5 text-rose-500" />
-            <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Avoidances</span>
+            <span className="text-badge font-mono font-semibold uppercase tracking-wider">Avoidances</span>
           </div>
-          <p className="text-xs text-foreground font-medium line-clamp-1">{avoid}</p>
+          <p className="text-body text-foreground font-medium line-clamp-1">{avoid}</p>
         </div>
       </div>
     </div>

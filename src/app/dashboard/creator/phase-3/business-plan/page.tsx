@@ -214,7 +214,7 @@ const arr2 = <T,>(a?: T[] | null): a is T[] => Array.isArray(a) && a.length > 0;
 function Extras({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="space-y-1.5 pt-1">
-      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground font-sans">{label}</h4>
+      <h4 className="text-label font-bold uppercase tracking-wider text-muted-foreground font-sans">{label}</h4>
       {children}
     </div>
   );
@@ -312,7 +312,7 @@ function SectionExtras({ id, bp }: { id: string; bp?: BusinessPlanOutput }) {
                 <div className="text-sm font-semibold text-foreground flex items-center justify-between">
                   <span>{c.name ?? 'Competitor'}</span>
                   {has(c.positioning) && (
-                    <Badge variant="secondary" className="text-[10px] font-normal">
+                    <Badge variant="secondary" className="text-badge font-normal">
                       {c.positioning}
                     </Badge>
                   )}
@@ -376,7 +376,7 @@ function SectionExtras({ id, bp }: { id: string; bp?: BusinessPlanOutput }) {
           <div className="space-y-2 mt-1">
             {ops!.milestones!.map((m, i) => (
               <div key={i} className="flex items-start gap-2.5 rounded-lg border border-border bg-card/40 p-2.5 text-xs font-sans">
-                <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-mono text-[10px] font-bold">
+                <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 font-mono text-badge font-bold">
                   {i + 1}
                 </div>
                 <div className="flex-1">
@@ -400,10 +400,10 @@ function SectionExtras({ id, bp }: { id: string; bp?: BusinessPlanOutput }) {
             {risks!.map((r, i) => (
               <div key={i} className="rounded-xl border border-border bg-card/60 p-3.5 space-y-1.5 shadow-sm font-sans">
                 <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wider">
+                  <Badge variant="outline" className="text-badge font-semibold uppercase tracking-wider">
                     {r.category ?? 'Risk'}
                   </Badge>
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
+                  <div className="flex items-center gap-1.5 text-badge font-mono text-muted-foreground">
                     {has(r.likelihood) && <span>Likelihood: <strong className="text-foreground">{r.likelihood}</strong></span>}
                     {has(r.impact) && <span>• Impact: <strong className="text-foreground">{r.impact}</strong></span>}
                   </div>
@@ -783,7 +783,7 @@ export default function BusinessPlanPage() {
                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans flex items-center gap-1.5">
                       <Layers className="h-3.5 w-3.5" /> Document Index
                     </h3>
-                    <span className="text-[11px] font-mono text-muted-foreground">11 Sections</span>
+                    <span className="text-badge font-mono text-muted-foreground">11 Sections</span>
                   </div>
                   <nav className="space-y-1">
                     {sections.map((s) => {
@@ -799,7 +799,7 @@ export default function BusinessPlanPage() {
                           }`}
                         >
                           <div className="flex items-center gap-2 truncate">
-                            <span className={`font-mono text-[11px] ${isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                            <span className={`font-mono text-badge ${isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
                               {s.number}
                             </span>
                             <span className="truncate">{s.title}</span>
@@ -850,27 +850,27 @@ export default function BusinessPlanPage() {
                               {s.title}
                             </h3>
                             {s.ownership === 'owned_editable' && (
-                              <Badge variant="outline" className="text-[10px] font-sans font-medium text-muted-foreground">
+                              <Badge variant="outline" className="text-badge font-sans font-medium text-muted-foreground">
                                 Direct Editable
                               </Badge>
                             )}
                             {s.ownership === 'external_linked' && (
-                              <Badge variant="secondary" className="text-[10px] font-sans font-medium gap-1 text-primary">
+                              <Badge variant="secondary" className="text-badge font-sans font-medium gap-1 text-primary">
                                 <ExternalLink className="h-2.5 w-2.5" /> {s.sourceLabel}
                               </Badge>
                             )}
                             {s.ownership === 'external_scheduled' && (
-                              <Badge variant="outline" className="text-[10px] font-sans font-medium text-amber-600 dark:text-amber-400 border-amber-500/30">
+                              <Badge variant="outline" className="text-badge font-sans font-medium text-amber-600 dark:text-amber-400 border-amber-500/30">
                                 Phase 5 Scope
                               </Badge>
                             )}
                             {s.ownership === 'owned_full_plan' && (
-                              <Badge variant="outline" className="text-[10px] font-sans font-medium text-muted-foreground">
+                              <Badge variant="outline" className="text-badge font-sans font-medium text-muted-foreground">
                                 Full Plan Synthesis
                               </Badge>
                             )}
                             {s.edited && (
-                              <Badge variant="outline" className="text-[10px] font-sans font-medium gap-1 border-primary/40 text-primary">
+                              <Badge variant="outline" className="text-badge font-sans font-medium gap-1 border-primary/40 text-primary">
                                 <Pencil className="h-2.5 w-2.5" /> User Edited
                               </Badge>
                             )}

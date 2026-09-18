@@ -67,6 +67,21 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Role-based typography scale utilities */
+  --text-page-heading: var(--font-size-page-heading);
+  --text-section-title: var(--font-size-section-title);
+  --text-card-title: var(--font-size-card-title);
+  --text-body: var(--font-size-body);
+  --text-label: var(--font-size-label);
+  --text-input: var(--font-size-input);
+  --text-button: var(--font-size-button);
+  --text-caption: var(--font-size-caption);
+  --text-table-header: var(--font-size-table-header);
+  --text-footnote: var(--font-size-footnote);
+  --text-badge: var(--font-size-badge);
+  --text-stat-lg: var(--font-size-stat-lg);
+  --text-stat-xl: var(--font-size-stat-xl);
 }
 
 :root {
@@ -134,14 +149,23 @@
   --chart-4: #00A854; /* green */
   --chart-5: #06B6D4; /* cyan */
 
-  /* Typography Scale (Figma) */
-  --text-size-sm: 13px;
-  --text-size-md: 14px;
-  --text-size-base: 16px;
-  --text-size-lg: 18px;
-  --text-size-xl: 20px;
-  --text-size-2xl: 24px;
-  --text-size-3xl: 32px;
+  /* ==========================================================================
+     Mondial Canon Typography Scale (Role-Based Tokens)
+     ========================================================================== */
+  --font-size-page-heading: 30px;
+  --font-size-section-title: 16px;
+  --font-size-card-title: 16px;
+  --font-size-body: 14px;
+  --font-size-label: 14px;
+  --font-size-input: 14px;
+  --font-size-button: 14px;
+  --font-size-caption: 14px;
+  --font-size-table-header: 14px;
+  --font-size-footnote: 14px;
+  --font-size-badge: 12px;
+  --font-size-stat-lg: 30px;
+  --font-size-stat-xl: 36px;
+
   --text-line-height-tight: 1.2;
   --text-line-height-normal: 1.4;
   --text-line-height-relaxed: 1.6;

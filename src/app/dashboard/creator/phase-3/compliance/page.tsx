@@ -297,7 +297,7 @@ export default function CompliancePage() {
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
                     Readiness Scorecard
                   </span>
-                  <Badge variant="outline" className="text-[10px] font-mono text-primary border-primary/30">
+                  <Badge variant="outline" className="text-badge font-mono text-primary border-primary/30">
                     Self-Attested
                   </Badge>
                 </div>
@@ -419,7 +419,7 @@ export default function CompliancePage() {
                                   </span>
 
                                   {item.category === 'mandatory' && (
-                                    <Badge variant="outline" className="text-[10px] font-sans font-medium text-destructive border-destructive/30">
+                                    <Badge variant="outline" className="text-badge font-sans font-medium text-destructive border-destructive/30">
                                       Required
                                     </Badge>
                                   )}
@@ -428,7 +428,7 @@ export default function CompliancePage() {
                                     <Badge
                                       variant="outline"
                                       className={cn(
-                                        'text-[10px] font-sans font-medium',
+                                        'text-badge font-sans font-medium',
                                         item.badge === 'urgent'
                                           ? 'border-destructive/30 text-destructive bg-destructive/10'
                                           : 'border-primary/30 text-primary bg-primary/10',
@@ -439,7 +439,7 @@ export default function CompliancePage() {
                                   )}
 
                                   {item.aiGenerable && (
-                                    <Badge variant="secondary" className="text-[10px] font-sans font-medium gap-1 text-muted-foreground border border-border">
+                                    <Badge variant="secondary" className="text-badge font-sans font-medium gap-1 text-muted-foreground border border-border">
                                       <FileText className="h-2.5 w-2.5" /> Standard Template
                                     </Badge>
                                   )}

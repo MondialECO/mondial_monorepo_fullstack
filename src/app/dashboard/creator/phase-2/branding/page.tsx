@@ -78,10 +78,10 @@ export default function BrandingOptionsPage() {
       <div className="w-full max-w-[680px] mx-auto space-y-6">
         {/* Page Header */}
         <div className="text-center space-y-3">
-          <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-semibold tracking-tight text-foreground leading-tight font-heading">
+          <h1 className="text-page-heading font-semibold tracking-tight text-foreground leading-tight font-heading">
             Build your brand identity
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground font-sans leading-relaxed max-w-xl mx-auto">
+          <p className="text-body text-muted-foreground font-sans leading-relaxed max-w-xl mx-auto">
             One guided session gives you a logo, colours and typography. Every generator after this reads from it automatically.
           </p>
         </div>
@@ -90,10 +90,10 @@ export default function BrandingOptionsPage() {
         <div className="w-full rounded-2xl sm:rounded-3xl border border-border/80 bg-card p-6 sm:p-9 shadow-xs space-y-6">
           {/* Title & Description */}
           <div className="space-y-2">
-            <h2 className="text-2xl sm:text-[26px] font-semibold text-foreground tracking-tight font-heading">
+            <h2 className="text-section-title font-semibold text-foreground tracking-tight font-heading">
               Brand Visual Identity Studio
             </h2>
-            <p className="text-sm sm:text-base text-muted-foreground font-sans leading-relaxed">
+            <p className="text-body text-muted-foreground font-sans leading-relaxed">
               A guided studio that builds your full identity step by step, using the idea details you&apos;ve already given.
             </p>
           </div>
