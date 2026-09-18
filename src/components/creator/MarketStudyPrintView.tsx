@@ -258,7 +258,9 @@ export default function MarketStudyPrintView({
                           <div className="text-[9px] text-neutral-400 font-mono mt-0.5">{comp.sourceAttribution}</div>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-neutral-600 align-top">{comp.segment || "—"}</td>
+                      <td className="py-2.5 px-3 text-neutral-600 align-top">
+                        {comp.segment || (comp as any).targetSegment || (comp as any).marketSegment || "—"}
+                      </td>
                       <td className="py-2.5 px-3 text-neutral-600 font-mono align-top">{comp.pricingModel || "—"}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-semibold text-neutral-900 align-top whitespace-nowrap">
                         {comp.estimatedMarketShare || "—"}

@@ -605,6 +605,7 @@ export default function MarketStudyPage() {
                       <tbody className="divide-y divide-[#e5e7eb] dark:divide-border/60 bg-white dark:bg-card">
                         {output.competitorLandscape.directCompetitors.map((comp, idx) => {
                           const parsedShare = parseShareNumber(comp.estimatedMarketShare);
+                          const compSegment = comp.segment || (comp as any).targetSegment || (comp as any).marketSegment;
                           const segmentTints = [
                             'bg-[#f3f4f6] text-[#1f2937] border-[#e5e7eb] dark:bg-muted dark:text-foreground dark:border-border',
                             'bg-[#eff6ff] text-[#1e40af] border-[#dbeafe] dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
@@ -622,15 +623,15 @@ export default function MarketStudyPage() {
                                   {comp.name}
                                 </div>
                                 <div className="text-[10px] text-[#9ca3af] font-sans pt-1">
-                                  {comp.segment ? `${comp.segment.split('/')[0].trim()} · ${displayRegion}` : `${displaySector} · ${displayRegion}`}
+                                  {compSegment ? `${compSegment.split('/')[0].trim()} · ${displayRegion}` : `${displaySector} · ${displayRegion}`}
                                 </div>
                               </td>
 
                               {/* Segment Pill */}
                               <td className="py-4 px-6 align-top whitespace-nowrap">
-                                {comp.segment ? (
+                                {compSegment ? (
                                   <span className={`inline-block px-2.5 py-0.5 text-[12px] font-sans font-medium rounded-[6px] border ${tintClass}`}>
-                                    {comp.segment}
+                                    {compSegment}
                                   </span>
                                 ) : (
                                   <span className="text-[#9ca3af] font-mono">—</span>

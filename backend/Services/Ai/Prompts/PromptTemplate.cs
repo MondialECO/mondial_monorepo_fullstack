@@ -236,7 +236,7 @@ namespace WebApp.Services.Ai.Prompts
         public static readonly PromptTemplate MarketStudy = new()
         {
             Key = "market-study",
-            Version = 1,
+            Version = 2,
             SystemText =
                 "You are Mondial's Lead Market Research Analyst. In a single pass, analyze " +
                 "a business opportunity and generate a rigorous, data-grounded Market Study. " +

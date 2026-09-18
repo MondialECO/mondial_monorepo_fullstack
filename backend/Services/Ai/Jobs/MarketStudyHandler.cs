@@ -259,6 +259,36 @@ namespace WebApp.Services.Ai.Jobs
                 return;
 
             var cl = doc["competitorLandscape"].AsBsonDocument;
+
+            if (cl.Contains("directCompetitors") && cl["directCompetitors"].IsBsonArray)
+            {
+                foreach (var itemVal in cl["directCompetitors"].AsBsonArray)
+                {
+                    if (itemVal is not BsonDocument item)
+                        continue;
+
+                    if (!item.Contains("segment") || !item["segment"].IsString || string.IsNullOrWhiteSpace(item["segment"].AsString))
+                    {
+                        if (item.Contains("targetSegment") && item["targetSegment"].IsString && !string.IsNullOrWhiteSpace(item["targetSegment"].AsString))
+                        {
+                            item["segment"] = item["targetSegment"].AsString.Trim();
+                        }
+                        else if (item.Contains("marketSegment") && item["marketSegment"].IsString && !string.IsNullOrWhiteSpace(item["marketSegment"].AsString))
+                        {
+                            item["segment"] = item["marketSegment"].AsString.Trim();
+                        }
+                        else if (item.Contains("market_segment") && item["market_segment"].IsString && !string.IsNullOrWhiteSpace(item["market_segment"].AsString))
+                        {
+                            item["segment"] = item["market_segment"].AsString.Trim();
+                        }
+                        else if (item.Contains("target_segment") && item["target_segment"].IsString && !string.IsNullOrWhiteSpace(item["target_segment"].AsString))
+                        {
+                            item["segment"] = item["target_segment"].AsString.Trim();
+                        }
+                    }
+                }
+            }
+
             if (cl.Contains("indirectCompetitors") && cl["indirectCompetitors"].IsBsonArray)
             {
                 foreach (var itemVal in cl["indirectCompetitors"].AsBsonArray)

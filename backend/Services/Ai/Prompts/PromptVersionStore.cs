@@ -35,9 +35,22 @@ namespace WebApp.Services.Ai.Prompts
             var seeded = 0;
             foreach (var template in templates)
             {
-                // Idempotent: skip if this exact (key, version) is already stored.
-                if (await _repository.ExistsAsync(template.Key, template.Version))
+                var existing = await _repository.GetByKeyAndVersionAsync(template.Key, template.Version);
+                if (existing is not null)
+                {
+                    // If content changed or template was deactivated, sync and activate
+                    if (existing.SystemText != template.SystemText ||
+                        existing.OutputContract != template.OutputContract ||
+                        !existing.IsActive)
+                    {
+                        await _repository.DeactivateAllForKeyAsync(template.Key);
+                        await _repository.UpdateContentAndActivateAsync(existing.Id, template.SystemText, template.OutputContract);
+                        seeded++;
+                        _logger.LogInformation("Updated prompt template '{Key}' v{Version} (active).",
+                            template.Key, template.Version);
+                    }
                     continue;
+                }
 
                 // Ensure a single active version per key (partial-unique index).
                 await _repository.DeactivateAllForKeyAsync(template.Key);
