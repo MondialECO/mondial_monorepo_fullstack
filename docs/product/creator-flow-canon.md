@@ -543,10 +543,10 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
   1. **Route Reconciliation**: The sidebar navigation item (`CreatorSidebar.tsx`) already existed and previously pointed at an unrouted 404 URL; this page provides the complete, authoritative destination.
   2. **Single-Fetch Mount**: Performs exactly one journey fetch (`creatorJourneyApi.get(activeIdeaId)`) and one brand kit query on mount to determine readiness states and timestamps.
   3. **Lazy Hydration**: Specific detailed sessions (`MarketStudySession`, `BusinessPlanSession`, `ForecastSession`) are loaded lazily only when the creator clicks to view or download that specific document.
-  4. **The 8-Artifact Catalog (4 Downloadable, 4 In-App Viewable)**:
+  4. **The 8-Artifact Catalog (5 Downloadable, 3 In-App Viewable)**:
      - *Phase 2 Brand Identity Kit* (`.ZIP`, Downloadable): Exported via `exportBrandKitZip` with 7 SVG lockups and JSON/CSS tokens.
      - *Step 3.1 Market Study* (`.PDF`, Downloadable): Rendered via `MarketStudyPrintView.tsx` with full sizing funnel, competitor matrix, and clean print styles.
-     - *Step 3.2 Business Model Canvas* (`IN_APP`, Viewable): Direct deep link to `/phase-3/business-model`. Displays honest non-downloadable explanation without roadmap version numbers.
+     - *Step 3.2 Business Model Canvas & Unit Economics* (`.PDF`, Downloadable): Rendered via `BusinessModelPrintView.tsx` with canonical 9-block Osterwalder canvas, modelled-vs-validated unit economics, pricing tiers architecture, and assumptions evidence register.
      - *Step 3.3 Executive Business Plan* (`.PDF`, Downloadable): Rendered via `PlanForecastPrintView.tsx` with continuous scroll and executive styling.
      - *Step 3.4 Financial Forecast* (`.PDF`, Downloadable): Rendered via `PlanForecastPrintView.tsx` with 36-month P&L tables and telemetry.
      - *Step 3.5 Legal Checklist* (`IN_APP`, Viewable): Direct deep link to `/phase-3/compliance`.
@@ -560,8 +560,9 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
 ### 5.12 Document & PDF Export Infrastructure
 - **Browser-Generated Print Documents:** Exports are compiled directly on-demand in the client browser, eliminating static file storage so exports always reflect the latest live project data:
   1. **Market Study Print View (`MarketStudyPrintView.tsx`):** Standalone clean printable document layout for Step 3.1 containing the full sizing funnel, methodology audit trail, competitor matrix, demand signals, and founder gap validation. Accessible via "Export PDF" from `/dashboard/creator/phase-3/market-study` and the Creator Asset Library.
-  2. **Plan & Forecast Print View (`PlanForecastPrintView.tsx`):** Printable document layout for Step 3.3 (Executive Business Plan) and Step 3.4 (Financial Forecast).
-  3. **Brand Kit ZIP Exporter (`exportBrandKitZip`):** Client-side JSZip engine packaging 7 vector SVGs, 3 token manifests, and README.md.
+  2. **Business Model Print View (`BusinessModelPrintView.tsx`):** Standalone clean printable document layout for Step 3.2 containing the 9-block Osterwalder canvas (with page-break protection and value proposition emphasis), modelled unit economics (preserving modelled-vs-baseline distinction), pricing tiers table, and assumptions register. Accessible via "Export PDF" from `/dashboard/creator/phase-3/business-model` and the Creator Asset Library.
+  3. **Plan & Forecast Print View (`PlanForecastPrintView.tsx`):** Printable document layout for Step 3.3 (Executive Business Plan) and Step 3.4 (Financial Forecast).
+  4. **Brand Kit ZIP Exporter (`exportBrandKitZip`):** Client-side JSZip engine packaging 7 vector SVGs, 3 token manifests, and README.md.
 
 ### 5.13 Design References & Conformance Status
 - **Phase 2 Brand Studio:** 100% verified against approved Figma node dumps (`figma_creator_identity_nodes.json`, Nodes `57004:...`, `57012:...`).
@@ -767,8 +768,14 @@ The rule: matchmaking is unavailable across P1–P5 and unlocks only at P6. The 
 - **Route Consolidation:** Removed legacy redirect shim `/phase-3/forecast-inputs`; Step 3.4 operates as a single unified workspace at `/dashboard/creator/phase-3/forecast`.
 - **Cross-Module Data Integrity:** Verified zero mock data. Business Plan continuously references upstream source models without forking editable state duplicates.
 - **Explicit Out-of-Scope Items Tracked:**
-  1. *Provisional Section Rewrite Price:* Configured and functioning at 5 credits (`AiJobType.BusinessPlanSectionRewrite`); provisional pending overall credit pricing review.
-  2. *Credit Checkout Gateway:* Platform-wide infrastructure milestone (not a Phase 3 blocker). Starter credit grant verified at 200 credits across `appsettings.json`, `AiSettings.cs`, and `AiCreditService.cs`.
+**2026-09-18 — Creator Phases 4, 5 & 6 Failure Mode Hardening & Stabilization.**
+- **Phase 5 Silent Publish Fix (§7):** `CrossroadsPathA.tsx` now explicitly validates zero or empty asking prices for Full Buyout mode. Displays a clear error banner (`role="alert"`) and highlights the invalid price input (`border-destructive ring-1 ring-destructive`) instead of failing silently.
+- **Phase 5 Swallowed Inquiry Load Fix (§7):** Failed `GET /creator/marketplace/interests` calls now render a retryable error container (`"Couldn't load buyer inquiries. Please check your connection and retry."`) with a dedicated "Retry Inquiries" button rather than misleading the creator with a false "0 inquiries" empty state.
+- **Phase 4 Live Forecast Divergence Flag (§6.1):** `Phase4Pricing.tsx` dynamically derives `forecastOutdated` in real-time upon mounting and on price changes by comparing entry tier price against `insights.forecastContext.arpu` (flagging divergence if >= 10%) rather than relying solely on stale persisted flags.
+- **Phase 6 Sparkle Glyph Enforcement (§8):** In accordance with Canon §1.8/§1.9, removed `<Sparkles />` glyphs from non-generative features in `investors/page.tsx` (deterministic investor matching pill replaced with `<Users />`, legal `CO-FOUNDED` corporate status badge replaced with `<Building2 />`).
+- **Phase 4 Platform Builder Placeholder Removed (§6.3):** Removed the disabled `"Use Platform Builder coming soon"` button from the web presence checklist in `Phase4Gtm.tsx`.
+- **Phase 4 Dynamic Tier Clamping (§6.1):** Added dynamic tier addition (`addTier`, capped at 5) and deletion (`removeTier`, floored at 3) controls to `Phase4Pricing.tsx` with live counter header `({tiers.length}/5)`, aligning the UI with backend validation rules (3–5 tiers).
+- **Transaction Guard Verification (§8.3):** Confirmed `Mongo:TransactionsEnabled: true` in all environment configs and verified `StartupConfigValidation` enforces it at boot; non-transactional fallback in `CreatorPhase6Controller` is strictly guarded by `_isDevelopment` for mock test suites and returns HTTP 503 in production.
 
 ---
 

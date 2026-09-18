@@ -29,9 +29,11 @@ import { brandKitApi } from '@/lib/api-creator-brand-kit';
 import { creatorAiApi } from '@/lib/api-creator-ai';
 import { exportBrandKitZip } from '@/lib/brand-kit-export';
 import MarketStudyPrintView from '@/components/creator/MarketStudyPrintView';
+import BusinessModelPrintView from '@/components/creator/BusinessModelPrintView';
 import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import type {
   MarketStudyOutput,
+  BusinessModelOutput,
   BusinessPlanOutput,
   ForecastOutput,
 } from '@/types/creator/ai';
@@ -76,6 +78,11 @@ export default function AssetLibraryPage() {
   const [loadingArtifactId, setLoadingArtifactId] = useState<string | null>(null);
   const [activeMarketStudy, setActiveMarketStudy] = useState<MarketStudyOutput | null>(null);
   const [isMarketStudyOpen, setIsMarketStudyOpen] = useState(false);
+
+  const [activeBusinessModel, setActiveBusinessModel] = useState<BusinessModelOutput | null>(null);
+  const [businessModelVersion, setBusinessModelVersion] = useState<number | null>(null);
+  const [businessModelUpdatedAt, setBusinessModelUpdatedAt] = useState<string | null>(null);
+  const [isBusinessModelOpen, setIsBusinessModelOpen] = useState(false);
 
   const [activePlan, setActivePlan] = useState<BusinessPlanOutput | null>(null);
   const [activeForecast, setActiveForecast] = useState<ForecastOutput | null>(null);
@@ -177,7 +184,28 @@ export default function AssetLibraryPage() {
     }
   };
 
-  // 2. Business Plan Lazy Loader
+  // 2. Business Model Lazy Loader
+  const handleOpenBusinessModel = async () => {
+    if (!phase3?.businessModelSessionId) return;
+    setLoadingArtifactId('business-model');
+    setActionError(null);
+    try {
+      const session = await creatorAiApi.getBusinessModel(phase3.businessModelSessionId);
+      if (session.output) {
+        setActiveBusinessModel(session.output);
+        setBusinessModelVersion(session.currentVersion ?? 1);
+        setBusinessModelUpdatedAt(session.updatedAt || session.createdAt);
+        setIsBusinessModelOpen(true);
+      }
+    } catch (err: any) {
+      console.error('Failed to load Business Model session:', err);
+      setActionError(err?.message || 'Failed to open Business Model export view.');
+    } finally {
+      setLoadingArtifactId(null);
+    }
+  };
+
+  // 3. Business Plan Lazy Loader
   const handleOpenBusinessPlan = async () => {
     if (!phase3?.businessPlanSessionId) return;
     setLoadingArtifactId('business-plan');
@@ -283,12 +311,13 @@ export default function AssetLibraryPage() {
       stepNumber: 'Step 3.2',
       title: 'Business Model Canvas & Unit Economics',
       description: 'Canonical 9-box Osterwalder canvas, pricing tier architecture, customer acquisition cost benchmarks, and lifetime value unit economics.',
-      fileFormat: 'IN_APP',
-      isDownloadableV1: false,
+      fileFormat: 'PDF',
+      isDownloadableV1: true,
       isReady: isBusinessModelReady,
       lastUpdatedText: formatDate(journey?.updatedAt),
       stepUrl: '/dashboard/creator/phase-3/business-model',
-      nonDownloadableNote: 'Document generated and accessible in project · Standalone PDF export is not yet supported for this format.',
+      downloadLabel: 'Export PDF',
+      onDownloadOrView: handleOpenBusinessModel,
     },
     {
       id: 'business-plan',
@@ -655,6 +684,29 @@ export default function AssetLibraryPage() {
             marketGap: projectMeta.marketGap,
           }}
           output={activeMarketStudy}
+        />
+      )}
+
+      {/* Lazy-Loaded Business Model Print Overlay */}
+      {activeBusinessModel && (
+        <BusinessModelPrintView
+          open={isBusinessModelOpen}
+          onClose={() => {
+            setIsBusinessModelOpen(false);
+            setActiveBusinessModel(null);
+          }}
+          projectName={projectName}
+          project={{
+            sector: projectMeta.sector,
+            geography: projectMeta.geography,
+            marketGap: projectMeta.marketGap,
+            problem: projectMeta.problem,
+            solution: projectMeta.solution,
+            targetUser: projectMeta.targetUser,
+          }}
+          output={activeBusinessModel}
+          version={businessModelVersion}
+          updatedAt={businessModelUpdatedAt}
         />
       )}
 

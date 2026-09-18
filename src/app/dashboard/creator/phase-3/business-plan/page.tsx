@@ -449,9 +449,11 @@ export default function BusinessPlanPage() {
 
   const startBp = useStartBusinessPlan();
   const credits = useAiCredits();
-  const planCost = credits.data?.costs?.BusinessPlan ?? 0;
-  const rewriteCost = credits.data?.costs?.BusinessPlanSectionRewrite ?? 5;
-  const insufficientCredits = credits.data ? credits.data.balance < planCost : false;
+  const isCostLoading = credits.isLoading;
+  const isCostError = credits.isError || (!isCostLoading && credits.data?.costs?.BusinessPlan == null);
+  const planCost = credits.data?.costs?.BusinessPlan ?? null;
+  const rewriteCost = credits.data?.costs?.BusinessPlanSectionRewrite ?? null;
+  const insufficientCredits = credits.data != null && planCost != null ? credits.data.balance < planCost : false;
   const session = useBusinessPlanSessionTimed(bpSessionId);
   const forecastSession = useForecastSessionTimed(forecastSessionId);
   const forecastOutput = (forecastSession.data as { output?: ForecastOutput } | undefined)?.output ?? null;
@@ -645,14 +647,22 @@ export default function BusinessPlanPage() {
               </Button>
               <Button
                 onClick={handleStart}
-                disabled={startBp.isPending || startError?.kind === 'credits' || insufficientCredits}
+                disabled={startBp.isPending || startError?.kind === 'credits' || insufficientCredits || isCostLoading || isCostError}
                 className="gap-2 font-sans font-semibold"
               >
-                {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                Generate plan{planCost > 0 ? ` (${planCost} credits)` : ''}
+                {startBp.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="h-4 w-4" />
+                )}
+                {isCostLoading
+                  ? 'Loading cost…'
+                  : isCostError
+                  ? 'Cost unavailable'
+                  : `Generate plan (${planCost} credits)`}
               </Button>
             </div>
-            {insufficientCredits && (
+            {insufficientCredits && planCost != null && (
               <p className="text-xs font-medium text-destructive">
                 Insufficient credits: requires {planCost} credits (you have {credits.data?.balance ?? 0}).
               </p>
@@ -886,11 +896,11 @@ export default function BusinessPlanPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  disabled={isRewriting || saving}
+                                  disabled={isRewriting || saving || isCostLoading || isCostError || rewriteCost == null}
                                   onClick={() => handleRewrite(s.id)}
                                   className="h-8 text-xs gap-1.5 font-sans font-medium text-primary hover:text-primary/90"
                                 >
-                                  <Sparkles className="h-3.5 w-3.5" /> AI Rewrite{rewriteCost > 0 ? ` (${rewriteCost} credits)` : ''}
+                                  <Sparkles className="h-3.5 w-3.5" /> AI Rewrite{isCostLoading ? ' (…)' : rewriteCost != null ? ` (${rewriteCost} credits)` : ''}
                                 </Button>
                               </>
                             )}

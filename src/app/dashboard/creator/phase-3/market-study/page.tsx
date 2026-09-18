@@ -73,8 +73,10 @@ export default function MarketStudyPage() {
   const startMutation = useStartMarketStudy();
   const regenerateMutation = useRegenerateMarketStudy();
   const credits = useAiCredits();
-  const marketStudyCost = credits.data?.costs?.MarketStudy ?? 20;
-  const insufficientCredits = credits.data ? credits.data.balance < marketStudyCost : false;
+  const isCostLoading = credits.isLoading;
+  const isCostError = credits.isError || (!isCostLoading && credits.data?.costs?.MarketStudy == null);
+  const marketStudyCost = credits.data?.costs?.MarketStudy ?? null;
+  const insufficientCredits = credits.data != null && marketStudyCost != null ? credits.data.balance < marketStudyCost : false;
 
   const session = useMarketStudySessionTimed(marketStudySessionId);
   const output = (session.data as { output?: MarketStudyOutput } | undefined)?.output;
@@ -314,7 +316,7 @@ export default function MarketStudyPage() {
             </div>
 
             <div className="flex items-center justify-center gap-2 text-xs font-mono text-muted-foreground">
-              <span>Cost: <strong className="text-foreground font-medium">{marketStudyCost} credits</strong></span>
+              <span>Cost: <strong className="text-foreground font-medium">{isCostLoading ? 'Loading cost…' : isCostError ? 'Unavailable' : `${marketStudyCost} credits`}</strong></span>
               {credits.data && (
                 <span>(Balance: {credits.data.balance})</span>
               )}
@@ -330,10 +332,14 @@ export default function MarketStudyPage() {
               </Button>
               <Button
                 onClick={handleStart}
-                disabled={isGenerating || insufficientCredits || !clarifierSessionId}
+                disabled={isGenerating || insufficientCredits || !clarifierSessionId || isCostLoading || isCostError}
                 className="w-full sm:w-auto gap-2 text-xs font-semibold px-6 rounded-lg"
               >
-                Generate Market Study ({marketStudyCost} credits)
+                {isCostLoading
+                  ? 'Loading cost…'
+                  : isCostError
+                  ? 'Cost unavailable'
+                  : `Generate Market Study (${marketStudyCost} credits)`}
               </Button>
             </div>
 

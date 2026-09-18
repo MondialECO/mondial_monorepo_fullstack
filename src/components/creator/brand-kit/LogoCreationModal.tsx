@@ -19,7 +19,6 @@ import {
   Scan,
   CheckCircle2,
 } from "lucide-react";
-import Link from "next/link";
 
 export interface LogoCreationModalProps {
   ideaId?: string;
@@ -52,21 +51,39 @@ export function LogoCreationModal({
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(false);
   const [isBatchRegenerating, setIsBatchRegenerating] = useState<boolean>(false);
   const [batchRegenerateCount, setBatchRegenerateCount] = useState<number>(0);
-  const [batchRedrawCost, setBatchRedrawCost] = useState<number>(4);
+  const [batchRedrawCost, setBatchRedrawCost] = useState<number | null>(null);
+  const [isCostLoading, setIsCostLoading] = useState<boolean>(true);
+  const [isCostError, setIsCostError] = useState<boolean>(false);
   const [globalError, setGlobalError] = useState<{
     type: "credits" | "cap" | "network";
     message: string;
   } | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+    setIsCostLoading(true);
+    setIsCostError(false);
     creatorAiApi
       .getCredits()
       .then((res) => {
+        if (!mounted) return;
         if (res?.costs?.LogoParameterSelection != null) {
           setBatchRedrawCost(res.costs.LogoParameterSelection);
+        } else {
+          setIsCostError(true);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!mounted) return;
+        setIsCostError(true);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setIsCostLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Per-tile loading and error states to ensure isolated tile updates
@@ -357,12 +374,16 @@ export function LogoCreationModal({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={isBatchRegenerating || isBatchCapExhausted || isLoadingInitial}
+                disabled={isBatchRegenerating || isBatchCapExhausted || isCostLoading || isCostError || batchRedrawCost == null}
                 onClick={handleRedrawAll}
                 className="h-8 px-3 text-xs font-medium gap-1.5 hover:bg-muted text-foreground disabled:opacity-50 font-sans cursor-pointer"
                 title={
                   isBatchCapExhausted
                     ? "Maximum 3 batch redraws reached"
+                    : isCostLoading
+                    ? "Loading credit cost…"
+                    : isCostError || batchRedrawCost == null
+                    ? "Credit cost unavailable"
                     : `Redraw all 6 concepts (${batchRedrawCost} credits)`
                 }
               >
@@ -460,13 +481,7 @@ export function LogoCreationModal({
               <span className="font-medium">{globalError.message}</span>
             </div>
             {globalError.type === "credits" && (
-              <Link
-                href="/dashboard/creator/credits"
-                target="_blank"
-                className="inline-flex items-center gap-1 font-semibold underline hover:opacity-85"
-              >
-                Top up credits <ArrowRight className="size-3" />
-              </Link>
+              <span className="text-[11px] opacity-80 font-medium">(Credit top-ups are currently unavailable)</span>
             )}
           </div>
         )}
@@ -518,16 +533,16 @@ export function LogoCreationModal({
               </div>
               <div className="flex items-center gap-2 font-mono text-xs font-semibold px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                 <Sparkles className="size-3.5" />
-                <span>Cost: {batchRedrawCost} AI Credits</span>
+                <span>Cost: {isCostLoading ? "Loading cost…" : isCostError || batchRedrawCost == null ? "Unavailable" : `${batchRedrawCost} AI Credits`}</span>
               </div>
               <Button
                 type="button"
                 onClick={handleRedrawAll}
-                disabled={isBatchRegenerating || isLoadingInitial}
+                disabled={isBatchRegenerating || isLoadingInitial || isCostLoading || isCostError || batchRedrawCost == null}
                 className="h-11 px-7 font-sans font-semibold gap-2 shadow-sm text-sm cursor-pointer"
               >
                 <Sparkles className="size-4" />
-                Generate 6 Concepts ({batchRedrawCost} credits)
+                {isCostLoading ? "Loading cost…" : isCostError || batchRedrawCost == null ? "Cost unavailable" : `Generate 6 Concepts (${batchRedrawCost} credits)`}
               </Button>
             </div>
           ) : (

@@ -47,7 +47,9 @@ export default function CreatorPhase1Client() {
 
   const totalPhases = 6;
   const currentPhase = 1;
-  const progressPercent = Math.round((currentPhase / totalPhases) * 100);
+  const verificationSteps = [isRoleSelected, isIdentityDone, isPhoneDone, isEmailDone];
+  const completedCount = verificationSteps.filter(Boolean).length;
+  const progressPercent = Math.round((completedCount / verificationSteps.length) * 100);
 
   // Accordion toggle handler
   const toggleAccordion = (phaseNum: number) => {

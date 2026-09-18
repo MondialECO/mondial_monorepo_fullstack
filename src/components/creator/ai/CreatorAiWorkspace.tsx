@@ -199,9 +199,11 @@ export function CreatorAiWorkspace() {
   const startForecast = useStartForecast();
 
   const credits = useAiCredits();
-  const clarifierCost = credits.data?.costs?.IdeaClarifier ?? credits.data?.costs?.Clarifier ?? 0;
-  const planCost = credits.data?.costs?.BusinessPlan ?? 0;
-  const forecastCost = credits.data?.costs?.Forecast ?? 0;
+  const isCostLoading = credits.isLoading;
+  const isCostError = credits.isError;
+  const clarifierCost = credits.data?.costs?.IdeaClarifier ?? credits.data?.costs?.Clarifier ?? null;
+  const planCost = credits.data?.costs?.BusinessPlan ?? null;
+  const forecastCost = credits.data?.costs?.Forecast ?? null;
   const balance = credits.data?.balance ?? 0;
 
   // Seed active ids from the most recent sessions once lists resolve.
@@ -347,7 +349,7 @@ export function CreatorAiWorkspace() {
                 action={
                   <Button
                     className="gap-2"
-                    disabled={startPlan.isPending || balance < planCost}
+                    disabled={startPlan.isPending || isCostLoading || isCostError || planCost == null || balance < planCost}
                     onClick={() =>
                       startPlan.mutate(
                         { clarifierSessionId: clarifierId as string },
@@ -360,7 +362,11 @@ export function CreatorAiWorkspace() {
                     ) : (
                       <Sparkles className="h-4 w-4" />
                     )}
-                    Generate Business Plan{planCost > 0 ? ` (${planCost} credits)` : ''}
+                    {isCostLoading
+                      ? 'Loading cost…'
+                      : isCostError || planCost == null
+                      ? 'Cost unavailable'
+                      : `Generate Business Plan (${planCost} credits)`}
                   </Button>
                 }
               />
@@ -410,7 +416,7 @@ export function CreatorAiWorkspace() {
                 action={
                   <Button
                     className="gap-2"
-                    disabled={startForecast.isPending || balance < forecastCost}
+                    disabled={startForecast.isPending || isCostLoading || isCostError || forecastCost == null || balance < forecastCost}
                     onClick={() =>
                       startForecast.mutate(
                         { businessPlanSessionId: planId as string },
@@ -423,7 +429,11 @@ export function CreatorAiWorkspace() {
                     ) : (
                       <Sparkles className="h-4 w-4" />
                     )}
-                    Generate Forecast{forecastCost > 0 ? ` (${forecastCost} credits)` : ''}
+                    {isCostLoading
+                      ? 'Loading cost…'
+                      : isCostError || forecastCost == null
+                      ? 'Cost unavailable'
+                      : `Generate Forecast (${forecastCost} credits)`}
                   </Button>
                 }
               />

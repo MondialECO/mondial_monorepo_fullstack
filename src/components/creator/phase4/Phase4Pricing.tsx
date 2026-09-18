@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { creatorJourneyApi, type PricingInsights, type PricingTier } from "@/lib/api-creator-journey";
 
@@ -17,7 +17,7 @@ const MODELS = [
   },
   {
     id: "one_time",
-    label: "On-Time",
+    label: "One-Time",
     description: "A single upfront payment for lifetime or fixed access.",
     iconSrc: `${ASSET_ROOT}/clock.svg`,
   },
@@ -89,7 +89,17 @@ export function Phase4Pricing({
     setInsights(null);
     setInsightsError(null);
     creatorJourneyApi.pricingInsights(ideaId)
-      .then((value) => { if (active) setInsights(value); })
+      .then((value) => {
+        if (!active) return;
+        setInsights(value);
+        if (value?.forecastContext?.arpu && value.forecastContext.arpu > 0) {
+          const entryPrice = tiers.find((t) => t.price > 0)?.price ?? value.selectedEntryPrice;
+          if (entryPrice != null && entryPrice > 0) {
+            const divergent = Math.abs(entryPrice - value.forecastContext.arpu) / value.forecastContext.arpu >= 0.10;
+            setForecastOutdated(divergent);
+          }
+        }
+      })
       .catch((caught) => {
         if (!active) return;
         const message = (caught as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -98,8 +108,38 @@ export function Phase4Pricing({
     return () => { active = false; };
   }, [ideaId, insightsAttempt]);
 
-  const setTier = (index: number, patch: Partial<PricingTier>) =>
-    setTiers((current) => current.map((tier, tierIndex) => (tierIndex === index ? { ...tier, ...patch } : tier)));
+  const setTier = (index: number, patch: Partial<PricingTier>) => {
+    setTiers((current) => {
+      const updated = current.map((tier, tierIndex) => (tierIndex === index ? { ...tier, ...patch } : tier));
+      if (patch.price !== undefined && insights?.forecastContext?.arpu && insights.forecastContext.arpu > 0) {
+        const lowestPaid = updated.find((t) => t.price > 0)?.price;
+        if (lowestPaid != null && lowestPaid > 0) {
+          const divergent = Math.abs(lowestPaid - insights.forecastContext.arpu) / insights.forecastContext.arpu >= 0.10;
+          setForecastOutdated(divergent);
+        }
+      }
+      return updated;
+    });
+  };
+
+  const addTier = () => {
+    if (tiers.length >= 5) return;
+    setTiers((current) => [
+      ...current,
+      tierTemplate(`Package ${current.length + 1}`, 0, ["", "", ""]),
+    ]);
+  };
+
+  const removeTier = (index: number) => {
+    if (tiers.length <= 3) return;
+    setTiers((current) => {
+      const remaining = current.filter((_, i) => i !== index);
+      if (current[index]?.isHighlighted && remaining.length > 0 && !remaining.some((t) => t.isHighlighted)) {
+        remaining[0].isHighlighted = true;
+      }
+      return remaining;
+    });
+  };
 
   const setHighlighted = (index: number) =>
     setTiers((current) => current.map((tier, tierIndex) => ({ ...tier, isHighlighted: tierIndex === index })));
@@ -169,9 +209,26 @@ export function Phase4Pricing({
       </section>
 
       <section className="mt-8" aria-labelledby="package-builder-heading">
-        <h2 id="package-builder-heading" className="font-heading text-lg font-medium leading-6 text-foreground">
-          Package Builder
-        </h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-baseline gap-2">
+            <h2 id="package-builder-heading" className="font-heading text-lg font-medium leading-6 text-foreground">
+              Package Builder
+            </h2>
+            <span className="text-xs text-muted-foreground">({tiers.length}/5)</span>
+          </div>
+          {tiers.length < 5 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addTier}
+              className="gap-1.5 text-xs"
+            >
+              <Plus className="size-3.5" />
+              Add Package
+            </Button>
+          )}
+        </div>
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2 xl:grid-cols-3">
           {tiers.map((tier, tierIndex) => (
             <article
@@ -188,12 +245,25 @@ export function Phase4Pricing({
 
               <div className="flex flex-1 flex-col gap-8">
                 <div className="flex flex-col gap-6">
-                  <input
-                    value={tier.name}
-                    onChange={(event) => setTier(tierIndex, { name: event.target.value })}
-                    aria-label={`Package ${tierIndex + 1} name`}
-                    className="w-[calc(100%_-_104px)] bg-transparent font-heading text-xl font-medium leading-6 text-foreground outline-none placeholder:text-muted-foreground"
-                  />
+                  <div className="flex items-start justify-between gap-2">
+                    <input
+                      value={tier.name}
+                      onChange={(event) => setTier(tierIndex, { name: event.target.value })}
+                      aria-label={`Package ${tierIndex + 1} name`}
+                      className="w-[calc(100%_-_104px)] bg-transparent font-heading text-xl font-medium leading-6 text-foreground outline-none placeholder:text-muted-foreground"
+                    />
+                    {tiers.length > 3 && (
+                      <button
+                        type="button"
+                        onClick={() => removeTier(tierIndex)}
+                        className="text-muted-foreground transition-colors hover:text-destructive p-1"
+                        aria-label={`Delete ${tier.name}`}
+                        title="Delete package"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-end border-b border-border pb-8">
                     <span className="font-heading text-5xl font-semibold leading-[52px] text-foreground">{currency === "EUR" ? "€" : currency}</span>
                     <input

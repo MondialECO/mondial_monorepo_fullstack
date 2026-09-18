@@ -25,7 +25,7 @@ const STEPS = ["Services & Pricing", "Resource Calculator", "Web & GTM Setup", "
 const STEP_COPY = [
   {
     title: "Define Your Price",
-    description: "Choose a pricing model and create tiered packages based on market benchmarks and AI analysis.",
+    description: "Choose a pricing model and create tiered packages based on sector benchmarks and your venture inputs.",
   },
   {
     title: "Plan Your Resources",

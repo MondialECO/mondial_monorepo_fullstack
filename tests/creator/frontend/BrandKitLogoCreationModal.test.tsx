@@ -203,7 +203,7 @@ describe('LogoCreationModal Component Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Insufficient credits/i)).toBeDefined();
-      expect(screen.getByRole('link', { name: /Top up/i })).toBeDefined();
+      expect(screen.getByText(/Credit top-ups are currently unavailable/i)).toBeDefined();
     });
   });
 

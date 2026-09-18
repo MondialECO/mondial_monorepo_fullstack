@@ -117,8 +117,10 @@ export default function ForecastPage() {
 
   const startForecast = useStartForecast();
   const credits = useAiCredits();
-  const forecastCost = credits.data?.costs?.Forecast ?? 0;
-  const insufficientCredits = credits.data ? credits.data.balance < forecastCost : false;
+  const isCostLoading = credits.isLoading;
+  const isCostError = credits.isError || (!isCostLoading && credits.data?.costs?.Forecast == null);
+  const forecastCost = credits.data?.costs?.Forecast ?? null;
+  const insufficientCredits = credits.data != null && forecastCost != null ? credits.data.balance < forecastCost : false;
 
   const session = useForecastSessionTimed(forecastSessionId);
   const planSession = useBusinessPlanSessionTimed(businessPlanSessionId);
@@ -368,15 +370,23 @@ export default function ForecastPage() {
                 </Button>
                 <Button
                   onClick={handleGenerate}
-                  disabled={startForecast.isPending || !businessPlanSessionId || insufficientCredits}
+                  disabled={startForecast.isPending || !businessPlanSessionId || insufficientCredits || isCostLoading || isCostError}
                   className="gap-2 font-sans font-semibold rounded-xl"
                 >
-                  {startForecast.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />}
-                  Generate 36-Month Forecast {forecastCost > 0 ? `(${forecastCost} credits)` : ''}
+                  {startForecast.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <TrendingUp className="h-4 w-4" />
+                  )}
+                  {isCostLoading
+                    ? 'Loading cost…'
+                    : isCostError
+                    ? 'Cost unavailable'
+                    : `Generate 36-Month Forecast (${forecastCost} credits)`}
                 </Button>
               </div>
 
-              {insufficientCredits && (
+              {insufficientCredits && forecastCost != null && (
                 <p className="text-xs font-medium text-destructive font-sans text-right">
                   Insufficient credits: requires {forecastCost} credits (balance: {credits.data?.balance ?? 0}).
                 </p>

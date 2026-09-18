@@ -1,13 +1,12 @@
 "use client";
 
 import React, { memo } from "react";
-import { Check, RefreshCw, AlertCircle, ArrowUpRight, Maximize2 } from "lucide-react";
+import { Check, RefreshCw, AlertCircle, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandLogoConcept, formatConceptTitle } from "@/types/creator/brand-kit";
 import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import { InvoiceMockHeader } from "./InvoiceMockHeader";
 import { MicroScaleViewer } from "./MicroScaleViewer";
-import Link from "next/link";
 
 export interface ConceptTileProps {
   concept: BrandLogoConcept;
@@ -147,14 +146,7 @@ export const ConceptTile = memo(function ConceptTile({
           <div className="flex-1">
             <span>{error.message}</span>
             {error.type === "credits" && (
-              <Link
-                href="/dashboard/creator/credits"
-                target="_blank"
-                className="inline-flex items-center gap-0.5 ml-1 font-semibold underline hover:opacity-80"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Top up <ArrowUpRight className="size-3" />
-              </Link>
+              <span className="ml-1 opacity-80 text-[10px]">(Credit top-ups are currently unavailable)</span>
             )}
           </div>
         </div>

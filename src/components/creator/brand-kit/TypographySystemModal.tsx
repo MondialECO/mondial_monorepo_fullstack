@@ -25,7 +25,6 @@ import {
   ChevronDown,
   Loader2,
 } from "lucide-react";
-import Link from "next/link";
 
 export interface TypographySystemModalProps {
   isOpen: boolean;
@@ -111,17 +110,35 @@ export function TypographySystemModal({
   const [isConfirming, setIsConfirming] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [insufficientCredits, setInsufficientCredits] = useState(false);
-  const [typographyCost, setTypographyCost] = useState<number>(2);
+  const [typographyCost, setTypographyCost] = useState<number | null>(null);
+  const [isCostLoading, setIsCostLoading] = useState<boolean>(true);
+  const [isCostError, setIsCostError] = useState<boolean>(false);
 
   useEffect(() => {
+    let mounted = true;
+    setIsCostLoading(true);
+    setIsCostError(false);
     creatorAiApi
       .getCredits()
       .then((res) => {
+        if (!mounted) return;
         if (res?.costs?.TypographyGeneration != null) {
           setTypographyCost(res.costs.TypographyGeneration);
+        } else {
+          setIsCostError(true);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!mounted) return;
+        setIsCostError(true);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setIsCostLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Sync prop changes (No Auto-Generate)
@@ -395,7 +412,7 @@ export function TypographySystemModal({
                 variant="outline"
                 size="sm"
                 onClick={handleRegeneratePairing}
-                disabled={isRegenerating || isCapExhausted}
+                disabled={isRegenerating || isCapExhausted || isCostLoading || isCostError || typographyCost == null}
                 className="gap-2 text-xs font-mono font-medium h-8 border-border bg-background hover:bg-muted/60"
               >
                 <RefreshCw
@@ -426,13 +443,9 @@ export function TypographySystemModal({
               <AlertCircle className="size-4 shrink-0 text-amber-600" />
               <span>Insufficient AI credits to suggest alternative pairings.</span>
             </div>
-            <Link
-              href="/dashboard/creator/billing"
-              target="_blank"
-              className="font-bold underline ml-3 shrink-0 hover:text-amber-700"
-            >
-              Top up credits
-            </Link>
+            <span className="text-[11px] font-semibold opacity-80 ml-3 shrink-0">
+              (Credit top-ups are currently unavailable)
+            </span>
           </div>
         )}
 
@@ -451,12 +464,12 @@ export function TypographySystemModal({
               </p>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/20 text-xs font-mono font-medium text-primary mb-6">
                 <Sparkles className="size-3.5" />
-                <span>Cost: {typographyCost} AI credits</span>
+                <span>Cost: {isCostLoading ? "Loading cost…" : isCostError || typographyCost == null ? "Unavailable" : `${typographyCost} AI credits`}</span>
               </div>
               <Button
                 size="lg"
                 onClick={handleGenerateInitial}
-                disabled={isLoadingInitial}
+                disabled={isLoadingInitial || isCostLoading || isCostError || typographyCost == null}
                 className="gap-2 font-mono text-sm px-6 shadow-sm"
               >
                 {isLoadingInitial ? (
@@ -467,7 +480,7 @@ export function TypographySystemModal({
                 ) : (
                   <>
                     <Sparkles className="size-4" />
-                    <span>Generate Typography System ({typographyCost} credits)</span>
+                    <span>{isCostLoading ? "Loading cost…" : isCostError || typographyCost == null ? "Cost unavailable" : `Generate Typography System (${typographyCost} credits)`}</span>
                   </>
                 )}
               </Button>
