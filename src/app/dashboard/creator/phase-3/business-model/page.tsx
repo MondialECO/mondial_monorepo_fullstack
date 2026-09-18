@@ -332,24 +332,26 @@ export default function BusinessModelPage() {
           </Card>
         )}
 
-        {/* Completed Output View: Exact Figma Structure */}
+        {/* Completed Output View: Exact Figma Structure with Full Wrapping & Dynamic Row Heights */}
         {completed && output && (
           <div className="space-y-8 animate-in fade-in duration-300">
             {/* ========================================================================= */}
             {/* SECTION 1: THE CANVAS — Single white card holding 9 Osterwalder blocks */}
             {/* ========================================================================= */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+            <div className="rounded-2xl border border-border bg-card shadow-xs">
               {/* Row 1: 5 Columns with Hairline Dividers */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-border">
                 {/* Column 1: Key Partners (Full Height) */}
-                <div className="p-5 flex flex-col justify-start space-y-3">
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
                   <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
                     Key Partners
                   </h4>
                   {canvas?.keyPartners && canvas.keyPartners.length > 0 ? (
                     <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
                       {canvas.keyPartners.map((item, idx) => (
-                        <li key={idx}>{item}</li>
+                        <li key={idx} className="break-words">
+                          {item}
+                        </li>
                       ))}
                     </ul>
                   ) : (
@@ -358,16 +360,18 @@ export default function BusinessModelPage() {
                 </div>
 
                 {/* Column 2: Key Activities (Top) + Key Resources (Bottom) */}
-                <div className="flex flex-col divide-y divide-border">
+                <div className="flex flex-col divide-y divide-border min-w-0">
                   {/* Key Activities */}
-                  <div className="p-5 flex-1 space-y-3">
+                  <div className="p-5 flex-1 space-y-3 min-w-0">
                     <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
                       Key Activities
                     </h4>
                     {canvas?.keyActivities && canvas.keyActivities.length > 0 ? (
                       <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
                         {canvas.keyActivities.map((item, idx) => (
-                          <li key={idx}>{item}</li>
+                          <li key={idx} className="break-words">
+                            {item}
+                          </li>
                         ))}
                       </ul>
                     ) : (
@@ -376,14 +380,16 @@ export default function BusinessModelPage() {
                   </div>
 
                   {/* Key Resources */}
-                  <div className="p-5 flex-1 space-y-3">
+                  <div className="p-5 flex-1 space-y-3 min-w-0">
                     <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
                       Key Resources
                     </h4>
                     {canvas?.keyResources && canvas.keyResources.length > 0 ? (
                       <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
                         {canvas.keyResources.map((item, idx) => (
-                          <li key={idx}>{item}</li>
+                          <li key={idx} className="break-words">
+                            {item}
+                          </li>
                         ))}
                       </ul>
                     ) : (
@@ -393,7 +399,7 @@ export default function BusinessModelPage() {
                 </div>
 
                 {/* Column 3: Value Propositions (Full Height, Blue Left Border & Heavier Weight) */}
-                <div className="p-5 flex flex-col justify-start space-y-3 border-l-2 border-primary bg-card/60 relative">
+                <div className="p-5 flex flex-col justify-start space-y-3 border-l-2 border-primary bg-card/60 relative min-w-0">
                   <h4 className="text-[10px] font-semibold uppercase tracking-wider text-primary font-sans">
                     Value Propositions
                   </h4>
@@ -402,14 +408,14 @@ export default function BusinessModelPage() {
                     <div className="space-y-4">
                       {canvas.valuePropositions.map((vp, idx) => (
                         <div key={idx} className="space-y-1">
-                          <h5 className="text-[13px] font-medium text-foreground leading-snug font-sans">
+                          <h5 className="text-[13px] font-medium text-foreground leading-snug font-sans break-words">
                             {vp.headline}
                           </h5>
-                          <p className="text-[12px] text-muted-foreground leading-relaxed font-sans">
+                          <p className="text-[12px] text-muted-foreground leading-relaxed font-sans break-words">
                             {vp.details}
                           </p>
                           {vp.marketStudyFootnote && (
-                            <div className="text-[10px] text-muted-foreground font-mono pt-1">
+                            <div className="text-[10px] text-muted-foreground font-mono pt-1 break-words">
                               ← {vp.marketStudyFootnote}
                             </div>
                           )}
@@ -422,23 +428,25 @@ export default function BusinessModelPage() {
 
                   {/* Quiet Footnote at bottom */}
                   {(!canvas?.valuePropositions?.some((v) => v.marketStudyFootnote)) && (
-                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4">
+                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4 break-words">
                       ← 3.1 §4
                     </div>
                   )}
                 </div>
 
                 {/* Column 4: Customer Relationships (Top) + Channels (Bottom) */}
-                <div className="flex flex-col divide-y divide-border">
+                <div className="flex flex-col divide-y divide-border min-w-0">
                   {/* Customer Relationships */}
-                  <div className="p-5 flex-1 space-y-3">
+                  <div className="p-5 flex-1 space-y-3 min-w-0">
                     <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
                       Customer Relationships
                     </h4>
-                    {canvas?.customerRelationships && canvas.keyActivities ? (
+                    {canvas?.customerRelationships && canvas.customerRelationships.length > 0 ? (
                       <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
                         {canvas.customerRelationships.map((item, idx) => (
-                          <li key={idx}>{item}</li>
+                          <li key={idx} className="break-words">
+                            {item}
+                          </li>
                         ))}
                       </ul>
                     ) : (
@@ -447,14 +455,16 @@ export default function BusinessModelPage() {
                   </div>
 
                   {/* Channels */}
-                  <div className="p-5 flex-1 space-y-3">
+                  <div className="p-5 flex-1 space-y-3 min-w-0">
                     <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
                       Channels
                     </h4>
                     {canvas?.channels && canvas.channels.length > 0 ? (
                       <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
                         {canvas.channels.map((item, idx) => (
-                          <li key={idx}>{item}</li>
+                          <li key={idx} className="break-words">
+                            {item}
+                          </li>
                         ))}
                       </ul>
                     ) : (
@@ -464,7 +474,7 @@ export default function BusinessModelPage() {
                 </div>
 
                 {/* Column 5: Customer Segments (Full Height) */}
-                <div className="p-5 flex flex-col justify-start space-y-3">
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
                   <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
                     Customer Segments
                   </h4>
@@ -472,11 +482,11 @@ export default function BusinessModelPage() {
                     <div className="space-y-3">
                       {canvas.customerSegments.map((seg, idx) => (
                         <div key={idx} className="space-y-0.5">
-                          <div className="text-[13px] text-foreground/90 font-sans">
+                          <div className="text-[13px] text-foreground/90 font-sans break-words leading-snug">
                             {seg.segment}
                           </div>
                           {seg.marketStudyFootnote && (
-                            <div className="text-[10px] text-muted-foreground font-mono">
+                            <div className="text-[10px] text-muted-foreground font-mono break-words">
                               ← {seg.marketStudyFootnote}
                             </div>
                           )}
@@ -489,7 +499,7 @@ export default function BusinessModelPage() {
 
                   {/* Quiet Footnote at bottom */}
                   {(!canvas?.customerSegments?.some((s) => s.marketStudyFootnote)) && (
-                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4">
+                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4 break-words">
                       ← 3.1 §2
                     </div>
                   )}
@@ -499,14 +509,16 @@ export default function BusinessModelPage() {
               {/* Row 2: Cost Structure and Revenue Streams (Split full width beneath) */}
               <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border border-t border-border">
                 {/* Cost Structure */}
-                <div className="p-5 flex flex-col justify-start space-y-3">
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
                   <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
                     Cost Structure
                   </h4>
                   {canvas?.costStructure && canvas.costStructure.length > 0 ? (
                     <ul className="text-[13px] text-foreground/90 space-y-2 leading-relaxed font-sans list-disc pl-4">
                       {canvas.costStructure.map((item, idx) => (
-                        <li key={idx}>{item}</li>
+                        <li key={idx} className="break-words">
+                          {item}
+                        </li>
                       ))}
                     </ul>
                   ) : (
@@ -515,7 +527,7 @@ export default function BusinessModelPage() {
                 </div>
 
                 {/* Revenue Streams */}
-                <div className="p-5 flex flex-col justify-start space-y-3">
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
                   <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
                     Revenue Streams
                   </h4>
@@ -523,11 +535,11 @@ export default function BusinessModelPage() {
                     <div className="space-y-2.5">
                       {canvas.revenueStreams.map((rev, idx) => (
                         <div key={idx} className="space-y-0.5">
-                          <div className="text-[13px] text-foreground/90 font-sans">
+                          <div className="text-[13px] text-foreground/90 font-sans break-words leading-snug">
                             {rev.stream}
                           </div>
                           {rev.marketStudyFootnote && (
-                            <div className="text-[10px] text-muted-foreground font-mono">
+                            <div className="text-[10px] text-muted-foreground font-mono break-words">
                               ← {rev.marketStudyFootnote}
                             </div>
                           )}
@@ -540,7 +552,7 @@ export default function BusinessModelPage() {
 
                   {/* Quiet Footnote at bottom */}
                   {(!canvas?.revenueStreams?.some((r) => r.marketStudyFootnote)) && (
-                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4">
+                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4 break-words">
                       ← 3.1 §1
                     </div>
                   )}
@@ -555,78 +567,78 @@ export default function BusinessModelPage() {
               <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-border">
                   {/* Metric 1: ARPU */}
-                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
                       ARPU
                     </span>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold font-mono text-foreground tracking-tight">
+                    <div className="flex items-baseline gap-1 flex-wrap">
+                      <span className="text-2xl font-bold font-mono text-foreground tracking-tight break-all">
                         {formatCurrencyAmount(unitEconomics.arpu?.amount, unitEconomics.arpu?.currency)}
                       </span>
                       <span className="text-xs text-muted-foreground font-sans">
                         / mo
                       </span>
                     </div>
-                    <span className="text-[11px] text-muted-foreground font-sans block">
+                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
                       {unitEconomics.arpu?.period ? `Tier mix ${unitEconomics.arpu.period}` : 'Tier mix 60-30-10'}
                     </span>
                   </div>
 
                   {/* Metric 2: CAC */}
-                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
                       CAC
                     </span>
-                    <div className="text-2xl font-bold font-mono text-foreground tracking-tight">
+                    <div className="text-2xl font-bold font-mono text-foreground tracking-tight break-all">
                       {formatCurrencyAmount(unitEconomics.cac?.amount, unitEconomics.cac?.currency)}
                     </div>
-                    <span className="text-[11px] text-muted-foreground font-sans block">
+                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
                       {unitEconomics.cac?.isModelled ? 'Blended, self-serve + content' : 'Baseline acquisition'}
                     </span>
                   </div>
 
                   {/* Metric 3: LTV */}
-                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
                       LTV
                     </span>
-                    <div className="text-2xl font-bold font-mono text-foreground tracking-tight">
+                    <div className="text-2xl font-bold font-mono text-foreground tracking-tight break-all">
                       {formatCurrencyAmount(unitEconomics.ltv?.amount, unitEconomics.ltv?.currency)}
                     </div>
-                    <span className="text-[11px] text-muted-foreground font-sans block">
+                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
                       22-mo avg retention
                     </span>
                   </div>
 
                   {/* Metric 4: LTV:CAC (Only figure in GREEN) */}
-                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
                       LTV:CAC
                     </span>
-                    <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight">
+                    <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight break-all">
                       {unitEconomics.ltvToCacRatio !== undefined ? `${unitEconomics.ltvToCacRatio.toFixed(1)}x` : '—'}
                     </div>
-                    <span className="text-[11px] text-muted-foreground font-sans block">
+                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
                       Healthy above 3x
                     </span>
                   </div>
 
                   {/* Metric 5: PAYBACK */}
-                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between">
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
                       PAYBACK
                     </span>
-                    <div className="text-2xl font-bold font-mono text-foreground tracking-tight">
+                    <div className="text-2xl font-bold font-mono text-foreground tracking-tight break-all">
                       {unitEconomics.paybackPeriodMonths !== undefined ? `${unitEconomics.paybackPeriodMonths} mo` : '—'}
                     </div>
-                    <span className="text-[11px] text-muted-foreground font-sans block">
+                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
                       Gross-margin adjusted
                     </span>
                   </div>
                 </div>
 
                 {/* Muted caption stating figures are modelled rather than validated */}
-                <div className="pt-3 border-t border-border/50 text-[11px] text-muted-foreground font-sans">
+                <div className="pt-3 border-t border-border/50 text-[11px] text-muted-foreground font-sans break-words leading-relaxed">
                   Modelled from pricing assumptions — not yet validated against real customers.
                 </div>
               </div>
@@ -635,140 +647,136 @@ export default function BusinessModelPage() {
             {/* ========================================================================= */}
             {/* SECTION 3: TWO EQUAL CARDS — Revenue Model Detail & Model Assumptions to Test */}
             {/* ========================================================================= */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
               {/* Left Card: Revenue Model Detail Table */}
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between space-y-4">
-                <div className="space-y-4">
-                  {/* Card Header */}
-                  <div className="flex items-center justify-between pb-3 border-b border-border">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground font-sans">
-                      Revenue Model Detail
-                    </h3>
-                    <span className="text-[11px] font-mono text-muted-foreground">
-                      EUR (€)
-                    </span>
-                  </div>
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+                {/* Card Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground font-sans">
+                    Revenue Model Detail
+                  </h3>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    EUR (€)
+                  </span>
+                </div>
 
-                  {/* Table */}
-                  {output.revenueTiers && output.revenueTiers.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-border text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
-                            <th className="pb-2.5 font-medium">Tier</th>
-                            <th className="pb-2.5 font-medium">Price</th>
-                            <th className="pb-2.5 font-medium">Target Segment</th>
-                            <th className="pb-2.5 font-medium text-right">% of Revenue</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/60">
-                          {output.revenueTiers.map((tier, idx) => (
-                            <tr key={idx} className="group">
-                              <td className="py-3 pr-2 align-top">
-                                <div className="font-medium text-[13px] text-foreground font-sans">
-                                  {tier.tierName}
+                {/* Table with natural wrapping on long target segments, tier names and feature lists */}
+                {output.revenueTiers && output.revenueTiers.length > 0 ? (
+                  <div className="w-full">
+                    <table className="w-full text-left text-xs table-auto">
+                      <thead>
+                        <tr className="border-b border-border text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                          <th className="pb-2.5 pr-3 font-medium">Tier</th>
+                          <th className="pb-2.5 pr-3 font-medium">Price</th>
+                          <th className="pb-2.5 pr-3 font-medium">Target Segment</th>
+                          <th className="pb-2.5 font-medium text-right whitespace-nowrap">% of Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {output.revenueTiers.map((tier, idx) => (
+                          <tr key={idx}>
+                            <td className="py-3 pr-3 align-top">
+                              <div className="font-medium text-[13px] text-foreground font-sans break-words leading-snug">
+                                {tier.tierName}
+                              </div>
+                              {tier.features && tier.features.length > 0 && (
+                                <div className="text-[11px] text-muted-foreground/80 font-sans mt-1 leading-relaxed break-words">
+                                  {tier.features.join(' · ')}
                                 </div>
-                                {tier.features && tier.features.length > 0 && (
-                                  <div className="text-[11px] text-muted-foreground/80 font-sans mt-0.5 line-clamp-1 group-hover:line-clamp-none transition-all">
-                                    {tier.features.join(' · ')}
+                              )}
+                            </td>
+                            <td className="py-3 pr-3 align-top font-mono font-medium text-[13px] text-foreground break-words leading-snug">
+                              {tier.pricing}
+                            </td>
+                            <td className="py-3 pr-3 align-top text-[13px] text-muted-foreground font-sans break-words leading-relaxed">
+                              {tier.targetSegment}
+                            </td>
+                            <td className="py-3 align-top text-right whitespace-nowrap">
+                              <div className="inline-flex items-center justify-end gap-2">
+                                <span className="font-mono text-[13px] font-medium text-foreground">
+                                  {tier.projectedContributionPct !== undefined ? `${tier.projectedContributionPct}%` : '—'}
+                                </span>
+                                {tier.projectedContributionPct !== undefined && (
+                                  <div className="w-12 sm:w-14 h-1.5 bg-muted rounded-full overflow-hidden shrink-0 inline-block align-middle">
+                                    <div
+                                      className="h-full bg-muted-foreground/60 rounded-full"
+                                      style={{ width: `${Math.min(100, Math.max(0, tier.projectedContributionPct))}%` }}
+                                    />
                                   </div>
                                 )}
-                              </td>
-                              <td className="py-3 pr-2 align-top font-mono font-medium text-[13px] text-foreground whitespace-nowrap">
-                                {tier.pricing}
-                              </td>
-                              <td className="py-3 pr-2 align-top text-[13px] text-muted-foreground font-sans">
-                                {tier.targetSegment}
-                              </td>
-                              <td className="py-3 align-top text-right whitespace-nowrap">
-                                <div className="inline-flex items-center justify-end gap-2">
-                                  <span className="font-mono text-[13px] font-medium text-foreground">
-                                    {tier.projectedContributionPct !== undefined ? `${tier.projectedContributionPct}%` : '—'}
-                                  </span>
-                                  {tier.projectedContributionPct !== undefined && (
-                                    <div className="w-14 h-1.5 bg-muted rounded-full overflow-hidden shrink-0 inline-block">
-                                      <div
-                                        className="h-full bg-muted-foreground/60 rounded-full"
-                                        style={{ width: `${Math.min(100, Math.max(0, tier.projectedContributionPct))}%` }}
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic font-sans py-4">No pricing tiers defined.</p>
-                  )}
-                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic font-sans py-4">No pricing tiers defined.</p>
+                )}
               </div>
 
               {/* Right Card: Model Assumptions to Test */}
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between space-y-4">
-                <div className="space-y-4">
-                  {/* Card Header */}
-                  <div className="flex items-center justify-between pb-3 border-b border-border">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground font-sans">
-                      Model Assumptions to Test
-                    </h3>
-                    <span className="text-[11px] font-mono text-muted-foreground">
-                      {output.assumptions?.length ?? 0} ACTIVE
-                    </span>
-                  </div>
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+                {/* Card Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground font-sans">
+                    Model Assumptions to Test
+                  </h3>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    {output.assumptions?.length ?? 0} ACTIVE
+                  </span>
+                </div>
 
-                  {/* Assumptions List */}
-                  {output.assumptions && output.assumptions.length > 0 ? (
-                    <div className="space-y-3.5">
-                      {output.assumptions.map((item, idx) => {
-                        const isBenchmark = item.evidenceLevel === 'evidenced';
-                        const isModelled = item.evidenceLevel === 'modelled';
+                {/* Assumptions List with unconstrained vertical growth and natural wrapping */}
+                {output.assumptions && output.assumptions.length > 0 ? (
+                  <div className="space-y-4">
+                    {output.assumptions.map((item, idx) => {
+                      const isBenchmark = item.evidenceLevel === 'evidenced';
+                      const isModelled = item.evidenceLevel === 'modelled';
 
-                        return (
-                          <div
-                            key={idx}
-                            className="flex items-start justify-between gap-3 text-xs leading-relaxed"
-                          >
-                            <div className="flex items-start gap-2 min-w-0">
-                              <span className="font-mono text-xs text-muted-foreground shrink-0 pt-0.5">
-                                {idx + 1}.
-                              </span>
-                              <div className="text-[13px] text-foreground/90 font-sans">
-                                {item.category && (
-                                  <span className="font-mono text-[10px] uppercase font-semibold text-muted-foreground mr-1.5">
-                                    [{item.category}]
-                                  </span>
-                                )}
-                                {item.assumption}
-                              </div>
-                            </div>
-
-                            {/* Right-aligned mapped evidence label with design colors */}
-                            <div className="shrink-0 pt-0.5">
-                              {isBenchmark ? (
-                                <span className="text-[11px] font-medium text-teal-600 dark:text-teal-400 font-sans whitespace-nowrap">
-                                  Benchmark-backed
-                                </span>
-                              ) : isModelled ? (
-                                <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 font-sans whitespace-nowrap">
-                                  Modelled
-                                </span>
-                              ) : (
-                                <span className="text-[11px] font-medium text-muted-foreground font-sans whitespace-nowrap">
-                                  Untested
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-start justify-between gap-3 text-xs leading-relaxed min-w-0"
+                        >
+                          <div className="flex items-start gap-2 min-w-0 flex-1">
+                            <span className="font-mono text-xs text-muted-foreground shrink-0 pt-0.5">
+                              {idx + 1}.
+                            </span>
+                            <div className="text-[13px] text-foreground/90 font-sans break-words leading-relaxed min-w-0 flex-1">
+                              {item.category && (
+                                <span className="font-mono text-[10px] uppercase font-semibold text-muted-foreground mr-1.5 break-words">
+                                  [{item.category}]
                                 </span>
                               )}
+                              {item.assumption}
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground italic font-sans py-4">No model assumptions registered.</p>
-                  )}
-                </div>
+
+                          {/* Right-aligned mapped evidence label with design colors */}
+                          <div className="shrink-0 pt-0.5 ml-2">
+                            {isBenchmark ? (
+                              <span className="text-[11px] font-medium text-teal-600 dark:text-teal-400 font-sans whitespace-nowrap">
+                                Benchmark-backed
+                              </span>
+                            ) : isModelled ? (
+                              <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 font-sans whitespace-nowrap">
+                                Modelled
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-medium text-muted-foreground font-sans whitespace-nowrap">
+                                Untested
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic font-sans py-4">No model assumptions registered.</p>
+                )}
               </div>
             </div>
 
