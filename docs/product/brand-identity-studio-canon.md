@@ -256,8 +256,13 @@ The **Brand Identity Studio** is an enterprise-grade visual identity creation en
 
 ### 3.1 Canonical Media URL Resolution (`resolveMediaUrl`)
 - **Single Resolver Canon**: All surfaces rendering or fetching brand assets MUST route relative and absolute URIs through `resolveMediaUrl(uri, version)` from `@/lib/brand-kit-media`.
-- **Origin Handling**: Prepends `API_ORIGIN` (e.g. `http://localhost:5093` in development) to server-relative asset paths (`/brand-assets/logos/...`), while preserving data URIs and external URLs untouched.
-- **Applies Uniformly To**: Concept tiles, variation tiles, color system modals, compare overlays, logo cards, invoice mocks, micro-scale proofers, Brand Kit Hub, and Phase 2 Complete summary cards.
+- **Origin & SVG Data URI Handling**:
+  - Automatically converts raw vector `<svg...` and `<?xml...` strings directly into RFC 2397 Data URIs (`data:image/svg+xml;utf8,...`), ensuring browser-renderability across all `<img>` tags without illegal URL path concatenation.
+  - Prepends `API_ORIGIN` (e.g. `http://localhost:5093` in development) to server-relative asset paths (`/brand-assets/logos/...`), while preserving existing `data:`, `blob:`, `http://`, and `https://` URIs untouched.
+- **PDF Export Logo & CORS Canon**:
+  - In PDF export views (e.g., `MarketStudyPrintView`, `BusinessModelPrintView`), never specify `crossOrigin="anonymous"` on `<img>` tags for backend static files unless the ASP.NET static file middleware returns CORS headers; otherwise, the browser silently blocks the logo from rendering.
+  - Always implement the 7-step candidate fallback chain (`primary`, `horizontal`, `transparent`, `badge_stamp`, `lockupAssetUri`, `markAssetUri`, `branding.logoAsset`), and render a branded monogram/lettermark badge if no image is available or errors out.
+- **Applies Uniformly To**: Concept tiles, variation tiles, color system modals, compare overlays, logo cards, invoice mocks, micro-scale proofers, Brand Kit Hub, Phase 2 Complete summary cards, and Phase 3 PDF export views (Market Study & Business Model).
 
 ### 3.2 Canonical ZIP Export Engine (`src/lib/brand-kit-export.ts`)
 - **Single Source of Truth**: All export actions across the application (`BrandKitHubView`, `VariationSetModal`, and the Creator `AssetLibraryPage`) delegate exclusively to `exportBrandKitZip(kit, customBrandName)`.

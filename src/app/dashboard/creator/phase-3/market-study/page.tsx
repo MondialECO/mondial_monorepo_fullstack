@@ -114,26 +114,43 @@ export default function MarketStudyPage() {
         setGeography(journey.project?.geography ?? null);
         setProjectName((journey.project as { name?: string; title?: string } | undefined)?.name ?? (journey.project as { name?: string; title?: string } | undefined)?.title ?? null);
 
-        // Fetch brand kit logo for PDF export (prefer transparent variation)
+        // Fetch brand kit logo for PDF export (robust fallback chain)
+        let candidateLogoUri: string | null = null;
+        let kitVersion: number | undefined = undefined;
         try {
-          const kit = await brandKitApi.getBrandKit();
+          const currentIdeaId = getCreatorWorkspaceIdea();
+          const kit = await brandKitApi.getBrandKit(currentIdeaId ?? undefined);
+          kitVersion = kit?.version;
           const selectedKey = kit?.logo?.selectedConceptKey;
           const concepts = kit?.logo?.concepts || [];
           const approvedConcept = selectedKey
             ? concepts.find(c => c.key === selectedKey)
             : concepts[0];
           const variations = kit?.logo?.variations || {};
-          const transparentUri =
+          candidateLogoUri =
+            variations.primary?.svgUri ||
+            variations.primary?.pngUri ||
+            variations.horizontal?.svgUri ||
+            variations.horizontal?.pngUri ||
             variations.transparent?.svgUri ||
             variations.transparent?.pngUri ||
             variations.badge_stamp?.svgUri ||
-            variations.badge_stamp?.pngUri;
-          const rawUri = transparentUri || approvedConcept?.lockupAssetUri || approvedConcept?.markAssetUri;
-          if (rawUri) {
-            setLogoUrl(resolveMediaUrl(rawUri, kit.version));
-          }
+            variations.badge_stamp?.pngUri ||
+            approvedConcept?.lockupAssetUri ||
+            approvedConcept?.markAssetUri ||
+            null;
         } catch {
-          // Logo is optional — silently skip if brand kit isn't available yet
+          // Brand kit optional — silently fallback to project branding
+        }
+
+        // Fallback to journey project branding logoAsset if BrandKit did not yield an asset
+        if (!candidateLogoUri) {
+          const projectBranding = (journey.project as { branding?: { logoAsset?: string | null } } | undefined)?.branding;
+          candidateLogoUri = projectBranding?.logoAsset || null;
+        }
+
+        if (candidateLogoUri) {
+          setLogoUrl(resolveMediaUrl(candidateLogoUri, kitVersion));
         }
       } finally {
         if (active) setLoading(false);
