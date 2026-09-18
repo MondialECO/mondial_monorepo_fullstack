@@ -4,10 +4,12 @@ interface Phase3SetupShellProps {
   children: React.ReactNode;
   compact?: boolean;
   contentClassName?: string;
-  description: string;
+  description?: string | React.ReactNode;
+  descriptionClassName?: string;
   fullWidth?: boolean;
+  headerActions?: React.ReactNode;
   headerAlign?: "center" | "left";
-  stepEyebrow: string;
+  stepEyebrow?: string;
   title: string;
   titleClassName?: string;
 }
@@ -17,7 +19,9 @@ export function Phase3SetupShell({
   compact = false,
   contentClassName,
   description,
+  descriptionClassName,
   fullWidth = false,
+  headerActions,
   headerAlign = "center",
   stepEyebrow,
   title,
@@ -37,17 +41,39 @@ export function Phase3SetupShell({
         <div
           className={cn(
             headerAlign === "left"
-              ? "w-full space-y-2 text-left"
+              ? "w-full flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/70 pb-6 text-left"
               : "mx-auto max-w-3xl space-y-3 text-center",
           )}
         >
-          {stepEyebrow && <span className="text-xs font-bold uppercase tracking-wider text-primary">{stepEyebrow}</span>}
-          <h1 className={cn("text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl", titleClassName)}>{title}</h1>
-          <p className="text-sm leading-7 text-muted-foreground sm:text-base">{description}</p>
+          <div className="space-y-1.5">
+            {stepEyebrow && (
+              <span className="text-xs font-mono font-medium uppercase tracking-wider text-muted-foreground">
+                {stepEyebrow}
+              </span>
+            )}
+            <h1 className={cn("text-2xl sm:text-3xl font-bold tracking-tight text-foreground font-sans", titleClassName)}>
+              {title}
+            </h1>
+            {description && (
+              typeof description === "string" ? (
+                <p className={cn(headerAlign === "left" ? "text-xs font-mono text-muted-foreground pt-0.5" : "text-sm leading-7 text-muted-foreground sm:text-base", descriptionClassName)}>
+                  {description}
+                </p>
+              ) : (
+                description
+              )
+            )}
+          </div>
+          {headerActions && (
+            <div className="flex items-center gap-2 shrink-0">
+              {headerActions}
+            </div>
+          )}
         </div>
 
-        <div className={cn("mt-12 space-y-8", contentClassName)}>{children}</div>
+        <div className={cn("mt-8 space-y-8", contentClassName)}>{children}</div>
       </main>
     </div>
   );
 }
+

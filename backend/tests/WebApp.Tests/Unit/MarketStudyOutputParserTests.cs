@@ -111,4 +111,42 @@ public class MarketStudyOutputParserTests
 
         doc["marketGapValidation"]["confidenceLevel"].AsString.Should().Be("high"); // "strong" -> "high"
     }
+
+    [Fact]
+    public void TryParse_DirectCompetitor_WithOrWithoutSegment_ParsesCorrectly()
+    {
+        var raw = """
+        {
+          "marketSizing": {
+            "tam": { "value": 1000 },
+            "sam": { "value": 500 },
+            "som": { "value": 100 }
+          },
+          "competitorLandscape": {
+            "directCompetitors": [
+              { "name": "Comp Modern", "segment": "Enterprise / Fortune 500", "estimatedMarketShare": "25%", "pricingModel": "Annual SaaS", "exploitableGap": "Complex onboarding" },
+              { "name": "Comp Legacy", "estimatedMarketShare": "10%", "pricingModel": "Per-seat", "exploitableGap": "Outdated UI" }
+            ],
+            "indirectCompetitors": []
+          },
+          "demandSignals": [],
+          "sizingRisks": [],
+          "marketGapValidation": {
+            "primaryGap": "Developer-first supply chain tooling"
+          }
+        }
+        """;
+
+        var ok = MarketStudyOutputParser.TryParse(raw, out var doc, out var error);
+        ok.Should().BeTrue();
+        error.Should().BeEmpty();
+
+        var direct = doc["competitorLandscape"]["directCompetitors"].AsBsonArray;
+        direct.Count.Should().Be(2);
+        direct[0]["name"].AsString.Should().Be("Comp Modern");
+        direct[0]["segment"].AsString.Should().Be("Enterprise / Fortune 500");
+        direct[1]["name"].AsString.Should().Be("Comp Legacy");
+        direct[1].AsBsonDocument.Contains("segment").Should().BeFalse();
+    }
 }
+
