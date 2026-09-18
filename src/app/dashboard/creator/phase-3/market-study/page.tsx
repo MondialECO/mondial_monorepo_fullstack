@@ -755,33 +755,27 @@ export default function MarketStudyPage() {
 
             {/* SECTION 4: GAP VALIDATION (Full-width card with green left border accent) */}
             {output.marketGapValidation && (
-              <Card className="rounded-xl border border-[#e5e7eb] dark:border-border/80 bg-white dark:bg-card p-6 md:p-8 space-y-5 shadow-none overflow-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#eeeeee] dark:border-border/60 pb-3">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#9ca3af]">
-                      HYPOTHESIS 01
-                    </span>
-                    <span className="text-[11px] font-mono text-[#9ca3af]">·</span>
-                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#6b7280] dark:text-muted-foreground">
-                      YOUR STATED GAP
-                    </span>
-                  </div>
-                  <span className="px-3 py-1 rounded-full text-[12px] font-sans font-medium bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0] dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1.5 self-start sm:self-auto">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#157a55] shrink-0" />
-                    Supported by benchmark data
-                  </span>
-                </div>
+              <Card className="rounded-xl border border-[#e5e7eb] dark:border-border/80 bg-white dark:bg-card p-6 md:p-8 shadow-none">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  {/* Left Column: Your Stated Gap (HYPOTHESIS 01) */}
+                  <div className="lg:col-span-4 space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#9ca3af]">
+                        HYPOTHESIS 01
+                      </span>
+                      <span className="text-[11px] font-mono text-[#9ca3af]">·</span>
+                      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#6b7280] dark:text-muted-foreground">
+                        YOUR STATED GAP
+                      </span>
+                    </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-1">
-                  {/* Left Column: Stated Gap with Teal/Emerald Left Border Accent */}
-                  <div className="lg:col-span-5 space-y-2">
-                    <div className="border-l-2 border-[#0d9488] pl-4 py-1 font-sans text-[16px] font-normal text-[#111827] dark:text-foreground leading-relaxed">
+                    <div className="border-l-2 border-[#0d9488] pl-4 py-1 font-sans text-[15px] md:text-[16px] font-normal text-[#111827] dark:text-foreground leading-relaxed">
                       &ldquo;{creatorMarketGap || 'Mid-market tools are built for certified accountants, while modern self-serve SMBs lack zero-touch line-item reconciliation that conforms natively to EU ViDA standards.'}&rdquo;
                     </div>
                   </div>
 
-                  {/* Right Column: Benchmark Assessment & Inset Evidence Box with Green Check */}
-                  <div className="lg:col-span-7 space-y-3">
+                  {/* Middle/Right Column: Benchmark Assessment (EVIDENCE SYNTHESIS) */}
+                  <div className="lg:col-span-5 space-y-3">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#9ca3af]">
                         EVIDENCE SYNTHESIS
@@ -791,13 +785,23 @@ export default function MarketStudyPage() {
                         BENCHMARK ASSESSMENT
                       </span>
                     </div>
+
                     <p className="text-[13px] font-mono text-[#111827] dark:text-foreground leading-relaxed">
                       {output.marketGapValidation.primaryGap}
                     </p>
-                    <div className="rounded-lg border border-[#e5e7eb] dark:border-border/70 bg-[#f9fafb] dark:bg-muted/30 p-3.5 flex items-start gap-2.5 text-[11px] text-[#111827] dark:text-foreground font-mono leading-relaxed">
+
+                    <div className="rounded-lg border border-[#e5e7eb] dark:border-border/70 bg-[#f9fafb] dark:bg-muted/30 p-3 flex items-start gap-2.5 text-[11px] text-[#111827] dark:text-foreground font-mono leading-relaxed">
                       <Check className="w-4 h-4 text-[#157a55] shrink-0 mt-0.5" />
                       <span>{output.marketGapValidation.validationRationale}</span>
                     </div>
+                  </div>
+
+                  {/* Right Column: Top Right Status Badge */}
+                  <div className="lg:col-span-3 flex lg:justify-end">
+                    <span className="px-3 py-1 rounded-full text-[12px] font-sans font-medium bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0] dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#157a55] shrink-0" />
+                      Supported by benchmark data
+                    </span>
                   </div>
                 </div>
               </Card>
