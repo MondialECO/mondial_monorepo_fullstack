@@ -264,7 +264,7 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
     render(<MarketStudyPage />);
 
     expect(await screen.findByText('Early Pilot Beta Cohort')).toBeInTheDocument();
-    expect(screen.getByText(/1% of SAM/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/1% of SAM/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Targeted beachhead with 50 enterprise shippers in Benelux./i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('$50M')).toBeInTheDocument();
   });
