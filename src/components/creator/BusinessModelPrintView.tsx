@@ -504,13 +504,17 @@ export default function BusinessModelPrintView({
                     <span
                       className={`text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded ${
                         item.evidenceLevel === "evidenced"
-                          ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                          ? "bg-teal-50 text-teal-800 border border-teal-300"
                           : item.evidenceLevel === "modelled"
-                          ? "bg-amber-100 text-amber-800 border border-amber-300"
-                          : "bg-neutral-200 text-neutral-700 border border-neutral-300"
+                          ? "bg-amber-50 text-amber-800 border border-amber-300"
+                          : "bg-neutral-100 text-neutral-600 border border-neutral-300"
                       }`}
                     >
-                      {item.evidenceLevel || "UNTESTED"}
+                      {item.evidenceLevel === "evidenced"
+                        ? "Benchmark-backed"
+                        : item.evidenceLevel === "modelled"
+                        ? "Modelled"
+                        : "Untested"}
                     </span>
                   </div>
                 </div>
