@@ -424,21 +424,25 @@ export default function MarketStudyPage() {
                   </div>
                 </div>
 
-                {/* Level 2: SAM Row (Proportional Left Box + Full Unclipped Naturally Wrapping Content Column) */}
-                <div className="w-full flex items-stretch gap-4">
+                {/* Level 2: SAM Row (Proportional Left Band + Full Unclipped Naturally Wrapping Content Column) */}
+                <div className="w-full flex items-start gap-4">
                   <div
-                    style={{ width: `${Math.max(6, samWidthPct)}%` }}
-                    className="min-w-[56px] min-h-[76px] rounded-xl border border-border/80 bg-card dark:bg-card/80 flex flex-col items-center justify-center p-3 shrink-0 shadow-none transition-all"
-                  >
-                    <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-foreground">
-                      SAM
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-start justify-between gap-4 py-1">
+                    style={{ width: `${Math.max(1.5, Math.min(100, samWidthPct))}%` }}
+                    className="min-w-[12px] h-7 sm:h-8 rounded-lg border border-border/80 bg-muted/60 dark:bg-muted/40 shrink-0 mt-0.5 shadow-none transition-all"
+                    title={`SAM: ${formatPct(samPctOfTam)}% of TAM`}
+                  />
+                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                        <span>SAM — Serviceable Addressable</span>
-                        <span className="text-foreground/80 font-semibold">· {formatPct(samPctOfTam)}% OF TAM</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-muted text-foreground border border-border/60 uppercase tracking-wider">
+                          SAM
+                        </span>
+                        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                          Serviceable Addressable
+                        </span>
+                        <span className="text-xs font-mono font-semibold text-foreground/80">
+                          · {formatPct(samPctOfTam)}% OF TAM
+                        </span>
                       </div>
                       <div className="text-sm sm:text-base font-semibold text-foreground font-sans leading-snug break-words">
                         {sam?.label || 'Serviceable Addressable Market'}
@@ -467,23 +471,20 @@ export default function MarketStudyPage() {
                   </div>
                 </div>
 
-                {/* Level 3: SOM Row (Proportional Solid Green Box + Full Unclipped Naturally Wrapping Content Column) */}
-                <div className="w-full flex items-stretch gap-4">
+                {/* Level 3: SOM Row (Proportional Solid Green Band + Full Unclipped Naturally Wrapping Content Column) */}
+                <div className="w-full flex items-start gap-4">
                   <div
-                    style={{ width: `${Math.max(2, somWidthPct)}%` }}
-                    className="min-w-[48px] min-h-[76px] rounded-xl border border-emerald-600 bg-emerald-600 text-white flex flex-col items-center justify-center p-2.5 shrink-0 shadow-sm transition-all"
-                  >
-                    <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-white">
-                      SOM
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-start justify-between gap-4 py-1">
+                    style={{ width: `${Math.max(1.5, Math.min(100, somWidthPct))}%` }}
+                    className="min-w-[12px] h-7 sm:h-8 rounded-lg border border-emerald-600 bg-emerald-600 shrink-0 mt-0.5 shadow-sm transition-all"
+                    title={`SOM: ${formatPct(somPctOfSam)}% of SAM`}
+                  />
+                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-emerald-600/15 text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                        <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-emerald-600/15 text-emerald-600 dark:text-emerald-400 border border-emerald-600/30 uppercase tracking-wider">
                           SOM
                         </span>
-                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-muted text-muted-foreground uppercase tracking-wider">
+                        <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-muted text-muted-foreground border border-border/60 uppercase tracking-wider">
                           Y1-Y3
                         </span>
                         <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
