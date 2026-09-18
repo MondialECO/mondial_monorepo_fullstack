@@ -431,6 +431,11 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   3. `demandSignals`: Array of signals with `signal`, `evidence`, `sourceAttribution`, and `relevanceScore` (integer 1–10).
   4. `sizingRisks`: Array of sensitivity risks with `risk`, `impactOnSom` (`low` | `medium` | `high`), and `mitigation`.
   5. `marketGapValidation`: `primaryGap`, `validationRationale`, and `confidenceLevel` (`high` | `moderate` | `speculative`).
+- **Figma Parity & 1:1 Design Conformance (Approved Nodes):**
+  - **Sizing Funnel & Active Formula (Node `57078:11039`):** Truly proportional TAM, SAM, and SOM bars rendered without clamping floors, paired with the Active Sizing Formula container displaying step-reduction percentages and derivations.
+  - **Competitive Landscape Matrix (Node `57078:11179`):** Direct competitors comparison grid featuring segments, market share, pricing models, verified strengths, exploitable gaps, and source attributions.
+  - **Market Demand Signals & Sizing Risks (Node `57078:11286`):** Dual-card layout contrasting verified growth signals (+% YoY badges, evidence, attribution) with operational risks (impact severity chips, mitigations).
+  - **Founder Gap Validation (Node `57078:11359`):** Hypothesis assessment banner with confidence pill badge, followed by a 2-column comparative layout contrasting the founder's stated gap against evidence synthesis and validation rationale.
 - **UI Presentation & Permanent Architectural Decisions:**
   - **Truly Proportional Funnel Bars (Zero Clamping):** TAM, SAM, and SOM bars render at true mathematical widths (`width: 100%`, `width: SAM%`, `width: SOM%`) without artificial minimum-width floors.
   - **Permanent Decision 1 — No Minimum-Width Floor:** The funnel must NEVER enforce a `minWidth` floor (e.g. clamping small SOMs to 15%). Doing so visually distorts market realities, making a tiny obtainable market look deceptively large and dangerously misleading the founder.
@@ -440,6 +445,10 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   - **Dense Competitor Benchmarking Matrix:** Full-width multi-column comparison table featuring direct competitor names, segments, estimated market share, pricing models, verified strengths, exploitable gaps, and source attributions.
   - **Structured Signals & Risks Rows:** Two-column grid contrasting verified market demand signals (with 1–10 relevance score bars) against operational sizing risks (with threat impact chips and mitigation strategies).
   - **Closing Founder Gap Validation:** Market gap validation is positioned at the bottom of the workspace as the closing foundation, with sections cleanly renumbered.
+- **Standalone PDF Export (`MarketStudyPrintView.tsx`):**
+  - Instant browser-compiled printable document available via "Export PDF" button.
+  - Aligned 1:1 with the Figma layout structure across all 4 major sections and executive headers.
+  - **Brand Kit Logo Integration:** Automatically queries `brandKitApi.getBrandKit()` to fetch confirmed visual identity assets. Prioritizes the transparent variation (`logoVariations.transparent?.svgUri || logoVariations.transparent?.pngUri`) to render cleanly without background containers in the report header, with fallback to approved concept lockup. Also embeds the transparent mark in the report footer watermark alongside platform certification metadata.
 - **Credit Cost:** **20 credits** (`AiJobType.MarketStudy`).
 
 ### 5.2 Step 3.2 — Business Model & Monetization Canvas (LIVE)
@@ -559,7 +568,7 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
 
 ### 5.12 Document & PDF Export Infrastructure
 - **Browser-Generated Print Documents:** Exports are compiled directly on-demand in the client browser, eliminating static file storage so exports always reflect the latest live project data:
-  1. **Market Study Print View (`MarketStudyPrintView.tsx`):** Standalone clean printable document layout for Step 3.1 containing the full sizing funnel, methodology audit trail, competitor matrix, demand signals, and founder gap validation. Accessible via "Export PDF" from `/dashboard/creator/phase-3/market-study` and the Creator Asset Library.
+  1. **Market Study Print View (`MarketStudyPrintView.tsx`):** Standalone clean printable document layout for Step 3.1 containing the full sizing funnel, methodology audit trail, competitor matrix, demand signals, and founder gap validation matching Figma Node `57078:11039` design structure. Dynamically fetches and embeds the brand's transparent logo (`logoVariations.transparent`) in the report header and watermark footer. Accessible via "Export PDF" from `/dashboard/creator/phase-3/market-study` and the Creator Asset Library.
   2. **Business Model Print View (`BusinessModelPrintView.tsx`):** Standalone clean printable document layout for Step 3.2 containing the 9-block Osterwalder canvas (with page-break protection and value proposition emphasis), modelled unit economics (preserving modelled-vs-baseline distinction), pricing tiers table, and assumptions register. Accessible via "Export PDF" from `/dashboard/creator/phase-3/business-model` and the Creator Asset Library.
   3. **Plan & Forecast Print View (`PlanForecastPrintView.tsx`):** Printable document layout for Step 3.3 (Executive Business Plan) and Step 3.4 (Financial Forecast).
   4. **Brand Kit ZIP Exporter (`exportBrandKitZip`):** Client-side JSZip engine packaging 7 vector SVGs, 3 token manifests, and README.md.

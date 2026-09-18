@@ -148,5 +148,39 @@ public class MarketStudyOutputParserTests
         direct[1]["name"].AsString.Should().Be("Comp Legacy");
         direct[1].AsBsonDocument.Contains("segment").Should().BeFalse();
     }
+
+    [Fact]
+    public void TryParse_DirectCompetitor_WithAliasSegment_NormalizesToSegment()
+    {
+        var raw = """
+        {
+          "marketSizing": {
+            "tam": { "value": 1000 },
+            "sam": { "value": 500 },
+            "som": { "value": 100 }
+          },
+          "competitorLandscape": {
+            "directCompetitors": [
+              { "name": "Comp A", "targetSegment": "Fintech SMBs", "estimatedMarketShare": "15%" },
+              { "name": "Comp B", "marketSegment": "Global Enterprise", "estimatedMarketShare": "30%" }
+            ],
+            "indirectCompetitors": []
+          },
+          "demandSignals": [],
+          "sizingRisks": [],
+          "marketGapValidation": {
+            "primaryGap": "Developer-first supply chain tooling"
+          }
+        }
+        """;
+
+        var ok = MarketStudyOutputParser.TryParse(raw, out var doc, out var error);
+        ok.Should().BeTrue();
+        error.Should().BeEmpty();
+
+        var direct = doc["competitorLandscape"]["directCompetitors"].AsBsonArray;
+        direct[0]["segment"].AsString.Should().Be("Fintech SMBs");
+        direct[1]["segment"].AsString.Should().Be("Global Enterprise");
+    }
 }
 

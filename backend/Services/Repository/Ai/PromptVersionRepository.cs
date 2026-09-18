@@ -50,6 +50,19 @@ namespace WebApp.Services.Repository.Ai
         public async Task<bool> ExistsAsync(string key, int version)
             => await _collection.Find(x => x.Key == key && x.Version == version).AnyAsync();
 
+        /// <summary>Finds a prompt by key and version.</summary>
+        public async Task<PromptVersion?> GetByKeyAndVersionAsync(string key, int version)
+            => await _collection.Find(x => x.Key == key && x.Version == version).FirstOrDefaultAsync();
+
+        /// <summary>Updates prompt content and sets IsActive = true.</summary>
+        public Task UpdateContentAndActivateAsync(string id, string systemText, string? outputContract)
+            => _collection.UpdateOneAsync(
+                x => x.Id == id,
+                Builders<PromptVersion>.Update
+                    .Set(x => x.SystemText, systemText)
+                    .Set(x => x.OutputContract, outputContract)
+                    .Set(x => x.IsActive, true));
+
         /// <summary>
         /// Clears the active flag on every version of a key. Run before
         /// inserting a new active version so the partial-unique index holds.

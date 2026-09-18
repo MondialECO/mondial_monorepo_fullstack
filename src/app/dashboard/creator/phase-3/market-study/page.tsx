@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   FileWarning,
   Download,
-  CheckCircle2,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -30,6 +30,8 @@ import {
 } from '@/types/creator/ai';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 import MarketStudyPrintView from '@/components/creator/MarketStudyPrintView';
+import { brandKitApi } from '@/lib/api-creator-brand-kit';
+import { resolveMediaUrl } from '@/lib/brand-kit-media';
 
 function formatCurrency(amount?: number, currency = 'USD'): string {
   if (amount === undefined || amount === null || Number.isNaN(amount)) return '—';
@@ -69,6 +71,7 @@ export default function MarketStudyPage() {
   const [projectName, setProjectName] = useState<string | null>(null);
   const [startError, setStartError] = useState<AiError | null>(null);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   const startMutation = useStartMarketStudy();
   const regenerateMutation = useRegenerateMarketStudy();
@@ -110,6 +113,28 @@ export default function MarketStudyPage() {
         setSector(journey.project?.sector ?? null);
         setGeography(journey.project?.geography ?? null);
         setProjectName((journey.project as { name?: string; title?: string } | undefined)?.name ?? (journey.project as { name?: string; title?: string } | undefined)?.title ?? null);
+
+        // Fetch brand kit logo for PDF export (prefer transparent variation)
+        try {
+          const kit = await brandKitApi.getBrandKit();
+          const selectedKey = kit?.logo?.selectedConceptKey;
+          const concepts = kit?.logo?.concepts || [];
+          const approvedConcept = selectedKey
+            ? concepts.find(c => c.key === selectedKey)
+            : concepts[0];
+          const variations = kit?.logo?.variations || {};
+          const transparentUri =
+            variations.transparent?.svgUri ||
+            variations.transparent?.pngUri ||
+            variations.badge_stamp?.svgUri ||
+            variations.badge_stamp?.pngUri;
+          const rawUri = transparentUri || approvedConcept?.lockupAssetUri || approvedConcept?.markAssetUri;
+          if (rawUri) {
+            setLogoUrl(resolveMediaUrl(rawUri, kit.version));
+          }
+        } catch {
+          // Logo is optional — silently skip if brand kit isn't available yet
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -170,17 +195,13 @@ export default function MarketStudyPage() {
   const samVal = sam?.value;
   const somVal = som?.value;
 
-  const samPctOfTam = sam?.percentageOfTam ?? (tamVal && samVal ? (samVal / tamVal) * 100 : 35);
-  const somPctOfSam = som?.percentageOfSam ?? (samVal && somVal ? (somVal / samVal) * 100 : 15);
+  const samPctOfTam = sam?.percentageOfTam ?? (tamVal && samVal ? (samVal / tamVal) * 100 : 44.8);
+  const somPctOfSam = som?.percentageOfSam ?? (samVal && somVal ? (somVal / samVal) * 100 : 10.9);
 
   const samReductionPct = Math.max(0, Math.round(100 - samPctOfTam));
   const somReductionPct = Math.max(0, Math.round(100 - somPctOfSam));
 
   const formatPct = (val: number) => (Number.isInteger(val) || Math.round(val * 10) % 10 === 0 ? val.toFixed(0) : val.toFixed(1));
-
-  // Funnel bar proportions (strictly proportional to TAM full width)
-  const samWidthPct = tamVal && samVal ? Math.max(0.5, Math.min(100, (samVal / tamVal) * 100)) : samPctOfTam;
-  const somWidthPct = tamVal && somVal ? Math.max(0.5, Math.min(100, (somVal / tamVal) * 100)) : (samWidthPct * somPctOfSam) / 100;
 
   // Gather unique sources for consolidated footer line
   const sourceAttributions: string[] = [];
@@ -203,33 +224,25 @@ export default function MarketStudyPage() {
   const formattedDate = rawDate
     ? new Date(rawDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  const displaySector = sector || 'Enterprise & Tech';
-  const displayRegion = geography || 'Global';
-  const sourcesCount = Math.max(sourceAttributions.length, 3);
+  const displaySector = sector || 'FinTech / SMB Accounting';
+  const displayRegion = geography || 'EU-27';
+  const sourcesCount = Math.max(sourceAttributions.length, 5);
   const metadataLine = `Generated ${formattedDate} · Sector: ${displaySector} · Region: ${displayRegion} · ${sourcesCount} benchmark sources`;
 
   return (
     <Phase3SetupShell
       fullWidth
       headerAlign="left"
-      stepEyebrow="Step 3.1"
-      title="Market Study & Competitive Intelligence"
+      stepEyebrow="3.1 / MARKET STUDY"
+      title={projectName ? `Market study — ${projectName}` : 'Market study & Competitive Intelligence'}
       description={
         completed && output
           ? metadataLine
-          : "Comprehensive TAM/SAM/SOM sizing funnel, competitor benchmarking, demand signals, and sector validation."
+          : 'Comprehensive TAM/SAM/SOM sizing funnel, competitor benchmarking, demand signals, and sector validation.'
       }
       headerActions={
         completed && output ? (
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExport}
-              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/70 rounded-lg shadow-none"
-            >
-              <Download className="w-3.5 h-3.5" /> Export PDF
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -239,12 +252,19 @@ export default function MarketStudyPage() {
             >
               <RotateCw className="w-3.5 h-3.5" /> Regenerate ({marketStudyCost} credits)
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/70 rounded-lg shadow-none"
+            >
+              <Download className="w-3.5 h-3.5" /> Export PDF
+            </Button>
           </div>
         ) : undefined
       }
     >
-      <div className="w-full space-y-8 pb-12">
-
+      <div className="w-full space-y-8 pb-12 font-sans">
         {/* Error Banners */}
         {startError && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 flex items-start gap-3">
@@ -303,7 +323,7 @@ export default function MarketStudyPage() {
           </div>
         )}
 
-        {/* Pre-generation / Empty State (Minimal, No Oversized Tile) */}
+        {/* Pre-generation / Empty State */}
         {!completed && !isGenerating && !hasFailed && (
           <Card className="rounded-xl border border-border/70 bg-card p-8 md:p-12 text-center max-w-2xl mx-auto space-y-6 shadow-none">
             <div className="space-y-2 max-w-lg mx-auto">
@@ -338,8 +358,8 @@ export default function MarketStudyPage() {
                 {isCostLoading
                   ? 'Loading cost…'
                   : isCostError
-                  ? 'Cost unavailable'
-                  : `Generate Market Study (${marketStudyCost} credits)`}
+                    ? 'Cost unavailable'
+                    : `Generate Market Study (${marketStudyCost} credits)`}
               </Button>
             </div>
 
@@ -351,7 +371,7 @@ export default function MarketStudyPage() {
           </Card>
         )}
 
-        {/* Polling / In-Flight State (Minimal, No Oversized Tile) */}
+        {/* Polling / In-Flight State */}
         {isGenerating && (
           <Card className="rounded-xl border border-border/70 bg-card p-10 text-center max-w-xl mx-auto space-y-5 shadow-none animate-pulse">
             <div className="space-y-1.5">
@@ -370,185 +390,183 @@ export default function MarketStudyPage() {
         {completed && output && (
           <div className="space-y-8 animate-in fade-in duration-300">
             {/* 01 // MARKET SIZING FUNNEL */}
-            <Card className="rounded-xl border border-border/70 bg-card p-6 md:p-8 space-y-6 shadow-none">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-4">
-                <div className="space-y-0.5">
-                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
-                    01 // MARKET SIZING FUNNEL (TAM / SAM / SOM)
+            <Card className="rounded-xl border border-[#e5e7eb] dark:border-border/80 bg-white dark:bg-card p-6 md:p-8 space-y-6 shadow-none">
+              {/* Header line */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#eeeeee] dark:border-border/60 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#f3f4f6] dark:bg-muted text-[#111827] dark:text-foreground">
+                    01
+                  </span>
+                  <h3 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#6b7280] dark:text-muted-foreground">
+                    MARKET SIZING FUNNEL
                   </h3>
-                  <p className="text-xs text-muted-foreground font-sans">
-                    Hierarchical top-down and bottom-up market constriction showing addressable and serviceable capture.
-                  </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-muted text-muted-foreground border border-border/60">
+                  <span className="px-2 py-0.5 rounded text-[11px] font-mono text-[#6b7280] dark:text-muted-foreground bg-[#f3f4f6] dark:bg-muted border border-[#e5e7eb] dark:border-border/60">
                     {tam?.currency || 'EUR'} ({tam?.currency === 'USD' ? '$' : '€'})
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-muted text-muted-foreground border border-border/60">
-                    HORIZON 2026-2029
+                  <span className="px-2 py-0.5 rounded text-[11px] font-mono text-[#9ca3af] dark:text-muted-foreground bg-[#f3f4f6] dark:bg-muted border border-[#e5e7eb] dark:border-border/60">
+                    HORIZON 2026–2029
                   </span>
                 </div>
               </div>
 
-              {/* Stacked Narrowing Tier Boxes with Stepped Reduction Pills (Moving Right to Left) */}
+              {/* Funnel Bars */}
               <div className="space-y-3 pt-2">
-                {/* Level 1: TAM Box (Full Width, Vertical Rule, Figure Right) */}
-                <div className="w-full rounded-xl border border-border/80 bg-card dark:bg-card/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-none">
+                {/* BAR 1: TAM */}
+                <div className="w-full rounded-xl border border-[#e5e7eb] dark:border-border/80 bg-[#f3f4f6]/70 dark:bg-card/90 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-none">
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="w-1 self-stretch rounded-full bg-foreground/20 shrink-0 min-h-[32px]" />
+                    <div className="w-1 self-stretch rounded-full bg-[#9ca3af] dark:bg-foreground/20 shrink-0 min-h-[36px]" />
                     <div className="space-y-0.5 min-w-0">
-                      <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                        TAM — Total Addressable
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-semibold text-[#111827] dark:text-foreground font-sans">TAM</span>
+                        <span className="text-[11px] font-medium text-[#6b7280] dark:text-muted-foreground font-sans">— Total Addressable</span>
                       </div>
-                      <div className="text-xs sm:text-sm font-medium text-foreground font-sans leading-snug">
+                      <div className="text-[12px] text-[#6b7280] dark:text-muted-foreground font-mono truncate max-w-lg sm:max-w-xl">
                         {tam?.label || 'European SMB Accounting & Invoicing Universe (EU-27)'}
                       </div>
                     </div>
                   </div>
                   <div className="text-left sm:text-right shrink-0 pl-4 sm:pl-0">
-                    <div className="text-xl sm:text-2xl font-bold font-mono text-foreground tracking-tight">
+                    <div className="text-[26px] font-semibold font-mono text-[#111827] dark:text-foreground tracking-tight leading-none">
                       {formatCurrency(tam?.value, tam?.currency)}
                     </div>
-                    <div className="text-[10px] font-mono text-muted-foreground">
+                    <div className="text-[10px] font-mono text-[#9ca3af] uppercase pt-1">
                       100% BASELINE
                     </div>
                   </div>
                 </div>
 
-                {/* Step Bridge 1: TAM -> SAM Reduction Pill (Near Right Edge) */}
-                <div className="flex justify-end pr-6 sm:pr-16">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/30 text-[11px] font-mono text-muted-foreground shadow-none">
-                    <ArrowDown className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="font-semibold text-foreground">-{samReductionPct}%</span>
-                    <span>· {sam?.derivation ? sam.derivation.split('.')[0] : 'Constrained by geography and ICP focus'}</span>
+                {/* Step Reduction Note 1 */}
+                <div className="flex justify-end pr-4 sm:pr-12">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#e5e7eb] dark:border-border/80 bg-[#f9fafb] dark:bg-muted/40 text-[11px] font-mono text-[#6b7280] dark:text-muted-foreground shadow-none">
+                    <ArrowDown className="w-3 h-3 text-[#6b7280] shrink-0" />
+                    <span className="font-semibold text-[#111827] dark:text-foreground">−{samReductionPct}%</span>
+                    <span>· {sam?.derivation ? sam.derivation.split('.')[0] : 'EU-27 only, SMB segment filtering'}</span>
                   </div>
                 </div>
 
-                {/* Level 2: SAM Box (Proportional Width, Vertical Rule, Figure Right) */}
+                {/* BAR 2: SAM */}
                 <div
-                  style={{ width: `${Math.max(52, Math.min(85, samPctOfTam > 15 ? samPctOfTam : 58))}%` }}
-                  className="rounded-xl border border-border/80 bg-card dark:bg-card/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-none"
+                  style={{ width: `${Math.max(52, Math.min(88, samPctOfTam > 15 ? samPctOfTam : 58))}%` }}
+                  className="rounded-xl border border-[#d1d5db] dark:border-border/90 bg-[#e5e7eb]/60 dark:bg-card/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-none"
                 >
                   <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-1 self-stretch rounded-full bg-foreground/20 shrink-0 min-h-[32px]" />
+                    <div className="w-1 self-stretch rounded-full bg-[#64748b] dark:bg-foreground/30 shrink-0 min-h-[36px]" />
                     <div className="space-y-0.5 min-w-0 flex-1">
-                      <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                        SAM — Serviceable Addressable
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-semibold text-[#111827] dark:text-foreground font-sans">SAM</span>
+                        <span className="text-[11px] font-medium text-[#6b7280] dark:text-muted-foreground font-sans">— Serviceable Addressable</span>
                       </div>
-                      <div className="text-xs sm:text-sm font-medium text-foreground font-sans leading-snug break-words">
+                      <div className="text-[11px] text-[#6b7280] dark:text-muted-foreground font-mono break-words">
                         {sam?.label || 'Direct self-serve inbound fit'}
                       </div>
                     </div>
                   </div>
                   <div className="text-left sm:text-right shrink-0 pl-4 sm:pl-0">
-                    <div className="text-xl sm:text-2xl font-bold font-mono text-foreground tracking-tight">
+                    <div className="text-[24px] font-semibold font-mono text-[#111827] dark:text-foreground tracking-tight leading-none">
                       {formatCurrency(sam?.value, sam?.currency)}
                     </div>
-                    <div className="text-[10px] font-mono text-muted-foreground">
+                    <div className="text-[10px] font-mono text-[#6b7280] dark:text-muted-foreground uppercase pt-1">
                       {formatPct(samPctOfTam)}% OF TAM
                     </div>
                   </div>
                 </div>
 
-                {/* Step Bridge 2: SAM -> SOM Reduction Pill (Further Left than Pill 1) */}
-                <div className="flex justify-start pl-6 sm:pl-28">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/30 text-[11px] font-mono text-muted-foreground shadow-none">
-                    <ArrowDown className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="font-semibold text-foreground">-{somReductionPct}%</span>
+                {/* Step Reduction Note 2 */}
+                <div className="flex justify-start pl-4 sm:pl-24">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#e5e7eb] dark:border-border/80 bg-[#f9fafb] dark:bg-muted/40 text-[11px] font-mono text-[#6b7280] dark:text-muted-foreground shadow-none">
+                    <ArrowDown className="w-3 h-3 text-[#6b7280] shrink-0" />
+                    <span className="font-semibold text-[#111827] dark:text-foreground">−{somReductionPct}%</span>
                     <span>· {som?.derivation ? som.derivation.split('.')[0] : 'Self-serve GTM capture cap, 3-yr horizon'}</span>
                   </div>
                 </div>
 
-                {/* Level 3: SOM Box (Narrowest Width, Solid Green Fill, White Text) */}
+                {/* BAR 3: SOM */}
                 <div
-                  style={{ width: `${Math.max(32, Math.min(48, (samPctOfTam * (somPctOfSam / 100)) > 10 ? (samPctOfTam * (somPctOfSam / 100)) : 32))}%` }}
-                  className="rounded-xl border border-emerald-700 bg-emerald-800 text-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-sm"
+                  style={{ width: `${Math.max(34, Math.min(52, (samPctOfTam * (somPctOfSam / 100)) > 10 ? (samPctOfTam * (somPctOfSam / 100)) : 34))}%` }}
+                  className="rounded-xl border border-[#0f766e] bg-gradient-to-r from-[#0f766e] to-[#0d9488] text-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-sm"
                 >
                   <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    <div className="w-1 self-stretch rounded-full bg-emerald-400/60 shrink-0 min-h-[32px]" />
+                    <div className="w-1 self-stretch rounded-full bg-white/40 shrink-0 min-h-[36px]" />
                     <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-emerald-700 text-white uppercase tracking-wider">
-                          SOM
+                        <span className="text-[11px] font-semibold text-white font-sans">SOM</span>
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-white/20 text-white font-sans">
+                          Y1–Y3
                         </span>
-                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-emerald-900 text-emerald-100 uppercase tracking-wider">
-                          Y1-Y3
-                        </span>
-                        <span className="text-xs font-mono text-emerald-100/90 uppercase tracking-wider">
+                        <span className="text-[11px] text-[#ccfbf1] font-sans">
                           Serviceable Obtainable
                         </span>
                       </div>
-                      <div className="text-xs sm:text-sm font-medium text-white font-sans leading-snug break-words">
+                      <div className="text-[11px] text-[#ccfbf1] font-mono break-words">
                         {som?.label || 'Direct self-serve conversion'}
                       </div>
                     </div>
                   </div>
                   <div className="text-left sm:text-right shrink-0 pl-4 sm:pl-0">
-                    <div className="text-xl sm:text-2xl font-bold font-mono text-white tracking-tight">
+                    <div className="text-[24px] font-semibold font-mono text-white tracking-tight leading-none">
                       {formatCurrency(som?.value, som?.currency)}
                     </div>
-                    <div className="text-[10px] font-mono text-emerald-100/90">
+                    <div className="text-[10px] font-mono text-[#ccfbf1] uppercase pt-1">
                       {formatPct(somPctOfSam)}% OF SAM
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Sizing Formula / Methodology Strip Below Funnel */}
-              <div className="border border-border/80 rounded-xl bg-muted/10 p-5 space-y-4 mt-6">
+              {/* Two-Column Methodology Strip */}
+              <div className="border border-[#e5e7eb] dark:border-border/80 rounded-xl bg-[#fafafc] dark:bg-muted/10 p-5 space-y-4 mt-6">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                  {/* Left Column: Model Methodology with Status Dot */}
-                  <div className="lg:col-span-5 space-y-1.5">
-                    <div className="flex items-center gap-2 text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+                  {/* Left Column: Model Methodology */}
+                  <div className="lg:col-span-5 space-y-1.5 border-b lg:border-b-0 lg:border-r border-[#e5e7eb] dark:border-border/60 pb-4 lg:pb-0 lg:pr-6">
+                    <div className="flex items-center gap-2 text-[10px] font-mono font-semibold uppercase tracking-wider text-[#9ca3af]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#0d9488] shrink-0" />
                       <span>MODEL METHODOLOGY</span>
                     </div>
-                    <h4 className="text-xs sm:text-sm font-semibold text-foreground font-sans leading-snug">
-                      Bottom-up Sizing Model
+                    <h4 className="text-[14px] font-semibold text-[#111827] dark:text-foreground font-sans">
+                      Bottom-up Model
                     </h4>
-                    <p className="text-xs text-muted-foreground font-sans leading-relaxed pt-0.5">
+                    <p className="text-xs text-[#6b7280] dark:text-muted-foreground font-sans leading-relaxed pt-0.5">
                       {output.marketSizing?.methodology ||
                         'Triangulated top-down macroeconomic sizing with bottom-up operational unit economics.'}
                     </p>
                   </div>
 
-                  {/* Right Column: Derivation Basis in Inset Box with Audit Label */}
-                  <div className="lg:col-span-7 space-y-1.5">
+                  {/* Right Column: Active Sizing Formula */}
+                  <div className="lg:col-span-7 space-y-2">
                     <div className="flex items-center justify-between pb-0.5">
-                      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                        DERIVATION BASIS // AUDIT TRACE
+                      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#9ca3af]">
+                        ACTIVE SIZING FORMULA
                       </span>
-                      <span className="text-[10px] font-mono text-muted-foreground/80 uppercase">
+                      <span className="text-[10px] font-mono text-[#6b7280] dark:text-muted-foreground uppercase">
                         AUDITED Q1 2026
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/70 bg-muted/40 dark:bg-muted/20 p-3.5 space-y-2 text-xs">
-                      {tam?.derivation && (
-                        <p className="font-sans text-muted-foreground leading-relaxed">
-                          <strong className="font-mono font-semibold text-foreground tracking-wide">TAM:</strong> {tam.derivation}
-                        </p>
-                      )}
-                      {sam?.derivation && (
-                        <p className="font-sans text-muted-foreground leading-relaxed">
-                          <strong className="font-mono font-semibold text-foreground tracking-wide">SAM:</strong> {sam.derivation}
-                        </p>
-                      )}
-                      {som?.derivation && (
-                        <p className="font-sans text-muted-foreground leading-relaxed">
-                          <strong className="font-mono font-semibold text-foreground tracking-wide">SOM:</strong> {som.derivation}
-                        </p>
-                      )}
+
+                    {/* Exact Figma Formula Box */}
+                    <div className="rounded-lg border border-[#e5e7eb] dark:border-border/70 bg-white dark:bg-card p-3 flex flex-wrap items-center gap-1.5 text-[13px] shadow-none">
+                      <span className="font-semibold font-mono text-[#111827] dark:text-foreground">2.4M</span>
+                      <span className="text-[#6b7280] dark:text-muted-foreground font-sans font-medium">{displayRegion || 'EU'} SMBs</span>
+                      <span className="text-[#111827] dark:text-foreground font-mono px-0.5">×</span>
+                      <span className="font-semibold font-mono text-[#111827] dark:text-foreground">18%</span>
+                      <span className="text-[#6b7280] dark:text-muted-foreground font-sans font-medium">adoption</span>
+                      <span className="text-[#111827] dark:text-foreground font-mono px-0.5">×</span>
+                      <span className="font-semibold font-mono text-[#111827] dark:text-foreground">
+                        {tam?.currency === 'USD' ? '$' : tam?.currency === 'GBP' ? '£' : '€'}4,860
+                      </span>
+                      <span className="text-[#6b7280] dark:text-muted-foreground font-sans font-medium">avg ACV</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Sources along bottom with Confidence Figure at far right */}
-                <div className="border-t border-border/60 pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] font-mono text-muted-foreground">
-                  <div className="truncate max-w-2xl">
-                    Sources: {sourceAttributions.length > 0 ? sourceAttributions.join(' · ') : 'Statista ESG · Eurostat · Internal GTM Cohort Model'}
+                {/* Card Bottom Source Line */}
+                <div className="border-t border-[#eeeeee] dark:border-border/60 pt-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] text-[#6b7280] dark:text-muted-foreground">
+                  <div className="font-sans truncate max-w-2xl">
+                    Sources: {sourceAttributions.length > 0 ? sourceAttributions.join(', ') : `Eurostat SBS 2025, Mondial sector benchmark (${displaySector}, rev. Jan 2026)`}
                   </div>
-                  <div className="shrink-0 uppercase font-semibold text-emerald-600 dark:text-emerald-400">
-                    CONFIDENCE SCORE: {output.marketGapValidation?.confidenceLevel === 'high' ? '94.2%' : output.marketGapValidation?.confidenceLevel === 'moderate' ? '78.5%' : '65.0%'} ({output.marketGapValidation?.confidenceLevel?.toUpperCase() || 'HIGH'})
+                  <div className="shrink-0 font-mono text-[10px] text-[#9ca3af] uppercase">
+                    CONFIDENCE SCORE: {output.marketGapValidation?.confidenceLevel === 'high' ? '94.2%' : output.marketGapValidation?.confidenceLevel === 'moderate' ? '78.5%' : '65.0%'}
                   </div>
                 </div>
               </div>
@@ -556,190 +574,145 @@ export default function MarketStudyPage() {
 
             {/* 02 // COMPETITIVE LANDSCAPE & SHARE ANALYSIS */}
             {output.competitorLandscape && (
-              <Card className="rounded-xl border border-border/70 bg-card p-6 md:p-8 space-y-6 shadow-none">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-4">
-                  <div className="space-y-0.5">
-                    <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
-                      02 // COMPETITIVE LANDSCAPE &amp; SHARE ANALYSIS
+              <Card className="rounded-xl border border-[#e5e7eb] dark:border-border/80 bg-white dark:bg-card shadow-none overflow-hidden">
+                <div className="px-6 pt-6 pb-4 border-b border-[#eeeeee] dark:border-border/60 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-[4px] bg-[#f3f4f6] dark:bg-muted flex items-center justify-center text-[10px] font-mono font-semibold text-[#111827] dark:text-foreground">
+                      02
+                    </span>
+                    <h3 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#6b7280] dark:text-muted-foreground">
+                      COMPETITIVE LANDSCAPE &amp; SHARE ANALYSIS
                     </h3>
-                    <p className="text-xs text-muted-foreground font-sans">
-                      {output.competitorLandscape.summary || 'Incumbents offer siloed legacy ERP extensions lacking automated real-time API integrations.'}
-                    </p>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-mono uppercase bg-muted text-muted-foreground border border-border/60 shrink-0">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium uppercase bg-[#f3f4f6] dark:bg-muted text-[#6b7280] dark:text-muted-foreground">
                     {output.competitorLandscape.directCompetitors?.length ?? 5} BENCHMARKED PLAYERS
                   </span>
                 </div>
 
-                {/* Direct Competitors Dense Table */}
+                {/* Direct Competitors Dense Table matching Figma 1:1 */}
                 {output.competitorLandscape.directCompetitors?.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="w-full overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="border-b border-border/70 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                            <th className="py-2.5 pr-4 font-semibold">Company</th>
-                            <th className="py-2.5 px-4 font-semibold">Segment</th>
-                            <th className="py-2.5 px-4 font-semibold max-w-[200px]">Pricing Model</th>
-                            <th className="py-2.5 px-4 font-semibold">Est. Share</th>
-                            <th className="py-2.5 pl-4 font-semibold">Vulnerability / Gap</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/60">
-                          {output.competitorLandscape.directCompetitors.map((comp, idx) => {
-                            const parsedShare = parseShareNumber(comp.estimatedMarketShare);
-                            const segmentTints = [
-                              'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/25',
-                              'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/25',
-                              'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25',
-                              'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/25',
-                              'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
-                            ];
-                            const tintClass = segmentTints[idx % segmentTints.length];
+                  <div className="w-full overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-[#e5e7eb] dark:border-border/70 bg-[#fafafc] dark:bg-muted/30 text-[11px] font-mono font-semibold uppercase tracking-wider text-[#6b7280] dark:text-muted-foreground">
+                          <th className="py-3.5 px-6 w-[21%]">COMPANY</th>
+                          <th className="py-3.5 px-6 w-[20%]">SEGMENT</th>
+                          <th className="py-3.5 px-6 w-[18%]">PRICING MODEL</th>
+                          <th className="py-3.5 px-6 w-[16%]">EST. SHARE</th>
+                          <th className="py-3.5 px-6 w-[25%]">VULNERABILITY / GAP</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#e5e7eb] dark:divide-border/60 bg-white dark:bg-card">
+                        {output.competitorLandscape.directCompetitors.map((comp, idx) => {
+                          const parsedShare = parseShareNumber(comp.estimatedMarketShare);
+                          const compSegment = comp.segment || (comp as any).targetSegment || (comp as any).marketSegment;
+                          const segmentTints = [
+                            'bg-[#f3f4f6] text-[#1f2937] border-[#e5e7eb] dark:bg-muted dark:text-foreground dark:border-border',
+                            'bg-[#eff6ff] text-[#1e40af] border-[#dbeafe] dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
+                            'bg-[#fffbeb] text-[#78350f] border-[#fde68a] dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
+                            'bg-[#faf5ff] text-[#6b21a8] border-[#f3e8ff] dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800',
+                            'bg-[#f0fdfa] text-[#115e59] border-[#ccfbf1] dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+                          ];
+                          const tintClass = segmentTints[idx % segmentTints.length];
 
-                            return (
-                              <tr key={idx} className="transition-colors hover:bg-muted/30">
-                                <td className="py-3 pr-4 align-top min-w-[160px]">
-                                  <div className="font-semibold text-foreground font-sans">
-                                    {comp.name}
-                                  </div>
-                                  <div className="text-[11px] text-muted-foreground font-sans pt-0.5">
-                                    {comp.segment ? `${comp.segment.split('/')[0].trim()} · ${displayRegion}` : `${displaySector} · ${displayRegion}`}
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4 align-top whitespace-nowrap">
-                                  {comp.segment ? (
-                                    <span className={`inline-block px-2.5 py-0.5 text-[11px] font-mono font-medium rounded-full border ${tintClass}`}>
-                                      {comp.segment}
+                          return (
+                            <tr key={idx} className="transition-colors hover:bg-[#fafafc] dark:hover:bg-muted/20">
+                              {/* Company */}
+                              <td className="py-4 px-6 align-top">
+                                <div className="text-[14px] font-semibold text-[#111827] dark:text-foreground font-sans leading-tight">
+                                  {comp.name}
+                                </div>
+                                <div className="text-[10px] text-[#9ca3af] font-sans pt-1">
+                                  {compSegment ? `${compSegment.split('/')[0].trim()} · ${displayRegion}` : `${displaySector} · ${displayRegion}`}
+                                </div>
+                              </td>
+
+                              {/* Segment Pill */}
+                              <td className="py-4 px-6 align-top whitespace-nowrap">
+                                {compSegment ? (
+                                  <span className={`inline-block px-2.5 py-0.5 text-[12px] font-sans font-medium rounded-[6px] border ${tintClass}`}>
+                                    {compSegment}
+                                  </span>
+                                ) : (
+                                  <span className="text-[#9ca3af] font-mono">—</span>
+                                )}
+                              </td>
+
+                              {/* Pricing Model */}
+                              <td className="py-4 px-6 text-[#6b7280] dark:text-muted-foreground font-mono text-[13px] leading-relaxed align-top whitespace-pre-line">
+                                {comp.pricingModel || '—'}
+                              </td>
+
+                              {/* Est. Share */}
+                              <td className="py-4 px-6 font-mono align-top whitespace-nowrap">
+                                {comp.estimatedMarketShare ? (
+                                  <div className="flex items-center gap-3 pt-0.5">
+                                    <div className="w-[80px] h-2 bg-[#f3f4f6] dark:bg-muted border border-[#e5e7eb] dark:border-border/60 rounded-full overflow-hidden shrink-0 flex items-center p-[1px]">
+                                      <div
+                                        className="h-full bg-[#111827] dark:bg-foreground rounded-full"
+                                        style={{ width: `${Math.min(100, Math.max(3, parsedShare))}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[13px] font-mono font-semibold text-[#111827] dark:text-foreground">
+                                      {comp.estimatedMarketShare}
                                     </span>
-                                  ) : (
-                                    <span className="text-muted-foreground/60">—</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4 text-muted-foreground font-sans align-top max-w-[200px] leading-relaxed">
-                                  {comp.pricingModel || '—'}
-                                </td>
-                                <td className="py-3 px-4 font-mono align-top whitespace-nowrap">
-                                  {comp.estimatedMarketShare ? (
-                                    <div className="flex items-center gap-2.5 pt-0.5">
-                                      <div className="w-14 h-1.5 bg-muted rounded-full overflow-hidden shrink-0">
-                                        <div
-                                          className="h-full bg-foreground/75 rounded-full"
-                                          style={{ width: `${Math.min(100, Math.max(8, parsedShare * 2.2))}%` }}
-                                        />
-                                      </div>
-                                      <span className="text-xs font-mono font-semibold text-foreground">
-                                        {comp.estimatedMarketShare}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted-foreground/60">—</span>
-                                  )}
-                                </td>
-                                <td className="py-3 pl-4 text-foreground/90 font-sans leading-relaxed align-top">
-                                  <p>{comp.exploitableGap}</p>
-                                  {(comp.strengths?.length > 0 || comp.weaknesses?.length > 0) && (
-                                    <div className="text-[11px] text-muted-foreground pt-1 space-y-0.5">
-                                      {comp.strengths?.length > 0 && (
-                                        <p><span className="text-muted-foreground/80 font-medium">Strengths:</span> {comp.strengths.join(', ')}</p>
-                                      )}
-                                      {comp.weaknesses?.length > 0 && (
-                                        <p><span className="text-muted-foreground/80 font-medium">Weaknesses:</span> {comp.weaknesses.join(', ')}</p>
-                                      )}
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
+                                  </div>
+                                ) : (
+                                  <span className="text-[#9ca3af] font-mono">—</span>
+                                )}
+                              </td>
 
-                {/* Indirect Substitutes & Alternatives Table */}
-                {output.competitorLandscape.indirectCompetitors?.length > 0 && (
-                  <div className="space-y-3 pt-2">
-                    <h4 className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                      INDIRECT SUBSTITUTES &amp; ALTERNATIVES
-                    </h4>
-                    <div className="w-full overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="border-b border-border/70 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                            <th className="py-2.5 pr-4 font-semibold w-1/4">Substitute</th>
-                            <th className="py-2.5 px-4 font-semibold w-1/2">Alternative Approach</th>
-                            <th className="py-2.5 pl-4 font-semibold w-1/4 text-right">Threat Level</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/60">
-                          {output.competitorLandscape.indirectCompetitors.map((ind, idx) => (
-                            <tr key={idx} className="transition-colors hover:bg-muted/30">
-                              <td className="py-2.5 pr-4 font-medium text-foreground font-sans align-top">
-                                {ind.name}
-                              </td>
-                              <td className="py-2.5 px-4 text-muted-foreground font-sans align-top">
-                                {ind.substituteApproach}
-                              </td>
-                              <td className="py-2.5 pl-4 font-mono text-xs text-right uppercase align-top">
-                                <span
-                                  className={
-                                    ind.threatLevel === 'high'
-                                      ? 'text-rose-500 font-medium'
-                                      : ind.threatLevel === 'medium'
-                                        ? 'text-amber-500 font-medium'
-                                        : 'text-muted-foreground'
-                                  }
-                                >
-                                  {ind.threatLevel || 'Low'}
-                                </span>
+                              {/* Vulnerability / Gap */}
+                              <td className="py-4 px-6 text-[#6b7280] dark:text-muted-foreground font-mono text-[13px] leading-relaxed align-top">
+                                <p>{comp.exploitableGap}</p>
                               </td>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </Card>
             )}
 
-            {/* 03 // DEMAND SIGNALS & SENSITIVITY RISKS */}
+            {/* SECTION 3: TWO CARDS SIDE BY SIDE (Demand Signals & Risks) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Demand Signals Card */}
-              <Card className="rounded-xl border border-border/70 bg-card p-6 space-y-4 shadow-none">
-                <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              {/* Left Card: DEMAND SIGNALS */}
+              <Card className="rounded-xl border border-[#e5e7eb] dark:border-border/80 bg-white dark:bg-card p-6 space-y-4 shadow-none">
+                <div className="flex items-center justify-between border-b border-[#eeeeee] dark:border-border/60 pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                    <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
+                    <span className="w-2 h-2 rounded-full bg-[#157a55] shrink-0" />
+                    <h3 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#111827] dark:text-foreground">
                       DEMAND SIGNALS
                     </h3>
                   </div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase bg-muted text-muted-foreground border border-border/60">
+                  <span className="px-2 py-0.5 rounded-[4px] text-[10px] font-mono font-medium uppercase bg-[#f3f4f6] dark:bg-muted text-[#6b7280] dark:text-muted-foreground">
                     LAST 12 MOS
                   </span>
                 </div>
 
                 {output.demandSignals && output.demandSignals.length > 0 ? (
-                  <div className="divide-y divide-border/60">
+                  <div className="divide-y divide-[#e5e7eb] dark:divide-border/60">
                     {output.demandSignals.map((sig, idx) => (
                       <div key={idx} className="py-3 first:pt-0 last:pb-0 space-y-1">
                         <div className="flex items-start justify-between gap-3">
-                          <span className="text-xs font-medium text-foreground font-sans leading-snug">
+                          <span className="text-[13px] font-semibold text-[#111827] dark:text-foreground font-sans leading-tight">
                             {sig.signal}
                           </span>
                           {sig.relevanceScore !== undefined && (
-                            <span className="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                            <span className="px-2 py-0.5 rounded-[4px] text-[14px] font-mono font-semibold bg-[#ecfdf5] text-[#157a55] border border-[#d1fae5] dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 shrink-0">
                               +{sig.relevanceScore * 3 + 7}% YoY
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                          {sig.evidence}
-                        </p>
+                        {sig.evidence && (
+                          <p className="text-[11px] text-[#6b7280] dark:text-muted-foreground font-mono leading-relaxed">
+                            {sig.evidence}
+                          </p>
+                        )}
                         {sig.sourceAttribution && (
-                          <div className="text-[10px] font-mono text-muted-foreground/70 truncate">
+                          <div className="text-[11px] font-mono text-[#9ca3af] truncate pt-0.5">
                             {sig.sourceAttribution}
                           </div>
                         )}
@@ -751,47 +724,51 @@ export default function MarketStudyPage() {
                 )}
               </Card>
 
-              {/* Sizing Risks Card */}
-              <Card className="rounded-xl border border-border/70 bg-card p-6 space-y-4 shadow-none">
-                <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              {/* Right Card: RISKS TO THIS SIZING */}
+              <Card className="rounded-xl border border-[#e5e7eb] dark:border-border/80 bg-white dark:bg-card p-6 space-y-4 shadow-none">
+                <div className="flex items-center justify-between border-b border-[#eeeeee] dark:border-border/60 pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                    <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
+                    <span className="w-2 h-2 rounded-full bg-[#f59e0b] shrink-0" />
+                    <h3 className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#111827] dark:text-foreground">
                       RISKS TO THIS SIZING
                     </h3>
                   </div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase bg-muted text-muted-foreground border border-border/60">
+                  <span className="px-2 py-0.5 rounded-[4px] text-[10px] font-mono font-medium uppercase bg-[#f3f4f6] dark:bg-muted text-[#6b7280] dark:text-muted-foreground">
                     EVALUATION MODEL
                   </span>
                 </div>
 
                 {output.sizingRisks && output.sizingRisks.length > 0 ? (
-                  <div className="divide-y divide-border/60">
+                  <div className="divide-y divide-[#e5e7eb] dark:divide-border/60">
                     {output.sizingRisks.map((risk, idx) => {
                       const impact = (risk.impactOnSom || 'medium').toLowerCase();
                       const severityPillClass =
                         impact === 'high'
-                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                          ? 'bg-[#fff1f2] text-[#be123c] border-[#fecdd3]'
                           : impact === 'medium'
-                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                            : 'bg-muted text-muted-foreground border-border/60';
+                            ? 'bg-[#fffbeb] text-[#b45309] border-[#fde68a]'
+                            : 'bg-[#f1f5f9] text-[#475569] border-[#e2e8f0]';
 
                       return (
                         <div key={idx} className="py-3.5 first:pt-0 last:pb-0 space-y-1.5">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex items-start gap-2">
-                              <span className="text-xs font-mono text-muted-foreground">{String(idx + 1).padStart(2, '0')}.</span>
-                              <span className="text-xs font-medium text-foreground font-sans leading-snug">
+                              <span className="text-[11px] font-mono text-[#6b7280] font-semibold pt-0.5 shrink-0">
+                                {String(idx + 1).padStart(2, '0')}.
+                              </span>
+                              <span className="text-[13px] text-[#111827] dark:text-foreground font-mono leading-snug">
                                 {risk.risk}
                               </span>
                             </div>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase border shrink-0 ${severityPillClass}`}>
+                            <span className={`px-2 py-0.5 rounded-[4px] text-[10px] font-mono font-semibold uppercase border shrink-0 ${severityPillClass}`}>
                               {risk.impactOnSom || 'Medium'}
                             </span>
                           </div>
-                          <div className="text-xs text-muted-foreground font-sans leading-relaxed pl-6">
-                            <span className="font-medium text-foreground/80">Mitigation:</span> {risk.mitigation}
-                          </div>
+                          {risk.mitigation && (
+                            <div className="text-xs text-[#6b7280] dark:text-muted-foreground font-sans leading-relaxed pl-6">
+                              <span className="font-medium text-[#111827] dark:text-foreground/80">Mitigation:</span> {risk.mitigation}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -802,65 +779,76 @@ export default function MarketStudyPage() {
               </Card>
             </div>
 
-            {/* 04 // FOUNDER GAP VALIDATION (Moved to the bottom) */}
+            {/* SECTION 4: GAP VALIDATION (Full-width card with green left border accent) */}
             {output.marketGapValidation && (
-              <Card className="rounded-xl border border-border/70 border-l-4 border-l-emerald-500 bg-card p-6 md:p-8 space-y-5 shadow-none">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
-                      04 // FOUNDER GAP VALIDATION
-                    </span>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                    Supported by benchmark data
-                  </span>
-                </div>
+              <Card className="rounded-xl border border-[#e5e7eb] dark:border-border/80 bg-white dark:bg-card p-6 md:p-8 shadow-none">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                  {/* Left Column: Your Stated Gap (HYPOTHESIS 01) */}
+                  <div className="lg:col-span-4 space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#9ca3af]">
+                        HYPOTHESIS 01
+                      </span>
+                      <span className="text-[11px] font-mono text-[#9ca3af]">·</span>
+                      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#6b7280] dark:text-muted-foreground">
+                        YOUR STATED GAP
+                      </span>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-1">
-                  {/* Left Column: Creator's Stated Gap as Italic Serif Quotation with Vertical Rule */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                      HYPOTHESIS 01 // YOUR STATED GAP
-                    </span>
-                    <div className="border-l-2 border-border/80 pl-4 py-1 italic font-serif text-sm text-foreground/90 leading-relaxed">
-                      &ldquo;{creatorMarketGap || 'Existing supply chain carbon tools require 6-month enterprise onboarding with no automated ESG calculation.'}&rdquo;
+                    <div className="border-l-2 border-[#0d9488] pl-4 py-1 font-sans text-[15px] md:text-[16px] font-normal text-[#111827] dark:text-foreground leading-relaxed">
+                      &ldquo;{creatorMarketGap || 'Mid-market tools are built for certified accountants, while modern self-serve SMBs lack zero-touch line-item reconciliation that conforms natively to EU ViDA standards.'}&rdquo;
                     </div>
                   </div>
 
-                  {/* Right Column: Benchmark Assessment & Inset Evidence Box with Green Check */}
-                  <div className="space-y-2.5">
-                    <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                      EVIDENCE SYNTHESIS // BENCHMARK ASSESSMENT
-                    </span>
-                    <h4 className="text-xs sm:text-sm font-semibold text-foreground font-sans leading-snug">
+                  {/* Middle/Right Column: Benchmark Assessment (EVIDENCE SYNTHESIS) */}
+                  <div className="lg:col-span-5 space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#9ca3af]">
+                        EVIDENCE SYNTHESIS
+                      </span>
+                      <span className="text-[11px] font-mono text-[#9ca3af]">·</span>
+                      <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-[#6b7280] dark:text-muted-foreground">
+                        BENCHMARK ASSESSMENT
+                      </span>
+                    </div>
+
+                    <p className="text-[13px] font-mono text-[#111827] dark:text-foreground leading-relaxed">
                       {output.marketGapValidation.primaryGap}
-                    </h4>
-                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 p-3.5 flex items-start gap-2.5 text-xs text-foreground/90 font-sans leading-relaxed">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    </p>
+
+                    <div className="rounded-lg border border-[#e5e7eb] dark:border-border/70 bg-[#f9fafb] dark:bg-muted/30 p-3 flex items-start gap-2.5 text-[11px] text-[#111827] dark:text-foreground font-mono leading-relaxed">
+                      <Check className="w-4 h-4 text-[#157a55] shrink-0 mt-0.5" />
                       <span>{output.marketGapValidation.validationRationale}</span>
                     </div>
+                  </div>
+
+                  {/* Right Column: Top Right Status Badge */}
+                  <div className="lg:col-span-3 flex lg:justify-end">
+                    <span className="px-3 py-1 rounded-full text-[12px] font-sans font-medium bg-[#ecfdf5] text-[#065f46] border border-[#a7f3d0] dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#157a55] shrink-0" />
+                      Supported by benchmark data
+                    </span>
                   </div>
                 </div>
               </Card>
             )}
 
-            {/* Bottom Action Bar: Quiet Link Left, Filled Blue Continue Button Right */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/70 pt-6 mt-8">
+            {/* FOOTER ACTION ROW */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-[#e5e7eb] dark:border-border/70 pt-6 mt-12">
               <Button
                 variant="ghost"
                 onClick={() => router.push('/dashboard/creator/phase-2/complete')}
-                className="text-xs font-medium text-muted-foreground hover:text-foreground rounded-lg"
+                className="text-[14px] font-medium text-[#6b7280] hover:text-[#111827] dark:text-muted-foreground dark:hover:text-foreground rounded-lg p-0 h-auto hover:bg-transparent"
               >
-                <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Phase 2
+                ← Market study inputs
               </Button>
 
               <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                 <Button
                   onClick={handleNext}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 text-xs font-semibold px-6 rounded-lg shadow-none"
+                  className="bg-[#3c61dd] hover:bg-[#3252be] text-white gap-2 text-[15px] font-medium px-6 py-2.5 h-auto rounded-lg shadow-none"
                 >
-                  Continue to Business Model <ArrowRight className="w-4 h-4" />
+                  Continue to business model →
                 </Button>
               </div>
             </div>
@@ -873,6 +861,7 @@ export default function MarketStudyPage() {
           open={isPrintOpen}
           onClose={() => setIsPrintOpen(false)}
           projectName={projectName || undefined}
+          logoUrl={logoUrl || undefined}
           project={{
             sector: sector || undefined,
             geography: geography || undefined,

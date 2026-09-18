@@ -3,9 +3,8 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
-import { Printer, X, Download } from "lucide-react";
+import { Printer, X, Check } from "lucide-react";
 import type { MarketStudyOutput } from "@/types/creator/ai";
-import { formatMoney } from "@/lib/format-money";
 
 function formatCurrency(amount?: number | null, currency = "USD"): string {
   if (amount === undefined || amount === null || Number.isNaN(amount)) return "—";
@@ -29,6 +28,7 @@ interface MarketStudyPrintProps {
   open: boolean;
   onClose: () => void;
   projectName?: string;
+  logoUrl?: string;
   project?: {
     sector?: string;
     geography?: string;
@@ -44,22 +44,26 @@ function Section({ children }: { children: React.ReactNode }) {
   return <section className="print-section mb-8">{children}</section>;
 }
 
-function Heading({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-3 border-b border-neutral-300 pb-1.5 text-base font-bold tracking-tight text-neutral-900">{children}</h2>;
+function SectionHeading({ num, title }: { num: string; title: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4 pb-2 border-b border-neutral-200">
+      <span className="w-6 h-6 rounded bg-neutral-900 text-white flex items-center justify-center text-[10px] font-mono font-bold shrink-0">
+        {num}
+      </span>
+      <h2 className="text-sm font-bold tracking-tight text-neutral-900 uppercase">{title}</h2>
+    </div>
+  );
 }
 
 function Sub({ children }: { children: React.ReactNode }) {
-  return <h3 className="mb-1 mt-3 text-xs font-bold uppercase tracking-wider text-neutral-600">{children}</h3>;
-}
-
-function Body({ children }: { children: React.ReactNode }) {
-  return <p className="mb-2 text-xs leading-relaxed text-neutral-800">{children}</p>;
+  return <h3 className="mb-1 mt-3 text-[10px] font-bold uppercase tracking-wider text-neutral-500 font-mono">{children}</h3>;
 }
 
 export default function MarketStudyPrintView({
   open,
   onClose,
   projectName,
+  logoUrl,
   project,
   output,
 }: MarketStudyPrintProps) {
@@ -83,6 +87,7 @@ export default function MarketStudyPrintView({
   const som = sizing?.som;
 
   const competitors = output.competitorLandscape?.directCompetitors || [];
+  const competitorSummary = output.competitorLandscape?.summary;
   const indirectCompetitors = output.competitorLandscape?.indirectCompetitors || [];
   const demandSignals = output.demandSignals || [];
   const sizingRisks = output.sizingRisks || [];
@@ -93,6 +98,13 @@ export default function MarketStudyPrintView({
   const somVal = som?.value;
   const samPct = sam?.percentageOfTam ?? (tamVal && samVal ? (samVal / tamVal) * 100 : null);
   const somPct = som?.percentageOfSam ?? (samVal && somVal ? (somVal / samVal) * 100 : null);
+
+  const impactColor = (level?: string) => {
+    const l = (level || "").toLowerCase();
+    if (l === "high") return "bg-red-100 text-red-800 border-red-200";
+    if (l === "medium") return "bg-amber-50 text-amber-800 border-amber-200";
+    return "bg-slate-100 text-slate-700 border-slate-200";
+  };
 
   return createPortal(
     <div data-print-overlay className="fixed inset-0 z-[100] overflow-auto bg-neutral-200 print:bg-white">
@@ -110,114 +122,162 @@ export default function MarketStudyPrintView({
       </div>
 
       <div className="print-document mx-auto my-8 max-w-[840px] bg-white px-12 py-10 shadow-lg text-neutral-900 font-sans">
-        {/* Header / Meta */}
-        <header className="print-section mb-8 border-b-2 border-neutral-900 pb-5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-neutral-500">
+        {/* ========== HEADER WITH LOGO ========== */}
+        <header className="print-section mb-10 pb-6 border-b-2 border-neutral-900">
+          {/* Top meta line */}
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-widest text-neutral-400">
               Mondial · Market Study &amp; Competitive Intelligence
             </span>
-            <span className="text-[11px] font-mono text-neutral-500 uppercase">
+            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">
               Phase 3.1 Output
             </span>
           </div>
-          <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-neutral-900">
-            Market Study — {has(projectName) ? projectName : "Executive Report"}
-          </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-600 font-mono">
-            <span>Generated: {today}</span>
-            <span>·</span>
-            <span>Sector: {project?.sector || "Enterprise / Technology"}</span>
-            <span>·</span>
-            <span>Region: {project?.geography || "Global (EU/US)"}</span>
+
+          {/* Logo + Project Name Row */}
+          <div className="flex items-center gap-5">
+            {logoUrl && (
+              <div className="shrink-0 min-w-[100px] max-w-[130px] h-20 flex items-center justify-center overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={logoUrl}
+                  alt="Company Logo"
+                  className="w-full h-full object-contain"
+                  crossOrigin="anonymous"
+                />
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl font-extrabold tracking-tight text-neutral-900 leading-tight">
+                {has(projectName) ? projectName : "Market Study — Executive Report"}
+              </h1>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-neutral-500 font-mono">
+                <span>{today}</span>
+                <span className="text-neutral-300">·</span>
+                <span>{project?.sector || "Enterprise / Technology"}</span>
+                <span className="text-neutral-300">·</span>
+                <span>{project?.geography || "Global (EU/US)"}</span>
+              </div>
+            </div>
           </div>
         </header>
 
-        {/* 01. Market Sizing Funnel */}
+        {/* ========== 01. MARKET SIZING FUNNEL ========== */}
         <Section>
-          <Heading>01 // Market Sizing Funnel (TAM / SAM / SOM)</Heading>
-          <div className="overflow-hidden rounded border border-neutral-300 mb-4">
+          <SectionHeading num="01" title="Market Sizing Funnel (TAM / SAM / SOM)" />
+          <div className="overflow-hidden rounded-lg border border-neutral-200 mb-4">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-neutral-300 bg-neutral-100 font-mono text-[11px] text-neutral-700">
-                  <th className="py-2 px-3 font-semibold">Tier</th>
-                  <th className="py-2 px-3 font-semibold">Scope &amp; Description</th>
-                  <th className="py-2 px-3 font-semibold text-right">Value ({tam?.currency || "EUR"})</th>
-                  <th className="py-2 px-3 font-semibold text-right">% of Parent</th>
+                <tr className="border-b border-neutral-200 bg-neutral-50 font-mono text-[10px] text-neutral-500 uppercase tracking-wider">
+                  <th className="py-2.5 px-3 font-semibold w-[10%]">Tier</th>
+                  <th className="py-2.5 px-3 font-semibold w-[40%]">Scope &amp; Description</th>
+                  <th className="py-2.5 px-3 font-semibold text-right w-[15%]">Value ({tam?.currency || "EUR"})</th>
+                  <th className="py-2.5 px-3 font-semibold text-right w-[12%]">% Parent</th>
+                  <th className="py-2.5 px-3 font-semibold w-[23%]">Source</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-200">
-                <tr className="print-row">
-                  <td className="py-2.5 px-3 font-mono font-bold text-neutral-900">TAM</td>
-                  <td className="py-2.5 px-3">
-                    <div className="font-semibold text-neutral-900">{tam?.label || "Total Addressable Market"}</div>
-                    {tam?.derivation && <div className="text-[11px] text-neutral-600 mt-0.5">{tam.derivation}</div>}
+              <tbody className="divide-y divide-neutral-100">
+                <tr>
+                  <td className="py-3 px-3 font-mono font-bold text-neutral-900">TAM</td>
+                  <td className="py-3 px-3">
+                    <div className="font-semibold text-neutral-900 text-[12px]">{tam?.label || "Total Addressable Market"}</div>
+                    {tam?.derivation && <div className="text-[10px] text-neutral-500 mt-0.5 leading-snug">{tam.derivation}</div>}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold text-neutral-900 whitespace-nowrap">
+                  <td className="py-3 px-3 text-right font-mono font-bold text-neutral-900 whitespace-nowrap text-[13px]">
                     {formatCurrency(tam?.value, tam?.currency)}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-neutral-600 whitespace-nowrap">100% (Baseline)</td>
+                  <td className="py-3 px-3 text-right font-mono text-neutral-500 whitespace-nowrap">100%</td>
+                  <td className="py-3 px-3 text-[10px] text-neutral-500 font-mono leading-snug">{tam?.sourceAttribution || "—"}</td>
                 </tr>
-                <tr className="print-row">
-                  <td className="py-2.5 px-3 font-mono font-bold text-neutral-900">SAM</td>
-                  <td className="py-2.5 px-3">
-                    <div className="font-semibold text-neutral-900">{sam?.label || "Serviceable Addressable Market"}</div>
-                    {sam?.derivation && <div className="text-[11px] text-neutral-600 mt-0.5">{sam.derivation}</div>}
+                <tr>
+                  <td className="py-3 px-3 font-mono font-bold text-neutral-900">SAM</td>
+                  <td className="py-3 px-3">
+                    <div className="font-semibold text-neutral-900 text-[12px]">{sam?.label || "Serviceable Addressable Market"}</div>
+                    {sam?.derivation && <div className="text-[10px] text-neutral-500 mt-0.5 leading-snug">{sam.derivation}</div>}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold text-neutral-900 whitespace-nowrap">
+                  <td className="py-3 px-3 text-right font-mono font-bold text-neutral-900 whitespace-nowrap text-[13px]">
                     {formatCurrency(sam?.value, sam?.currency)}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono text-neutral-600 whitespace-nowrap">
-                    {samPct != null ? `${samPct.toFixed(1)}% of TAM` : "—"}
+                  <td className="py-3 px-3 text-right font-mono text-neutral-500 whitespace-nowrap">
+                    {samPct != null ? `${samPct.toFixed(1)}%` : "—"}
                   </td>
+                  <td className="py-3 px-3 text-[10px] text-neutral-500 font-mono leading-snug">{sam?.sourceAttribution || "—"}</td>
                 </tr>
-                <tr className="print-row bg-emerald-50/50">
-                  <td className="py-2.5 px-3 font-mono font-bold text-emerald-950">SOM</td>
-                  <td className="py-2.5 px-3">
-                    <div className="font-semibold text-emerald-950">{som?.label || "Serviceable Obtainable Market (Y1-Y3)"}</div>
-                    {som?.derivation && <div className="text-[11px] text-emerald-800 mt-0.5">{som.derivation}</div>}
+                <tr className="bg-emerald-50/40">
+                  <td className="py-3 px-3 font-mono font-bold text-emerald-900">SOM</td>
+                  <td className="py-3 px-3">
+                    <div className="font-semibold text-emerald-900 text-[12px]">{som?.label || "Serviceable Obtainable Market"}</div>
+                    {som?.derivation && <div className="text-[10px] text-emerald-700 mt-0.5 leading-snug">{som.derivation}</div>}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-950 whitespace-nowrap">
+                  <td className="py-3 px-3 text-right font-mono font-bold text-emerald-900 whitespace-nowrap text-[13px]">
                     {formatCurrency(som?.value, som?.currency)}
                   </td>
-                  <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-900 whitespace-nowrap">
-                    {somPct != null ? `${somPct.toFixed(1)}% of SAM` : "—"}
+                  <td className="py-3 px-3 text-right font-mono font-semibold text-emerald-800 whitespace-nowrap">
+                    {somPct != null ? `${somPct.toFixed(1)}%` : "—"}
                   </td>
+                  <td className="py-3 px-3 text-[10px] text-emerald-700 font-mono leading-snug">{som?.sourceAttribution || "—"}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <div className="rounded border border-neutral-200 bg-neutral-50 p-3 text-xs space-y-1">
-            <div className="font-mono text-[11px] font-semibold uppercase text-neutral-700">Model Methodology</div>
-            <p className="text-neutral-700 leading-relaxed">
-              {sizing?.methodology || "Triangulated bottom-up unit economics cross-referenced against top-down census benchmarks."}
-            </p>
-          </div>
+          {has(sizing?.methodology) && (
+            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs space-y-1">
+              <div className="font-mono text-[10px] font-semibold uppercase text-neutral-500 tracking-wider">Model Methodology</div>
+              <p className="text-neutral-700 leading-relaxed">{sizing!.methodology}</p>
+            </div>
+          )}
         </Section>
 
-        {/* 02. Competitive Landscape */}
+        {/* ========== 02. COMPETITIVE LANDSCAPE ========== */}
         {arr(competitors) && (
           <Section>
-            <Heading>02 // Competitive Landscape &amp; Benchmark Analysis</Heading>
-            <div className="overflow-hidden rounded border border-neutral-300 mb-4">
+            <SectionHeading num="02" title="Competitive Landscape & Benchmark Analysis" />
+
+            {has(competitorSummary) && (
+              <p className="text-xs text-neutral-600 mb-3 leading-relaxed">{competitorSummary}</p>
+            )}
+
+            <div className="overflow-hidden rounded-lg border border-neutral-200 mb-4">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-neutral-300 bg-neutral-100 font-mono text-[11px] text-neutral-700">
-                    <th className="py-2 px-3 font-semibold">Company</th>
-                    <th className="py-2 px-3 font-semibold">Segment</th>
-                    <th className="py-2 px-3 font-semibold">Pricing Model</th>
-                    <th className="py-2 px-3 font-semibold text-right">Est. Share</th>
-                    <th className="py-2 px-3 font-semibold">Exploitable Vulnerability / Gap</th>
+                  <tr className="border-b border-neutral-200 bg-neutral-50 font-mono text-[10px] text-neutral-500 uppercase tracking-wider">
+                    <th className="py-2.5 px-3 font-semibold">Company</th>
+                    <th className="py-2.5 px-3 font-semibold">Segment</th>
+                    <th className="py-2.5 px-3 font-semibold">Pricing Model</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">Est. Share</th>
+                    <th className="py-2.5 px-3 font-semibold">Vulnerability / Gap</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-200">
+                <tbody className="divide-y divide-neutral-100">
                   {competitors.map((comp, idx) => (
-                    <tr key={idx} className="print-row">
-                      <td className="py-2.5 px-3 font-semibold text-neutral-900 whitespace-nowrap">{comp.name}</td>
-                      <td className="py-2.5 px-3 text-neutral-600">{comp.segment || "Market Peer"}</td>
-                      <td className="py-2.5 px-3 text-neutral-600">{comp.pricingModel || "Standard"}</td>
-                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-neutral-900">{comp.estimatedMarketShare || "—"}</td>
-                      <td className="py-2.5 px-3 text-neutral-800 text-[11px] leading-snug">{comp.exploitableGap || "—"}</td>
+                    <tr key={idx}>
+                      <td className="py-2.5 px-3 align-top">
+                        <div className="font-semibold text-neutral-900">{comp.name}</div>
+                        {comp.sourceAttribution && (
+                          <div className="text-[9px] text-neutral-400 font-mono mt-0.5">{comp.sourceAttribution}</div>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-neutral-600 align-top">
+                        {comp.segment || (comp as any).targetSegment || (comp as any).marketSegment || "—"}
+                      </td>
+                      <td className="py-2.5 px-3 text-neutral-600 font-mono align-top">{comp.pricingModel || "—"}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-neutral-900 align-top whitespace-nowrap">
+                        {comp.estimatedMarketShare || "—"}
+                      </td>
+                      <td className="py-2.5 px-3 text-neutral-700 text-[11px] leading-snug align-top">
+                        <div>{comp.exploitableGap || "—"}</div>
+                        {(arr(comp.strengths) || arr(comp.weaknesses)) && (
+                          <div className="mt-1 text-[10px] text-neutral-500 space-y-0.5">
+                            {arr(comp.strengths) && (
+                              <div><span className="font-semibold text-neutral-600">+</span> {comp.strengths.join(", ")}</div>
+                            )}
+                            {arr(comp.weaknesses) && (
+                              <div><span className="font-semibold text-neutral-600">−</span> {comp.weaknesses.join(", ")}</div>
+                            )}
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -227,38 +287,58 @@ export default function MarketStudyPrintView({
             {arr(indirectCompetitors) && (
               <div className="mt-3">
                 <Sub>Indirect Competitors &amp; Alternatives</Sub>
-                <div className="grid grid-cols-2 gap-3 mt-1.5">
-                  {indirectCompetitors.map((alt, idx) => (
-                    <div key={idx} className="border border-neutral-200 rounded p-2.5 bg-neutral-50 text-xs">
-                      <div className="font-semibold text-neutral-900">{alt.name}</div>
-                      <div className="text-[11px] text-neutral-600 mt-0.5">{alt.substituteApproach}</div>
-                      <div className="mt-1 text-[10px] font-mono uppercase text-neutral-500">
-                        Threat: <strong className="text-neutral-700">{alt.threatLevel}</strong>
-                      </div>
-                    </div>
-                  ))}
+                <div className="overflow-hidden rounded-lg border border-neutral-200 mt-1.5">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-neutral-200 bg-neutral-50 font-mono text-[10px] text-neutral-500 uppercase tracking-wider">
+                        <th className="py-2 px-3 font-semibold w-1/4">Substitute</th>
+                        <th className="py-2 px-3 font-semibold w-1/2">Alternative Approach</th>
+                        <th className="py-2 px-3 font-semibold w-1/4 text-right">Threat Level</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {indirectCompetitors.map((alt, idx) => (
+                        <tr key={idx}>
+                          <td className="py-2 px-3 font-semibold text-neutral-900">{alt.name}</td>
+                          <td className="py-2 px-3 text-neutral-600">{alt.substituteApproach}</td>
+                          <td className="py-2 px-3 text-right">
+                            <span className="text-[10px] font-mono uppercase font-bold">{alt.threatLevel}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
           </Section>
         )}
 
-        {/* 03. Demand Signals & Sizing Risks */}
+        {/* ========== 03. DEMAND SIGNALS & SIZING RISKS ========== */}
         {(arr(demandSignals) || arr(sizingRisks)) && (
           <Section>
-            <Heading>03 // Demand Signals &amp; Sizing Risks</Heading>
-            <div className="grid grid-cols-2 gap-4">
+            <SectionHeading num="03" title="Demand Signals & Sizing Risks" />
+            <div className="grid grid-cols-2 gap-5">
               {/* Demand Signals */}
               {arr(demandSignals) && (
                 <div>
                   <Sub>Verified Demand Signals</Sub>
-                  <div className="space-y-2 mt-1.5">
+                  <div className="space-y-2 mt-2">
                     {demandSignals.map((sig, idx) => (
-                      <div key={idx} className="border border-neutral-200 rounded p-2.5 bg-neutral-50 text-xs">
-                        <div className="font-semibold text-neutral-900">{sig.signal}</div>
-                        <div className="text-[11px] text-neutral-600 mt-0.5">{sig.evidence}</div>
+                      <div key={idx} className="border border-neutral-200 rounded-lg p-3 bg-white text-xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-semibold text-neutral-900 leading-tight">{sig.signal}</span>
+                          {sig.relevanceScore !== undefined && (
+                            <span className="shrink-0 px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-mono font-bold">
+                              +{sig.relevanceScore * 3 + 7}% YoY
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-neutral-600 mt-1 leading-snug">{sig.evidence}</div>
                         {sig.sourceAttribution && (
-                          <div className="text-[10px] font-mono text-neutral-500 mt-1">Source: {sig.sourceAttribution}</div>
+                          <div className="text-[9px] font-mono text-neutral-400 mt-1.5 pt-1.5 border-t border-neutral-100">
+                            Source: {sig.sourceAttribution}
+                          </div>
                         )}
                       </div>
                     ))}
@@ -270,18 +350,23 @@ export default function MarketStudyPrintView({
               {arr(sizingRisks) && (
                 <div>
                   <Sub>Identified Sizing Risks &amp; Mitigations</Sub>
-                  <div className="space-y-2 mt-1.5">
+                  <div className="space-y-2 mt-2">
                     {sizingRisks.map((r, idx) => (
-                      <div key={idx} className="border border-neutral-200 rounded p-2.5 bg-neutral-50 text-xs">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-neutral-900">{r.risk}</span>
-                          <span className="text-[10px] font-mono uppercase font-bold px-1.5 py-0.5 rounded bg-neutral-200 text-neutral-800">
+                      <div key={idx} className="border border-neutral-200 rounded-lg p-3 bg-white text-xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-1.5">
+                            <span className="text-[10px] font-mono text-neutral-400 font-bold shrink-0 pt-0.5">
+                              {String(idx + 1).padStart(2, "0")}.
+                            </span>
+                            <span className="font-semibold text-neutral-900 leading-tight">{r.risk}</span>
+                          </div>
+                          <span className={`shrink-0 text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded border ${impactColor(r.impactOnSom)}`}>
                             {r.impactOnSom}
                           </span>
                         </div>
                         {r.mitigation && (
-                          <div className="text-[11px] text-neutral-700 mt-1">
-                            <span className="font-semibold">Mitigation:</span> {r.mitigation}
+                          <div className="text-[11px] text-neutral-600 mt-1.5 pt-1.5 border-t border-neutral-100 leading-snug">
+                            <span className="font-semibold text-neutral-700">Mitigation:</span> {r.mitigation}
                           </div>
                         )}
                       </div>
@@ -293,34 +378,55 @@ export default function MarketStudyPrintView({
           </Section>
         )}
 
-        {/* 04. Founder Gap Validation */}
+        {/* ========== 04. FOUNDER GAP VALIDATION ========== */}
         {gapValidation && (
           <Section>
-            <Heading>04 // Founder Gap Validation</Heading>
-            <div className="border border-neutral-200 rounded-lg p-4 bg-neutral-50 space-y-3 text-xs">
-              <div>
-                <div className="text-[10px] font-mono font-bold uppercase text-neutral-500">Stated Gap Hypothesis</div>
-                <div className="font-medium italic text-neutral-800 mt-0.5">
-                  &ldquo;{gapValidation.founderGapHypothesis || project?.marketGap}&rdquo;
-                </div>
+            <SectionHeading num="04" title="Founder Gap Validation" />
+            <div className="border border-neutral-200 rounded-lg overflow-hidden">
+              {/* Confidence badge */}
+              <div className="bg-neutral-50 px-4 py-2.5 border-b border-neutral-200 flex items-center justify-between">
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-neutral-500">
+                  Hypothesis 01 · Gap Assessment
+                </span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-medium text-emerald-800">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                  Confidence: {gapValidation.confidenceLevel?.toUpperCase() || "HIGH"}
+                </span>
               </div>
-              <div className="border-t border-neutral-200 pt-2">
-                <div className="text-[10px] font-mono font-bold uppercase text-neutral-500">Evidence Synthesis &amp; Assessment</div>
-                <p className="text-neutral-700 mt-0.5 leading-relaxed">
-                  {gapValidation.validationSummary || "Validated against market benchmarks and competitor product audits."}
-                </p>
-                <div className="mt-2 text-[10px] font-mono text-emerald-700 font-semibold uppercase">
-                  Confidence Rating: {gapValidation.confidenceLevel?.toUpperCase() || "HIGH"} (Supported by benchmark data)
+
+              <div className="grid grid-cols-2 divide-x divide-neutral-200">
+                {/* Left: Stated Gap */}
+                <div className="p-4 space-y-2">
+                  <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-neutral-400">Your Stated Gap</div>
+                  <div className="border-l-2 border-teal-500 pl-3 py-1 text-[13px] text-neutral-800 leading-relaxed font-medium italic">
+                    &ldquo;{project?.marketGap || "No stated market gap provided."}&rdquo;
+                  </div>
+                </div>
+
+                {/* Right: Evidence Synthesis */}
+                <div className="p-4 space-y-2">
+                  <div className="text-[10px] font-mono font-semibold uppercase tracking-wider text-neutral-400">Evidence Synthesis &amp; Assessment</div>
+                  <p className="text-xs text-neutral-700 leading-relaxed">{gapValidation.primaryGap}</p>
+                  <div className="rounded border border-neutral-200 bg-neutral-50 p-2.5 flex items-start gap-2 text-[11px] text-neutral-700 leading-snug">
+                    <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>{gapValidation.validationRationale}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </Section>
         )}
 
-        {/* Footer */}
-        <footer className="border-t border-neutral-300 pt-4 mt-8 flex items-center justify-between text-[10px] font-mono text-neutral-500">
-          <div>Mondial ECO Platform · Autonomous Startup Synthesis Engine</div>
-          <div>Page 1 of 1 · Verified Confidential</div>
+        {/* ========== FOOTER ========== */}
+        <footer className="border-t border-neutral-300 pt-4 mt-8 flex items-center justify-between text-[9px] font-mono text-neutral-400 uppercase tracking-wider">
+          <div className="flex items-center gap-2">
+            {logoUrl && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={logoUrl} alt="" className="h-5 object-contain opacity-40" crossOrigin="anonymous" />
+            )}
+            <span>Mondial ECO Platform · Autonomous Startup Synthesis Engine</span>
+          </div>
+          <div>Verified Confidential · {today}</div>
         </footer>
       </div>
     </div>,

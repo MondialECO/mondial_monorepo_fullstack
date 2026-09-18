@@ -142,7 +142,7 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
     } as any);
   });
 
-  it('renders methodology two-column strip with method on left and derivations on right', async () => {
+  it('renders methodology two-column strip with method on left and active formula on right', async () => {
     vi.spyOn(creatorAiQueries, 'useMarketStudySessionTimed').mockReturnValue({
       phase: 'terminal',
       data: {
@@ -154,14 +154,14 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
 
     render(<MarketStudyPage />);
 
-    expect(await screen.findByText(/Market Sizing Funnel \(TAM \/ SAM \/ SOM\)/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Market Sizing Funnel/i)).toBeInTheDocument();
     expect(screen.getByText(/Methodology/i)).toBeInTheDocument();
     expect(screen.getByText(/Triangulated bottom-up cohort adoption model/i)).toBeInTheDocument();
 
-    expect(screen.getByText(/Derivation Basis/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/120k enterprises spending \$100k annually/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/24k European freight forwarders/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/1,200 initial target customers/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Active Sizing Formula/i)).toBeInTheDocument();
+    expect(screen.getByText(/2\.4M/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/adoption/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/avg ACV/i)).toBeInTheDocument();
   });
 
   it('renders gap-validation two-column split with creator stated gap on left and validation on right', async () => {
@@ -265,7 +265,7 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
 
     expect(await screen.findByText('Early Pilot Beta Cohort')).toBeInTheDocument();
     expect(screen.getAllByText(/1% of SAM/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Targeted beachhead with 50 enterprise shippers in Benelux./i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Targeted beachhead with 50 enterprise shippers in Benelux/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('$50M')).toBeInTheDocument();
   });
 
@@ -281,6 +281,6 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
     // Verify print preview overlay elements
     expect(screen.getByText(/Print \/ Save as PDF/i)).toBeInTheDocument();
     expect(screen.getByText(/Mondial · Market Study & Competitive Intelligence/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/01 \/\/ Market Sizing Funnel \(TAM \/ SAM \/ SOM\)/i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText(/Market Sizing Funnel/i).length).toBeGreaterThanOrEqual(1);
   });
 });
