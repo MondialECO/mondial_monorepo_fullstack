@@ -532,27 +532,6 @@ export default function MarketStudyPage() {
                       </span>
                       <span className="text-muted-foreground font-sans">avg ACV</span>
                     </div>
-
-                    {/* Derivation Traces when available */}
-                    {(tam?.derivation || sam?.derivation || som?.derivation) && (
-                      <div className="rounded-lg border border-border/60 bg-muted/30 dark:bg-muted/10 p-3 space-y-1.5 text-xs">
-                        {tam?.derivation && (
-                          <p className="font-sans text-muted-foreground leading-relaxed">
-                            <strong className="font-mono font-semibold text-foreground tracking-wide">TAM:</strong> {tam.derivation}
-                          </p>
-                        )}
-                        {sam?.derivation && (
-                          <p className="font-sans text-muted-foreground leading-relaxed">
-                            <strong className="font-mono font-semibold text-foreground tracking-wide">SAM:</strong> {sam.derivation}
-                          </p>
-                        )}
-                        {som?.derivation && (
-                          <p className="font-sans text-muted-foreground leading-relaxed">
-                            <strong className="font-mono font-semibold text-foreground tracking-wide">SOM:</strong> {som.derivation}
-                          </p>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
 
