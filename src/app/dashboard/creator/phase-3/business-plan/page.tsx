@@ -450,6 +450,7 @@ export default function BusinessPlanPage() {
   const startBp = useStartBusinessPlan();
   const credits = useAiCredits();
   const planCost = credits.data?.costs?.BusinessPlan ?? 0;
+  const rewriteCost = credits.data?.costs?.BusinessPlanSectionRewrite ?? 5;
   const insufficientCredits = credits.data ? credits.data.balance < planCost : false;
   const session = useBusinessPlanSessionTimed(bpSessionId);
   const forecastSession = useForecastSessionTimed(forecastSessionId);
@@ -889,7 +890,7 @@ export default function BusinessPlanPage() {
                                   onClick={() => handleRewrite(s.id)}
                                   className="h-8 text-xs gap-1.5 font-sans font-medium text-primary hover:text-primary/90"
                                 >
-                                  <Sparkles className="h-3.5 w-3.5" /> AI Rewrite
+                                  <Sparkles className="h-3.5 w-3.5" /> AI Rewrite{rewriteCost > 0 ? ` (${rewriteCost} credits)` : ''}
                                 </Button>
                               </>
                             )}

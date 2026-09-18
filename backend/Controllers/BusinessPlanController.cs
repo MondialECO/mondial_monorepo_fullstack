@@ -410,7 +410,7 @@ namespace WebApp.Controllers
             // Secure credit debit after acquiring lock
             try
             {
-                await _creditService.DebitForJobAsync(owner, AiJobType.BusinessPlan, operationId);
+                await _creditService.DebitForJobAsync(owner, AiJobType.BusinessPlanSectionRewrite, operationId);
             }
             catch (InsufficientCreditsException)
             {
@@ -446,7 +446,7 @@ namespace WebApp.Controllers
                 _logger.LogError(ex, "Failed to enqueue section rewrite for session {SessionId}", session.Id);
                 try
                 {
-                    await _creditService.RefundForJobAsync(owner, AiJobType.BusinessPlan, operationId, "RewriteSection failed before acceptance");
+                    await _creditService.RefundForJobAsync(owner, AiJobType.BusinessPlanSectionRewrite, operationId, "RewriteSection failed before acceptance");
                 }
                 catch (Exception refundEx)
                 {

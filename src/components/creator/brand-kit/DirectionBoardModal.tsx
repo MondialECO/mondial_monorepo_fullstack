@@ -243,17 +243,6 @@ export function DirectionBoardModal({
     }
   }, [kit]);
 
-  // Initial automatic generation if candidates list is empty
-  useEffect(() => {
-    if (
-      isOpen &&
-      (!kit?.direction?.candidates || kit.direction.candidates.length === 0) &&
-      !isGenerating
-    ) {
-      handleGenerate();
-    }
-  }, [isOpen]);
-
   const remainingCap = Math.max(0, 3 - regenerateCount);
   const isCapExhausted = remainingCap === 0;
 
@@ -545,6 +534,36 @@ export function DirectionBoardModal({
 
         {/* Modal Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
+          {/* Un-generated Empty State — Requires User Confirmation */}
+          {!isGenerating && candidates.length === 0 && (
+            <div className="flex flex-col items-center justify-center min-h-[380px] p-8 sm:p-12 text-center max-w-lg mx-auto space-y-5 rounded-2xl border border-dashed border-border bg-muted/20">
+              <div className="size-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-xs">
+                <Palette className="size-7" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="font-heading font-semibold text-lg sm:text-xl text-foreground">
+                  Generate Visual Directions
+                </h3>
+                <p className="text-sm font-sans text-muted-foreground leading-relaxed">
+                  The AI visual engine will craft 4 divergent design directions tailored to your confirmed business strategy, font pairings, and color palettes.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-xs font-semibold px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                <Sparkles className="size-3.5" />
+                <span>Cost: {directionCost} AI Credits</span>
+              </div>
+              <Button
+                type="button"
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                className="h-11 px-7 font-sans font-semibold gap-2 shadow-sm text-sm cursor-pointer"
+              >
+                <Sparkles className="size-4" />
+                Generate 4 Directions ({directionCost} credits)
+              </Button>
+            </div>
+          )}
+
           {/* Loading Skeleton during initial generation */}
           {isGenerating && candidates.length === 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[440px] items-center justify-center text-center p-12">

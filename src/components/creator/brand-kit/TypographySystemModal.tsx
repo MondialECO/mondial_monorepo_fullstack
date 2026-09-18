@@ -23,6 +23,7 @@ import {
   Sparkles,
   Layers,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -38,11 +39,11 @@ interface PairingPreset {
   id: string;
   display: string;
   text: string;
-  description: string;
+  label: string;
+  reason: string;
+  license: string;
   displayWeights: string[];
   textWeights: string[];
-  license: string;
-  weightCount: number;
   bundleKb: number;
 }
 
@@ -51,34 +52,34 @@ const CANONICAL_PAIRING_PRESETS: PairingPreset[] = [
     id: "syne_dmsans",
     display: "Syne",
     text: "DM Sans",
-    description: "Geometric and assertive, with a neutral workhorse underneath.",
-    displayWeights: ["400", "600", "700", "800"],
-    textWeights: ["400", "500", "700"],
-    license: "Open licence",
-    weightCount: 5,
-    bundleKb: 48,
+    label: "Modern Geometric",
+    reason: "Distinctive geometric headings with ultra-readable neo-grotesque body copy.",
+    license: "OFL (Free for commercial use)",
+    displayWeights: ["Bold", "ExtraBold"],
+    textWeights: ["Regular", "Medium"],
+    bundleKb: 84,
   },
   {
-    id: "jakarta_inter",
-    display: "Plus Jakarta Sans",
-    text: "Inter",
-    description: "Warmer headlines, same clarity in body copy.",
-    displayWeights: ["400", "500", "600", "700", "800"],
-    textWeights: ["400", "500", "600", "700"],
-    license: "Open licence",
-    weightCount: 6,
-    bundleKb: 52,
+    id: "fraunces_outfit",
+    display: "Fraunces",
+    text: "Outfit",
+    label: "Editorial Warmth",
+    reason: "Warm serif editorial presence paired with clean contemporary body proportions.",
+    license: "OFL (Free for commercial use)",
+    displayWeights: ["SemiBold", "Bold"],
+    textWeights: ["Regular", "Medium"],
+    bundleKb: 92,
   },
   {
-    id: "space_inter",
-    display: "Space Grotesk",
-    text: "Inter",
-    description: "Technical and precise, closer to documentation.",
-    displayWeights: ["400", "500", "700"],
-    textWeights: ["400", "500", "600", "700"],
-    license: "Open licence",
-    weightCount: 4,
-    bundleKb: 44,
+    id: "cabinet_plusjakarta",
+    display: "Cabinet Grotesk",
+    text: "Plus Jakarta Sans",
+    label: "High Contrast Tech",
+    reason: "Sharp neo-modern display typeface matched with balanced technical clarity.",
+    license: "OFL (Free for commercial use)",
+    displayWeights: ["Extrabold", "Black"],
+    textWeights: ["Regular", "Medium"],
+    bundleKb: 78,
   },
 ];
 
@@ -105,6 +106,7 @@ export function TypographySystemModal({
 
   const [selectedPairingId, setSelectedPairingId] = useState<string>("syne_dmsans");
   const [isPending, startTransition] = useTransition();
+  const [isLoadingInitial, setIsLoadingInitial] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -122,24 +124,43 @@ export function TypographySystemModal({
       .catch(() => {});
   }, []);
 
-  // Derive initial typography if roles are missing
+  // Sync prop changes (No Auto-Generate)
   useEffect(() => {
-    if (isOpen && (!kit.typography?.roles || kit.typography.roles.length === 0)) {
-      startTransition(async () => {
-        try {
-          const res = await apiCreatorBrandKit.generateTypography(ideaId, kit.version);
-          if (res.typography) {
-            setLocalTypography(res.typography);
-          }
-        } catch (err: any) {
-          console.error("Failed to generate initial typography:", err);
-          setErrorMessage(err.message || "Failed to initialize typography system.");
-        }
-      });
-    } else if (kit.typography) {
+    if (kit.typography?.roles && kit.typography.roles.length > 0) {
       setLocalTypography(kit.typography);
+    } else {
+      setLocalTypography({
+        roles: [],
+        regenerateCount: kit.typography?.regenerateCount ?? 0,
+      });
     }
-  }, [isOpen, kit, ideaId]);
+  }, [kit.typography]);
+
+  // Initial Generation Handler (Paid)
+  const handleGenerateInitial = async () => {
+    try {
+      setIsLoadingInitial(true);
+      setErrorMessage(null);
+      setInsufficientCredits(false);
+
+      const res = await apiCreatorBrandKit.generateTypography(ideaId, kit.version);
+      if (res.typography) {
+        setLocalTypography(res.typography);
+      }
+    } catch (err: any) {
+      if (err?.response?.status === 402 || err?.status === 402) {
+        setInsufficientCredits(true);
+      } else {
+        setErrorMessage(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Typography generation did not finish."
+        );
+      }
+    } finally {
+      setIsLoadingInitial(false);
+    }
+  };
 
   const roles = useMemo(() => localTypography.roles ?? [], [localTypography]);
   const regenerateCount = localTypography.regenerateCount ?? 0;
@@ -369,23 +390,25 @@ export function TypographySystemModal({
           currentStep={6}
           onClose={onClose}
           headerActions={
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRegeneratePairing}
-              disabled={isRegenerating || isCapExhausted}
-              className="gap-2 text-xs font-mono font-medium h-8 border-border bg-background hover:bg-muted/60"
-            >
-              <RefreshCw
-                className={`size-3.5 text-muted-foreground ${
-                  isRegenerating ? "animate-spin text-primary" : ""
-                }`}
-              />
-              <span>Suggest other pairings</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                {Math.max(0, 3 - regenerateCount)}/3 LEFT
-              </span>
-            </Button>
+            roles.length > 0 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRegeneratePairing}
+                disabled={isRegenerating || isCapExhausted}
+                className="gap-2 text-xs font-mono font-medium h-8 border-border bg-background hover:bg-muted/60"
+              >
+                <RefreshCw
+                  className={`size-3.5 text-muted-foreground ${
+                    isRegenerating ? "animate-spin text-primary" : ""
+                  }`}
+                />
+                <span>Suggest other pairings</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                  {Math.max(0, 3 - regenerateCount)}/3 LEFT
+                </span>
+              </Button>
+            ) : undefined
           }
         />
 
@@ -415,19 +438,54 @@ export function TypographySystemModal({
 
         {/* Modal Scrolling Body */}
         <div className="p-6 overflow-y-auto space-y-7">
-          
-          {/* SECTION A: PAIRING CHOICE ("PICK A PAIRING") */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
-                  PICK A PAIRING
-                </span>
-                <span className="hidden sm:inline text-xs text-muted-foreground">·</span>
-                <span className="text-[11px] font-mono text-muted-foreground">
-                  DISPLAY FAMILY: <strong className="text-foreground font-semibold">{displayFamilyName}</strong> · TEXT FAMILY: <strong className="text-foreground font-semibold">{textFamilyName}</strong>
-                </span>
+          {roles.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-12 text-center flex flex-col items-center justify-center max-w-xl mx-auto my-8">
+              <div className="size-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4 text-primary">
+                <Type className="size-8" />
               </div>
+              <h3 className="font-heading text-lg font-bold tracking-tight mb-2">
+                Generate Typography System
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-md">
+                Generate a curated typographic pairing (Display and Body typefaces) mapped to 4 functional roles for headings, body copy, and UI elements.
+              </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/20 text-xs font-mono font-medium text-primary mb-6">
+                <Sparkles className="size-3.5" />
+                <span>Cost: {typographyCost} AI credits</span>
+              </div>
+              <Button
+                size="lg"
+                onClick={handleGenerateInitial}
+                disabled={isLoadingInitial}
+                className="gap-2 font-mono text-sm px-6 shadow-sm"
+              >
+                {isLoadingInitial ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    <span>Generating typography system...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-4" />
+                    <span>Generate Typography System ({typographyCost} credits)</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* SECTION A: PAIRING CHOICE ("PICK A PAIRING") */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
+                      PICK A PAIRING
+                    </span>
+                    <span className="hidden sm:inline text-xs text-muted-foreground">·</span>
+                    <span className="text-[11px] font-mono text-muted-foreground">
+                      DISPLAY FAMILY: <strong className="text-foreground font-semibold">{displayFamilyName}</strong> · TEXT FAMILY: <strong className="text-foreground font-semibold">{textFamilyName}</strong>
+                    </span>
+                  </div>
 
               <span className="text-xs font-mono text-muted-foreground">
                 Tuning below updates automatically
@@ -671,6 +729,8 @@ export function TypographySystemModal({
 
             </div>
           </div>
+        </>
+      )}
 
         </div>
 
@@ -687,7 +747,7 @@ export function TypographySystemModal({
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={isConfirming || isPending}
+              disabled={isConfirming || isPending || isLoadingInitial || roles.length === 0}
               className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-5"
             >
               <span>{isConfirming ? "Finalizing Kit..." : "Confirm & Complete Brand Kit"}</span>

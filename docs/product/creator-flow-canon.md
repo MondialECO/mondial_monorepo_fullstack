@@ -75,9 +75,14 @@ Two backfills run on every boot (`Program.cs`, non-fatal): the **idea backfill**
 During the cutover, every idea write also mirrored to the journey (dual-write) as a rollback net. It was removed (commit `d27abd9`) because **mirroring is undefined once a user has two ideas** — one journey cannot mirror both, and the interleaved copy poisons any rollback. **FORBIDDEN:** do not reintroduce journey phase-block writes, "for safety" or otherwise. The journey's frozen blocks are historical residue, not a fallback store.
 
 ### 1.7 AI credit metering, token limits & starter grant
-Capabilities are credit-metered against server-authoritative balance and capability costs (`GET /api/ai/credits`). Current standard starter grant is **200 credits** on onboarding or first AI call (`Ai:StarterCredits = 200`). Current costs: `IdeaClarifier`: **20**, `MarketStudy`: **20**, `BusinessModel`: **18**, `BusinessPlan`: **33**, `Forecast`: **32** (provisional), `IdeaGenerator`: **0**, `Probe`: **0**, `DirectionGeneration`: **7**, `LogoParameterSelection`: **4**, `LogoConceptRegenerate`: **0** (free local SVG redraw), `ColorGeneration`: **2**, `TypographyGeneration`: **2**. Exhaustion triggers HTTP 402; failed generations auto-refund under Option A without deterministic fallback substitution.
+Capabilities are credit-metered against server-authoritative balance and capability costs (`GET /api/ai/credits`). Current standard starter grant is **200 credits** on onboarding or first AI call (`Ai:StarterCredits = 200`). Current costs: `IdeaClarifier`: **20**, `MarketStudy`: **20**, `BusinessModel`: **18**, `BusinessPlan`: **33**, `BusinessPlanSectionRewrite`: **5** (provisional), `Forecast`: **32** (provisional), `IdeaGenerator`: **0**, `Probe`: **0**, `DirectionGeneration`: **7**, `LogoParameterSelection`: **4**, `LogoConceptRegenerate`: **0** (free local SVG redraw, not an AI job), `ColorGeneration`: **2**, `TypographyGeneration`: **2**. Exhaustion triggers HTTP 402; failed generations auto-refund under Option A without deterministic fallback substitution.
 
 Output token ceilings are dynamically configured via `Ai:OutputTokenLimits` in `appsettings.json` (`IdeaGenerator: 3500`, `IdeaClarifier: 3500`, `MarketStudy: 7500`, `BusinessModel: 8500`, `BusinessPlan: 7500`, `Forecast: 8000`, `Probe: 500`, `DirectionGeneration: 4500`, `LogoParameterSelection: 3000`, `ColorGeneration: 4500`, `TypographyGeneration: 2000`) with safe fallback constants in handlers.
+
+### 1.8 Honest-Labelling & AI Glyph Canon
+The sparkle glyph (`Sparkles`, `WandSparkles`) and any `"AI-powered"` or `"AI generated"` phrasing appear **strictly and exclusively** where a genuine generative model call executes through the AI provider (e.g. Idea Clarifier, Direction Board, Logo Concept generation, Colour/Typography generation, Market Study, Business Model, Business Plan, Financial Forecast).
+
+Deterministic rule engines (corporate formation structures, partner skill matching), algorithmic string manipulation (concept name suggestions), and static pre-authored files (legal contract templates) must **never** carry the sparkle glyph or be represented as AI work.
 
 ---
 
@@ -85,7 +90,7 @@ Output token ceilings are dynamically configured via `Ai:OutputTokenLimits` in `
 
 - **P1** — KYC + role select
 - **P2** — Smart Gate: **both entry cards ship (LIVE)**. Path B (already-have-idea → clarifier) and Path A (Discovery → concept cards → confirm) are both reachable. Discovery skips the clarifier by seeding a Completed clarifier session at finalize, so it satisfies the Phase-3 prerequisite. Plus project branding + hire-SP-designer.
-- **P3** — AI Masterplan: Business Plan + Financial Forecast + Legal Checklist + Formation Generator (4 modules) → readiness score → completion gate (gates on plan + forecast + formation; legal is guidance, §5.3).
+- **P3** — Business Architecture & Masterplan: Market Study + Business Model + Business Plan + Financial Forecast + Legal Checklist + Formation Generator + Readiness Audit (7-step sequence, **LIVE, CLOSED & STABLE**) → completion gate (gates on plan + forecast + formation; legal is advisory guidance, §5).
 - **P4** — Pricing + GTM / landing page.
 - **P5** — Cross-Roads: Path A Marketplace (Active offers: Full Buyout OR Co-Founder / Equity; embedded in `CreatorIdeas.Phase5Data.PathA.MarketplaceListing` projected via `MarketplaceProjectDto`) OR Path B The Big Leap (Private venture spinout → 30-day decision timer → Level Up; NOT a marketplace offer). No formation wizard. Company doc verification deferred to Entrepreneur P2.
 - **P6** — Level Up: badge + confetti + atomic Creator→Entrepreneur switch + Smart Matchmaking unlocks (first point matchmaking is available at all).
@@ -117,7 +122,11 @@ The Phase-1 completion gate promotes onboarding to Phase 1 based on verified cor
 
 ---
 
-## 4. Phase 2 — Project Identity (Canonical Linear Flow)
+## 4. Phase 2 — Project Identity (CLOSED & STABLE — 2026-09-18)
+
+> [!IMPORTANT]
+> **Phase 2 Closure Canon (Declared Closed & Stable: September 18, 2026)**
+> Creator Phase 2 is frozen and declared production-stable. No new features, scope expansions, or visual redesigns are permitted. Maintenance is restricted strictly to critical bug fixes, ensuring the verified 7-step modal studio workflow, 0-credit free steps, and transparent credit metering remain immutable.
 
 Phase 2 has been intentionally simplified to a single canonical, linear journey:
 
@@ -202,6 +211,17 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
 - **Shared Components:**
   - `RegenerateCapBadge`: Reused across Direction, Logo Creation, Colour, and Typography to display remaining attempts (`N/3 LEFT` in neutral/muted, transitions to amber `0/3 LEFT` when cap is exhausted).
 
+#### 1b. Billing & Lifecycle Canon: No Silent / Auto-Fire Debiting
+- **Origin & Technical Context:** During early prototyping when Brand Studio generation was free and synthetic, modal components were written to automatically populate via `useEffect` mount hooks (`if (!candidates?.length) handleGenerate()`). When `DebitForJobAsync` was wired into backend services, step navigation silently debited credits ($7 + 4 + 2 + 2 = 15$ credits) upon simply viewing steps.
+- **Permanent Architectural Rule:** No generation, regeneration, or debiting action may EVER fire automatically on component mount, step navigation, or modal open.
+- **Mandatory 3-Part Disclosure & Trigger Requirement:**
+  1. **Ungenerated Empty State:** Opening an ungenerated step must display an informative empty state explaining what will be generated and what it costs.
+  2. **Upfront Cost Disclosure:** The cost must be clearly visible (e.g. `Cost: N AI credits`), sourced dynamically from `/api/ai/credits`.
+  3. **Explicit User Trigger:** Generation begins ONLY when the user clicks an explicit action button (e.g. `Generate 4 Directions (7 credits)`).
+- **Audit of Studio Free vs Billed Steps:**
+  - **Free steps (0 credits, never debited):** Step 1 Strategy Review, Step 2 Adjust strip (palette variant / contrast / display weight tuning), Step 3 Logo Type selection, Step 4 Single Concept Redraw (deterministic local SVG math) & Variation Set derivation (deterministic SVG layout), Step 5 Color Mood switching & manual hex tuning, Step 6 Typography pairing presets & manual size/weight tuning.
+  - **Billed steps (dynamic credit debit):** Step 2 Direction Generation (7 credits), Step 4 Logo Concept Batch (4 credits), Step 5 Color System Generation/Regeneration (2 credits), Step 6 Typography Generation/Regeneration (2 credits).
+
 #### 2. Per-Modal Behavior & Interaction Rules
 1. **Strategy Review Modal (`StrategyReviewModal` — Step 1: "Strategy"):**
    - Initial automatic derivation from `CreatorIdea.Project`:
@@ -243,7 +263,7 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
        - Right action & counter: `Compare two` toggle + `6 CONCEPTS` badge.
      - **3x2 Concept Tiles Grid (24px Gutters, Height-Matched):**
        - *Mark Stage (200px tall):* High-res SVG mark / lockup from C# backend with dynamic business name and pinned 24px primary circular check badge on active selection.
-       - *Card Footer (16px padding):* `CONCEPT 01` .. `CONCEPT 06` mono tag, live `descriptorLine` from backend, `SELECTED` primary badge, and single-concept redraw icon button (`Redraw just this one`, 2 credits, 3-cap).
+       - *Card Footer (16px padding):* `CONCEPT 01` .. `CONCEPT 06` mono tag, live `descriptorLine` from backend, `SELECTED` primary badge, and single-concept redraw icon button (`Redraw just this one`, Free local SVG redraw, 3-cap).
      - **Compare Overlay (`CompareOverlay`):** Side-by-side comparison modal with Light/Dark canvas toggles and winning concept selection.
    - **4b. Approved Logo Variation Set Modal (`VariationSetModal`, Figma Node `57004:11174`):**
       - *(Canonical Specification in [brand-identity-studio-canon.md](brand-identity-studio-canon.md))*
@@ -359,7 +379,15 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
 
 ---
 
-## 5. Phase 3 — Business Architecture & Masterplan (Canonical 7-Step Sequence)
+## 5. Phase 3 — Business Architecture & Masterplan (Canonical 7-Step Sequence — LIVE, CLOSED & STABLE)
+
+> [!IMPORTANT]
+> **Phase 3 Closure Notice (2026-09-18):**
+> Phase 3 is declared **CLOSED and STABLE**. All seven steps, backend controllers, and completion mechanics are verified at HEAD, 100% honest-labelled, zero-mock, and frozen against feature additions and visual redesigns. Critical bug fixes only.
+>
+> **Out-of-Scope Items for Phase 3 Closure (Explicitly Tracked):**
+> 1. *Provisional Section Rewrite Cost:* Single-section AI rewrite is configured and functioning at **5 credits** (`AiJobType.BusinessPlanSectionRewrite`); price remains provisional pending the platform-wide credit cost table review.
+> 2. *Credit Checkout / Purchase Gateway:* Real-currency Stripe/credit card top-up gateway is a platform-wide commercial infrastructure milestone (Phase 4/5 cross-cutting) rather than a Phase 3 gate blocker.
 
 Phase 3 establishes the comprehensive business, market, financial, and legal foundation for the venture across **seven sequential steps**:
 
@@ -368,7 +396,7 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 → Step 3.1: /phase-3/market-study
 → Step 3.2: /phase-3/business-model
 → Step 3.3: /phase-3/business-plan
-→ Step 3.4: /phase-3/forecast-inputs → /phase-3/forecast
+→ Step 3.4: /phase-3/forecast
 → Step 3.5: /phase-3/compliance
 → Step 3.6: /phase-3/formation
 → Step 3.7: /phase-3/complete
@@ -421,7 +449,9 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   - Sections 02 (Problem & Solution), 07 (Financial Projections), and 08 (Team Needs) carry clear source provenance attribution and direct navigation links to their upstream/cross-module sources.
   - Section 09 (Funding Requirements) transparently explains that seed funding ask is configured in Phase 5.
   - Sections 10 (Operations & Milestones) and 11 (Risk Register & Mitigations) explain that they are synthesized as part of the full AI plan and update when the plan is regenerated.
-- **Credit Cost:** **33 credits** (`AiJobType.BusinessPlan`).
+- **Credit Costs & Job Types:**
+  - **Full Business Plan Synthesis:** **33 credits** (`AiJobType.BusinessPlan`).
+  - **Single Section Rewrite:** **5 credits** (`AiJobType.BusinessPlanSectionRewrite`). Scoped to a single section rewrite. *Flagged as provisional placeholder pending the final credit pricing review, ensuring founders are charged proportionally for single-section revisions rather than full 11-section document syntheses.*
 
 | # | Section | Source | Rewritable | Badge |
 |---|---------|--------|------------|-------|
@@ -438,7 +468,7 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 | 11 | Risk Register | C-3 `risks[]` | ❌ (Full Plan AI) | — |
 
 ### 5.4 Step 3.4 — Financial Forecast (C-4, LIVE)
-- **Routes:** Unified workspace at `/dashboard/creator/phase-3/forecast` (with seamless redirect from legacy `/phase-3/forecast-inputs`).
+- **Route:** Unified workspace at `/dashboard/creator/phase-3/forecast` (interactive Live Assumptions drawer + live 36-month P&L projection charts and tables in a single consolidated workspace).
 - **Backing Entity & Controller:** `ForecastSession` stored in `ForecastSessions` collection via `ForecastController` (`/api/ai/forecast`).
 - **Unified Interactive Workspace:** Merges input parameters (`ARPU`, `OPEX`, `Growth %`, `TAM`, `Churn %`) and live projection results into a single screen. Includes an interactive Live Assumptions drawer for instant parameter modifications and re-runs.
 - **Model & Derivation:** 36-month P&L (months 1–12 AI-generated by Gemini; months 13–36 deterministically projected via `ForecastHandler.ExtendToThirtySixMonths`).
@@ -680,7 +710,14 @@ The rule: matchmaking is unavailable across P1–P5 and unlocks only at P6. The 
   5. Variations: `STEP 4 OF 6 · VARIATIONS • LOGO SET`
   6. Colour: `STEP 5 OF 6 · COLOUR SYSTEM`
   7. Typography: `STEP 6 OF 6 • TYPOGRAPHY`
-- **Visual Validation:** Live browser rendering confirmed via headless Playwright runs on running Next.js app, with authentic screenshots captured for modal headers.
+**2026-09-18 — Creator Phase 3: Systematic Audit & Closure (DECLARED CLOSED & STABLE).**
+- **Closure & Freezing:** Phase 3 (Steps 3.1 Market Study, 3.2 Business Model, 3.3 Business Plan, 3.4 Financial Forecast, 3.5 Compliance, 3.6 Formation, 3.7 Readiness Audit) is formally declared **CLOSED and STABLE**. Architecture frozen against new features or redesigns; critical bug fixes only.
+- **Honest-Labelling & AI Glyph Enforcement:** Verified across all 7 steps. Sparkle/Wand glyphs strictly restricted to real AI model calls (3.1 Market Study, 3.2 Business Model, 3.3 Business Plan synthesis & rewrite, 3.4 Forecast). Deterministic features (3.5 Legal standard templates, 3.6 Rule-engine recommendation factors, 3.7 Diagnostic scoring rubric) are cleanly labelled with non-AI icons (`FileText`, `Sliders`, `CheckCircle2`, `BarChart3`).
+- **Route Consolidation:** Removed legacy redirect shim `/phase-3/forecast-inputs`; Step 3.4 operates as a single unified workspace at `/dashboard/creator/phase-3/forecast`.
+- **Cross-Module Data Integrity:** Verified zero mock data. Business Plan continuously references upstream source models without forking editable state duplicates.
+- **Explicit Out-of-Scope Items Tracked:**
+  1. *Provisional Section Rewrite Price:* Configured and functioning at 5 credits (`AiJobType.BusinessPlanSectionRewrite`); provisional pending overall credit pricing review.
+  2. *Credit Checkout Gateway:* Platform-wide infrastructure milestone (not a Phase 3 blocker). Starter credit grant verified at 200 credits across `appsettings.json`, `AiSettings.cs`, and `AiCreditService.cs`.
 
 ---
 

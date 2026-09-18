@@ -12,6 +12,11 @@ namespace WebApp.Services.Ai.Jobs
         MarketStudy,
         BusinessModel,
         BusinessPlan,
+        /// <summary>
+        /// Single section rewrite within an 11-section business plan.
+        /// Provisional scoped pricing pending final pricing review.
+        /// </summary>
+        BusinessPlanSectionRewrite,
         Forecast,
         Probe,
         DirectionGeneration,

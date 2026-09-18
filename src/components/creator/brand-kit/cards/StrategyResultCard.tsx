@@ -2,7 +2,7 @@
 
 import React from "react";
 import { BrandStrategy } from "@/types/creator/brand-kit";
-import { CheckCircle2, Edit3, Shield, Users, Target, Sparkles, Ban } from "lucide-react";
+import { CheckCircle2, Edit3, Shield, Users, Target, Lightbulb, Tag, Ban } from "lucide-react";
 
 interface StrategyResultCardProps {
   strategy?: BrandStrategy;
@@ -13,50 +13,40 @@ export function StrategyResultCard({ strategy, onEdit }: StrategyResultCardProps
   if (!strategy) return null;
 
   const concept = strategy.concept?.value || "Core brand vision defined.";
-  const audience = strategy.targetAudience?.value || "Primary target demographic identified.";
-  const industry = strategy.industry?.value || "Industry sector defined.";
-  const positioning = strategy.positioning?.value || "Market positioning defined.";
+  const audience = strategy.targetAudience?.value || "Target market specified.";
+  const industry = strategy.industry?.value || "Industry sector identified.";
+  const positioning = strategy.positioning?.value || "Unique positioning determined.";
   const personality = strategy.personalityTraits?.length
     ? strategy.personalityTraits.join(", ")
-    : "Visionary, Trustworthy, Precision";
-  const avoidList = strategy.avoidList?.length ? strategy.avoidList.join(", ") : "Generic corporate tropes";
+    : "Tone defined.";
+  const avoid = strategy.avoidList?.length
+    ? strategy.avoidList.join(", ")
+    : "No explicit exclusions.";
 
   return (
-    <div
-      onClick={onEdit}
-      className="group relative w-full max-w-4xl rounded-2xl border border-border/80 bg-white p-6 shadow-sm transition-all duration-200 hover:border-primary/50 hover:shadow-md cursor-pointer"
-    >
-      {/* Card Header */}
-      <div className="flex items-center justify-between border-b border-border/60 pb-3 mb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-7 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
-            <CheckCircle2 className="size-4" />
+    <div className="w-full rounded-2xl border border-border/80 bg-card p-6 shadow-xs text-card-foreground">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-4 mb-4 border-b border-border/60">
+        <div className="flex items-center gap-2">
+          <div className="size-6 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+            <CheckCircle2 className="size-3.5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-semibold text-primary uppercase tracking-wider">
-                STEP 1
-              </span>
-              <span className="text-xs text-muted-foreground">•</span>
-              <span className="text-xs text-muted-foreground font-medium">Brand Strategy</span>
-            </div>
-            <h3 className="text-base font-bold text-foreground tracking-tight">
-              {strategy.nameDisplayForm || strategy.businessName || "Brand Foundation"}
-            </h3>
+            <h3 className="font-heading text-sm font-semibold tracking-tight">Brand Strategy Foundations</h3>
+            <span className="text-[11px] font-mono text-muted-foreground">CONFIRMED · 6 PILLARS</span>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit?.();
-          }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <Edit3 className="size-3.5" />
-          Review & Edit
-        </button>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="flex items-center gap-1 text-xs font-sans text-muted-foreground hover:text-primary transition-colors cursor-pointer px-2.5 py-1 rounded-lg hover:bg-muted"
+          >
+            <Edit3 className="size-3" />
+            <span>Edit</span>
+          </button>
+        )}
       </div>
 
       {/* 6 Brand Facts Grid Matching Real Modal Fields */}
@@ -64,7 +54,7 @@ export function StrategyResultCard({ strategy, onEdit }: StrategyResultCardProps
         {/* 1. Core Concept */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-            <Sparkles className="size-3.5 text-primary" />
+            <Lightbulb className="size-3.5 text-primary" />
             <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Concept</span>
           </div>
           <p className="text-xs text-foreground font-medium line-clamp-2">{concept}</p>
@@ -100,7 +90,7 @@ export function StrategyResultCard({ strategy, onEdit }: StrategyResultCardProps
         {/* 5. Personality Traits */}
         <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
           <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-            <Sparkles className="size-3.5 text-emerald-500" />
+            <Tag className="size-3.5 text-emerald-500" />
             <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Traits</span>
           </div>
           <p className="text-xs text-foreground font-medium line-clamp-1">{personality}</p>
@@ -112,7 +102,7 @@ export function StrategyResultCard({ strategy, onEdit }: StrategyResultCardProps
             <Ban className="size-3.5 text-rose-500" />
             <span className="text-[10px] font-mono font-semibold uppercase tracking-wider">Avoidances</span>
           </div>
-          <p className="text-xs text-foreground font-medium line-clamp-1">{avoidList}</p>
+          <p className="text-xs text-foreground font-medium line-clamp-1">{avoid}</p>
         </div>
       </div>
     </div>

@@ -110,40 +110,13 @@ export function LogoCreationModal({
           setSelectedConceptKey(
             currentKit?.logo?.selectedConceptKey || existingConcepts[0].key
           );
-        } else {
-          // Trigger generation if not yet populated
-          const updatedKit = await brandKitApi.generateLogoConcepts(
-            ideaId,
-            currentKit?.version
-          );
-          if (!isMounted) return;
-          setKit(updatedKit);
-          setConcepts(updatedKit.logo?.concepts ?? []);
-          setSelectedConceptKey(
-            updatedKit.logo?.selectedConceptKey || updatedKit.logo?.concepts?.[0]?.key || "concept_1"
-          );
         }
       } catch (err: any) {
         if (!isMounted) return;
-        if (err?.response?.status === 409) {
-          try {
-            const freshKit = await brandKitApi.getBrandKit(ideaId);
-            if (isMounted && (freshKit.logo?.concepts?.length ?? 0) >= 6) {
-              setKit(freshKit);
-              setConcepts(freshKit.logo?.concepts ?? []);
-              setSelectedConceptKey(
-                freshKit.logo?.selectedConceptKey || freshKit.logo?.concepts?.[0]?.key || "concept_1"
-              );
-              return;
-            }
-          } catch {
-            // fall through
-          }
-        }
         const msg =
           err?.response?.data?.message ||
           err?.message ||
-          "Failed to load or generate logo concepts.";
+          "Failed to load logo concepts.";
         setGlobalError({ type: "network", message: msg });
       } finally {
         if (isMounted) {
@@ -518,7 +491,7 @@ export function LogoCreationModal({
 
         {/* 3. Scrollable Main 3x2 Grid Area */}
         <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
-          {isLoadingInitial ? (
+          {isLoadingInitial || isBatchRegenerating ? (
             <div className="flex flex-col items-center justify-center min-h-[420px] gap-3">
               <RefreshCw className="size-8 text-primary animate-spin" />
               <div className="text-center">
@@ -529,6 +502,33 @@ export function LogoCreationModal({
                   Synthesizing direction archetype, motif geometry, and typographic pairings.
                 </p>
               </div>
+            </div>
+          ) : concepts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[380px] p-8 sm:p-12 text-center max-w-lg mx-auto space-y-5 rounded-2xl border border-dashed border-border bg-muted/20">
+              <div className="size-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-xs">
+                <Sparkles className="size-7" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="font-heading font-semibold text-lg sm:text-xl text-foreground">
+                  Generate Logo Concepts
+                </h3>
+                <p className="text-sm font-sans text-muted-foreground leading-relaxed">
+                  The AI engine will draw 6 distinct {logoTypeName} logo concepts inside your confirmed {directionName} visual direction.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 font-mono text-xs font-semibold px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                <Sparkles className="size-3.5" />
+                <span>Cost: {batchRedrawCost} AI Credits</span>
+              </div>
+              <Button
+                type="button"
+                onClick={handleRedrawAll}
+                disabled={isBatchRegenerating || isLoadingInitial}
+                className="h-11 px-7 font-sans font-semibold gap-2 shadow-sm text-sm cursor-pointer"
+              >
+                <Sparkles className="size-4" />
+                Generate 6 Concepts ({batchRedrawCost} credits)
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
