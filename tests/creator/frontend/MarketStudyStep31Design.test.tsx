@@ -158,7 +158,7 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
     expect(screen.getByText(/Methodology/i)).toBeInTheDocument();
     expect(screen.getByText(/Triangulated bottom-up cohort adoption model/i)).toBeInTheDocument();
 
-    expect(screen.getByText(/Derivation Arithmetic/i)).toBeInTheDocument();
+    expect(screen.getByText(/Derivation Basis/i)).toBeInTheDocument();
     expect(screen.getAllByText(/120k enterprises spending \$100k annually/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/24k European freight forwarders/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/1,200 initial target customers/i).length).toBeGreaterThanOrEqual(1);

@@ -518,32 +518,32 @@ export default function MarketStudyPage() {
                     </p>
                   </div>
 
-                  {/* Right Column: Active Sizing Formula in Monospace Inset Box with Audit Label */}
+                  {/* Right Column: Derivation Basis in Inset Box with Audit Label */}
                   <div className="lg:col-span-7 space-y-1.5">
                     <div className="flex items-center justify-between pb-0.5">
                       <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                        ACTIVE SIZING FORMULA // DERIVATION ARITHMETIC
+                        DERIVATION BASIS // AUDIT TRACE
                       </span>
                       <span className="text-[10px] font-mono text-muted-foreground/80 uppercase">
                         AUDITED Q1 2026
                       </span>
                     </div>
-                    <div className="rounded-lg border border-border/70 bg-muted/40 dark:bg-muted/20 p-3 text-xs font-mono text-foreground font-medium overflow-x-auto whitespace-nowrap">
-                      {tamVal && samVal && somVal ? (
-                        <span>
-                          {formatCurrency(tamVal, tam?.currency)} TAM × {formatPct(samPctOfTam)}% adoption × {formatPct(somPctOfSam)}% capture = {formatCurrency(somVal, som?.currency)} ARR Target
-                        </span>
-                      ) : (
-                        <span>
-                          2.4M EU SMBs × 18% adoption × €4,860 avg ACV
-                        </span>
+                    <div className="rounded-lg border border-border/70 bg-muted/40 dark:bg-muted/20 p-3.5 space-y-2 text-xs">
+                      {tam?.derivation && (
+                        <p className="font-sans text-muted-foreground leading-relaxed">
+                          <strong className="font-mono font-semibold text-foreground tracking-wide">TAM:</strong> {tam.derivation}
+                        </p>
                       )}
-                    </div>
-                    {/* Preserved prose derivations summary for full traceability */}
-                    <div className="text-[11px] font-mono text-muted-foreground/80 space-y-0.5 pt-1">
-                      {tam?.derivation && <p className="truncate"><strong className="text-foreground/90">TAM:</strong> {tam.derivation}</p>}
-                      {sam?.derivation && <p className="truncate"><strong className="text-foreground/90">SAM:</strong> {sam.derivation}</p>}
-                      {som?.derivation && <p className="truncate"><strong className="text-foreground/90">SOM:</strong> {som.derivation}</p>}
+                      {sam?.derivation && (
+                        <p className="font-sans text-muted-foreground leading-relaxed">
+                          <strong className="font-mono font-semibold text-foreground tracking-wide">SAM:</strong> {sam.derivation}
+                        </p>
+                      )}
+                      {som?.derivation && (
+                        <p className="font-sans text-muted-foreground leading-relaxed">
+                          <strong className="font-mono font-semibold text-foreground tracking-wide">SOM:</strong> {som.derivation}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
