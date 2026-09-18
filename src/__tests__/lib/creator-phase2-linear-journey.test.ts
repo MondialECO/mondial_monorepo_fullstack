@@ -96,7 +96,7 @@ describe('Creator Phase 2 Linear Journey & State Resolver', () => {
     };
     const action = getNextCreatorAction(state);
     expect(action.targetPhase).toBe(3);
-    expect(action.route).toBe('/dashboard/creator/phase-3/business-plan');
+    expect(action.route).toBe('/dashboard/creator/phase-3/business-model');
   });
 
   it('never routes to removed Path A endpoints (discovery, ai-processing, idea-cards, idea-confirm) for any step', () => {

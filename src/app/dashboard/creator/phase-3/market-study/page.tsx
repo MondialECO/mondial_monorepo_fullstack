@@ -175,9 +175,9 @@ export default function MarketStudyPage() {
   const samReductionPct = Math.max(0, Math.round(100 - samPctOfTam));
   const somReductionPct = Math.max(0, Math.round(100 - somPctOfSam));
 
-  // Funnel bar proportions (no artificial clamps)
-  const samWidthPct = tamVal && samVal ? Math.max(4, Math.min(100, (samVal / tamVal) * 100)) : 35;
-  const somWidthPct = tamVal && somVal ? Math.max(2, Math.min(100, (somVal / tamVal) * 100)) : 8;
+  // Funnel bar proportions (strictly proportional to TAM)
+  const samWidthPct = tamVal && samVal ? Math.max(0.5, Math.min(100, (samVal / tamVal) * 100)) : 35;
+  const somWidthPct = tamVal && somVal ? Math.max(0.5, Math.min(100, (somVal / tamVal) * 100)) : 8;
 
   // Gather unique sources for consolidated footer line
   const sourceAttributions: string[] = [];
@@ -380,12 +380,23 @@ export default function MarketStudyPage() {
 
               {/* Stacked Proportional Horizontal Bars */}
               <div className="space-y-4 pt-2">
-                {/* Level 1: TAM Bar (100% width) */}
-                <div className="space-y-2">
-                  <div className="w-full rounded-xl border border-border/70 bg-muted/20 dark:bg-muted/15 p-4 transition-all">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                {/* Level 1: TAM Row (100% Bar on Left + Aligned Content Right) */}
+                <div className="w-full rounded-xl border border-border/70 bg-muted/20 dark:bg-muted/15 p-4 transition-all">
+                  <div className="flex flex-col md:flex-row md:items-center gap-4 lg:gap-6">
+                    {/* Visual Bar Track on the Left */}
+                    <div className="w-full md:w-56 lg:w-64 xl:w-72 h-8 bg-muted/40 dark:bg-muted/30 rounded-lg p-1 flex items-center shrink-0 border border-border/40">
+                      <div
+                        style={{ width: '100%' }}
+                        className="h-full rounded-md flex items-center justify-center font-mono text-[11px] font-bold bg-muted-foreground/25 dark:bg-muted-foreground/30 text-foreground transition-all duration-300"
+                      >
+                        <span>TAM</span>
+                      </div>
+                    </div>
+
+                    {/* Aligned Details on the Right */}
+                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-muted text-foreground uppercase tracking-wider">
                             TAM
                           </span>
@@ -393,12 +404,12 @@ export default function MarketStudyPage() {
                             {tam?.label || 'Total Addressable Market'}
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed max-w-3xl font-sans">
+                        <p className="text-xs text-muted-foreground leading-relaxed font-sans">
                           {tam?.derivation || 'Total global market demand and theoretical ceiling for this sector.'}
                         </p>
                       </div>
-                      <div className="text-left md:text-right shrink-0">
-                        <div className="text-2xl font-bold font-mono text-foreground tracking-tight">
+                      <div className="text-left sm:text-right shrink-0">
+                        <div className="text-xl font-bold font-mono text-foreground tracking-tight">
                           {formatCurrency(tam?.value, tam?.currency)}
                         </div>
                       </div>
@@ -411,32 +422,40 @@ export default function MarketStudyPage() {
                   <span>-{samReductionPct}% filter · {sam?.derivation ? sam.derivation.split('.')[0] : 'Constrained by geography, target vertical, and ICP focus'}</span>
                 </div>
 
-                {/* Level 2: SAM Bar (Width strictly proportional, no artificial clamp) */}
-                <div className="space-y-2">
-                  <div
-                    style={{ width: `${samWidthPct}%` }}
-                    className="rounded-xl border border-border/80 bg-muted/40 dark:bg-muted/30 p-4 transition-all"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                {/* Level 2: SAM Row (Proportional Bar on Left + Aligned Content Right) */}
+                <div className="w-full rounded-xl border border-border/70 bg-muted/20 dark:bg-muted/15 p-4 transition-all">
+                  <div className="flex flex-col md:flex-row md:items-center gap-4 lg:gap-6">
+                    {/* Visual Bar Track on the Left */}
+                    <div className="w-full md:w-56 lg:w-64 xl:w-72 h-8 bg-muted/40 dark:bg-muted/30 rounded-lg p-1 flex items-center shrink-0 border border-border/40">
+                      <div
+                        style={{ width: `${samWidthPct}%` }}
+                        className="h-full min-w-[3px] rounded-md flex items-center justify-center font-mono text-[11px] font-bold bg-muted-foreground/25 dark:bg-muted-foreground/30 text-foreground transition-all duration-300 overflow-hidden"
+                      >
+                        {samWidthPct >= 18 ? <span>SAM</span> : null}
+                      </div>
+                    </div>
+
+                    {/* Aligned Details on the Right */}
+                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-muted text-foreground uppercase tracking-wider">
                             SAM
                           </span>
                           <span className="text-xs font-semibold text-foreground font-sans">
                             {sam?.label || 'Serviceable Addressable Market'}
                           </span>
+                          <span className="text-[11px] font-mono text-muted-foreground">
+                            · {samPctOfTam.toFixed(0)}% of TAM
+                          </span>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl font-sans">
+                        <p className="text-xs text-muted-foreground leading-relaxed font-sans">
                           {sam?.derivation || 'Target segment directly reachable with current business capabilities and geography.'}
                         </p>
                       </div>
-                      <div className="text-left md:text-right shrink-0">
+                      <div className="text-left sm:text-right shrink-0">
                         <div className="text-xl font-bold font-mono text-foreground tracking-tight">
                           {formatCurrency(sam?.value, sam?.currency)}
-                        </div>
-                        <div className="text-[11px] font-mono text-muted-foreground">
-                          {samPctOfTam.toFixed(0)}% of TAM
                         </div>
                       </div>
                     </div>
@@ -448,32 +467,40 @@ export default function MarketStudyPage() {
                   <span>-{somReductionPct}% capture limit · {som?.derivation ? som.derivation.split('.')[0] : 'Constrained by initial 24-36 month capacity and sales velocity'}</span>
                 </div>
 
-                {/* Level 3: SOM Bar (Width strictly proportional, Teal Accent Only) */}
-                <div className="space-y-2">
-                  <div
-                    style={{ width: `${somWidthPct}%` }}
-                    className="rounded-xl border border-teal-500/40 bg-teal-500/10 dark:bg-teal-500/15 p-4 transition-all"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                {/* Level 3: SOM Row (Proportional Bar on Left + Aligned Content Right + Teal Focus) */}
+                <div className="w-full rounded-xl border border-teal-500/30 bg-teal-500/5 dark:bg-teal-500/10 p-4 transition-all">
+                  <div className="flex flex-col md:flex-row md:items-center gap-4 lg:gap-6">
+                    {/* Visual Bar Track on the Left */}
+                    <div className="w-full md:w-56 lg:w-64 xl:w-72 h-8 bg-teal-500/10 dark:bg-teal-500/15 rounded-lg p-1 flex items-center shrink-0 border border-teal-500/20">
+                      <div
+                        style={{ width: `${somWidthPct}%` }}
+                        className="h-full min-w-[3px] rounded-md flex items-center justify-center font-mono text-[11px] font-bold bg-teal-500 text-teal-950 shadow-sm transition-all duration-300 overflow-hidden"
+                      >
+                        {somWidthPct >= 18 ? <span>SOM</span> : null}
+                      </div>
+                    </div>
+
+                    {/* Aligned Details on the Right */}
+                    <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-teal-500/20 text-teal-700 dark:text-teal-300 uppercase tracking-wider">
                             SOM
                           </span>
                           <span className="text-xs font-semibold text-foreground font-sans">
                             {som?.label || 'Serviceable Obtainable Market'}
                           </span>
+                          <span className="text-[11px] font-mono text-muted-foreground">
+                            · {somPctOfSam.toFixed(0)}% of SAM
+                          </span>
                         </div>
-                        <p className="text-xs text-muted-foreground leading-relaxed max-w-xl font-sans">
+                        <p className="text-xs text-muted-foreground leading-relaxed font-sans">
                           {som?.derivation || 'Realistic market share achievable within the initial 24–36 month operational runway.'}
                         </p>
                       </div>
-                      <div className="text-left md:text-right shrink-0">
-                        <div className="text-lg font-bold font-mono text-teal-600 dark:text-teal-400 tracking-tight">
+                      <div className="text-left sm:text-right shrink-0">
+                        <div className="text-xl font-bold font-mono text-teal-600 dark:text-teal-400 tracking-tight">
                           {formatCurrency(som?.value, som?.currency)}
-                        </div>
-                        <div className="text-[11px] font-mono text-muted-foreground">
-                          {somPctOfSam.toFixed(0)}% of SAM
                         </div>
                       </div>
                     </div>

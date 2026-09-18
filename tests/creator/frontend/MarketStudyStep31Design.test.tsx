@@ -223,4 +223,49 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
     expect(screen.getByRole('button', { name: /Export/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Regenerate/i })).toBeInTheDocument();
   });
+
+  it('renders extreme case of SOM at 1% or less with full uncrushed text and sliver bar', async () => {
+    const extremeOutput = {
+      ...mockStudyOutput,
+      marketSizing: {
+        ...mockStudyOutput.marketSizing,
+        tam: {
+          value: 100000000000,
+          currency: 'USD',
+          label: 'Global Heavy Logistics',
+          derivation: '100B global market ceiling across heavy freight.',
+        },
+        sam: {
+          value: 5000000000,
+          currency: 'USD',
+          label: 'EU Regulated Freight Forwarders',
+          percentageOfTam: 5,
+          derivation: '5B serviceable European transport corridor.',
+        },
+        som: {
+          value: 50000000, // 0.05% of TAM, 1% of SAM
+          currency: 'USD',
+          label: 'Early Pilot Beta Cohort',
+          percentageOfSam: 1,
+          derivation: 'Targeted beachhead with 50 enterprise shippers in Benelux.',
+        },
+      },
+    };
+
+    vi.spyOn(creatorAiQueries, 'useMarketStudySessionTimed').mockReturnValue({
+      phase: 'terminal',
+      data: {
+        status: 'Completed',
+        currentVersion: 1,
+        output: extremeOutput,
+      },
+    } as any);
+
+    render(<MarketStudyPage />);
+
+    expect(await screen.findByText('Early Pilot Beta Cohort')).toBeInTheDocument();
+    expect(screen.getByText(/1% of SAM/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Targeted beachhead with 50 enterprise shippers in Benelux./i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('$50M')).toBeInTheDocument();
+  });
 });
