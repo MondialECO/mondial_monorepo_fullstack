@@ -47,7 +47,7 @@ export default function ProjectStudioPage() {
     return (
       <div className="w-full max-w-[1136px] mx-auto space-y-6 pb-8 font-sans">
         <div className="space-y-1">
-          <h1 className="text-[28px] font-bold leading-tight text-foreground">
+          <h1 className="text-page-heading font-bold leading-tight text-foreground">
             Project Studio
           </h1>
           <p className="text-sm font-normal text-muted-foreground">
@@ -84,7 +84,7 @@ export default function ProjectStudioPage() {
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-foreground">Project Studio</span>
           </div>
-          <h1 className="text-[28px] font-extrabold leading-tight text-foreground tracking-tight sm:text-3xl">
+          <h1 className="text-page-heading font-extrabold leading-tight text-foreground tracking-tight">
             Project Studio
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -111,7 +111,7 @@ export default function ProjectStudioPage() {
                   <CardTitle className="text-lg font-bold">{project.name || 'Untitled Concept'}</CardTitle>
                   <CardDescription className="text-xs mt-0.5">{project.category || 'B2B SaaS / FinTech'}</CardDescription>
                 </div>
-                <Badge className="bg-primary/10 text-primary border-primary/20 px-2.5 py-0.5 text-[10px] font-bold">
+                <Badge className="bg-primary/10 text-primary border-primary/20 px-2.5 py-0.5 text-badge font-bold">
                   Version {project.currentVersion || 1}.0 Active
                 </Badge>
               </div>
@@ -119,26 +119,26 @@ export default function ProjectStudioPage() {
             <CardContent className="p-6 space-y-5">
               {project.tagline && (
                 <div className="space-y-1">
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Tagline</span>
+                  <span className="text-label text-muted-foreground font-bold uppercase tracking-wider">Tagline</span>
                   <p className="text-sm font-medium text-foreground">{project.tagline}</p>
                 </div>
               )}
               {project.concept && (
                 <div className="space-y-1">
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Elevator Concept</span>
+                  <span className="text-label text-muted-foreground font-bold uppercase tracking-wider">Elevator Concept</span>
                   <p className="text-sm text-muted-foreground leading-relaxed">{project.concept}</p>
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 {project.problem && (
                   <div className="bg-muted/30 border border-border/80 rounded-xl p-4 space-y-1">
-                    <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">Problem Statement</span>
+                    <span className="text-label text-muted-foreground font-bold uppercase tracking-wider">Problem Statement</span>
                     <p className="text-xs text-foreground font-medium line-clamp-3">{project.problem}</p>
                   </div>
                 )}
                 {project.solution && (
                   <div className="bg-muted/30 border border-border/80 rounded-xl p-4 space-y-1">
-                    <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">Proposed Solution</span>
+                    <span className="text-label text-muted-foreground font-bold uppercase tracking-wider">Proposed Solution</span>
                     <p className="text-xs text-foreground font-medium line-clamp-3">{project.solution}</p>
                   </div>
                 )}
@@ -159,7 +159,7 @@ export default function ProjectStudioPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Logo Preview */}
                   <div className="flex flex-col items-center justify-center p-5 border border-border/80 bg-muted/20 rounded-xl text-center">
-                    <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mb-3 block">Logo Mark</span>
+                    <span className="text-label text-muted-foreground font-bold uppercase tracking-wider mb-3 block">Logo Mark</span>
                     {branding.logoType === 'ai' ? (
                       <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-primary to-warning text-white flex items-center justify-center font-extrabold text-4xl shadow-sm">
                         {project.name?.charAt(0) || 'A'}
@@ -169,7 +169,7 @@ export default function ProjectStudioPage() {
                         {project.name?.charAt(0) || 'D'}
                       </div>
                     )}
-                    <span className="text-[10px] text-primary font-bold mt-3 inline-flex items-center gap-1">
+                    <span className="text-badge text-primary font-bold mt-3 inline-flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5" />
                       {branding.logoType === 'ai' ? 'AI Auto Logo' : 'Verified M50 designer'}
                     </span>
@@ -178,14 +178,14 @@ export default function ProjectStudioPage() {
                   {/* Color Palette */}
                   <div className="flex flex-col justify-between p-4 border border-border/80 bg-muted/20 rounded-xl">
                     <div>
-                      <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mb-2 block">Color Palette</span>
+                      <span className="text-label text-muted-foreground font-bold uppercase tracking-wider mb-2 block">Color Palette</span>
                       <h4 className="font-bold text-xs text-foreground mb-3">{branding.paletteName || 'Default Palette'}</h4>
                     </div>
                     <div className="flex gap-2">
                       {branding.colorPalette?.map((color) => (
                         <div key={color} className="flex flex-col items-center gap-1">
                           <div className="w-8 h-8 rounded-full border border-border" style={{ backgroundColor: color }} />
-                          <span className="text-[8px] text-muted-foreground font-mono">{color}</span>
+                          <span className="text-footnote text-muted-foreground font-mono">{color}</span>
                         </div>
                       ))}
                     </div>
@@ -194,7 +194,7 @@ export default function ProjectStudioPage() {
                   {/* Typography Pairings */}
                   <div className="flex flex-col justify-between p-4 border border-border/80 bg-muted/20 rounded-xl">
                     <div>
-                      <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mb-2 block">Typography Pairings</span>
+                      <span className="text-label text-muted-foreground font-bold uppercase tracking-wider mb-2 block">Typography Pairings</span>
                       <h4 className="font-bold text-sm text-foreground">{branding.typographyPairing || 'Syne + DM Sans'}</h4>
                     </div>
                     <div className="space-y-1.5 border-t border-border/80 pt-3">
@@ -239,8 +239,8 @@ export default function ProjectStudioPage() {
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-xs text-foreground">{ver.label}</span>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">{ver.note}</p>
-                        <span className="text-[8px] text-muted-foreground flex items-center gap-1">
+                        <p className="text-caption text-muted-foreground">{ver.note}</p>
+                        <span className="text-footnote text-muted-foreground flex items-center gap-1">
                           <Clock className="w-3 h-3" /> {ver.date}
                         </span>
                       </div>
@@ -251,7 +251,7 @@ export default function ProjectStudioPage() {
                 <div className="text-center py-6 px-4 space-y-1.5">
                   <Clock className="w-7 h-7 text-muted-foreground/30 mx-auto" />
                   <p className="text-xs font-semibold text-foreground">No saved versions yet.</p>
-                  <p className="text-[11px] text-muted-foreground leading-normal">
+                  <p className="text-caption text-muted-foreground leading-normal">
                     Milestone plans and financial forecasts will record snapshots here automatically.
                   </p>
                 </div>
@@ -280,7 +280,7 @@ export default function ProjectStudioPage() {
               </div>
 
               <div className="bg-muted/30 border border-border/80 rounded-xl p-3 text-xs space-y-1">
-                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">Next action route</span>
+                <span className="text-label font-bold text-muted-foreground uppercase tracking-wider block">Next action route</span>
                 <span className="text-foreground font-semibold font-mono break-all">{action.route}</span>
               </div>
             </CardContent>

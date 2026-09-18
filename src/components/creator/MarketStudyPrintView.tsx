@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Printer, X, Check } from "lucide-react";
@@ -28,7 +28,7 @@ interface MarketStudyPrintProps {
   open: boolean;
   onClose: () => void;
   projectName?: string;
-  logoUrl?: string;
+  logoUrl?: string | null;
   project?: {
     sector?: string;
     geography?: string;
@@ -73,6 +73,8 @@ export default function MarketStudyPrintView({
     return () => document.body.classList.remove("printing-active");
   }, [open]);
 
+  const [logoError, setLogoError] = useState(false);
+
   if (!open || typeof document === "undefined" || !output) return null;
 
   const today = new Date().toLocaleDateString("en-GB", {
@@ -80,6 +82,12 @@ export default function MarketStudyPrintView({
     month: "long",
     day: "numeric",
   });
+
+  const safeLogoSrc = logoUrl
+    ? logoUrl.trim().startsWith("<svg")
+      ? `data:image/svg+xml;utf8,${encodeURIComponent(logoUrl.trim())}`
+      : logoUrl
+    : null;
 
   const sizing = output.marketSizing;
   const tam = sizing?.tam;
@@ -116,7 +124,11 @@ export default function MarketStudyPrintView({
         <span className="text-badge text-neutral-500">
           Use your browser&apos;s &ldquo;Save as PDF&rdquo; in the print dialog.
         </span>
-        <Button size="sm" onClick={() => window.print()} className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
+        <Button
+          size="sm"
+          onClick={() => window.print()}
+          className="gap-2 text-button font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+        >
           <Printer className="h-4 w-4" /> Print / Save as PDF
         </Button>
       </div>
@@ -136,15 +148,19 @@ export default function MarketStudyPrintView({
 
           {/* Logo + Project Name Row */}
           <div className="flex items-center gap-5">
-            {logoUrl && (
-              <div className="shrink-0 min-w-[100px] max-w-[130px] h-20 flex items-center justify-center overflow-hidden">
+            {safeLogoSrc && !logoError ? (
+              <div className="shrink-0 min-w-[80px] max-w-[130px] h-16 flex items-center justify-center overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={logoUrl}
-                  alt="Company Logo"
+                  src={safeLogoSrc}
+                  alt={`${has(projectName) ? projectName : "Project"} Logo`}
                   className="w-full h-full object-contain"
-                  crossOrigin="anonymous"
+                  onError={() => setLogoError(true)}
                 />
+              </div>
+            ) : (
+              <div className="size-14 rounded-xl bg-neutral-900 text-white flex items-center justify-center font-bold text-2xl font-sans shrink-0">
+                {(has(projectName) ? projectName : "M").charAt(0).toUpperCase()}
               </div>
             )}
             <div>
@@ -420,9 +436,9 @@ export default function MarketStudyPrintView({
         {/* ========== FOOTER ========== */}
         <footer className="border-t border-neutral-300 pt-4 mt-8 flex items-center justify-between text-footnote font-mono text-neutral-400 uppercase tracking-wider">
           <div className="flex items-center gap-2">
-            {logoUrl && (
+            {safeLogoSrc && (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={logoUrl} alt="" className="h-5 object-contain opacity-40" crossOrigin="anonymous" />
+              <img src={safeLogoSrc} alt="" className="h-5 object-contain opacity-40" />
             )}
             <span>Mondial ECO Platform · Autonomous Startup Synthesis Engine</span>
           </div>

@@ -20,16 +20,29 @@ The **Brand Identity Studio** is an enterprise-grade visual identity creation en
 5. **Step 5: Color System** (`ColorSystemModal.tsx`) — Figma Node `57004:11600`
 6. **Step 6: Typography System** (`TypographySystemModal.tsx`) — Figma Node `57004:12100`
 
-### 1.1 Viewport Responsiveness & Stage 2 Typography Scale
+### 1.1 Viewport Responsiveness & Typography Scale Canon
 - **Viewport Scaling**: Authored at 1440px desktop base, engineered to stay fluidly responsive from 1440px up to 1920px (and down to mobile viewports).
-- **Modal Scroll Behavior**: All 7 studio modals constrain height to `max-h-[90vh]` with fixed header/footer strips and internal `overflow-y-auto` body containers:
-  - At 1440×900: All modals scroll smoothly with internal overflow (~70px–510px).
+- **Modal Scroll Behavior & Known Consequences**: All 7 studio modals constrain height to `max-h-[90vh]` with fixed header/footer strips and internal `overflow-y-auto` body containers:
+  - At 1440×900: Strategy Review and Direction Board fit cleanly with modest scroll; Color System overflows by ~510px, Typography System by ~340px, and Variation Set by ~180px. These scroll consequences are **accepted and recorded as known**—an internally scrollable modal with legible 14px text is strictly superior to illegible micro-text, and modal layout restructuring is deferred.
   - At 1920×1080: Strategy Review, Direction Board, and Logo Creation fit fully within viewport without scroll; Color, Typography, and Variation Set modals scroll cleanly.
   - Light & Dark theme parity: 100% token-based scrollbars and container borders.
-- **Typography Scale Canon (Zero Arbitrary Brackets)**:
-  - All arbitrary bracket sizes (`text-[9px]`, `text-[10px]`, `text-[11px]`, `text-[13px]`, `text-[15px]`) are eliminated across Phase 2 and Brand Studio.
-  - Role-based semantic tokens in use: `text-page-heading` (30px), `text-section-title` (16px), `text-card-title` (18px), `text-body` (14px), `text-label` (12px), `text-input` (14px), `text-button` (14px), `text-caption` (12px), `text-table-header` (11px), `text-footnote` (11px), `text-badge` (10px).
-  - **Mono-on-Prose Rule**: `font-mono` is strictly prohibited on descriptive prose paragraphs (Audience, Positioning, Concept summaries). `font-mono` is exclusively reserved for HEX/RGB color values, character counts, file sizes, step numbers, and raw telemetry tokens.
+- **Completed Typography Token Migration (Stages 1, 2, and 3 Complete)**:
+  - All arbitrary bracket sizes (`text-[8px]`, `text-[9px]`, `text-[10px]`, `text-[11px]`, `text-[13px]`, `text-[15px]`, `text-[28px]`, `text-[32px]`) are eliminated across the entire Creator workflow (Phase 1, Phase 2 Brand Studio, Phase 3 Intel, Phase 4 Pricing/Offers, Phase 5/6 Crossroads/Sales, Project Studio, Documents, Asset Library, and Print Views).
+  - **Single Source of Truth**: `src/app/globals.css` (lines 155–167) is the sole authority for token values:
+    - `text-page-heading`: 30px
+    - `text-section-title`: 16px
+    - `text-card-title`: 16px
+    - `text-body`: 14px
+    - `text-label`: 14px
+    - `text-input`: 14px
+    - `text-button`: 14px
+    - `text-caption`: 14px
+    - `text-table-header`: 14px
+    - `text-footnote`: 14px
+    - `text-badge`: 12px
+    - `text-stat-lg`: 30px
+    - `text-stat-xl`: 36px
+  - **Mono-on-Prose Rule (Active Habit)**: `font-mono` is strictly prohibited on descriptive prose paragraphs, milestone lists, and section labels. It is an **active habit on every new screen** to enforce `font-sans` on prose and reserve `font-mono` exclusively for numeric metrics, currency figures, and raw code tokens.
 - **Design Tokens**: 100% theme token classes (`bg-background`, `text-foreground`, `bg-card`, `border-border/80`, `bg-primary`, `text-primary-foreground`, `text-muted-foreground`), zero raw hex.
 
 ---
@@ -243,8 +256,13 @@ The **Brand Identity Studio** is an enterprise-grade visual identity creation en
 
 ### 3.1 Canonical Media URL Resolution (`resolveMediaUrl`)
 - **Single Resolver Canon**: All surfaces rendering or fetching brand assets MUST route relative and absolute URIs through `resolveMediaUrl(uri, version)` from `@/lib/brand-kit-media`.
-- **Origin Handling**: Prepends `API_ORIGIN` (e.g. `http://localhost:5093` in development) to server-relative asset paths (`/brand-assets/logos/...`), while preserving data URIs and external URLs untouched.
-- **Applies Uniformly To**: Concept tiles, variation tiles, color system modals, compare overlays, logo cards, invoice mocks, micro-scale proofers, Brand Kit Hub, and Phase 2 Complete summary cards.
+- **Origin & SVG Data URI Handling**:
+  - Automatically converts raw vector `<svg...` and `<?xml...` strings directly into RFC 2397 Data URIs (`data:image/svg+xml;utf8,...`), ensuring browser-renderability across all `<img>` tags without illegal URL path concatenation.
+  - Prepends `API_ORIGIN` (e.g. `http://localhost:5093` in development) to server-relative asset paths (`/brand-assets/logos/...`), while preserving existing `data:`, `blob:`, `http://`, and `https://` URIs untouched.
+- **PDF Export Logo & CORS Canon**:
+  - In PDF export views (e.g., `MarketStudyPrintView`, `BusinessModelPrintView`), never specify `crossOrigin="anonymous"` on `<img>` tags for backend static files unless the ASP.NET static file middleware returns CORS headers; otherwise, the browser silently blocks the logo from rendering.
+  - Always implement the 7-step candidate fallback chain (`primary`, `horizontal`, `transparent`, `badge_stamp`, `lockupAssetUri`, `markAssetUri`, `branding.logoAsset`), and render a branded monogram/lettermark badge if no image is available or errors out.
+- **Applies Uniformly To**: Concept tiles, variation tiles, color system modals, compare overlays, logo cards, invoice mocks, micro-scale proofers, Brand Kit Hub, Phase 2 Complete summary cards, and Phase 3 PDF export views (Market Study & Business Model).
 
 ### 3.2 Canonical ZIP Export Engine (`src/lib/brand-kit-export.ts`)
 - **Single Source of Truth**: All export actions across the application (`BrandKitHubView`, `VariationSetModal`, and the Creator `AssetLibraryPage`) delegate exclusively to `exportBrandKitZip(kit, customBrandName)`.

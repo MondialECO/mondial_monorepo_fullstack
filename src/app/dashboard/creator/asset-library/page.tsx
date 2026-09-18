@@ -478,7 +478,7 @@ export default function AssetLibraryPage() {
         {!loading && !error && isCompletelyEmpty && (
           <Card className="rounded-xl border border-border/70 bg-card p-8 sm:p-10 space-y-6 shadow-none max-w-3xl mx-auto text-left">
             <div className="space-y-1.5 border-b border-border/60 pb-4">
-              <span className="text-[11px] font-mono text-muted-foreground uppercase tracking-wider">
+              <span className="text-label text-muted-foreground uppercase tracking-wider">
                 Catalog Status · 0 of 8 Produced
               </span>
               <h3 className="text-base sm:text-lg font-semibold text-foreground font-sans">
@@ -490,27 +490,27 @@ export default function AssetLibraryPage() {
             </div>
 
             <div className="space-y-3 text-xs text-muted-foreground font-sans">
-              <div className="text-[11px] font-mono font-semibold uppercase text-foreground">
+              <div className="text-label font-semibold uppercase text-foreground">
                 Document Generation Milestones:
               </div>
               <ul className="space-y-2 divide-y divide-border/40">
                 <li className="pt-2 flex items-start gap-2">
-                  <span className="font-mono text-foreground shrink-0">Phase 2:</span>
+                  <span className="font-semibold text-foreground shrink-0">Phase 2:</span>
                   <span><strong>Brand Identity Kit (.ZIP)</strong> — Unlocked upon confirming your 6-step visual identity in Brand Studio.</span>
                 </li>
                 <li className="pt-2 flex items-start gap-2">
-                  <span className="font-mono text-foreground shrink-0">Phase 3:</span>
+                  <span className="font-semibold text-foreground shrink-0">Phase 3:</span>
                   <span><strong>Market Study, Business Plan, &amp; Financial Forecast (.PDF)</strong> — Compiled as you generate sizing funnels, operational models, and 36-month projections.</span>
                 </li>
                 <li className="pt-2 flex items-start gap-2">
-                  <span className="font-mono text-foreground shrink-0">Phase 4:</span>
+                  <span className="font-semibold text-foreground shrink-0">Phase 4:</span>
                   <span><strong>Investor Readiness Summary</strong> — Generated upon finalizing your commercial offer packaging and pricing architecture.</span>
                 </li>
               </ul>
             </div>
 
             <div className="pt-2 border-t border-border/60 flex items-center justify-between">
-              <span className="text-[11px] font-mono text-muted-foreground">
+              <span className="text-caption text-muted-foreground">
                 Active workspace: <strong className="text-foreground">{projectName}</strong>
               </span>
               <Button
@@ -535,7 +535,7 @@ export default function AssetLibraryPage() {
                   <strong>On-Demand Generation:</strong> Exports always reflect your latest project edits.
                 </span>
               </div>
-              <span className="font-mono text-[11px] text-muted-foreground/80">
+              <span className="text-caption text-muted-foreground/80">
                 {readyCount} of 8 documents active
               </span>
             </div>
@@ -544,7 +544,7 @@ export default function AssetLibraryPage() {
             {phaseGroups.map((group) => (
               <div key={group.phaseId} className="space-y-4">
                 <div className="flex items-center justify-between border-b border-border/60 pb-2">
-                  <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-foreground">
+                  <h3 className="text-section-title font-bold uppercase tracking-wider text-foreground">
                     {group.phaseTitle}
                   </h3>
                 </div>
@@ -562,20 +562,20 @@ export default function AssetLibraryPage() {
                           {/* Top Row: Step Tag + Format Pill + Status */}
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/60">
+                              <span className="text-badge uppercase px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/60">
                                 {item.stepNumber}
                               </span>
-                              <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-muted/80 text-foreground border border-border/60">
+                              <span className="text-badge font-bold uppercase px-1.5 py-0.5 rounded bg-muted/80 text-foreground border border-border/60">
                                 {item.fileFormat === 'PDF' ? '.PDF' : item.fileFormat === 'ZIP' ? '.ZIP' : 'IN-APP'}
                               </span>
                             </div>
 
                             {item.isReady ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase text-emerald-600 dark:text-emerald-400 font-semibold">
+                              <span className="inline-flex items-center gap-1 text-badge uppercase text-emerald-600 dark:text-emerald-400 font-semibold">
                                 <CheckCircle2 className="w-3 h-3" /> Ready
                               </span>
                             ) : (
-                              <span className="text-[10px] font-mono uppercase text-muted-foreground/70">
+                              <span className="text-badge uppercase text-muted-foreground/70">
                                 Not Produced
                               </span>
                             )}
@@ -595,7 +595,7 @@ export default function AssetLibraryPage() {
                         {/* Bottom Row: Metadata & Actions */}
                         <div className="pt-3 border-t border-border/60 space-y-3">
                           {/* Last updated info */}
-                          <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                          <div className="flex items-center justify-between text-caption text-muted-foreground">
                             <span>
                               {item.isReady && item.lastUpdatedText
                                 ? `Updated: ${item.lastUpdatedText}`
@@ -632,14 +632,14 @@ export default function AssetLibraryPage() {
                                 </Button>
                                 <Link
                                   href={item.stepUrl}
-                                  className="text-[11px] text-muted-foreground hover:text-foreground font-sans inline-flex items-center gap-1 shrink-0"
+                                  className="text-caption text-muted-foreground hover:text-foreground font-sans inline-flex items-center gap-1 shrink-0"
                                 >
                                   View Screen <ExternalLink className="w-3 h-3" />
                                 </Link>
                               </div>
                             ) : (
                               <div className="space-y-2">
-                                <p className="text-[11px] text-muted-foreground font-sans leading-normal">
+                                <p className="text-caption text-muted-foreground font-sans leading-normal">
                                   {item.nonDownloadableNote}
                                 </p>
                                 <Link

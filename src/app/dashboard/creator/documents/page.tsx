@@ -87,7 +87,7 @@ export default function CreatorDocumentsPage() {
     <div className="w-full max-w-[1136px] mx-auto space-y-6 pb-8 font-sans">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
         <div className="space-y-1">
-          <h1 className="text-[28px] font-bold leading-tight text-foreground">Document Vault</h1>
+          <h1 className="text-page-heading font-bold leading-tight text-foreground">Document Vault</h1>
           <p className="text-sm font-normal text-muted-foreground">
             Real files generated or stored for this idea appear here.
           </p>
@@ -122,7 +122,7 @@ export default function CreatorDocumentsPage() {
                   </div>
                   <div className="min-w-0">
                     <span className="font-bold text-xs text-foreground block truncate">{document.title || document.fileName}</span>
-                    <span className="text-[10px] text-muted-foreground font-medium flex flex-wrap items-center gap-1.5 mt-0.5">
+                    <span className="text-caption text-muted-foreground font-medium flex flex-wrap items-center gap-1.5 mt-0.5">
                       <span>{documentTypeLabel(document.documentType)}</span>
                       {size && <><span>/</span><span>{size}</span></>}
                       <span>/</span><span>{formatDate(document.createdAt)}</span>

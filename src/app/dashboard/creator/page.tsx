@@ -283,7 +283,7 @@ export default function CreatorDashboard() {
               <ShieldCheck className="h-4.5 w-4.5" />
             </div>
             {readiness?.label && (
-              <Badge className="bg-primary/10 text-primary border-0 font-bold px-2 py-0.5 text-[10px]">
+              <Badge className="bg-primary/10 text-primary border-0 font-bold px-2 py-0.5 text-badge">
                 {readiness.label}
               </Badge>
             )}
@@ -399,10 +399,10 @@ export default function CreatorDashboard() {
                     {project.concept || 'Your defined project concept statement.'}
                   </p>
                   <div className="flex flex-wrap gap-1.5 mt-3">
-                    <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0.5 bg-warning/5 text-warning border-warning/10">
+                    <Badge variant="outline" className="text-badge font-semibold px-2 py-0.5 bg-warning/5 text-warning border-warning/10">
                       {project.category || 'FinTech'}
                     </Badge>
-                    <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0.5 bg-primary/5 text-primary border-primary/10">
+                    <Badge variant="outline" className="text-badge font-semibold px-2 py-0.5 bg-primary/5 text-primary border-primary/10">
                       SaaS
                     </Badge>
                   </div>
@@ -435,42 +435,42 @@ export default function CreatorDashboard() {
                   <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${isPhase1Done ? 'bg-success-text border-success-text text-white' : 'bg-card border-border text-muted-foreground'}`}>
                     {isPhase1Done ? <Check className="w-4 h-4" /> : '1'}
                   </div>
-                  <span className="text-[10px] text-muted-foreground font-medium">Identity</span>
+                  <span className="text-label text-muted-foreground font-medium">Identity</span>
                 </div>
 
                 <div className="flex flex-col items-center gap-1.5 z-10">
                   <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${isPhase2Done ? 'bg-success-text border-success-text text-white' : dashboardState === 'B' ? 'bg-warning border-warning text-white ring-4 ring-warning/10' : 'bg-card border-border text-muted-foreground'}`}>
                     {isPhase2Done ? <Check className="w-4 h-4" /> : '2'}
                   </div>
-                  <span className={`text-[10px] font-medium ${dashboardState === 'B' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Concept</span>
+                  <span className={`text-label font-medium ${dashboardState === 'B' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Concept</span>
                 </div>
 
                 <div className="flex flex-col items-center gap-1.5 z-10">
                   <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${isPhase3Done ? 'bg-success-text border-success-text text-white' : dashboardState === 'C' ? 'bg-warning border-warning text-white ring-4 ring-warning/10' : 'bg-card border-border text-muted-foreground'}`}>
                     {isPhase3Done ? <Check className="w-4 h-4" /> : '3'}
                   </div>
-                  <span className={`text-[10px] font-medium ${dashboardState === 'C' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Intel</span>
+                  <span className={`text-label font-medium ${dashboardState === 'C' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Intel</span>
                 </div>
 
                 <div className="flex flex-col items-center gap-1.5 z-10">
                   <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${isPhase4Done ? 'bg-success-text border-success-text text-white' : dashboardState === 'D' ? 'bg-warning border-warning text-white ring-4 ring-warning/10' : 'bg-card border-border text-muted-foreground'}`}>
                     {isPhase4Done ? <Check className="w-4 h-4" /> : '4'}
                   </div>
-                  <span className={`text-[10px] font-medium ${dashboardState === 'D' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Pricing</span>
+                  <span className={`text-label font-medium ${dashboardState === 'D' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Pricing</span>
                 </div>
 
                 <div className="flex flex-col items-center gap-1.5 z-10">
                   <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${isPhase5Done ? 'bg-success-text border-success-text text-white' : dashboardState === 'E' ? 'bg-warning border-warning text-white ring-4 ring-warning/10' : 'bg-card border-border text-muted-foreground'}`}>
                     {isPhase5Done ? <Check className="w-4 h-4" /> : '5'}
                   </div>
-                  <span className={`text-[10px] font-medium ${dashboardState === 'E' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Crossroads</span>
+                  <span className={`text-label font-medium ${dashboardState === 'E' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Crossroads</span>
                 </div>
 
                 <div className="flex flex-col items-center gap-1.5 z-10">
                   <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${dashboardState === 'F' ? 'bg-warning border-warning text-white ring-4 ring-warning/10' : 'bg-card border-border text-muted-foreground'}`}>
                     6
                   </div>
-                  <span className={`text-[10px] font-medium ${dashboardState === 'F' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Matching</span>
+                  <span className={`text-label font-medium ${dashboardState === 'F' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Matching</span>
                 </div>
               </div>
             </div>
@@ -483,7 +483,7 @@ export default function CreatorDashboard() {
                     <Play className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <span className="block text-[10px] font-bold text-primary uppercase tracking-wider">
+                    <span className="block text-label font-bold text-primary uppercase tracking-wider">
                       Currently on
                     </span>
                     <span className="block text-xs font-bold text-foreground truncate">
@@ -505,7 +505,7 @@ export default function CreatorDashboard() {
             {dashboardState === 'F' && finalReadinessQ.data && (
               <div className="flex items-center justify-between gap-4 p-4 bg-primary/5 border border-primary/10 rounded-xl">
                 <div className="min-w-0">
-                  <span className="block text-[10px] font-bold text-primary uppercase tracking-wider">Project readiness</span>
+                  <span className="block text-label font-bold text-primary uppercase tracking-wider">Project readiness</span>
                   <span className="block text-sm font-bold text-foreground truncate">
                     {finalReadinessQ.data.levelUpEligible ? 'Ready to become an Entrepreneur' : `${finalReadinessQ.data.overallProgress}% ready`}
                   </span>
@@ -536,7 +536,7 @@ export default function CreatorDashboard() {
                 <TrendingUp className="w-6 h-6 text-muted-foreground/45" />
                 <div className="space-y-1">
                   <h4 className="text-xs font-bold text-foreground">No forecast yet</h4>
-                  <p className="text-[11px] text-muted-foreground max-w-xs leading-relaxed">
+                  <p className="text-caption text-muted-foreground max-w-xs leading-relaxed">
                     Run your financial forecast in Phase 3 to see your projected revenue, break-even, and cash flow here.
                   </p>
                 </div>
@@ -556,7 +556,7 @@ export default function CreatorDashboard() {
               // ERROR — distinct from empty; retry, never zeros.
               <div className="p-8 border border-dashed border-destructive/30 rounded-xl text-center space-y-3 bg-destructive/5 flex flex-col items-center justify-center min-h-[200px]">
                 <AlertTriangle className="w-6 h-6 text-destructive" />
-                <p className="text-[11px] text-destructive max-w-xs leading-relaxed">Your forecast failed to load.</p>
+                <p className="text-caption text-destructive max-w-xs leading-relaxed">Your forecast failed to load.</p>
                 <Button variant="outline" size="sm" onClick={() => forecast.retry()} className="rounded-lg text-xs gap-1.5">
                   <RotateCw className="w-3.5 h-3.5" /> Retry
                 </Button>
@@ -565,19 +565,19 @@ export default function CreatorDashboard() {
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-4 border-b border-border/50 pb-4">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Year 3 ARR</span>
+                    <span className="text-label text-muted-foreground font-semibold uppercase tracking-wider">Year 3 ARR</span>
                     <div className="text-lg font-bold text-foreground">
                       {year3Arr != null ? `€${Math.round(year3Arr).toLocaleString()}` : '—'}
                     </div>
                   </div>
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Break-even</span>
+                    <span className="text-label text-muted-foreground font-semibold uppercase tracking-wider">Break-even</span>
                     <div className="text-lg font-bold text-foreground">
                       {breakEvenMonth == null ? '—' : breakEvenAchieved === false ? 'Not in 36 mo' : `Month ${breakEvenMonth}`}
                     </div>
                   </div>
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">EBITDA Margin</span>
+                    <span className="text-label text-muted-foreground font-semibold uppercase tracking-wider">EBITDA Margin</span>
                     {/* No margin field in the live forecast contract — honest unavailable. */}
                     <div className="text-lg font-bold text-muted-foreground/50">—</div>
                   </div>
@@ -601,7 +601,7 @@ export default function CreatorDashboard() {
               // Terminal but no usable output (e.g. needs-review) — honest, not fabricated.
               <div className="p-8 border border-dashed border-border rounded-xl text-center space-y-1.5 bg-muted/10 flex flex-col items-center justify-center min-h-[200px]">
                 <TrendingUp className="w-6 h-6 text-muted-foreground/45" />
-                <p className="text-[11px] text-muted-foreground max-w-xs leading-relaxed">Forecast results aren&apos;t available yet.</p>
+                <p className="text-caption text-muted-foreground max-w-xs leading-relaxed">Forecast results aren&apos;t available yet.</p>
               </div>
             )}
           </Card>
@@ -623,14 +623,14 @@ export default function CreatorDashboard() {
             ) : documentsQ.isError ? (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
                 <AlertTriangle className="h-5 w-5 text-destructive" />
-                <p className="text-[11px] text-destructive">Couldn&apos;t load your documents.</p>
+                <p className="text-caption text-destructive">Couldn&apos;t load your documents.</p>
                 <Button variant="outline" size="sm" onClick={() => documentsQ.refetch()} className="gap-1.5 text-xs"><RotateCw className="h-3.5 w-3.5" /> Retry</Button>
               </div>
             ) : phase3Documents.length === 0 ? (
               <div className="p-8 border border-dashed border-border rounded-xl text-center space-y-1.5 bg-muted/10 flex flex-col items-center justify-center">
                 <Folder className="w-6 h-6 text-muted-foreground/40" />
                 <h4 className="text-xs font-bold text-foreground">No documents yet</h4>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                <p className="text-caption text-muted-foreground leading-relaxed">
                   Documents generated for this idea will appear here.
                 </p>
               </div>
@@ -644,7 +644,7 @@ export default function CreatorDashboard() {
                       </div>
                       <div className="space-y-0.5">
                         <h4 className="text-xs font-bold text-foreground">{doc.title || doc.fileName}</h4>
-                        <span className="text-[10px] text-muted-foreground">{doc.documentType === 'business_plan' ? 'Business Plan' : 'Financial Forecast'}</span>
+                        <span className="text-caption text-muted-foreground">{doc.documentType === 'business_plan' ? 'Business Plan' : 'Financial Forecast'}</span>
                       </div>
                     </div>
                     <Link href="/dashboard/creator/documents" aria-label="Open Document Vault" className="text-muted-foreground hover:text-foreground"><ArrowRight className="w-4 h-4" /></Link>
@@ -666,7 +666,7 @@ export default function CreatorDashboard() {
                 Messages
               </h3>
               {unreadConversations > 0 && (
-                <Badge className="bg-warning/15 text-warning font-bold text-[10px] border-0 px-2 py-0.5">
+                <Badge className="bg-warning/15 text-warning font-bold text-badge border-0 px-2 py-0.5">
                   {unreadConversations} new
                 </Badge>
               )}
@@ -679,11 +679,11 @@ export default function CreatorDashboard() {
             ) : conversationsQ.isError ? (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
                 <AlertTriangle className="h-5 w-5 text-destructive" />
-                <p className="text-[11px] text-destructive">Couldn&apos;t load your messages.</p>
+                <p className="text-caption text-destructive">Couldn&apos;t load your messages.</p>
                 <Button variant="outline" size="sm" onClick={() => conversationsQ.refetch()} className="gap-1.5 text-xs"><RotateCw className="h-3.5 w-3.5" /> Retry</Button>
               </div>
             ) : recentConversations.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground text-center py-6 leading-relaxed">
+              <p className="text-caption text-muted-foreground text-center py-6 leading-relaxed">
                 No conversations yet. Reach out to an investor or provider to start one.
               </p>
             ) : (
@@ -700,9 +700,9 @@ export default function CreatorDashboard() {
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline">
                           <h4 className="text-xs font-bold text-foreground truncate">{name}</h4>
-                          <span className="text-[9px] text-muted-foreground shrink-0 ml-2">{timeAgo(c.lastMessageAt)}</span>
+                          <span className="text-footnote text-muted-foreground shrink-0 ml-2">{timeAgo(c.lastMessageAt)}</span>
                         </div>
-                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">{c.lastMessage || 'No messages yet.'}</p>
+                        <p className="text-caption text-muted-foreground truncate mt-0.5">{c.lastMessage || 'No messages yet.'}</p>
                       </div>
                       {c.unreadCount > 0 && <div className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />}
                     </Link>
@@ -727,7 +727,7 @@ export default function CreatorDashboard() {
                 Notifications
               </h3>
               {notif.unreadCount > 0 && (
-                <Badge className="bg-success-light text-success-text font-bold text-[10px] border-0 px-2 py-0.5">
+                <Badge className="bg-success-light text-success-text font-bold text-badge border-0 px-2 py-0.5">
                   {notif.unreadCount} new
                 </Badge>
               )}
@@ -740,11 +740,11 @@ export default function CreatorDashboard() {
             ) : notif.isError ? (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
                 <AlertTriangle className="h-5 w-5 text-destructive" />
-                <p className="text-[11px] text-destructive">Couldn&apos;t load notifications.</p>
+                <p className="text-caption text-destructive">Couldn&apos;t load notifications.</p>
                 <Button variant="outline" size="sm" onClick={() => notif.refetch()} className="gap-1.5 text-xs"><RotateCw className="h-3.5 w-3.5" /> Retry</Button>
               </div>
             ) : recentNotifications.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground text-center py-6 leading-relaxed">
+              <p className="text-caption text-muted-foreground text-center py-6 leading-relaxed">
                 You&apos;re all caught up — no notifications yet.
               </p>
             ) : (
@@ -754,7 +754,7 @@ export default function CreatorDashboard() {
                     <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${n.isRead ? 'bg-muted-foreground/30' : 'bg-success-text'}`} />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-foreground leading-snug">{n.title || n.body}</p>
-                      <span className="text-[9px] text-muted-foreground mt-0.5 block">{timeAgo(n.createdAt)}</span>
+                      <span className="text-footnote text-muted-foreground mt-0.5 block">{timeAgo(n.createdAt)}</span>
                     </div>
                   </div>
                 ))}
@@ -798,7 +798,7 @@ export default function CreatorDashboard() {
               <div className="p-6 border border-dashed border-border rounded-xl text-center space-y-1.5 bg-muted/10 flex flex-col items-center justify-center">
                 <Lock className="w-5 h-5 text-muted-foreground/45" />
                 <h4 className="text-xs font-bold text-foreground">Smart Matching Locked</h4>
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                <p className="text-caption text-muted-foreground leading-relaxed">
                   Completing Phase 5 Crossroads unlocks buyers and co-founder matches.
                 </p>
               </div>
@@ -823,7 +823,7 @@ export default function CreatorDashboard() {
             </div>
             <div>
               <h4 className="font-bold text-foreground text-xs">Generate Pitch Deck</h4>
-              <p className="text-[10px] text-muted-foreground mt-0.5">One-click AI generator</p>
+              <p className="text-caption text-muted-foreground mt-0.5">One-click AI generator</p>
             </div>
           </Card>
 
@@ -836,7 +836,7 @@ export default function CreatorDashboard() {
             </div>
             <div>
               <h4 className="font-bold text-foreground text-xs">Marketplace Push</h4>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Full Buyout or Co-founder</p>
+              <p className="text-caption text-muted-foreground mt-0.5">Full Buyout or Co-founder</p>
             </div>
           </Card>
 
@@ -849,7 +849,7 @@ export default function CreatorDashboard() {
             </div>
             <div>
               <h4 className="font-bold text-foreground text-xs">Hire a Provider</h4>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Services marketplace</p>
+              <p className="text-caption text-muted-foreground mt-0.5">Services marketplace</p>
             </div>
           </Card>
 
@@ -862,7 +862,7 @@ export default function CreatorDashboard() {
             </div>
             <div>
               <h4 className="font-bold text-foreground text-xs">Build My Company</h4>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Transition to founder</p>
+              <p className="text-caption text-muted-foreground mt-0.5">Transition to founder</p>
             </div>
           </Card>
         </div>

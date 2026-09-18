@@ -29,6 +29,8 @@ import {
   type BusinessModelOutput,
 } from '@/types/creator/ai';
 import { toAiError, type AiError } from '@/lib/ai-errors';
+import { brandKitApi } from '@/lib/api-creator-brand-kit';
+import { resolveMediaUrl } from '@/lib/brand-kit-media';
 
 function formatCurrencyAmount(amount?: number | null, currency = 'EUR'): string {
   if (amount === undefined || amount === null || Number.isNaN(amount)) return '—';
@@ -58,6 +60,7 @@ export default function BusinessModelPage() {
   const [businessIdeaId, setBusinessIdeaId] = useState<string | null>(null);
   const [startError, setStartError] = useState<AiError | null>(null);
   const [isPrintOpen, setIsPrintOpen] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string | null>(null);
   const [sector, setSector] = useState<string | null>(null);
   const [geography, setGeography] = useState<string | null>(null);
@@ -97,11 +100,49 @@ export default function BusinessModelPage() {
 
         setBusinessModelSessionId(p3?.businessModelSessionId ?? null);
         setMarketStudySessionId(p3?.marketStudySessionId ?? null);
-        setBusinessIdeaId(getCreatorWorkspaceIdea());
+        const currentIdeaId = getCreatorWorkspaceIdea();
+        setBusinessIdeaId(currentIdeaId);
         setCreatorMarketGap(journey.project?.marketGap ?? null);
         setSector(journey.project?.sector ?? null);
         setGeography(journey.project?.geography ?? null);
         setProjectName((journey.project as { name?: string; title?: string } | undefined)?.name ?? (journey.project as { name?: string; title?: string } | undefined)?.title ?? null);
+
+        // Fetch brand kit logo for PDF export with full fallback chain
+        let candidateLogoUri: string | null = null;
+        let kitVersion: number | undefined;
+
+        try {
+          const kit = await brandKitApi.getBrandKit(currentIdeaId ?? undefined);
+          kitVersion = kit?.version;
+          const selectedKey = kit?.logo?.selectedConceptKey;
+          const concepts = kit?.logo?.concepts || [];
+          const approvedConcept = selectedKey
+            ? concepts.find(c => c.key === selectedKey)
+            : concepts[0];
+          const variations = kit?.logo?.variations || {};
+          candidateLogoUri =
+            variations.primary?.svgUri ||
+            variations.horizontal?.svgUri ||
+            variations.transparent?.svgUri ||
+            variations.transparent?.pngUri ||
+            variations.badge_stamp?.svgUri ||
+            variations.badge_stamp?.pngUri ||
+            approvedConcept?.lockupAssetUri ||
+            approvedConcept?.markAssetUri ||
+            null;
+        } catch {
+          // Brand kit optional — silently fallback to project branding
+        }
+
+        // Fallback to journey project branding logoAsset if BrandKit did not yield an asset
+        if (!candidateLogoUri) {
+          const projectBranding = (journey.project as { branding?: { logoAsset?: string | null } } | undefined)?.branding;
+          candidateLogoUri = projectBranding?.logoAsset || null;
+        }
+
+        if (candidateLogoUri) {
+          setLogoUrl(resolveMediaUrl(candidateLogoUri, kitVersion));
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -810,6 +851,7 @@ export default function BusinessModelPage() {
           open={isPrintOpen}
           onClose={() => setIsPrintOpen(false)}
           projectName={projectName || undefined}
+          logoUrl={logoUrl || undefined}
           project={{
             sector: sector || undefined,
             geography: geography || undefined,

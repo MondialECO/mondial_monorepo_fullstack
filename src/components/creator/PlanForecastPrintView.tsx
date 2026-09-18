@@ -136,10 +136,10 @@ function ConsolidatedForecastTable({ rows, money }: {
       <Sub>Consolidated monthly forecast</Sub>
       {yearChunks(rows).map((y) => (
         <div key={y.year} className="print-year mb-3">
-          <div className="mb-1 text-[11px] font-bold text-muted-foreground">
+          <div className="mb-1 text-caption font-bold text-muted-foreground">
             Year {y.year} (months {y.months[0].month}-{y.months[y.months.length - 1].month})
           </div>
-          <table className="print-table w-full table-fixed border-collapse text-[9px] font-mono">
+          <table className="print-table w-full table-fixed border-collapse text-footnote font-mono">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="w-[7%] py-1 pr-1 font-semibold">Month</th>
@@ -162,7 +162,7 @@ function ConsolidatedForecastTable({ rows, money }: {
                   <td className="whitespace-nowrap py-1 pr-1 text-right">{money(row.totalCost)}</td>
                   <td className="whitespace-nowrap py-1 pr-1 text-right">{money(row.netCashFlow)}</td>
                   <td className="whitespace-nowrap py-1 pr-1 text-right">{money(row.endingBalance)}</td>
-                  <td className="py-1 text-[8px] leading-tight text-muted-foreground">{row.notes}</td>
+                  <td className="py-1 text-footnote leading-tight text-muted-foreground">{row.notes}</td>
                 </tr>
               ))}
               <tr className="border-t border-border font-semibold">
@@ -322,8 +322,8 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
               {has(forecast.cashFlowProjection?.summary) && <><Sub>Cash-flow outlook</Sub><Body>{forecast.cashFlowProjection!.summary}</Body></>}
               {forecastInputs && (
                 <div className="print-row my-3 rounded-md border border-border p-3">
-                  <div className="mb-1 text-[10px] font-bold uppercase text-muted-foreground">Inputs used</div>
-                  <div className="grid grid-cols-5 gap-2 text-[9px] text-foreground">
+                  <div className="mb-1 text-label font-bold uppercase text-muted-foreground">Inputs used</div>
+                  <div className="grid grid-cols-5 gap-2 text-caption text-foreground">
                     <div><span className="font-semibold">ARPU:</span> {money(forecastInputs.arpu)}/mo</div>
                     <div><span className="font-semibold">OPEX:</span> {money(forecastInputs.opex)}/mo</div>
                     <div><span className="font-semibold">Growth:</span> {forecastInputs.monthlyGrowthPct ?? "-"}%/mo</div>
@@ -333,7 +333,7 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
                 </div>
               )}
               {fcProjected && (
-                <p className="mb-2 text-[11px] italic text-muted-foreground">
+                <p className="mb-2 text-caption italic text-muted-foreground">
                   Months 1-{fcAi} are AI-generated. Months {fcAi + 1}-{fcTotal} are projected
                   deterministically from your monthly growth rate - not model output.
                 </p>
@@ -362,19 +362,19 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
                   <Sub>Break-even analysis</Sub>
                   <div className="grid grid-cols-3 gap-2">
                     <div className="rounded-md border border-border p-2">
-                      <div className="text-[9px] font-semibold uppercase text-muted-foreground">Timing</div>
+                      <div className="text-caption font-semibold uppercase text-muted-foreground">Timing</div>
                       <div className="mt-1 text-card-title font-bold">{breakEvenMonth ? `Month ${breakEvenMonth}` : "Not achieved"}</div>
-                      <div className="text-[9px] text-muted-foreground">{fcTotal > 0 ? `${fcTotal}-month forecast` : "Horizon unavailable"}</div>
+                      <div className="text-caption text-muted-foreground">{fcTotal > 0 ? `${fcTotal}-month forecast` : "Horizon unavailable"}</div>
                     </div>
                     <div className="rounded-md border border-border p-2">
-                      <div className="text-[9px] font-semibold uppercase text-muted-foreground">{breakEvenMonth ? "Revenue at break-even" : `Revenue at month ${analysisMonth ?? "-"}`}</div>
+                      <div className="text-caption font-semibold uppercase text-muted-foreground">{breakEvenMonth ? "Revenue at break-even" : `Revenue at month ${analysisMonth ?? "-"}`}</div>
                       <div className="mt-1 text-card-title font-bold">{money(analysisRow?.revenue)}</div>
-                      <div className="text-[9px] text-muted-foreground">Forecast monthly revenue</div>
+                      <div className="text-caption text-muted-foreground">Forecast monthly revenue</div>
                     </div>
                     <div className="rounded-md border border-border p-2">
-                      <div className="text-[9px] font-semibold uppercase text-muted-foreground">{breakEvenMonth ? "Total cost at break-even" : `Total cost at month ${analysisMonth ?? "-"}`}</div>
+                      <div className="text-caption font-semibold uppercase text-muted-foreground">{breakEvenMonth ? "Total cost at break-even" : `Total cost at month ${analysisMonth ?? "-"}`}</div>
                       <div className="mt-1 text-card-title font-bold">{money(analysisRow?.totalCost)}</div>
-                      <div className="text-[9px] text-muted-foreground">Fixed and variable costs</div>
+                      <div className="text-caption text-muted-foreground">Fixed and variable costs</div>
                     </div>
                   </div>
                   {has(be.summary) && <div className="mt-2"><Body>{be.summary}</Body></div>}

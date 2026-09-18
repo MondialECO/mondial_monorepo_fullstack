@@ -28,7 +28,7 @@ function SourceBadge({ source, benchmark }: { source: ValueSource; benchmark?: M
         : benchmark?.displayLabel ?? "Benchmark";
 
   return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-badge font-medium ${
       source === "benchmark" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
     }`}>
       {label}
@@ -185,7 +185,7 @@ export function Phase4Gtm({ ideaId, initial, benchmark, onSaved, onNext, onBack 
               <Card key={w.week} className={`rounded-2xl border p-3 ${w.completed ? "border-primary bg-primary/5" : "border-border"}`}>
                 <div className="text-xs font-bold flex items-center gap-1">Week {w.week} {w.completed && <Check className="h-3.5 w-3.5 text-primary" />}</div>
                 <div className="text-sm font-semibold">{w.title}</div>
-                <ul className="text-[11px] text-muted-foreground list-disc pl-4 mt-1">{w.tasks.map((t) => <li key={t}>{t}</li>)}</ul>
+                <ul className="text-caption text-muted-foreground list-disc pl-4 mt-1">{w.tasks.map((t) => <li key={t}>{t}</li>)}</ul>
               </Card>
             ))}
           </div>

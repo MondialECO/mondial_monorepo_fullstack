@@ -12,6 +12,10 @@ export function resolveMediaUrl(
   const trimmed = uri.trim();
   if (!trimmed) return "";
 
+  if (trimmed.startsWith("<svg") || trimmed.startsWith("<?xml")) {
+    return `data:image/svg+xml;utf8,${encodeURIComponent(trimmed)}`;
+  }
+
   let base = trimmed;
   if (
     !trimmed.startsWith("http://") &&
