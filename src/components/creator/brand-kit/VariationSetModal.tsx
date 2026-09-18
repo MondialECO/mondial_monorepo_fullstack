@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import JSZip from "jszip";
 import { BrandKit, BrandLogoVariation, formatConceptTitle } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
+import { exportBrandKitZip } from "@/lib/brand-kit-export";
 import { VariationTile } from "./VariationTile";
 import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import { Button } from "@/components/ui/button";
@@ -116,69 +116,23 @@ export function VariationSetModal({
 
   // Client-side ZIP bundle packaging
   const handleDownloadAllZip = async () => {
-    if (isZipping || Object.keys(variations).length === 0) return;
+    if (isZipping) return;
 
     setIsZipping(true);
     setError(null);
 
     try {
-      const zip = new JSZip();
-      const slug = brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "brand";
-      const folder = zip.folder(`${slug}-brand-logo-pack`) || zip;
-
-      for (const [key, variation] of Object.entries(variations)) {
-        const fileKey = key.replace(/_/g, "-");
-
-        // 1. Add SVG if present
-        if (variation.svgUri) {
-          if (variation.svgUri.startsWith("data:image/svg+xml;base64,")) {
-            const base64Data = variation.svgUri.split(",")[1];
-            folder.file(`${slug}-${fileKey}.svg`, base64Data, { base64: true });
-          } else if (variation.svgUri.startsWith("data:image/svg+xml,")) {
-            const rawSvg = decodeURIComponent(variation.svgUri.replace("data:image/svg+xml,", ""));
-            folder.file(`${slug}-${fileKey}.svg`, rawSvg);
-          } else if (variation.svgUri.startsWith("<svg")) {
-            folder.file(`${slug}-${fileKey}.svg`, variation.svgUri);
-          } else {
-            try {
-              const res = await fetch(variation.svgUri);
-              const blob = await res.blob();
-              folder.file(`${slug}-${fileKey}.svg`, blob);
-            } catch {
-              // Ignore fetch error in client bundle
-            }
-          }
-        }
-
-        // 2. Add PNG if present (especially transparent or raster assets)
-        if (variation.pngUri) {
-          if (variation.pngUri.startsWith("data:image/png;base64,")) {
-            const base64Data = variation.pngUri.split(",")[1];
-            folder.file(`${slug}-${fileKey}.png`, base64Data, { base64: true });
-          } else {
-            try {
-              const res = await fetch(variation.pngUri);
-              const blob = await res.blob();
-              folder.file(`${slug}-${fileKey}.png`, blob);
-            } catch {
-              // Ignore fetch error in client bundle
-            }
-          }
-        }
-      }
-
-      const zipBlob = await zip.generateAsync({ type: "blob" });
-      const downloadUrl = URL.createObjectURL(zipBlob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = `${slug}-logo-variations.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(downloadUrl);
+      const kitToExport: BrandKit = {
+        ...initialKit,
+        logo: {
+          ...initialKit.logo,
+          variations,
+        },
+      };
+      await exportBrandKitZip(kitToExport, brandName);
     } catch (err: any) {
       console.error("ZIP Generation error:", err);
-      setError("Failed to create ZIP download bundle. Please try again.");
+      setError(err?.message || "Failed to create ZIP download bundle. Please try again.");
     } finally {
       setIsZipping(false);
     }

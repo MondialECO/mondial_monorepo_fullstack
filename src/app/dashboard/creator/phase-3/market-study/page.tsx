@@ -29,6 +29,7 @@ import {
   type MarketStudyOutput,
 } from '@/types/creator/ai';
 import { toAiError, type AiError } from '@/lib/ai-errors';
+import MarketStudyPrintView from '@/components/creator/MarketStudyPrintView';
 
 function formatCurrency(amount?: number, currency = 'USD'): string {
   if (amount === undefined || amount === null || Number.isNaN(amount)) return '—';
@@ -65,7 +66,9 @@ export default function MarketStudyPage() {
   const [creatorMarketGap, setCreatorMarketGap] = useState<string | null>(null);
   const [sector, setSector] = useState<string | null>(null);
   const [geography, setGeography] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState<string | null>(null);
   const [startError, setStartError] = useState<AiError | null>(null);
+  const [isPrintOpen, setIsPrintOpen] = useState(false);
 
   const startMutation = useStartMarketStudy();
   const regenerateMutation = useRegenerateMarketStudy();
@@ -104,6 +107,7 @@ export default function MarketStudyPage() {
         setCreatorMarketGap(journey.project?.marketGap ?? null);
         setSector(journey.project?.sector ?? null);
         setGeography(journey.project?.geography ?? null);
+        setProjectName((journey.project as { name?: string; title?: string } | undefined)?.name ?? (journey.project as { name?: string; title?: string } | undefined)?.title ?? null);
       } finally {
         if (active) setLoading(false);
       }
@@ -145,14 +149,7 @@ export default function MarketStudyPage() {
 
   const handleExport = () => {
     if (!output) return;
-    const jsonStr = JSON.stringify(output, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `market-study-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    setIsPrintOpen(true);
   };
 
   const handleNext = () => {
@@ -207,7 +204,7 @@ export default function MarketStudyPage() {
   const displaySector = sector || 'Enterprise & Tech';
   const displayRegion = geography || 'Global';
   const sourcesCount = Math.max(sourceAttributions.length, 3);
-  const metadataLine = `${formattedDate} · ${displaySector} · ${displayRegion} · ${sourcesCount} sources`;
+  const metadataLine = `Generated ${formattedDate} · Sector: ${displaySector} · Region: ${displayRegion} · ${sourcesCount} benchmark sources`;
 
   return (
     <Phase3SetupShell
@@ -229,7 +226,7 @@ export default function MarketStudyPage() {
               onClick={handleExport}
               className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/70 rounded-lg shadow-none"
             >
-              <Download className="w-3.5 h-3.5" /> Export
+              <Download className="w-3.5 h-3.5" /> Export PDF
             </Button>
             <Button
               variant="outline"
@@ -244,7 +241,7 @@ export default function MarketStudyPage() {
         ) : undefined
       }
     >
-      <div className="w-full max-w-7xl mx-auto space-y-8 pb-12">
+      <div className="w-full space-y-8 pb-12">
 
         {/* Error Banners */}
         {startError && (
@@ -387,146 +384,106 @@ export default function MarketStudyPage() {
                 </div>
               </div>
 
-              {/* Funnel Tier Cards with Integrated Full-Width Proportion Bars */}
-              <div className="space-y-4 pt-2">
-                {/* Tier 1: TAM Card (100% Baseline) */}
-                <div className="w-full rounded-xl border border-border/80 bg-card dark:bg-card/80 p-5 sm:p-6 space-y-4 transition-all shadow-none">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="space-y-1.5 min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-muted text-foreground border border-border/60 uppercase tracking-wider">
-                          TAM
-                        </span>
-                        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                          Total Addressable Market
-                        </span>
-                        <span className="text-xs font-mono font-semibold text-foreground/80">
-                          · 100% BASELINE
-                        </span>
+              {/* Stacked Narrowing Tier Boxes with Stepped Reduction Pills (Moving Right to Left) */}
+              <div className="space-y-3 pt-2">
+                {/* Level 1: TAM Box (Full Width, Vertical Rule, Figure Right) */}
+                <div className="w-full rounded-xl border border-border/80 bg-card dark:bg-card/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-none">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-1 self-stretch rounded-full bg-foreground/20 shrink-0 min-h-[32px]" />
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                        TAM — Total Addressable
                       </div>
-                      <div className="text-sm sm:text-base font-semibold text-foreground font-sans leading-snug break-words">
-                        {tam?.label || 'Total Addressable Market Universe'}
-                      </div>
-                      <p className="text-xs text-muted-foreground font-sans leading-relaxed pt-0.5 break-words">
-                        {tam?.derivation || 'Total global market demand and theoretical ceiling for this sector.'}
-                      </p>
-                    </div>
-                    <div className="text-left sm:text-right shrink-0 pl-2 sm:pl-4 pt-0.5">
-                      <div className="text-2xl sm:text-3xl font-bold font-mono text-foreground tracking-tight">
-                        {formatCurrency(tam?.value, tam?.currency)}
-                      </div>
-                      <div className="text-[11px] font-mono text-muted-foreground pt-0.5">
-                        100% BASELINE
+                      <div className="text-xs sm:text-sm font-medium text-foreground font-sans leading-snug">
+                        {tam?.label || 'European SMB Accounting & Invoicing Universe (EU-27)'}
                       </div>
                     </div>
                   </div>
-
-                  {/* TAM Proportion Bar (100% Baseline) */}
-                  <div className="w-full h-2 rounded-full bg-muted/70 dark:bg-muted/40 overflow-hidden">
-                    <div className="h-full w-full rounded-full bg-foreground/60 dark:bg-foreground/50 transition-all duration-500" />
+                  <div className="text-left sm:text-right shrink-0 pl-4 sm:pl-0">
+                    <div className="text-xl sm:text-2xl font-bold font-mono text-foreground tracking-tight">
+                      {formatCurrency(tam?.value, tam?.currency)}
+                    </div>
+                    <div className="text-[10px] font-mono text-muted-foreground">
+                      100% BASELINE
+                    </div>
                   </div>
                 </div>
 
                 {/* Step Bridge 1: TAM -> SAM Reduction Pill (Near Right Edge) */}
-                <div className="flex justify-end pr-4 sm:pr-12">
+                <div className="flex justify-end pr-6 sm:pr-16">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/30 text-[11px] font-mono text-muted-foreground shadow-none">
                     <ArrowDown className="w-3 h-3 text-muted-foreground shrink-0" />
                     <span className="font-semibold text-foreground">-{samReductionPct}%</span>
-                    <span className="break-words">· {sam?.derivation ? sam.derivation.split('.')[0] : 'Constrained by geography, target vertical, and ICP focus'}</span>
+                    <span>· {sam?.derivation ? sam.derivation.split('.')[0] : 'Constrained by geography and ICP focus'}</span>
                   </div>
                 </div>
 
-                {/* Tier 2: SAM Card (Proportional Bar) */}
-                <div className="w-full rounded-xl border border-border/80 bg-card dark:bg-card/80 p-5 sm:p-6 space-y-4 transition-all shadow-none">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="space-y-1.5 min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-muted text-foreground border border-border/60 uppercase tracking-wider">
-                          SAM
-                        </span>
-                        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                          Serviceable Addressable Market
-                        </span>
-                        <span className="text-xs font-mono font-semibold text-foreground/80">
-                          · {formatPct(samPctOfTam)}% OF TAM
-                        </span>
+                {/* Level 2: SAM Box (Proportional Width, Vertical Rule, Figure Right) */}
+                <div
+                  style={{ width: `${Math.max(52, Math.min(85, samPctOfTam > 15 ? samPctOfTam : 58))}%` }}
+                  className="rounded-xl border border-border/80 bg-card dark:bg-card/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-none"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="w-1 self-stretch rounded-full bg-foreground/20 shrink-0 min-h-[32px]" />
+                    <div className="space-y-0.5 min-w-0 flex-1">
+                      <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                        SAM — Serviceable Addressable
                       </div>
-                      <div className="text-sm sm:text-base font-semibold text-foreground font-sans leading-snug break-words">
-                        {sam?.label || 'Serviceable Addressable Market'}
-                      </div>
-                      <p className="text-xs text-muted-foreground font-sans leading-relaxed pt-0.5 break-words">
-                        {sam?.derivation || 'Target segment directly reachable with current business capabilities and geography.'}
-                      </p>
-                    </div>
-                    <div className="text-left sm:text-right shrink-0 pl-2 sm:pl-4 pt-0.5">
-                      <div className="text-2xl sm:text-3xl font-bold font-mono text-foreground tracking-tight">
-                        {formatCurrency(sam?.value, sam?.currency)}
-                      </div>
-                      <div className="text-[11px] font-mono text-muted-foreground pt-0.5">
-                        {formatPct(samPctOfTam)}% OF TAM
+                      <div className="text-xs sm:text-sm font-medium text-foreground font-sans leading-snug break-words">
+                        {sam?.label || 'Direct self-serve inbound fit'}
                       </div>
                     </div>
                   </div>
-
-                  {/* SAM Proportion Bar */}
-                  <div className="w-full h-2 rounded-full bg-muted/70 dark:bg-muted/40 overflow-hidden">
-                    <div
-                      style={{ width: `${Math.max(0.3, Math.min(100, samWidthPct))}%` }}
-                      className="h-full rounded-full bg-foreground/60 dark:bg-foreground/50 transition-all duration-500"
-                    />
+                  <div className="text-left sm:text-right shrink-0 pl-4 sm:pl-0">
+                    <div className="text-xl sm:text-2xl font-bold font-mono text-foreground tracking-tight">
+                      {formatCurrency(sam?.value, sam?.currency)}
+                    </div>
+                    <div className="text-[10px] font-mono text-muted-foreground">
+                      {formatPct(samPctOfTam)}% OF TAM
+                    </div>
                   </div>
                 </div>
 
                 {/* Step Bridge 2: SAM -> SOM Reduction Pill (Further Left than Pill 1) */}
-                <div className="flex justify-start pl-8 sm:pl-28">
+                <div className="flex justify-start pl-6 sm:pl-28">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/30 text-[11px] font-mono text-muted-foreground shadow-none">
                     <ArrowDown className="w-3 h-3 text-muted-foreground shrink-0" />
                     <span className="font-semibold text-foreground">-{somReductionPct}%</span>
-                    <span className="break-words">· {som?.derivation ? som.derivation.split('.')[0] : 'Constrained by initial 24-36 month capacity and sales velocity'}</span>
+                    <span>· {som?.derivation ? som.derivation.split('.')[0] : 'Self-serve GTM capture cap, 3-yr horizon'}</span>
                   </div>
                 </div>
 
-                {/* Tier 3: SOM Card (Emerald Accent on Badge, Figure, and Proportion Bar) */}
-                <div className="w-full rounded-xl border border-border/80 bg-card dark:bg-card/80 p-5 sm:p-6 space-y-4 transition-all shadow-none">
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="space-y-1.5 min-w-0 flex-1">
+                {/* Level 3: SOM Box (Narrowest Width, Solid Green Fill, White Text) */}
+                <div
+                  style={{ width: `${Math.max(32, Math.min(48, (samPctOfTam * (somPctOfSam / 100)) > 10 ? (samPctOfTam * (somPctOfSam / 100)) : 32))}%` }}
+                  className="rounded-xl border border-emerald-700 bg-emerald-800 text-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all shadow-sm"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <div className="w-1 self-stretch rounded-full bg-emerald-400/60 shrink-0 min-h-[32px]" />
+                    <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-emerald-600/15 text-emerald-600 dark:text-emerald-400 border border-emerald-600/30 uppercase tracking-wider">
+                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-emerald-700 text-white uppercase tracking-wider">
                           SOM
                         </span>
-                        <span className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-muted text-muted-foreground border border-border/60 uppercase tracking-wider">
+                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded bg-emerald-900 text-emerald-100 uppercase tracking-wider">
                           Y1-Y3
                         </span>
-                        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                          Serviceable Obtainable Market
-                        </span>
-                        <span className="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                          · {formatPct(somPctOfSam)}% OF SAM
+                        <span className="text-xs font-mono text-emerald-100/90 uppercase tracking-wider">
+                          Serviceable Obtainable
                         </span>
                       </div>
-                      <div className="text-sm sm:text-base font-semibold text-foreground font-sans leading-snug break-words pt-0.5">
-                        {som?.label || 'Serviceable Obtainable Market'}
-                      </div>
-                      <p className="text-xs text-muted-foreground font-sans leading-relaxed pt-0.5 break-words">
-                        {som?.derivation || 'Realistic market share achievable within the initial 24–36 month operational runway.'}
-                      </p>
-                    </div>
-                    <div className="text-left sm:text-right shrink-0 pl-2 sm:pl-4 pt-0.5">
-                      <div className="text-2xl sm:text-3xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight">
-                        {formatCurrency(som?.value, som?.currency)}
-                      </div>
-                      <div className="text-[11px] font-mono text-emerald-600/80 dark:text-emerald-400/80 pt-0.5">
-                        {formatPct(somPctOfSam)}% OF SAM
+                      <div className="text-xs sm:text-sm font-medium text-white font-sans leading-snug break-words">
+                        {som?.label || 'Direct self-serve conversion'}
                       </div>
                     </div>
                   </div>
-
-                  {/* SOM Proportion Bar (Emerald Accent) */}
-                  <div className="w-full h-2 rounded-full bg-muted/70 dark:bg-muted/40 overflow-hidden">
-                    <div
-                      style={{ width: `${Math.max(0.3, Math.min(100, somWidthPct))}%` }}
-                      className="h-full rounded-full bg-emerald-600 dark:bg-emerald-500 shadow-sm transition-all duration-500"
-                    />
+                  <div className="text-left sm:text-right shrink-0 pl-4 sm:pl-0">
+                    <div className="text-xl sm:text-2xl font-bold font-mono text-white tracking-tight">
+                      {formatCurrency(som?.value, som?.currency)}
+                    </div>
+                    <div className="text-[10px] font-mono text-emerald-100/90">
+                      {formatPct(somPctOfSam)}% OF SAM
+                    </div>
                   </div>
                 </div>
               </div>
@@ -904,6 +861,20 @@ export default function MarketStudyPage() {
           </div>
         )}
       </div>
+
+      {completed && output && (
+        <MarketStudyPrintView
+          open={isPrintOpen}
+          onClose={() => setIsPrintOpen(false)}
+          projectName={projectName || undefined}
+          project={{
+            sector: sector || undefined,
+            geography: geography || undefined,
+            marketGap: creatorMarketGap || undefined,
+          }}
+          output={output}
+        />
+      )}
     </Phase3SetupShell>
   );
 }

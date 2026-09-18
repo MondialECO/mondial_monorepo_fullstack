@@ -126,7 +126,7 @@ async function run() {
   for (const vp of viewports) {
     const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
 
-    await context.route('**/*', async (route) => {
+    await context.route('**/api/**', async (route) => {
       const url = route.request().url();
 
       if (url.includes('5093') && url.includes('/api/creator/journey')) {
@@ -248,6 +248,18 @@ async function run() {
       if (fs.existsSync(funnelDarkPath)) {
         fs.copyFileSync(funnelDarkPath, path.join(artifactDir, 'market_study_funnel_1440_dark.png'));
       }
+
+      // 3. Test Export PDF Overlay
+      console.log('Testing Export PDF overlay...');
+      await page.evaluate(() => document.documentElement.classList.remove('dark'));
+      await page.waitForTimeout(400);
+      await page.click('button:has-text("Export PDF")');
+      await page.waitForSelector('text=Print / Save as PDF', { timeout: 10000 });
+      await page.waitForTimeout(600);
+      const pdfOverlayPath = path.join(outputDir, 'market_study_pdf_export_preview.png');
+      await page.screenshot({ path: pdfOverlayPath, fullPage: true });
+      fs.copyFileSync(pdfOverlayPath, path.join(artifactDir, 'market_study_pdf_export_preview.png'));
+      console.log(`✓ PDF Export screenshot saved: ${pdfOverlayPath}`);
     }
 
     await context.close();

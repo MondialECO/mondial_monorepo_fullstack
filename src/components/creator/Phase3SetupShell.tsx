@@ -28,14 +28,14 @@ export function Phase3SetupShell({
   titleClassName,
 }: Phase3SetupShellProps) {
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40 text-foreground px-5 py-12 sm:px-8 lg:py-16">
+    <div className="flex min-h-screen w-full flex-col bg-muted/30 dark:bg-background text-foreground px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <main
         className={cn(
           "mx-auto flex w-full flex-1 flex-col",
-          compact ? "py-0" : "py-12 lg:py-16",
+          compact ? "py-0" : "py-4 lg:py-6",
           fullWidth
-            ? "max-w-none px-0"
-            : "max-w-[1140px] px-5 sm:px-8",
+            ? "max-w-6xl"
+            : "max-w-5xl",
         )}
       >
         <div
@@ -56,7 +56,7 @@ export function Phase3SetupShell({
             </h1>
             {description && (
               typeof description === "string" ? (
-                <p className={cn(headerAlign === "left" ? "text-xs font-mono text-muted-foreground pt-0.5" : "text-sm leading-7 text-muted-foreground sm:text-base", descriptionClassName)}>
+                <p className={cn(headerAlign === "left" ? "text-xs font-sans text-muted-foreground pt-0.5" : "text-sm leading-7 text-muted-foreground sm:text-base", descriptionClassName)}>
                   {description}
                 </p>
               ) : (
@@ -65,13 +65,13 @@ export function Phase3SetupShell({
             )}
           </div>
           {headerActions && (
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 pb-0.5">
               {headerActions}
             </div>
           )}
         </div>
 
-        <div className={cn("mt-8 space-y-8", contentClassName)}>{children}</div>
+        <div className={cn("mt-6 space-y-8", contentClassName)}>{children}</div>
       </main>
     </div>
   );

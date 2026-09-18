@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { BrandKit, BrandColorRole } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import { creatorAiApi } from "@/lib/api-creator-ai";
+import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import { ModalWorkflowHeader } from "./ModalWorkflowHeader";
 import { Button } from "@/components/ui/button";
 import {
@@ -235,14 +236,18 @@ export function ColorSystemModal({
 
   // Logo mark from Step 4
   const logoMarkUri = useMemo(() => {
+    let rawUri: string | null = null;
     if (currentKit.logo?.selectedConceptKey) {
       const concept = currentKit.logo.concepts?.find(
         (c) => c.key === currentKit.logo?.selectedConceptKey
       );
-      if (concept?.markAssetUri) return concept.markAssetUri;
+      if (concept?.markAssetUri) rawUri = concept.markAssetUri;
     }
-    return currentKit.logo?.variations?.["primary"]?.svgUri || null;
-  }, [currentKit.logo]);
+    if (!rawUri) {
+      rawUri = currentKit.logo?.variations?.["primary"]?.svgUri || null;
+    }
+    return rawUri ? resolveMediaUrl(rawUri, currentKit.version) : null;
+  }, [currentKit.logo, currentKit.version]);
 
   // 1. Initial State Population (No Auto-Generate)
   useEffect(() => {

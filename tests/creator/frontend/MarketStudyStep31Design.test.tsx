@@ -268,4 +268,19 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
     expect(screen.getAllByText(/Targeted beachhead with 50 enterprise shippers in Benelux./i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('$50M')).toBeInTheDocument();
   });
+
+  it('triggers PDF export print view overlay when clicking Export PDF button', async () => {
+    const userEvent = (await import('@testing-library/user-event')).default.setup();
+    render(<MarketStudyPage />);
+
+    const exportBtn = await screen.findByRole('button', { name: /export pdf/i });
+    expect(exportBtn).toBeInTheDocument();
+
+    await userEvent.click(exportBtn);
+
+    // Verify print preview overlay elements
+    expect(screen.getByText(/Print \/ Save as PDF/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mondial · Market Study & Competitive Intelligence/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/01 \/\/ Market Sizing Funnel \(TAM \/ SAM \/ SOM\)/i).length).toBeGreaterThanOrEqual(2);
+  });
 });
