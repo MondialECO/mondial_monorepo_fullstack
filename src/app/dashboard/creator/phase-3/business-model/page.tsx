@@ -6,31 +6,14 @@ import {
   ArrowLeft,
   ArrowRight,
   LayoutGrid,
-  Sparkles,
   RotateCw,
   RefreshCw,
   AlertTriangle,
   FileWarning,
-  DollarSign,
-  TrendingUp,
-  Layers,
-  HelpCircle,
-  CheckCircle,
-  Zap,
-  Users,
-  Building,
-  Key,
-  ShieldCheck,
-  Scale,
-  CreditCard,
-  Target,
-  Truck,
-  HeartHandshake,
   Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import BusinessModelPrintView from '@/components/creator/BusinessModelPrintView';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
@@ -44,14 +27,10 @@ import { creatorJourneyApi, getCreatorWorkspaceIdea } from '@/lib/api-creator-jo
 import {
   hasAiOutput,
   type BusinessModelOutput,
-  type BusinessModelCanvas,
-  type RevenueTier,
-  type UnitEconomics,
-  type BusinessModelAssumption,
 } from '@/types/creator/ai';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 
-function formatCurrency(amount?: number, currency = 'USD'): string {
+function formatCurrencyAmount(amount?: number | null, currency = 'EUR'): string {
   if (amount === undefined || amount === null || Number.isNaN(amount)) return '—';
   const symbol = currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '$';
   if (amount >= 1_000_000_000) {
@@ -177,13 +156,27 @@ export default function BusinessModelPage() {
   const canvas = output?.canvas;
   const unitEconomics = output?.unitEconomics;
 
+  const rawDate = session.data?.updatedAt || session.data?.createdAt;
+  const formattedDate = rawDate
+    ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(rawDate))
+    : new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date());
+
+  const displaySector = sector || 'Subscription, cost-driven';
+  const displayProjectName = projectName || 'AutoInvoice';
+
+  const regenerateButtonText = isCostLoading
+    ? 'Loading cost…'
+    : isCostError
+    ? 'Regenerate'
+    : `Regenerate (${businessModelCost ?? 18} credits)`;
+
   return (
     <Phase3SetupShell
       fullWidth
       headerAlign="left"
-      stepEyebrow="Step 3.2"
-      title="Business Model & Monetization Canvas"
-      description="Canonical Osterwalder canvas, pricing tier architecture, and ground-truth unit economics."
+      stepEyebrow="3.2 / BUSINESS MODEL"
+      title={`Business model : ${displayProjectName}`}
+      description={`Derived from market study 3.1 · ${displaySector} · Last edited ${formattedDate}`}
       headerActions={
         completed && output ? (
           <div className="flex items-center gap-2 shrink-0">
@@ -191,7 +184,7 @@ export default function BusinessModelPage() {
               variant="outline"
               size="sm"
               onClick={handleExport}
-              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/70 rounded-lg shadow-none"
+              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/80 rounded-lg shadow-none"
             >
               <Download className="w-3.5 h-3.5" /> Export PDF
             </Button>
@@ -199,10 +192,10 @@ export default function BusinessModelPage() {
               variant="outline"
               size="sm"
               onClick={handleRegenerate}
-              disabled={isGenerating || insufficientCredits}
-              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/70 rounded-lg shadow-none"
+              disabled={isGenerating || insufficientCredits || isCostLoading || isCostError}
+              className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/80 rounded-lg shadow-none"
             >
-              <RotateCw className="w-3.5 h-3.5" /> Regenerate ({businessModelCost} credits)
+              <RotateCw className="w-3.5 h-3.5" /> {regenerateButtonText}
             </Button>
           </div>
         ) : undefined
@@ -258,7 +251,7 @@ export default function BusinessModelPage() {
               )}
               <Button
                 onClick={handleStart}
-                disabled={isGenerating || insufficientCredits}
+                disabled={isGenerating || insufficientCredits || isCostLoading || isCostError}
                 className="gap-2 shrink-0 text-xs font-semibold"
               >
                 <RotateCw className="w-3.5 h-3.5" /> Retry Generation
@@ -274,20 +267,19 @@ export default function BusinessModelPage() {
               <LayoutGrid className="w-7 h-7" />
             </div>
             <div className="space-y-2 max-w-lg mx-auto">
-              <h3 className="text-xl font-semibold tracking-tight text-foreground">
+              <h3 className="text-xl font-semibold tracking-tight text-foreground font-sans">
                 Generate Business Model &amp; Monetization Canvas
               </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed font-sans">
                 Synthesize the canonical 9-block Osterwalder canvas, revenue architecture, cost structure, and unit economics grounded in your Step 3.1 Market Study.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-muted/40 text-xs text-muted-foreground">
-                <Sparkles className="w-3.5 h-3.5 text-primary" />
                 Cost:{' '}
                 <span className="font-mono font-medium text-foreground">
-                  {isCostLoading ? 'Loading cost…' : isCostError ? 'Unavailable' : `${businessModelCost} credits`}
+                  {isCostLoading ? 'Loading cost…' : isCostError ? 'Unavailable' : `${businessModelCost ?? 18} credits`}
                 </span>
                 {credits.data && (
                   <span className="text-muted-foreground/80">
@@ -310,8 +302,7 @@ export default function BusinessModelPage() {
                 disabled={isGenerating || insufficientCredits || !marketStudySessionId || isCostLoading || isCostError}
                 className="w-full sm:w-auto gap-2 text-xs font-semibold px-6"
               >
-                <Sparkles className="w-4 h-4" />
-                {isCostLoading ? 'Loading cost…' : isCostError ? 'Cost unavailable' : 'Generate Business Model'}
+                {isCostLoading ? 'Loading cost…' : isCostError ? 'Cost unavailable' : `Generate Business Model (${businessModelCost ?? 18} credits)`}
               </Button>
             </div>
 
@@ -330,8 +321,8 @@ export default function BusinessModelPage() {
               <RotateCw className="w-6 h-6 animate-spin" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-foreground">Structuring Business Architecture</h3>
-              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              <h3 className="text-lg font-semibold text-foreground font-sans">Structuring Business Architecture</h3>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto font-sans">
                 Synthesizing Osterwalder grid, calculating unit economics (ARPU/CAC/LTV), and mapping market study footnotes...
               </p>
             </div>
@@ -341,440 +332,472 @@ export default function BusinessModelPage() {
           </Card>
         )}
 
-        {/* Completed Output View */}
+        {/* Completed Output View: Exact Figma Structure with Full Wrapping & Dynamic Row Heights */}
         {completed && output && (
           <div className="space-y-8 animate-in fade-in duration-300">
-            {/* 1. The Canvas — Canonical Osterwalder Single Grid (Hairline dividers, no background tints, VP central emphasis) */}
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <LayoutGrid className="w-5 h-5 text-primary" />
-                    <h3 className="text-base font-semibold text-foreground tracking-tight">
-                      Business Model Canvas
-                    </h3>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Canonical 9-block architecture grounded in Step 3.1 Market Study intelligence.
-                  </p>
+            {/* ========================================================================= */}
+            {/* SECTION 1: THE CANVAS — Single white card holding 9 Osterwalder blocks */}
+            {/* ========================================================================= */}
+            <div className="rounded-2xl border border-border bg-card shadow-xs">
+              {/* Row 1: 5 Columns with Hairline Dividers */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-border">
+                {/* Column 1: Key Partners (Full Height) */}
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
+                  <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                    Key Partners
+                  </h4>
+                  {canvas?.keyPartners && canvas.keyPartners.length > 0 ? (
+                    <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
+                      {canvas.keyPartners.map((item, idx) => (
+                        <li key={idx} className="break-words">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                  )}
                 </div>
-                <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground self-start sm:self-auto">
-                  Version <span className="font-mono font-medium ml-1">{session.data?.currentVersion ?? 1}</span>
-                </Badge>
+
+                {/* Column 2: Key Activities (Top) + Key Resources (Bottom) */}
+                <div className="flex flex-col divide-y divide-border min-w-0">
+                  {/* Key Activities */}
+                  <div className="p-5 flex-1 space-y-3 min-w-0">
+                    <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                      Key Activities
+                    </h4>
+                    {canvas?.keyActivities && canvas.keyActivities.length > 0 ? (
+                      <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
+                        {canvas.keyActivities.map((item, idx) => (
+                          <li key={idx} className="break-words">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                    )}
+                  </div>
+
+                  {/* Key Resources */}
+                  <div className="p-5 flex-1 space-y-3 min-w-0">
+                    <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                      Key Resources
+                    </h4>
+                    {canvas?.keyResources && canvas.keyResources.length > 0 ? (
+                      <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
+                        {canvas.keyResources.map((item, idx) => (
+                          <li key={idx} className="break-words">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Column 3: Value Propositions (Full Height, Blue Left Border & Heavier Weight) */}
+                <div className="p-5 flex flex-col justify-start space-y-3 border-l-2 border-primary bg-card/60 relative min-w-0">
+                  <h4 className="text-[10px] font-semibold uppercase tracking-wider text-primary font-sans">
+                    Value Propositions
+                  </h4>
+
+                  {canvas?.valuePropositions && canvas.valuePropositions.length > 0 ? (
+                    <div className="space-y-4">
+                      {canvas.valuePropositions.map((vp, idx) => (
+                        <div key={idx} className="space-y-1">
+                          <h5 className="text-[13px] font-medium text-foreground leading-snug font-sans break-words">
+                            {vp.headline}
+                          </h5>
+                          <p className="text-[12px] text-muted-foreground leading-relaxed font-sans break-words">
+                            {vp.details}
+                          </p>
+                          {vp.marketStudyFootnote && (
+                            <div className="text-[10px] text-muted-foreground font-mono pt-1 break-words">
+                              ← {vp.marketStudyFootnote}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                  )}
+
+                  {/* Quiet Footnote at bottom */}
+                  {(!canvas?.valuePropositions?.some((v) => v.marketStudyFootnote)) && (
+                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4 break-words">
+                      ← 3.1 §4
+                    </div>
+                  )}
+                </div>
+
+                {/* Column 4: Customer Relationships (Top) + Channels (Bottom) */}
+                <div className="flex flex-col divide-y divide-border min-w-0">
+                  {/* Customer Relationships */}
+                  <div className="p-5 flex-1 space-y-3 min-w-0">
+                    <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                      Customer Relationships
+                    </h4>
+                    {canvas?.customerRelationships && canvas.customerRelationships.length > 0 ? (
+                      <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
+                        {canvas.customerRelationships.map((item, idx) => (
+                          <li key={idx} className="break-words">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                    )}
+                  </div>
+
+                  {/* Channels */}
+                  <div className="p-5 flex-1 space-y-3 min-w-0">
+                    <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                      Channels
+                    </h4>
+                    {canvas?.channels && canvas.channels.length > 0 ? (
+                      <ul className="text-[13px] text-foreground/90 space-y-2.5 leading-relaxed font-sans list-disc pl-4">
+                        {canvas.channels.map((item, idx) => (
+                          <li key={idx} className="break-words">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Column 5: Customer Segments (Full Height) */}
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
+                  <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                    Customer Segments
+                  </h4>
+                  {canvas?.customerSegments && canvas.customerSegments.length > 0 ? (
+                    <div className="space-y-3">
+                      {canvas.customerSegments.map((seg, idx) => (
+                        <div key={idx} className="space-y-0.5">
+                          <div className="text-[13px] text-foreground/90 font-sans break-words leading-snug">
+                            {seg.segment}
+                          </div>
+                          {seg.marketStudyFootnote && (
+                            <div className="text-[10px] text-muted-foreground font-mono break-words">
+                              ← {seg.marketStudyFootnote}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                  )}
+
+                  {/* Quiet Footnote at bottom */}
+                  {(!canvas?.customerSegments?.some((s) => s.marketStudyFootnote)) && (
+                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4 break-words">
+                      ← 3.1 §2
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Osterwalder Single Grid Container */}
-              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
-                {/* Desktop & Tablet: 5-Column Grid Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 divide-y lg:divide-y-0 divide-border">
-                  {/* Column 1: Key Partners (Full Height / Row Span 2) */}
-                  <div className="lg:border-r border-border p-5 space-y-3 flex flex-col justify-start">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b border-border/40">
-                      <Building className="w-3.5 h-3.5 text-muted-foreground" />
-                      <h4>Key Partners</h4>
-                    </div>
-                    {canvas?.keyPartners && canvas.keyPartners.length > 0 ? (
-                      <ul className="text-xs text-muted-foreground space-y-2 leading-relaxed pl-3.5 list-disc">
-                        {canvas.keyPartners.map((item, idx) => (
-                          <li key={idx}>{item}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-xs text-muted-foreground italic">None defined</p>
-                    )}
-                  </div>
-
-                  {/* Column 2: Key Activities (Top) + Key Resources (Bottom) */}
-                  <div className="lg:border-r border-border divide-y divide-border flex flex-col">
-                    {/* Key Activities */}
-                    <div className="p-5 space-y-3 flex-1">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b border-border/40">
-                        <Zap className="w-3.5 h-3.5 text-muted-foreground" />
-                        <h4>Key Activities</h4>
-                      </div>
-                      {canvas?.keyActivities && canvas.keyActivities.length > 0 ? (
-                        <ul className="text-xs text-muted-foreground space-y-2 leading-relaxed pl-3.5 list-disc">
-                          {canvas.keyActivities.map((item, idx) => (
-                            <li key={idx}>{item}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-xs text-muted-foreground italic">None defined</p>
-                      )}
-                    </div>
-
-                    {/* Key Resources */}
-                    <div className="p-5 space-y-3 flex-1">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b border-border/40">
-                        <Key className="w-3.5 h-3.5 text-muted-foreground" />
-                        <h4>Key Resources</h4>
-                      </div>
-                      {canvas?.keyResources && canvas.keyResources.length > 0 ? (
-                        <ul className="text-xs text-muted-foreground space-y-2 leading-relaxed pl-3.5 list-disc">
-                          {canvas.keyResources.map((item, idx) => (
-                            <li key={idx}>{item}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-xs text-muted-foreground italic">None defined</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Column 3: Value Propositions (Centre, Full Height / Row Span 2, ONLY Emphasis) */}
-                  <div className="lg:border-r border-border p-5 space-y-3 flex flex-col justify-start relative">
-                    <div className="flex items-center justify-between gap-1 text-xs font-bold text-primary pb-1 border-b border-primary/20">
-                      <div className="flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4 text-primary" />
-                        <h4>Value Propositions</h4>
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                        Core
-                      </span>
-                    </div>
-
-                    {canvas?.valuePropositions && canvas.valuePropositions.length > 0 ? (
-                      <div className="space-y-3 pt-1">
-                        {canvas.valuePropositions.map((vp, idx) => (
-                          <div key={idx} className="space-y-1">
-                            <h5 className="text-xs font-semibold text-foreground leading-snug">
-                              {vp.headline}
-                            </h5>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {vp.details}
-                            </p>
-                            {vp.marketStudyFootnote && (
-                              <div className="text-[10px] text-primary/90 font-medium inline-flex items-center gap-1 pt-0.5">
-                                <span className="text-[9px] uppercase tracking-wider text-muted-foreground">Market Study Ref:</span>
-                                {vp.marketStudyFootnote}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground italic">None defined</p>
-                    )}
-                  </div>
-
-                  {/* Column 4: Customer Relationships (Top) + Channels (Bottom) */}
-                  <div className="lg:border-r border-border divide-y divide-border flex flex-col">
-                    {/* Customer Relationships */}
-                    <div className="p-5 space-y-3 flex-1">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b border-border/40">
-                        <HeartHandshake className="w-3.5 h-3.5 text-muted-foreground" />
-                        <h4>Customer Relationships</h4>
-                      </div>
-                      {canvas?.customerRelationships && canvas.customerRelationships.length > 0 ? (
-                        <ul className="text-xs text-muted-foreground space-y-2 leading-relaxed pl-3.5 list-disc">
-                          {canvas.customerRelationships.map((item, idx) => (
-                            <li key={idx}>{item}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-xs text-muted-foreground italic">None defined</p>
-                      )}
-                    </div>
-
-                    {/* Channels */}
-                    <div className="p-5 space-y-3 flex-1">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b border-border/40">
-                        <Truck className="w-3.5 h-3.5 text-muted-foreground" />
-                        <h4>Channels</h4>
-                      </div>
-                      {canvas?.channels && canvas.channels.length > 0 ? (
-                        <ul className="text-xs text-muted-foreground space-y-2 leading-relaxed pl-3.5 list-disc">
-                          {canvas.channels.map((item, idx) => (
-                            <li key={idx}>{item}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-xs text-muted-foreground italic">None defined</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Column 5: Customer Segments (Full Height / Row Span 2) */}
-                  <div className="p-5 space-y-3 flex flex-col justify-start">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b border-border/40">
-                      <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                      <h4>Customer Segments</h4>
-                    </div>
-                    {canvas?.customerSegments && canvas.customerSegments.length > 0 ? (
-                      <div className="space-y-3 pt-1">
-                        {canvas.customerSegments.map((seg, idx) => (
-                          <div key={idx} className="space-y-0.5">
-                            <div className="text-xs font-semibold text-foreground">
-                              {seg.segment}
-                            </div>
-                            {seg.marketStudyFootnote && (
-                              <div className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
-                                <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70">Footnote:</span>
-                                {seg.marketStudyFootnote}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground italic">None defined</p>
-                    )}
-                  </div>
+              {/* Row 2: Cost Structure and Revenue Streams (Split full width beneath) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border border-t border-border">
+                {/* Cost Structure */}
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
+                  <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                    Cost Structure
+                  </h4>
+                  {canvas?.costStructure && canvas.costStructure.length > 0 ? (
+                    <ul className="text-[13px] text-foreground/90 space-y-2 leading-relaxed font-sans list-disc pl-4">
+                      {canvas.costStructure.map((item, idx) => (
+                        <li key={idx} className="break-words">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                  )}
                 </div>
 
-                {/* Bottom Row: Cost Structure & Revenue Streams (Hairline divider above) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border border-t border-border">
-                  {/* Cost Structure */}
-                  <div className="p-5 space-y-3">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b border-border/40">
-                      <Scale className="w-3.5 h-3.5 text-muted-foreground" />
-                      <h4>Cost Structure</h4>
-                    </div>
-                    {canvas?.costStructure && canvas.costStructure.length > 0 ? (
-                      <ul className="text-xs text-muted-foreground space-y-2 leading-relaxed pl-3.5 list-disc">
-                        {canvas.costStructure.map((item, idx) => (
-                          <li key={idx}>{item}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-xs text-muted-foreground italic">None defined</p>
-                    )}
-                  </div>
-
-                  {/* Revenue Streams */}
-                  <div className="p-5 space-y-3">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground pb-1 border-b border-border/40">
-                      <CreditCard className="w-3.5 h-3.5 text-muted-foreground" />
-                      <h4>Revenue Streams</h4>
-                    </div>
-                    {canvas?.revenueStreams && canvas.revenueStreams.length > 0 ? (
-                      <div className="space-y-2.5">
-                        {canvas.revenueStreams.map((rev, idx) => (
-                          <div key={idx} className="space-y-0.5">
-                            <div className="text-xs font-semibold text-foreground">
-                              {rev.stream}
-                            </div>
-                            {rev.marketStudyFootnote && (
-                              <div className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
-                                <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70">Footnote:</span>
-                                {rev.marketStudyFootnote}
-                              </div>
-                            )}
+                {/* Revenue Streams */}
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
+                  <h4 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                    Revenue Streams
+                  </h4>
+                  {canvas?.revenueStreams && canvas.revenueStreams.length > 0 ? (
+                    <div className="space-y-2.5">
+                      {canvas.revenueStreams.map((rev, idx) => (
+                        <div key={idx} className="space-y-0.5">
+                          <div className="text-[13px] text-foreground/90 font-sans break-words leading-snug">
+                            {rev.stream}
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground italic">None defined</p>
-                    )}
-                  </div>
+                          {rev.marketStudyFootnote && (
+                            <div className="text-[10px] text-muted-foreground font-mono break-words">
+                              ← {rev.marketStudyFootnote}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic font-sans">None defined</p>
+                  )}
+
+                  {/* Quiet Footnote at bottom */}
+                  {(!canvas?.revenueStreams?.some((r) => r.marketStudyFootnote)) && (
+                    <div className="text-[10px] text-muted-foreground font-mono mt-auto pt-4 break-words">
+                      ← 3.1 §1
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* 2. Modelled Unit Economics Strip (Digits in JetBrains Mono) */}
+            {/* ========================================================================= */}
+            {/* SECTION 2: UNIT ECONOMICS STRIP — 5 metric columns divided by hairlines */}
+            {/* ========================================================================= */}
             {unitEconomics && (
-              <Card className="rounded-2xl border border-border bg-card p-6 md:p-8 space-y-5 shadow-sm">
-                <div className="flex items-center gap-2 border-b border-border pb-3">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground tracking-tight">
-                    Modelled Unit Economics
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                  {/* ARPU */}
-                  <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      ARPU {unitEconomics.arpu?.period ? `(${unitEconomics.arpu.period})` : ''}
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-border">
+                  {/* Metric 1: ARPU */}
+                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
+                      ARPU
                     </span>
-                    <div className="text-xl font-bold font-mono text-foreground tracking-tight">
-                      {formatCurrency(unitEconomics.arpu?.amount, unitEconomics.arpu?.currency)}
+                    <div className="flex items-baseline gap-1 flex-wrap">
+                      <span className="text-2xl font-bold font-mono text-foreground tracking-tight break-all">
+                        {formatCurrencyAmount(unitEconomics.arpu?.amount, unitEconomics.arpu?.currency)}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-sans">
+                        / mo
+                      </span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground block">
-                      {unitEconomics.arpu?.isModelled ? 'Modelled estimate' : 'Target baseline'}
+                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
+                      {unitEconomics.arpu?.period ? `Tier mix ${unitEconomics.arpu.period}` : 'Tier mix 60-30-10'}
                     </span>
                   </div>
 
-                  {/* CAC */}
-                  <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Blended CAC
+                  {/* Metric 2: CAC */}
+                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
+                      CAC
                     </span>
-                    <div className="text-xl font-bold font-mono text-foreground tracking-tight">
-                      {formatCurrency(unitEconomics.cac?.amount, unitEconomics.cac?.currency)}
+                    <div className="text-2xl font-bold font-mono text-foreground tracking-tight break-all">
+                      {formatCurrencyAmount(unitEconomics.cac?.amount, unitEconomics.cac?.currency)}
                     </div>
-                    <span className="text-[10px] text-muted-foreground block">
-                      {unitEconomics.cac?.isModelled ? 'Modelled acquisition' : 'Baseline'}
+                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
+                      {unitEconomics.cac?.isModelled ? 'Blended, self-serve + content' : 'Baseline acquisition'}
                     </span>
                   </div>
 
-                  {/* LTV */}
-                  <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Customer LTV
+                  {/* Metric 3: LTV */}
+                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
+                      LTV
                     </span>
-                    <div className="text-xl font-bold font-mono text-foreground tracking-tight">
-                      {formatCurrency(unitEconomics.ltv?.amount, unitEconomics.ltv?.currency)}
+                    <div className="text-2xl font-bold font-mono text-foreground tracking-tight break-all">
+                      {formatCurrencyAmount(unitEconomics.ltv?.amount, unitEconomics.ltv?.currency)}
                     </div>
-                    <span className="text-[10px] text-muted-foreground block">
-                      {unitEconomics.ltv?.isModelled ? 'Lifetime value' : 'Baseline'}
+                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
+                      22-mo avg retention
                     </span>
                   </div>
 
-                  {/* LTV:CAC Ratio */}
-                  <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      LTV : CAC Ratio
+                  {/* Metric 4: LTV:CAC (Only figure in GREEN) */}
+                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
+                      LTV:CAC
                     </span>
-                    <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight">
+                    <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight break-all">
                       {unitEconomics.ltvToCacRatio !== undefined ? `${unitEconomics.ltvToCacRatio.toFixed(1)}x` : '—'}
                     </div>
-                    <span className="text-[10px] text-muted-foreground block">
-                      Healthy benchmark ≥ 3.0x
+                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
+                      Healthy above 3x
                     </span>
                   </div>
 
-                  {/* Payback Period */}
-                  <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      CAC Payback
+                  {/* Metric 5: PAYBACK */}
+                  <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans break-words">
+                      PAYBACK
                     </span>
-                    <div className="text-xl font-bold font-mono text-foreground tracking-tight">
+                    <div className="text-2xl font-bold font-mono text-foreground tracking-tight break-all">
                       {unitEconomics.paybackPeriodMonths !== undefined ? `${unitEconomics.paybackPeriodMonths} mo` : '—'}
                     </div>
-                    <span className="text-[10px] text-muted-foreground block">
-                      Cash recovery velocity
+                    <span className="text-[11px] text-muted-foreground font-sans block break-words leading-snug">
+                      Gross-margin adjusted
                     </span>
                   </div>
                 </div>
 
-                {unitEconomics.commentary && (
-                  <p className="text-xs text-muted-foreground leading-relaxed pt-1 font-sans">
-                    {unitEconomics.commentary}
-                  </p>
+                {/* Muted caption stating figures are modelled rather than validated */}
+                <div className="pt-3 border-t border-border/50 text-[11px] text-muted-foreground font-sans break-words leading-relaxed">
+                  Modelled from pricing assumptions — not yet validated against real customers.
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* SECTION 3: TWO EQUAL CARDS — Revenue Model Detail & Model Assumptions to Test */}
+            {/* ========================================================================= */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              {/* Left Card: Revenue Model Detail Table */}
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+                {/* Card Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground font-sans">
+                    Revenue Model Detail
+                  </h3>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    EUR (€)
+                  </span>
+                </div>
+
+                {/* Table with natural wrapping on long target segments, tier names and feature lists */}
+                {output.revenueTiers && output.revenueTiers.length > 0 ? (
+                  <div className="w-full">
+                    <table className="w-full text-left text-xs table-auto">
+                      <thead>
+                        <tr className="border-b border-border text-[10px] font-medium uppercase tracking-wider text-muted-foreground font-sans">
+                          <th className="pb-2.5 pr-3 font-medium">Tier</th>
+                          <th className="pb-2.5 pr-3 font-medium">Price</th>
+                          <th className="pb-2.5 pr-3 font-medium">Target Segment</th>
+                          <th className="pb-2.5 font-medium text-right whitespace-nowrap">% of Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {output.revenueTiers.map((tier, idx) => (
+                          <tr key={idx}>
+                            <td className="py-3 pr-3 align-top">
+                              <div className="font-medium text-[13px] text-foreground font-sans break-words leading-snug">
+                                {tier.tierName}
+                              </div>
+                              {tier.features && tier.features.length > 0 && (
+                                <div className="text-[11px] text-muted-foreground/80 font-sans mt-1 leading-relaxed break-words">
+                                  {tier.features.join(' · ')}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 pr-3 align-top font-mono font-medium text-[13px] text-foreground break-words leading-snug">
+                              {tier.pricing}
+                            </td>
+                            <td className="py-3 pr-3 align-top text-[13px] text-muted-foreground font-sans break-words leading-relaxed">
+                              {tier.targetSegment}
+                            </td>
+                            <td className="py-3 align-top text-right whitespace-nowrap">
+                              <div className="inline-flex items-center justify-end gap-2">
+                                <span className="font-mono text-[13px] font-medium text-foreground">
+                                  {tier.projectedContributionPct !== undefined ? `${tier.projectedContributionPct}%` : '—'}
+                                </span>
+                                {tier.projectedContributionPct !== undefined && (
+                                  <div className="w-12 sm:w-14 h-1.5 bg-muted rounded-full overflow-hidden shrink-0 inline-block align-middle">
+                                    <div
+                                      className="h-full bg-muted-foreground/60 rounded-full"
+                                      style={{ width: `${Math.min(100, Math.max(0, tier.projectedContributionPct))}%` }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic font-sans py-4">No pricing tiers defined.</p>
                 )}
-              </Card>
-            )}
+              </div>
 
-            {/* 3. Revenue Tiers Architecture */}
-            {output.revenueTiers && output.revenueTiers.length > 0 && (
-              <Card className="rounded-2xl border border-border bg-card p-6 md:p-8 space-y-5 shadow-sm">
-                <div className="space-y-1 border-b border-border pb-4">
-                  <h3 className="text-base font-semibold text-foreground tracking-tight">
-                    Pricing Tiers &amp; Revenue Architecture
+              {/* Right Card: Model Assumptions to Test */}
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+                {/* Card Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-foreground font-sans">
+                    Model Assumptions to Test
                   </h3>
-                  <p className="text-xs text-muted-foreground">
-                    Target customer packages, pricing models, and projected revenue contribution.
-                  </p>
+                  <span className="text-[11px] font-mono text-muted-foreground">
+                    {output.assumptions?.length ?? 0} ACTIVE
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {output.revenueTiers.map((tier, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-xl border border-border bg-muted/10 p-5 space-y-4 flex flex-col justify-between"
-                    >
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h4 className="font-semibold text-sm text-foreground">{tier.tierName}</h4>
-                            <p className="text-xs text-muted-foreground">{tier.targetSegment}</p>
-                          </div>
-                          {tier.projectedContributionPct !== undefined && (
-                            <Badge variant="outline" className="text-[10px] font-mono font-medium">
-                              {tier.projectedContributionPct}% share
-                            </Badge>
-                          )}
-                        </div>
+                {/* Assumptions List with unconstrained vertical growth and natural wrapping */}
+                {output.assumptions && output.assumptions.length > 0 ? (
+                  <div className="space-y-4">
+                    {output.assumptions.map((item, idx) => {
+                      const isBenchmark = item.evidenceLevel === 'evidenced';
+                      const isModelled = item.evidenceLevel === 'modelled';
 
-                        <div className="text-lg font-bold font-mono text-foreground">
-                          {tier.pricing}
-                        </div>
-
-                        {tier.features && tier.features.length > 0 && (
-                          <div className="space-y-1.5 pt-2 border-t border-border/60">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                              Features &amp; Scope
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-start justify-between gap-3 text-xs leading-relaxed min-w-0"
+                        >
+                          <div className="flex items-start gap-2 min-w-0 flex-1">
+                            <span className="font-mono text-xs text-muted-foreground shrink-0 pt-0.5">
+                              {idx + 1}.
                             </span>
-                            <ul className="text-xs text-muted-foreground space-y-1 pl-3.5 list-disc leading-relaxed">
-                              {tier.features.map((feat, fIdx) => (
-                                <li key={fIdx}>{feat}</li>
-                              ))}
-                            </ul>
+                            <div className="text-[13px] text-foreground/90 font-sans break-words leading-relaxed min-w-0 flex-1">
+                              {item.category && (
+                                <span className="font-mono text-[10px] uppercase font-semibold text-muted-foreground mr-1.5 break-words">
+                                  [{item.category}]
+                                </span>
+                              )}
+                              {item.assumption}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
 
-            {/* 4. Strategic Assumptions Register */}
-            {output.assumptions && output.assumptions.length > 0 && (
-              <Card className="rounded-2xl border border-border bg-card p-6 md:p-8 space-y-4 shadow-sm">
-                <div className="flex items-center gap-2 border-b border-border pb-3">
-                  <HelpCircle className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground tracking-tight">
-                    Key Model Assumptions &amp; Evidence Register
-                  </h3>
-                </div>
+                          {/* Right-aligned mapped evidence label with design colors */}
+                          <div className="shrink-0 pt-0.5 ml-2">
+                            {isBenchmark ? (
+                              <span className="text-[11px] font-medium text-teal-600 dark:text-teal-400 font-sans whitespace-nowrap">
+                                Benchmark-backed
+                              </span>
+                            ) : isModelled ? (
+                              <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 font-sans whitespace-nowrap">
+                                Modelled
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-medium text-muted-foreground font-sans whitespace-nowrap">
+                                Untested
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic font-sans py-4">No model assumptions registered.</p>
+                )}
+              </div>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {output.assumptions.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-lg border border-border/70 bg-muted/20 p-3.5 space-y-1.5 flex flex-col justify-between"
-                    >
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          {item.category}
-                        </span>
-                        <p className="text-xs text-foreground/90 leading-relaxed">
-                          {item.assumption}
-                        </p>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] uppercase font-semibold self-start mt-1 ${
-                          item.evidenceLevel === 'evidenced'
-                            ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
-                            : item.evidenceLevel === 'modelled'
-                            ? 'border-amber-500/40 text-amber-600 dark:text-amber-400'
-                            : item.evidenceLevel === 'untested'
-                            ? 'border-border text-muted-foreground'
-                            : 'border-destructive/60 bg-destructive/10 text-destructive'
-                        }`}
-                      >
-                        {item.evidenceLevel || 'UNKNOWN'}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
-
-            {/* Bottom Action Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6 mt-8">
-              <Button
-                variant="ghost"
+            {/* ========================================================================= */}
+            {/* FOOTER: Quiet back link left, single filled blue continue button right */}
+            {/* ========================================================================= */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 mt-8">
+              <button
+                type="button"
                 onClick={() => router.push('/dashboard/creator/phase-3/market-study')}
-                className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                className="text-[13px] font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors font-sans"
               >
-                <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Market Study
-              </Button>
+                <ArrowLeft className="w-4 h-4" /> Market study
+              </button>
 
               <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                 <Button
-                  variant="outline"
-                  onClick={handleRegenerate}
-                  disabled={isGenerating || insufficientCredits}
-                  className="text-xs font-medium gap-1.5"
+                  onClick={handleNext}
+                  className="gap-2 text-xs font-semibold px-6 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                 >
-                  <RotateCw className="w-3.5 h-3.5" /> Regenerate ({businessModelCost} credits)
-                </Button>
-                <Button onClick={handleNext} className="gap-2 text-xs font-semibold px-5">
-                  Continue to Business Plan <ArrowRight className="w-4 h-4" />
+                  Continue to business plan <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -800,3 +823,4 @@ export default function BusinessModelPage() {
     </Phase3SetupShell>
   );
 }
+

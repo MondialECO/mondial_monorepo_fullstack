@@ -459,21 +459,21 @@ export default function BusinessModelPrintView({
                 <tbody className="divide-y divide-neutral-200">
                   {tiers.map((t, idx) => (
                     <tr key={idx} className="print-row align-top text-[10.5px]">
-                      <td className="py-2 px-3 font-semibold text-neutral-900">{t.tierName}</td>
-                      <td className="py-2 px-3 font-mono font-bold text-neutral-900">{t.pricing}</td>
-                      <td className="py-2 px-3 text-neutral-700">{t.targetSegment}</td>
-                      <td className="py-2 px-3 text-neutral-600">
+                      <td className="py-2 px-3 font-semibold text-neutral-900 break-words">{t.tierName}</td>
+                      <td className="py-2 px-3 font-mono font-bold text-neutral-900 break-words">{t.pricing}</td>
+                      <td className="py-2 px-3 text-neutral-700 break-words leading-relaxed">{t.targetSegment}</td>
+                      <td className="py-2 px-3 text-neutral-600 break-words leading-relaxed">
                         {t.features && t.features.length > 0 ? (
                           <ul className="list-disc pl-3 space-y-0.5">
                             {t.features.map((f, fIdx) => (
-                              <li key={fIdx}>{f}</li>
+                              <li key={fIdx} className="break-words">{f}</li>
                             ))}
                           </ul>
                         ) : (
                           "—"
                         )}
                       </td>
-                      <td className="py-2 px-3 font-mono font-medium text-right text-neutral-900">
+                      <td className="py-2 px-3 font-mono font-medium text-right text-neutral-900 whitespace-nowrap">
                         {t.projectedContributionPct !== undefined ? `${t.projectedContributionPct}%` : "—"}
                       </td>
                     </tr>
@@ -492,10 +492,10 @@ export default function BusinessModelPrintView({
               {assumptions.map((item, idx) => (
                 <div key={idx} className="border border-neutral-200 rounded p-2.5 bg-neutral-50/50 flex flex-col justify-between text-xs">
                   <div>
-                    <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-500">
+                    <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-500 break-words">
                       {item.category}
                     </div>
-                    <p className="text-[10.5px] text-neutral-800 mt-1 leading-snug">
+                    <p className="text-[10.5px] text-neutral-800 mt-1 leading-relaxed break-words">
                       {item.assumption}
                     </p>
                   </div>
@@ -504,13 +504,17 @@ export default function BusinessModelPrintView({
                     <span
                       className={`text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded ${
                         item.evidenceLevel === "evidenced"
-                          ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                          ? "bg-teal-50 text-teal-800 border border-teal-300"
                           : item.evidenceLevel === "modelled"
-                          ? "bg-amber-100 text-amber-800 border border-amber-300"
-                          : "bg-neutral-200 text-neutral-700 border border-neutral-300"
+                          ? "bg-amber-50 text-amber-800 border border-amber-300"
+                          : "bg-neutral-100 text-neutral-600 border border-neutral-300"
                       }`}
                     >
-                      {item.evidenceLevel || "UNTESTED"}
+                      {item.evidenceLevel === "evidenced"
+                        ? "Benchmark-backed"
+                        : item.evidenceLevel === "modelled"
+                        ? "Modelled"
+                        : "Untested"}
                     </span>
                   </div>
                 </div>
