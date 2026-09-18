@@ -253,8 +253,8 @@ async function run() {
     await context.close();
   }
 
-  // 3. Extreme Case Verification (SOM = 0.8%, SAM = 12%)
-  console.log('[Extreme Case] Testing SOM at 0.8% and SAM at 12%...');
+  // 3. Extreme Multi-Line Wrapping Case (Long strings wrapping TAM, SAM, SOM concurrently, SOM = 0.8%, SAM = 12%)
+  console.log('[Extreme Case] Testing simultaneous multi-line wrapping on all tiers, SOM at 0.8% and SAM at 12%...');
   const extremeContext = await browser.newContext({ viewport: { width: 1440, height: 950 } });
   const extremeStudy = {
     ...mockFreshStudy,
@@ -263,22 +263,22 @@ async function run() {
       tam: {
         value: 100000000000,
         currency: 'EUR',
-        label: 'Global Heavy Logistics',
-        derivation: '100B global market ceiling across heavy multimodal freight.',
+        label: 'Global Heavy Multimodal Freight Transport, Maritime Cargo, and Transcontinental Rail Logistics Infrastructure Universe Across All G20 Economies',
+        derivation: 'Calculated from 120,000 enterprise freight consolidators with annual logistics spend exceeding €500k, factoring in baseline telematics instrumentation, legacy ERP dispatch systems, and mandated carbon compliance auditing overhead.',
       },
       sam: {
         value: 12000000000,
         currency: 'EUR',
-        label: 'European Regulated Freight Forwarders',
+        label: 'European Regulated Freight Forwarders, Cross-Border Road Haulage Operators, and Maritime Shippers Subject to Strict CSRD and EU-ETS Directives',
         percentageOfTam: 12,
-        derivation: '12,000 transport operators in EU CSRD regulatory scope.',
+        derivation: '14,500 licensed European transport operators operating within high-density freight corridors with mandatory Scope 3 emissions reporting obligations and verified digital audit requirements by Q3 2026.',
       },
       som: {
         value: 800000000, // 0.8% of TAM
         currency: 'EUR',
-        label: 'Beachhead EU Sustainable Shippers',
+        label: 'Initial Beachhead Target (France, DACH & Benelux Multimodal Logistics Forwarders with Existing Cloud ERP & Automated Telematics)',
         percentageOfSam: 6.7,
-        derivation: '800 key enterprise logistics accounts onboarded within 24 months.',
+        derivation: '850 high-priority target shippers onboarded across the initial 24-month direct sales runway via zero-integration API connectors with 99.8% automated accuracy SLAs.',
       },
     },
   };
