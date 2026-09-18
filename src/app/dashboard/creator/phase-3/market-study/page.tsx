@@ -383,8 +383,8 @@ export default function MarketStudyPage() {
                 {/* Level 1: TAM Row (100% Bar on Left + Aligned Content Right) */}
                 <div className="w-full rounded-xl border border-border/70 bg-muted/20 dark:bg-muted/15 p-4 transition-all">
                   <div className="flex flex-col md:flex-row md:items-center gap-4 lg:gap-6">
-                    {/* Visual Bar Track on the Left */}
-                    <div className="w-full md:w-56 lg:w-64 xl:w-72 h-8 bg-muted/40 dark:bg-muted/30 rounded-lg p-1 flex items-center shrink-0 border border-border/40">
+                    {/* Visual Bar Area on the Left (No Track Background) */}
+                    <div className="w-full md:w-80 lg:w-96 xl:w-[420px] h-8 flex items-center shrink-0">
                       <div
                         style={{ width: '100%' }}
                         className="h-full rounded-md flex items-center justify-center font-mono text-[11px] font-bold bg-muted-foreground/25 dark:bg-muted-foreground/30 text-foreground transition-all duration-300"
@@ -425,13 +425,13 @@ export default function MarketStudyPage() {
                 {/* Level 2: SAM Row (Proportional Bar on Left + Aligned Content Right) */}
                 <div className="w-full rounded-xl border border-border/70 bg-muted/20 dark:bg-muted/15 p-4 transition-all">
                   <div className="flex flex-col md:flex-row md:items-center gap-4 lg:gap-6">
-                    {/* Visual Bar Track on the Left */}
-                    <div className="w-full md:w-56 lg:w-64 xl:w-72 h-8 bg-muted/40 dark:bg-muted/30 rounded-lg p-1 flex items-center shrink-0 border border-border/40">
+                    {/* Visual Bar Area on the Left (No Track Background) */}
+                    <div className="w-full md:w-80 lg:w-96 xl:w-[420px] h-8 flex items-center shrink-0">
                       <div
                         style={{ width: `${samWidthPct}%` }}
-                        className="h-full min-w-[3px] rounded-md flex items-center justify-center font-mono text-[11px] font-bold bg-muted-foreground/25 dark:bg-muted-foreground/30 text-foreground transition-all duration-300 overflow-hidden"
+                        className="h-full min-w-[4px] rounded-md flex items-center justify-center font-mono text-[11px] font-bold bg-muted-foreground/25 dark:bg-muted-foreground/30 text-foreground transition-all duration-300 overflow-hidden"
                       >
-                        {samWidthPct >= 18 ? <span>SAM</span> : null}
+                        {samWidthPct >= 14 ? <span>SAM</span> : null}
                       </div>
                     </div>
 
@@ -470,13 +470,13 @@ export default function MarketStudyPage() {
                 {/* Level 3: SOM Row (Proportional Bar on Left + Aligned Content Right + Teal Focus) */}
                 <div className="w-full rounded-xl border border-teal-500/30 bg-teal-500/5 dark:bg-teal-500/10 p-4 transition-all">
                   <div className="flex flex-col md:flex-row md:items-center gap-4 lg:gap-6">
-                    {/* Visual Bar Track on the Left */}
-                    <div className="w-full md:w-56 lg:w-64 xl:w-72 h-8 bg-teal-500/10 dark:bg-teal-500/15 rounded-lg p-1 flex items-center shrink-0 border border-teal-500/20">
+                    {/* Visual Bar Area on the Left (No Track Background) */}
+                    <div className="w-full md:w-80 lg:w-96 xl:w-[420px] h-8 flex items-center shrink-0">
                       <div
                         style={{ width: `${somWidthPct}%` }}
-                        className="h-full min-w-[3px] rounded-md flex items-center justify-center font-mono text-[11px] font-bold bg-teal-500 text-teal-950 shadow-sm transition-all duration-300 overflow-hidden"
+                        className="h-full min-w-[4px] rounded-md flex items-center justify-center font-mono text-[11px] font-bold bg-teal-500 text-teal-950 shadow-sm transition-all duration-300 overflow-hidden"
                       >
-                        {somWidthPct >= 18 ? <span>SOM</span> : null}
+                        {somWidthPct >= 14 ? <span>SOM</span> : null}
                       </div>
                     </div>
 
