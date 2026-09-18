@@ -785,6 +785,12 @@ The rule: matchmaking is unavailable across P1–P5 and unlocks only at P6. The 
 - **Phase 4 Platform Builder Placeholder Removed (§6.3):** Removed the disabled `"Use Platform Builder coming soon"` button from the web presence checklist in `Phase4Gtm.tsx`.
 - **Phase 4 Dynamic Tier Clamping (§6.1):** Added dynamic tier addition (`addTier`, capped at 5) and deletion (`removeTier`, floored at 3) controls to `Phase4Pricing.tsx` with live counter header `({tiers.length}/5)`, aligning the UI with backend validation rules (3–5 tiers).
 - **Transaction Guard Verification (§8.3):** Confirmed `Mongo:TransactionsEnabled: true` in all environment configs and verified `StartupConfigValidation` enforces it at boot; non-transactional fallback in `CreatorPhase6Controller` is strictly guarded by `_isDevelopment` for mock test suites and returns HTTP 503 in production.
+**2026-09-19 — Stage 2: Product-Wide Typography Scale Migration (Phase 2 & Brand Studio).**
+- **Canonical Role Token Migration:** Replaced 100% of arbitrary bracket font sizes (`text-[9px]`, `text-[10px]`, `text-[11px]`, `text-[13px]`, `text-[15px]`) across all Phase 2 pages and Brand Studio components with the product-wide semantic scale (`text-page-heading`, `text-section-title`, `text-card-title`, `text-body`, `text-label`, `text-input`, `text-button`, `text-caption`, `text-table-header`, `text-footnote`, `text-badge`, `text-stat-lg`, `text-stat-xl`).
+- **Zero Arbitrary Brackets:** Zero `text-[...px]` values remain in Phase 2 or Brand Studio source code.
+- **Mono-on-Prose Leakage Resolution:** Removed `font-mono` on natural language paragraphs (Audience, Positioning, Concept summaries, and loading messages) in `BrandKitHubView.tsx` and `VariationSetModal.tsx`, restoring `font-sans text-body`. `font-mono` is strictly restricted to HEX/RGB values, character counts, file sizes, step numbers, and telemetry.
+- **Viewport Scroll Measurement Audit:** Measured all 7 Brand Studio modals at 1440×900 and 1920×1080 across Light and Dark themes. Verified that all internal containers maintain clean overflow scrolling with sticky header/footer action strips.
+- **Build Breakage Audit & Reconciliation:** Resolved pre-existing TypeScript and JSX compilation breaks in `PlanForecastPrintView.tsx`, `asset-library/page.tsx`, `investors/page.tsx`, `api-creator-journey.ts`, `myideas/page.tsx`, `phase-3/forecast/page.tsx`, and `complete/page.tsx`. Next.js build clean with 181/181 routes prerendered.
 
 ---
 
