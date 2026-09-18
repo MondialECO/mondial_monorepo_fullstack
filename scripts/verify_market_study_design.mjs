@@ -274,10 +274,10 @@ async function run() {
         derivation: '14,500 licensed European transport operators operating within high-density freight corridors with mandatory Scope 3 emissions reporting obligations and verified digital audit requirements by Q3 2026.',
       },
       som: {
-        value: 6700000000, // 6.7% of TAM (SAM is 12%, SOM is 6.7%)
+        value: 800000000, // 0.8% of TAM (sub-1% extreme case)
         currency: 'EUR',
         label: 'Initial Beachhead Target (France, DACH & Benelux Multimodal Logistics Forwarders with Existing Cloud ERP & Automated Telematics)',
-        percentageOfSam: 55.8,
+        percentageOfSam: 6.7,
         derivation: '850 high-priority target shippers onboarded across the initial 24-month direct sales runway via zero-integration API connectors with 99.8% automated accuracy SLAs.',
       },
     },
