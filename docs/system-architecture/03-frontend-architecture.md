@@ -181,7 +181,7 @@ Semantic Internal Content Container (max-w-7xl, max-w-5xl, max-w-4xl, or full-wi
 
 ---
 
-## 6. Creator Phase 3 Full-Width Architecture & Normalization
+## 6. Creator Phase 3 Layout Architecture — FINAL / FROZEN
 
 All Creator Phase 3 routes (`/dashboard/creator/phase-3/**`) have been normalized to use the **FULL AVAILABLE DASHBOARD MAIN WIDTH**, operating strictly inside the frozen global MBC screen-size architecture without modifying the root layout, sidebar, or global 1920px frame.
 
@@ -208,15 +208,16 @@ Outer page clamps (`max-w-4xl`, `max-w-5xl`, `max-w-6xl`, `max-w-7xl`, `mx-auto`
 
 ### D. Route Inventory & Status Classification
 
+| Route | Page Component | Shell / Outer Container | Page Type | Status Classification | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `/dashboard/creator/phase-3` | `page.tsx` | Index redirect | `OTHER` | `FULL-WIDTH RESOLVED` | Redirects to Step 3.1 |
-| `/dashboard/creator/phase-3/market-study` | `market-study/page.tsx` | `Phase3SetupShell` | `ANALYTICS` | `FULL-WIDTH RESOLVED` | Full width analytics, TAM/SAM/SOM funnel |
-| `/dashboard/creator/phase-3/business-model` | `business-model/page.tsx` | `Phase3SetupShell` | `GRID` | `INTERNAL RESPONSIVE RESOLVED` | Progressive responsive grid (1-col <768px, 2-col 768px–1279px with full-width Value Prop, 3-col 1280px–1727px with 2-col Customer Segments, 5-col >=1728px). Usable card widths >=240px across all desktop widths. Root overflow: 0px. |
-| `/dashboard/creator/phase-3/forecast` | `forecast/page.tsx` | `Phase3SetupShell` | `DATA TABLE` / `ANALYTICS` | `FULL-WIDTH RESOLVED` | Full width charts (`ResponsiveContainer width="100%"`), local `overflow-x-auto` table |
-| `/dashboard/creator/phase-3/compliance` | `compliance/page.tsx` | `Phase3SetupShell` | `WORKSPACE` | `COMPLIANCE RESPONSIVE RESOLVED` | Center canvas normalized: 800px at 1440px, 960px at 1600px, 744px at 1728px, 936px at 1920px. AI Guide rail collapses to on-demand Sheet on 1024px–1727px and docks permanently on >=1728px (3xl). Root overflow: 0px. |
-| `/dashboard/creator/phase-3/formation` | `formation/page.tsx` | `Phase3SetupShell` | `FORM` | `FULL-WIDTH RESOLVED` | Entity structure cards, skills assessment grid |
-| `/dashboard/creator/phase-3/business-plan` | `business-plan/page.tsx` | `Phase3SetupShell` | `DOCUMENT` | `FULL-WIDTH RESOLVED` | Full width 12-col layout; readable document body |
-| `/dashboard/creator/phase-3/complete` | `complete/page.tsx` | `w-full min-w-0` | `COMPLETION` | `FULL-WIDTH RESOLVED` | Full width outer shell; focused inner audit cards (`max-w-4xl mx-auto`) |
+| `/dashboard/creator/phase-3` | `page.tsx` | Index redirect | `OTHER` | `LAYOUT VERIFIED / FROZEN` | Redirects to Step 3.1 |
+| `/dashboard/creator/phase-3/market-study` | `market-study/page.tsx` | `Phase3SetupShell` | `ANALYTICS` | `LAYOUT VERIFIED / FROZEN` | Full width analytics, TAM/SAM/SOM funnel |
+| `/dashboard/creator/phase-3/business-model` | `business-model/page.tsx` | `Phase3SetupShell` | `GRID` | `LAYOUT VERIFIED / FROZEN` | Progressive responsive grid (1-col <768px, 2-col 768px–1279px with full-width Value Prop, 3-col 1280px–1727px with 2-col Customer Segments, 5-col >=1728px). Usable card widths >=240px across all desktop widths. Root overflow: 0px. |
+| `/dashboard/creator/phase-3/forecast` | `forecast/page.tsx` | `Phase3SetupShell` | `DATA TABLE` / `ANALYTICS` | `LAYOUT VERIFIED / FROZEN` | Full width charts (`ResponsiveContainer width="100%"`), local `overflow-x-auto` table |
+| `/dashboard/creator/phase-3/compliance` | `compliance/page.tsx` | `Phase3SetupShell` | `WORKSPACE` | `LAYOUT VERIFIED / FROZEN` | Center canvas normalized: 800px at 1440px, 960px at 1600px, 744px at 1728px, 936px at 1920px. AI Guide rail collapses to on-demand Sheet on 1024px–1727px and docks permanently on >=1728px (3xl). Root overflow: 0px. |
+| `/dashboard/creator/phase-3/formation` | `formation/page.tsx` | `Phase3SetupShell` | `FORM` | `LAYOUT VERIFIED / FROZEN` | Entity structure cards, skills assessment grid |
+| `/dashboard/creator/phase-3/business-plan` | `business-plan/page.tsx` | `Phase3SetupShell` | `DOCUMENT` | `LAYOUT VERIFIED / FROZEN` | Full width 12-col layout; readable document body |
+| `/dashboard/creator/phase-3/complete` | `complete/page.tsx` | `w-full min-w-0` | `COMPLETION` | `LAYOUT VERIFIED / FROZEN` | Full width outer shell; focused inner audit cards (`max-w-4xl mx-auto`) |
 
 ### E. Measured Geometry Matrix
 
