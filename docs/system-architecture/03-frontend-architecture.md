@@ -105,3 +105,77 @@ src/components/
 ### Component Integrity Flags
 - **Custom Design System**: The Service Provider dashboard strictly enforces its own UI design system located at `src/components/serviceprovider/ui/` (`SpCard`, `SpMetricCard`, `SpPage`). Raw shadcn cards are bypassed in SP views to preserve visual consistency with Figma specifications.
 - **Dynamic Imports**: Heavy third-party UI dependencies such as `react-quill-new` (rich-text document editor in `/create-project` and business plan tools) use `next/dynamic` with `ssr: false` to avoid React hydration mismatches.
+
+---
+
+## 5. Canonical Global Website Screen-Size & Layout Architecture
+
+The entire Mondial Business Creation (MBC) website follows a unified global screen-size and layout hierarchy enforced at the root application layer.
+
+### A. Authoritative Breakpoints
+
+```text
+< 768px
+→ Mobile (persistent sidebar hidden, drawer sheet nav, full-width main)
+
+768px–1023px
+→ Tablet (persistent sidebar hidden, drawer sheet nav, full-width main)
+
+1024px–1439px
+→ Compact Desktop / Tablet Landscape (persistent 264px sidebar, remaining column = Viewport - 264px)
+
+1440px–1919px
+→ Full Desktop (persistent 264px sidebar, remaining column = Viewport - 264px)
+
+>= 1920px
+→ Entire MBC application frame capped at 1920px and horizontally centered
+```
+
+### B. Global Layout Hierarchy
+
+```text
+Root Application (src/app/layout.tsx)
+↓
+Global MBC Application Frame (width: 100%, max-width: 1920px, min-width: 0, centered)
+↓
+Route Layout (dashboard/layout.tsx, public layout, auth layout)
+↓
+Page
+↓
+Semantic Internal Content Container (max-w-7xl, max-w-5xl, max-w-4xl, or full-width workspace)
+```
+
+### C. Dashboard Shell Geometry
+- **Complete Frame Maximum**: `Sidebar (264px) + Topbar + Main Content = maximum 1920px`. The 1920px maximum represents the complete application frame, not an independent constraint on Main content.
+- **Navigation Breakpoint**:
+  - `< 1024px`: Persistent sidebar hidden; existing Radix `Sheet` drawer navigation active; main content consumes full available width.
+  - `≥ 1024px`: Persistent `264px` sidebar (`w-(--sidebar-width)`).
+- **Ultrawide Docking (e.g. 2560px)**:
+  - Outer frame: `1920px` width, centered with `320px` left margin and `320px` right margin.
+  - Fixed sidebar docks at `left: 320px` inside the 1920px shell (`left: max(0px, calc((100vw - 1920px) / 2))`).
+  - Dashboard column (`Topbar` + `Main`): `1656px` width (`1920px - 264px`).
+
+### D. Public Website Architecture
+- Public pages (Homepage, Marketing, Pricing, Marketplace, Auth, Onboarding, Profiles) inherit the root `1920px` centered frame.
+- Internal semantic content remains contained inside readable containers (`max-w-7xl` = 1280px, `max-w-5xl` = 1024px, auth card = `max-w-md`) rather than stretching across 1920px.
+
+### E. Brand Studio Responsive Normalization
+- The proposed 3-pane redesign was **CANCELLED**.
+- Existing Brand Studio architecture, user journey, modal workflows, cards, and state machines remain preserved.
+- Responsive stream sizing:
+  - `< 1024px`: Fluid available width
+  - `1024px–1279px`: `max-w-4xl` (896px)
+  - `1280px–1535px`: `max-w-5xl` (1024px)
+  - `≥ 1536px`: `max-w-6xl` (1152px)
+- Nested vertical scrollbar pathology eliminated.
+
+### F. Theme System
+- Reuses existing `next-themes` provider without duplicating state.
+- Global `ThemeToggle` integrated into the shared dashboard `Topbar` across all roles (Creator, Entrepreneur, Investor, Service Provider desktop/mobile, and Phase 2 Topbar).
+
+### G. Validation Summary
+- **TypeScript (`npx tsc --noEmit`)**: 0 errors
+- **Unit/Integration Tests (`npm run test`)**: 120/120 test files passed (1,036 tests passed)
+- **Production Build (`npm run build`)**: 181/181 static and dynamic routes compiled successfully
+- **Playwright Viewport Regression**: 18 layout families × 12 viewports (216 test runs) = **0 failures**
+

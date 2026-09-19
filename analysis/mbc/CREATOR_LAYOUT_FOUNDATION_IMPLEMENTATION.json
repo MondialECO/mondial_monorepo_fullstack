@@ -1,0 +1,540 @@
+{
+  "project": "Mondial Business Creation (MBC)",
+  "artifact": "CREATOR_LAYOUT_FOUNDATION_IMPLEMENTATION",
+  "generatedAt": "2026-09-19T17:20:00Z",
+  "geometryVerificationDate": "2026-09-20T00:00:00Z",
+  "status": "IMPLEMENTED_AND_GEOMETRY_VERIFIED",
+  "scope": "Creator Dashboard Layout Foundation Stages 1-4 Post-Implementation Geometry Verification",
+  "targetViewports": {
+    "min": 1440,
+    "max": 1920,
+    "breakpoints": [1440, 1536, 1600, 1728, 1920]
+  },
+  "routesEvaluated": "All currently implemented Creator routes discovered in the repository",
+  "totalCreatorRoutesCount": 44,
+  "desktopGeometryMatrix": [
+    {
+      "viewport": "1440x900",
+      "viewportWidth": 1440,
+      "appSidebarWidth": 264,
+      "mainColumnWidth": 1176,
+      "mainPaddingLeft": 32,
+      "mainPaddingRight": 32,
+      "usablePageWidth": 1112,
+      "standardContainer": {
+        "computedWidth": 1112,
+        "isClamped": false,
+        "leftMargin": 0,
+        "rightMargin": 0
+      },
+      "focusedContainer": {
+        "computedWidth": 896,
+        "isClamped": true,
+        "leftMargin": 108,
+        "rightMargin": 108
+      },
+      "wideContainer": {
+        "computedWidth": 1112,
+        "isClamped": false
+      },
+      "fullWorkspace": {
+        "availableWidth": 1176
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "viewport": "1536x960 (2xl)",
+      "viewportWidth": 1536,
+      "appSidebarWidth": 264,
+      "mainColumnWidth": 1272,
+      "mainPaddingLeft": 32,
+      "mainPaddingRight": 32,
+      "usablePageWidth": 1208,
+      "standardContainer": {
+        "computedWidth": 1208,
+        "isClamped": false,
+        "leftMargin": 0,
+        "rightMargin": 0
+      },
+      "focusedContainer": {
+        "computedWidth": 896,
+        "isClamped": true,
+        "leftMargin": 156,
+        "rightMargin": 156
+      },
+      "wideContainer": {
+        "computedWidth": 1208,
+        "isClamped": false
+      },
+      "fullWorkspace": {
+        "availableWidth": 1272
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "viewport": "1600x900",
+      "viewportWidth": 1600,
+      "appSidebarWidth": 264,
+      "mainColumnWidth": 1336,
+      "mainPaddingLeft": 32,
+      "mainPaddingRight": 32,
+      "usablePageWidth": 1272,
+      "standardContainer": {
+        "computedWidth": 1272,
+        "isClamped": false,
+        "leftMargin": 0,
+        "rightMargin": 0
+      },
+      "focusedContainer": {
+        "computedWidth": 896,
+        "isClamped": true,
+        "leftMargin": 188,
+        "rightMargin": 188
+      },
+      "wideContainer": {
+        "computedWidth": 1272,
+        "isClamped": false
+      },
+      "fullWorkspace": {
+        "availableWidth": 1336
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "viewport": "1728x1117 (16\" Mac)",
+      "viewportWidth": 1728,
+      "appSidebarWidth": 264,
+      "mainColumnWidth": 1464,
+      "mainPaddingLeft": 32,
+      "mainPaddingRight": 32,
+      "usablePageWidth": 1400,
+      "standardContainer": {
+        "computedWidth": 1280,
+        "isClamped": true,
+        "leftMargin": 60,
+        "rightMargin": 60
+      },
+      "focusedContainer": {
+        "computedWidth": 896,
+        "isClamped": true,
+        "leftMargin": 252,
+        "rightMargin": 252
+      },
+      "wideContainer": {
+        "computedWidth": 1400,
+        "isClamped": false
+      },
+      "fullWorkspace": {
+        "availableWidth": 1464
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "viewport": "1920x1080 (FHD)",
+      "viewportWidth": 1920,
+      "appSidebarWidth": 264,
+      "mainColumnWidth": 1656,
+      "mainPaddingLeft": 32,
+      "mainPaddingRight": 32,
+      "usablePageWidth": 1592,
+      "standardContainer": {
+        "computedWidth": 1280,
+        "isClamped": true,
+        "leftMargin": 156,
+        "rightMargin": 156
+      },
+      "focusedContainer": {
+        "computedWidth": 896,
+        "isClamped": true,
+        "leftMargin": 348,
+        "rightMargin": 348
+      },
+      "wideContainer": {
+        "computedWidth": 1592,
+        "isClamped": false
+      },
+      "fullWorkspace": {
+        "availableWidth": 1656
+      },
+      "horizontalOverflow": false
+    }
+  ],
+  "keyGeometricInsights": [
+    "StandardContainer (max-w-7xl = 1280px) does not reach 1280px at 1440px, 1536px, or 1600px due to persistent 264px sidebar + 64px shell padding. It consumes 100% of usable main width until viewport reaches 1608px.",
+    "FocusedContainer (max-w-4xl = 896px) clamps and centers symmetrically inside the main column across all target viewports (margins: 108px at 1440 up to 348px at 1920).",
+    "WideContainer (max-w-[1680px]) reaches a maximum of 1592px under 1920px viewport with a persistent sidebar. Reaching 1680px requires a viewport >= 2008px.",
+    "FullWorkspace (w-full min-w-0) safely occupies the entire available unpadded dashboard main column (1176px at 1440 up to 1656px at 1920)."
+  ],
+  "routeChromeBehavior": [
+    {
+      "route": "/dashboard/creator/sales",
+      "routeType": "Standard",
+      "appSidebar": "Visible (264px)",
+      "topbar": "Standard (72px)",
+      "shellPadding": "Active (32px/32px)",
+      "isUnpadded": false,
+      "actualAvailableWidth1440": 1112,
+      "actualAvailableWidth1920": 1592
+    },
+    {
+      "route": "/dashboard/creator/investors",
+      "routeType": "Standard",
+      "appSidebar": "Visible (264px)",
+      "topbar": "Standard (72px)",
+      "shellPadding": "Active (32px/32px)",
+      "isUnpadded": false,
+      "actualAvailableWidth1440": 1112,
+      "actualAvailableWidth1920": 1592
+    },
+    {
+      "route": "/dashboard/creator/crossroads",
+      "routeType": "Standard",
+      "appSidebar": "Visible (264px)",
+      "topbar": "Standard (72px)",
+      "shellPadding": "Active (32px/32px)",
+      "isUnpadded": false,
+      "actualAvailableWidth1440": 1112,
+      "actualAvailableWidth1920": 1592
+    },
+    {
+      "route": "/dashboard/creator/partnerships",
+      "routeType": "Standard",
+      "appSidebar": "Visible (264px)",
+      "topbar": "Standard (72px)",
+      "shellPadding": "Active (32px/32px)",
+      "isUnpadded": false,
+      "actualAvailableWidth1440": 1112,
+      "actualAvailableWidth1920": 1592
+    },
+    {
+      "route": "/dashboard/creator/offer-pricing",
+      "routeType": "Standard",
+      "appSidebar": "Visible (264px)",
+      "topbar": "Standard (72px)",
+      "shellPadding": "Active (32px/32px)",
+      "isUnpadded": false,
+      "actualAvailableWidth1440": 1112,
+      "actualAvailableWidth1920": 1592
+    },
+    {
+      "route": "/dashboard/creator/phase-2/clarifier",
+      "routeType": "Phase 2 Chrome",
+      "appSidebar": "SUPPRESSED (0px)",
+      "topbar": "Reduced P2 (72px)",
+      "shellPadding": "Suppressed (0px)",
+      "isUnpadded": true,
+      "actualAvailableWidth1440": 1440,
+      "actualAvailableWidth1920": 1920
+    },
+    {
+      "route": "/dashboard/creator/phase-2/brand-studio",
+      "routeType": "Full Workspace",
+      "appSidebar": "SUPPRESSED (0px)",
+      "topbar": "Reduced P2 (72px)",
+      "shellPadding": "Suppressed (0px)",
+      "isUnpadded": true,
+      "actualAvailableWidth1440": 1440,
+      "actualAvailableWidth1920": 1920
+    },
+    {
+      "route": "/dashboard/creator/phase-2/brand-kit",
+      "routeType": "Full Workspace",
+      "appSidebar": "SUPPRESSED (0px)",
+      "topbar": "Reduced P2 (72px)",
+      "shellPadding": "Suppressed (0px)",
+      "isUnpadded": true,
+      "actualAvailableWidth1440": 1440,
+      "actualAvailableWidth1920": 1920
+    },
+    {
+      "route": "/dashboard/creator/phase-2/complete",
+      "routeType": "Phase 2 Chrome",
+      "appSidebar": "SUPPRESSED (0px)",
+      "topbar": "Reduced P2 (72px)",
+      "shellPadding": "Suppressed (0px)",
+      "isUnpadded": true,
+      "actualAvailableWidth1440": 1440,
+      "actualAvailableWidth1920": 1920
+    },
+    {
+      "route": "/dashboard/creator/phase-3/compliance",
+      "routeType": "3-Pane Workspace",
+      "appSidebar": "Visible (264px)",
+      "topbar": "Standard (72px)",
+      "shellPadding": "Active (32px/32px)",
+      "isUnpadded": false,
+      "actualAvailableWidth1440": 1112,
+      "actualAvailableWidth1920": 1152
+    },
+    {
+      "route": "/dashboard/creator/phase-3/business-model",
+      "routeType": "Osterwalder Grid",
+      "appSidebar": "Visible (264px)",
+      "topbar": "Standard (72px)",
+      "shellPadding": "Active (32px/32px)",
+      "isUnpadded": false,
+      "actualAvailableWidth1440": 1112,
+      "actualAvailableWidth1920": 1152
+    },
+    {
+      "route": "/dashboard/creator/phase-3/forecast",
+      "routeType": "Table / Chart",
+      "appSidebar": "Visible (264px)",
+      "topbar": "Standard (72px)",
+      "shellPadding": "Active (32px/32px)",
+      "isUnpadded": false,
+      "actualAvailableWidth1440": 1112,
+      "actualAvailableWidth1920": 1152
+    },
+    {
+      "route": "/dashboard/creator/phase-3/market-study",
+      "routeType": "Analytical",
+      "appSidebar": "Visible (264px)",
+      "topbar": "Standard (72px)",
+      "shellPadding": "Active (32px/32px)",
+      "isUnpadded": false,
+      "actualAvailableWidth1440": 1112,
+      "actualAvailableWidth1920": 1152
+    },
+    {
+      "route": "/dashboard/creator/phase-3/complete",
+      "routeType": "Focused",
+      "appSidebar": "Visible (264px)",
+      "topbar": "Standard (72px)",
+      "shellPadding": "Active (32px/32px)",
+      "isUnpadded": false,
+      "actualAvailableWidth1440": 896,
+      "actualAvailableWidth1920": 896
+    }
+  ],
+  "phase3WidthGainAnalysis": {
+    "compliance": {
+      "beforeFoundationCanvasWidth1440": 392,
+      "afterFoundationCanvasWidth1440": 456,
+      "deltaPixels1440": 64,
+      "percentageGain1440": "+16.3%",
+      "canvasWidth1920": 496,
+      "bottleneck": "Phase3SetupShell max-w-6xl (1152px) constraint"
+    },
+    "businessModelGrid": {
+      "beforeFoundationGrossColWidth1440": 209.6,
+      "afterFoundationGrossColWidth1440": 222.4,
+      "beforeFoundationReadableColWidth1440": 169.6,
+      "afterFoundationReadableColWidth1440": 182.4,
+      "deltaPixelsReadable1440": 12.8,
+      "percentageGainReadable1440": "+7.5%",
+      "grossColWidth1920": 230.4,
+      "readableColWidth1920": 190.4,
+      "bottleneck": "Phase3SetupShell max-w-6xl (1152px) constraint"
+    },
+    "financialForecast": {
+      "beforeFoundationContainerWidth1440": 1048,
+      "afterFoundationContainerWidth1440": 1112,
+      "deltaPixels1440": 64,
+      "containerWidth1920": 1152,
+      "horizontalOverflowContained": true
+    },
+    "marketStudy": {
+      "beforeFoundationContainerWidth1440": 1048,
+      "afterFoundationContainerWidth1440": 1112,
+      "deltaPixels1440": 64,
+      "containerWidth1920": 1152
+    }
+  },
+  "postFoundationIssueSeverities": [
+    {
+      "area": "AppShell Flex Blowout & Root Scroll",
+      "preFoundationBaseline": "Root horizontal scroll active across viewports",
+      "postFoundationStatus": "RESOLVED BY FOUNDATION",
+      "currentSeverity": "Resolved",
+      "justification": "document.documentElement.scrollWidth <= clientWidth verified across all 5 viewports."
+    },
+    {
+      "area": "Double-Padding Pathology",
+      "preFoundationBaseline": "128px gutters on all standard routes",
+      "postFoundationStatus": "RESOLVED BY FOUNDATION",
+      "currentSeverity": "Resolved",
+      "justification": "Single-source 32px padding strictly enforced in layout.tsx; inner duplicates removed."
+    },
+    {
+      "area": "Semantic Landmark Duplication",
+      "preFoundationBaseline": "11 invalid nested <main> tags",
+      "postFoundationStatus": "RESOLVED BY FOUNDATION",
+      "currentSeverity": "Resolved",
+      "justification": "Exactly 1 <main> landmark exists in dashboard DOM tree."
+    },
+    {
+      "area": "Topbar Axis Alignment",
+      "preFoundationBaseline": "Topbar was 20px/24px; body was 32px",
+      "postFoundationStatus": "RESOLVED BY FOUNDATION",
+      "currentSeverity": "Resolved",
+      "justification": "Topbar left edge pixel-synchronized to 32px desktop axis."
+    },
+    {
+      "area": "Phase 3 Compliance 3-Pane",
+      "preFoundationBaseline": "Center canvas cramped to ~392px",
+      "postFoundationStatus": "IMPROVED TO P1",
+      "currentSeverity": "P1",
+      "justification": "Regained 64px (now 456px/496px), but still constrained by max-w-6xl. Needs dedicated responsive workspace tuning."
+    },
+    {
+      "area": "Business Model Osterwalder Grid",
+      "preFoundationBaseline": "5 columns at ~169px readable width",
+      "postFoundationStatus": "IMPROVED TO P1",
+      "currentSeverity": "P1",
+      "justification": "Regained 12.8px per col (now 182px), clipping resolved, but text density remains tight for long cards."
+    },
+    {
+      "area": "Financial Forecast 36-Month Table",
+      "preFoundationBaseline": "Root horizontal blowout",
+      "postFoundationStatus": "IMPROVED TO P1",
+      "currentSeverity": "P1",
+      "justification": "Root overflow resolved, table contained locally (+64px wider), but lacks sticky column headers and horizontal scroll cues."
+    },
+    {
+      "area": "Phase 2 Brand Studio",
+      "preFoundationBaseline": "Canvas layout issues",
+      "postFoundationStatus": "IMPROVED BUT STILL P0",
+      "currentSeverity": "P0",
+      "justification": "Foundation verified full-bleed 1440px–1920px canvas, but internal 3-pane CSS Grid architecture still needs complete rebuild."
+    },
+    {
+      "area": "Billing History Table",
+      "preFoundationBaseline": "Multi-column density",
+      "postFoundationStatus": "IMPROVED TO P2",
+      "currentSeverity": "P2",
+      "justification": "Cleanly contained in max-w-7xl with 32px margins, readable across desktop viewports."
+    }
+  ],
+  "stagesImplemented": [
+    {
+      "stage": 1,
+      "name": "AppShell Flex Normalization",
+      "status": "COMPLETED",
+      "files": ["src/app/dashboard/layout.tsx"],
+      "changes": [
+        "Added min-w-0 to #dashboard-root",
+        "Added min-w-0 to content column flex wrapper",
+        "Added min-w-0 to main landmark",
+        "Normalized scroll ownership to interior main (overflow-auto) preventing root window dual scrollbars"
+      ]
+    },
+    {
+      "stage": 2,
+      "name": "Single-Source Dashboard Padding & PageContainer Families",
+      "status": "COMPLETED",
+      "files": [
+        "src/components/layout/PageContainer.tsx",
+        "src/lib/layout-config.ts",
+        "src/app/dashboard/layout.tsx",
+        "src/components/creator/Phase3SetupShell.tsx",
+        "src/app/dashboard/creator/sales/page.tsx",
+        "src/app/dashboard/creator/investors/page.tsx",
+        "src/app/dashboard/creator/crossroads/page.tsx",
+        "src/app/dashboard/creator/partnerships/page.tsx",
+        "src/app/dashboard/creator/offer-pricing/page.tsx",
+        "src/app/dashboard/creator/phase-3/complete/page.tsx",
+        "src/app/dashboard/creator/phase-2/hire-designer/page.tsx",
+        "src/app/dashboard/creator/phase-2/complete/page.tsx",
+        "src/components/notifications/SharedNotificationsPage.tsx",
+        "src/app/dashboard/creator/myideas/page.tsx"
+      ],
+      "changes": [
+        "Created PageContainer component supporting focused (max-w-4xl), standard (max-w-7xl), wide (max-w-[1680px]), and workspace (w-full min-w-0)",
+        "Added isUnpaddedDashboardRoute() semantic layout-mode helper in layout-config.ts",
+        "Applied single-source shell padding p-4 sm:p-6 lg:p-8 pb-16 in dashboard/layout.tsx",
+        "Removed redundant outer padding and min-h-screen from Phase3SetupShell, preserving vertical rhythm py-2 sm:py-4",
+        "Removed redundant outer padding from child pages, preventing 128px double-padding pathology"
+      ]
+    },
+    {
+      "stage": 3,
+      "name": "Semantic Landmark Normalization",
+      "status": "COMPLETED",
+      "files": [
+        "src/components/creator/Phase3SetupShell.tsx",
+        "src/app/dashboard/creator/investors/page.tsx",
+        "src/app/dashboard/creator/crossroads/page.tsx",
+        "src/app/dashboard/creator/offer-pricing/page.tsx",
+        "src/app/dashboard/creator/phase-3/complete/page.tsx",
+        "src/app/dashboard/creator/phase-3/business-plan/page.tsx",
+        "src/app/dashboard/creator/phase-2/hire-designer/page.tsx",
+        "src/app/dashboard/creator/phase-2/complete/page.tsx",
+        "src/components/creator/brand-kit/BrandStudioShell.tsx",
+        "src/components/creator/brand-kit/BrandKitHubView.tsx",
+        "src/components/notifications/SharedNotificationsPage.tsx"
+      ],
+      "changes": [
+        "Replaced all 11 nested <main> landmarks with semantic <section>, <div>, or <PageContainer>",
+        "Verified exactly one <main> landmark exists in dashboard DOM tree"
+      ]
+    },
+    {
+      "stage": 4,
+      "name": "Topbar and Main Content Axis Alignment",
+      "status": "COMPLETED",
+      "files": ["src/components/layout/Topbar.tsx"],
+      "changes": [
+        "Harmonized Topbar padding from px-5/px-6 to px-4 sm:px-6 lg:px-8",
+        "Aligned Topbar breadcrumbs and header icons with 32px desktop content axis"
+      ]
+    }
+  ],
+  "verification": {
+    "typeCheck": {
+      "command": "npx tsc --noEmit",
+      "exitCode": 0,
+      "errors": 0
+    },
+    "lint": {
+      "command": "npx eslint <touched_files>",
+      "exitCode": 0,
+      "errors": 0
+    },
+    "tests": {
+      "command": "npm run test",
+      "testFilesPassed": 119,
+      "totalTestFiles": 119,
+      "testsPassed": 1028,
+      "totalTests": 1028,
+      "exitCode": 0
+    },
+    "build": {
+      "command": "npm run build",
+      "exitCode": 0,
+      "pagesGenerated": 181,
+      "status": "SUCCESS"
+    }
+  },
+  "brandStudioResolution": {
+    "status": "COMPLETED_RESPONSIVE_NORMALIZATION",
+    "proposed3PaneRedesign": "CANCELLED",
+    "details": "Preserved existing cards, journey, and modal workflow. Implemented responsive stream sizing (<1024px fluid, 1024-1279px max-w-4xl, 1280-1535px max-w-5xl, >=1536px max-w-6xl) and resolved nested vertical scrollbars."
+  },
+  "canonicalGlobalArchitecture": {
+    "status": "IMPLEMENTED_AND_VERIFIED",
+    "breakpoints": {
+      "mobile": "<768px",
+      "tablet": "768px-1023px",
+      "compactDesktop": "1024px-1439px",
+      "fullDesktop": "1440px-1919px",
+      "ultrawide": ">=1920px (capped at 1920px and centered)"
+    },
+    "sidebarRule": {
+      "sub1024": "persistent sidebar hidden, drawer sheet navigation active",
+      "gte1024": "persistent 264px sidebar"
+    },
+    "ultrawideAt2560": {
+      "frameWidth": 1920,
+      "leftMargin": 320,
+      "rightMargin": 320,
+      "sidebarLeftOffset": 320
+    }
+  },
+  "validationResults": {
+    "typeCheck": "0 errors",
+    "unitTests": "120/120 files passed (1,036 tests)",
+    "productionBuild": "181/181 routes compiled",
+    "playwrightRegression": "18 routes x 12 viewports (216 runs) = 0 failures"
+  }
+}

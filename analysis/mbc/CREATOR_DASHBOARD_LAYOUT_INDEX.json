@@ -1,0 +1,1137 @@
+{
+  "auditName": "Mondial Business Creation (MBC) Creator Dashboard Layout & Responsive Audit Index",
+  "targetRange": "1440px -> 1920px",
+  "testedBreakpoints": [
+    1440,
+    1536,
+    1600,
+    1728,
+    1920
+  ],
+  "generatedAt": "2026-09-19T16:54:27.178Z",
+  "totalAuditedRoutes": 33,
+  "routes": [
+    {
+      "phase": "Phase 0 / Hub",
+      "route": "/dashboard/creator",
+      "component": "CreatorDashboardHome",
+      "file": "src/app/dashboard/creator/page.tsx",
+      "pageType": "Type B — Dashboard / Overview",
+      "currentStrategy": "max-w-[1136px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "1112px available space comfortably fits 1136px container; 4 KPI cards scale to 266px."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Comfortable presentation, cards remain readable."
+        },
+        "w1600": {
+          "status": "MINOR ISSUE",
+          "note": "1136px container leaves 200px empty margins on both sides; begins to feel narrow."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "Significant dead margin space (328px total margins); content locked to center ribbon."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "Over 456px of dead screen margins; 4 KPI cards cannot expand to use available 1592px canvas."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Hardcoded max-w-[1136px] prevents 4-column KPI grid from taking advantage of wide displays. Redundant internal breadcrumb rendered directly below Topbar."
+    },
+    {
+      "phase": "Phase 1",
+      "route": "/dashboard/creator/phase-1",
+      "component": "CreatorPhase1Page -> CreatorPhase1Client",
+      "file": "src/app/dashboard/creator/phase-1/client.tsx",
+      "pageType": "Type A — Focused Form / Setup",
+      "currentStrategy": "max-w-[1140px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "12-column split (5-col hero / 7-col checklist) fits comfortably within 1112px content area."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Proportions remain balanced."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Verification forms remain focused and readable."
+        },
+        "w1728": {
+          "status": "MINOR ISSUE",
+          "note": "Unused lateral margin expands beyond 250px per side."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Unused lateral margin expands beyond 350px per side, though acceptable for focused onboarding."
+        }
+      },
+      "severity": "P3",
+      "mainProblems": "Arbitrary max-w-[1140px] differs from standard dashboard max-w-[1136px] by 4px."
+    },
+    {
+      "phase": "Phase 2",
+      "route": "/dashboard/creator/phase-2",
+      "component": "Phase2EntryPage",
+      "file": "src/app/dashboard/creator/phase-2/page.tsx",
+      "pageType": "Gate / Redirect",
+      "currentStrategy": "Full viewport loader",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Instant client redirect to /phase-2/clarifier."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Instant client redirect."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Instant client redirect."
+        },
+        "w1728": {
+          "status": "PASS",
+          "note": "Instant client redirect."
+        },
+        "w1920": {
+          "status": "PASS",
+          "note": "Instant client redirect."
+        }
+      },
+      "severity": "P3",
+      "mainProblems": "None (transit redirect gate)."
+    },
+    {
+      "phase": "Phase 2",
+      "route": "/dashboard/creator/phase-2/clarifier",
+      "component": "AIClarifierPage",
+      "file": "src/app/dashboard/creator/phase-2/clarifier/page.tsx",
+      "pageType": "Type D — Workspace / Studio",
+      "currentStrategy": "max-w-[1200px] mx-auto, 2-pane flex (1fr + 300px)",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Full-bleed sidebar suppression gives 1440px viewport. 1200px container leaves comfortable 120px margins."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Clean visual balance between transcript (flex-1) and progress sidebar (300px)."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Comfortable reading width."
+        },
+        "w1728": {
+          "status": "MINOR ISSUE",
+          "note": "Sidebar is suppressed yet container is clamped to 1200px, leaving 528px unused screen width."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "720px of empty background screen width; chat input bubble remains capped at 580px."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Clamp to max-w-[1200px] under complete sidebar suppression leaves excessive dead space on wide monitors."
+    },
+    {
+      "phase": "Phase 2",
+      "route": "/dashboard/creator/phase-2/concept-name",
+      "component": "ConceptNamePage",
+      "file": "src/app/dashboard/creator/phase-2/concept-name/page.tsx",
+      "pageType": "Type A — Focused Selection",
+      "currentStrategy": "max-w-[960px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Focused name selection cards (w-[280px]) wrap neatly."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Comfortable centered card layout."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Well proportioned for focused selection."
+        },
+        "w1728": {
+          "status": "MINOR ISSUE",
+          "note": "Centered card looks somewhat isolated inside 1728px viewport."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "960px container inside 1920px leaves 960px (50%) of viewport empty."
+        }
+      },
+      "severity": "P3",
+      "mainProblems": "Arbitrary 960px max width; acceptable for a focused 5-card picker, but structurally uncoupled from system container tokens."
+    },
+    {
+      "phase": "Phase 2",
+      "route": "/dashboard/creator/phase-2/idea-summary",
+      "component": "IdeaSummaryPage",
+      "file": "src/app/dashboard/creator/phase-2/idea-summary/page.tsx",
+      "pageType": "Type A — Focused Document",
+      "currentStrategy": "max-w-[768px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "768px reading column provides optimal 65-75 character line length for summary paragraphs."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Centered reading card remains legible."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Good document readability."
+        },
+        "w1728": {
+          "status": "MINOR ISSUE",
+          "note": "Narrow column floating in wide empty background."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Over 1150px of empty viewport width; needs document-style framing."
+        }
+      },
+      "severity": "P3",
+      "mainProblems": "Lack of document canvas styling (margins read as void rather than intentional page margins)."
+    },
+    {
+      "phase": "Phase 2",
+      "route": "/dashboard/creator/phase-2/branding",
+      "component": "BrandingOptionsPage",
+      "file": "src/app/dashboard/creator/phase-2/branding/page.tsx",
+      "pageType": "Type A — Focused Choice",
+      "currentStrategy": "max-w-[680px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Clean centered 2-choice decision card (AI Studio vs M50 Designer)."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Focused decision interface."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Balanced."
+        },
+        "w1728": {
+          "status": "MINOR ISSUE",
+          "note": "Empty space exceeds 1000px."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Empty space exceeds 1240px; acceptable for a modal-like choice screen."
+        }
+      },
+      "severity": "P3",
+      "mainProblems": "Arbitrary max-w-[680px] container; good reading width but lacks desktop elevation backdrop."
+    },
+    {
+      "phase": "Phase 2",
+      "route": "/dashboard/creator/phase-2/brand-studio",
+      "component": "BrandStudioPage -> BrandStudioShell",
+      "file": "src/components/creator/brand-kit/BrandStudioShell.tsx",
+      "pageType": "Type D — Workspace / Studio",
+      "currentStrategy": "Full-bleed dot grid, card column clamped to max-w-4xl (896px), modal overlays for tools",
+      "doublePadding": false,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "MAJOR ISSUE",
+          "note": "Canonical workspace model (App Sidebar + Agent Rail + Canvas) is completely absent. Full-page dot-grid clamps cards to 896px, leaving 544px empty. Tools open in disruptive modal overlays."
+        },
+        "w1536": {
+          "status": "MAJOR ISSUE",
+          "note": "Result cards remain stuck in narrow 896px column; dot-grid expands needlessly."
+        },
+        "w1600": {
+          "status": "MAJOR ISSUE",
+          "note": "Same issue; over 700px empty grey dot canvas."
+        },
+        "w1728": {
+          "status": "CRITICAL",
+          "note": "Workspace feels hollow. Over 832px of blank dot grid."
+        },
+        "w1920": {
+          "status": "CRITICAL",
+          "note": "Over 1024px (>53%) of screen width is wasted background dots! Card column is lost in screen center."
+        }
+      },
+      "severity": "P0",
+      "mainProblems": "Direct divergence from Canonical Studio Specification (App Sidebar + Agent Rail + Canvas). Instead, AppSidebar is suppressed, tools are hidden inside modals, and canvas cards are clamped to 896px."
+    },
+    {
+      "phase": "Phase 2",
+      "route": "/dashboard/creator/phase-2/brand-kit",
+      "component": "BrandKitPage -> BrandKitHubView",
+      "file": "src/components/creator/brand-kit/BrandKitHubView.tsx",
+      "pageType": "Type B — Hub / Overview",
+      "currentStrategy": "max-w-[1080px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Palette and logo asset grids display with comfortable breathing room."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Clean presentation."
+        },
+        "w1600": {
+          "status": "MINOR ISSUE",
+          "note": "1080px container leaves 520px empty."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "Assets feel unnecessarily confined."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "Over 840px dead margin space."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Nested <main> tag (line 281). Arbitrary max-w-[1080px] does not scale into 4-column swatch grids on wide displays."
+    },
+    {
+      "phase": "Phase 2",
+      "route": "/dashboard/creator/phase-2/hire-designer",
+      "component": "HireDesignerPage",
+      "file": "src/app/dashboard/creator/phase-2/hire-designer/page.tsx",
+      "pageType": "Type B — Catalog / Match",
+      "currentStrategy": "max-w-[1140px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "2-column designer cards fit comfortably."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Good card spacing."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Comfortable layout."
+        },
+        "w1728": {
+          "status": "MINOR ISSUE",
+          "note": "Noticeable side gutters."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "Cards could expand to 3 columns on 1920px if unconstrained."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Nested <main> tag (line 142). Fixed 2-column grid does not adapt to 3 columns at 1920px."
+    },
+    {
+      "phase": "Phase 2",
+      "route": "/dashboard/creator/phase-2/complete",
+      "component": "Phase2CompletePage",
+      "file": "src/app/dashboard/creator/phase-2/complete/page.tsx",
+      "pageType": "Type A — Milestone Complete",
+      "currentStrategy": "max-w-[1000px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Centered celebration cards and next phase preview fit neatly."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Clean spacing."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Good proportion."
+        },
+        "w1728": {
+          "status": "MINOR ISSUE",
+          "note": "Empty space exceeds 700px."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Empty space exceeds 900px."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Nested <main> tag (line 365). Arbitrary max-w-[1000px]."
+    },
+    {
+      "phase": "Phase 3",
+      "route": "/dashboard/creator/phase-3",
+      "component": "Phase3IndexPage",
+      "file": "src/app/dashboard/creator/phase-3/page.tsx",
+      "pageType": "Gate / Redirect",
+      "currentStrategy": "Full viewport loader",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Instant client redirect to /phase-3/market-study."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Instant client redirect."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Instant client redirect."
+        },
+        "w1728": {
+          "status": "PASS",
+          "note": "Instant client redirect."
+        },
+        "w1920": {
+          "status": "PASS",
+          "note": "Instant client redirect."
+        }
+      },
+      "severity": "P3",
+      "mainProblems": "None (transit redirect gate)."
+    },
+    {
+      "phase": "Phase 3",
+      "route": "/dashboard/creator/phase-3/market-study",
+      "component": "MarketStudyPage",
+      "file": "src/app/dashboard/creator/phase-3/market-study/page.tsx",
+      "pageType": "Type C — Data-Intensive Analysis",
+      "currentStrategy": "Phase3SetupShell (max-w-5xl = 1024px)",
+      "doublePadding": true,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "MAJOR ISSUE",
+          "note": "Double padding (128px) plus 1024px clamp compresses competitive landscape matrix into <900px."
+        },
+        "w1536": {
+          "status": "MAJOR ISSUE",
+          "note": "Matrix table columns truncated and wrapped prematurely."
+        },
+        "w1600": {
+          "status": "MAJOR ISSUE",
+          "note": "576px of screen width wasted while data matrix is squeezed."
+        },
+        "w1728": {
+          "status": "CRITICAL",
+          "note": "704px of wasted margin while market sizing TAM/SAM/SOM cards stack vertically."
+        },
+        "w1920": {
+          "status": "CRITICAL",
+          "note": "Over 896px of dead screen space while analytical tables suffer cramped horizontal room."
+        }
+      },
+      "severity": "P1",
+      "mainProblems": "Double-padding pathology (layout p-8 + shell px-8 = 128px). Nested <main> tag. Clamped to max-w-5xl (1024px) when it requires Type C wide analytical presentation."
+    },
+    {
+      "phase": "Phase 3",
+      "route": "/dashboard/creator/phase-3/business-model",
+      "component": "BusinessModelPage",
+      "file": "src/app/dashboard/creator/phase-3/business-model/page.tsx",
+      "pageType": "Type D — Workspace Canvas",
+      "currentStrategy": "Phase3SetupShell fullWidth (max-w-6xl = 1152px)",
+      "doublePadding": true,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "CRITICAL",
+          "note": "Double padding (128px) leaves only 1048px available content width. The Osterwalder 5 columns receive ~209px total (~169px text width after p-5). 14px body text wraps every 2-3 words!"
+        },
+        "w1536": {
+          "status": "MAJOR ISSUE",
+          "note": "Columns gain minor space but remain cramped inside max-w-6xl."
+        },
+        "w1600": {
+          "status": "MAJOR ISSUE",
+          "note": "Canvas is locked to 1152px while 448px sits empty."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "Canvas locked to 1152px; 576px wasted space."
+        },
+        "w1920": {
+          "status": "CRITICAL",
+          "note": "On a 1920px screen, 5 Osterwalder blocks are artificially confined to ~220px each, while >500px of screen space is wasted."
+        }
+      },
+      "severity": "P0",
+      "mainProblems": "Severe column compression at 1440px (169px text width). Double-padding pathology. Missing from isCreatorPhase3FullWidth in DashboardLayout. Nested <main>."
+    },
+    {
+      "phase": "Phase 3",
+      "route": "/dashboard/creator/phase-3/forecast",
+      "component": "FinancialForecastPage",
+      "file": "src/app/dashboard/creator/phase-3/forecast/page.tsx",
+      "pageType": "Type C — Data-Intensive Financial Workspace",
+      "currentStrategy": "Phase3SetupShell fullWidth (max-w-6xl = 1152px)",
+      "doublePadding": false,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "MAJOR ISSUE",
+          "note": "36-month financial trajectory table horizontally overflows and requires scrolling within 1152px container."
+        },
+        "w1536": {
+          "status": "MINOR ISSUE",
+          "note": "Charts display adequately, but table cells remain tight."
+        },
+        "w1600": {
+          "status": "MINOR ISSUE",
+          "note": "Locked to 1152px, leaving 448px unused."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "576px wasted space while 36-month table scrolls horizontally."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "Over 500px dead margin while financial statements are confined inside 1152px."
+        }
+      },
+      "severity": "P1",
+      "mainProblems": "Properly included in isCreatorPhase3FullWidth (single padding), but Phase3SetupShell clamps to max-w-6xl (1152px), preventing 36-month financial tables from expanding into available screen width."
+    },
+    {
+      "phase": "Phase 3",
+      "route": "/dashboard/creator/phase-3/business-plan",
+      "component": "BusinessPlanPage",
+      "file": "src/app/dashboard/creator/phase-3/business-plan/page.tsx",
+      "pageType": "Type A/B — Generated Document View",
+      "currentStrategy": "Phase3SetupShell fullWidth (max-w-6xl = 1152px)",
+      "doublePadding": false,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Readable document flow, single padding."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Good readability."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Stable document width."
+        },
+        "w1728": {
+          "status": "MINOR ISSUE",
+          "note": "Paragraph lines stretch up to 1100px (160+ characters per line), exceeding optimal typographic readability (65-80 chars)."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "Text lines stretch excessively without a persistent sticky Table of Contents sidebar."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Nested <main> tag (line 1133). Paragraphs stretch to full 1152px width without multi-column layout or persistent section outline navigation."
+    },
+    {
+      "phase": "Phase 3",
+      "route": "/dashboard/creator/phase-3/compliance",
+      "component": "ComplianceWorkspacePage",
+      "file": "src/app/dashboard/creator/phase-3/compliance/page.tsx",
+      "pageType": "Type D — 3-Pane Legal Workspace",
+      "currentStrategy": "Phase3SetupShell fullWidth (max-w-6xl = 1152px) with 3 panes (w-72 + flex-1 + w-80 + gap-6)",
+      "doublePadding": true,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "CRITICAL",
+          "note": "Double padding (128px) leaves only 1048px available content width. Left pane (288px) + Right rail (320px) + 2x gaps (48px) = 656px in fixed rails. Center canvas receives only 392px! Legal tasks and cards are crushed to smartphone width!"
+        },
+        "w1536": {
+          "status": "MAJOR ISSUE",
+          "note": "Center canvas expands to only ~480px. Dropzones and status buttons feel severely cramped."
+        },
+        "w1600": {
+          "status": "MAJOR ISSUE",
+          "note": "Clamped to max-w-6xl (1152px), center canvas capped at 496px while 448px of screen width sits completely unused."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "Center canvas remains clamped to 496px; 576px wasted space."
+        },
+        "w1920": {
+          "status": "CRITICAL",
+          "note": "On a 1920px screen, the primary legal workspace is artificially clamped to 496px, wasting >500px at the viewport edges."
+        }
+      },
+      "severity": "P0",
+      "mainProblems": "CRITICAL 1440px USABILITY FAILURE: Missing from isCreatorPhase3FullWidth (incurs 128px double padding) AND clamped to 1152px. Center canvas squashed to 392px at 1440px and 496px at 1920px. Requires full-bleed workspace layout with collapsible AI guide rail."
+    },
+    {
+      "phase": "Phase 3",
+      "route": "/dashboard/creator/phase-3/formation",
+      "component": "FormationPage",
+      "file": "src/app/dashboard/creator/phase-3/formation/page.tsx",
+      "pageType": "Type A — Multi-Step Setup Form",
+      "currentStrategy": "Phase3SetupShell (max-w-5xl = 1024px)",
+      "doublePadding": true,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "MINOR ISSUE",
+          "note": "Double padding (128px) causes slight visual indentation mismatch with topbar."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Co-founder allocation sliders and legal structure cards fit cleanly."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Controlled form width."
+        },
+        "w1728": {
+          "status": "MINOR ISSUE",
+          "note": "Noticeable side gutters."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Over 600px dead space, acceptable for a guided setup form."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Double-padding pathology (128px gutter). Nested <main> tag inside Phase3SetupShell."
+    },
+    {
+      "phase": "Phase 3",
+      "route": "/dashboard/creator/phase-3/complete",
+      "component": "Phase3CompletePage",
+      "file": "src/app/dashboard/creator/phase-3/complete/page.tsx",
+      "pageType": "Type B — Institutional Readiness Audit",
+      "currentStrategy": "max-w-4xl (896px) mx-auto",
+      "doublePadding": true,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "MINOR ISSUE",
+          "note": "Double padding (128px). 896px container fits with 152px side margins."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Diagnostic score card and deduction items format well."
+        },
+        "w1600": {
+          "status": "MINOR ISSUE",
+          "note": "Score card feels narrow."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "Excessive whitespace flanking readiness score card."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "Over 760px of empty space flanks the 896px card."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Nested <main> tag (line 262). Double padding (px-4 sm:px-8 inside layout p-8). Fixed max-w-4xl restricts readiness dashboard."
+    },
+    {
+      "phase": "Phase 4",
+      "route": "/dashboard/creator/offer-pricing",
+      "component": "OfferPricingPage",
+      "file": "src/app/dashboard/creator/offer-pricing/page.tsx",
+      "pageType": "Type A/B — Guided Pricing Setup",
+      "currentStrategy": "max-w-7xl (1280px) mx-auto",
+      "doublePadding": true,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "MINOR ISSUE",
+          "note": "Double padding (128px) leaves 1048px; 1280px container shrinks to fit 1048px."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Tier pricing cards and margin inputs scale well."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Good balance."
+        },
+        "w1728": {
+          "status": "PASS",
+          "note": "Comfortable presentation."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Stepping tabs (max-w-[776px]) do not align with 1280px container."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Nested <main> tag (line 124). Double padding (px-4 sm:px-6 lg:px-8 inside layout p-8). Internal step bar uses arbitrary max-w-[776px]."
+    },
+    {
+      "phase": "Phase 5",
+      "route": "/dashboard/creator/crossroads",
+      "component": "CrossroadsPage",
+      "file": "src/app/dashboard/creator/crossroads/page.tsx",
+      "pageType": "Type B — Strategic Decision Board",
+      "currentStrategy": "max-w-7xl (1280px) mx-auto",
+      "doublePadding": true,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "2 decision cards (Sell on Marketplace vs Operate Venture) split 50/50 cleanly."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Balanced presentation."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Optimal card width."
+        },
+        "w1728": {
+          "status": "PASS",
+          "note": "Controlled card expansion."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Decision cards stretch to ~620px each; text lines stretch somewhat wide."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Nested <main> tag (line 69). Double padding (128px total horizontal gutter)."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/myideas",
+      "component": "MyIdeasPage",
+      "file": "src/app/dashboard/creator/myideas/page.tsx",
+      "pageType": "Type B — Project Portfolio Hub",
+      "currentStrategy": "max-w-[1140px] mx-auto",
+      "doublePadding": true,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Project cards render in 3 columns cleanly."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Comfortable spacing."
+        },
+        "w1600": {
+          "status": "MINOR ISSUE",
+          "note": "1140px clamp leaves 450px dead space."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "Portfolio cards do not expand into 4th column despite ample space."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "Over 450px dead margin; card grid locked at 3 columns."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Double padding (px-4 sm:px-6 inside layout p-8). Fixed max-w-[1140px] prevents 4-column responsive grid on wide displays."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/documents",
+      "component": "DocumentsPage",
+      "file": "src/app/dashboard/creator/documents/page.tsx",
+      "pageType": "Type B — Document Archive Hub",
+      "currentStrategy": "max-w-[1136px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Document cards format well."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Balanced."
+        },
+        "w1600": {
+          "status": "MINOR ISSUE",
+          "note": "Locked to 1136px."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "Over 328px margins."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "Over 456px margins."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Arbitrary max-w-[1136px] container prevents 4-column grid scaling."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/sales",
+      "component": "SalesPage",
+      "file": "src/app/dashboard/creator/sales/page.tsx",
+      "pageType": "Type B — Deal Management Hub",
+      "currentStrategy": "max-w-7xl (1280px) mx-auto",
+      "doublePadding": true,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Deal cards and status summary fit cleanly."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Clean spacing."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Balanced presentation."
+        },
+        "w1728": {
+          "status": "PASS",
+          "note": "Controlled container."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Container stops at 1280px, leaving 312px empty margins."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Double padding (px-4 sm:px-6 lg:px-8 inside layout p-8 = 128px). Internal headings hardcoded with truncate max-w-[280px]."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/investors",
+      "component": "InvestorsPage",
+      "file": "src/app/dashboard/creator/investors/page.tsx",
+      "pageType": "Type B — Matchmaking Hub",
+      "currentStrategy": "max-w-7xl (1280px) mx-auto",
+      "doublePadding": true,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Investor match cards display with good padding."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Clean spacing."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Balanced."
+        },
+        "w1728": {
+          "status": "PASS",
+          "note": "Stable container width."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Side margins expand to 312px."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Nested <main> tag (line 126). Double padding (128px)."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/partnerships",
+      "component": "PartnershipsPage",
+      "file": "src/app/dashboard/creator/partnerships/page.tsx",
+      "pageType": "Type B — Venture Equity Hub",
+      "currentStrategy": "max-w-7xl (1280px) mx-auto",
+      "doublePadding": true,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Equity breakdown and venture cards fit cleanly."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Good spacing."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Balanced."
+        },
+        "w1728": {
+          "status": "PASS",
+          "note": "Stable."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Minor dead margin space."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Double padding (128px)."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/messages",
+      "component": "MessagingWorkspace",
+      "file": "src/components/messaging/MessagingWorkspace.tsx",
+      "pageType": "Type D — Split-Pane Workspace",
+      "currentStrategy": "max-w-[1440px] mx-auto, grid md:grid-cols-[320px_1fr]",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Available 1112px space hosts 320px list + 792px chat thread comfortably."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Chat thread expands naturally."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Comfortable conversation workspace."
+        },
+        "w1728": {
+          "status": "PASS",
+          "note": "Reaches max-w-[1440px] container cap with clean centered presentation."
+        },
+        "w1920": {
+          "status": "PASS",
+          "note": "Remains anchored at 1440px; chat bubbles maintain readable max widths."
+        }
+      },
+      "severity": "P3",
+      "mainProblems": "Fixed height formula h-[calc(100vh-260px)] does not adapt gracefully to varying window heights."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/notifications",
+      "component": "SharedNotificationsPage",
+      "file": "src/components/notifications/SharedNotificationsPage.tsx",
+      "pageType": "Type B — Notifications Feed",
+      "currentStrategy": "max-w-7xl (1280px) mx-auto",
+      "doublePadding": true,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Activity stream cards format cleanly."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Balanced."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Clean presentation."
+        },
+        "w1728": {
+          "status": "PASS",
+          "note": "Stable."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Single-item notification cards stretch to 1280px, causing text to span very wide."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Nested <main> tag (line 96). Double padding (128px). Notification cards stretch to 1280px at 1920px."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/settings",
+      "component": "SettingsPage",
+      "file": "src/app/dashboard/creator/settings/page.tsx",
+      "pageType": "Type A/B — Account Settings",
+      "currentStrategy": "max-w-[1136px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "2-column credential cards and password form fit neatly."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Clean spacing."
+        },
+        "w1600": {
+          "status": "PASS",
+          "note": "Good reading width for settings."
+        },
+        "w1728": {
+          "status": "MINOR ISSUE",
+          "note": "Excessive margin space."
+        },
+        "w1920": {
+          "status": "MINOR ISSUE",
+          "note": "Excessive margin space, but maintains good form ergonomics."
+        }
+      },
+      "severity": "P3",
+      "mainProblems": "Arbitrary max-w-[1136px] container."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/billinghistory",
+      "component": "BillingHistoryPage -> BillingTable",
+      "file": "src/components/billing/BillingTable.tsx",
+      "pageType": "Type C — Data Table",
+      "currentStrategy": "w-full unconstrained container with fixed pixel columns (sum 944px)",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "1112px width accommodates 944px table columns with minor empty space on right."
+        },
+        "w1536": {
+          "status": "MINOR ISSUE",
+          "note": "Empty space on right grows to ~300px."
+        },
+        "w1600": {
+          "status": "MAJOR ISSUE",
+          "note": "Table card expands to 1272px, but data rows stop at 944px; right 328px is blank."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "Empty space on right side of card grows to 456px."
+        },
+        "w1920": {
+          "status": "CRITICAL",
+          "note": "Table card spans 1592px, but all table content is crammed into left 944px. 648px of blank white space sits on right!"
+        }
+      },
+      "severity": "P1",
+      "mainProblems": "Unconstrained w-full container paired with rigid fixed-pixel table columns (w-40, w-24, w-32, w-28, w-52). At 1920px, 648px of blank void is created on the right side of the card. Requires flex-1 column distribution or a constrained Type C container."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/project-studio",
+      "component": "ProjectStudioPage",
+      "file": "src/app/dashboard/creator/project-studio/page.tsx",
+      "pageType": "Type B — Asset Studio Hub",
+      "currentStrategy": "max-w-[1136px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Project metadata cards and version history fit cleanly."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Balanced."
+        },
+        "w1600": {
+          "status": "MINOR ISSUE",
+          "note": "Locked to 1136px."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "328px margins."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "456px margins."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Arbitrary max-w-[1136px] container."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/asset-library",
+      "component": "AssetLibraryPage",
+      "file": "src/app/dashboard/creator/asset-library/page.tsx",
+      "pageType": "Type B — Downloadable Artifacts",
+      "currentStrategy": "Phase3SetupShell (max-w-5xl = 1024px)",
+      "doublePadding": true,
+      "nestedMain": true,
+      "results": {
+        "w1440": {
+          "status": "MINOR ISSUE",
+          "note": "Double padding (128px) plus 1024px clamp compresses 3-column asset grid."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Artifact cards fit reasonably."
+        },
+        "w1600": {
+          "status": "MINOR ISSUE",
+          "note": "Locked to 1024px."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "576px wasted space."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "Over 700px wasted space."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Double-padding pathology. Wrapped in Phase3SetupShell without being a Phase 3 step, forcing 1024px clamp."
+    },
+    {
+      "phase": "Hub",
+      "route": "/dashboard/creator/ai",
+      "component": "CreatorAiWorkspace",
+      "file": "src/components/creator/ai/CreatorAiWorkspace.tsx",
+      "pageType": "Type A/B — Unified AI Generator Console",
+      "currentStrategy": "max-w-[960px] mx-auto",
+      "doublePadding": false,
+      "nestedMain": false,
+      "results": {
+        "w1440": {
+          "status": "PASS",
+          "note": "Single-column generator accordion stacks cleanly."
+        },
+        "w1536": {
+          "status": "PASS",
+          "note": "Clean centered presentation."
+        },
+        "w1600": {
+          "status": "MINOR ISSUE",
+          "note": "Console feels narrow on 1600px desktop."
+        },
+        "w1728": {
+          "status": "MAJOR ISSUE",
+          "note": "Over 500px dead margin."
+        },
+        "w1920": {
+          "status": "MAJOR ISSUE",
+          "note": "Over 632px dead margin flanking generator console."
+        }
+      },
+      "severity": "P2",
+      "mainProblems": "Arbitrary max-w-[960px] container locks AI generator console into narrow column."
+    }
+  ]
+}
