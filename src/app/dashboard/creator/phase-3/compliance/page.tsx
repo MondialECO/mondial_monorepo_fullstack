@@ -42,6 +42,13 @@ import { LegalEvidenceVaultView } from '@/components/creator/legal/LegalEvidence
 import { cn } from '@/lib/utils';
 import { FolderCheck } from 'lucide-react';
 import { withIdeaContext } from '@/lib/creator-routes';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 
 export default function ComplianceWorkspacePage() {
   const router = useRouter();
@@ -64,6 +71,7 @@ export default function ComplianceWorkspacePage() {
   const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false);
   const [evidenceItemTarget, setEvidenceItemTarget] = useState<ExtendedLegalChecklistItem | null>(null);
   const [isChangeReviewOpen, setIsChangeReviewOpen] = useState(false);
+  const [isAiGuideOpen, setIsAiGuideOpen] = useState(false);
 
   // Authoritative overview query (Stage 5 API)
   const {
@@ -462,41 +470,56 @@ export default function ComplianceWorkspacePage() {
       {!overviewLoading && !overviewError && overview?.hasAssessment && assessment && (
         <div className="space-y-6">
           {/* Workspace Primary Section Switcher */}
-          <div className="flex items-center gap-2 border-b border-border/80 pb-3">
-            <button
-              type="button"
-              onClick={() => setWorkspaceView('roadmap')}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all',
-                workspaceView === 'roadmap'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              )}
-            >
-              <Layers className="w-3.5 h-3.5" />
-              Legal Roadmap & Requirements
-            </button>
-            <button
-              type="button"
-              onClick={() => setWorkspaceView('vault')}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all',
-                workspaceView === 'vault'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              )}
-            >
-              <FolderCheck className="w-3.5 h-3.5" />
-              Evidence Vault & Audit Trail
-              {(documents.length > 0 || (overview.evidenceLinks?.length ?? 0) > 0) && (
-                <Badge
-                  variant={workspaceView === 'vault' ? 'secondary' : 'outline'}
-                  className="text-[10px] px-1.5 py-0 font-mono ml-0.5"
-                >
-                  {overview.evidenceLinks?.length ?? documents.length}
-                </Badge>
-              )}
-            </button>
+          <div className="flex items-center justify-between border-b border-border/80 pb-3 gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setWorkspaceView('roadmap')}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all',
+                  workspaceView === 'roadmap'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                )}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                Legal Roadmap & Requirements
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkspaceView('vault')}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all',
+                  workspaceView === 'vault'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                )}
+              >
+                <FolderCheck className="w-3.5 h-3.5" />
+                Evidence Vault & Audit Trail
+                {(documents.length > 0 || (overview.evidenceLinks?.length ?? 0) > 0) && (
+                  <Badge
+                    variant={workspaceView === 'vault' ? 'secondary' : 'outline'}
+                    className="text-[10px] px-1.5 py-0 font-mono ml-0.5"
+                  >
+                    {overview.evidenceLinks?.length ?? documents.length}
+                  </Badge>
+                )}
+              </button>
+            </div>
+
+            {/* AI Guide Trigger (Visible on-demand when rail is collapsed below 1728px) */}
+            {workspaceView === 'roadmap' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAiGuideOpen(true)}
+                className="3xl:hidden flex items-center gap-1.5 text-xs font-medium rounded-xl h-8 px-3 border-border hover:bg-muted/60"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                <span>AI Guide</span>
+              </Button>
+            )}
           </div>
 
           {/* VIEW A: EVIDENCE VAULT & AUDIT TRAIL */}
@@ -561,15 +584,39 @@ export default function ComplianceWorkspacePage() {
                 onGoToStage={handleSelectStage}
                 evidenceLinks={overview.evidenceLinks}
                 onViewInVault={() => setWorkspaceView('vault')}
+                onOpenAiGuide={() => setIsAiGuideOpen(true)}
               />
 
               {/* RIGHT PANE: Contextual AI Assistant Rail */}
-              <LegalAiGuideRail
-                selectedItem={selectedItem}
-                detectedArchetypes={overview.detectedArchetypes}
-              />
+              {/* Stacked on mobile/tablet (<1024px), Collapsed to Sheet on 1024px–1727px, Docked on >= 1728px (3xl) */}
+              <div className="w-full lg:hidden 3xl:block 3xl:w-auto shrink-0">
+                <LegalAiGuideRail
+                  selectedItem={selectedItem}
+                  detectedArchetypes={overview.detectedArchetypes}
+                />
+              </div>
             </div>
           )}
+
+          {/* On-Demand AI Guide Sheet (Accessible below 1728px) */}
+          <Sheet open={isAiGuideOpen} onOpenChange={setIsAiGuideOpen}>
+            <SheetContent
+              side="right"
+              className="w-full sm:max-w-md p-6 pt-12 flex flex-col border-l border-border bg-card overflow-hidden"
+            >
+              <SheetHeader className="sr-only">
+                <SheetTitle>MBC Legal Guide</SheetTitle>
+                <SheetDescription>Contextual statutory guidance and legal intelligence</SheetDescription>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto pr-1">
+                <LegalAiGuideRail
+                  selectedItem={selectedItem}
+                  detectedArchetypes={overview.detectedArchetypes}
+                  className="w-full lg:w-full border-0 shadow-none bg-transparent p-0 rounded-none"
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
 
           {/* Statutory Planning Guidance Notice */}
           <div className="p-4 rounded-2xl bg-muted/30 border border-border/60 text-xs text-muted-foreground flex items-start gap-3 mt-6">
