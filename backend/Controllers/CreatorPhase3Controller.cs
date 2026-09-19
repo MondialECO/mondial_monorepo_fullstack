@@ -5,10 +5,13 @@ using System.Security.Claims;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
+using WebApp.Models.DatabaseModels.Legal;
 using WebApp.Models.Dtos;
 using WebApp.Services.Ai;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
+using WebApp.Services.Legal;
+using WebApp.Services.Repository;
 using WebApp.Services.Repository.Ai;
 
 namespace WebApp.Controllers
@@ -33,16 +36,40 @@ namespace WebApp.Controllers
         private readonly IChatService _chat;
         private readonly IForecastSessionStore _forecasts;
         private readonly IBusinessPlanSessionStore _businessPlans;
+        private readonly ILegalApplicabilityEngine _legalEngine;
+        private readonly BusinessProfileClassifier _profileClassifier;
+        private readonly IFranceLegalRulesCatalog _rulesCatalog;
+        private readonly ILegalFrameworkSectionBuilder _sectionBuilder;
+        private readonly IBusinessModelSessionStore? _businessModels;
+        private readonly IMarketStudySessionStore? _marketStudies;
+        private readonly ICreatorIdeaStore? _ideas;
 
         public CreatorPhase3Controller(
-            ICreatorJourneyService journeys, ISpMatchingService spMatching, IChatService chat,
-            IForecastSessionStore forecasts, IBusinessPlanSessionStore businessPlans)
+            ICreatorJourneyService journeys,
+            ISpMatchingService spMatching,
+            IChatService chat,
+            IForecastSessionStore forecasts,
+            IBusinessPlanSessionStore businessPlans,
+            ILegalApplicabilityEngine? legalEngine = null,
+            BusinessProfileClassifier? profileClassifier = null,
+            IFranceLegalRulesCatalog? rulesCatalog = null,
+            ILegalFrameworkSectionBuilder? sectionBuilder = null,
+            IBusinessModelSessionStore? businessModels = null,
+            IMarketStudySessionStore? marketStudies = null,
+            ICreatorIdeaStore? ideas = null)
         {
             _journeys = journeys;
             _spMatching = spMatching;
             _chat = chat;
             _forecasts = forecasts;
             _businessPlans = businessPlans;
+            _profileClassifier = profileClassifier ?? new BusinessProfileClassifier();
+            _rulesCatalog = rulesCatalog ?? new FranceLegalRulesCatalog(Microsoft.Extensions.Logging.Abstractions.NullLogger<FranceLegalRulesCatalog>.Instance);
+            _legalEngine = legalEngine ?? new LegalApplicabilityEngine(_rulesCatalog, Microsoft.Extensions.Logging.Abstractions.NullLogger<LegalApplicabilityEngine>.Instance);
+            _sectionBuilder = sectionBuilder ?? new LegalFrameworkSectionBuilder();
+            _businessModels = businessModels;
+            _marketStudies = marketStudies;
+            _ideas = ideas;
         }
 
         private string GetUserId() =>
@@ -158,62 +185,25 @@ namespace WebApp.Controllers
             ("Design", "branding", "Brand Designer"),
         };
 
-        // ========================= MODULE 3.3 — LEGAL CHECKLIST =========================
+        // ========================= MODULE 3.3 / 3.5 — LEGAL & COMPLIANCE INTELLIGENCE =========================
 
         // POST /api/creator/ai/legal-checklist/generate
+        // Legacy route upgraded to use deterministic France legal rules engine
         [HttpPost("ai/legal-checklist/generate")]
         public async Task<IActionResult> GenerateLegalChecklist([FromQuery] string ideaId = null)
         {
             try
             {
                 var userId = GetUserId();
-                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced sector/solution
-                var p = journey.Project ?? new CreatorJourneyProject();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+                var p3 = idea.Phase3Data ?? new CreatorPhase3Data();
 
-                bool isFinTech =
-                    string.Equals(p.Sector, "FinTech", StringComparison.OrdinalIgnoreCase) ||
-                    FinTechKeywords.Any(k => (p.Solution ?? "").Contains(k, StringComparison.OrdinalIgnoreCase));
+                var profile = await ExtractCurrentBusinessProfileAsync(userId, idea);
+                var existingItems = p3.LegalAssessment?.Items ?? p3.LegalChecklist?.Items;
 
-                bool typeChosen = !string.IsNullOrEmpty(journey.Phase3Data?.FormationGenerator?.SelectedType);
+                var assessment = _legalEngine.Evaluate(idea.Id, userId, profile, existingItems);
+                var journey = await _journeys.SetLegalAssessmentAsync(userId, assessment, ideaId);
 
-                var items = new List<CreatorLegalChecklistItem>
-                {
-                    // 1–4 universal mandatory
-                    new() { Id = "company-type", Label = "Company type selection", Category = "mandatory", Status = typeChosen ? "done" : "pending" },
-                    new() { Id = "ip-protection", Label = "IP protection (copyright + trademark)", Category = "mandatory", ShowFindSp = true, SpSpecialty = "legal" },
-                    new() { Id = "bank-account", Label = "Business bank account", Category = "mandatory" },
-                    new() { Id = "trademark", Label = "Trademark registration (EUIPO)", Category = "mandatory", ShowFindSp = true, SpSpecialty = "legal" },
-                    // 5–6 always
-                    new() { Id = "gdpr", Label = "GDPR compliance", Category = "mandatory" },
-                    new() { Id = "tos-privacy", Label = "Terms of Service + Privacy Policy", Category = "mandatory", AiGenerable = true },
-                };
-
-                if (isFinTech)
-                {
-                    // 7–8 FinTech-only
-                    items.Add(new() { Id = "pci-dss", Label = "PCI DSS assessment", Category = "mandatory", Badge = "urgent", ShowFindSp = true, SpSpecialty = "compliance" });
-                    items.Add(new() { Id = "fin-reg", Label = "Financial services regulatory check", Category = "mandatory", Badge = "fintech", ShowFindSp = true, SpSpecialty = "compliance" });
-                }
-
-                // Optional pool — fill to exactly 12.
-                var optional = new List<CreatorLegalChecklistItem>
-                {
-                    new() { Id = "shareholder-agreement", Label = "Shareholder agreement", Category = "optional", ShowFindSp = true, SpSpecialty = "legal" },
-                    new() { Id = "rgpd-article30", Label = "RGPD Article 30 register", Category = "optional" },
-                    new() { Id = "employment-contracts", Label = "Employment contract templates", Category = "optional", AiGenerable = true },
-                    new() { Id = "liability-insurance", Label = "Professional liability insurance", Category = "optional" },
-                    new() { Id = "esop-pool", Label = "ESOP pool setup", Category = "optional", ShowFindSp = true, SpSpecialty = "legal" },
-                    // Extra optional so non-FinTech still totals exactly 12 (pool was one short).
-                    new() { Id = "dpa", Label = "Data processing agreement (DPA)", Category = "optional", ShowFindSp = true, SpSpecialty = "legal" },
-                };
-                foreach (var opt in optional)
-                {
-                    if (items.Count >= 12) break;
-                    items.Add(opt);
-                }
-
-                var checklist = new CreatorLegalChecklist { Items = items };
-                journey = await _journeys.SetLegalChecklistAsync(userId, checklist, ideaId);
                 return Ok(ApiResponse.Ok("Legal checklist generated", journey.Phase3Data.LegalChecklist));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
@@ -222,6 +212,7 @@ namespace WebApp.Controllers
         }
 
         // PATCH /api/creator/legal-checklist/item/{itemId}
+        // Legacy route compatibility
         [HttpPatch("legal-checklist/item/{itemId}")]
         public async Task<IActionResult> UpdateLegalItem(string itemId, [FromBody] UpdateChecklistItemRequest request, [FromQuery] string ideaId = null)
         {
@@ -234,6 +225,423 @@ namespace WebApp.Controllers
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // GET /api/creator/legal-compliance/overview
+        [HttpGet("legal-compliance/overview")]
+        public async Task<IActionResult> GetLegalOverview([FromQuery] string ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+                var p3 = idea.Phase3Data ?? new CreatorPhase3Data();
+
+                var officialSources = _rulesCatalog.GetAllRules()
+                    .Select(r => r.OfficialSource)
+                    .Where(s => !string.IsNullOrEmpty(s.Url))
+                    .GroupBy(s => s.Url, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => g.First())
+                    .ToList();
+
+                var assessment = p3.LegalAssessment;
+
+                if (assessment == null)
+                {
+                    return Ok(ApiResponse.Ok("Legal overview", new LegalComplianceOverviewDto
+                    {
+                        HasAssessment = false,
+                        Jurisdiction = _rulesCatalog.Jurisdiction,
+                        RulesVersion = _rulesCatalog.RulesVersion,
+                        PlanningReadinessPct = 0,
+                        StageBreakdown = new List<LegalStageBreakdown>(),
+                        DetectedArchetypes = new List<string>(),
+                        IsPotentiallyOutdated = false,
+                        OfficialSources = officialSources,
+                        Disclaimer = "Planning guidance only. Based on your current business information, MBC identifies statutory requirements applicable in France. Review recommended."
+                    }));
+                }
+
+                // Authoritative dirty / stale detection with structured metadata
+                var currentProfile = await ExtractCurrentBusinessProfileAsync(userId, idea);
+                var staleMetadata = _legalEngine.CheckFreshness(assessment, currentProfile, _rulesCatalog.RulesVersion, _rulesCatalog.Jurisdiction);
+
+                bool isOutdated = staleMetadata.IsStale;
+                assessment.IsPotentiallyOutdated = isOutdated;
+                assessment.StaleMetadata = staleMetadata;
+
+                return Ok(ApiResponse.Ok("Legal overview", new LegalComplianceOverviewDto
+                {
+                    HasAssessment = true,
+                    Assessment = assessment,
+                    Jurisdiction = assessment.Jurisdiction,
+                    RulesVersion = assessment.RulesVersion,
+                    PlanningReadinessPct = assessment.PlanningReadinessPct,
+                    StageBreakdown = assessment.StageBreakdown,
+                    DetectedArchetypes = assessment.DetectedArchetypes,
+                    IsPotentiallyOutdated = isOutdated,
+                    StaleMetadata = staleMetadata,
+                    ReconciliationSummary = assessment.ReconciliationSummary,
+                    OfficialSources = officialSources,
+                    EvidenceLinks = assessment.EvidenceLinks ?? new List<LegalEvidenceLink>(),
+                    EvidenceAuditTrail = assessment.EvidenceAuditTrail ?? new List<LegalEvidenceAuditEntry>(),
+                    Disclaimer = "Planning guidance only. Based on your current business information, MBC identified these requirements as potentially applicable in France. This feature does not constitute statutory legal advice."
+                }));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/legal-compliance/evaluate
+        [HttpPost("legal-compliance/evaluate")]
+        public async Task<IActionResult> EvaluateLegalCompliance([FromQuery] string ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+                var p3 = idea.Phase3Data ?? new CreatorPhase3Data();
+
+                var profile = await ExtractCurrentBusinessProfileAsync(userId, idea);
+                var assessment = _legalEngine.ReconcileAndEvaluate(idea.Id, userId, profile, p3.LegalAssessment);
+                var journey = await _journeys.SetLegalAssessmentAsync(userId, assessment, ideaId);
+
+                return Ok(ApiResponse.Ok("Legal compliance assessment evaluated successfully", journey.Phase3Data.LegalAssessment));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // PATCH /api/creator/legal-compliance/item/{itemId}/status
+        [HttpPatch("legal-compliance/item/{itemId}/status")]
+        public async Task<IActionResult> UpdateLegalComplianceItemStatus(string itemId, [FromBody] UpdateLegalItemStatusRequest request, [FromQuery] string ideaId = null)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request?.Status))
+                    return BadRequest(ApiResponse.Error("Status is required"));
+
+                var userId = GetUserId();
+                var journey = await _journeys.UpdateLegalAssessmentItemStatusAsync(userId, itemId, request.Status, ideaId);
+                return Ok(ApiResponse.Ok("Status updated", journey.Phase3Data.LegalAssessment));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/legal-compliance/item/{itemId}/evidence
+        [HttpPost("legal-compliance/item/{itemId}/evidence")]
+        public async Task<IActionResult> AttachLegalEvidence(string itemId, [FromBody] AttachLegalItemEvidenceRequest request, [FromQuery] string ideaId = null)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request?.DocumentId))
+                    return BadRequest(ApiResponse.Error("DocumentId is required"));
+
+                var userId = GetUserId();
+                var journey = await _journeys.AttachLegalAssessmentItemEvidenceAsync(userId, itemId, request.DocumentId, request.Status, request.Notes, ideaId);
+                return Ok(ApiResponse.Ok("Evidence attached", journey.Phase3Data.LegalAssessment));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/legal-compliance/item/{itemId}/evidence/unlink
+        [HttpPost("legal-compliance/item/{itemId}/evidence/unlink")]
+        public async Task<IActionResult> UnlinkLegalEvidence(string itemId, [FromBody] UnlinkLegalItemEvidenceRequest request, [FromQuery] string ideaId = null)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request?.DocumentId))
+                    return BadRequest(ApiResponse.Error("DocumentId is required"));
+
+                var userId = GetUserId();
+                var journey = await _journeys.UnlinkLegalAssessmentItemEvidenceAsync(userId, itemId, request.DocumentId, ideaId);
+                return Ok(ApiResponse.Ok("Evidence unlinked", journey.Phase3Data.LegalAssessment));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // PATCH /api/creator/legal-compliance/evidence/{linkId}/status
+        [HttpPatch("legal-compliance/evidence/{linkId}/status")]
+        public async Task<IActionResult> UpdateLegalEvidenceStatus(string linkId, [FromBody] UpdateEvidenceStatusRequest request, [FromQuery] string ideaId = null)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request?.Status))
+                    return BadRequest(ApiResponse.Error("Status is required"));
+
+                var userId = GetUserId();
+                var journey = await _journeys.UpdateLegalEvidenceStatusAsync(userId, linkId, request.Status, request.Notes, ideaId);
+                return Ok(ApiResponse.Ok("Evidence status updated", journey.Phase3Data.LegalAssessment));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // POST /api/creator/legal-compliance/evidence/replace
+        [HttpPost("legal-compliance/evidence/replace")]
+        public async Task<IActionResult> ReplaceLegalEvidence([FromBody] ReplaceLegalEvidenceRequest request, [FromQuery] string ideaId = null)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request?.OldLinkId) || string.IsNullOrWhiteSpace(request?.NewDocumentId))
+                    return BadRequest(ApiResponse.Error("OldLinkId and NewDocumentId are required"));
+
+                var userId = GetUserId();
+                var journey = await _journeys.ReplaceLegalEvidenceAsync(userId, request.OldLinkId, request.NewDocumentId, request.Notes, ideaId);
+                return Ok(ApiResponse.Ok("Evidence replaced", journey.Phase3Data.LegalAssessment));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // GET /api/creator/legal-compliance/section-12
+        [HttpGet("legal-compliance/section-12")]
+        public async Task<IActionResult> GetBusinessPlanSection12([FromQuery] string ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var j = await _journeys.GetOrCreateAsync(userId);
+                CreatorIdea? idea = null;
+                if (!string.IsNullOrEmpty(ideaId) && _ideas != null)
+                {
+                    idea = await _ideas.GetOwnedAsync(ideaId, userId);
+                }
+                if (idea == null && _ideas != null)
+                {
+                    var ideas = await _ideas.ListByUserAsync(userId);
+                    idea = ideas.FirstOrDefault(i => string.Equals(i.Status, "active", StringComparison.OrdinalIgnoreCase)) ?? ideas.FirstOrDefault();
+                }
+
+                if (idea == null)
+                    return NotFound(ApiResponse.Error("Venture idea not found"));
+
+                var assessment = idea.Phase3Data?.LegalAssessment;
+                var currentProfile = await ExtractCurrentBusinessProfileAsync(userId, idea);
+
+                if (assessment == null)
+                {
+                    var newAssessment = _legalEngine.Evaluate(idea.Id, userId, currentProfile);
+                    newAssessment.PlanningReadinessPct = _legalEngine.ComputePlanningReadiness(newAssessment.Items);
+                    idea.Phase3Data ??= new CreatorPhase3Data();
+                    idea.Phase3Data.LegalAssessment = newAssessment;
+                    assessment = newAssessment;
+                }
+                else
+                {
+                    var staleMeta = _legalEngine.CheckFreshness(assessment, currentProfile, _rulesCatalog.RulesVersion, _rulesCatalog.Jurisdiction);
+                    assessment.StaleMetadata = staleMeta;
+                    assessment.IsPotentiallyOutdated = staleMeta.IsStale;
+                }
+
+                var catalog = _rulesCatalog.GetCatalog();
+                var dto = _sectionBuilder.Build(assessment, idea, catalog);
+
+                // Manual edit protection: If founder manually edited Section 12 narrative, preserve it!
+                if (!string.IsNullOrEmpty(idea.Phase3Data?.BusinessPlanSessionId) && _businessPlans != null)
+                {
+                    var bpSession = await _businessPlans.GetOwnedAsync(idea.Phase3Data.BusinessPlanSessionId, userId);
+                    var activeVersion = bpSession?.Versions.LastOrDefault(v => v.Version == bpSession.CurrentVersion)
+                                       ?? bpSession?.Versions.LastOrDefault();
+                    if (activeVersion != null && activeVersion.IsEdited && activeVersion.Content != null)
+                    {
+                        if (activeVersion.Content.TryGetValue("legalFramework", out var lfVal) && lfVal.IsBsonDocument)
+                        {
+                            var lfDoc = lfVal.AsBsonDocument;
+                            if (lfDoc.TryGetValue("summary", out var customSummary) && !string.IsNullOrWhiteSpace(customSummary.AsString))
+                            {
+                                dto.Summary = customSummary.AsString;
+                            }
+                        }
+                    }
+                }
+
+                return Ok(ApiResponse.Ok("Section 12 retrieved", dto));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // GET /api/creator/phase-3/freshness
+        [HttpGet("phase-3/freshness")]
+        public async Task<IActionResult> GetPhase3Freshness([FromQuery] string ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
+                var p3 = idea.Phase3Data ?? new CreatorPhase3Data();
+
+                var currentProfile = await ExtractCurrentBusinessProfileAsync(userId, idea);
+                var staleMeta = _legalEngine.CheckFreshness(p3.LegalAssessment, currentProfile, _rulesCatalog.RulesVersion, _rulesCatalog.Jurisdiction);
+
+                var freshness = new Phase3FreshnessOverviewDto
+                {
+                    LegalIsStale = staleMeta.IsStale,
+                    LegalStaleReason = staleMeta.StaleReason,
+                    LegalStaleMetadata = staleMeta,
+                    Section12IsStale = staleMeta.IsStale
+                };
+
+                // Forecast & TAM freshness check
+                decimal? marketStudyTam = null;
+                if (!string.IsNullOrEmpty(p3.MarketStudySessionId) && _marketStudies != null)
+                {
+                    var msSession = await _marketStudies.GetOwnedAsync(p3.MarketStudySessionId, userId);
+                    var msContent = msSession?.Versions.LastOrDefault(v => v.Version == msSession.CurrentVersion)?.Content
+                                 ?? msSession?.Versions.LastOrDefault()?.Content;
+                    if (msContent != null && msContent.TryGetValue("marketSizing", out var msVal) && msVal.IsBsonDocument)
+                    {
+                        var sizing = msVal.AsBsonDocument;
+                        if (sizing.TryGetValue("tam", out var tamVal) && tamVal.IsBsonDocument)
+                        {
+                            var tamDoc = tamVal.AsBsonDocument;
+                            if (tamDoc.TryGetValue("value", out var v) && v.IsNumeric)
+                            {
+                                marketStudyTam = (decimal)v.ToDouble();
+                            }
+                        }
+                    }
+                }
+                freshness.MarketStudyTam = marketStudyTam;
+
+                if (!string.IsNullOrEmpty(p3.ForecastSessionId) && _forecasts != null)
+                {
+                    var fcSession = await _forecasts.GetOwnedAsync(p3.ForecastSessionId, userId);
+                    if (fcSession?.Inputs?.Tam != null)
+                    {
+                        freshness.ForecastTam = (decimal)fcSession.Inputs.Tam.Value;
+                        if (marketStudyTam != null && Math.Abs((decimal)fcSession.Inputs.Tam.Value - marketStudyTam.Value) > 1.0m)
+                        {
+                            freshness.IsTamOverridden = true;
+                        }
+                    }
+
+                    // Check if business model was updated after forecast was created
+                    if (!string.IsNullOrEmpty(p3.BusinessModelSessionId) && _businessModels != null)
+                    {
+                        var bmSession = await _businessModels.GetOwnedAsync(p3.BusinessModelSessionId, userId);
+                        if (bmSession != null && fcSession != null && bmSession.UpdatedAt > fcSession.UpdatedAt.AddMinutes(2))
+                        {
+                            freshness.ForecastNeedsReview = true;
+                            freshness.ForecastReviewReason = "Business model canvas was modified after financial forecast was generated.";
+                        }
+                    }
+                }
+
+                // Business Plan stale sections check
+                var staleSections = new List<string>();
+                if (!string.IsNullOrEmpty(p3.BusinessPlanSessionId) && _businessPlans != null)
+                {
+                    var bpSession = await _businessPlans.GetOwnedAsync(p3.BusinessPlanSessionId, userId);
+                    var activeBpVersion = bpSession?.Versions.LastOrDefault(v => v.Version == bpSession.CurrentVersion)
+                                         ?? bpSession?.Versions.LastOrDefault();
+                    if (activeBpVersion != null)
+                    {
+                        freshness.Section12HasUserEdits = activeBpVersion.IsEdited;
+
+                        // Check Forecast -> Section 07
+                        if (!string.IsNullOrEmpty(p3.ForecastSessionId) && _forecasts != null)
+                        {
+                            var fcSession = await _forecasts.GetOwnedAsync(p3.ForecastSessionId, userId);
+                            if (fcSession != null && fcSession.UpdatedAt > activeBpVersion.UpdatedAt.AddMinutes(2))
+                            {
+                                staleSections.Add("Section 07");
+                            }
+                        }
+
+                        // Check Formation -> Section 08
+                        var formation = p3.FormationGenerator;
+                        if (formation != null && idea.UpdatedAt > activeBpVersion.UpdatedAt.AddMinutes(2))
+                        {
+                            staleSections.Add("Section 08");
+                        }
+
+                        // Check Legal -> Section 12
+                        if (staleMeta.IsStale || (p3.LegalAssessment != null && p3.LegalAssessment.EvaluatedAt > activeBpVersion.UpdatedAt.AddMinutes(2)))
+                        {
+                            staleSections.Add("Section 12");
+                        }
+                    }
+                }
+                freshness.BusinessPlanStaleSections = staleSections;
+                freshness.BusinessPlanIsStale = staleSections.Count > 0;
+
+                // Investor Readiness freshness
+                var ir = p3.InvestorReadinessScore;
+                if (ir != null && ir.EvaluatedAt.HasValue)
+                {
+                    var changedSources = new List<string>();
+                    if (p3.LegalAssessment != null && p3.LegalAssessment.EvaluatedAt > ir.EvaluatedAt.Value.AddMinutes(1))
+                        changedSources.Add("Legal & Compliance");
+                    if (!string.IsNullOrEmpty(p3.ForecastSessionId) && _forecasts != null)
+                    {
+                        var fc = await _forecasts.GetOwnedAsync(p3.ForecastSessionId, userId);
+                        if (fc != null && fc.UpdatedAt > ir.EvaluatedAt.Value.AddMinutes(1))
+                            changedSources.Add("Financial Forecast");
+                    }
+                    if (!string.IsNullOrEmpty(p3.BusinessPlanSessionId) && _businessPlans != null)
+                    {
+                        var bp = await _businessPlans.GetOwnedAsync(p3.BusinessPlanSessionId, userId);
+                        if (bp != null && bp.UpdatedAt > ir.EvaluatedAt.Value.AddMinutes(1))
+                            changedSources.Add("Executive Business Plan");
+                    }
+                    if (changedSources.Count > 0)
+                    {
+                        freshness.ReadinessUpdateAvailable = true;
+                        freshness.ReadinessChangedSources = changedSources;
+                    }
+                }
+
+                freshness.AnyStale = freshness.LegalIsStale || freshness.ForecastNeedsReview || freshness.BusinessPlanIsStale || freshness.ReadinessUpdateAvailable;
+
+                return Ok(ApiResponse.Ok("Freshness overview", freshness));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        private async Task<LegalBusinessProfile> ExtractCurrentBusinessProfileAsync(string userId, CreatorIdea idea)
+        {
+            var p3 = idea.Phase3Data ?? new CreatorPhase3Data();
+
+            BsonDocument? bmContent = null;
+            if (!string.IsNullOrEmpty(p3.BusinessModelSessionId) && _businessModels != null)
+            {
+                var bmSession = await _businessModels.GetOwnedAsync(p3.BusinessModelSessionId, userId);
+                bmContent = bmSession?.Versions.LastOrDefault(v => v.Version == bmSession.CurrentVersion)?.Content
+                            ?? bmSession?.Versions.LastOrDefault()?.Content;
+            }
+
+            BsonDocument? msContent = null;
+            if (!string.IsNullOrEmpty(p3.MarketStudySessionId) && _marketStudies != null)
+            {
+                var msSession = await _marketStudies.GetOwnedAsync(p3.MarketStudySessionId, userId);
+                msContent = msSession?.Versions.LastOrDefault(v => v.Version == msSession.CurrentVersion)?.Content
+                            ?? msSession?.Versions.LastOrDefault()?.Content;
+            }
+
+            BsonDocument? fcContent = null;
+            if (!string.IsNullOrEmpty(p3.ForecastSessionId))
+            {
+                var fcSession = await _forecasts.GetOwnedAsync(p3.ForecastSessionId, userId);
+                fcContent = fcSession?.Versions.LastOrDefault(v => v.Version == fcSession.CurrentVersion)?.Content
+                            ?? fcSession?.Versions.LastOrDefault()?.Content;
+            }
+
+            return _profileClassifier.Classify(idea.Project, bmContent, msContent, fcContent);
         }
 
         // ========================= MODULE 3.4 — FORMATION GENERATOR =========================
@@ -644,10 +1052,18 @@ namespace WebApp.Controllers
                 if (plan == null || !WebApp.Services.Ai.AiSessionSuccess.IsComplete(plan.Status, plan.CurrentVersion))
                     return UnprocessableEntity(ApiResponse.Error("Missing module: business_plan"));
 
-                // Legal checklist is advisory — self-attested checkboxes never block
-                // masterplan completion (ComputeReadiness still scores LegalReadiness from it).
                 if (p3.FormationGenerator == null)
                     return UnprocessableEntity(ApiResponse.Error("Missing module: formation_generator"));
+
+                // New journey completion must include Legal; legacy bypass only for legacy records.
+                bool isLegacyRecord = string.IsNullOrEmpty(p3.MarketStudySessionId) &&
+                                      string.IsNullOrEmpty(p3.BusinessModelSessionId);
+
+                bool legalPresent = p3.LegalAssessment != null || p3.LegalChecklist != null;
+                if (!isLegacyRecord && !legalPresent)
+                {
+                    return UnprocessableEntity(ApiResponse.Error("Missing module: legal_compliance"));
+                }
 
                 var score = ComputeReadiness(journey, forecast);
                 journey = await _journeys.SetInvestorReadinessAsync(userId, score, ideaId);
@@ -665,7 +1081,7 @@ namespace WebApp.Controllers
 
         // 5-dimension weighted investor-readiness score (0–100).
         //  ConceptClarity 20 · MarketEvidence 20 · FinancialModel 25 · LegalReadiness 15 · TeamCredibility 20
-        private static CreatorInvestorReadinessScore ComputeReadiness(CreatorJourney j, ForecastSession forecast)
+        public static CreatorInvestorReadinessScore ComputeReadiness(CreatorJourney j, ForecastSession forecast)
         {
             var p = j.Project ?? new CreatorJourneyProject();
             var p3 = j.Phase3Data ?? new CreatorPhase3Data();
@@ -703,9 +1119,11 @@ namespace WebApp.Controllers
             // structural constant. No ARPU → 0; churn absent → documented 4% fallback.
             if (CreatorScoring.LtvCacHealthy(forecast?.Inputs?.Arpu, forecast?.Inputs?.MonthlyChurnPct)) financialModel += 7;
 
-            // Legal Readiness (15): completed/total × 15
+            // Legal Readiness (15): weighted deterministic Planning Readiness score (max 15 pts)
             double legalReadiness = 0;
-            if (p3.LegalChecklist is { TotalCount: > 0 })
+            if (p3.LegalAssessment != null && p3.LegalAssessment.PlanningReadinessPct > 0)
+                legalReadiness = (p3.LegalAssessment.PlanningReadinessPct / 100.0) * 15.0;
+            else if (p3.LegalChecklist is { TotalCount: > 0 })
                 legalReadiness = (double)p3.LegalChecklist.CompletedCount / p3.LegalChecklist.TotalCount * 15;
 
             // Team Credibility (20): founder edge +14, SP engaged +6
@@ -813,27 +1231,21 @@ namespace WebApp.Controllers
             }
 
             // 4. Legal Readiness (Max 15)
-            if (p3.LegalChecklist != null && p3.LegalChecklist.TotalCount > 0 && p3.LegalChecklist.CompletedCount < p3.LegalChecklist.TotalCount)
+            if (legalReadiness < 15)
             {
-                var remaining = p3.LegalChecklist.TotalCount - p3.LegalChecklist.CompletedCount;
                 var lost = Math.Round(15 - legalReadiness, 1);
+                string issue = p3.LegalAssessment != null
+                    ? $"Legal & compliance planning readiness is at {p3.LegalAssessment.PlanningReadinessPct}% (below 100%)."
+                    : p3.LegalChecklist != null && p3.LegalChecklist.TotalCount > 0
+                        ? $"{p3.LegalChecklist.TotalCount - p3.LegalChecklist.CompletedCount} legal & compliance checklist items remain unverified."
+                        : "Compliance checklist has not been generated or reviewed.";
+
                 deductions.Add(new CreatorReadinessDeduction
                 {
                     Dimension = "LegalReadiness",
-                    Issue = $"{remaining} legal & compliance checklist items remain unverified.",
+                    Issue = issue,
                     PointsLost = lost,
                     RemediationTitle = "Complete Legal & Compliance Items",
-                    RemediationRoute = "/dashboard/creator/phase-3/compliance",
-                });
-            }
-            else if (p3.LegalChecklist == null || p3.LegalChecklist.TotalCount == 0)
-            {
-                deductions.Add(new CreatorReadinessDeduction
-                {
-                    Dimension = "LegalReadiness",
-                    Issue = "Compliance checklist has not been generated or reviewed.",
-                    PointsLost = 15,
-                    RemediationTitle = "Review Compliance Checklist",
                     RemediationRoute = "/dashboard/creator/phase-3/compliance",
                 });
             }
@@ -877,6 +1289,9 @@ namespace WebApp.Controllers
                     TeamCredibility = teamCredibility,
                 },
                 Deductions = deductions,
+                EvaluatedAt = DateTime.UtcNow,
+                UpdateAvailable = false,
+                ChangedSources = new List<string>()
             };
         }
 

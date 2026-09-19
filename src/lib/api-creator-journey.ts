@@ -13,6 +13,12 @@ import type {
   JourneyResponse,
   JourneyOutputKey,
 } from '@/types/creator/journey-api';
+import type {
+  LegalStaleMetadata,
+  LegalSignalDiff,
+  LegalReconciliationSummary,
+  Phase3FreshnessOverview,
+} from '@/types/creator/ai';
 
 interface ApiEnvelope<T> {
   success: boolean;
@@ -214,6 +220,57 @@ export const creatorJourneyApi = {
     return unwrap<LegalChecklist>(res.data);
   },
 
+  getLegalOverview: async (ideaId?: string | null): Promise<LegalComplianceOverview> => {
+    const res = await api.get('/creator/legal-compliance/overview', withIdeaRead(ideaId));
+    return unwrap<LegalComplianceOverview>(res.data);
+  },
+
+  evaluateLegalCompliance: async (ideaId?: string | null): Promise<LegalComplianceOverview> => {
+    const res = await api.post('/creator/legal-compliance/evaluate', {}, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<LegalComplianceOverview>(res.data);
+  },
+
+  updateLegalItemStatus: async (itemId: string, status: ChecklistStatus, ideaId?: string | null): Promise<{ itemId: string; status: ChecklistStatus; planningReadinessPct: number }> => {
+    const res = await api.patch(`/creator/legal-compliance/item/${itemId}/status`, { status }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<{ itemId: string; status: ChecklistStatus; planningReadinessPct: number }>(res.data);
+  },
+
+  attachLegalEvidence: async (itemId: string, documentId: string, status?: string, notes?: string, ideaId?: string | null): Promise<CreatorLegalAssessmentDto> => {
+    const res = await api.post(`/creator/legal-compliance/item/${itemId}/evidence`, { documentId, status, notes }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<CreatorLegalAssessmentDto>(res.data);
+  },
+
+  unlinkLegalEvidence: async (itemId: string, documentId: string, ideaId?: string | null): Promise<CreatorLegalAssessmentDto> => {
+    const res = await api.post(`/creator/legal-compliance/item/${itemId}/evidence/unlink`, { documentId }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<CreatorLegalAssessmentDto>(res.data);
+  },
+
+  replaceLegalEvidence: async (oldLinkId: string, newDocumentId: string, notes?: string, ideaId?: string | null): Promise<CreatorLegalAssessmentDto> => {
+    const res = await api.post('/creator/legal-compliance/evidence/replace', { oldLinkId, newDocumentId, notes }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<CreatorLegalAssessmentDto>(res.data);
+  },
+
+  updateEvidenceStatus: async (linkId: string, status: string, notes?: string, ideaId?: string | null): Promise<CreatorLegalAssessmentDto> => {
+    const res = await api.patch(`/creator/legal-compliance/evidence/${linkId}/status`, { status, notes }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<CreatorLegalAssessmentDto>(res.data);
+  },
+
+  getBusinessPlanSection12: async (ideaId?: string | null): Promise<import('@/types/creator/ai').LegalRegulatoryFramework> => {
+    const res = await api.get('/creator/legal-compliance/section-12', withIdeaRead(ideaId));
+    return unwrap<import('@/types/creator/ai').LegalRegulatoryFramework>(res.data);
+  },
+
+  getPhase3Freshness: async (ideaId?: string | null): Promise<Phase3FreshnessOverview> => {
+    const res = await api.get('/creator/phase-3/freshness', withIdeaRead(ideaId));
+    return unwrap<Phase3FreshnessOverview>(res.data);
+  },
+
   generateFormation: async (ideaId?: string | null): Promise<FormationGenerator> => {
     const res = await api.post('/creator/ai/formation-generator/start', {}, withIdeaWrite(ideaId));
     rememberIdeaVersion(res, ideaId);
@@ -253,6 +310,12 @@ export const creatorJourneyApi = {
 
   completeMasterplan: async (ideaId?: string | null): Promise<{ investorReadinessScore: InvestorReadinessScore }> => {
     const res = await api.patch('/creator/masterplan/complete', {}, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<{ investorReadinessScore: InvestorReadinessScore }>(res.data);
+  },
+
+  computeReadiness: async (ideaId?: string | null): Promise<{ investorReadinessScore: InvestorReadinessScore }> => {
+    const res = await api.post('/creator/phase-3/readiness/compute', {}, withIdeaWrite(ideaId));
     rememberIdeaVersion(res, ideaId);
     return unwrap<{ investorReadinessScore: InvestorReadinessScore }>(res.data);
   },
@@ -426,6 +489,21 @@ export interface SmartMatch {
   matchScore?: number;
   stage?: string;
 }
+export interface TransferredArtifactsBreakdown {
+  projectIdentity: boolean;
+  brandKit: boolean;
+  marketStudy: boolean;
+  businessModel: boolean;
+  financialForecast: boolean;
+  legalAssessment: boolean;
+  legalRequirementsCount: number;
+  legalEvidenceLinksCount: number;
+  businessPlan: boolean;
+  section12LegalFramework: boolean;
+  documentsLinkedCount: number;
+  baselineReadinessScore?: number | null;
+}
+
 export interface LevelUpResult {
   levelUpComplete: boolean;
   entrepreneurProfileId: string;
@@ -435,6 +513,12 @@ export interface LevelUpResult {
   companyName?: string;
   creatorRole?: string;
   creatorEquityPercent?: number | null;
+  sourceCreatorIdeaId?: string;
+  sourceCreatorJourneyId?: string;
+  entrepreneurWorkspaceId?: string;
+  transferVersion?: number;
+  transferredAt?: string;
+  transferredArtifacts?: TransferredArtifactsBreakdown;
 }
 
 export interface IpValuation {
@@ -557,6 +641,10 @@ export interface InvestorReadinessScore {
     teamCredibility: number;
   };
   deductions?: ReadinessDeduction[];
+  remediationSuggestions?: string[];
+  evaluatedAt?: string;
+  updateAvailable?: boolean;
+  changedSources?: string[];
 }
 
 export interface ProjectInterest {
@@ -579,7 +667,124 @@ export interface ProjectInterest {
   updatedAt: string;
 }
 
-export type ChecklistStatus = 'pending' | 'in_progress' | 'done';
+export type ChecklistStatus = 'pending' | 'in_progress' | 'done' | 'not_started' | 'needs_information' | 'action_required' | 'ready_for_review' | 'reviewed' | 'completed' | 'not_applicable';
+
+export interface OfficialSourceRef {
+  authority: string;
+  title: string;
+  url: string;
+  sourceType: string;
+  lastVerified?: string;
+  articleReference?: string;
+  notes?: string;
+}
+
+export interface LegalStageBreakdownDto {
+  stage: string;
+  stageName: string;
+  totalCount: number;
+  completedCount: number;
+  criticalCount: number;
+}
+
+export interface ExtendedLegalChecklistItem {
+  id: string;
+  ruleId?: string;
+  label: string;
+  title?: string;
+  category: string;
+  stage?: string;
+  priority?: string;
+  status: ChecklistStatus;
+  badge?: 'urgent' | 'fintech' | null;
+  whyItApplies?: string;
+  officialSource?: OfficialSourceRef;
+  requiresEvidence?: boolean;
+  evidenceDocType?: string;
+  evidenceLabel?: string;
+  evidenceDocumentId?: string;
+  evidenceFileName?: string;
+  evaluationStatus?: string;
+  isNewRequirement?: boolean;
+  notes?: string | null;
+  showFindSp?: boolean;
+  spSpecialty?: string | null;
+  aiGenerable?: boolean;
+}
+
+export type LegalEvidenceStatus =
+  | 'linked'
+  | 'needs_review'
+  | 'accepted_for_planning'
+  | 'replaced'
+  | 'archived';
+
+export interface LegalEvidenceLinkDto {
+  id: string;
+  documentId: string;
+  documentTitle: string;
+  documentFileName: string;
+  mimeType: string;
+  sizeBytes?: number | null;
+  requirementId: string;
+  requirementTitle: string;
+  stage: string;
+  status: LegalEvidenceStatus | string;
+  linkedAt: string;
+  notes?: string | null;
+}
+
+export interface LegalEvidenceAuditEntryDto {
+  id: string;
+  creatorIdeaId: string;
+  requirementId: string;
+  requirementTitle: string;
+  documentId: string;
+  documentTitle: string;
+  action: 'uploaded' | 'linked' | 'unlinked' | 'replaced' | 'status_changed' | string;
+  detail: string;
+  timestamp: string;
+  actorUserId: string;
+}
+
+export interface CreatorLegalAssessmentDto {
+  id: string;
+  creatorIdeaId: string;
+  userId: string;
+  jurisdiction: string;
+  rulesVersion: string;
+  assessmentVersion: number;
+  businessSnapshotHash: string;
+  isPotentiallyOutdated: boolean;
+  staleMetadata?: LegalStaleMetadata | null;
+  reconciliationSummary?: LegalReconciliationSummary | null;
+  evaluatedAt: string;
+  lastRelevantBusinessChangeAt?: string | null;
+  detectedArchetypes: string[];
+  planningReadinessPct: number;
+  stageBreakdown: LegalStageBreakdownDto[];
+  items: ExtendedLegalChecklistItem[];
+  evidenceLinks?: LegalEvidenceLinkDto[];
+  evidenceAuditTrail?: LegalEvidenceAuditEntryDto[];
+  disclaimer: string;
+}
+
+export interface LegalComplianceOverview {
+  hasAssessment: boolean;
+  assessment?: CreatorLegalAssessmentDto | null;
+  jurisdiction: string;
+  rulesVersion: string;
+  planningReadinessPct: number;
+  stageBreakdown: LegalStageBreakdownDto[];
+  detectedArchetypes: string[];
+  isPotentiallyOutdated: boolean;
+  staleMetadata?: LegalStaleMetadata | null;
+  reconciliationSummary?: LegalReconciliationSummary | null;
+  officialSources: OfficialSourceRef[];
+  evidenceLinks?: LegalEvidenceLinkDto[];
+  evidenceAuditTrail?: LegalEvidenceAuditEntryDto[];
+  disclaimer: string;
+}
 
 export interface LegalChecklistItem {
   id: string;

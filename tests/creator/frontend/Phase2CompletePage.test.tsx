@@ -13,6 +13,8 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
 }));
 
 const mockProjectState = {
@@ -107,11 +109,11 @@ const mockBrandKit: BrandKit = {
   },
   colors: {
     roles: [
-      { roleName: 'Primary', hex: '#0F172A', isDark: true, provenance: 'stated' },
-      { roleName: 'Secondary', hex: '#2563EB', isDark: true, provenance: 'stated' },
-      { roleName: 'Accent', hex: '#10B981', isDark: false, provenance: 'stated' },
-      { roleName: 'Background', hex: '#FFFFFF', isDark: false, provenance: 'stated' },
-      { roleName: 'Text', hex: '#09090B', isDark: true, provenance: 'stated' },
+      { roleName: 'Primary', hex: '#0F172A', rgb: '15, 23, 42', usageNote: 'Primary', isLocked: false, provenance: 'stated' },
+      { roleName: 'Secondary', hex: '#2563EB', rgb: '37, 99, 235', usageNote: 'Secondary', isLocked: false, provenance: 'stated' },
+      { roleName: 'Accent', hex: '#10B981', rgb: '16, 185, 129', usageNote: 'Accent', isLocked: false, provenance: 'stated' },
+      { roleName: 'Background', hex: '#FFFFFF', rgb: '255, 255, 255', usageNote: 'Background', isLocked: false, provenance: 'stated' },
+      { roleName: 'Text', hex: '#09090B', rgb: '9, 9, 11', usageNote: 'Text', isLocked: false, provenance: 'stated' },
     ],
     regenerateCount: 0,
     confirmedAt: '2026-09-15T11:30:00Z',
@@ -145,7 +147,7 @@ describe('Phase2CompletePage Component', () => {
     await waitFor(() => {
       expect(screen.getByText('Your identity is ready')).toBeInTheDocument();
       expect(screen.getByText(/Phase 2 complete/i)).toBeInTheDocument();
-      expect(screen.getAllByText('CyberLock Sentinel').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/CyberLock Sentinel/i).length).toBeGreaterThan(0);
     });
 
     // Check header metadata pill & Open Brand Kit link
@@ -195,6 +197,6 @@ describe('Phase2CompletePage Component', () => {
     const continueBtn = screen.getByRole('button', { name: /Continue to Phase 3/i });
     fireEvent.click(continueBtn);
 
-    expect(mockPush).toHaveBeenCalledWith('/dashboard/creator/phase-3');
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/creator/phase-3?ideaId=idea_cyber_123');
   });
 });

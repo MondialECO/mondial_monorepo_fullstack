@@ -81,22 +81,29 @@ namespace WebApp.Controllers
             if (!_settings.Features.Forecast)
                 return StatusCode(503, ApiResponse.Error("The Forecast generator is currently disabled.", HttpContext.TraceIdentifier));
 
-            // The forecast REQUIRES a completed business plan (new order: plan = step 2,
-            // forecast = step 3). Enforced server-side so a direct API call can't bypass
-            // the frontend guard — both layers express the same rule (no R3-class divergence).
-            // The numeric Inputs still apply; businessPlanSessionId is required-in-flow here
-            // but stays nullable/BsonIgnoreIfNull at the storage layer.
-            if (string.IsNullOrWhiteSpace(request.BusinessPlanSessionId) || !ObjectId.TryParse(request.BusinessPlanSessionId, out _))
-                return UnprocessableEntity(ApiResponse.Error("business_plan_required", HttpContext.TraceIdentifier,
-                    new { message = "Generate your business plan before running the forecast." }));
+            // The forecast can use a completed business plan (when available, e.g. regenerations
+            // or legacy flows) or build directly from the business idea (canonical new flow where
+            // Forecast is Step 3.3 and Business Plan is Step 3.6).
+            BusinessPlanSession? plan = null;
+            if (!string.IsNullOrWhiteSpace(request.BusinessPlanSessionId))
+            {
+                if (!ObjectId.TryParse(request.BusinessPlanSessionId, out _))
+                    return UnprocessableEntity(ApiResponse.Error("business_plan_required", HttpContext.TraceIdentifier,
+                        new { message = "Invalid business plan session id." }));
 
-            var plan = await _businessPlans.GetOwnedAsync(request.BusinessPlanSessionId, owner);
-            if (plan is null)
-                return UnprocessableEntity(ApiResponse.Error("business_plan_not_found", HttpContext.TraceIdentifier,
-                    new { message = "Business plan not found." }));
-            if (!IsPlanUsable(plan))
-                return UnprocessableEntity(ApiResponse.Error("business_plan_not_complete", HttpContext.TraceIdentifier,
-                    new { message = "Complete your business plan before running the forecast." }));
+                plan = await _businessPlans.GetOwnedAsync(request.BusinessPlanSessionId, owner);
+                if (plan is null)
+                    return UnprocessableEntity(ApiResponse.Error("business_plan_not_found", HttpContext.TraceIdentifier,
+                        new { message = "Business plan not found." }));
+                if (!IsPlanUsable(plan))
+                    return UnprocessableEntity(ApiResponse.Error("business_plan_not_complete", HttpContext.TraceIdentifier,
+                        new { message = "Complete your business plan before running the forecast." }));
+            }
+            else if (string.IsNullOrWhiteSpace(request.BusinessIdeaId))
+            {
+                return UnprocessableEntity(ApiResponse.Error("idea_or_plan_required", HttpContext.TraceIdentifier,
+                    new { message = "Provide a business idea or business plan to start the forecast." }));
+            }
 
             // Churn is required-in-flow (drives the readiness LTV/CAC), nullable-at-storage
             // for older sessions. Bound: 0 < churn <= 50 (%/month) — above ~50%/month a
@@ -108,11 +115,9 @@ namespace WebApp.Controllers
                 return UnprocessableEntity(ApiResponse.Error("churn_out_of_range", HttpContext.TraceIdentifier,
                     new { message = "Monthly churn must be between 0 and 50%." }));
 
-            var planSessionId = request.BusinessPlanSessionId;
-            // Multi-idea STEP 2: inherit the idea anchor from the (already-loaded, validated)
-            // business plan so every forecast — including regenerations — joins the SAME idea.
-            // Falls back to the optional request value for non-creator-flow callers.
-            var businessIdeaId = !string.IsNullOrWhiteSpace(plan.BusinessIdeaId)
+            var planSessionId = plan?.Id;
+            // Multi-idea STEP 2: inherit the idea anchor from the plan (if present) or request value.
+            var businessIdeaId = !string.IsNullOrWhiteSpace(plan?.BusinessIdeaId)
                 ? plan.BusinessIdeaId
                 : (string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId);
 
@@ -122,7 +127,10 @@ namespace WebApp.Controllers
                     return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
             }
 
-            var inFlightKey = $"{owner}:forecast:{planSessionId}";
+            var inFlightKey = !string.IsNullOrEmpty(planSessionId)
+                ? $"{owner}:forecast:{planSessionId}"
+                : $"{owner}:forecast:idea:{businessIdeaId ?? "standalone"}";
+
 
             // Create the session first so it owns the lifecycle (source of truth).
             var session = new ForecastSession

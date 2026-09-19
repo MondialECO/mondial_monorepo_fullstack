@@ -1,0 +1,125 @@
+graph TD
+    %% ==========================================
+    %% MONDIAL BUSINESS CREATION (MBC) CURRENT ARCHITECTURE
+    %% ==========================================
+
+    subgraph Personas["User Personas"]
+        U_Creator["Creator / Founder"]
+        U_Ent["Entrepreneur"]
+        U_Inv["Investor"]
+        U_SP["Service Provider"]
+        U_Admin["Platform Admin"]
+    end
+
+    subgraph Frontend["Next.js 16 / React 19 Client (src/app)"]
+        FE_Creator["Creator Dashboard & Studio<br/>(Phase 1-6, Brand Kit, P3 Intelligence)"]
+        FE_Ent["Entrepreneur Dashboard<br/>(9-Phase Journey, CapTable, Diligence)"]
+        FE_Inv["Investor Discovery & Deal Room"]
+        FE_SP["Service Provider Workroom & Catalog"]
+        FE_Market["Marketplace & Search"]
+        FE_Chat["Realtime Messenger"]
+        FE_State["State Layer<br/>(React Hooks, React Query, Axios)"]
+    end
+
+    subgraph BackendAPI["ASP.NET Core 8 Web API (backend/)"]
+        Auth_MW["Auth & Security Middleware<br/>(JWT Bearer, Rate Limiting, Redaction)"]
+        
+        subgraph Controllers["Key Controllers (55 total)"]
+            C_Creator["Creator Controllers<br/>(CreatorPhase3, BrandKit, Journey)"]
+            C_Deals["DealsController<br/>(8,376 lines - Contracts/Escrow/Terms)"]
+            C_Company["CompanyController<br/>(2,788 lines - 9 Phases/CapTable)"]
+            C_Market["MarketplaceProjectsController<br/>(2,021 lines - Aggregation)"]
+            C_SP["ServiceProvider & Workroom Controllers"]
+            C_Identity["Identity & Varification Controllers"]
+            C_AI["Ai & Session Controllers<br/>(Clarifier, MarketStudy, Plan, Forecast)"]
+        end
+
+        subgraph ServicesLayer["Domain & Infrastructure Services"]
+            S_Company["CompanyService (5,952 lines)"]
+            S_Creator["Creator Services & Brand Engine<br/>(SkiaSharp Logo / Typography)"]
+            S_Deals["Deals & Transactions Service"]
+            S_Workroom["Workroom & Escrow Services"]
+            S_Identity["Universal Identity & Sumsub Service"]
+            S_Hubs["SignalR Hubs<br/>(NotificationHub, ChatHub)"]
+        end
+
+        subgraph AI_Engine["AI Orchestration Layer"]
+            AI_Runner["AiJobRunner & Registry"]
+            AI_Router["ModelRouter<br/>(google/gemini-3.8-flash)"]
+            AI_Client["OpenRouterClient (Polly Retry)"]
+            AI_Handlers["Task Handlers<br/>(Clarifier, MarketStudy, BusinessModel, Plan, Forecast)"]
+        end
+    end
+
+    subgraph Workers["Distributed Background Engine (Hangfire)"]
+        HF_Server["Hangfire Server (4 workers)"]
+        Q_Default["Queue: default<br/>(Email, Workroom Expiry, Cleanup)"]
+        Q_AI["Queue: ai<br/>(Async LLM Pipelines)"]
+    end
+
+    subgraph DataStorage["Persistence & Shared Infrastructure"]
+        M_Core["MongoDB: Core Business<br/>(Companies, Deals, Investments)"]
+        M_Creator["MongoDB: Creator Collections<br/>(CreatorIdeas, Journeys, BrandKits)"]
+        M_AI["MongoDB: AI Collections<br/>(7 Ledgers + 5 Session Stores)"]
+        M_SP["MongoDB: Service Provider Collections<br/>(Profiles, Workrooms, Briefs)"]
+        M_Identity["MongoDB: Identity Collections<br/>(ApplicationUsers, Verifications)"]
+        M_HF["MongoDB: Hangfire Storage<br/>(hangfire.* collections)"]
+        Redis_Store["Redis Instance<br/>(SignalR Backplane, Cache, DataProtection)"]
+    end
+
+    subgraph External["External Services & Providers"]
+        Ext_OpenRouter["OpenRouter API<br/>(google/gemini-3.8-flash)"]
+        Ext_Sumsub["Sumsub KYC Provider<br/>(WebSDK / Webhooks)"]
+        Ext_Mail["SMTP / MailKit"]
+        Ext_Twilio["Twilio SMS"]
+    end
+
+    %% Persona Connections
+    U_Creator --> FE_Creator
+    U_Ent --> FE_Ent
+    U_Inv --> FE_Inv
+    U_SP --> FE_SP
+    U_Admin --> FE_Market
+
+    %% Frontend Internal
+    FE_Creator & FE_Ent & FE_Inv & FE_SP & FE_Market & FE_Chat --> FE_State
+    FE_State -->|HTTP REST / WebSocket| Auth_MW
+
+    %% Middleware to Controllers
+    Auth_MW --> C_Creator & C_Deals & C_Company & C_Market & C_SP & C_Identity & C_AI
+
+    %% Controllers to Services
+    C_Creator --> S_Creator
+    C_Deals --> S_Deals
+    C_Company --> S_Company
+    C_SP --> S_Workroom
+    C_Identity --> S_Identity
+    C_Market --> M_Core & M_Creator
+    C_AI --> AI_Runner
+
+    %% Realtime
+    FE_Chat --> S_Hubs
+    S_Hubs <--> Redis_Store
+
+    %% AI Pipeline
+    AI_Runner --> Q_AI
+    Q_AI --> HF_Server
+    HF_Server --> AI_Handlers
+    AI_Handlers --> AI_Router --> AI_Client --> Ext_OpenRouter
+    AI_Handlers --> M_AI
+    AI_Handlers --> M_Creator
+
+    %% Background Jobs & Persistence
+    C_SP --> Q_Default
+    Q_Default --> HF_Server
+    HF_Server <--> M_HF
+
+    %% Service to Mongo
+    S_Company --> M_Core
+    S_Deals --> M_Core
+    S_Creator --> M_Creator
+    S_Workroom --> M_SP
+    S_Identity --> M_Identity
+    S_Identity <--> Ext_Sumsub
+    ServicesLayer --> Redis_Store
+    ServicesLayer --> Ext_Mail & Ext_Twilio

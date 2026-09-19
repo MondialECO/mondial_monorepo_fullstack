@@ -263,6 +263,43 @@ export default function EntrepreneurOverview() {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 pb-8">
+      {/* ── STAGE 11: Creator → Entrepreneur Continuity Banner ──────── */}
+      {progress?.promotedFromCreator ? (
+        <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary">
+                  <CheckCircle2 className="h-4 w-4" />
+                </span>
+                <p className="text-sm font-semibold text-foreground">
+                  Your Creator project is now connected
+                </p>
+                {progress.baselineReadinessScore ? (
+                  <Badge variant="outline" className="border-primary/30 text-xs font-mono">
+                    Baseline Readiness: {Math.round(progress.baselineReadinessScore)}/100
+                  </Badge>
+                ) : null}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                All venture intelligence transferred: business model, forecast, compliance roadmap, brand assets, and documents are linked into this workspace.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {["Business Plan", "Forecast", "Market Study", "Legal Roadmap", "Brand", "Documents"].map((item) => (
+                  <span key={item} className="inline-flex items-center gap-1 rounded-md bg-background/80 px-2 py-0.5 text-[11px] font-medium text-foreground/80 border border-border/60">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <Button variant="outline" size="sm" asChild className="text-xs h-8">
+              <Link href="/dashboard/creator">View Creator Origin</Link>
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {/* ── STEP 8: Evolution Journey hero ───────────────────────────── */}
       <Card>
         <CardHeader className="gap-4">

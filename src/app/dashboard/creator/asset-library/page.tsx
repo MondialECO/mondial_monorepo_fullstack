@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { withIdeaContext } from '@/lib/creator-routes';
 import {
   FileText,
   Download,
@@ -58,12 +59,12 @@ interface ArtifactItem {
   nonDownloadableNote?: string;
 }
 
-export default function AssetLibraryPage() {
+export default function CreatorAssetLibraryPage() {
   const router = useRouter();
-  const {
-    state: { activeIdeaId },
-    isLoading: progressLoading,
-  } = useCreatorProgress();
+  const searchParams = useSearchParams();
+  const queryIdeaId = searchParams.get('ideaId');
+  const { state: { activeIdeaId }, isLoading: progressLoading } = useCreatorProgress();
+  const currentIdeaId = queryIdeaId || activeIdeaId || null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,8 +100,8 @@ export default function AssetLibraryPage() {
       setActionError(null);
       try {
         const [journeyRes, kitRes] = await Promise.allSettled([
-          creatorJourneyApi.get(activeIdeaId),
-          brandKitApi.getBrandKit(activeIdeaId || undefined),
+          creatorJourneyApi.get(currentIdeaId),
+          brandKitApi.getBrandKit(currentIdeaId || undefined),
         ]);
 
         if (!active) return;
@@ -127,7 +128,7 @@ export default function AssetLibraryPage() {
     return () => {
       active = false;
     };
-  }, [activeIdeaId, progressLoading]);
+  }, [currentIdeaId, progressLoading]);
 
   const projectName =
     journey?.project?.name ||
@@ -284,7 +285,7 @@ export default function AssetLibraryPage() {
       isReady: isBrandKitReady,
       lastUpdatedText: formatDate(brandKit?.updatedAt || journey?.updatedAt),
       versionNumber: brandKit?.version ?? 1,
-      stepUrl: '/dashboard/creator/phase-2/brand-kit',
+      stepUrl: withIdeaContext('/dashboard/creator/phase-2/brand-kit', currentIdeaId),
       downloadLabel: 'Download ZIP',
       onDownloadOrView: handleDownloadBrandKit,
     },
@@ -300,7 +301,7 @@ export default function AssetLibraryPage() {
       isDownloadableV1: true,
       isReady: isMarketStudyReady,
       lastUpdatedText: formatDate(journey?.updatedAt),
-      stepUrl: '/dashboard/creator/phase-3/market-study',
+      stepUrl: withIdeaContext('/dashboard/creator/phase-3/market-study', currentIdeaId),
       downloadLabel: 'Export PDF',
       onDownloadOrView: handleOpenMarketStudy,
     },
@@ -315,39 +316,38 @@ export default function AssetLibraryPage() {
       isDownloadableV1: true,
       isReady: isBusinessModelReady,
       lastUpdatedText: formatDate(journey?.updatedAt),
-      stepUrl: '/dashboard/creator/phase-3/business-model',
+      stepUrl: withIdeaContext('/dashboard/creator/phase-3/business-model', currentIdeaId),
       downloadLabel: 'Export PDF',
       onDownloadOrView: handleOpenBusinessModel,
-    },
-    {
-      id: 'business-plan',
-      phaseId: 3,
-      phaseTitle: 'Phase 3 // Business Foundations',
-      stepNumber: 'Step 3.3',
-      title: 'Executive Business Plan',
-      description: 'Investor-grade business plan covering value proposition, addressable target market, revenue streams, operational milestones, and risk register.',
-      fileFormat: 'PDF',
-      isDownloadableV1: true,
-      isReady: isBusinessPlanReady,
-      lastUpdatedText: formatDate(journey?.updatedAt),
-      stepUrl: '/dashboard/creator/phase-3/business-plan',
-      downloadLabel: 'Export PDF',
-      onDownloadOrView: handleOpenBusinessPlan,
     },
     {
       id: 'financial-forecast',
       phaseId: 3,
       phaseTitle: 'Phase 3 // Business Foundations',
-      stepNumber: 'Step 3.4',
+      stepNumber: 'Step 3.3',
       title: 'Financial Forecast & Break-Even Model',
       description: '36-month pro forma projections, monthly fixed & variable cost breakdown, net cashflow trajectory, and dynamic break-even horizon analysis.',
       fileFormat: 'PDF',
       isDownloadableV1: true,
       isReady: isForecastReady,
       lastUpdatedText: formatDate(journey?.updatedAt),
-      stepUrl: '/dashboard/creator/phase-3/forecast',
+      stepUrl: withIdeaContext('/dashboard/creator/phase-3/forecast', currentIdeaId),
       downloadLabel: 'Export PDF',
       onDownloadOrView: handleOpenForecast,
+    },
+    {
+      id: 'legal-checklist',
+      phaseId: 3,
+      phaseTitle: 'Phase 3 // Business Foundations',
+      stepNumber: 'Step 3.4',
+      title: 'Legal & Regulatory Compliance Checklist',
+      description: 'Corporate bylaws, IP assignment agreements, GDPR data processing registers, employment contracts, and statutory compliance status.',
+      fileFormat: 'IN_APP',
+      isDownloadableV1: false,
+      isReady: isLegalChecklistReady,
+      lastUpdatedText: formatDate(phase3?.legalChecklist?.updatedAt || journey?.updatedAt),
+      stepUrl: withIdeaContext('/dashboard/creator/phase-3/compliance', currentIdeaId),
+      nonDownloadableNote: 'Compliance checklist active · Standalone PDF export is not yet supported for this format.',
     },
     {
       id: 'formation-memo',
@@ -360,22 +360,23 @@ export default function AssetLibraryPage() {
       isDownloadableV1: false,
       isReady: isFormationReady,
       lastUpdatedText: formatDate(journey?.updatedAt),
-      stepUrl: '/dashboard/creator/phase-3/formation',
+      stepUrl: withIdeaContext('/dashboard/creator/phase-3/formation', currentIdeaId),
       nonDownloadableNote: 'Entity structure and skills configured · Standalone PDF export is not yet supported for this format.',
     },
     {
-      id: 'legal-checklist',
+      id: 'business-plan',
       phaseId: 3,
       phaseTitle: 'Phase 3 // Business Foundations',
       stepNumber: 'Step 3.6',
-      title: 'Legal & Regulatory Compliance Checklist',
-      description: 'Corporate bylaws, IP assignment agreements, GDPR data processing registers, employment contracts, and statutory compliance status.',
-      fileFormat: 'IN_APP',
-      isDownloadableV1: false,
-      isReady: isLegalChecklistReady,
-      lastUpdatedText: formatDate(phase3?.legalChecklist?.updatedAt || journey?.updatedAt),
-      stepUrl: '/dashboard/creator/phase-3/compliance',
-      nonDownloadableNote: 'Compliance checklist active · Standalone PDF export is not yet supported for this format.',
+      title: 'Executive Business Plan',
+      description: 'Investor-grade business plan covering value proposition, addressable target market, revenue streams, operational milestones, and risk register.',
+      fileFormat: 'PDF',
+      isDownloadableV1: true,
+      isReady: isBusinessPlanReady,
+      lastUpdatedText: formatDate(journey?.updatedAt),
+      stepUrl: withIdeaContext('/dashboard/creator/phase-3/business-plan', currentIdeaId),
+      downloadLabel: 'Export PDF',
+      onDownloadOrView: handleOpenBusinessPlan,
     },
     // Phase 4
     {
@@ -389,7 +390,7 @@ export default function AssetLibraryPage() {
       isDownloadableV1: false,
       isReady: isPhase4Ready,
       lastUpdatedText: formatDate(journey?.updatedAt),
-      stepUrl: '/dashboard/creator/offer-pricing',
+      stepUrl: withIdeaContext('/dashboard/creator/offer-pricing', currentIdeaId),
       nonDownloadableNote: 'Offer architecture confirmed · Standalone PDF export is not yet supported for this format.',
     },
   ];

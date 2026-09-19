@@ -387,6 +387,22 @@ namespace WebApp.Controllers
                                 _logger.LogWarning(ex, "Failed to reconcile missing 'Entrepreneur' role for {UserId} on idempotent call.", userId);
                             }
                         }
+                        var transferredSummary = new TransferredArtifactsBreakdownDto
+                        {
+                            ProjectIdentity = !string.IsNullOrEmpty(journey.Project?.Name),
+                            BrandKit = !string.IsNullOrEmpty(journey.Project?.Branding?.LogoAsset) || (journey.Project?.Branding?.ColorPalette?.Count ?? 0) > 0,
+                            MarketStudy = !string.IsNullOrEmpty(journey.Phase3Data?.MarketStudySessionId),
+                            BusinessModel = !string.IsNullOrEmpty(journey.Phase3Data?.BusinessModelSessionId),
+                            FinancialForecast = !string.IsNullOrEmpty(journey.Phase3Data?.ForecastSessionId),
+                            LegalAssessment = journey.Phase3Data?.LegalAssessment != null,
+                            LegalRequirementsCount = journey.Phase3Data?.LegalAssessment?.Items?.Count ?? journey.Phase3Data?.LegalChecklist?.TotalCount ?? 0,
+                            LegalEvidenceLinksCount = journey.Phase3Data?.LegalAssessment?.EvidenceLinks?.Count ?? 0,
+                            BusinessPlan = !string.IsNullOrEmpty(journey.Phase3Data?.BusinessPlanSessionId),
+                            Section12LegalFramework = journey.Phase3Data?.LegalAssessment != null,
+                            DocumentsLinkedCount = ownedIdea.Documents?.Count ?? 0,
+                            BaselineReadinessScore = journey.Phase3Data?.InvestorReadinessScore?.Total ?? (double)readiness.OverallProgress
+                        };
+
                         return Ok(ApiResponse.Ok("Already leveled up", new
                         {
                             levelUpComplete = true,
@@ -396,6 +412,12 @@ namespace WebApp.Controllers
                             creatorRole = readiness.CreatorRole,
                             creatorEquityPercent = readiness.CreatorEquityPercent,
                             entrepreneurProfileId = p6.EntrepreneurProfileId,
+                            sourceCreatorIdeaId = levelUpIdeaId,
+                            sourceCreatorJourneyId = journey.Id,
+                            entrepreneurWorkspaceId = journey.CompanyId ?? readiness.CompanyId,
+                            transferVersion = 1,
+                            transferredAt = p6.LevelUpTriggeredAt ?? DateTime.UtcNow,
+                            transferredArtifacts = transferredSummary,
                             redirectTo = "/dashboard/entrepreneur",
                         }));
                     }
@@ -470,11 +492,26 @@ namespace WebApp.Controllers
                     Id = profileId,
                     UserId = userId,
                     BusinessIdeaId = !string.IsNullOrEmpty(journey.BusinessIdeaId) ? journey.BusinessIdeaId : levelUpIdeaId,
+                    SourceCreatorJourneyId = journey.Id,
+                    PromotedFromCreator = true,
+                    PromotedAt = DateTime.UtcNow,
+                    TransferVersion = 1,
                     Project = journey.Project,
                     OfferSetup = journey.Phase4Data,
                     Masterplan = journey.Phase3Data,
                     PathB = p5.PathB,
                 };
+
+                if (existingProfile != null)
+                {
+                    existingProfile.Project = journey.Project;
+                    existingProfile.OfferSetup = journey.Phase4Data;
+                    existingProfile.Masterplan = journey.Phase3Data;
+                    existingProfile.PathB = p5.PathB;
+                    existingProfile.SourceCreatorJourneyId ??= journey.Id;
+                    existingProfile.PromotedFromCreator = true;
+                    existingProfile.PromotedAt ??= DateTime.UtcNow;
+                }
 
                 // The ATOMIC CORE writes
                 async Task CoreWritesAsync(IClientSessionHandle session)
@@ -512,12 +549,39 @@ namespace WebApp.Controllers
                                     ? journey.Phase3Data.FormationGenerator.RecommendedType
                                     : "SAS";
 
+                        // Preserve & pause active Path A marketplace listing on Build Level Up
+                        if (ownedIdea.Phase5Data?.PathA?.MarketplaceListing != null &&
+                            (ownedIdea.Phase5Data.PathA.MarketplaceListing.Status == "live" ||
+                             ownedIdea.Phase5Data.PathA.MarketplaceListing.Status == "available"))
+                        {
+                            ownedIdea.Phase5Data.PathA.MarketplaceListing.Status = "paused";
+                        }
+
                         var company = await _companies.EnsureLevelUpCompanyAsync(
                             userId, sourceLink, legalStructure, fundingAsk,
                             companyName: journey.Project?.Name,
                             industry: journey.Project?.Sector,
                             tagline: journey.Project?.Tagline,
+                            journeyId: journey.Id,
+                            baselineReadiness: journey.Phase3Data?.InvestorReadinessScore?.Total ?? (double)readiness.OverallProgress,
+                            forecastId: journey.Phase3Data?.ForecastSessionId,
+                            businessPlanId: journey.Phase3Data?.BusinessPlanSessionId,
+                            legalAssessment: journey.Phase3Data?.LegalAssessment,
+                            logo: journey.Project?.Branding?.LogoAsset,
+                            documents: ownedIdea.Documents,
                             session: session);
+
+                        // Fallback for mocks configured only for legacy 8-argument signature
+                        if (company == null)
+                        {
+                            company = await _companies.EnsureLevelUpCompanyAsync(
+                                userId, sourceLink, legalStructure, fundingAsk,
+                                companyName: journey.Project?.Name,
+                                industry: journey.Project?.Sector,
+                                tagline: journey.Project?.Tagline,
+                                session: session);
+                        }
+
                         companyId = company.Id;
                         profile.CompanyId = companyId;
 
@@ -603,10 +667,18 @@ namespace WebApp.Controllers
                     (p6.SmartMatchmaking ??= new CreatorSmartMatchmaking()).Status = "live";
 
                     // Update CreatorIdea optimistic concurrency
+                    var ideaUpdateDef = Builders<CreatorIdea>.Update
+                        .Set(x => x.SmartMatchmaking, p6.SmartMatchmaking);
+
+                    if (ownedIdea.Phase5Data?.PathA?.MarketplaceListing != null)
+                    {
+                        ideaUpdateDef = ideaUpdateDef.Set(x => x.Phase5Data.PathA.MarketplaceListing, ownedIdea.Phase5Data.PathA.MarketplaceListing);
+                    }
+
                     var ideaUpdated = await _ideas.UpdateAsync(
                         levelUpIdeaId,
                         userId,
-                        Builders<CreatorIdea>.Update.Set(x => x.SmartMatchmaking, p6.SmartMatchmaking),
+                        ideaUpdateDef,
                         expectedVersion,
                         session);
                     if (!ideaUpdated)
@@ -714,6 +786,22 @@ namespace WebApp.Controllers
                 _logger.LogInformation("Level Up complete: userId={UserId}, ideaId={IdeaId}, qualificationPath={Path}, companyId={CompanyId}, profileId={ProfileId}",
                     userId, levelUpIdeaId, isCofounded ? "CO_FOUNDED" : "BUILD", companyId, profile.Id);
 
+                var transferredSummaryFinal = new TransferredArtifactsBreakdownDto
+                {
+                    ProjectIdentity = !string.IsNullOrEmpty(journey.Project?.Name),
+                    BrandKit = !string.IsNullOrEmpty(journey.Project?.Branding?.LogoAsset) || (journey.Project?.Branding?.ColorPalette?.Count ?? 0) > 0,
+                    MarketStudy = !string.IsNullOrEmpty(journey.Phase3Data?.MarketStudySessionId),
+                    BusinessModel = !string.IsNullOrEmpty(journey.Phase3Data?.BusinessModelSessionId),
+                    FinancialForecast = !string.IsNullOrEmpty(journey.Phase3Data?.ForecastSessionId),
+                    LegalAssessment = journey.Phase3Data?.LegalAssessment != null,
+                    LegalRequirementsCount = journey.Phase3Data?.LegalAssessment?.Items?.Count ?? journey.Phase3Data?.LegalChecklist?.TotalCount ?? 0,
+                    LegalEvidenceLinksCount = journey.Phase3Data?.LegalAssessment?.EvidenceLinks?.Count ?? 0,
+                    BusinessPlan = !string.IsNullOrEmpty(journey.Phase3Data?.BusinessPlanSessionId),
+                    Section12LegalFramework = journey.Phase3Data?.LegalAssessment != null,
+                    DocumentsLinkedCount = ownedIdea.Documents?.Count ?? 0,
+                    BaselineReadinessScore = journey.Phase3Data?.InvestorReadinessScore?.Total ?? (double)readiness.OverallProgress
+                };
+
                 return Ok(ApiResponse.Ok("Level up complete", new
                 {
                     levelUpComplete = true,
@@ -723,6 +811,12 @@ namespace WebApp.Controllers
                     creatorRole = isCofounded ? (dealDoc?.RoleAgreement?.CreatorRole ?? readiness.CreatorRole) : "Founder",
                     creatorEquityPercent = isCofounded ? (dealDoc?.EquityTerms?.EquityPercentage ?? readiness.CreatorEquityPercent) : 100.0,
                     entrepreneurProfileId = profile.Id,
+                    sourceCreatorIdeaId = levelUpIdeaId,
+                    sourceCreatorJourneyId = journey.Id,
+                    entrepreneurWorkspaceId = companyId,
+                    transferVersion = 1,
+                    transferredAt = p6.LevelUpTriggeredAt ?? DateTime.UtcNow,
+                    transferredArtifacts = transferredSummaryFinal,
                     redirectTo = "/dashboard/entrepreneur",
                 }));
             }

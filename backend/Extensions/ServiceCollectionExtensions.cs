@@ -1,6 +1,7 @@
 using WebApp.Services;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
+using WebApp.Services.Legal;
 using WebApp.Services.Repository;
 
 namespace WebApp.Extensions;
@@ -51,6 +52,12 @@ public static class ServiceCollectionExtensions
 
         // Shared smart-matching formula (Phase 5 buyers + Phase 6 investors)
         services.AddScoped<ISmartMatchingService, SmartMatchingService>();
+
+        // Legal & Compliance Intelligence (Phase 3 France-first deterministic engine)
+        services.AddSingleton<IFranceLegalRulesCatalog, FranceLegalRulesCatalog>();
+        services.AddSingleton<BusinessProfileClassifier>();
+        services.AddScoped<ILegalApplicabilityEngine, LegalApplicabilityEngine>();
+        services.AddSingleton<ILegalFrameworkSectionBuilder, LegalFrameworkSectionBuilder>();
 
         return services;
     }

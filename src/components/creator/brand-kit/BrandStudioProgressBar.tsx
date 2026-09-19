@@ -39,29 +39,29 @@ export function BrandStudioProgressBar({
   return (
     <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border/80 bg-card/95 px-4 md:px-8 backdrop-blur-md">
       {/* Left: Back button + Brand context */}
-      <div className="flex items-center gap-3 min-w-[200px]">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
         <Button
           type="button"
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="gap-1.5 text-button font-semibold text-muted-foreground hover:text-foreground h-8 px-2.5 font-sans cursor-pointer"
+          className="gap-1.5 text-button font-semibold text-muted-foreground hover:text-foreground h-8 px-2 sm:px-2.5 font-sans cursor-pointer shrink-0"
         >
           <ArrowLeft className="size-3.5" />
-          Back
+          <span>Back</span>
         </Button>
-        <div className="hidden sm:flex flex-col">
-          <span className="text-badge font-bold text-foreground line-clamp-1 font-heading">
+        <div className="hidden sm:flex flex-col min-w-0 max-w-[140px] md:max-w-[200px]">
+          <span className="text-badge font-bold text-foreground truncate font-heading">
             {brandName}
           </span>
-          <span className="text-badge text-muted-foreground font-sans">
+          <span className="text-badge text-muted-foreground font-sans truncate">
             Visual Identity Studio
           </span>
         </div>
       </div>
 
       {/* Center: 6-Segment Progress Track */}
-      <div className="flex items-center gap-1.5 md:gap-2">
+      <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 shrink-0 min-w-0">
         {segments.map((seg, idx) => {
           const isSelected = seg.key === activeStepKey;
           const isComplete = seg.status === "complete";
@@ -74,7 +74,7 @@ export function BrandStudioProgressBar({
                 type="button"
                 disabled={isLocked}
                 onClick={() => onSelectStep(seg.key)}
-                className={`group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-badge font-medium transition-all font-sans ${
+                className={`group flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg text-badge font-medium transition-all font-sans ${
                   isSelected
                     ? "bg-primary/10 text-foreground border border-primary/30 shadow-2xs font-semibold"
                     : isComplete
@@ -108,7 +108,7 @@ export function BrandStudioProgressBar({
                   )}
                 </div>
 
-                <span className="hidden md:inline text-badge tracking-tight font-sans">
+                <span className="hidden xl:inline text-badge tracking-tight font-sans">
                   {seg.label}
                 </span>
               </button>
@@ -116,7 +116,7 @@ export function BrandStudioProgressBar({
               {/* Segment connector line */}
               {idx < segments.length - 1 && (
                 <div
-                  className={`h-0.5 w-2 sm:w-3 rounded-full transition-colors ${
+                  className={`h-0.5 w-1 sm:w-2 md:w-3 rounded-full transition-colors shrink-0 ${
                     isComplete ? "bg-emerald-500/60" : "bg-border"
                   }`}
                 />
@@ -127,11 +127,11 @@ export function BrandStudioProgressBar({
       </div>
 
       {/* Right: What's running now / In-flight status */}
-      <div className="flex items-center justify-end min-w-[200px]">
+      <div className="flex items-center justify-end shrink-0 min-w-0">
         {inFlightStatus ? (
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary animate-pulse">
-            <Loader2 className="size-3 animate-spin" />
-            <span className="text-badge font-medium font-mono line-clamp-1">
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary animate-pulse max-w-[120px] sm:max-w-none">
+            <Loader2 className="size-3 animate-spin shrink-0" />
+            <span className="text-badge font-medium font-mono truncate">
               {inFlightStatus}
             </span>
           </div>

@@ -1,0 +1,67 @@
+sequenceDiagram
+    autonumber
+    actor User as Client Application
+    participant Ctrl as AI Controller (e.g. BusinessPlanController)
+    participant Credit as AiCreditService
+    participant Svc as AiJobService
+    participant DB_Req as MongoDB (AiRequests)
+    participant HF as Hangfire Client & Queue (ai)
+    participant Runner as AiJobRunner (Worker)
+    participant Handler as Task Handler (e.g. BusinessPlanHandler)
+    participant Prompt as PromptVersionStore & PromptBuilder
+    participant Router as ModelRouter
+    participant Client as OpenRouterClient (Polly Retry)
+    participant API as OpenRouter API (google/gemini-3.8-flash)
+    participant DB_Sess as MongoDB (Session Stores & Responses)
+    participant Pub as AiEventPublisher (SignalR)
+
+    User->>Ctrl: POST /api/ai/business-plan { clarifierSessionId }
+    Ctrl->>Credit: DebitForJobAsync(owner, taskType, sessionId)
+    alt Insufficient Credits
+        Credit-->>Ctrl: Throw InsufficientCreditsException
+        Ctrl-->>User: HTTP 402 (Insufficient Credits)
+    end
+    Ctrl->>Svc: EnqueueAsync(taskType, owner, inputPayload)
+    Svc->>DB_Req: Insert AiRequest (Status: "Pending")
+    Svc->>HF: Enqueue<IAiJobRunner>(r => r.RunAsync(requestId))
+    Svc-->>Ctrl: Return requestId
+    Ctrl-->>User: HTTP 200 { sessionId, jobId: requestId }
+
+    Note over HF,Runner: Hangfire background worker picks up job from queue 'ai'
+    HF->>Runner: RunAsync(requestId)
+    Runner->>DB_Req: Check status (Idempotency: exit if Completed)
+    Runner->>DB_Req: Set Status = "Processing"
+    Runner->>Handler: PrepareAsync(request)
+    Handler-->>Runner: Return AiHandlerRequest { PromptKey, UserContext, Task, MaxTokens }
+    
+    Runner->>Prompt: GetActiveAsync(PromptKey)
+    Prompt-->>Runner: Active PromptTemplate
+    Runner->>Prompt: Build(template, UserContext, Task)
+    Prompt-->>Runner: Message Composition
+    Runner->>Router: Resolve(taskType)
+    Router-->>Runner: Model ("google/gemini-3.8-flash")
+    
+    Runner->>Client: CompleteAsync(AiCompletionRequest)
+    Client->>API: HTTP POST /chat/completions
+    alt Transient Error (429 or 5xx)
+        API-->>Client: Error
+        Note over Client: Polly handles retry backoff up to 3 times
+    end
+    API-->>Client: 200 OK (Completion payload)
+    Client-->>Runner: AiCompletionResult
+
+    Runner->>Handler: InterpretAsync(request, completion)
+    alt JSON Schema Valid
+        Handler-->>Runner: AiHandlerResult (Structured DTO)
+        Runner->>DB_Sess: Append Version to SessionStore (Immutable history)
+        Runner->>DB_Sess: Insert AiResponses & AiModelUsage
+        Runner->>DB_Req: Set Status = "Completed"
+        Runner->>Pub: PublishCompletionEventAsync(owner, session)
+        Pub-->>User: Realtime SignalR Notification
+    else JSON Parse or Schema Failure
+        Note over Runner: Fault-isolated NeedsReview pattern
+        Handler-->>Runner: Mark NeedsReview (preserve raw text)
+        Runner->>DB_Sess: Set Session.Status = "NeedsReview"
+        Runner->>DB_Req: Set Status = "Failed" (Permanent)
+        Runner->>Credit: RefundCreditsIfEligibleAsync(owner, sessionId)
+    end

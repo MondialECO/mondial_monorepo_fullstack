@@ -1,0 +1,113 @@
+graph LR
+    %% ==========================================
+    %% MONGODB DATA LINEAGE & CROSS-DOMAIN WRITERS
+    %% ==========================================
+
+    subgraph WritingServices["Writing Services & Controllers"]
+        Ctrl_Deals["DealsController<br/>(8.3K lines)"]
+        Ctrl_Company["CompanyService / CompanyController<br/>(6K lines)"]
+        Ctrl_Market["MarketplaceProjectsController<br/>(2K lines)"]
+        Ctrl_Creator["CreatorIdeasController / BrandKitController"]
+        Ctrl_AI["AiJobRunner / Handlers"]
+        Ctrl_SP["ServiceProviderService / WorkroomService"]
+        Ctrl_Identity["IdentityVerificationService / VarificationController"]
+        Ctrl_Chat["ChatController / ChatService"]
+    end
+
+    subgraph CoreBusinessCollections["Core Business & Deal Collections"]
+        col_Deals[("Deals")]
+        col_DealExecutions[("DealExecutions")]
+        col_Companies[("Companies")]
+        col_Investments[("Investments")]
+        col_Transactions[("Transactions")]
+    end
+
+    subgraph CreatorCollections["Creator Collections"]
+        col_CreatorIdeas[("CreatorIdeas")]
+        col_CreatorJourneys[("CreatorJourneys")]
+        col_BrandKits[("BrandKits")]
+        col_IpValuations[("IpValuations")]
+        col_Phase3Kpis[("Phase3Kpis")]
+    end
+
+    subgraph AISessionCollections["AI Sessions & Infrastructure"]
+        col_AiRequests[("AiRequests")]
+        col_AiResponses[("AiResponses")]
+        col_AiUsage[("AiModelUsages")]
+        col_ClarifierSessions[("ClarifierSessions")]
+        col_MarketStudySessions[("MarketStudySessions")]
+        col_BusinessModelSessions[("BusinessModelSessions")]
+        col_BusinessPlanSessions[("BusinessPlanSessions")]
+        col_ForecastSessions[("ForecastSessions")]
+        col_AiCreditLedger[("AiCreditLedger")]
+    end
+
+    subgraph SPCollections["Service Provider Collections"]
+        col_SPProfiles[("ServiceProviderProfiles")]
+        col_ProProfiles[("ProfessionalProfiles")]
+        col_Workrooms[("WorkroomEngagements")]
+        col_Contracts[("Contracts")]
+        col_Invoices[("Invoices")]
+        col_ClientBriefs[("ClientBriefs")]
+    end
+
+    subgraph PlatformCollections["Platform & Shared Collections"]
+        col_Users[("applicationUsers")]
+        col_Verifications[("UniversalIdentityVerifications")]
+        col_ChatMessages[("ChatMessages")]
+        col_Conversations[("Conversations")]
+        col_Notifications[("Notifications")]
+        col_AccessGrants[("MarketplaceProjectAccessGrants")]
+    end
+
+    %% Cross-Domain Lineage Edges
+    Ctrl_Deals -->|write| col_Deals
+    Ctrl_Deals -->|write| col_DealExecutions
+    Ctrl_Deals -->|write| col_Companies
+    Ctrl_Deals -->|write| col_Investments
+    Ctrl_Deals -->|write| col_Transactions
+    Ctrl_Deals -->|write| col_Notifications
+
+    Ctrl_Company -->|write| col_Companies
+    Ctrl_Company -->|write| col_Deals
+    Ctrl_Company -->|write| col_Investments
+    Ctrl_Company -->|read/write| col_CreatorIdeas
+
+    Ctrl_Market -->|write| col_AccessGrants
+    Ctrl_Market -->|read/write| col_CreatorIdeas
+    Ctrl_Market -->|read| col_Companies
+    Ctrl_Market -->|read| col_Investments
+
+    Ctrl_Creator -->|write| col_CreatorIdeas
+    Ctrl_Creator -->|write| col_CreatorJourneys
+    Ctrl_Creator -->|write| col_BrandKits
+    Ctrl_Creator -->|write| col_IpValuations
+
+    Ctrl_AI -->|write| col_AiRequests
+    Ctrl_AI -->|write| col_AiResponses
+    Ctrl_AI -->|write| col_AiUsage
+    Ctrl_AI -->|write| col_ClarifierSessions
+    Ctrl_AI -->|write| col_MarketStudySessions
+    Ctrl_AI -->|write| col_BusinessModelSessions
+    Ctrl_AI -->|write| col_BusinessPlanSessions
+    Ctrl_AI -->|write| col_ForecastSessions
+    Ctrl_AI -->|write| col_AiCreditLedger
+    Ctrl_AI -->|read/write| col_CreatorIdeas
+
+    Ctrl_SP -->|write| col_SPProfiles
+    Ctrl_SP -->|write| col_ProProfiles
+    Ctrl_SP -->|write| col_Workrooms
+    Ctrl_SP -->|write| col_Contracts
+    Ctrl_SP -->|write| col_Invoices
+    Ctrl_SP -->|write| col_ClientBriefs
+
+    Ctrl_Identity -->|write| col_Verifications
+    Ctrl_Identity -->|write| col_Users
+
+    Ctrl_Chat -->|write| col_ChatMessages
+    Ctrl_Chat -->|write| col_Conversations
+    Ctrl_Chat -->|write| col_Notifications
+
+    %% Highlight Multi-Writer Hotspots
+    classDef multiWriter stroke:#dc2626,stroke-width:2.5px,fill:#fef2f2;
+    class col_Companies,col_Deals,col_CreatorIdeas,col_Users multiWriter;

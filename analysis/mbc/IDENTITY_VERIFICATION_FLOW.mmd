@@ -1,0 +1,43 @@
+flowchart TD
+    subgraph Clients["Frontend Clients"]
+        WebappSumsub["Next.js /kyc (Sumsub WebSDK)"]
+        LegacyUpload["Legacy /kyc (Local File Upload UI)"]
+        SP_Profile["Provider Portal /settings/verification"]
+    end
+
+    subgraph ModernVerification["Modern System: IdentityController & Sumsub"]
+        IC["IdentityController.cs"]
+        IVS["IdentityVerificationService.cs"]
+        SumsubCloud["Sumsub SaaS API"]
+        Webhook["POST /api/identity/webhook"]
+    end
+
+    subgraph LegacyVerification["Legacy System: VarificationController"]
+        VC["VarificationController.cs"]
+        KSS["KycStorageService.cs"]
+        LocalFS[("Local Disk: uploads/kyc")]
+    end
+
+    subgraph DatabaseCollections["MongoDB Database State"]
+        ColUIV[("UniversalIdentityVerifications")]
+        ColUsers[("ApplicationUsers (user.Kyc.Status)")]
+        ColSPP[("ServiceProviderProfiles (VerificationStatus)")]
+    end
+
+    %% Flows
+    WebappSumsub -->|Get Access Token| IC
+    IC -->|Sumsub App Token| SumsubCloud
+    SumsubCloud -->|User Completes Verification| Webhook
+    Webhook -->|Handle Callback| IVS
+    IVS -->|Upsert Verification Status| ColUIV
+    IVS -->|Sync Legacy Kyc Flag (user.Kyc.Status = Verified)| ColUsers
+
+    LegacyUpload -->|POST /api/varification/upload| VC
+    VC -->|Save File| KSS
+    KSS -->|Write Raw Document| LocalFS
+    VC -->|Set user.Kyc.Status = Submitted| ColUsers
+
+    SP_Profile -->|Provider Identity Gate| ColSPP
+
+    classDef conflict fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    class ColUsers,ColUIV,ColSPP conflict;

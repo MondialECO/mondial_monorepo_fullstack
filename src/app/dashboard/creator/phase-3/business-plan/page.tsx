@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { withIdeaContext } from '@/lib/creator-routes';
 import {
   FileText,
   ArrowLeft,
@@ -22,8 +23,10 @@ import {
   Banknote,
   Activity,
   ShieldAlert,
-  ChevronRight
+  ChevronRight,
+  Scale,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -34,7 +37,7 @@ import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { useAiCredits, useBusinessPlanSessionTimed, useForecastSessionTimed, useStartBusinessPlan } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { creatorAiApi } from '@/lib/api-creator-ai';
-import { hasAiOutput, type BusinessPlanOutput, type ForecastOutput } from '@/types/creator/ai';
+import { hasAiOutput, type BusinessPlanOutput, type ForecastOutput, type LegalRegulatoryFramework } from '@/types/creator/ai';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 
 type SectionOwnershipType = 'owned_editable' | 'external_linked' | 'external_scheduled' | 'owned_full_plan';
@@ -65,6 +68,7 @@ function buildSections(
   bp: BusinessPlanOutput | undefined,
   project: { problem: string; solution: string; targetUser: string },
   cross: { hasForecast: boolean; hasGtm: boolean; youNeed: string[]; seedAsk: number | null },
+  legalFramework?: LegalRegulatoryFramework | null,
 ): DisplaySection[] {
   const join = (...xs: (string | undefined)[]) => xs.filter(Boolean).join(' ');
   const isEdited = (sectionId: string) =>
@@ -140,13 +144,13 @@ function buildSections(
       title: 'Financial Projections',
       body: cross.hasForecast
         ? 'Bound to your live multi-year financial model — revenue growth, fixed/variable cost structures, and break-even milestones.'
-        : 'Your financial forecast (Step 3.4) models dynamic revenue and cost trajectories.',
+        : 'Your financial forecast (Step 3.3) models dynamic revenue and cost trajectories.',
       ownership: 'external_linked',
       rewritable: false,
       edited: false,
-      sourceLabel: 'Financial Forecast (Step 3.4)',
+      sourceLabel: 'Financial Forecast (Step 3.3)',
       sourceRoute: '/dashboard/creator/phase-3/forecast',
-      explanation: 'Calculated by the financial forecast engine in Step 3.4. Edit assumptions there to update.',
+      explanation: 'Calculated by the financial forecast engine in Step 3.3. Edit assumptions there to update.',
     },
     {
       id: 'team',
@@ -158,9 +162,9 @@ function buildSections(
       ownership: 'external_linked',
       rewritable: false,
       edited: false,
-      sourceLabel: 'Company Formation (Step 3.6)',
+      sourceLabel: 'Company Formation (Step 3.5)',
       sourceRoute: '/dashboard/creator/phase-3/formation',
-      explanation: 'Derived from your skills evaluation and legal entity structure in Step 3.6.',
+      explanation: 'Derived from your skills evaluation and legal entity structure in Step 3.5.',
     },
     {
       id: 'funding',
@@ -197,6 +201,18 @@ function buildSections(
       sourceLabel: 'Full Plan Synthesis',
       explanation: 'This section is produced as part of the full business plan synthesis and updates whenever the plan is regenerated.',
     },
+    {
+      id: 'legal-framework',
+      number: sectionNum(12),
+      title: 'Legal & Regulatory Framework',
+      body: legalFramework?.summary || bp?.legalFramework?.summary || 'Statutory legal framework and regulatory roadmap established under France-first compliance intelligence in Step 3.4.',
+      ownership: 'external_linked',
+      rewritable: false,
+      edited: false,
+      sourceLabel: 'Venture Compliance (Step 3.4)',
+      sourceRoute: '/dashboard/creator/phase-3/compliance',
+      explanation: 'Generated primarily from your deterministic France legal assessment in Step 3.4.',
+    },
   ];
 }
 
@@ -230,16 +246,28 @@ function Bullets({ items }: { items: string[] }) {
   );
 }
 
-function SectionExtras({ id, bp }: { id: string; bp?: BusinessPlanOutput }) {
-  if (!bp) return null;
+function SectionExtras({
+  id,
+  bp,
+  legalFramework,
+  onRefreshLegal,
+  router,
+}: {
+  id: string;
+  bp?: BusinessPlanOutput;
+  legalFramework?: LegalRegulatoryFramework | null;
+  onRefreshLegal?: () => void;
+  router?: ReturnType<typeof useRouter>;
+}) {
+  if (!bp && !legalFramework) return null;
   const blocks: ReactNode[] = [];
-  const es = bp.executiveSummary;
-  const ma = bp.marketAnalysis;
-  const ca = bp.competitorAnalysis;
-  const rm = bp.revenueModel;
-  const gtm = bp.goToMarket;
-  const ops = bp.operationsPlan;
-  const risks = bp.risks;
+  const es = bp?.executiveSummary;
+  const ma = bp?.marketAnalysis;
+  const ca = bp?.competitorAnalysis;
+  const rm = bp?.revenueModel;
+  const gtm = bp?.goToMarket;
+  const ops = bp?.operationsPlan;
+  const risks = bp?.risks;
 
   if (id === 'executive') {
     if (has(es?.valueProposition)) {
@@ -422,6 +450,268 @@ function SectionExtras({ id, bp }: { id: string; bp?: BusinessPlanOutput }) {
         </Extras>,
       );
     }
+  } else if (id === 'legal-framework') {
+    const lf = legalFramework || bp?.legalFramework;
+    if (lf) {
+      blocks.push(
+        <div key="lf-full" className="space-y-6 pt-2 font-sans">
+          {/* Top Status Strip */}
+          <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <Badge variant="outline" className="text-xs font-semibold gap-1.5 px-2.5 py-1">
+                  🇫🇷 {lf.jurisdiction || 'France'} · Planning Guidance
+                </Badge>
+                <Badge variant="secondary" className="text-xs font-mono">
+                  Structure: {lf.proposedLegalStructure || 'SAS'}
+                </Badge>
+                {lf.rulesVersion && (
+                  <Badge variant="outline" className="text-xs font-mono text-muted-foreground">
+                    Catalogue: {lf.rulesVersion}
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <div className="text-xs font-bold text-foreground">
+                    Planning Readiness: <span className="font-mono text-primary font-extrabold">{lf.planningReadinessPercentage ?? 0}%</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {lf.addressedRequirementsCount ?? 0} of {lf.totalApplicableRequirementsCount ?? 0} requirements addressed
+                  </div>
+                </div>
+                <div className="w-20 h-2 rounded-full bg-muted overflow-hidden border border-border/80">
+                  <div
+                    className="h-full bg-primary transition-all rounded-full"
+                    style={{ width: `${Math.min(100, Math.max(0, lf.planningReadinessPercentage ?? 0))}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Stale Warning Banner */}
+            {lf.isStale && (
+              <div className="rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/80 dark:bg-amber-950/40 p-3.5 space-y-2 text-xs text-amber-900 dark:text-amber-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <span>
+                      <strong>
+                        {lf.staleMetadata?.staleReason === 'RulesUpdated'
+                          ? 'Statutory rules updated:'
+                          : 'Legal section may need updating:'}
+                      </strong>{' '}
+                      {lf.staleMetadata?.staleReason === 'RulesUpdated'
+                        ? 'French compliance catalogue has been updated with new guidance.'
+                        : 'Your business profile changed since the last statutory evaluation.'}
+                    </span>
+                  </div>
+                  {onRefreshLegal && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={onRefreshLegal}
+                      className="h-7 text-xs gap-1.5 border-amber-400 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/50 shrink-0"
+                    >
+                      <RotateCw className="w-3 h-3" /> Refresh Legal Analysis
+                    </Button>
+                  )}
+                </div>
+
+                {((lf.staleMetadata?.humanChangeDescriptions && lf.staleMetadata.humanChangeDescriptions.length > 0) ||
+                  (lf.changedSignals && lf.changedSignals.length > 0)) && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300 mr-1">
+                      Detected changes:
+                    </span>
+                    {(lf.staleMetadata?.humanChangeDescriptions || lf.changedSignals || []).map((change, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-900 dark:text-amber-100"
+                      >
+                        {change}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Thematic Subsections (12.1 – 12.10) */}
+          {arr2(lf.subsections) && (
+            <div className="space-y-4">
+              <h4 className="text-label font-bold uppercase tracking-wider text-muted-foreground font-sans">
+                Applicable Statutory Areas
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {lf.subsections!.map((sub, i) => (
+                  <div key={i} className="rounded-xl border border-border bg-card/60 p-4 space-y-2.5 shadow-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-badge font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10">
+                          {sub.subsectionKey}
+                        </span>
+                        <h5 className="text-sm font-semibold text-foreground">{sub.title}</h5>
+                      </div>
+                      <Badge
+                        variant={sub.status === 'Addressed' ? 'secondary' : (sub.status === 'InProgress' ? 'outline' : 'default')}
+                        className="text-badge capitalize font-medium shrink-0"
+                      >
+                        {sub.status === 'Addressed' ? '✓ Addressed' : (sub.status === 'InProgress' ? 'In Progress' : 'Action Required')}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{sub.summary}</p>
+                    {arr2(sub.keyObligations) && (
+                      <ul className="text-xs text-foreground/80 space-y-1 pl-4 list-disc">
+                        {sub.keyObligations.map((ob, idx) => (
+                          <li key={idx}>{ob}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {arr2(sub.applicableAuthorities) && (
+                      <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                        <span className="text-[10px] uppercase font-semibold text-muted-foreground">Authorities:</span>
+                        {sub.applicableAuthorities.map((auth, idx) => (
+                          <span key={idx} className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-muted text-foreground/80">
+                            {auth}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 12.11 Legal Readiness Roadmap Summary */}
+          {arr2(lf.roadmapSummary) && (
+            <div className="space-y-3">
+              <h4 className="text-label font-bold uppercase tracking-wider text-muted-foreground font-sans">
+                12.11 Legal Readiness Roadmap
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                {lf.roadmapSummary!.map((st, i) => (
+                  <div key={i} className="rounded-xl border border-border bg-card/40 p-3 space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground truncate">{st.stageTitle}</div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+                      <span>{st.addressedCount} / {st.totalCount}</span>
+                      <span className="font-bold text-foreground">{st.completionPercentage}%</span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full"
+                        style={{ width: `${st.completionPercentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 12.12 Priority Open Items */}
+          {arr2(lf.priorityOpenItems) && (
+            <div className="space-y-3">
+              <h4 className="text-label font-bold uppercase tracking-wider text-muted-foreground font-sans">
+                12.12 Priority Open Items &amp; Next Actions
+              </h4>
+              <div className="space-y-2">
+                {lf.priorityOpenItems!.map((item, i) => (
+                  <div key={i} className="flex items-start justify-between gap-3 rounded-xl border border-border bg-card/50 p-3.5 text-xs">
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary">
+                          {item.priority}
+                        </Badge>
+                        <span className="font-semibold text-foreground">{item.title}</span>
+                        <span className="text-muted-foreground font-mono text-[11px]">({item.officialAuthority})</span>
+                      </div>
+                      <p className="text-muted-foreground">{item.recommendedAction}</p>
+                    </div>
+                    {router && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => router.push('/dashboard/creator/phase-3/compliance')}
+                        className="text-xs text-primary gap-1 shrink-0 h-7"
+                      >
+                        View in 3.5 <ArrowRight className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Needs Information Items */}
+          {arr2(lf.needsInformationItems) && (
+            <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                <Info className="w-4 h-4 text-primary" /> Confirmation Required
+              </h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                MBC does not currently have enough operational information to confirm applicability for the following items:
+              </p>
+              <ul className="text-xs text-foreground/80 space-y-1 pl-4 list-disc">
+                {lf.needsInformationItems!.map((item, i) => (
+                  <li key={i}>
+                    <strong>{item.title}</strong> — {item.clarificationGuidance}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Supporting Evidence Summary */}
+          {lf.evidenceSummary && (
+            <div className="rounded-xl border border-border bg-card/60 p-4 space-y-2 text-xs">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Supporting Proof &amp; Documentation
+              </h4>
+              <p className="text-muted-foreground leading-relaxed">{lf.evidenceSummary.summaryText}</p>
+              <div className="flex items-center gap-4 text-muted-foreground pt-1 flex-wrap">
+                <span>Attached Documents: <strong className="text-foreground font-mono">{lf.evidenceSummary.totalDocumentsLinked}</strong></span>
+                <span>Needs Review: <strong className="text-foreground font-mono">{lf.evidenceSummary.needsReviewCount}</strong></span>
+                <span>Accepted for Planning: <strong className="text-foreground font-mono">{lf.evidenceSummary.acceptedForPlanningCount}</strong></span>
+              </div>
+            </div>
+          )}
+
+          {/* Official Sources Cited */}
+          {arr2(lf.officialSources) && (
+            <div className="space-y-2 pt-1">
+              <h4 className="text-label font-bold uppercase tracking-wider text-muted-foreground font-sans">
+                Grounding Official Sources
+              </h4>
+              <div className="flex items-center gap-2 flex-wrap">
+                {lf.officialSources!.map((src, i) => (
+                  <a
+                    key={i}
+                    href={src.url || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-border bg-card text-xs text-foreground hover:text-primary transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                    <span className="font-semibold">{src.authorityName}</span>
+                    <span className="text-muted-foreground text-[11px] truncate max-w-[150px]">({src.documentTitle})</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Safe Language Disclaimer Footer */}
+          <div className="rounded-xl border border-border/60 bg-muted/20 p-3 text-[11px] text-muted-foreground leading-relaxed">
+            <strong>Notice:</strong> {lf.disclaimerNotice || 'Planning guidance only. Based on current venture information. Not formal legal advice or statutory certification.'}
+          </div>
+        </div>
+      );
+    }
   }
 
   if (blocks.length === 0) return null;
@@ -430,6 +720,8 @@ function SectionExtras({ id, bp }: { id: string; bp?: BusinessPlanOutput }) {
 
 export default function BusinessPlanPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const ideaId = searchParams.get('ideaId');
   const { completeStep } = useCreatorProgress();
 
   const [loading, setLoading] = useState(true);
@@ -531,9 +823,28 @@ export default function BusinessPlanPage() {
   const failedIsProviderBilling = /openrouter error \(402\)/i.test(bpError ?? '');
   const failedIsCredits = !failedIsProviderBilling && /402|credit|insufficient|payment/i.test(bpError ?? '');
 
+  const { data: legalFramework, refetch: refetchLegal } = useQuery({
+    queryKey: ['business-plan-section-12'],
+    queryFn: () => creatorJourneyApi.getBusinessPlanSection12(),
+    staleTime: 60_000,
+  });
+  const [refreshingLegal, setRefreshingLegal] = useState(false);
+
+  const handleRefreshLegal = async () => {
+    try {
+      setRefreshingLegal(true);
+      await creatorJourneyApi.evaluateLegalCompliance(ideaId);
+      await refetchLegal();
+    } catch (e) {
+      console.error('Failed to refresh legal assessment', e);
+    } finally {
+      setRefreshingLegal(false);
+    }
+  };
+
   const sections = useMemo(
-    () => buildSections(bpOutput, project, cross),
-    [bpOutput, project, cross],
+    () => buildSections(bpOutput, project, cross, legalFramework),
+    [bpOutput, project, cross, legalFramework],
   );
 
   const handleStart = async () => {
@@ -588,8 +899,8 @@ export default function BusinessPlanPage() {
   };
 
   const handleNext = () => {
-    completeStep(3, 3);
-    router.push('/dashboard/creator/phase-3/forecast');
+    completeStep(3, 6);
+    router.push(withIdeaContext('/dashboard/creator/phase-3/complete', ideaId));
   };
 
   return (
@@ -602,12 +913,13 @@ export default function BusinessPlanPage() {
         plan={bpOutput}
         forecast={forecastOutput}
         cross={{ youNeed: cross.youNeed, seedAsk: cross.seedAsk }}
+        legalFramework={legalFramework}
       />
       <Phase3SetupShell
         fullWidth
-        stepEyebrow="Step 3.3"
+        stepEyebrow="Step 3.6 · Executive Business Plan"
         title="AI Business Plan"
-        description="Your comprehensive 11-section business plan. Edit owned sections directly or navigate to authoritative source modules."
+        description="Your comprehensive 12-section business plan. Edit owned sections directly or navigate to authoritative source modules."
       >
         {loading && (
           <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center">
@@ -625,7 +937,7 @@ export default function BusinessPlanPage() {
             <p className="text-sm text-muted-foreground font-sans leading-relaxed">
               {startError?.kind === 'credits'
                 ? "You've used all your AI credits."
-                : 'We will synthesize an 11-section investor-ready document from your clarified idea and venture core.'}
+                : 'We will synthesize a 12-section investor-ready document from your clarified idea and venture core.'}
             </p>
             {startError && startError.kind !== 'credits' && (
               <div className="space-y-2">
@@ -754,7 +1066,7 @@ export default function BusinessPlanPage() {
                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap font-sans">
                       <span className="font-mono text-foreground/80 font-medium">Version {currentVersion || 1}</span>
                       <span>•</span>
-                      <span>11 Continuous Sections</span>
+                      <span>12 Continuous Sections</span>
                       <span>•</span>
                       <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                         <Check className="h-3.5 w-3.5" /> Investor Document Format
@@ -783,7 +1095,7 @@ export default function BusinessPlanPage() {
                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans flex items-center gap-1.5">
                       <Layers className="h-3.5 w-3.5" /> Document Index
                     </h3>
-                    <span className="text-badge font-mono text-muted-foreground">11 Sections</span>
+                    <span className="text-badge font-mono text-muted-foreground">12 Sections</span>
                   </div>
                   <nav className="space-y-1">
                     {sections.map((s) => {
@@ -855,9 +1167,39 @@ export default function BusinessPlanPage() {
                               </Badge>
                             )}
                             {s.ownership === 'external_linked' && (
-                              <Badge variant="secondary" className="text-badge font-sans font-medium gap-1 text-primary">
-                                <ExternalLink className="h-2.5 w-2.5" /> {s.sourceLabel}
-                              </Badge>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <Badge variant="secondary" className="text-badge font-sans font-medium gap-1 text-primary">
+                                  <ExternalLink className="h-2.5 w-2.5" /> {s.sourceLabel}
+                                </Badge>
+                                {s.id === 'financials' && (
+                                  <Badge variant="outline" className={cross.hasForecast ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-badge font-sans" : "bg-muted text-muted-foreground text-badge font-sans"}>
+                                    {cross.hasForecast ? 'Synced (36-mo Model)' : 'Pending Simulation'}
+                                  </Badge>
+                                )}
+                                {s.id === 'team' && (
+                                  <Badge variant="outline" className={cross.youNeed.length > 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-badge font-sans" : "bg-muted text-muted-foreground text-badge font-sans"}>
+                                    {cross.youNeed.length > 0 ? `Synced (${cross.youNeed.length} Roles)` : 'Pending Structure'}
+                                  </Badge>
+                                )}
+                                {s.id === 'legal-framework' && (
+                                  <>
+                                    <Badge variant="outline" className={legalFramework || bpOutput?.legalFramework ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-badge font-sans" : "bg-muted text-muted-foreground text-badge font-sans"}>
+                                      {legalFramework || bpOutput?.legalFramework ? 'Synced (FR Rules)' : 'Pending Compliance'}
+                                    </Badge>
+                                    {(legalFramework?.isStale || bpOutput?.legalFramework?.isStale) && (
+                                      s.edited ? (
+                                        <Badge variant="warning" className="text-badge font-sans font-medium gap-1">
+                                          Review suggested
+                                        </Badge>
+                                      ) : (
+                                        <Badge variant="warning" className="text-badge font-sans font-medium gap-1">
+                                          Update needed
+                                        </Badge>
+                                      )
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             )}
                             {s.ownership === 'external_scheduled' && (
                               <Badge variant="outline" className="text-badge font-sans font-medium text-amber-600 dark:text-amber-400 border-amber-500/30">
@@ -909,7 +1251,7 @@ export default function BusinessPlanPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => router.push(s.sourceRoute!)}
+                                onClick={() => router.push(withIdeaContext(s.sourceRoute!, ideaId))}
                                 className="h-8 text-xs gap-1.5 font-sans font-medium text-muted-foreground hover:text-foreground rounded-lg"
                               >
                                 Edit at Source <ChevronRight className="h-3.5 w-3.5" />
@@ -987,7 +1329,13 @@ export default function BusinessPlanPage() {
                             )}
 
                             {/* Render Detailed Structured Sub-Arrays & Appendices */}
-                            <SectionExtras id={s.id} bp={bpOutput} />
+                            <SectionExtras
+                              id={s.id}
+                              bp={bpOutput}
+                              legalFramework={legalFramework}
+                              onRefreshLegal={handleRefreshLegal}
+                              router={router}
+                            />
 
                             {saved && (
                               <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
@@ -1007,13 +1355,13 @@ export default function BusinessPlanPage() {
                   <Button
                     variant="ghost"
                     size="lg"
-                    onClick={() => router.push('/dashboard/creator/phase-3/business-model')}
+                    onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/formation', ideaId))}
                     className="font-sans font-semibold gap-1.5"
                   >
-                    <ArrowLeft className="w-4 h-4" /> Back to Business Model
+                    <ArrowLeft className="w-4 h-4" /> Back to Company Formation
                   </Button>
                   <Button onClick={handleNext} size="lg" className="gap-2 font-sans font-semibold">
-                    Proceed to Financial Forecast <ArrowRight className="w-4 h-4" />
+                    Proceed to Investor Readiness <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
               </main>

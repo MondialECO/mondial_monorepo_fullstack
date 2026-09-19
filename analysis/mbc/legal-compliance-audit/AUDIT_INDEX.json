@@ -1,0 +1,254 @@
+{
+  "auditMetadata": {
+    "module": "Creator Phase 3 — Legal & Compliance Intelligence",
+    "targetJurisdiction": "France (FR)",
+    "auditDate": "2026-09-19",
+    "auditor": "Antigravity AI Agent",
+    "mode": "STRICT_FINDINGS_ONLY",
+    "totalFindings": 12
+  },
+  "findings": [
+    {
+      "finding_id": "FIND-01",
+      "area": "Legal Domain / Statutory Authority",
+      "severity": "BLOCKER",
+      "status": "CONFIRMED",
+      "description": "Step 3.5 relies on a hardcoded 12-item list in CreatorPhase3Controller with only an isFinTech boolean switch, lacking real French statutory rules, articles, or official citations.",
+      "evidence": "backend/Controllers/CreatorPhase3Controller.cs:173-214 hardcodes 6 universal items and 6 optional pool items.",
+      "file_paths": [
+        "backend/Controllers/CreatorPhase3Controller.cs"
+      ],
+      "documentation_paths": [
+        "docs/product/creator-flow-canon.md"
+      ],
+      "reuse_candidate": "CreatorPhase3Controller endpoint routes",
+      "implementation_required": "Create FranceLegalRulesCatalog and ILegalApplicabilityEngine",
+      "dependencies": [],
+      "recommended_stage": "Stage 2"
+    },
+    {
+      "finding_id": "FIND-02",
+      "area": "AI Architecture / Legal Hallucination",
+      "severity": "BLOCKER",
+      "status": "CONFIRMED",
+      "description": "Risk of LLM hallucinating non-existent French legal codes if legal applicability is delegated to generative prompts rather than deterministic rules.",
+      "evidence": "SafetyRules.cs warns against legal advice, but no separation layer exists between legal rules and AI reasoning.",
+      "file_paths": [
+        "backend/Services/Ai/Prompts/SafetyRules.cs",
+        "backend/Services/Ai/Prompts/PromptTemplate.cs"
+      ],
+      "documentation_paths": [
+        "docs/product/creator-flow-canon.md"
+      ],
+      "reuse_candidate": "OpenRouterClient, PromptBuilder, SafetyRules",
+      "implementation_required": "Strict deterministic rule evaluation layer; AI restricted to contextual plain-language explanation.",
+      "dependencies": [
+        "FIND-01"
+      ],
+      "recommended_stage": "Stage 4"
+    },
+    {
+      "finding_id": "FIND-03",
+      "area": "Product Safety / Legal Positioning",
+      "severity": "BLOCKER",
+      "status": "CONFIRMED",
+      "description": "Current UI copy in Step 3.5 claims 'All critical regulatory and legal milestones achieved' without clear disclaimers that this is self-attested planning guidance, not formal certification.",
+      "evidence": "src/app/dashboard/creator/phase-3/compliance/page.tsx:334 displays unqualified success banner.",
+      "file_paths": [
+        "src/app/dashboard/creator/phase-3/compliance/page.tsx"
+      ],
+      "documentation_paths": [
+        "docs/product/creator-flow-canon.md"
+      ],
+      "reuse_candidate": "Phase3SetupShell",
+      "implementation_required": "Enforce strict disclaimer copy: 'Planning guidance only. Not legal advice.'",
+      "dependencies": [],
+      "recommended_stage": "Stage 7"
+    },
+    {
+      "finding_id": "FIND-04",
+      "area": "Data Model / Schema Completeness",
+      "severity": "HIGH",
+      "status": "CONFIRMED",
+      "description": "CreatorLegalChecklistItem model only contains 8 basic fields, lacking Stage, Priority, WhyItApplies, OfficialSource, and EvidenceDocumentId.",
+      "evidence": "backend/Models/DatabaseModels/CreatorJourney.cs:193-203 defines CreatorLegalChecklistItem.",
+      "file_paths": [
+        "backend/Models/DatabaseModels/CreatorJourney.cs"
+      ],
+      "documentation_paths": [
+        "docs/system-architecture/07-source-of-truth.md"
+      ],
+      "reuse_candidate": "CreatorLegalChecklist class",
+      "implementation_required": "Extend CreatorLegalChecklistItem with statutory metadata fields",
+      "dependencies": [],
+      "recommended_stage": "Stage 1"
+    },
+    {
+      "finding_id": "FIND-05",
+      "area": "Document Vault / Evidence Storage",
+      "severity": "HIGH",
+      "status": "CONFIRMED",
+      "description": "CreatorIdeaDocumentTypes only supports 'business_plan' and 'financial_forecast', rejecting all uploaded legal evidence files.",
+      "evidence": "backend/Models/DatabaseModels/CreatorIdea.cs:121-124 whitelist rejects any other document type.",
+      "file_paths": [
+        "backend/Models/DatabaseModels/CreatorIdea.cs",
+        "backend/Controllers/CreatorIdeaDocumentsController.cs"
+      ],
+      "documentation_paths": [
+        "docs/system-architecture/diagrams/23-file-storage.mmd"
+      ],
+      "reuse_candidate": "CreatorIdeaDocumentsController, DocumentUploadController",
+      "implementation_required": "Extend CreatorIdeaDocumentTypes to include legal evidence constants",
+      "dependencies": [
+        "FIND-04"
+      ],
+      "recommended_stage": "Stage 1"
+    },
+    {
+      "finding_id": "FIND-06",
+      "area": "Business Plan Integration",
+      "severity": "HIGH",
+      "status": "CONFIRMED",
+      "description": "The Executive Business Plan (Step 3.3) and BusinessPlanOutputDto completely lack a Legal & Regulatory Framework section.",
+      "evidence": "backend/Models/Dtos/Ai/BusinessPlanOutputDto.cs defines 7 sections; src/app/dashboard/creator/phase-3/business-plan/page.tsx displays 11 sections; none are Legal.",
+      "file_paths": [
+        "backend/Models/Dtos/Ai/BusinessPlanOutputDto.cs",
+        "src/app/dashboard/creator/phase-3/business-plan/page.tsx",
+        "src/components/creator/ai/BusinessPlanView.tsx"
+      ],
+      "documentation_paths": [
+        "docs/product/creator-flow-canon.md"
+      ],
+      "reuse_candidate": "BusinessPlanSession versioning, BusinessPlanView",
+      "implementation_required": "Add Section 12: Legal & Regulatory Framework to Business Plan DTO and UI",
+      "dependencies": [
+        "FIND-01"
+      ],
+      "recommended_stage": "Stage 9"
+    },
+    {
+      "finding_id": "FIND-07",
+      "area": "Creator-to-Entrepreneur Continuity",
+      "severity": "HIGH",
+      "status": "CONFIRMED",
+      "description": "Level Up transition in Phase 6 transfers cap table and concept, but discards all legal checklist progress, verified documents, and evidence.",
+      "evidence": "backend/Controllers/CreatorPhase6Controller.cs:500-600 creates Company and Phase3Concept, but does not copy legal documents to Companies.Documents.",
+      "file_paths": [
+        "backend/Controllers/CreatorPhase6Controller.cs",
+        "backend/Models/DatabaseModels/Companies.cs"
+      ],
+      "documentation_paths": [
+        "docs/product/creator-flow-canon.md",
+        "docs/system-architecture/diagrams/10-entrepreneur-system.mmd"
+      ],
+      "reuse_candidate": "Companies.Documents, Companies.DataRoomDocuments",
+      "implementation_required": "Map verified legal evidence documents into Companies collection on Level Up",
+      "dependencies": [
+        "FIND-05"
+      ],
+      "recommended_stage": "Stage 11"
+    },
+    {
+      "finding_id": "FIND-08",
+      "area": "UI / Workspace Layout",
+      "severity": "HIGH",
+      "status": "CONFIRMED",
+      "description": "Step 3.5 UI is a flat, single-column checklist of 12 cards, lacking stage-based navigation, evidence upload controls, or an AI context rail.",
+      "evidence": "src/app/dashboard/creator/phase-3/compliance/page.tsx renders single list under Phase3SetupShell.",
+      "file_paths": [
+        "src/app/dashboard/creator/phase-3/compliance/page.tsx"
+      ],
+      "documentation_paths": [
+        "docs/archive/PHASE_3_VISUAL_PARITY_GAP_AUDIT.md"
+      ],
+      "reuse_candidate": "Phase3SetupShell, Card, Badge, Progress",
+      "implementation_required": "Rebuild Step 3.5 into 3-pane Legal Workspace (Stages + Canvas + AI Rail)",
+      "dependencies": [
+        "FIND-01",
+        "FIND-04"
+      ],
+      "recommended_stage": "Stage 7"
+    },
+    {
+      "finding_id": "FIND-09",
+      "area": "Dashboard Visibility",
+      "severity": "HIGH",
+      "status": "CONFIRMED",
+      "description": "The Phase 3 creator dashboard lacks a dedicated smart summary card for Legal & Compliance Intelligence.",
+      "evidence": "Phase 3 dashboard renders generic step progress without detected business archetype pills or readiness dial.",
+      "file_paths": [
+        "src/app/dashboard/creator/page.tsx"
+      ],
+      "documentation_paths": [
+        "docs/product/creator-flow-canon.md"
+      ],
+      "reuse_candidate": "Dashboard metric card patterns",
+      "implementation_required": "Create Phase3LegalCard.tsx with readiness score, France badge, and archetype tags",
+      "dependencies": [
+        "FIND-01"
+      ],
+      "recommended_stage": "Stage 6"
+    },
+    {
+      "finding_id": "FIND-10",
+      "area": "Change Detection / Invalidation",
+      "severity": "MEDIUM",
+      "status": "CONFIRMED",
+      "description": "Modifications to Business Model (e.g. adding B2C or online payments) do not invalidate the legal checklist, leaving founders with stale requirements.",
+      "evidence": "No snapshot hash or dirty flag exists on CreatorLegalChecklist.",
+      "file_paths": [
+        "backend/Controllers/CreatorPhase3Controller.cs",
+        "backend/Services/Implementations/CreatorJourneyService.cs"
+      ],
+      "documentation_paths": [
+        "docs/product/creator-flow-canon.md"
+      ],
+      "reuse_candidate": "Phase 4 Pricing isPotentiallyOutdated pattern",
+      "implementation_required": "Compute BusinessSnapshotHash and set IsPotentiallyOutdated flag when upstream data changes",
+      "dependencies": [
+        "FIND-01"
+      ],
+      "recommended_stage": "Stage 10"
+    },
+    {
+      "finding_id": "FIND-11",
+      "area": "Security / Document Authorization",
+      "severity": "MEDIUM",
+      "status": "CONFIRMED",
+      "description": "Evidence upload and download endpoints must enforce tenant ownership checks to prevent unauthorized cross-idea file access.",
+      "evidence": "CreatorIdeaDocumentsController currently implements GetOwnedIdeaAsync correctly, which must be mirrored for all new legal evidence endpoints.",
+      "file_paths": [
+        "backend/Controllers/CreatorIdeaDocumentsController.cs"
+      ],
+      "documentation_paths": [
+        "docs/system-architecture/08-auth-and-security.md"
+      ],
+      "reuse_candidate": "GetOwnedIdeaAsync helper pattern",
+      "implementation_required": "Enforce GetOwnedIdeaAsync and MIME inspection on all evidence endpoints",
+      "dependencies": [
+        "FIND-05"
+      ],
+      "recommended_stage": "Stage 8"
+    },
+    {
+      "finding_id": "FIND-12",
+      "area": "Scoring Calibration / Diagnostic Weighting",
+      "severity": "LOW",
+      "status": "CONFIRMED",
+      "description": "Investor readiness score in Step 3.7 allocates 15 points using raw CompletedCount / TotalCount * 15 without stage weighting.",
+      "evidence": "backend/Controllers/CreatorPhase3Controller.cs:708-709 computes raw fraction * 15.",
+      "file_paths": [
+        "backend/Controllers/CreatorPhase3Controller.cs"
+      ],
+      "documentation_paths": [
+        "docs/product/creator-flow-canon.md"
+      ],
+      "reuse_candidate": "ComputeReadiness in CreatorPhase3Controller",
+      "implementation_required": "Weight critical pre-creation and pre-launch items higher in LegalReadiness calculation",
+      "dependencies": [
+        "FIND-04"
+      ],
+      "recommended_stage": "Stage 5"
+    }
+  ]
+}

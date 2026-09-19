@@ -1,0 +1,37 @@
+# Complete Creator Route Map — Phase 2 & Phase 3
+
+**Audit Date:** 2026-09-19  
+**Monorepo Path:** `src/app/dashboard/creator/`  
+**Backend Controllers:** `CreatorJourneyController.cs`, `CreatorPhase3Controller.cs`, `AiController.cs`
+
+---
+
+## Phase 2: Project Identity & Branding
+
+| Phase | Step Code | Route | Component | Purpose | Inbound Navigation | Outbound Navigation | Implementation Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Phase 2** | `2.0` | `/dashboard/creator/phase-2` | `Phase2IndexPage` (`phase-2/page.tsx`) | Entry router for Phase 2; initializes journey state and redirects to clarifier | `/dashboard/creator` (Phase 2 Card) | `/dashboard/creator/phase-2/clarifier` (via `router.replace`) | **Implemented** (Redirect Shell) |
+| **Phase 2** | `2.6` (BE Step 6) | `/dashboard/creator/phase-2/clarifier` | `ClarifierPage` (`phase-2/clarifier/page.tsx`) | 6-question conversational AI interview establishing Problem, Solution, Target User, Alternatives, Founder Edge, and Why Now | `/dashboard/creator/phase-2`, `/dashboard/creator/phase-2/idea-summary` ("Refine Answers") | `/dashboard/creator/phase-2/idea-summary` | **Implemented** (Interactive Chat) |
+| **Phase 2** | `2.7` (BE Step 7) | `/dashboard/creator/phase-2/idea-summary` | `IdeaSummaryPage` (`phase-2/idea-summary/page.tsx`) | Synthesis validation page displaying the Clarity ring (0-100), key takeaways, and category confirmation | `/dashboard/creator/phase-2/clarifier` | `/dashboard/creator/phase-2/concept-name` (Primary CTA), `/dashboard/creator/phase-2/clarifier` ("Refine") | **Implemented** |
+| **Phase 2** | `2.8` (BE Step 8) | `/dashboard/creator/phase-2/concept-name` | `ConceptNamePage` (`phase-2/concept-name/page.tsx`) | Concept naming screen with AI name generation cards or custom naming form (max 60 chars, generic name blocklist) | `/dashboard/creator/phase-2/idea-summary` | `/dashboard/creator/phase-2/branding` | **Implemented** |
+| **Phase 2** | `2.9` (BE Step 9) | `/dashboard/creator/phase-2/branding` | `BrandingChoicePage` (`phase-2/branding/page.tsx`) | Gateway selection screen offering "Open Brand Studio" or "Skip for now" | `/dashboard/creator/phase-2/concept-name` | `/dashboard/creator/phase-2/brand-studio` (Studio), `/dashboard/creator/phase-2/complete` (Skip) | **Implemented** |
+| **Phase 2** | `2.10` | `/dashboard/creator/phase-2/brand-studio` | `BrandStudioPage` -> `BrandStudioShell` (`phase-2/brand-studio/page.tsx`) | Full 7-step modal design studio: Strategy, Directions, Logo Type, Logo Gen, Variations, Colors, Typography | `/dashboard/creator/phase-2/branding` | `/dashboard/creator/phase-2/brand-kit` | **Implemented** (Full Studio) |
+| **Phase 2** | `2.11` | `/dashboard/creator/phase-2/brand-kit` | `BrandKitPage` -> `BrandKitHubView` (`phase-2/brand-kit/page.tsx`) | Brand asset repository, SVG/PNG downloads, color/font copy sheets, and zip export | `/dashboard/creator/phase-2/brand-studio`, `/dashboard/creator` (Brand Kit Card) | `/dashboard/creator/phase-2/complete` | **Implemented** (Asset Hub) |
+| **Phase 2** | `2.12` (BE Step 12) | `/dashboard/creator/phase-2/complete` | `Phase2CompletePage` (`phase-2/complete/page.tsx`) | Phase 2 completion showcase, Brand Kit preview, venture summary, and gating advance to Phase 3 | `/dashboard/creator/phase-2/brand-kit`, `/dashboard/creator/phase-2/branding` (skip) | `/dashboard/creator/phase-3` (Primary CTA via `advancePhase(2)`) | **Implemented** |
+| **Phase 2** | Legacy | `/dashboard/creator/phase-2/hire-designer` | `HireDesignerPage` (`phase-2/hire-designer/page.tsx`) | M50 verified human designer marketplace booking screen with chat workroom dispatch | Direct URL deep link or legacy link | `/dashboard/creator/phase-2/branding` | **Dead / Bypassed** (Not in linear canon) |
+| **Phase 2** | Legacy | `/dashboard/creator/phase-2/logo-tool` | `AILogoToolPage` (`phase-2/logo-tool/page.tsx`) | Isolated `LogoCreationModal` test wrapper bypassing studio flow | Direct URL deep link | `/dashboard/creator/phase-2/complete` | **Dead Route** (Orphan prototype) |
+
+---
+
+## Phase 3: Business Plan Intelligence
+
+| Phase | Step Code | Route | Component | Purpose | Inbound Navigation | Outbound Navigation | Implementation Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Phase 3** | `3.0` | `/dashboard/creator/phase-3` | `Phase3IndexPage` (`phase-3/page.tsx`) | Root phase redirector; immediately forwards user to Step 3.1 Market Study | `/dashboard/creator/phase-2/complete`, `/dashboard/creator` (Phase 3 Cards) | `/dashboard/creator/phase-3/market-study` (via `router.replace`) | **Implemented** (Redirect Shell) |
+| **Phase 3** | `Step 3.1` | `/dashboard/creator/phase-3/market-study` | `MarketStudyPage` (`phase-3/market-study/page.tsx`) | Step 3.1: TAM/SAM/SOM sizing engine, competitive landscape matrix, demand signals, sizing risks, founder gap | `/dashboard/creator/phase-3`, `/dashboard/creator/phase-3/business-model` ("Back") | `/dashboard/creator/phase-3/business-model` (`completeStep(3, 1)`) | **Implemented** |
+| **Phase 3** | `Step 3.2` | `/dashboard/creator/phase-3/business-model` | `BusinessModelPage` (`phase-3/business-model/page.tsx`) | Step 3.2: 9-block Osterwalder canvas interactive visualizer, unit economics simulator, and pricing tiers | `/dashboard/creator/phase-3/market-study`, `/dashboard/creator/phase-3/business-plan` ("Back") | `/dashboard/creator/phase-3/business-plan` (`completeStep(3, 2)`) | **Implemented** |
+| **Phase 3** | `Step 3.3` | `/dashboard/creator/phase-3/business-plan` | `BusinessPlanPage` (`phase-3/business-plan/page.tsx`) | Step 3.3: Continuous-scroll 12-section institutional master plan document with editable inline sections and live sync | `/dashboard/creator/phase-3/business-model`, `/dashboard/creator/phase-3/forecast` ("Back") | `/dashboard/creator/phase-3/forecast` (`completeStep(3, 3)`) | **Implemented** |
+| **Phase 3** | `Step 3.4` | `/dashboard/creator/phase-3/forecast` | `ForecastPage` (`phase-3/forecast/page.tsx`) | Step 3.4: 36-month monthly revenue & OPEX simulation, break-even velocity, cash runway chart, and risk matrix | `/dashboard/creator/phase-3/business-plan`, `/dashboard/creator/phase-3/compliance` ("Back") | `/dashboard/creator/phase-3/compliance` (`completeStep(3, 4)`) | **Implemented** |
+| **Phase 3** | `Step 3.5` | `/dashboard/creator/phase-3/compliance` | `ComplianceWorkspacePage` (`phase-3/compliance/page.tsx`) | Step 3.5: Statutory France compliance workspace (FR-2026.1), Evidence Vault, legal roadmap, and AI guide rail | `/dashboard/creator/phase-3/forecast`, `/dashboard/creator/phase-3/formation` ("Back") | `/dashboard/creator/phase-3/formation` (`completeStep(3, 5)`) | **Implemented** |
+| **Phase 3** | `Step 3.6` | `/dashboard/creator/phase-3/formation` | `FormationPage` (`phase-3/formation/page.tsx`) | Step 3.6: France corporate entity recommendation (SAS/SASU/SARL/EURL/Micro/EI) and cofounder skills gap matrix | `/dashboard/creator/phase-3/compliance`, `/dashboard/creator/phase-3/complete` ("Back") | `/dashboard/creator/phase-3/complete` (`completeStep(3, 6)`) | **Implemented** |
+| **Phase 3** | `Step 3.7` | `/dashboard/creator/phase-3/complete` | `Phase3CompletePage` (`phase-3/complete/page.tsx`) | Step 3.7: 5-dimension institutional Investor Readiness Audit (0-100), point deduction diagnostics, and Phase 4 unlock | `/dashboard/creator/phase-3/formation` | `/dashboard/creator/offer-pricing` (Phase 4 via `advancePhase(3)`) | **Implemented** |

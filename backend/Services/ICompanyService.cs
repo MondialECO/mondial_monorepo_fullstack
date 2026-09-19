@@ -1,5 +1,6 @@
 using MongoDB.Driver;
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.DatabaseModels.Legal;
 using WebApp.Models.Dtos;
 
 namespace WebApp.Services;
@@ -45,6 +46,19 @@ public interface ICompanyService
     Task<Companies> EnsureLevelUpCompanyAsync(
         string userId, string sourceLink, string legalStructure, double? fundingAsk,
         string? companyName, string? industry, string? tagline,
+        IClientSessionHandle session = null);
+
+
+    Task<Companies> EnsureLevelUpCompanyAsync(
+        string userId, string sourceLink, string legalStructure, double? fundingAsk,
+        string? companyName, string? industry, string? tagline,
+        string? journeyId,
+        double? baselineReadiness,
+        string? forecastId,
+        string? businessPlanId,
+        CreatorLegalAssessment? legalAssessment,
+        string? logo,
+        List<CreatorIdeaDocument>? documents,
         IClientSessionHandle session = null);
 
     Task<(Companies Company, bool AlreadyExisted)> BuildCompanyFromAcquisitionAsync(

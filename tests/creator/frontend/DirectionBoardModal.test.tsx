@@ -99,7 +99,6 @@ const mockBrandKit: BrandKit = {
   },
   colors: { roles: [], regenerateCount: 0 },
   typography: { roles: [], regenerateCount: 0 },
-  history: [],
 };
 
 describe('DirectionBoardModal Component', () => {

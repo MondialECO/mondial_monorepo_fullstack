@@ -65,6 +65,84 @@ public class CreatorIdeaDocumentsController : ControllerBase
         catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
     }
 
+    // POST /api/creator/ideas/{ideaId}/documents/upload
+    [HttpPost("upload")]
+    public async Task<IActionResult> Upload(string ideaId, [FromForm] IFormFile file, [FromForm] string? documentType, [FromForm] string? title)
+    {
+        try
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(ApiResponse.Error("No file uploaded"));
+
+            const long maxFileSize = 25 * 1024 * 1024; // 25 MB
+            if (file.Length > maxFileSize)
+                return BadRequest(ApiResponse.Error("File exceeds maximum allowed size of 25MB."));
+
+            var rawFileName = Path.GetFileName(file.FileName);
+            var extension = Path.GetExtension(rawFileName);
+            var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ".pdf", ".png", ".jpg", ".jpeg", ".doc", ".docx", ".odt", ".xls", ".xlsx", ".csv"
+            };
+            if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension))
+                return BadRequest(ApiResponse.Error($"File extension '{extension}' is not permitted for legal and planning documents."));
+
+            var idea = await GetOwnedIdeaAsync(ideaId);
+
+            var docType = string.IsNullOrWhiteSpace(documentType) ? CreatorIdeaDocumentTypes.LegalEvidence : documentType.Trim().ToLowerInvariant();
+            if (!CreatorIdeaDocumentTypes.IsSupported(docType))
+                return BadRequest(ApiResponse.Error($"Unsupported document type: {docType}"));
+
+            var safeStoredName = $"{Guid.NewGuid():N}{extension}";
+
+            var directory = Path.GetFullPath(Path.Combine(_uploadsPath, "creator-ideas", idea.UserId, idea.Id));
+            if (!Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
+
+            var targetPath = Path.Combine(directory, safeStoredName);
+            using (var stream = new FileStream(targetPath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var docTitle = string.IsNullOrWhiteSpace(title) ? rawFileName : title.Trim();
+            var docRecord = new CreatorIdeaDocument
+            {
+                Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString(),
+                DocumentType = docType,
+                Title = docTitle,
+                FileName = rawFileName,
+                MimeType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType,
+                SizeBytes = file.Length,
+                StorageReference = safeStoredName,
+                SourceModule = "legal_compliance",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Status = ReadyStatus,
+            };
+
+            var update = MongoDB.Driver.Builders<CreatorIdea>.Update.Push(x => x.Documents, docRecord);
+            await _ideas.UpdateAsync(idea.Id, GetUserId(), update);
+
+            return Ok(ApiResponse.Ok("Document uploaded", new
+            {
+                id = docRecord.Id,
+                documentType = docRecord.DocumentType,
+                title = docRecord.Title,
+                fileName = docRecord.FileName,
+                mimeType = docRecord.MimeType,
+                sizeBytes = docRecord.SizeBytes,
+                sourceModule = docRecord.SourceModule,
+                createdAt = docRecord.CreatedAt,
+                updatedAt = docRecord.UpdatedAt,
+                downloadable = true
+            }));
+        }
+        catch (KeyNotFoundException ex) { return NotFound(ApiResponse.Error(ex.Message)); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+        catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+    }
+
     // GET /api/creator/ideas/{ideaId}/documents/{documentId}/download
     [HttpGet("{documentId}/download")]
     public async Task<IActionResult> Download(string ideaId, string documentId)

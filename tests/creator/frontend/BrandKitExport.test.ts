@@ -32,42 +32,49 @@ describe('exportBrandKitZip', () => {
   const sampleSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>';
 
   const sampleBrandKitWithVariations: BrandKit = {
+    ideaId: 'idea_apex',
+    userId: 'user_1',
+    status: 'complete',
+    currentStep: 6,
     version: 2,
+    createdAt: '2026-09-15T00:00:00Z',
+    updatedAt: '2026-09-15T00:00:00Z',
     strategy: {
       businessName: 'Apex Logistics',
       nameDisplayForm: 'Apex Logistics',
-      industry: { value: 'Supply Chain' },
-      positioning: { value: 'High-speed freight' },
+      industry: { value: 'Supply Chain', provenance: 'stated' },
+      positioning: { value: 'High-speed freight', provenance: 'stated' },
       tonePosition: 'Precision & Speed',
     },
     colors: {
-      selectedPaletteKey: 'p1',
       roles: [
-        { roleName: 'Primary', hex: '#0052FF', rgb: '0, 82, 255', contrastVerdict: 'AAA' },
-        { roleName: 'Secondary', hex: '#1E293B', rgb: '30, 41, 59', contrastVerdict: 'AAA' },
-        { roleName: 'Accent', hex: '#10B981', rgb: '16, 185, 129', contrastVerdict: 'AA' },
-        { roleName: 'Background', hex: '#FFFFFF', rgb: '255, 255, 255', contrastVerdict: 'Ground' },
-        { roleName: 'Text', hex: '#0F172A', rgb: '15, 23, 42', contrastVerdict: 'AAA' },
+        { roleName: 'Primary', hex: '#0052FF', rgb: '0, 82, 255', contrastVerdict: 'AAA', usageNote: 'Primary brand color', isLocked: false, provenance: 'generated' },
+        { roleName: 'Secondary', hex: '#1E293B', rgb: '30, 41, 59', contrastVerdict: 'AAA', usageNote: 'Secondary tone', isLocked: false, provenance: 'generated' },
+        { roleName: 'Accent', hex: '#10B981', rgb: '16, 185, 129', contrastVerdict: 'AA', usageNote: 'Accent highlight', isLocked: false, provenance: 'generated' },
+        { roleName: 'Background', hex: '#FFFFFF', rgb: '255, 255, 255', contrastVerdict: 'Ground', usageNote: 'Canvas background', isLocked: false, provenance: 'generated' },
+        { roleName: 'Text', hex: '#0F172A', rgb: '15, 23, 42', contrastVerdict: 'AAA', usageNote: 'Primary text', isLocked: false, provenance: 'generated' },
       ],
+      regenerateCount: 0,
     },
     typography: {
       families: {
-        displayFamily: { name: 'Syne', role: 'Display' },
-        textFamily: { name: 'DM Sans', role: 'Text' },
+        displayFamily: { name: 'Syne', license: 'OFL', availableWeights: ['700'], webWeightKb: 40 },
+        textFamily: { name: 'DM Sans', license: 'OFL', availableWeights: ['400', '500'], webWeightKb: 45 },
       },
       roles: [
-        { roleName: 'Display / H1', family: 'Syne', weight: '700', size: '36px', lineHeight: '44px' },
+        { roleName: 'Display / H1', family: 'Syne', weight: '700', size: '36px', lineHeight: '44px', specimenText: 'Aa', isLocked: false, provenance: 'generated' },
       ],
+      regenerateCount: 0,
     },
     logo: {
       selectedConceptKey: 'concept-1',
       variations: {
-        horizontal: { svgUri: '/brand-assets/logos/apex-horizontal.svg', aspectRatio: '4:1' },
-        stacked: { svgUri: '/brand-assets/logos/apex-stacked.svg', aspectRatio: '1:1' },
-        icon_only: { svgUri: '/brand-assets/logos/apex-icon.svg', aspectRatio: '1:1' },
-        black: { svgUri: '/brand-assets/logos/apex-black.svg', aspectRatio: '3:1' },
-        white: { svgUri: '/brand-assets/logos/apex-white.svg', aspectRatio: '3:1' },
-        transparent: { svgUri: '/brand-assets/logos/apex-trans.svg', aspectRatio: '3:1' },
+        horizontal: { svgUri: '/brand-assets/logos/apex-horizontal.svg', usageNote: 'Horizontal lockup' },
+        stacked: { svgUri: '/brand-assets/logos/apex-stacked.svg', usageNote: 'Stacked lockup' },
+        icon_only: { svgUri: '/brand-assets/logos/apex-icon.svg', usageNote: 'Icon only' },
+        black: { svgUri: '/brand-assets/logos/apex-black.svg', usageNote: 'Single color black' },
+        white: { svgUri: '/brand-assets/logos/apex-white.svg', usageNote: 'Single color white' },
+        transparent: { svgUri: '/brand-assets/logos/apex-trans.svg', usageNote: 'Transparent background' },
       },
     },
   };
@@ -91,7 +98,13 @@ describe('exportBrandKitZip', () => {
 
   it('falls back to approved concept when variations have not been derived yet', async () => {
     const kitWithOnlyConcept: BrandKit = {
+      ideaId: 'concept_idea',
+      userId: 'user_1',
+      status: 'draft',
+      currentStep: 1,
       version: 1,
+      createdAt: '2026-09-15T00:00:00Z',
+      updatedAt: '2026-09-15T00:00:00Z',
       strategy: { businessName: 'ConceptOnly' },
       logo: {
         selectedConceptKey: 'concept-alpha',
@@ -101,6 +114,7 @@ describe('exportBrandKitZip', () => {
             descriptorLine: 'Geometric Mark',
             markAssetUri: '/brand-assets/logos/concept-mark.svg',
             lockupAssetUri: '/brand-assets/logos/concept-lockup.svg',
+            regenerateCount: 0,
           },
         ],
         variations: {},

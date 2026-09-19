@@ -57,16 +57,14 @@ const mockTypographyKit: BrandKit = {
     concepts: [
       {
         key: 'concept_1',
-        name: 'Sentinel Shield',
-        rationale: 'Precision lattice icon',
-        svgMarkup: '<svg></svg>',
-        contrastOnLight: 14.5,
-        contrastOnDark: 12.0,
-        provenance: 'ai',
+        descriptorLine: 'Sentinel Shield - Precision lattice icon',
+        markAssetUri: '<svg></svg>',
+        lockupAssetUri: '<svg></svg>',
+        regenerateCount: 0,
         parameters: {
           family: 'Space Grotesk',
-          motif: 'lattice',
-          weight: '700',
+          descriptor: 'lattice',
+          values: { motif: 'lattice', weight: '700' },
         },
       },
     ],

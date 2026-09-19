@@ -31,6 +31,7 @@ import {
 import { toAiError, type AiError } from '@/lib/ai-errors';
 import { brandKitApi } from '@/lib/api-creator-brand-kit';
 import { resolveMediaUrl } from '@/lib/brand-kit-media';
+import { withIdeaContext } from '@/lib/creator-routes';
 
 function formatCurrencyAmount(amount?: number | null, currency = 'EUR'): string {
   if (amount === undefined || amount === null || Number.isNaN(amount)) return '—';
@@ -189,8 +190,9 @@ export default function BusinessModelPage() {
 
   const handleNext = () => {
     completeStep(3, 2);
-    router.push('/dashboard/creator/phase-3/business-plan');
+    router.push(withIdeaContext('/dashboard/creator/phase-3/forecast', businessIdeaId));
   };
+
 
   const isGenerating = session.phase === 'polling' || startMutation.isPending || regenerateMutation.isPending;
 
@@ -379,9 +381,9 @@ export default function BusinessModelPage() {
             {/* ========================================================================= */}
             {/* SECTION 1: THE CANVAS — Single white card holding 9 Osterwalder blocks */}
             {/* ========================================================================= */}
-            <div className="rounded-2xl border border-border bg-card shadow-xs">
+            <div className="rounded-2xl border border-border bg-card shadow-xs min-w-0 overflow-x-auto">
               {/* Row 1: 5 Columns with Hairline Dividers */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-border">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-border min-w-0">
                 {/* Column 1: Key Partners (Full Height) */}
                 <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
                   <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
@@ -703,7 +705,7 @@ export default function BusinessModelPage() {
 
                 {/* Table with natural wrapping on long target segments, tier names and feature lists */}
                 {output.revenueTiers && output.revenueTiers.length > 0 ? (
-                  <div className="w-full">
+                  <div className="w-full min-w-0 overflow-x-auto">
                     <table className="w-full text-left text-body table-auto">
                       <thead>
                         <tr className="border-b border-border text-table-header font-semibold uppercase tracking-wider text-muted-foreground font-sans">
@@ -827,7 +829,7 @@ export default function BusinessModelPage() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 mt-8">
               <button
                 type="button"
-                onClick={() => router.push('/dashboard/creator/phase-3/market-study')}
+                onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/market-study', businessIdeaId))}
                 className="text-body font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors font-sans"
               >
                 <ArrowLeft className="w-4 h-4" /> Market study
@@ -838,10 +840,11 @@ export default function BusinessModelPage() {
                   onClick={handleNext}
                   className="gap-2 text-button font-semibold px-6 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                 >
-                  Continue to business plan <ArrowRight className="w-4 h-4" />
+                  Continue to financial forecast <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
             </div>
+
           </div>
         )}
       </div>

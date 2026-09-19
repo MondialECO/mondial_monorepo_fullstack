@@ -27,6 +27,7 @@ let mockProgressState = {
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => currentPathname,
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/providers/CreatorProgressProvider", () => ({

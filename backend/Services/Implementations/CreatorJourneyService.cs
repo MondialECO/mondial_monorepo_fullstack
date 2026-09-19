@@ -2,8 +2,10 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.DatabaseModels.Legal;
 using WebApp.Models.Dtos;
 using WebApp.Services.Interface;
+using WebApp.Services.Legal;
 using WebApp.Services.Repository;
 using WebApp.Services.Repository.Ai;
 
@@ -34,6 +36,7 @@ namespace WebApp.Services.Implementations
         private readonly ICreatorIdeaStore _creatorIdeas;
         private readonly IClarifierSessionStore _clarifiers;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILegalApplicabilityEngine? _legalEngine;
         private static readonly TimeSpan PathSwitchWindow = TimeSpan.FromDays(30);
 
         // Legacy Path-A value, retired in P1.10. Centralized here so the one-time
@@ -48,7 +51,8 @@ namespace WebApp.Services.Implementations
             IClarifierSessionStore clarifiers,
             IHttpContextAccessor httpContextAccessor = null,
             IMarketStudySessionStore marketStudies = null,
-            IBusinessModelSessionStore businessModels = null)
+            IBusinessModelSessionStore businessModels = null,
+            ILegalApplicabilityEngine legalEngine = null)
         {
             _context = context;
             _businessPlans = businessPlans;
@@ -58,6 +62,7 @@ namespace WebApp.Services.Implementations
             _httpContextAccessor = httpContextAccessor;
             _marketStudies = marketStudies;
             _businessModels = businessModels;
+            _legalEngine = legalEngine;
         }
 
         // =================================================================
@@ -317,29 +322,43 @@ namespace WebApp.Services.Implementations
             bool hasForecast = forecastSession != null
                 && WebApp.Services.Ai.AiSessionSuccess.IsComplete(forecastSession.Status, forecastSession.CurrentVersion);
 
-            // Legal checklist is ADVISORY: it never gates Phase-3 completion. The items
-            // are pure self-attestation (checkbox cycling, no verification), so requiring
-            // them added friction, not assurance. `legalPresent` (checklist generated)
-            // still marks "in progress"; completion needs plan + forecast + formation only.
-            bool legalPresent = p3.LegalChecklist != null;
+            // Legal & Compliance intelligence is mandatory for new journeys.
+            // A legacy record bypass applies ONLY to pre-existing legacy records that completed
+            // plan + forecast + formation before the 7-step market-led sequence was introduced.
+            bool legalPresent = p3.LegalAssessment != null || p3.LegalChecklist != null;
             bool hasFormation = p3.FormationGenerator != null;
             bool anyP3 = marketStudyStarted || businessModelStarted || planStarted || forecastStarted || legalPresent || hasFormation;
 
+            bool isLegacyRecord = hasPlan && hasForecast && hasFormation && !marketStudyStarted && !businessModelStarted;
+            bool newJourneyComplete = hasMarketStudy && hasBusinessModel && hasForecast && legalPresent && hasFormation && hasPlan;
+
             if (!p2Done) s.Phase3.Status = "locked";
-            else if (hasMarketStudy && hasBusinessModel && hasPlan && hasForecast && hasFormation) s.Phase3.Status = "completed";
-            else if (hasPlan && hasForecast && hasFormation) s.Phase3.Status = "completed"; // legacy creator bypass
+            else if (newJourneyComplete) s.Phase3.Status = "completed";
+            else if (isLegacyRecord) s.Phase3.Status = "completed"; // legacy creator bypass only for legacy records
             else if (anyP3) s.Phase3.Status = "in_progress";
             else s.Phase3.Status = "available";
 
-            // Step order: Market Study (1) → Business Model (2) → Business Plan (3) → Financial Forecast (4) → Legal (5) → Formation (6) → Complete (7).
-            // If the creator already has a completed Business Plan (legacy or current), they are never pushed backwards to steps 1 or 2.
-            if (!hasPlan)
+            // Canonical 7-step sequence (Artifact state > numeric historical step number as source of truth):
+            //   Step 3.1: Market Study (/phase-3/market-study)
+            //   Step 3.2: Business Model (/phase-3/business-model)
+            //   Step 3.3: Financial Forecast (/phase-3/forecast)
+            //   Step 3.4: Legal & Compliance (/phase-3/compliance)
+            //   Step 3.5: Company Formation & Team (/phase-3/formation)
+            //   Step 3.6: Executive Business Plan (/phase-3/business-plan)
+            //   Step 3.7: Investor Readiness Complete (/phase-3/complete)
+            if (isLegacyRecord)
             {
-                s.Phase3.CurrentStep = !hasMarketStudy ? 1 : !hasBusinessModel ? 2 : 3;
+                s.Phase3.CurrentStep = 7;
             }
             else
             {
-                s.Phase3.CurrentStep = !hasForecast ? 4 : !legalPresent ? 5 : !hasFormation ? 6 : 7;
+                s.Phase3.CurrentStep =
+                    !hasMarketStudy ? 1 :
+                    !hasBusinessModel ? 2 :
+                    !hasForecast ? 3 :
+                    !legalPresent ? 4 :
+                    !hasFormation ? 5 :
+                    !hasPlan ? 6 : 7;
             }
 
             bool p3Done = s.Phase3.Status == "completed";
@@ -669,6 +688,395 @@ namespace WebApp.Services.Implementations
             checklist.CompletedCount = checklist.Items.Count(i => i.Status == "done");
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase3Data.LegalChecklist, checklist));
+            return j;
+        }
+
+        public async Task<CreatorJourney> SetLegalAssessmentAsync(string userId, CreatorLegalAssessment assessment, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+
+            var p3 = j.Phase3Data ??= new CreatorPhase3Data();
+            p3.LegalAssessment = assessment;
+
+            var checklist = new CreatorLegalChecklist
+            {
+                Items = assessment.Items,
+                TotalCount = assessment.Items.Count,
+                CompletedCount = assessment.Items.Count(i => LegalItemStatuses.IsCompleted(i.Status))
+            };
+            p3.LegalChecklist = checklist;
+
+            var entry = CreatorJourneyVersioning.Append(
+                (j.OutputSnapshots ??= new CreatorOutputSnapshots()).LegalChecklistVersions,
+                3, null, checklist.ToBsonDocument());
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase3Data.LegalAssessment, assessment)
+                .Set(x => x.Phase3Data.LegalChecklist, checklist)
+                .Push(x => x.OutputSnapshots.LegalChecklistVersions, entry));
+            return j;
+        }
+
+        public async Task<CreatorJourney> UpdateLegalAssessmentItemStatusAsync(string userId, string itemId, string status, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+
+            var assessment = j.Phase3Data?.LegalAssessment;
+            if (assessment == null)
+                throw new CreatorJourneyException(404, "Legal assessment not generated yet.");
+
+            var item = assessment.Items.FirstOrDefault(i => string.Equals(i.Id, itemId, StringComparison.OrdinalIgnoreCase));
+            if (item == null)
+                throw new CreatorJourneyException(404, $"Requirement item '{itemId}' not found in assessment.");
+
+            item.Status = status;
+            if (LegalItemStatuses.IsCompleted(status))
+            {
+                item.CompletedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                item.CompletedAt = null;
+            }
+
+            // Sync with LegalChecklist if present
+            if (j.Phase3Data.LegalChecklist?.Items != null)
+            {
+                var checkItem = j.Phase3Data.LegalChecklist.Items.FirstOrDefault(i => string.Equals(i.Id, itemId, StringComparison.OrdinalIgnoreCase));
+                if (checkItem != null)
+                {
+                    checkItem.Status = status;
+                    checkItem.CompletedAt = item.CompletedAt;
+                }
+                j.Phase3Data.LegalChecklist.CompletedCount = j.Phase3Data.LegalChecklist.Items.Count(i => LegalItemStatuses.IsCompleted(i.Status));
+            }
+
+            // Recompute readiness and stage breakdowns
+            if (_legalEngine != null)
+            {
+                assessment.PlanningReadinessPct = _legalEngine.ComputePlanningReadiness(assessment.Items);
+            }
+            foreach (var breakdown in assessment.StageBreakdown)
+            {
+                var stageItems = assessment.Items.Where(i => string.Equals(i.Stage, breakdown.Stage, StringComparison.OrdinalIgnoreCase)).ToList();
+                breakdown.CompletedCount = stageItems.Count(i => LegalItemStatuses.IsCompleted(i.Status));
+            }
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase3Data.LegalAssessment, assessment)
+                .Set(x => x.Phase3Data.LegalChecklist, j.Phase3Data.LegalChecklist));
+            return j;
+        }
+
+        public async Task<CreatorJourney> AttachLegalAssessmentItemEvidenceAsync(string userId, string itemId, string documentId, string status = null, string notes = null, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+
+            var assessment = j.Phase3Data?.LegalAssessment;
+            if (assessment == null)
+                throw new CreatorJourneyException(404, "Legal assessment not generated yet.");
+
+            var item = assessment.Items.FirstOrDefault(i => string.Equals(i.Id, itemId, StringComparison.OrdinalIgnoreCase));
+            if (item == null)
+                throw new CreatorJourneyException(404, $"Requirement item '{itemId}' not found in assessment.");
+
+            // Security check: Document must exist on the owned idea
+            var doc = idea.Documents?.FirstOrDefault(d => string.Equals(d.Id, documentId, StringComparison.OrdinalIgnoreCase));
+            if (doc == null)
+                throw new CreatorJourneyException(404, $"Document '{documentId}' not found on this project.");
+
+            item.EvidenceDocumentId = doc.Id;
+            item.EvidenceFileName = doc.FileName;
+
+            // Automatically transition status to ready_for_review if not already completed
+            if (!LegalItemStatuses.IsCompleted(item.Status))
+            {
+                item.Status = LegalItemStatuses.ReadyForReview;
+            }
+
+            // Record or update LegalEvidenceLink
+            var linkStatus = !string.IsNullOrWhiteSpace(status) ? status : LegalEvidenceStatuses.Linked;
+            assessment.EvidenceLinks ??= new List<LegalEvidenceLink>();
+            var existingLink = assessment.EvidenceLinks.FirstOrDefault(l =>
+                string.Equals(l.RequirementId, itemId, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(l.DocumentId, documentId, StringComparison.OrdinalIgnoreCase));
+
+            if (existingLink != null)
+            {
+                existingLink.Status = linkStatus;
+                existingLink.Notes = notes ?? existingLink.Notes;
+            }
+            else
+            {
+                assessment.EvidenceLinks.Add(new LegalEvidenceLink
+                {
+                    DocumentId = doc.Id,
+                    DocumentTitle = string.IsNullOrWhiteSpace(doc.Title) ? doc.FileName : doc.Title,
+                    DocumentFileName = doc.FileName,
+                    MimeType = doc.MimeType,
+                    SizeBytes = doc.SizeBytes,
+                    RequirementId = item.Id,
+                    RequirementTitle = string.IsNullOrWhiteSpace(item.Title) ? item.Label : item.Title,
+                    Stage = item.Stage,
+                    Status = linkStatus,
+                    LinkedAt = DateTime.UtcNow,
+                    Notes = notes
+                });
+            }
+
+            // Append Audit Trail entry
+            assessment.EvidenceAuditTrail ??= new List<LegalEvidenceAuditEntry>();
+            assessment.EvidenceAuditTrail.Add(new LegalEvidenceAuditEntry
+            {
+                CreatorIdeaId = idea.Id,
+                RequirementId = item.Id,
+                RequirementTitle = string.IsNullOrWhiteSpace(item.Title) ? item.Label : item.Title,
+                DocumentId = doc.Id,
+                DocumentTitle = doc.FileName,
+                Action = LegalEvidenceAuditActions.Linked,
+                Detail = $"Evidence '{doc.FileName}' linked to requirement '{item.Title ?? item.Label}'.",
+                Timestamp = DateTime.UtcNow,
+                ActorUserId = userId
+            });
+
+            // Sync with LegalChecklist if present
+            if (j.Phase3Data.LegalChecklist?.Items != null)
+            {
+                var checkItem = j.Phase3Data.LegalChecklist.Items.FirstOrDefault(i => string.Equals(i.Id, itemId, StringComparison.OrdinalIgnoreCase));
+                if (checkItem != null)
+                {
+                    checkItem.EvidenceDocumentId = doc.Id;
+                    checkItem.EvidenceFileName = doc.FileName;
+                    checkItem.Status = item.Status;
+                }
+            }
+
+            if (_legalEngine != null)
+            {
+                assessment.PlanningReadinessPct = _legalEngine.ComputePlanningReadiness(assessment.Items);
+            }
+            foreach (var breakdown in assessment.StageBreakdown)
+            {
+                var stageItems = assessment.Items.Where(i => string.Equals(i.Stage, breakdown.Stage, StringComparison.OrdinalIgnoreCase)).ToList();
+                breakdown.CompletedCount = stageItems.Count(i => LegalItemStatuses.IsCompleted(i.Status));
+            }
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase3Data.LegalAssessment, assessment)
+                .Set(x => x.Phase3Data.LegalChecklist, j.Phase3Data.LegalChecklist));
+            return j;
+        }
+
+        public async Task<CreatorJourney> UnlinkLegalAssessmentItemEvidenceAsync(string userId, string itemId, string documentId, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+
+            var assessment = j.Phase3Data?.LegalAssessment;
+            if (assessment == null)
+                throw new CreatorJourneyException(404, "Legal assessment not generated yet.");
+
+            var item = assessment.Items.FirstOrDefault(i => string.Equals(i.Id, itemId, StringComparison.OrdinalIgnoreCase));
+            if (item == null)
+                throw new CreatorJourneyException(404, $"Requirement item '{itemId}' not found in assessment.");
+
+            var doc = idea.Documents?.FirstOrDefault(d => string.Equals(d.Id, documentId, StringComparison.OrdinalIgnoreCase));
+            var docName = doc?.FileName ?? documentId;
+
+            // Remove link
+            if (assessment.EvidenceLinks != null)
+            {
+                assessment.EvidenceLinks.RemoveAll(l =>
+                    string.Equals(l.RequirementId, itemId, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(l.DocumentId, documentId, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Update item primary evidence reference
+            if (string.Equals(item.EvidenceDocumentId, documentId, StringComparison.OrdinalIgnoreCase))
+            {
+                var remainingLink = assessment.EvidenceLinks?.FirstOrDefault(l =>
+                    string.Equals(l.RequirementId, itemId, StringComparison.OrdinalIgnoreCase));
+
+                if (remainingLink != null)
+                {
+                    item.EvidenceDocumentId = remainingLink.DocumentId;
+                    item.EvidenceFileName = remainingLink.DocumentFileName;
+                }
+                else
+                {
+                    item.EvidenceDocumentId = null;
+                    item.EvidenceFileName = null;
+                    // If status was ready_for_review, revert to action_required
+                    if (string.Equals(item.Status, LegalItemStatuses.ReadyForReview, StringComparison.OrdinalIgnoreCase))
+                    {
+                        item.Status = LegalItemStatuses.ActionRequired;
+                    }
+                }
+            }
+
+            // Append Audit Trail entry
+            assessment.EvidenceAuditTrail ??= new List<LegalEvidenceAuditEntry>();
+            assessment.EvidenceAuditTrail.Add(new LegalEvidenceAuditEntry
+            {
+                CreatorIdeaId = idea.Id,
+                RequirementId = item.Id,
+                RequirementTitle = string.IsNullOrWhiteSpace(item.Title) ? item.Label : item.Title,
+                DocumentId = documentId,
+                DocumentTitle = docName,
+                Action = LegalEvidenceAuditActions.Unlinked,
+                Detail = $"Evidence '{docName}' unlinked from requirement '{item.Title ?? item.Label}'. Physical file preserved in project vault.",
+                Timestamp = DateTime.UtcNow,
+                ActorUserId = userId
+            });
+
+            // Sync with LegalChecklist if present
+            if (j.Phase3Data.LegalChecklist?.Items != null)
+            {
+                var checkItem = j.Phase3Data.LegalChecklist.Items.FirstOrDefault(i => string.Equals(i.Id, itemId, StringComparison.OrdinalIgnoreCase));
+                if (checkItem != null)
+                {
+                    checkItem.EvidenceDocumentId = item.EvidenceDocumentId;
+                    checkItem.EvidenceFileName = item.EvidenceFileName;
+                    checkItem.Status = item.Status;
+                }
+            }
+
+            if (_legalEngine != null)
+            {
+                assessment.PlanningReadinessPct = _legalEngine.ComputePlanningReadiness(assessment.Items);
+            }
+            foreach (var breakdown in assessment.StageBreakdown)
+            {
+                var stageItems = assessment.Items.Where(i => string.Equals(i.Stage, breakdown.Stage, StringComparison.OrdinalIgnoreCase)).ToList();
+                breakdown.CompletedCount = stageItems.Count(i => LegalItemStatuses.IsCompleted(i.Status));
+            }
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase3Data.LegalAssessment, assessment)
+                .Set(x => x.Phase3Data.LegalChecklist, j.Phase3Data.LegalChecklist));
+            return j;
+        }
+
+        public async Task<CreatorJourney> UpdateLegalEvidenceStatusAsync(string userId, string linkId, string newStatus, string notes = null, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+
+            var assessment = j.Phase3Data?.LegalAssessment;
+            if (assessment == null)
+                throw new CreatorJourneyException(404, "Legal assessment not generated yet.");
+
+            var link = assessment.EvidenceLinks?.FirstOrDefault(l => string.Equals(l.Id, linkId, StringComparison.OrdinalIgnoreCase));
+            if (link == null)
+                throw new CreatorJourneyException(404, $"Evidence link '{linkId}' not found.");
+
+            var oldStatus = link.Status;
+            link.Status = newStatus;
+            if (notes != null) link.Notes = notes;
+
+            assessment.EvidenceAuditTrail ??= new List<LegalEvidenceAuditEntry>();
+            assessment.EvidenceAuditTrail.Add(new LegalEvidenceAuditEntry
+            {
+                CreatorIdeaId = idea.Id,
+                RequirementId = link.RequirementId,
+                RequirementTitle = link.RequirementTitle,
+                DocumentId = link.DocumentId,
+                DocumentTitle = link.DocumentFileName,
+                Action = LegalEvidenceAuditActions.StatusChanged,
+                Detail = $"Evidence status changed from '{oldStatus}' to '{newStatus}'.",
+                Timestamp = DateTime.UtcNow,
+                ActorUserId = userId
+            });
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase3Data.LegalAssessment, assessment));
+            return j;
+        }
+
+        public async Task<CreatorJourney> ReplaceLegalEvidenceAsync(string userId, string oldLinkId, string newDocumentId, string notes = null, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+
+            var assessment = j.Phase3Data?.LegalAssessment;
+            if (assessment == null)
+                throw new CreatorJourneyException(404, "Legal assessment not generated yet.");
+
+            var oldLink = assessment.EvidenceLinks?.FirstOrDefault(l => string.Equals(l.Id, oldLinkId, StringComparison.OrdinalIgnoreCase));
+            if (oldLink == null)
+                throw new CreatorJourneyException(404, $"Old evidence link '{oldLinkId}' not found.");
+
+            var newDoc = idea.Documents?.FirstOrDefault(d => string.Equals(d.Id, newDocumentId, StringComparison.OrdinalIgnoreCase));
+            if (newDoc == null)
+                throw new CreatorJourneyException(404, $"New document '{newDocumentId}' not found in project vault.");
+
+            var item = assessment.Items.FirstOrDefault(i => string.Equals(i.Id, oldLink.RequirementId, StringComparison.OrdinalIgnoreCase));
+            if (item == null)
+                throw new CreatorJourneyException(404, $"Requirement item '{oldLink.RequirementId}' not found in assessment.");
+
+            // 1. Mark old link as Replaced
+            oldLink.Status = LegalEvidenceStatuses.Replaced;
+
+            // 2. Create new link
+            var newLink = new LegalEvidenceLink
+            {
+                DocumentId = newDoc.Id,
+                DocumentTitle = newDoc.Title ?? newDoc.FileName,
+                DocumentFileName = newDoc.FileName,
+                MimeType = newDoc.MimeType ?? "application/octet-stream",
+                SizeBytes = newDoc.SizeBytes,
+                RequirementId = item.Id,
+                RequirementTitle = string.IsNullOrWhiteSpace(item.Title) ? item.Label : item.Title,
+                Stage = item.Stage,
+                Status = LegalEvidenceStatuses.Linked,
+                LinkedAt = DateTime.UtcNow,
+                Notes = notes
+            };
+            assessment.EvidenceLinks ??= new List<LegalEvidenceLink>();
+            assessment.EvidenceLinks.Add(newLink);
+
+            // 3. Update primary item reference to new document
+            item.EvidenceDocumentId = newDoc.Id;
+            item.EvidenceFileName = newDoc.FileName;
+
+            // 4. Append audit trail entry for replacement
+            assessment.EvidenceAuditTrail ??= new List<LegalEvidenceAuditEntry>();
+            assessment.EvidenceAuditTrail.Add(new LegalEvidenceAuditEntry
+            {
+                CreatorIdeaId = idea.Id,
+                RequirementId = item.Id,
+                RequirementTitle = string.IsNullOrWhiteSpace(item.Title) ? item.Label : item.Title,
+                DocumentId = newDoc.Id,
+                DocumentTitle = newDoc.FileName,
+                Action = LegalEvidenceAuditActions.Replaced,
+                Detail = $"Replaced evidence '{oldLink.DocumentFileName}' with new file '{newDoc.FileName}'. Previous document preserved in vault.",
+                Timestamp = DateTime.UtcNow,
+                ActorUserId = userId
+            });
+
+            // 5. Sync with LegalChecklist if present
+            if (j.Phase3Data.LegalChecklist?.Items != null)
+            {
+                var checkItem = j.Phase3Data.LegalChecklist.Items.FirstOrDefault(i => string.Equals(i.Id, item.Id, StringComparison.OrdinalIgnoreCase));
+                if (checkItem != null)
+                {
+                    checkItem.EvidenceDocumentId = item.EvidenceDocumentId;
+                    checkItem.EvidenceFileName = item.EvidenceFileName;
+                }
+            }
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase3Data.LegalAssessment, assessment)
+                .Set(x => x.Phase3Data.LegalChecklist, j.Phase3Data.LegalChecklist));
             return j;
         }
 

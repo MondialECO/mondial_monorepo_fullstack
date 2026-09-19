@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { withIdeaContext } from '@/lib/creator-routes';
 import {
   ArrowLeft,
   ArrowRight,
@@ -89,11 +90,14 @@ type PendingSkillsSave = {
 
 export default function FormationPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryIdeaId = searchParams.get('ideaId');
   const {
     state: { activeIdeaId },
     completeStep,
     isLoading: progressLoading,
   } = useCreatorProgress();
+  const currentIdeaId = queryIdeaId || activeIdeaId || null;
 
   const [view, setView] = useState<'type' | 'skills'>('type');
   const [formation, setFormation] = useState<FormationGenerator | null>(null);
@@ -337,10 +341,10 @@ export default function FormationPage() {
       await creatorJourneyApi.declareFormationSkills(
         declaredSkillsRef.current,
         cofounderDraft(),
-        activeIdeaId,
+        currentIdeaId,
       );
-      completeStep(3, 6);
-      router.push('/dashboard/creator/phase-3/complete');
+      completeStep(3, 5);
+      router.push(withIdeaContext('/dashboard/creator/phase-3/business-plan', currentIdeaId));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save your skills.");
       setContinuing(false);
@@ -417,7 +421,7 @@ export default function FormationPage() {
   return (
     <Phase3SetupShell
       compact
-      stepEyebrow="Step 3.6"
+      stepEyebrow="Step 3.5 · Company Formation & Team"
       title="Company Formation & Team"
       description="A rule-backed company structure baseline grounded in your venture profile, with transparent reasoning and skills assessment."
       contentClassName="mt-8 space-y-6 max-w-5xl mx-auto"
@@ -620,7 +624,7 @@ export default function FormationPage() {
           <div className="flex items-center justify-between pt-6 border-t border-border">
             <Button
               variant="outline"
-              onClick={() => void navigateAfterSkillsFlush('/dashboard/creator/phase-3/compliance')}
+              onClick={() => void navigateAfterSkillsFlush(withIdeaContext('/dashboard/creator/phase-3/compliance', currentIdeaId))}
               disabled={flushingSkills}
               className="h-10 rounded-xl border-border px-4 text-sm font-medium text-muted-foreground shadow-none"
             >
@@ -871,7 +875,7 @@ export default function FormationPage() {
               className="h-10 gap-2 rounded-xl px-5 text-sm font-semibold"
             >
               {continuing && <Loader2 className="size-4 animate-spin" />}
-              Complete Phase 3 {!continuing && <ArrowRight className="size-4" />}
+              Proceed to Executive Business Plan {!continuing && <ArrowRight className="size-4" />}
             </Button>
           </div>
         </div>

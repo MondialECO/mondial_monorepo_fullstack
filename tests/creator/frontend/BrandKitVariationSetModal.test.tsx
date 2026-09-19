@@ -54,15 +54,10 @@ const mockBrandKit: BrandKit = {
   strategy: {
     businessName: 'CyberLock Sentinel',
     nameDisplayForm: 'CyberLock',
-    missionStatement: 'Autonomous AI defense system for cloud infrastructure.',
-    coreValues: ['Security', 'Precision', 'Autonomy'],
-    targetAudience: 'Enterprise DevOps and SecOps teams',
-    positioningStatement: 'Zero-compromise cloud security automation.',
-    personalityArchetype: 'The Guardian',
-    regenerateCount: 0,
+    targetAudience: { value: 'Enterprise DevOps and SecOps teams', provenance: 'stated' },
   },
   direction: {
-    directions: [],
+    candidates: [],
     selectedDirectionKey: 'dir_cyber',
     regenerateCount: 0,
   },
@@ -81,7 +76,6 @@ const mockBrandKit: BrandKit = {
     roles: [],
     regenerateCount: 0,
   },
-  history: [],
 };
 
 describe('VariationSetModal Component', () => {

@@ -12,6 +12,8 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
   }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
 }));
 
 vi.mock('@/providers/CreatorProgressProvider', () => ({
@@ -187,9 +189,12 @@ describe('AssetLibraryPage', () => {
     await user.click(exportButtons[1]); // Second export PDF button is Business Model
 
     expect(getBmSpy).toHaveBeenCalledWith('session-bm-123');
-    expect(await screen.findByText(/01 \/\/ Canonical Osterwalder Business Model Canvas/i)).toBeInTheDocument();
-    expect(screen.getByText('Automated VAT')).toBeInTheDocument();
-    expect(screen.getByText('Pro Tier')).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector('[data-print-overlay]')).toBeInTheDocument());
+    const overlay = document.querySelector('[data-print-overlay]')!;
+    expect(overlay).toBeInTheDocument();
+    expect(overlay.querySelector('h1')?.textContent).toContain('Business model');
+    expect(overlay.textContent).toContain('Automated VAT');
+    expect(overlay.textContent).toContain('Pro Tier');
   });
 
   it('triggers Brand Kit ZIP export on Download ZIP click', async () => {

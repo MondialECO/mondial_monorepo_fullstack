@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    actor Alice as Sender (User A)
+    actor Bob as Receiver (User B)
+    participant UI as Next.js Chat Window
+    participant CC as ChatController (/api/chat)
+    participant Hub as ChatHub (SignalR /hubs)
+    participant Redis as Redis Backplane
+    participant RRS as IResponseRateService
+    participant DB as MongoDB (Conversations, ChatMessages)
+
+    Note over Alice,Bob: Realtime Connection Setup
+    Bob->>Hub: Connect (SignalR wss://.../hubs)
+    Hub->>Redis: Register ConnectionId for Bob.UserId
+    Alice->>Hub: Connect (SignalR wss://.../hubs)
+    Hub->>Redis: Register ConnectionId for Alice.UserId
+
+    Note over Alice,DB: Sending Message
+    Alice->>UI: Types & sends message
+    UI->>CC: POST /api/chat/conversations/{id}/messages
+    CC->>DB: Query Conversation (Validate Alice is participant)
+    alt Unauthorized
+        CC-->>UI: 403 Forbidden
+    else Authorized
+        CC->>DB: Insert into ChatMessages collection
+        CC->>DB: Update Conversations.LastMessageAt, LastMessagePreview
+        CC->>RRS: RecordResponseMetrics(senderId, recipientId)
+        CC->>Hub: Clients.User(Bob.UserId).SendAsync("ReceiveMessage", message)
+        Hub->>Redis: Publish to Bob's cluster node
+        Redis->>Bob: Deliver message in realtime via SignalR
+        CC-->>UI: 200 OK (Message entity)
+    end

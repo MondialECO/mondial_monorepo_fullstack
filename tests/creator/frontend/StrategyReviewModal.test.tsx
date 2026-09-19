@@ -57,7 +57,6 @@ const mockTestKit: BrandKit = {
     roles: [],
     regenerateCount: 0,
   },
-  history: [],
 };
 
 describe('StrategyReviewModal Component', () => {

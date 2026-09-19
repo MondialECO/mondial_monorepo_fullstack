@@ -44,6 +44,7 @@ import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { creatorDocumentsApi } from '@/lib/api-creator-documents';
 import type { ForecastOutput } from '@/types/creator/ai';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Phase3LegalCard } from '@/components/creator/Phase3LegalCard';
 
 // Compact relative time for real timestamps ("2m", "3h", "5d", "now").
 function timeAgo(iso?: string | null): string {
@@ -605,6 +606,9 @@ export default function CreatorDashboard() {
               </div>
             )}
           </Card>
+
+          {/* Legal & Compliance Intelligence Card (Stage 6 Smart Card) */}
+          <Phase3LegalCard ideaId={state.activeIdeaId} />
 
           {/* Document Vault summary — real persisted idea assets only. */}
           <Card className="rounded-2xl border-border bg-card shadow-sm p-6 space-y-4">

@@ -1,4 +1,5 @@
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.DatabaseModels.Legal;
 using WebApp.Models.Dtos;
 
 namespace WebApp.Services.Interface
@@ -71,8 +72,26 @@ namespace WebApp.Services.Interface
         /// <summary>Persist a generated legal checklist + append a phase-3 version.</summary>
         Task<CreatorJourney> SetLegalChecklistAsync(string userId, CreatorLegalChecklist checklist, string ideaId = null);
 
+        /// <summary>Persist a full deterministic legal assessment, syncing both LegalAssessment and LegalChecklist.</summary>
+        Task<CreatorJourney> SetLegalAssessmentAsync(string userId, CreatorLegalAssessment assessment, string ideaId = null);
+
         /// <summary>Update one checklist item's status, recompute completedCount.</summary>
         Task<CreatorJourney> UpdateLegalChecklistItemAsync(string userId, string itemId, string status, string ideaId = null);
+
+        /// <summary>Update one legal assessment item's status and recompute stage breakdown and readiness.</summary>
+        Task<CreatorJourney> UpdateLegalAssessmentItemStatusAsync(string userId, string itemId, string status, string ideaId = null);
+
+        /// <summary>Attach an uploaded document as evidence for a legal requirement item, recording link and audit entry.</summary>
+        Task<CreatorJourney> AttachLegalAssessmentItemEvidenceAsync(string userId, string itemId, string documentId, string status = null, string notes = null, string ideaId = null);
+
+        /// <summary>Unlink an evidence document from a legal requirement without deleting the physical project document.</summary>
+        Task<CreatorJourney> UnlinkLegalAssessmentItemEvidenceAsync(string userId, string itemId, string documentId, string ideaId = null);
+
+        /// <summary>Update evidence status (e.g. linked, needs_review, accepted_for_planning, replaced, archived) and log audit trail.</summary>
+        Task<CreatorJourney> UpdateLegalEvidenceStatusAsync(string userId, string linkId, string newStatus, string notes = null, string ideaId = null);
+
+        /// <summary>Replace an evidence document link with a new document, marking the old link as Replaced and logging audit entry.</summary>
+        Task<CreatorJourney> ReplaceLegalEvidenceAsync(string userId, string oldLinkId, string newDocumentId, string notes = null, string ideaId = null);
 
         /// <summary>Persist a generated formation result + append a phase-3 version.</summary>
         Task<CreatorJourney> SetFormationAsync(string userId, CreatorFormationGenerator formation, string ideaId = null);

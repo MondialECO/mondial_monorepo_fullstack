@@ -1,3 +1,5 @@
+using WebApp.Models.DatabaseModels.Legal;
+
 namespace WebApp.Models.Dtos.Ai
 {
     /// <summary>
@@ -27,6 +29,11 @@ namespace WebApp.Models.Dtos.Ai
         public OperationsPlanDto OperationsPlan { get; set; } = new();
 
         public List<BusinessRiskDto> Risks { get; set; } = new();
+
+        /// <summary>
+        /// Optional Section 12: Legal & Regulatory Framework populated from Step 3.4 legal assessment.
+        /// </summary>
+        public LegalRegulatoryFrameworkDto? LegalFramework { get; set; }
     }
 
     public class ExecutiveSummaryDto
@@ -120,5 +127,97 @@ namespace WebApp.Models.Dtos.Ai
         /// <summary>low | medium | high</summary>
         public string? Impact { get; set; }
         public string? Mitigation { get; set; }
+    }
+
+    /// <summary>
+    /// Section 12: Legal & Regulatory Framework contract — deterministic France statutory assessment.
+    /// </summary>
+    public class LegalRegulatoryFrameworkDto
+    {
+        public string Summary { get; set; } = "";
+        public string Jurisdiction { get; set; } = "France";
+        public string RulesVersion { get; set; } = "FR-2026.1";
+        public DateTime? AssessmentDateUtc { get; set; }
+        public bool IsStale { get; set; }
+        public string StaleReason { get; set; } = "";
+        public int AssessmentVersion { get; set; } = 1;
+        public string BusinessProfileSnapshotHash { get; set; } = "";
+        public DateTime? GeneratedAt { get; set; }
+        public List<string> ChangedSignals { get; set; } = new();
+        public LegalStaleMetadata? StaleMetadata { get; set; }
+        public int PlanningReadinessPercentage { get; set; }
+        public int AddressedRequirementsCount { get; set; }
+        public int TotalApplicableRequirementsCount { get; set; }
+        public string ProposedLegalStructure { get; set; } = "SAS";
+        public List<string> PrimaryRegulations { get; set; } = new();
+        public List<string> RoadmapHighlights { get; set; } = new();
+        public string IntellectualPropertyStrategy { get; set; } = "";
+        public string ComplianceGovernanceNote { get; set; } = "";
+        public string DisclaimerNotice { get; set; } = "Planning guidance only. Based on current venture information. Not formal legal advice or statutory certification.";
+
+        public List<LegalFrameworkSubsectionDto> Subsections { get; set; } = new();
+        public List<LegalRoadmapStageSummaryDto> RoadmapSummary { get; set; } = new();
+        public List<LegalPriorityOpenItemDto> PriorityOpenItems { get; set; } = new();
+        public List<LegalNeedsInformationDto> NeedsInformationItems { get; set; } = new();
+        public List<LegalOfficialSourceDto> OfficialSources { get; set; } = new();
+        public LegalEvidenceSummaryDto EvidenceSummary { get; set; } = new();
+    }
+
+    public class LegalFrameworkSubsectionDto
+    {
+        public string SubsectionKey { get; set; } = ""; // e.g., "12.1", "12.2", "12.5"
+        public string Title { get; set; } = ""; // e.g., "Data Protection & Privacy"
+        public string Summary { get; set; } = "";
+        public List<string> KeyObligations { get; set; } = new();
+        public List<string> ApplicableAuthorities { get; set; } = new();
+        public int RequirementCount { get; set; }
+        public int AddressedCount { get; set; }
+        public string Status { get; set; } = "Addressed"; // "Addressed", "ActionRequired", "InProgress"
+    }
+
+    public class LegalRoadmapStageSummaryDto
+    {
+        public string Stage { get; set; } = "";
+        public string StageTitle { get; set; } = "";
+        public int AddressedCount { get; set; }
+        public int TotalCount { get; set; }
+        public int CompletionPercentage => TotalCount > 0 ? (int)Math.Round((double)AddressedCount / TotalCount * 100) : 100;
+        public string Status { get; set; } = "Pending";
+    }
+
+    public class LegalPriorityOpenItemDto
+    {
+        public string RequirementId { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Stage { get; set; } = "";
+        public string Priority { get; set; } = "High";
+        public string Status { get; set; } = "ActionRequired";
+        public string RecommendedAction { get; set; } = "";
+        public string OfficialAuthority { get; set; } = "";
+    }
+
+    public class LegalNeedsInformationDto
+    {
+        public string RequirementId { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Stage { get; set; } = "";
+        public string ClarificationGuidance { get; set; } = "";
+    }
+
+    public class LegalOfficialSourceDto
+    {
+        public string AuthorityName { get; set; } = "";
+        public string DocumentTitle { get; set; } = "";
+        public string Url { get; set; } = "";
+        public string Description { get; set; } = "";
+    }
+
+    public class LegalEvidenceSummaryDto
+    {
+        public int TotalRequirementsWithEvidence { get; set; }
+        public int TotalDocumentsLinked { get; set; }
+        public int NeedsReviewCount { get; set; }
+        public int AcceptedForPlanningCount { get; set; }
+        public string SummaryText { get; set; } = "";
     }
 }
