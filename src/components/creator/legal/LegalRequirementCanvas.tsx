@@ -42,6 +42,7 @@ interface LegalRequirementCanvasProps {
   onGoToStage: (stageKey: string) => void;
   evidenceLinks?: LegalEvidenceLinkDto[];
   onViewInVault?: (stage: string, requirementId: string) => void;
+  onOpenAiGuide?: () => void;
   className?: string;
 }
 
@@ -85,6 +86,7 @@ export function LegalRequirementCanvas({
   onGoToStage,
   evidenceLinks,
   onViewInVault,
+  onOpenAiGuide,
   className,
 }: LegalRequirementCanvasProps) {
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
@@ -111,7 +113,7 @@ export function LegalRequirementCanvas({
     const nextAction = actionRequiredItems[0] || needsInfoItems[0] || applicableItems[0];
 
     return (
-      <div className={cn('flex-1 space-y-6', className)}>
+      <div className={cn('flex-1 min-w-0 space-y-6', className)}>
         {/* Overview Header Banner */}
         <div className="bg-card/70 border border-border/70 rounded-2xl p-6 space-y-4 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -219,7 +221,7 @@ export function LegalRequirementCanvas({
   }
 
   return (
-    <div className={cn('flex-1 space-y-6', className)}>
+    <div className={cn('flex-1 min-w-0 space-y-6', className)}>
       {/* Stage Header */}
       <div className="flex items-center justify-between border-b border-border/60 pb-4">
         <div>
@@ -330,6 +332,17 @@ export function LegalRequirementCanvas({
               </div>
 
               <div className="flex items-center gap-2">
+                {onOpenAiGuide && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onOpenAiGuide}
+                    className="3xl:hidden rounded-xl text-xs gap-1.5 h-8 font-medium border-border hover:bg-muted/60"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    AI Guide
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant={selectedItem.status === 'completed' || selectedItem.status === 'done' ? 'secondary' : 'default'}

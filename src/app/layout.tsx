@@ -161,8 +161,14 @@ export default function RootLayout({
         {/* DNS prefetch for analytics */}
         <link rel="dns-prefetch" href="https://www.google-analytics.com" />
       </head>
-      <body suppressHydrationWarning>
-        <RootProviders>{children}</RootProviders>
+      <body suppressHydrationWarning className="min-h-screen bg-background text-foreground antialiased selection:bg-primary/20">
+        <RootProviders>
+          <div className="w-full bg-background flex justify-center min-h-screen">
+            <div className="w-full max-w-[1920px] min-w-0 flex flex-col min-h-screen relative">
+              {children}
+            </div>
+          </div>
+        </RootProviders>
       </body>
     </html>
   );

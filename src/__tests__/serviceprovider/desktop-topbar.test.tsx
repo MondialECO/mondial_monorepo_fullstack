@@ -102,7 +102,7 @@ describe("Service Provider route titles", () => {
 });
 
 describe("Service Provider desktop top bar", () => {
-  it("renders supported workspace controls without a theme toggle", () => {
+  it("renders supported workspace controls including a theme toggle", () => {
     navigation.pathname = `${SERVICE_PROVIDER_ROOT}/earnings`;
     navigation.searchParams = new URLSearchParams("tab=payouts");
     render(<SpDesktopTopbar />);
@@ -113,7 +113,7 @@ describe("Service Provider desktop top bar", () => {
     expect(screen.getByRole("button", { name: "Messages" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Notifications" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open account menu" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /theme/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /switch to (light|dark) theme/i })).toBeInTheDocument();
   });
 
   it("provides supported account destinations and closes on Escape", async () => {

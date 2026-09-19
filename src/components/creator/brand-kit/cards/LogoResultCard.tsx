@@ -25,7 +25,7 @@ export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResult
   return (
     <div
       onClick={onEdit}
-      className="group relative w-full max-w-4xl rounded-2xl border border-border/80 bg-white p-6 shadow-sm transition-all duration-200 hover:border-primary/50 hover:shadow-md cursor-pointer"
+      className="group relative w-full rounded-2xl border border-border/80 bg-white p-6 shadow-sm transition-all duration-200 hover:border-primary/50 hover:shadow-md cursor-pointer"
     >
       {/* Card Header */}
       <div className="flex items-center justify-between border-b border-border/60 pb-3 mb-4">

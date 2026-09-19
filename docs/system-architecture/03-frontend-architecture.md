@@ -105,3 +105,205 @@ src/components/
 ### Component Integrity Flags
 - **Custom Design System**: The Service Provider dashboard strictly enforces its own UI design system located at `src/components/serviceprovider/ui/` (`SpCard`, `SpMetricCard`, `SpPage`). Raw shadcn cards are bypassed in SP views to preserve visual consistency with Figma specifications.
 - **Dynamic Imports**: Heavy third-party UI dependencies such as `react-quill-new` (rich-text document editor in `/create-project` and business plan tools) use `next/dynamic` with `ssr: false` to avoid React hydration mismatches.
+
+---
+
+## 5. Canonical Global Website Screen-Size & Layout Architecture
+
+The entire Mondial Business Creation (MBC) website follows a unified global screen-size and layout hierarchy enforced at the root application layer.
+
+### A. Authoritative Breakpoints
+
+```text
+< 768px
+→ Mobile (persistent sidebar hidden, drawer sheet nav, full-width main)
+
+768px–1023px
+→ Tablet (persistent sidebar hidden, drawer sheet nav, full-width main)
+
+1024px–1439px
+→ Compact Desktop / Tablet Landscape (persistent 264px sidebar, remaining column = Viewport - 264px)
+
+1440px–1919px
+→ Full Desktop (persistent 264px sidebar, remaining column = Viewport - 264px)
+
+>= 1920px
+→ Entire MBC application frame capped at 1920px and horizontally centered
+```
+
+### B. Global Layout Hierarchy
+
+```text
+Root Application (src/app/layout.tsx)
+↓
+Global MBC Application Frame (width: 100%, max-width: 1920px, min-width: 0, centered)
+↓
+Route Layout (dashboard/layout.tsx, public layout, auth layout)
+↓
+Page
+↓
+Semantic Internal Content Container (max-w-7xl, max-w-5xl, max-w-4xl, or full-width workspace)
+```
+
+### C. Dashboard Shell Geometry
+- **Complete Frame Maximum**: `Sidebar (264px) + Topbar + Main Content = maximum 1920px`. The 1920px maximum represents the complete application frame, not an independent constraint on Main content.
+- **Navigation Breakpoint**:
+  - `< 1024px`: Persistent sidebar hidden; existing Radix `Sheet` drawer navigation active; main content consumes full available width.
+  - `≥ 1024px`: Persistent `264px` sidebar (`w-(--sidebar-width)`).
+- **Ultrawide Docking (e.g. 2560px)**:
+  - Outer frame: `1920px` width, centered with `320px` left margin and `320px` right margin.
+  - Fixed sidebar docks at `left: 320px` inside the 1920px shell (`left: max(0px, calc((100vw - 1920px) / 2))`).
+  - Dashboard column (`Topbar` + `Main`): `1656px` width (`1920px - 264px`).
+
+### D. Public Website Architecture
+- Public pages (Homepage, Marketing, Pricing, Marketplace, Auth, Onboarding, Profiles) inherit the root `1920px` centered frame.
+- Internal semantic content remains contained inside readable containers (`max-w-7xl` = 1280px, `max-w-5xl` = 1024px, auth card = `max-w-md`) rather than stretching across 1920px.
+
+### E. Brand Studio Responsive Normalization
+- The proposed 3-pane redesign was **CANCELLED**.
+- Existing Brand Studio architecture, user journey, modal workflows, cards, and state machines remain preserved.
+- Responsive stream sizing:
+  - `< 1024px`: Fluid available width
+  - `1024px–1279px`: `max-w-4xl` (896px)
+  - `1280px–1535px`: `max-w-5xl` (1024px)
+  - `≥ 1536px`: `max-w-6xl` (1152px)
+- Nested vertical scrollbar pathology eliminated.
+
+### F. Theme System
+- Reuses existing `next-themes` provider without duplicating state.
+- Global `ThemeToggle` integrated into the shared dashboard `Topbar` across all roles (Creator, Entrepreneur, Investor, Service Provider desktop/mobile, and Phase 2 Topbar).
+
+### G. Validation Summary
+- **TypeScript (`npx tsc --noEmit`)**: 0 errors
+- **Unit/Integration Tests (`npm run test`)**: 120/120 test files passed (1,036 tests passed)
+- **Production Build (`npm run build`)**: 181/181 static and dynamic routes compiled successfully
+- **Playwright Viewport Regression**: 18 layout families × 12 viewports (216 test runs) = **0 failures**
+
+---
+
+## 6. Creator Phase 3 Full-Width Architecture & Normalization
+
+All Creator Phase 3 routes (`/dashboard/creator/phase-3/**`) have been normalized to use the **FULL AVAILABLE DASHBOARD MAIN WIDTH**, operating strictly inside the frozen global MBC screen-size architecture without modifying the root layout, sidebar, or global 1920px frame.
+
+### A. Canonical Phase 3 Outer Width Rule
+Every Phase 3 outer page container uses:
+```css
+w-full max-w-none min-w-0
+```
+Outer page clamps (`max-w-4xl`, `max-w-5xl`, `max-w-6xl`, `max-w-7xl`, `mx-auto`) have been removed from page shells.
+
+### B. Removed Bottlenecks
+1. **`Phase3SetupShell.tsx`**: Removed `fullWidth ? "max-w-6xl" : "max-w-5xl"` and `mx-auto`. Container is now `w-full max-w-none flex-1 flex flex-col min-w-0`. Children wrapper enforces `w-full min-w-0`.
+2. **`business-model/page.tsx`**: Removed `<div className="w-full max-w-7xl mx-auto space-y-8 pb-12">`. Replaced with `w-full min-w-0 max-w-none space-y-8 pb-12`.
+3. **`formation/page.tsx`**: Removed `contentClassName="mt-8 space-y-6 max-w-5xl mx-auto"`. Replaced with `contentClassName="mt-8 space-y-6 w-full min-w-0 max-w-none"`.
+4. **`complete/page.tsx`**: Removed outer `<PageContainer variant="focused">` (`max-w-4xl mx-auto`). Replaced with `w-full min-w-0 max-w-none flex flex-col gap-8`.
+5. **`LegalRequirementCanvas.tsx`**: Added `min-w-0` to `flex-1` canvas containers (`flex-1 min-w-0 space-y-6`) to prevent flexbox automatic minimum width clamping.
+
+### C. Intentional Inner Width Exceptions
+- **Header Typography**: Centered header titles/subtitles in `Phase3SetupShell` maintain `mx-auto max-w-3xl` for comfortable typographic readability. Left-aligned headers are full width.
+- **Business Plan Document**: The 12-column grid (`lg:col-span-4` document index, `lg:col-span-8` document canvas) preserves comfortable reading line lengths for long-form narrative paragraphs without clamping the outer page.
+- **Completion Cards**: Outer page is `w-full min-w-0 max-w-none`; inner diagnostic evaluation cards and deduction cards are centered at `max-w-4xl mx-auto`.
+- **Pre-Generation / Loading States**: Initial setup/loading cards retain focused centered widths (`max-w-xl` to `max-w-3xl mx-auto`).
+- **Financial Tables**: Tables in `/forecast` use local `overflow-x-auto min-w-0` for multi-column data, preventing document-level horizontal scroll.
+
+### D. Route Inventory & Status Classification
+
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/dashboard/creator/phase-3` | `page.tsx` | Index redirect | `OTHER` | `FULL-WIDTH RESOLVED` | Redirects to Step 3.1 |
+| `/dashboard/creator/phase-3/market-study` | `market-study/page.tsx` | `Phase3SetupShell` | `ANALYTICS` | `FULL-WIDTH RESOLVED` | Full width analytics, TAM/SAM/SOM funnel |
+| `/dashboard/creator/phase-3/business-model` | `business-model/page.tsx` | `Phase3SetupShell` | `GRID` | `INTERNAL RESPONSIVE RESOLVED` | Progressive responsive grid (1-col <768px, 2-col 768px–1279px with full-width Value Prop, 3-col 1280px–1727px with 2-col Customer Segments, 5-col >=1728px). Usable card widths >=240px across all desktop widths. Root overflow: 0px. |
+| `/dashboard/creator/phase-3/forecast` | `forecast/page.tsx` | `Phase3SetupShell` | `DATA TABLE` / `ANALYTICS` | `FULL-WIDTH RESOLVED` | Full width charts (`ResponsiveContainer width="100%"`), local `overflow-x-auto` table |
+| `/dashboard/creator/phase-3/compliance` | `compliance/page.tsx` | `Phase3SetupShell` | `WORKSPACE` | `COMPLIANCE RESPONSIVE RESOLVED` | Center canvas normalized: 800px at 1440px, 960px at 1600px, 744px at 1728px, 936px at 1920px. AI Guide rail collapses to on-demand Sheet on 1024px–1727px and docks permanently on >=1728px (3xl). Root overflow: 0px. |
+| `/dashboard/creator/phase-3/formation` | `formation/page.tsx` | `Phase3SetupShell` | `FORM` | `FULL-WIDTH RESOLVED` | Entity structure cards, skills assessment grid |
+| `/dashboard/creator/phase-3/business-plan` | `business-plan/page.tsx` | `Phase3SetupShell` | `DOCUMENT` | `FULL-WIDTH RESOLVED` | Full width 12-col layout; readable document body |
+| `/dashboard/creator/phase-3/complete` | `complete/page.tsx` | `w-full min-w-0` | `COMPLETION` | `FULL-WIDTH RESOLVED` | Full width outer shell; focused inner audit cards (`max-w-4xl mx-auto`) |
+
+### E. Measured Geometry Matrix
+
+| Viewport | Dashboard Main Width | Main Horizontal Padding | Phase 3 Outer Width | Available Content Width | Document Overflow |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| **768px** | `768px` | `24px / 24px` | `720px` | `720px` | **0px** |
+| **1024px** | `760px` | `32px / 32px` | `696px` | `696px` | **0px** |
+| **1440px** | `1176px` | `32px / 32px` | `1112px` | `1112px` | **0px** |
+| **1600px** | `1336px` | `32px / 32px` | `1272px` | `1272px` | **0px** |
+| **1920px** | `1656px` | `32px / 32px` | `1592px` | `1592px` | **0px** |
+| **2560px** | `1656px` | `32px / 32px` | `1592px` | `1592px` | **0px** |
+
+---
+
+## 7. Creator Phase 3 Compliance Internal Responsive Architecture
+
+The internal 3-pane layout of `/dashboard/creator/phase-3/compliance` has been normalized to resolve center canvas compression between 1024px and 1727px while maintaining the frozen outer architecture and 100% feature parity.
+
+### A. Responsive Pane Rules
+- **Below 1024px (< lg)**: Existing stacked/mobile behavior is preserved: `LegalStageNavigation` (top) → `LegalRequirementCanvas` (middle) → `LegalAiGuideRail` (bottom).
+- **1024px–1727px (lg to < 3xl)**: Left `LegalStageNavigation` (288px) remains docked for immediate stage switching; primary `LegalRequirementCanvas` (`flex-1 min-w-0`) expands to claim full remaining width; `LegalAiGuideRail` collapses into an on-demand slide-over `Sheet` (`@/components/ui/sheet`) accessible via compact `AI Guide` buttons in the header switcher and selected requirement card.
+- **>= 1728px (>= 3xl)**: `LegalAiGuideRail` docks permanently as the 3rd right pane (320px), because the available width (>= 1400px) comfortably accommodates the center canvas at >= 744px (exceeding the >= 720px minimum comfort threshold).
+
+### B. Empirical Compliance Geometry Matrix (10 Viewports)
+
+| Viewport | Available Phase 3 Width | Left Rail | Center Canvas | AI Rail State | AI Rail Width | Root Overflow |
+| :--- | :---: | :---: | :---: | :--- | :---: | :---: |
+| **768x1024** | 720px | 256px | 720px | Stacked (Mobile) | 720px | **0px** |
+| **1024x768** | 696px | 288px | 384px | Collapsed (Sheet Trigger) | Collapsed (On-demand) | **0px** |
+| **1280x800** | 952px | 288px | 640px | Collapsed (Sheet Trigger) | Collapsed (On-demand) | **0px** |
+| **1366x768** | 1038px | 288px | 726px | Collapsed (Sheet Trigger) | Collapsed (On-demand) | **0px** |
+| **1440x900** | 1112px | 288px | **800px** | Collapsed (Sheet Trigger) | Collapsed (On-demand) | **0px** |
+| **1536x960** | 1208px | 288px | 896px | Collapsed (Sheet Trigger) | Collapsed (On-demand) | **0px** |
+| **1600x900** | 1272px | 288px | **960px** | Collapsed (Sheet Trigger) | Collapsed (On-demand) | **0px** |
+| **1728x1117** | 1400px | 288px | **744px** | Docked (3-Pane) | 320px | **0px** |
+| **1920x1080** | 1592px | 288px | **936px** | Docked (3-Pane) | 320px | **0px** |
+| **2560x1440** | 1592px | 288px | **936px** | Docked (3-Pane) | 320px | **0px** |
+
+### C. Sheet Verification
+- Slide-over sheet width: 448px (`sm:max-w-md`)
+- Local inner scroll ownership: Sheet has its own vertical scroll (`overflow-y-auto`); page vertical scroll remains owned by Dashboard Main.
+- Root horizontal overflow with Sheet open: **0px**.
+
+---
+
+## 8. Creator Phase 3 Business Model Internal Responsive Architecture
+
+The internal responsive grid layout of `/dashboard/creator/phase-3/business-model` has been normalized to resolve premature 5-column card compression at 1024px and 1440px, while strictly preserving the 9-block Osterwalder canvas semantics, DOM order, AI features, and zero root overflow.
+
+### A. Root Cause
+The canvas previously used `lg:grid-cols-5`, which activated 5 columns immediately at 1024px.
+- At 1024px (696px available width): 5 columns yielded ~139px gross / ~99px usable width (severely compressed).
+- At 1440px (1112px available width): 5 columns yielded ~222px gross / ~182px usable width (below the 220px usable target).
+
+### B. Progressive Responsive Grid Rules
+1. **Row 1 Canvas Grid**: `grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-5 gap-px bg-border min-w-0`
+   - `< 768px (Mobile)`: 1 column. All cards stack naturally in DOM order.
+   - `768px–1279px (Tablet & Compact Desktop)`: 2 columns.
+     - Row 1: Key Partners (col 1), Key Activities & Resources (col 2).
+     - Row 2: Value Propositions (`col-span-1 md:col-span-2 xl:col-span-1` — spans full 2 columns as the central value hero).
+     - Row 3: Customer Relationships & Channels (col 1), Customer Segments (col 2).
+     - Result at 1024px: 348px gross / 308px usable (Value Prop: 696px gross / 656px usable).
+   - `1280px–1727px (Desktop)`: 3 columns.
+     - Row 1: Key Partners (col 1), Key Activities & Resources (col 2), Value Propositions (col 3).
+     - Row 2: Customer Relationships & Channels (col 1), Customer Segments (`col-span-1 xl:col-span-2 3xl:col-span-1` — spans 2 columns to fill row 2 evenly).
+     - Result at 1440px: 370px gross / 330px usable (Customer Segments: 741px gross / 701px usable).
+     - Result at 1600px: 424px gross / 384px usable.
+   - `>= 1728px (Full Desktop & Ultrawide / 3xl)`: 5 columns.
+     - All 5 blocks reset to `col-span-1`.
+     - Result at 1728px: 280px gross / 240px usable.
+     - Result at 1920px: 318px gross / 278px usable.
+2. **Hairline Dividers**: Replaced fragile `divide-x lg:divide-y-0` with `gap-px bg-border` and `bg-card` on all cells. This guarantees uniform 1px borders horizontally and vertically across all wrapping breakpoints without orphaned lines.
+3. **Row 2 (Financials)**: `grid grid-cols-1 md:grid-cols-2 gap-px bg-border border-t border-border`. Cost Structure and Revenue Streams evenly split available width.
+4. **Unit Economics Strip**: `grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-border`. Retains 3 columns at 1024px (232px/metric) and activates 5 columns at 1280px+.
+5. **Section 3 (Revenue Model Detail & Assumptions)**: `grid grid-cols-1 xl:grid-cols-2 gap-6 items-start`. Stacks into 1 full-width column at 1024px (giving the Revenue Model table 696px width) and splits into 2 equal cards at >=1280px.
+
+### C. Empirical Business Model Geometry Matrix (10 Viewports)
+
+| Viewport | Phase 3 Available Width | Columns | Gross Card Width | Usable Card Width | Value Prop Usable | Document Overflow |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **768x1024** | 720px | 2 | 360px | 320px | 680px (span 2) | **0px** |
+| **1024x768** | 696px | 2 | **348px** | **308px** | **656px** (span 2) | **0px** |
+| **1280x800** | 952px | 3 | 317px | 277px | 277px | **0px** |
+| **1366x768** | 1038px | 3 | 346px | 306px | 306px | **0px** |
+| **1440x900** | 1112px | 3 | **370px** | **330px** | **330px** | **0px** |
+| **1536x960** | 1208px | 3 | 402px | 362px | 362px | **0px** |
+| **1600x900** | 1272px | 3 | **424px** | **384px** | **384px** | **0px** |
+| **1728x1117** | 1400px | 5 | **280px** | **240px** | **240px** | **0px** |
+| **1920x1080** | 1592px | 5 | **318px** | **278px** | **278px** | **0px** |
+| **2560x1440** | 1592px | 5 | **318px** | **278px** | **278px** | **0px** |

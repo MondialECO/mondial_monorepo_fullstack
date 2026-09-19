@@ -221,7 +221,7 @@ function Phase3KpiTrackerClient() {
   const yoyGrowth = revenueGrowthPct ? `+${revenueGrowthPct.toFixed(2)}% YoY` : 'N/A';
 
   return (
-    <div className="bg-background relative w-full min-h-screen overflow-x-hidden overflow-y-auto">
+    <div className="bg-background relative w-full min-h-full min-w-0">
 
       {/* Main Content */}
       <div className="w-full space-y-6">

@@ -27,7 +27,7 @@ type Tone = 'blue' | 'green' | 'amber' | 'red' | 'slate';
 
 export function ServiceProviderOverview() {
   const overview = useProviderOverview('EUR');
-  const availability = useProviderAvailabilityControl(overview.data?.provider.availableNow ?? true);
+  const availability = useProviderAvailabilityControl(overview.data?.provider?.availableNow ?? true);
 
   if (overview.isLoading) return <OverviewSkeleton />;
   if (overview.isError || !overview.data) {

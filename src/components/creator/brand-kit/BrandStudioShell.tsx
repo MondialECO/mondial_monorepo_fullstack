@@ -81,8 +81,8 @@ export function BrandStudioShell({
         status: isDirectionComplete
           ? "complete"
           : isStrategyComplete
-          ? "active"
-          : "locked",
+            ? "active"
+            : "locked",
       },
       {
         key: "logo_type",
@@ -91,8 +91,8 @@ export function BrandStudioShell({
         status: isLogoTypeComplete
           ? "complete"
           : isDirectionComplete
-          ? "active"
-          : "locked",
+            ? "active"
+            : "locked",
       },
       {
         key: "logo",
@@ -101,8 +101,8 @@ export function BrandStudioShell({
         status: isLogoComplete
           ? "complete"
           : isLogoTypeComplete
-          ? "active"
-          : "locked",
+            ? "active"
+            : "locked",
       },
       {
         key: "colors",
@@ -111,8 +111,8 @@ export function BrandStudioShell({
         status: isColorsComplete
           ? "complete"
           : isLogoComplete
-          ? "active"
-          : "locked",
+            ? "active"
+            : "locked",
       },
       {
         key: "typography",
@@ -121,8 +121,8 @@ export function BrandStudioShell({
         status: isTypographyComplete
           ? "complete"
           : isColorsComplete
-          ? "active"
-          : "locked",
+            ? "active"
+            : "locked",
       },
     ];
   }, [kit]);
@@ -231,9 +231,8 @@ export function BrandStudioShell({
       }
       if (nextModalKey === null && updatedKit?.status?.toLowerCase() === "complete") {
         setActiveModal(null);
-        const hubUrl = `/dashboard/creator/phase-2/brand-kit${
-          ideaId ? `?ideaId=${encodeURIComponent(ideaId)}` : ""
-        }`;
+        const hubUrl = `/dashboard/creator/phase-2/brand-kit${ideaId ? `?ideaId=${encodeURIComponent(ideaId)}` : ""
+          }`;
         router.push(hubUrl);
         return;
       }
@@ -272,8 +271,8 @@ export function BrandStudioShell({
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
-          err?.message ||
-          "Failed to confirm brand strategy."
+        err?.message ||
+        "Failed to confirm brand strategy."
       );
     } finally {
       setIsLoading(false);
@@ -308,7 +307,7 @@ export function BrandStudioShell({
   }, [activeModal, stepSegments]);
 
   return (
-    <div className="relative flex flex-col min-h-screen w-full bg-[#EFEFF1]">
+    <div className="relative flex flex-col h-full min-h-0 w-full bg-[#EFEFF1] dark:bg-background overflow-hidden">
       {/* 1. Top Fixed Progress Bar */}
       <BrandStudioProgressBar
         segments={stepSegments}
@@ -321,7 +320,7 @@ export function BrandStudioShell({
 
       {/* Global Error Banner */}
       {error && (
-        <div className="mx-auto mt-4 w-full max-w-4xl px-4">
+        <div className="mx-auto mt-4 w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl px-4">
           <div className="flex items-center gap-2 p-3 text-xs text-destructive-foreground bg-destructive/10 border border-destructive/20 rounded-xl">
             <AlertCircle className="size-4 shrink-0 text-destructive" />
             <span>{error}</span>
@@ -330,7 +329,8 @@ export function BrandStudioShell({
       )}
 
       {/* 2. Full-Bleed Dot-Grid Canvas & Accumulated Result Cards */}
-      <main
+      <section
+        aria-label="Brand Canvas"
         className="flex-1 w-full px-4 md:px-8 py-8 flex flex-col items-center justify-start gap-6 overflow-y-auto"
         style={{
           backgroundImage:
@@ -346,7 +346,7 @@ export function BrandStudioShell({
             </p>
           </div>
         ) : (
-          <div className="w-full max-w-4xl flex flex-col items-center gap-6">
+          <div className="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl flex flex-col items-center gap-6">
             {/* Strategy Result Card (Step 1) */}
             {kit?.strategy && (
               <StrategyResultCard
@@ -427,7 +427,7 @@ export function BrandStudioShell({
               )}
           </div>
         )}
-      </main>
+      </section>
 
       {/* 3. Modal Overlays */}
 

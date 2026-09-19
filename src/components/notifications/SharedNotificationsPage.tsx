@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import type { AppNotification, NotificationType } from "@/types/notifications";
+import { PageContainer } from "@/components/layout/PageContainer";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -92,9 +93,8 @@ export default function SharedNotificationsPage({ role }: SharedNotificationsPag
   };
 
   return (
-    <div className="w-full min-h-screen bg-background text-foreground">
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-        {/* Page Header */}
+    <PageContainer variant="standard" className="space-y-6">
+      {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border">
           <div className="space-y-1">
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight font-heading text-foreground">
@@ -278,7 +278,6 @@ export default function SharedNotificationsPage({ role }: SharedNotificationsPag
             )}
           </div>
         )}
-      </main>
-    </div>
+    </PageContainer>
   );
 }

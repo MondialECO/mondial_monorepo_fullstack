@@ -28,14 +28,11 @@ export function Phase3SetupShell({
   titleClassName,
 }: Phase3SetupShellProps) {
   return (
-    <div className="flex min-h-screen w-full max-w-full flex-col bg-muted/30 dark:bg-background text-foreground px-4 py-6 sm:px-6 lg:px-8 lg:py-8 overflow-x-clip">
-      <main
+    <div className="flex w-full max-w-full flex-col text-foreground overflow-x-clip">
+      <div
         className={cn(
-          "mx-auto flex w-full flex-1 flex-col",
-          compact ? "py-0" : "py-4 lg:py-6",
-          fullWidth
-            ? "max-w-6xl"
-            : "max-w-5xl",
+          "w-full max-w-none flex-1 flex flex-col min-w-0",
+          compact ? "py-0" : "py-2 sm:py-4",
         )}
       >
         <div
@@ -71,8 +68,8 @@ export function Phase3SetupShell({
           )}
         </div>
 
-        <div className={cn("mt-6 space-y-8", contentClassName)}>{children}</div>
-      </main>
+        <div className={cn("mt-6 space-y-8 w-full min-w-0", contentClassName)}>{children}</div>
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { Phase4Resource } from "@/components/creator/phase4/Phase4Resource";
 import { Phase4Gtm } from "@/components/creator/phase4/Phase4Gtm";
 import { Phase4Complete } from "@/components/creator/phase4/Phase4Complete";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
+import { PageContainer } from "@/components/layout/PageContainer";
 import {
   creatorJourneyApi,
   type GtmSetup,
@@ -120,9 +121,8 @@ export default function OfferPricingPage() {
   }, [activeIdeaId, attempt, progressLoading]);
 
   return (
-    <div className="min-h-[calc(100vh-68px)] bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">
-      <main className="mx-auto w-full max-w-7xl">
-        <header className="space-y-2">
+    <PageContainer variant="standard">
+      <header className="space-y-2">
           <h1 className="font-heading text-page-heading font-semibold leading-10 tracking-[-0.02em] text-foreground">
             {STEP_COPY[step].title}
           </h1>
@@ -240,7 +240,6 @@ export default function OfferPricingPage() {
             </>
           )}
         </div>
-      </main>
-    </div>
+    </PageContainer>
   );
 }

@@ -360,7 +360,7 @@ export function LogoCreationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 md:p-8 overflow-y-auto animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl max-h-[92vh] rounded-2xl bg-card border border-border/80 shadow-2xl overflow-hidden flex flex-col my-auto bg-white">
+      <div className="relative w-full max-w-5xl 2xl:max-w-6xl max-h-[92vh] rounded-2xl bg-card border border-border/80 shadow-2xl overflow-hidden flex flex-col my-auto bg-white">
         
         {/* 1. Modal Header & 6-Step Workflow Track (Figma Node 57004:10578) */}
         <ModalWorkflowHeader

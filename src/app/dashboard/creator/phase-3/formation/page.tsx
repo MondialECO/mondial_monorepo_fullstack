@@ -424,7 +424,7 @@ export default function FormationPage() {
       stepEyebrow="Step 3.5 · Company Formation & Team"
       title="Company Formation & Team"
       description="A rule-backed company structure baseline grounded in your venture profile, with transparent reasoning and skills assessment."
-      contentClassName="mt-8 space-y-6 max-w-5xl mx-auto"
+      contentClassName="mt-8 space-y-6 w-full min-w-0 max-w-none"
       titleClassName="text-3xl font-semibold leading-tight tracking-tight text-foreground font-sans"
     >
       {loading && (

@@ -18,6 +18,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PageContainer } from '@/components/layout/PageContainer';
 
 export default function MyPartnershipsPage() {
   const [partnerships, setPartnerships] = useState<PartnershipSummary[]>([]);
@@ -42,7 +43,7 @@ export default function MyPartnershipsPage() {
   }, []);
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 text-foreground font-sans">
+    <PageContainer variant="standard" className="space-y-6 text-foreground font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="space-y-1">
@@ -174,6 +175,6 @@ export default function MyPartnershipsPage() {
           ))}
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

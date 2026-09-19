@@ -301,7 +301,7 @@ export default function Phase2CompletePage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background text-foreground flex flex-col items-center justify-start">
+    <div className="w-full bg-background text-foreground flex flex-col items-center justify-start">
       {/* Gating fetch in flight */}
       {statusLoading && (
         <div className="flex-1 flex flex-col items-center justify-center gap-2 py-24 text-muted-foreground">
@@ -362,7 +362,7 @@ export default function Phase2CompletePage() {
 
       {/* Eligible — Figma matching completion screen */}
       {!statusLoading && !statusError && canContinue && (
-        <main className="w-full max-w-[1000px] mx-auto px-4 sm:px-6 py-12 sm:py-16 space-y-6 sm:space-y-8">
+        <section aria-label="Phase 2 Completion" className="w-full max-w-[1000px] mx-auto py-6 sm:py-8 space-y-6 sm:space-y-8">
           {/* =========================================================================
               HEADER BLOCK (Centred text, no card — Figma matching)
              ========================================================================= */}
@@ -708,7 +708,7 @@ export default function Phase2CompletePage() {
               </button>
             </div>
           </footer>
-        </main>
+        </section>
       )}
     </div>
   );

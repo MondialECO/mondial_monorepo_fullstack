@@ -244,7 +244,7 @@ export default function BusinessModelPage() {
         ) : undefined
       }
     >
-      <div className="w-full max-w-7xl mx-auto space-y-8 pb-12">
+      <div className="w-full min-w-0 max-w-none space-y-8 pb-12">
         {/* Error Banners */}
         {startError && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 flex items-start gap-3">
@@ -381,11 +381,11 @@ export default function BusinessModelPage() {
             {/* ========================================================================= */}
             {/* SECTION 1: THE CANVAS — Single white card holding 9 Osterwalder blocks */}
             {/* ========================================================================= */}
-            <div className="rounded-2xl border border-border bg-card shadow-xs min-w-0 overflow-x-auto">
-              {/* Row 1: 5 Columns with Hairline Dividers */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-border min-w-0">
+            <div className="rounded-2xl border border-border bg-card shadow-xs min-w-0 overflow-hidden">
+              {/* Row 1: Progressive Responsive Grid (1 col <768px, 2 cols 768-1279px, 3 cols 1280-1727px, 5 cols >=1728px) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-5 gap-px bg-border min-w-0">
                 {/* Column 1: Key Partners (Full Height) */}
-                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0 bg-card">
                   <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                     Key Partners
                   </h4>
@@ -403,7 +403,7 @@ export default function BusinessModelPage() {
                 </div>
 
                 {/* Column 2: Key Activities (Top) + Key Resources (Bottom) */}
-                <div className="flex flex-col divide-y divide-border min-w-0">
+                <div className="flex flex-col divide-y divide-border min-w-0 bg-card">
                   {/* Key Activities */}
                   <div className="p-5 flex-1 space-y-3 min-w-0">
                     <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
@@ -442,7 +442,8 @@ export default function BusinessModelPage() {
                 </div>
 
                 {/* Column 3: Value Propositions (Full Height, Blue Left Border & Heavier Weight) */}
-                <div className="p-5 flex flex-col justify-start space-y-3 border-l-2 border-primary bg-card/60 relative min-w-0">
+                {/* On 2-col layout (md/lg), spans 2 columns for prominent full-width center stage */}
+                <div className="p-5 flex flex-col justify-start space-y-3 border-l-2 border-primary bg-card/60 relative min-w-0 col-span-1 md:col-span-2 xl:col-span-1">
                   <h4 className="text-label font-semibold uppercase tracking-wider text-primary font-sans">
                     Value Propositions
                   </h4>
@@ -478,7 +479,7 @@ export default function BusinessModelPage() {
                 </div>
 
                 {/* Column 4: Customer Relationships (Top) + Channels (Bottom) */}
-                <div className="flex flex-col divide-y divide-border min-w-0">
+                <div className="flex flex-col divide-y divide-border min-w-0 bg-card">
                   {/* Customer Relationships */}
                   <div className="p-5 flex-1 space-y-3 min-w-0">
                     <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
@@ -517,7 +518,8 @@ export default function BusinessModelPage() {
                 </div>
 
                 {/* Column 5: Customer Segments (Full Height) */}
-                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
+                {/* On 3-col layout (xl/2xl), spans 2 columns on row 2 to fill the grid evenly */}
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0 bg-card col-span-1 xl:col-span-2 3xl:col-span-1">
                   <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                     Customer Segments
                   </h4>
@@ -550,9 +552,9 @@ export default function BusinessModelPage() {
               </div>
 
               {/* Row 2: Cost Structure and Revenue Streams (Split full width beneath) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border border-t border-border">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-border border-t border-border">
                 {/* Cost Structure */}
-                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0 bg-card">
                   <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                     Cost Structure
                   </h4>
@@ -570,7 +572,7 @@ export default function BusinessModelPage() {
                 </div>
 
                 {/* Revenue Streams */}
-                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0">
+                <div className="p-5 flex flex-col justify-start space-y-3 min-w-0 bg-card">
                   <h4 className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans">
                     Revenue Streams
                   </h4>
@@ -608,7 +610,7 @@ export default function BusinessModelPage() {
             {/* ========================================================================= */}
             {unitEconomics && (
               <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-border">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-border">
                   {/* Metric 1: ARPU */}
                   <div className="p-3 sm:px-4 sm:py-1 space-y-1.5 flex flex-col justify-between min-w-0">
                     <span className="text-label font-semibold uppercase tracking-wider text-muted-foreground font-sans break-words">
@@ -690,7 +692,7 @@ export default function BusinessModelPage() {
             {/* ========================================================================= */}
             {/* SECTION 3: TWO EQUAL CARDS — Revenue Model Detail & Model Assumptions to Test */}
             {/* ========================================================================= */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
               {/* Left Card: Revenue Model Detail Table */}
               <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
                 {/* Card Header */}

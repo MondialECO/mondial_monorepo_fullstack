@@ -337,7 +337,7 @@ export function LogoTypeChooserModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 md:p-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-5xl max-h-[92vh] flex flex-col bg-card border border-border/80 rounded-2xl shadow-2xl overflow-hidden bg-white">
+      <div className="relative w-full max-w-5xl 2xl:max-w-6xl max-h-[92vh] flex flex-col bg-card border border-border/80 rounded-2xl shadow-2xl overflow-hidden bg-white">
         
         {/* 1. Modal Header & 6-Step Workflow Track (Figma Node 57004:10297) */}
         <ModalWorkflowHeader

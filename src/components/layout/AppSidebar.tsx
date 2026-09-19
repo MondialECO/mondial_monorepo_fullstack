@@ -290,7 +290,7 @@ function ServiceProviderSidebar({
   const { isMobile, setOpenMobile } = useSidebar();
   const overview = useProviderOverview();
   const availability = useProviderAvailabilityControl(
-    overview.data?.provider.availableNow ?? true
+    overview.data?.provider?.availableNow ?? true
   );
 
   const [manualExpanded, setManualExpanded] = useState<Record<string, boolean>>({});
@@ -298,8 +298,8 @@ function ServiceProviderSidebar({
   const allHrefs = useMemo(() => getAllMenuHrefs(sections), [sections]);
   const available = availability.available;
   const provider = overview.data?.provider;
-  const unreadLeads = overview.data?.metrics.newLeads ?? 0;
-  const activeProjects = overview.data?.metrics.activeEngagements ?? 0;
+  const unreadLeads = overview.data?.metrics?.newLeads ?? 0;
+  const activeProjects = overview.data?.metrics?.activeEngagements ?? 0;
 
   const handleLinkClick = () => {
     if (isMobile) {

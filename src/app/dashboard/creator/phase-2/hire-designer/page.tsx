@@ -117,7 +117,7 @@ export default function HireDesignerPage() {
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen">
+    <div className="w-full flex-1 flex flex-col bg-background text-foreground">
       {/* Isolated Onboarding Header */}
       <header className="flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-xs px-6 py-4">
         <Button
@@ -139,7 +139,7 @@ export default function HireDesignerPage() {
         <div className="h-full bg-primary" style={{ width: "86%" }} />
       </div>
 
-      <main className="flex-1 max-w-[1140px] mx-auto w-full px-6 py-10 space-y-8">
+      <section aria-label="Matched Designers" className="flex-1 max-w-[1140px] mx-auto w-full py-6 space-y-8">
 
         {/* Title Block */}
         <div className="space-y-2">
@@ -284,7 +284,7 @@ export default function HireDesignerPage() {
           </div>
         )}
 
-      </main>
+      </section>
     </div>
   );
 }

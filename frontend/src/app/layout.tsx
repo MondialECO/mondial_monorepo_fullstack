@@ -51,7 +51,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
-        <RootProviders>{children}</RootProviders>
+        <RootProviders>
+          <div className="w-full bg-background flex justify-center min-h-screen">
+            <div className="w-full max-w-[1920px] min-w-0 flex flex-col min-h-screen relative">
+              {children}
+            </div>
+          </div>
+        </RootProviders>
       </body>
     </html>
   );
