@@ -1,0 +1,70 @@
+flowchart TD
+    subgraph DealsController_Hotspot["DealsController.cs (8,376 lines / 79 Endpoints)"]
+        subgraph Creation_Cluster["1. Deal Creation & Initialization"]
+            C1["CreateDeal"]
+            C2["InitiatePartnership"]
+            C3["DraftTerms"]
+        end
+
+        subgraph Negotiation_Cluster["2. Negotiation & Comments"]
+            N1["ProposeChanges"]
+            N2["AcceptClause"]
+            N3["RejectClause"]
+            N4["AddDealComment"]
+        end
+
+        subgraph CapTable_Cluster["3. Cap Table & Dilution Impact"]
+            CT1["SimulateDilution"]
+            CT2["ApproveEquityTransfer"]
+            CT3["ValidateCapTableRoom"]
+        end
+
+        subgraph Legal_Cluster["4. Legal Documents & Contracts"]
+            L1["GenerateTermSheet"]
+            L2["UploadLegalAddendum"]
+            L3["SignDocument (DocuSign/Signature)"]
+            L4["VerifySignatures"]
+        end
+
+        subgraph Buyout_Cluster["5. Buyout & Handover Lifecycle"]
+            B1["InitiateBuyout"]
+            B2["ApproveBuyoutAudit"]
+            B3["AssetHandoverConfirmation"]
+            B4["IPTransferRelease"]
+        end
+
+        subgraph Closing_Cluster["6. Closing, Escrow & Activation"]
+            CL1["VerifyEscrowDeposit"]
+            CL2["ReleaseEscrowFunds"]
+            CL3["FinalizeDeal"]
+            CL4["ActivatePartnership"]
+        end
+    end
+
+    subgraph External_Entities["Collections & Services Touched"]
+        ColDeals[("Deals")]
+        ColDealExec[("DealExecutions")]
+        ColCompanies[("Companies")]
+        ColInvestments[("Investments")]
+        ColTrans[("Transactions / Escrow")]
+        ColNotif[("Notifications")]
+        CompServ["CompanyService.cs"]
+        EmailServ["EmailService.cs"]
+    end
+
+    %% Connections
+    Creation_Cluster --> ColDeals
+    Negotiation_Cluster --> ColDeals
+    CapTable_Cluster --> ColCompanies
+    CapTable_Cluster --> CompServ
+    Legal_Cluster --> ColDealExec
+    Buyout_Cluster --> ColDeals
+    Buyout_Cluster --> ColCompanies
+    Closing_Cluster --> ColDeals
+    Closing_Cluster --> ColTrans
+    Closing_Cluster --> ColInvestments
+    Closing_Cluster --> EmailServ
+    Closing_Cluster --> ColNotif
+
+    classDef fat fill:#ffebee,stroke:#b71c1c,stroke-width:2px;
+    class DealsController_Hotspot fat;

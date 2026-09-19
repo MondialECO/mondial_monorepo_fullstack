@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "audit": "modernize-harden",
+  "project": "MONDIAL BUSINESS CREATION (MBC)",
+  "date": "2026-09-19",
+  "status": "COMPLETE_FINDINGS_ONLY",
+  "summary": {
+    "totalFindings": 32,
+    "critical": 3,
+    "high": 8,
+    "medium": 16,
+    "low": 5,
+    "credentialsExposedInTrackedGit": 0,
+    "credentialsInUntrackedDevConfig": 5
+  },
+  "topRisks": [
+    {
+      "rank": 1,
+      "id": "SEC-MBC-001",
+      "title": "Plaintext Secrets in Untracked Local Dev Config",
+      "severity": "CRITICAL",
+      "cwe": "CWE-798"
+    },
+    {
+      "rank": 2,
+      "id": "SEC-MBC-002",
+      "title": "Weak Hardcoded JWT Key Default",
+      "severity": "CRITICAL",
+      "cwe": "CWE-326"
+    },
+    {
+      "rank": 3,
+      "id": "SEC-MBC-003",
+      "title": "Sumsub Webhook Signature Timing Attack (Non-Constant Time)",
+      "severity": "CRITICAL",
+      "cwe": "CWE-208"
+    },
+    {
+      "rank": 4,
+      "id": "SEC-MBC-004",
+      "title": "Legacy KYC Document Upload Stored in Public Web Root",
+      "severity": "HIGH",
+      "cwe": "CWE-552"
+    },
+    {
+      "rank": 5,
+      "id": "SEC-MBC-005",
+      "title": "Unrestricted File Upload — Extension Only Validation Without Magic Byte Verification",
+      "severity": "HIGH",
+      "cwe": "CWE-434"
+    },
+    {
+      "rank": 6,
+      "id": "SEC-MBC-006",
+      "title": "Missing Validation on Deal Valuation and Equity Percentage",
+      "severity": "HIGH",
+      "cwe": "CWE-20"
+    },
+    {
+      "rank": 7,
+      "id": "SEC-MBC-007",
+      "title": "Dual KYC Verification State Divergence",
+      "severity": "HIGH",
+      "cwe": "CWE-840"
+    },
+    {
+      "rank": 8,
+      "id": "SEC-MBC-008",
+      "title": "Dual Investor Finance Verification Flags",
+      "severity": "HIGH",
+      "cwe": "CWE-840"
+    },
+    {
+      "rank": 9,
+      "id": "SEC-MBC-009",
+      "title": "File Security Scanner Is an Unimplemented Stub",
+      "severity": "HIGH",
+      "cwe": "CWE-393"
+    },
+    {
+      "rank": 10,
+      "id": "SEC-MBC-010",
+      "title": "Mock Payment Gateway in Production Codebase",
+      "severity": "HIGH",
+      "cwe": "CWE-1188"
+    },
+    {
+      "rank": 11,
+      "id": "SEC-MBC-011",
+      "title": "Prometheus Metrics Endpoint Publicly Exposed Without Auth",
+      "severity": "HIGH",
+      "cwe": "CWE-200"
+    }
+  ],
+  "findings": [
+    {"id": "SEC-MBC-001", "cwe": "CWE-798", "severity": "CRITICAL", "domain": "Configuration", "title": "Production Secrets Committed in Git-Tracked Development Configuration"},
+    {"id": "SEC-MBC-002", "cwe": "CWE-326", "severity": "CRITICAL", "domain": "Authentication", "title": "Weak JWT Signing Key Default / Development Fallback"},
+    {"id": "SEC-MBC-003", "cwe": "CWE-208", "severity": "CRITICAL", "domain": "Identity Verification", "title": "Sumsub Webhook Signature Verification Timing Attack"},
+    {"id": "SEC-MBC-004", "cwe": "CWE-552", "severity": "HIGH", "domain": "Identity Verification / Uploads", "title": "Legacy KYC Document Upload Stored in Public Web Root"},
+    {"id": "SEC-MBC-005", "cwe": "CWE-434", "severity": "HIGH", "domain": "File Uploads", "title": "Unrestricted File Upload — Extension Only Validation Without Magic Byte Verification"},
+    {"id": "SEC-MBC-006", "cwe": "CWE-20", "severity": "HIGH", "domain": "Deals / Financial", "title": "Missing Validation on Deal Valuation and Equity Percentage"},
+    {"id": "SEC-MBC-007", "cwe": "CWE-840", "severity": "HIGH", "domain": "Identity Verification", "title": "Dual KYC Verification State Divergence"},
+    {"id": "SEC-MBC-008", "cwe": "CWE-840", "severity": "HIGH", "domain": "Financial Verification", "title": "Dual Investor Finance Verification Flags"},
+    {"id": "SEC-MBC-009", "cwe": "CWE-393", "severity": "HIGH", "domain": "File Security", "title": "File Security Scanner Is an Unimplemented Stub"},
+    {"id": "SEC-MBC-010", "cwe": "CWE-1188", "severity": "HIGH", "domain": "Financial / Payments", "title": "Mock Payment Gateway in Production Codebase"},
+    {"id": "SEC-MBC-011", "cwe": "CWE-200", "severity": "HIGH", "domain": "Monitoring", "title": "Prometheus Metrics Endpoint Publicly Exposed Without Auth"},
+    {"id": "SEC-MBC-012", "cwe": "CWE-287", "severity": "MEDIUM", "domain": "Authentication", "title": "Universal Onboarding Skip Endpoint Allows Phone Verification Bypass"},
+    {"id": "SEC-MBC-013", "cwe": "CWE-613", "severity": "MEDIUM", "domain": "Authentication", "title": "Lack of Refresh Token Mechanism and Token Revocation"},
+    {"id": "SEC-MBC-014", "cwe": "CWE-307", "severity": "MEDIUM", "domain": "Authentication", "title": "OTP Verification Brute Force Risk"},
+    {"id": "SEC-MBC-015", "cwe": "CWE-862", "severity": "MEDIUM", "domain": "Chat / Messenger", "title": "ChatHub Missing Explicit Channel Membership Check on Connect"},
+    {"id": "SEC-MBC-016", "cwe": "CWE-862", "severity": "MEDIUM", "domain": "Chat / Messenger", "title": "NotificationHub Group Joining by UserId Query Parameter"},
+    {"id": "SEC-MBC-017", "cwe": "CWE-200", "severity": "MEDIUM", "domain": "Admin / User Management", "title": "User List Endpoints Expose Full User Profiles to Admin Users"},
+    {"id": "SEC-MBC-018", "cwe": "CWE-284", "severity": "MEDIUM", "domain": "Admin / Marketplace", "title": "Admin Can Impersonate / Perform Direct Status Overrides on Any Deal or Application"},
+    {"id": "SEC-MBC-019", "cwe": "CWE-116", "severity": "MEDIUM", "domain": "AI / Prompt Security", "title": "AI Prompt Injection Risk via User-Supplied Business Profile / Proposal Inputs"},
+    {"id": "SEC-MBC-020", "cwe": "CWE-400", "severity": "MEDIUM", "domain": "AI / Billing", "title": "AI Credit Balance Race Condition on Concurrent Generation Requests"},
+    {"id": "SEC-MBC-021", "cwe": "CWE-840", "severity": "MEDIUM", "domain": "Identity Verification", "title": "Sumsub Webhook Duplicate Processing / Replay Window"},
+    {"id": "SEC-MBC-022", "cwe": "CWE-943", "severity": "MEDIUM", "domain": "Database", "title": "Unbounded Mongo Queries on Message and Notification History"},
+    {"id": "SEC-MBC-023", "cwe": "CWE-532", "severity": "MEDIUM", "domain": "Logging / Observability", "title": "Exception Details Logged in Full in Development Mode"},
+    {"id": "SEC-MBC-024", "cwe": "CWE-79", "severity": "MEDIUM", "domain": "Frontend", "title": "Potential Stored XSS via Rich-Text / Markdown Rendering in Proposals"},
+    {"id": "SEC-MBC-025", "cwe": "CWE-352", "severity": "MEDIUM", "domain": "Web Security", "title": "Missing CSRF Protection on State-Changing API Endpoints"},
+    {"id": "SEC-MBC-026", "cwe": "CWE-942", "severity": "MEDIUM", "domain": "Web Security", "title": "CORS Policy Allows Development Origins in Production Build If Not Overridden"},
+    {"id": "SEC-MBC-027", "cwe": "CWE-770", "severity": "MEDIUM", "domain": "Network", "title": "Inconsistent Rate Limiting on Authentication and Financial Endpoints"},
+    {"id": "SEC-MBC-028", "cwe": "CWE-489", "severity": "LOW", "domain": "Testing / Deployment", "title": "E2E Test Auth Fixtures and Endpoints Present in Codebase"},
+    {"id": "SEC-MBC-029", "cwe": "CWE-524", "severity": "LOW", "domain": "Caching", "title": "Redis Cache Keys Missing Tenant / Environment Namespace Separation"},
+    {"id": "SEC-MBC-030", "cwe": "CWE-209", "severity": "LOW", "domain": "Error Handling", "title": "Detailed Error Messages Returned to Client in Development Environment"},
+    {"id": "SEC-MBC-031", "cwe": "CWE-614", "severity": "LOW", "domain": "Session", "title": "SignalR Query-String Access Token Exposure in Server Logs"},
+    {"id": "SEC-MBC-032", "cwe": "CWE-1035", "severity": "LOW", "domain": "Dependencies", "title": "Dependency Vulnerability Assessment Deferred Due to Read-Only Constraints"}
+  ]
+}

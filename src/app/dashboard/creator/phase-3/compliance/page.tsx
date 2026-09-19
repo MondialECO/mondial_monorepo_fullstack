@@ -1,516 +1,616 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft,
-  ArrowRight,
-  Loader2,
-  Search,
-  Square,
-  SquareCheckBig,
-  WandSparkles,
-  ShieldCheck,
-  Building2,
-  Lock,
-  FileText,
   Scale,
-  Sparkles,
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
-  Info,
+  RefreshCw,
+  AlertTriangle,
+  ArrowRight,
+  ArrowLeft,
+  Loader2,
+  Clock,
   CheckCircle2,
+  Sparkles,
+  Layers,
+  MessageSquare,
+  Building2,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
-import { cn } from '@/lib/utils';
 import {
   creatorJourneyApi,
-  type LegalChecklist,
-  type LegalChecklistItem,
+  type LegalComplianceOverview,
+  type ExtendedLegalChecklistItem,
   type ChecklistStatus,
 } from '@/lib/api-creator-journey';
+import {
+  creatorDocumentsApi,
+  type CreatorIdeaDocument,
+} from '@/lib/api-creator-documents';
+import { LegalStageNavigation, WORKSPACE_STAGES } from '@/components/creator/legal/LegalStageNavigation';
+import { LegalRequirementCanvas } from '@/components/creator/legal/LegalRequirementCanvas';
+import { LegalAiGuideRail } from '@/components/creator/legal/LegalAiGuideRail';
+import { LegalEvidenceModal } from '@/components/creator/legal/LegalEvidenceModal';
+import { LegalEvidenceVaultView } from '@/components/creator/legal/LegalEvidenceVaultView';
+import { cn } from '@/lib/utils';
+import { FolderCheck } from 'lucide-react';
+import { withIdeaContext } from '@/lib/creator-routes';
 
-const NEXT_STATUS: Record<ChecklistStatus, ChecklistStatus> = {
-  pending: 'done',
-  in_progress: 'done',
-  done: 'pending',
-};
-
-interface ItemMeta {
-  groupId: 'corporate' | 'ip' | 'privacy' | 'regulatory';
-  groupTitle: string;
-  description: string;
-  whyItMatters: string;
-  marketplaceCategory?: string;
-  marketplaceLabel?: string;
-}
-
-const LEGAL_ITEM_META: Record<string, ItemMeta> = {
-  'company-type': {
-    groupId: 'corporate',
-    groupTitle: 'Corporate Governance & Structure',
-    description: 'Select the optimal legal entity structure (SAS, SARL, SAS-U) aligned with founder liability, tax, and fundraising goals.',
-    whyItMatters: 'Determines taxation, executive liability, and investor share issuance capacity in Step 3.6.',
-    marketplaceCategory: 'legal',
-    marketplaceLabel: 'Formation Lawyers',
-  },
-  'bank-account': {
-    groupId: 'corporate',
-    groupTitle: 'Corporate Governance & Structure',
-    description: 'Open a dedicated corporate business bank account and deposit initial share capital.',
-    whyItMatters: 'Required by corporate registries to issue the certificate of incorporation (Kbis).',
-  },
-  'shareholder-agreement': {
-    groupId: 'corporate',
-    groupTitle: 'Corporate Governance & Structure',
-    description: 'Draft shareholder agreement (pacte d’actionnaires) defining voting rights, vesting schedules, and transfer restrictions.',
-    whyItMatters: 'Protects co-founders and early investors against deadlocks and equity dilution disputes.',
-    marketplaceCategory: 'legal',
-    marketplaceLabel: 'Corporate Attorneys',
-  },
-  'esop-pool': {
-    groupId: 'corporate',
-    groupTitle: 'Corporate Governance & Structure',
-    description: 'Establish equity incentive reserve pool (BSPCE/ESOP) for key engineering and executive hires.',
-    whyItMatters: 'Essential for attracting top talent in early-stage startups without burning initial cash.',
-    marketplaceCategory: 'legal',
-    marketplaceLabel: 'Equity Specialists',
-  },
-  'ip-protection': {
-    groupId: 'ip',
-    groupTitle: 'Intellectual Property & Brand Protection',
-    description: 'Execute formal IP assignment agreements assigning all founder, employee, and contractor codebase and assets to the company.',
-    whyItMatters: 'Institutional investors require clean, unencumbered IP ownership documentation during funding due diligence.',
-    marketplaceCategory: 'legal',
-    marketplaceLabel: 'IP Attorneys',
-  },
-  'trademark': {
-    groupId: 'ip',
-    groupTitle: 'Intellectual Property & Brand Protection',
-    description: 'Register trademark for brand name and logo with EUIPO or relevant national intellectual property office.',
-    whyItMatters: 'Secures exclusive operating rights across target jurisdictions and protects against copycat infringement.',
-    marketplaceCategory: 'legal',
-    marketplaceLabel: 'Trademark Lawyers',
-  },
-  'gdpr': {
-    groupId: 'privacy',
-    groupTitle: 'Data Privacy & Consumer Protection',
-    description: 'Implement EU General Data Protection Regulation protocols, explicit consent flows, and user privacy safeguards.',
-    whyItMatters: 'Mandatory for all European commercial operations; protects customer trust and prevents severe regulatory fines.',
-    marketplaceCategory: 'compliance',
-    marketplaceLabel: 'GDPR Consultants',
-  },
-  'tos-privacy': {
-    groupId: 'privacy',
-    groupTitle: 'Data Privacy & Consumer Protection',
-    description: 'Publish customized platform Terms of Service and comprehensive Privacy Policy contracts.',
-    whyItMatters: 'Establishes the governing contract with users and limits platform commercial liability.',
-    marketplaceCategory: 'legal',
-    marketplaceLabel: 'Tech Legal Counsel',
-  },
-  'rgpd-article30': {
-    groupId: 'privacy',
-    groupTitle: 'Data Privacy & Consumer Protection',
-    description: 'Maintain formal register of data processing activities documenting data categories, flows, and security measures.',
-    whyItMatters: 'Required statutory compliance record for European supervisory authority inspections.',
-  },
-  'dpa': {
-    groupId: 'privacy',
-    groupTitle: 'Data Privacy & Consumer Protection',
-    description: 'Execute Data Processing Agreements with all third-party vendors, SaaS tools, and cloud infrastructure providers.',
-    whyItMatters: 'Ensures lawful downstream data processing and clear liability apportionment under GDPR.',
-    marketplaceCategory: 'legal',
-    marketplaceLabel: 'Privacy Lawyers',
-  },
-  'pci-dss': {
-    groupId: 'regulatory',
-    groupTitle: 'Industry Regulatory & Risk Mitigation',
-    description: 'Complete Payment Card Industry Data Security Standard self-assessment or audit protocol.',
-    whyItMatters: 'Required by payment processors and card networks to handle or route transaction data safely.',
-    marketplaceCategory: 'compliance',
-    marketplaceLabel: 'PCI Auditors',
-  },
-  'fin-reg': {
-    groupId: 'regulatory',
-    groupTitle: 'Industry Regulatory & Risk Mitigation',
-    description: 'Review financial services, payment intermediation, and regulatory licensing requirements.',
-    whyItMatters: 'Confirms regulatory exemptions and avoids unauthorized financial activities.',
-    marketplaceCategory: 'compliance',
-    marketplaceLabel: 'FinTech Specialists',
-  },
-  'employment-contracts': {
-    groupId: 'regulatory',
-    groupTitle: 'Industry Regulatory & Risk Mitigation',
-    description: 'Prepare standard employment contracts, contractor agreements, and confidentiality covenants.',
-    whyItMatters: 'Ensures full compliance with local labor codes and prevents contractor misclassification risks.',
-    marketplaceCategory: 'legal',
-    marketplaceLabel: 'Employment Lawyers',
-  },
-  'liability-insurance': {
-    groupId: 'regulatory',
-    groupTitle: 'Industry Regulatory & Risk Mitigation',
-    description: 'Procure professional indemnity (RC Pro) and cyber liability insurance policy coverage.',
-    whyItMatters: 'Protects the venture against commercial damage claims, cyber breaches, and operational disruptions.',
-  },
-};
-
-const GROUPS = [
-  {
-    id: 'corporate',
-    title: 'Corporate Governance & Structure',
-    description: 'Entity registration, shareholder governance, and corporate banking foundations.',
-    icon: Building2,
-  },
-  {
-    id: 'ip',
-    title: 'Intellectual Property & Brand Protection',
-    description: 'Proprietary IP assignment covenants, copyright protection, and trademark registrations.',
-    icon: ShieldCheck,
-  },
-  {
-    id: 'privacy',
-    title: 'Data Privacy & Consumer Protection',
-    description: 'GDPR protocols, customer privacy policies, data processing agreements, and statutory registries.',
-    icon: Lock,
-  },
-  {
-    id: 'regulatory',
-    title: 'Industry Regulatory & Risk Mitigation',
-    description: 'Specific sectoral compliance, payment certifications, labor agreements, and liability insurance.',
-    icon: Scale,
-  },
-] as const;
-
-export default function CompliancePage() {
+export default function ComplianceWorkspacePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryIdeaId = searchParams.get('ideaId');
+  const initialStageParam = searchParams.get('stage');
+  const initialReqParam = searchParams.get('requirement');
+
   const { completeStep } = useCreatorProgress();
-  const [checklist, setChecklist] = useState<LegalChecklist | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [busyItem, setBusyItem] = useState<string | null>(null);
-  const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const { journey } = await creatorJourneyApi.get();
-        const existing = (journey.phase3Data as { legalChecklist?: LegalChecklist })?.legalChecklist;
-        const cl = existing?.items?.length ? existing : await creatorJourneyApi.generateLegalChecklist();
-        if (active) setChecklist(cl);
-      } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : "Couldn't load the compliance checklist.");
-      } finally {
-        if (active) setLoading(false);
+  // Active workspace state: 'roadmap' | 'vault'
+  const [workspaceView, setWorkspaceView] = useState<'roadmap' | 'vault'>(
+    initialStageParam === 'evidence_vault' ? 'vault' : 'roadmap'
+  );
+  const [selectedStage, setSelectedStage] = useState<string>(
+    initialStageParam && initialStageParam !== 'evidence_vault' ? initialStageParam : 'overview'
+  );
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(initialReqParam || null);
+  const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false);
+  const [evidenceItemTarget, setEvidenceItemTarget] = useState<ExtendedLegalChecklistItem | null>(null);
+  const [isChangeReviewOpen, setIsChangeReviewOpen] = useState(false);
+
+  // Authoritative overview query (Stage 5 API)
+  const {
+    data: overview,
+    isLoading: overviewLoading,
+    isError: overviewError,
+    refetch: refetchOverview,
+  } = useQuery<LegalComplianceOverview>({
+    queryKey: ['creator', 'legalOverview', queryIdeaId],
+    queryFn: () => creatorJourneyApi.getLegalOverview(queryIdeaId),
+    staleTime: 30_000,
+  });
+
+  // Vault documents query for evidence attachment
+  const { data: documents = [] } = useQuery<CreatorIdeaDocument[]>({
+    queryKey: ['creator', 'documents', queryIdeaId],
+    queryFn: () => creatorDocumentsApi.list(queryIdeaId || ''),
+    enabled: Boolean(queryIdeaId),
+  });
+
+  // Evaluate / Refresh mutation
+  const evaluateMutation = useMutation({
+    mutationFn: () => creatorJourneyApi.evaluateLegalCompliance(queryIdeaId),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['creator', 'legalOverview', queryIdeaId], data);
+      queryClient.invalidateQueries({ queryKey: ['creator', 'dashboardRefs', queryIdeaId] });
+    },
+  });
+
+  // Status update mutation
+  const statusMutation = useMutation({
+    mutationFn: ({ itemId, newStatus }: { itemId: string; newStatus: ChecklistStatus }) =>
+      creatorJourneyApi.updateLegalItemStatus(itemId, newStatus, queryIdeaId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['creator', 'legalOverview', queryIdeaId] });
+      queryClient.invalidateQueries({ queryKey: ['creator', 'dashboardRefs', queryIdeaId] });
+    },
+  });
+
+  // Evidence attach mutation
+  const evidenceMutation = useMutation({
+    mutationFn: ({ itemId, documentId }: { itemId: string; documentId: string }) =>
+      creatorJourneyApi.attachLegalEvidence(itemId, documentId, undefined, undefined, queryIdeaId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['creator', 'legalOverview', queryIdeaId] });
+      queryClient.invalidateQueries({ queryKey: ['creator', 'documents', queryIdeaId] });
+      queryClient.invalidateQueries({ queryKey: ['creator', 'dashboardRefs', queryIdeaId] });
+    },
+  });
+
+  // Unlink evidence mutation
+  const unlinkMutation = useMutation({
+    mutationFn: ({ requirementId, documentId }: { requirementId: string; documentId: string }) =>
+      creatorJourneyApi.unlinkLegalEvidence(requirementId, documentId, queryIdeaId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['creator', 'legalOverview', queryIdeaId] });
+      queryClient.invalidateQueries({ queryKey: ['creator', 'documents', queryIdeaId] });
+      queryClient.invalidateQueries({ queryKey: ['creator', 'dashboardRefs', queryIdeaId] });
+    },
+  });
+
+  // Update evidence status mutation
+  const updateEvidenceStatusMutation = useMutation({
+    mutationFn: ({ linkId, status }: { linkId: string; status: string }) =>
+      creatorJourneyApi.updateEvidenceStatus(linkId, status, undefined, queryIdeaId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['creator', 'legalOverview', queryIdeaId] });
+      queryClient.invalidateQueries({ queryKey: ['creator', 'dashboardRefs', queryIdeaId] });
+    },
+  });
+
+  const assessment = overview?.assessment;
+  const items: ExtendedLegalChecklistItem[] = assessment?.items || [];
+  const applicableItems = items.filter((i) => i.status !== 'not_applicable');
+
+  // Currently selected requirement entity
+  const selectedItem = useMemo(() => {
+    if (!selectedItemId) {
+      if (selectedStage !== 'overview') {
+        const stageItems = applicableItems.filter((i) => i.stage === selectedStage);
+        return stageItems[0] || null;
       }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
+      return null;
+    }
+    return items.find((i) => i.id === selectedItemId) || null;
+  }, [selectedItemId, selectedStage, items, applicableItems]);
 
-  const cycle = async (item: LegalChecklistItem) => {
-    setBusyItem(item.id);
-    try {
-      const updated = await creatorJourneyApi.updateLegalItem(item.id, NEXT_STATUS[item.status]);
-      setChecklist(updated);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't update item status.");
-    } finally {
-      setBusyItem(null);
+  const handleSelectStage = (stageKey: string) => {
+    if (stageKey === 'evidence_vault') {
+      setWorkspaceView('vault');
+      return;
+    }
+    setWorkspaceView('roadmap');
+    setSelectedStage(stageKey);
+    // Auto-select first item in that stage if exists
+    if (stageKey !== 'overview') {
+      const stageItems = applicableItems.filter((i) => i.stage === stageKey);
+      if (stageItems.length > 0) {
+        setSelectedItemId(stageItems[0].id);
+      } else {
+        setSelectedItemId(null);
+      }
+    } else {
+      setSelectedItemId(null);
     }
   };
 
-  const toggleDetails = (id: string) => {
-    setExpandedDetails((prev) => ({ ...prev, [id]: !prev[id] }));
+  const handleSelectItem = (item: ExtendedLegalChecklistItem) => {
+    setSelectedItemId(item.id);
+    if (item.stage && item.stage !== selectedStage) {
+      setSelectedStage(item.stage);
+    }
   };
 
-  const handleContinue = () => {
-    completeStep(3, 5);
-    router.push('/dashboard/creator/phase-3/formation');
+  const handleOpenRequirementFromVault = (stage: string, requirementId: string) => {
+    setWorkspaceView('roadmap');
+    setSelectedStage(stage);
+    setSelectedItemId(requirementId);
   };
 
-  const items = useMemo(() => (Array.isArray(checklist?.items) ? checklist.items : []), [checklist]);
-  const mandatory = items.filter((i) => i.category === 'mandatory');
-  const mandatoryDone = mandatory.filter((i) => i.status === 'done').length;
-  const mandatoryRemaining = mandatory.length - mandatoryDone;
-  const pct =
-    checklist && checklist.totalCount > 0
-      ? Math.round((checklist.completedCount / checklist.totalCount) * 100)
-      : 0;
+  const handleStatusChange = async (item: ExtendedLegalChecklistItem, newStatus: ChecklistStatus) => {
+    await statusMutation.mutateAsync({ itemId: item.id, newStatus });
+  };
 
-  // Group items by domain
-  const groupedItems = useMemo(() => {
-    const map: Record<string, LegalChecklistItem[]> = {
-      corporate: [],
-      ip: [],
-      privacy: [],
-      regulatory: [],
-    };
+  const handleOpenEvidenceModal = (item: ExtendedLegalChecklistItem) => {
+    setEvidenceItemTarget(item);
+    setIsEvidenceModalOpen(true);
+  };
 
-    items.forEach((item) => {
-      const meta = LEGAL_ITEM_META[item.id];
-      const g = meta?.groupId || 'corporate';
-      if (map[g]) map[g].push(item);
-      else map.corporate.push(item);
-    });
+  const handleEvidenceAttached = async (documentId: string) => {
+    if (!evidenceItemTarget) return;
+    await evidenceMutation.mutateAsync({ itemId: evidenceItemTarget.id, documentId });
+  };
 
-    return map;
-  }, [items]);
+  const handleProceedNext = () => {
+    completeStep(3, 4);
+    router.push(withIdeaContext('/dashboard/creator/phase-3/formation', queryIdeaId));
+  };
+
+  const stageName = useMemo(() => {
+    const s = WORKSPACE_STAGES.find((st) => st.key === selectedStage);
+    return s ? s.label : 'Overview';
+  }, [selectedStage]);
 
   return (
     <Phase3SetupShell
       fullWidth
-      stepEyebrow="Step 3.5"
-      title="Legal & Compliance Checklist"
-      description="Tailored corporate, IP, data privacy, and regulatory readiness roadmap for your venture. Mark completed items as you advance."
+      stepEyebrow="Step 3.4 · Venture Compliance"
+      title="Legal & Compliance Intelligence"
+      description="Personalized statutory roadmap and evidence tracking based on your verified France business classification."
+      headerActions={
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-badge font-semibold gap-1 py-1 px-3 bg-muted/40 border-border">
+            <span>🇫🇷</span> France Rules (FR-2026.1)
+          </Badge>
+          {overview?.isPotentiallyOutdated && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => evaluateMutation.mutate()}
+              disabled={evaluateMutation.isPending}
+              className="text-xs h-8 gap-1.5 border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-300 hover:bg-amber-500/20"
+            >
+              <RefreshCw className={cn('w-3.5 h-3.5', evaluateMutation.isPending && 'animate-spin')} />
+              Refresh Roadmap
+            </Button>
+          )}
+        </div>
+      }
     >
-      {loading && (
-        <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground font-sans">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" /> Generating tailored compliance checklist…
+      {/* Global Stale State Warning (Reason-Aware) */}
+      {(overview?.staleMetadata?.isStale ?? overview?.isPotentiallyOutdated) && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
+          <div className="flex items-start gap-3 text-amber-900 dark:text-amber-300">
+            <Clock className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm">
+                  {overview?.staleMetadata?.staleReason === 'RulesUpdated'
+                    ? 'French statutory guidance updated'
+                    : 'Business changes detected'}
+                </span>
+                <Badge variant="outline" className="text-[10px] bg-amber-500/20 text-amber-900 dark:text-amber-200 border-amber-500/30 font-semibold">
+                  Update available
+                </Badge>
+              </div>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                Your venture information changed after your last legal assessment. Your legal roadmap may need updating.
+              </p>
+              {overview?.staleMetadata?.humanChangeDescriptions && overview.staleMetadata.humanChangeDescriptions.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-semibold text-muted-foreground">Changes detected:</span>
+                  {overview.staleMetadata.humanChangeDescriptions.map((desc, idx) => (
+                    <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-amber-500/15 text-amber-900 dark:text-amber-200 border border-amber-500/20">
+                      {desc}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsChangeReviewOpen(true)}
+              className="text-xs h-8 px-3 rounded-xl border-amber-500/30 bg-card hover:bg-amber-500/10 text-foreground font-medium"
+            >
+              Review Changes
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => evaluateMutation.mutate()}
+              disabled={evaluateMutation.isPending}
+              className="text-xs h-8 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white shrink-0 shadow-none font-medium"
+            >
+              <RefreshCw className={cn('w-3.5 h-3.5 mr-1.5', evaluateMutation.isPending && 'animate-spin')} />
+              Refresh Legal Analysis
+            </Button>
+          </div>
         </div>
       )}
 
-      {error && !loading && (
-        <Card className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 max-w-xl mx-auto space-y-3 font-sans">
-          <p className="text-destructive text-sm font-semibold">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => location.reload()} className="rounded-xl">
-            Retry Loading
+      {/* Change Review Modal */}
+      {isChangeReviewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in-0">
+          <Card className="w-full max-w-lg border border-border bg-card shadow-2xl rounded-2xl overflow-hidden p-6 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Scale className="w-5 h-5 text-primary" />
+                <h3 className="text-base font-bold text-foreground">Legal Roadmap Changes</h3>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsChangeReviewOpen(false)}
+                className="h-7 w-7 p-0 rounded-lg text-muted-foreground hover:text-foreground"
+              >
+                ✕
+              </Button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">
+                  Upstream Signals Changed
+                </span>
+                {overview?.staleMetadata?.humanChangeDescriptions && overview.staleMetadata.humanChangeDescriptions.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {overview.staleMetadata.humanChangeDescriptions.map((desc, idx) => (
+                      <Badge key={idx} variant="secondary" className="px-2.5 py-1 text-xs font-semibold">
+                        {desc}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">General business model update detected.</p>
+                )}
+              </div>
+
+              {overview?.reconciliationSummary && (
+                <div className="space-y-3 pt-2 border-t border-border">
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Last Reconciliation Impact
+                  </span>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 block font-mono">
+                        +{overview.reconciliationSummary.addedRequirements.length}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">Added</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-muted/40 border border-border">
+                      <span className="text-lg font-bold text-foreground block font-mono">
+                        {overview.reconciliationSummary.unchangedRequirementsCount}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">Preserved</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-muted/20 border border-border">
+                      <span className="text-lg font-bold text-muted-foreground block font-mono">
+                        -{overview.reconciliationSummary.removedRequirements.length}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">Archived</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="p-3 bg-muted/30 border border-border/50 rounded-xl space-y-1 text-muted-foreground leading-relaxed">
+                <p className="font-medium text-foreground">Progress & Evidence Protection:</p>
+                <p>
+                  Refreshing your legal analysis reconciles statutory rules with current business signals.
+                  Your existing completion progress, notes, and attached evidence files in the vault will be strictly preserved.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsChangeReviewOpen(false)}
+                className="text-xs rounded-xl"
+              >
+                Close
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setIsChangeReviewOpen(false);
+                  evaluateMutation.mutate();
+                }}
+                disabled={evaluateMutation.isPending}
+                className="text-xs rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+              >
+                <RefreshCw className={cn('w-3.5 h-3.5', evaluateMutation.isPending && 'animate-spin')} />
+                Refresh Legal Analysis
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* 1. Loading State */}
+      {overviewLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <div className="md:col-span-3 space-y-3">
+            <Skeleton className="h-28 w-full rounded-2xl" />
+            <Skeleton className="h-10 w-full rounded-xl" />
+            <Skeleton className="h-10 w-full rounded-xl" />
+            <Skeleton className="h-10 w-full rounded-xl" />
+          </div>
+          <div className="md:col-span-6 space-y-4">
+            <Skeleton className="h-44 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+            <Skeleton className="h-20 w-full rounded-2xl" />
+          </div>
+          <div className="md:col-span-3 space-y-3">
+            <Skeleton className="h-64 w-full rounded-2xl" />
+          </div>
+        </div>
+      )}
+
+      {/* 2. Error State */}
+      {!overviewLoading && overviewError && (
+        <Card className="p-8 border-dashed border-destructive/40 bg-destructive/5 rounded-2xl text-center space-y-3 max-w-lg mx-auto">
+          <AlertTriangle className="w-8 h-8 text-destructive mx-auto" />
+          <h3 className="text-sm font-bold text-foreground">We couldn&apos;t load your legal roadmap</h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            There was a problem retrieving your personalized legal overview.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetchOverview()}
+            className="text-xs rounded-xl gap-1.5 mx-auto border-border"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Retry
           </Button>
         </Card>
       )}
 
-      {checklist && !loading && (
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* Top Progress & Compliance Readiness Card */}
-          <Card className="rounded-2xl border border-border bg-card p-6 sm:p-7 space-y-4 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans">
-                    Readiness Scorecard
-                  </span>
-                  <Badge variant="outline" className="text-badge font-mono text-primary border-primary/30">
-                    Self-Attested
-                  </Badge>
-                </div>
-                <h3 className="text-lg font-bold font-sans text-foreground">
-                  Compliance &amp; Governance Progress
-                </h3>
-                <p className="text-xs text-muted-foreground font-sans">
-                  Completed items contribute directly to your investor readiness scorecard in Step 3.7.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-4 shrink-0 sm:text-right">
-                <div>
-                  <div className="text-3xl font-extrabold font-mono text-primary">{pct}%</div>
-                  <div className="text-xs font-mono text-muted-foreground">
-                    {checklist.completedCount} of {checklist.totalCount} Completed
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <Progress value={pct} className="h-2 bg-muted rounded-full" aria-label={`${pct}% compliance readiness`} />
-
-            {mandatoryRemaining > 0 ? (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 font-sans">
-                <Info className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                <span>
-                  {mandatoryRemaining} mandatory {mandatoryRemaining === 1 ? 'item is' : 'items are'} remaining. You can proceed now and return anytime prior to company incorporation.
-                </span>
-              </div>
+      {/* 3. Empty State (No Assessment) */}
+      {!overviewLoading && !overviewError && (!overview?.hasAssessment || !assessment) && (
+        <Card className="p-10 border border-border rounded-2xl bg-card shadow-sm text-center space-y-4 max-w-xl mx-auto">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+            <Scale className="w-6 h-6" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-foreground">Build Your France Legal Roadmap</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-md mx-auto">
+              MBC will classify your current business model, customer types, and revenue tiers to synthesize a deterministic statutory roadmap for France.
+            </p>
+          </div>
+          <Button
+            onClick={() => evaluateMutation.mutate()}
+            disabled={evaluateMutation.isPending}
+            className="rounded-xl text-xs px-5 h-9 bg-primary hover:bg-primary/95 text-primary-foreground font-medium shadow-none gap-2"
+          >
+            {evaluateMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Analyzing Business Plan...
+              </>
             ) : (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-700 dark:text-emerald-300 font-sans">
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <span>All critical regulatory and legal milestones achieved. Ready for company incorporation.</span>
-              </div>
+              <>
+                Analyse My Business
+                <ArrowRight className="w-4 h-4" />
+              </>
             )}
-          </Card>
+          </Button>
+        </Card>
+      )}
 
-          {/* Categorized Domain Groups */}
-          <div className="space-y-6">
-            {GROUPS.map((group) => {
-              const groupItems = groupedItems[group.id] ?? [];
-              if (groupItems.length === 0) return null;
-
-              const completedInGroup = groupItems.filter((i) => i.status === 'done').length;
-              const totalInGroup = groupItems.length;
-              const groupPct = Math.round((completedInGroup / totalInGroup) * 100);
-              const GroupIcon = group.icon;
-
-              return (
-                <Card key={group.id} className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
-                  {/* Group Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/70 pb-4">
-                    <div className="flex items-start sm:items-center gap-3">
-                      <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
-                        <GroupIcon className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-base font-bold font-sans text-foreground">{group.title}</h4>
-                        <p className="text-xs text-muted-foreground font-sans">{group.description}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
-                      <Badge variant="outline" className="text-xs font-mono">
-                        {completedInGroup}/{totalInGroup} Done ({groupPct}%)
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Checklist Items in Group */}
-                  <div className="space-y-3 pt-1">
-                    {groupItems.map((item) => {
-                      const done = item.status === 'done';
-                      const busy = busyItem === item.id;
-                      const meta = LEGAL_ITEM_META[item.id];
-                      const isExpanded = expandedDetails[item.id] ?? false;
-
-                      return (
-                        <div
-                          key={item.id}
-                          className={cn(
-                            'rounded-xl border transition-all duration-200 p-4 font-sans',
-                            done
-                              ? 'border-emerald-500/30 bg-emerald-500/5 dark:bg-emerald-500/10'
-                              : 'border-border/70 bg-card/60 hover:border-border hover:bg-card',
-                          )}
-                        >
-                          <div className="flex items-start gap-3.5">
-                            {/* Checkbox Button */}
-                            <button
-                              type="button"
-                              onClick={() => cycle(item)}
-                              disabled={busy}
-                              aria-label={`${done ? 'Mark as pending' : 'Mark as done'}: ${item.label}`}
-                              aria-pressed={done}
-                              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-transform active:scale-95 disabled:cursor-wait disabled:opacity-60"
-                            >
-                              {busy ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                              ) : done ? (
-                                <SquareCheckBig className="h-5 w-5 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} />
-                              ) : (
-                                <Square className="h-5 w-5 text-muted-foreground hover:text-foreground" strokeWidth={1.75} />
-                              )}
-                            </button>
-
-                            {/* Item Main Content */}
-                            <div className="min-w-0 flex-1 space-y-1.5">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span
-                                    className={cn(
-                                      'text-sm font-semibold tracking-tight transition-colors',
-                                      done ? 'text-muted-foreground line-through' : 'text-foreground',
-                                    )}
-                                  >
-                                    {item.label}
-                                  </span>
-
-                                  {item.category === 'mandatory' && (
-                                    <Badge variant="outline" className="text-badge font-sans font-medium text-destructive border-destructive/30">
-                                      Required
-                                    </Badge>
-                                  )}
-
-                                  {item.badge && (
-                                    <Badge
-                                      variant="outline"
-                                      className={cn(
-                                        'text-badge font-sans font-medium',
-                                        item.badge === 'urgent'
-                                          ? 'border-destructive/30 text-destructive bg-destructive/10'
-                                          : 'border-primary/30 text-primary bg-primary/10',
-                                      )}
-                                    >
-                                      {item.badge === 'urgent' ? 'Urgent' : 'FinTech'}
-                                    </Badge>
-                                  )}
-
-                                  {item.aiGenerable && (
-                                    <Badge variant="secondary" className="text-badge font-sans font-medium gap-1 text-muted-foreground border border-border">
-                                      <FileText className="h-2.5 w-2.5" /> Standard Template
-                                    </Badge>
-                                  )}
-                                </div>
-
-                                {/* Action Buttons: Details Toggle & Marketplace Link */}
-                                <div className="flex items-center gap-2 shrink-0">
-                                  {item.showFindSp && meta?.marketplaceCategory && (
-                                    <Button
-                                      asChild
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-7 rounded-lg border-border text-xs gap-1 font-sans font-medium text-muted-foreground hover:text-foreground"
-                                    >
-                                      <Link href={`/marketplace?category=${meta.marketplaceCategory}`}>
-                                        <Search className="h-3 w-3 text-primary" />
-                                        <span>{meta.marketplaceLabel ?? 'Find Providers'}</span>
-                                      </Link>
-                                    </Button>
-                                  )}
-
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleDetails(item.id)}
-                                    className="text-xs text-muted-foreground hover:text-foreground p-1 rounded transition-colors"
-                                    aria-label="Toggle details"
-                                  >
-                                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Plain Short Description */}
-                              <p className="text-xs text-muted-foreground leading-relaxed">
-                                {meta?.description ?? 'Compliance milestone for venture legal readiness.'}
-                              </p>
-
-                              {/* Expandable Why It Matters Box */}
-                              {isExpanded && meta?.whyItMatters && (
-                                <div className="pt-2 text-xs text-muted-foreground bg-muted/30 p-2.5 rounded-lg border border-border/50 space-y-1">
-                                  <span className="font-semibold text-foreground flex items-center gap-1">
-                                    <Info className="h-3 w-3 text-primary" /> Why this is essential:
-                                  </span>
-                                  <p>{meta.whyItMatters}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-              );
-            })}
+      {/* 4. Active Legal Workspace (Roadmap vs Vault) */}
+      {!overviewLoading && !overviewError && overview?.hasAssessment && assessment && (
+        <div className="space-y-6">
+          {/* Workspace Primary Section Switcher */}
+          <div className="flex items-center gap-2 border-b border-border/80 pb-3">
+            <button
+              type="button"
+              onClick={() => setWorkspaceView('roadmap')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all',
+                workspaceView === 'roadmap'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              )}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Legal Roadmap & Requirements
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkspaceView('vault')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all',
+                workspaceView === 'vault'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              )}
+            >
+              <FolderCheck className="w-3.5 h-3.5" />
+              Evidence Vault & Audit Trail
+              {(documents.length > 0 || (overview.evidenceLinks?.length ?? 0) > 0) && (
+                <Badge
+                  variant={workspaceView === 'vault' ? 'secondary' : 'outline'}
+                  className="text-[10px] px-1.5 py-0 font-mono ml-0.5"
+                >
+                  {overview.evidenceLinks?.length ?? documents.length}
+                </Badge>
+              )}
+            </button>
           </div>
 
-          {/* Bottom Step Navigation Bar */}
-          <div className="flex items-center justify-between gap-4 pt-4 border-t border-border">
+          {/* VIEW A: EVIDENCE VAULT & AUDIT TRAIL */}
+          {workspaceView === 'vault' ? (
+            <LegalEvidenceVaultView
+              ideaId={queryIdeaId || ''}
+              overview={overview}
+              documents={documents}
+              onOpenRequirement={handleOpenRequirementFromVault}
+              onOpenEvidenceModal={handleOpenEvidenceModal}
+              onUnlinkEvidence={async (reqId, docId) => {
+                await unlinkMutation.mutateAsync({ requirementId: reqId, documentId: docId });
+              }}
+              onUpdateEvidenceStatus={async (linkId, status) => {
+                await updateEvidenceStatusMutation.mutateAsync({ linkId, status });
+              }}
+              isMutating={unlinkMutation.isPending || updateEvidenceStatusMutation.isPending}
+            />
+          ) : (
+            /* VIEW B: 3-PANE ROADMAP WORKSPACE */
+            <div className="flex flex-col lg:flex-row gap-6 items-start">
+              {/* LEFT PANE: Stage Navigation & Summary */}
+              <LegalStageNavigation
+                selectedStage={selectedStage}
+                onSelectStage={handleSelectStage}
+                planningReadinessPct={overview.planningReadinessPct}
+                stageBreakdown={overview.stageBreakdown}
+                totalApplicableCount={applicableItems.length}
+                totalCompletedCount={
+                  applicableItems.filter(
+                    (i) => i.status === 'completed' || i.status === 'done' || i.status === 'reviewed',
+                  ).length
+                }
+                needsInfoCount={
+                  applicableItems.filter(
+                    (i) => i.status === 'needs_information' || i.evaluationStatus === 'needs_information',
+                  ).length
+                }
+                actionRequiredCount={
+                  applicableItems.filter(
+                    (i) =>
+                      i.status === 'action_required' ||
+                      i.status === 'not_started' ||
+                      i.status === 'pending',
+                  ).length
+                }
+                evidenceVaultCount={overview.evidenceLinks?.length ?? documents.length}
+              />
+
+              {/* CENTER PANE: Primary Requirement & Evidence Canvas */}
+              <LegalRequirementCanvas
+                selectedStage={selectedStage}
+                stageName={stageName}
+                items={applicableItems}
+                selectedItem={selectedItem}
+                onSelectItem={handleSelectItem}
+                onStatusChange={handleStatusChange}
+                onOpenEvidenceModal={handleOpenEvidenceModal}
+                documents={documents}
+                detectedArchetypes={overview.detectedArchetypes}
+                planningReadinessPct={overview.planningReadinessPct}
+                onGoToStage={handleSelectStage}
+                evidenceLinks={overview.evidenceLinks}
+                onViewInVault={() => setWorkspaceView('vault')}
+              />
+
+              {/* RIGHT PANE: Contextual AI Assistant Rail */}
+              <LegalAiGuideRail
+                selectedItem={selectedItem}
+                detectedArchetypes={overview.detectedArchetypes}
+              />
+            </div>
+          )}
+
+          {/* Statutory Planning Guidance Notice */}
+          <div className="p-4 rounded-2xl bg-muted/30 border border-border/60 text-xs text-muted-foreground flex items-start gap-3 mt-6">
+            <Scale className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <span className="font-semibold text-foreground">MONDIAL BUSINESS CREATION (MBC) Planning Notice:</span> This legal intelligence workspace provides automated statutory guidance and planning readiness based on French commercial regulations (FR-2026.1). It does not constitute formal legal advice, certified statutory compliance, or official government incorporation.
+            </p>
+          </div>
+
+          {/* Bottom Workflow Navigation Bar */}
+          <div className="flex items-center justify-between gap-4 pt-6 border-t border-border/70 mt-8">
             <Button
               variant="ghost"
-              onClick={() => router.push('/dashboard/creator/phase-3/forecast')}
-              className="text-xs font-medium font-sans text-muted-foreground hover:text-foreground"
+              onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/forecast', queryIdeaId))}
+              className="text-xs font-medium text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Financial Forecast
             </Button>
-            <Button onClick={handleContinue} className="gap-2 font-sans font-semibold rounded-xl">
+            <Button
+              onClick={handleProceedNext}
+              className="gap-2 font-medium text-xs rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground shadow-none px-5"
+            >
               Proceed to Company Formation <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Evidence Upload / Link Modal */}
+      {isEvidenceModalOpen && queryIdeaId && (
+        <LegalEvidenceModal
+          open={isEvidenceModalOpen}
+          onClose={() => {
+            setIsEvidenceModalOpen(false);
+            setEvidenceItemTarget(null);
+          }}
+          ideaId={queryIdeaId}
+          item={evidenceItemTarget}
+          existingDocuments={documents}
+          onEvidenceAttached={handleEvidenceAttached}
+        />
       )}
     </Phase3SetupShell>
   );

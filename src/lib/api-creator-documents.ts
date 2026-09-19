@@ -11,9 +11,19 @@ const unwrap = <T>(body: ApiEnvelope<T> | T): T =>
     ? (body as ApiEnvelope<T>).data
     : body as T;
 
+export type CreatorIdeaDocumentType =
+  | 'business_plan'
+  | 'financial_forecast'
+  | 'legal_evidence'
+  | 'kbis_extract'
+  | 'statuts_draft'
+  | 'capital_deposit_cert'
+  | 'proof_of_address'
+  | 'gdpr_policy';
+
 export type CreatorIdeaDocument = {
   id: string;
-  documentType: 'business_plan' | 'financial_forecast';
+  documentType: CreatorIdeaDocumentType | string;
   title: string;
   fileName: string;
   mimeType: string;
@@ -36,5 +46,19 @@ export const creatorDocumentsApi = {
       { responseType: 'blob' },
     );
     return response.data as Blob;
+  },
+
+  upload: async (ideaId: string, file: File, documentType?: CreatorIdeaDocumentType | string, title?: string): Promise<CreatorIdeaDocument> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (documentType) formData.append('documentType', documentType);
+    if (title) formData.append('title', title);
+
+    const response = await api.post(
+      `/creator/ideas/${encodeURIComponent(ideaId)}/documents/upload`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return unwrap<CreatorIdeaDocument>(response.data);
   },
 };

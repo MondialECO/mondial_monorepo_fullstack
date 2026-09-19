@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import DataRoomPage from "@/app/dashboard/investor/discovery/[companyId]/dataroom/page";
 import * as oppHooks from "@/hooks/queries/investor-opportunities";
 import * as diligenceApi from "@/lib/api-investor-diligence";
+import entrepreneurApi from "@/lib/api-entrepreneur";
 import type { OpportunityDetail } from "@/types/investor/opportunities";
 
 vi.mock("next/navigation", () => ({
@@ -14,6 +15,13 @@ vi.mock("next/navigation", () => ({
     refresh: vi.fn(),
   }),
 }));
+
+function createFulfilledPromise<T>(value: T): Promise<T> {
+  const promise = Promise.resolve(value);
+  (promise as any).status = "fulfilled";
+  (promise as any).value = value;
+  return promise;
+}
 
 const mockOpportunity: OpportunityDetail = {
   companyId: "comp-123",
@@ -132,7 +140,7 @@ function renderPage() {
   return render(
     <QueryClientProvider client={queryClient}>
       <React.Suspense fallback={<div>Loading...</div>}>
-        <DataRoomPage params={Promise.resolve({ companyId: "comp-123" })} />
+        <DataRoomPage params={createFulfilledPromise({ companyId: "comp-123" })} />
       </React.Suspense>
     </QueryClientProvider>
   );
@@ -141,6 +149,11 @@ function renderPage() {
 describe("Investor Due Diligence Workflow (Phase 7)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(entrepreneurApi, "getDataRoomAccessStatus").mockResolvedValue({
+      companyId: "comp-123",
+      accessGranted: true,
+      ndaStatus: "signed",
+    });
     vi.spyOn(oppHooks, "useOpportunity").mockReturnValue({
       data: mockOpportunity,
       isLoading: false,
@@ -321,6 +334,11 @@ describe("Investor Due Diligence Workflow (Phase 7)", () => {
   });
 
   it("renders NDA locked screen when NDA is required and not signed", async () => {
+    vi.spyOn(entrepreneurApi, "getDataRoomAccessStatus").mockResolvedValue({
+      companyId: "comp-123",
+      accessGranted: false,
+      ndaStatus: "pending",
+    });
     vi.spyOn(oppHooks, "useOpportunity").mockReturnValue({
       data: {
         ...mockOpportunity,

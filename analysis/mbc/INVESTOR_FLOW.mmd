@@ -1,0 +1,49 @@
+sequenceDiagram
+    autonumber
+    actor Inv as Investor
+    participant UI as Next.js (/investor)
+    participant Auth as Auth & KYC
+    participant IC as InvestorsController
+    participant IMC as InvestorMatchesController
+    participant IS as InvestorService
+    participant DS as DiligenceService
+    participant PS as PortfolioService
+    participant DC as DealsController
+    participant DB as MongoDB Collections
+
+    Note over Inv,DB: Phase 1: Onboarding & Accreditation
+    Inv->>UI: Register / Switch to Investor Persona
+    UI->>IC: POST /api/investor/profile
+    IC->>DB: Read/Write Investors collection
+    UI->>Auth: KYC / Sumsub Flow (IdentityController)
+    Auth->>DB: Update UniversalIdentityVerifications
+
+    Note over Inv,DB: Phase 2: Thesis & Discovery
+    Inv->>UI: Define Thesis & Investment Preferences
+    UI->>IC: PUT /api/investor/preferences
+    IC->>DB: Update Investors (Ticket size, stages, industries)
+    UI->>IMC: GET /api/investormatches
+    IMC->>IS: FindMatches(investorId)
+    IS->>DB: Query Companies & CreatorIdeas
+    IS->>DB: Write InvestorMatches cache
+
+    Note over Inv,DB: Phase 3: Diligence & Data Room
+    Inv->>UI: Request Data Room Access / Start Diligence
+    UI->>IC: POST /api/investor/diligence/request
+    IC->>DS: InitiateDiligenceSession(companyId, investorId)
+    DS->>DB: Read Companies (DataRoom, Financials, CapTable)
+    DS->>DB: Write DiligenceSessions
+
+    Note over Inv,DB: Phase 4: Deal Formation & Term Sheet
+    Inv->>UI: Propose Term Sheet / Investment Deal
+    UI->>DC: POST /api/deals (DealType: Investment)
+    DC->>DB: Read Company CapTable & Founder data
+    DC->>DB: Create Deals record (Status: Draft)
+    DC->>UI: Return DealId & Term Sheet
+
+    Note over Inv,DB: Phase 5: Closing, Escrow & Holdings
+    Inv->>DC: POST /api/deals/{id}/execute
+    DC->>DB: Update Deals (Status: Executed)
+    DC->>PS: CreateHolding(investorId, companyId, shares, amount)
+    PS->>DB: Write Holdings / Investments collection
+    PS->>DB: Mutate Companies.CapTable (Dilution update)

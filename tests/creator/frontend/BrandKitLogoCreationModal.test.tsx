@@ -70,6 +70,7 @@ const mockBrandKit: BrandKit = {
   },
   direction: {
     selectedDirectionKey: 'dir_1',
+    regenerateCount: 0,
     candidates: [
       {
         key: 'dir_1',
@@ -79,6 +80,9 @@ const mockBrandKit: BrandKit = {
         colorPalette: ['#0F172A', '#3B82F6', '#64748B', '#F8FAFC'],
         displayTypeface: 'Inter',
         textTypeface: 'DM Sans',
+        motifKey: 'grid',
+        provenance: 'ai',
+        avoidListSubstituted: false,
       },
     ],
   },

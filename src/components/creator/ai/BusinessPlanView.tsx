@@ -8,6 +8,7 @@ import {
   Rocket,
   Settings2,
   ShieldAlert,
+  Scale,
 } from "lucide-react";
 import type { BusinessPlanOutput } from "@/types/creator/ai";
 
@@ -260,6 +261,36 @@ export function BusinessPlanView({ output }: { output: BusinessPlanOutput }) {
                 )}
               </div>
             ))}
+          </div>
+        </PlanSection>
+      )}
+
+      {output.legalFramework && (
+        <PlanSection icon={Scale} title="Legal & Regulatory Framework">
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <Badge variant="outline">🇫🇷 {output.legalFramework.jurisdiction || 'France'}</Badge>
+              <Badge variant="secondary">Structure: {output.legalFramework.proposedLegalStructure || 'SAS'}</Badge>
+              <Badge variant="outline" className="font-mono">Readiness: {output.legalFramework.planningReadinessPercentage}%</Badge>
+            </div>
+            {output.legalFramework.summary && <p>{output.legalFramework.summary}</p>}
+            {!!output.legalFramework.primaryRegulations?.length && (
+              <div>
+                <p className="font-medium text-foreground">Primary Statutory Citations</p>
+                <Bullets items={output.legalFramework.primaryRegulations} />
+              </div>
+            )}
+            {output.legalFramework.intellectualPropertyStrategy && (
+              <p>
+                <span className="font-medium text-foreground">IP Strategy: </span>
+                {output.legalFramework.intellectualPropertyStrategy}
+              </p>
+            )}
+            {output.legalFramework.complianceGovernanceNote && (
+              <p className="text-xs text-muted-foreground italic">
+                {output.legalFramework.complianceGovernanceNote}
+              </p>
+            )}
           </div>
         </PlanSection>
       )}

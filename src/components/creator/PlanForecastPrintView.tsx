@@ -28,6 +28,7 @@ interface PrintProps {
     monthlyChurnPct?: number | null;
   } | null;
   cross?: { youNeed?: string[]; seedAsk?: number | null } | null;
+  legalFramework?: import('@/types/creator/ai').LegalRegulatoryFramework | null;
 }
 
 const has = (s?: string | null): s is string => !!s && s.trim().length > 0;
@@ -183,7 +184,7 @@ function ConsolidatedForecastTable({ rows, money }: {
   );
 }
 
-export default function PlanForecastPrintView({ open, onClose, projectName, project, plan, forecast, forecastInputs, cross }: PrintProps) {
+export default function PlanForecastPrintView({ open, onClose, projectName, project, plan, forecast, forecastInputs, cross, legalFramework }: PrintProps) {
   // Scope print-isolation to when the overlay is actually open, so a normal Ctrl+P on
   // any other page is unaffected (globals.css keys the isolation off body.printing-active).
   useEffect(() => {
@@ -404,6 +405,73 @@ export default function PlanForecastPrintView({ open, onClose, projectName, proj
           <Section>
             <Heading>9. Funding Requirements</Heading>
             <Body>Target raise: {formatMoney(cross!.seedAsk!, "EUR")}.</Body>
+          </Section>
+        )}
+
+        {/* 12. Legal & Regulatory Framework */}
+        {(has(plan?.legalFramework?.summary) || has(legalFramework?.summary)) && (
+          <Section>
+            <Heading>12. Legal &amp; Regulatory Framework</Heading>
+            {(() => {
+              const lf = legalFramework || plan?.legalFramework;
+              if (!lf) return null;
+              return (
+                <div className="space-y-3">
+                  <div className="text-footnote text-muted-foreground">
+                    Jurisdiction: <span className="font-semibold text-foreground">{lf.jurisdiction || "France"}</span> ·
+                    Structure: <span className="font-semibold text-foreground">{lf.proposedLegalStructure || "SAS"}</span> ·
+                    Readiness: <span className="font-semibold text-foreground font-mono">{lf.planningReadinessPercentage}%</span> ({lf.addressedRequirementsCount} of {lf.totalApplicableRequirementsCount} addressed)
+                  </div>
+                  {has(lf.summary) && <Body>{lf.summary}</Body>}
+                  {arr(lf.subsections) && (
+                    <div className="mt-2 space-y-2">
+                      <Sub>Applicable statutory areas</Sub>
+                      {lf.subsections!.map((sub, i) => (
+                        <div key={i} className="print-row mb-1 rounded border border-border p-2 text-xs">
+                          <div className="font-bold text-foreground flex items-center justify-between">
+                            <span>{sub.subsectionKey} {sub.title}</span>
+                            <span className="text-footnote font-mono">{sub.status}</span>
+                          </div>
+                          <p className="text-muted-foreground mt-0.5">{sub.summary}</p>
+                          {arr(sub.keyObligations) && (
+                            <ul className="list-disc pl-4 mt-1 text-muted-foreground">
+                              {sub.keyObligations.map((ob, idx) => (
+                                <li key={idx}>{ob}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {arr(lf.priorityOpenItems) && (
+                    <div className="mt-2">
+                      <Sub>Priority open items</Sub>
+                      <ul className="list-disc pl-4 text-xs text-muted-foreground">
+                        {lf.priorityOpenItems!.map((item: any, i: number) => (
+                          <li key={i}>
+                            <span className="font-semibold text-foreground">{item.title}</span> ({item.officialAuthority}): {item.recommendedAction}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {lf.evidenceSummary && (
+                    <div className="mt-1 text-footnote text-muted-foreground">
+                      <span className="font-semibold">Supporting evidence:</span> {lf.evidenceSummary.summaryText}
+                    </div>
+                  )}
+                  {arr(lf.officialSources) && (
+                    <div className="mt-1 text-footnote text-muted-foreground">
+                      <span className="font-semibold">Official authorities:</span> {lf.officialSources!.map((s: any) => s.authorityName).join(", ")}
+                    </div>
+                  )}
+                  <div className="mt-2 text-caption italic text-muted-foreground">
+                    {lf.disclaimerNotice || "Planning guidance only. Based on current venture information. Not formal legal advice or statutory certification."}
+                  </div>
+                </div>
+              );
+            })()}
           </Section>
         )}
 

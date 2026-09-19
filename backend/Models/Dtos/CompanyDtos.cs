@@ -666,6 +666,43 @@ public class CompanyProgressResponse
     public bool IsInvestorReady { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime LastUpdatedAt { get; set; }
+    public bool PromotedFromCreator { get; set; }
+    public DateTime? PromotedAt { get; set; }
+    public double? BaselineReadinessScore { get; set; }
+    public string? SourceCreatorIdeaId { get; set; }
+}
+
+public class LevelUpTransferSummaryDto
+{
+    public bool Success { get; set; } = true;
+    public string SourceCreatorIdeaId { get; set; } = string.Empty;
+    public string SourceCreatorJourneyId { get; set; } = string.Empty;
+    public string EntrepreneurWorkspaceId { get; set; } = string.Empty;
+    public string CompanyId { get; set; } = string.Empty;
+    public string CompanyName { get; set; } = string.Empty;
+    public string CreatorRole { get; set; } = "Founder";
+    public double CreatorEquityPercent { get; set; } = 100.0;
+    public string QualificationPath { get; set; } = "BUILD";
+    public int TransferVersion { get; set; } = 1;
+    public DateTime TransferredAt { get; set; } = DateTime.UtcNow;
+    public string RedirectTo { get; set; } = "/dashboard/entrepreneur";
+    public TransferredArtifactsBreakdownDto TransferredArtifacts { get; set; } = new();
+}
+
+public class TransferredArtifactsBreakdownDto
+{
+    public bool ProjectIdentity { get; set; } = true;
+    public bool BrandKit { get; set; } = true;
+    public bool MarketStudy { get; set; } = true;
+    public bool BusinessModel { get; set; } = true;
+    public bool FinancialForecast { get; set; } = true;
+    public bool LegalAssessment { get; set; } = true;
+    public int LegalRequirementsCount { get; set; }
+    public int LegalEvidenceLinksCount { get; set; }
+    public bool BusinessPlan { get; set; } = true;
+    public bool Section12LegalFramework { get; set; } = true;
+    public int DocumentsLinkedCount { get; set; }
+    public double? BaselineReadinessScore { get; set; }
 }
 
 public class AdvancePhaseRequest
@@ -1206,6 +1243,10 @@ public class CompanySummaryDto
     public int CurrentPhase { get; set; }
     public List<int> CompletedPhases { get; set; } = new();
     public string? SourceBusinessIdeaId { get; set; }
+    public string? SourceCreatorIdeaId { get; set; }
+    public bool PromotedFromCreator { get; set; }
+    public DateTime? PromotedAt { get; set; }
+    public double? BaselineReadinessScore { get; set; }
     public bool IsInvestorReady { get; set; }
     public bool IsActive { get; set; }
     public DateTime? UpdatedAt { get; set; }

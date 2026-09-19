@@ -1,0 +1,358 @@
+Frame Name: Phase 3.1 — Market Study Content Panel
+Bounding Box: {"x":20273,"y":-3291,"width":1280,"height":2238.5}
+- [FRAME] "Phase 3.1 — Market Study Content Panel" (57078:11039)
+  - [FRAME] "Main Container (Centered, Max-Width 1040px, sits inside shell)" (57078:11040)
+    - [FRAME] "Header - HEADER BLOCK (Left-aligned, no card)" (57078:11041)
+      - [FRAME] "Container" (57078:11042)
+        - [FRAME] "Monospace Label" (57078:11043)
+          - [TEXT] "3.1 / MARKET STUDY" (57078:11044) text: "3.1 / MARKET STUDY" font: Inter 600 11px
+        - [FRAME] "Heading 1 - Title" (57078:11045)
+          - [TEXT] "Market study — AutoInvoice" (57078:11046) text: "Market study — AutoInvoice" font: Inter 600 32px
+        - [FRAME] "Metadata line" (57078:11047)
+          - [TEXT] "Generated 14 Mar 2026" (57078:11048) text: "Generated 14 Mar 2026 " font: DM Mono 400 13px
+          - [TEXT] "·" (57078:11049) text: "·" font: DM Mono 400 13px
+          - [TEXT] "Sector: FinTech / SMB Accounting" (57078:11050) text: " Sector: FinTech / SMB Accounting " font: DM Mono 400 13px
+          - [TEXT] "·" (57078:11051) text: "·" font: DM Mono 400 13px
+          - [TEXT] "Region: EU-27" (57078:11052) text: " Region: EU-27 " font: DM Mono 400 13px
+          - [TEXT] "·" (57078:11053) text: "·" font: DM Mono 400 13px
+          - [TEXT] "8 benchmark sources" (57078:11054) text: " 8 benchmark sources" font: DM Mono 400 13px
+      - [FRAME] "Header Actions: Right aligned, ghost + text link only" (57078:11055)
+        - [FRAME] "Button" (57078:11056)
+          - [TEXT] "Regenerate" (57078:11057) text: "Regenerate" font: DM Sans 500 13px
+        - [FRAME] "Button" (57078:11058)
+          - [TEXT] "Export PDF" (57078:11059) text: "Export PDF" font: DM Sans 500 13px
+    - [FRAME] "CONTENT SECTIONS (Section spacing: 32px / mb-8)" (57078:11060)
+      - [FRAME] "Section - SECTION 1: MARKET SIZE (The Visual Anchor)" (57078:11061)
+        - [FRAME] "Section title / context" (57078:11062)
+          - [FRAME] "Container" (57078:11063)
+            - [FRAME] "Background" (57078:11064)
+              - [TEXT] "01" (57078:11065) text: "01" font: Inter 600 10px
+            - [FRAME] "Container" (57078:11066)
+              - [TEXT] "MARKET SIZING FUNNEL" (57078:11067) text: "MARKET SIZING FUNNEL" font: Inter 600 11px
+          - [FRAME] "Container" (57078:11068)
+            - [FRAME] "Background" (57078:11069)
+              - [TEXT] "EUR (€)" (57078:11070) text: "EUR (€)" font: Inter 500 11px
+            - [FRAME] "Container" (57078:11071)
+              - [TEXT] "HORIZON 2026–2029" (57078:11072) text: "HORIZON 2026–2029" font: Inter Tight 400 11px
+        - [FRAME] "Three-Stage Funnel with refined depth and visual progression" (57078:11073)
+          - [FRAME] "BAR 1: TAM (Full Width, Crisp neutral foundation)" (57078:11074)
+            - [FRAME] "Container" (57078:11075)
+              - [RECTANGLE] "Background" (57078:11076)
+              - [FRAME] "Container" (57078:11077)
+                - [FRAME] "Container" (57078:11078)
+                  - [FRAME] "Container" (57078:11079)
+                    - [TEXT] "TAM" (57078:11080) text: "TAM" font: Inter 600 11px
+                  - [FRAME] "Container" (57078:11081)
+                    - [TEXT] "— Total Addressable" (57078:11082) text: "— Total Addressable" font: DM Sans 500 11px
+                - [FRAME] "Container" (57078:11083)
+                  - [TEXT] "European SMB Accounting & Invoicing Universe (EU-27)" (57078:11084) text: "European SMB Accounting & Invoicing Universe (EU-27)" font: DM Mono 400 12px
+            - [FRAME] "Container" (57078:11085)
+              - [FRAME] "Container" (57078:11086)
+                - [TEXT] "€4.20B" (57078:11087) text: "€4.20B" font: Inter 600 26px
+              - [FRAME] "Container" (57078:11088)
+                - [TEXT] "100% BASELINE" (57078:11089) text: "100% BASELINE" font: Inter Tight 400 10px
+          - [FRAME] "Step Reduction Note 1" (57078:11090)
+            - [FRAME] "Background+Border" (57078:11091)
+              - [FRAME] "SVG" (57078:11092)
+                - [VECTOR] "Vector" (57078:11093)
+              - [FRAME] "Container" (57078:11094)
+                - [TEXT] "−55%" (57078:11095) text: "−55%" font: Inter 600 11px
+              - [FRAME] "Container" (57078:11096)
+                - [TEXT] "·" (57078:11097) text: "·" font: Inter Tight 400 11px
+              - [FRAME] "Container" (57078:11098)
+                - [TEXT] "EU-27 only, SMB segment filtering" (57078:11099) text: "EU-27 only, SMB segment filtering" font: Inter Tight 400 11px
+          - [FRAME] "BAR 2: SAM (Calculated Segment, Refined structure)" (57078:11100)
+            - [FRAME] "Overlay+Border" (57078:11101)
+              - [FRAME] "Container" (57078:11102)
+                - [RECTANGLE] "Background" (57078:11103)
+                - [FRAME] "Container" (57078:11104)
+                  - [FRAME] "Container" (57078:11105)
+                    - [FRAME] "Container" (57078:11106)
+                      - [TEXT] "SAM" (57078:11107) text: "SAM" font: Inter 600 11px
+                    - [FRAME] "Container" (57078:11108)
+                      - [TEXT] "— Serviceable Addressable" (57078:11109) text: "— Serviceable Addressable" font: DM Sans 500 11px
+                  - [FRAME] "Container" (57078:11110)
+                    - [TEXT] "Direct self-serve inbound fit" (57078:11111) text: "Direct self-serve inbound fit" font: DM Mono 400 11px
+              - [FRAME] "Container" (57078:11112)
+                - [FRAME] "Container" (57078:11113)
+                  - [TEXT] "€1.88B" (57078:11114) text: "€1.88B" font: Inter 600 24px
+                - [FRAME] "Container" (57078:11115)
+                  - [TEXT] "44.8% OF TAM" (57078:11116) text: "44.8% OF TAM" font: Inter Tight 400 10px
+          - [FRAME] "Step Reduction Note 2" (57078:11117)
+            - [FRAME] "Background+Border" (57078:11118)
+              - [FRAME] "SVG" (57078:11119)
+                - [VECTOR] "Vector" (57078:11120)
+              - [FRAME] "Container" (57078:11121)
+                - [TEXT] "−89%" (57078:11122) text: "−89%" font: Inter 600 11px
+              - [FRAME] "Container" (57078:11123)
+                - [TEXT] "·" (57078:11124) text: "·" font: Inter Tight 400 11px
+              - [FRAME] "Container" (57078:11125)
+                - [TEXT] "Self-serve GTM capture cap, 3-yr horizon" (57078:11126) text: "Self-serve GTM capture cap, 3-yr horizon" font: Inter Tight 400 11px
+          - [FRAME] "BAR 3: SOM (Vibrant Accent, High-Contrast Premium Target)" (57078:11127)
+            - [FRAME] "Background+Border+Shadow" (57078:11128)
+              - [FRAME] "Container" (57078:11129)
+                - [RECTANGLE] "Overlay" (57078:11130)
+                - [FRAME] "Container" (57078:11131)
+                  - [FRAME] "Container" (57078:11132)
+                    - [FRAME] "Container" (57078:11133)
+                      - [TEXT] "SOM" (57078:11134) text: "SOM" font: Inter 600 11px
+                    - [FRAME] "Overlay" (57078:11135)
+                      - [TEXT] "Y1–Y3" (57078:11136) text: "Y1–Y3" font: Inter 500 10px
+                  - [FRAME] "Container" (57078:11137)
+                    - [TEXT] "Serviceable Obtainable" (57078:11138) text: "Serviceable Obtainable" font: DM Sans 500 11px
+              - [FRAME] "Container" (57078:11139)
+                - [FRAME] "Container" (57078:11140)
+                  - [TEXT] "€204M" (57078:11141) text: "€204M" font: Inter 600 24px
+                - [FRAME] "Container" (57078:11142)
+                  - [TEXT] "10.9% OF SAM" (57078:11143) text: "10.9% OF SAM" font: Inter Tight 400 10px
+        - [FRAME] "Two-Column Methodology Strip with Elevated Code/Calculation aesthetic" (57078:11144)
+          - [FRAME] "Background+Border" (57078:11145)
+            - [FRAME] "VerticalBorder" (57078:11146)
+              - [FRAME] "Margin" (57078:11147)
+                - [TEXT] "MODEL METHODOLOGY" (57078:11148) text: "MODEL METHODOLOGY" font: Inter 600 10px
+              - [FRAME] "Container" (57078:11149)
+                - [RECTANGLE] "Background" (57078:11150)
+                - [FRAME] "Container" (57078:11151)
+                  - [TEXT] "Text" (57078:11152) text: "Bottom-up Model" font: DM Sans 600 14px
+            - [FRAME] "Container" (57078:11153)
+              - [FRAME] "Container" (57078:11154)
+                - [FRAME] "Container" (57078:11155)
+                  - [TEXT] "ACTIVE SIZING FORMULA" (57078:11156) text: "ACTIVE SIZING FORMULA" font: Inter 600 10px
+                - [FRAME] "Container" (57078:11157)
+                  - [TEXT] "AUDITED Q1 2026" (57078:11158) text: "AUDITED Q1 2026" font: Inter 500 10px
+              - [FRAME] "Background+Border" (57078:11159)
+                - [FRAME] "Container" (57078:11160)
+                  - [TEXT] "2.4M" (57078:11161) text: "2.4M" font: Inter 600 13px
+                - [FRAME] "Container" (57078:11162)
+                  - [TEXT] "EU SMBs" (57078:11163) text: "EU SMBs" font: Inter 500 13px
+                - [TEXT] " × " (57078:11164) text: " × " font: Inter 500 13px
+                - [FRAME] "Container" (57078:11165)
+                  - [TEXT] "18%" (57078:11166) text: "18%" font: Inter 600 13px
+                - [FRAME] "Container" (57078:11167)
+                  - [TEXT] "adoption" (57078:11168) text: "adoption" font: Inter 500 13px
+                - [TEXT] " × " (57078:11169) text: " × " font: Inter 500 13px
+                - [FRAME] "Container" (57078:11170)
+                  - [TEXT] "€4,860" (57078:11171) text: "€4,860" font: Inter 600 13px
+                - [FRAME] "Container" (57078:11172)
+                  - [TEXT] "avg ACV" (57078:11173) text: "avg ACV" font: Inter 500 13px
+        - [FRAME] "Card Bottom Source Line" (57078:11174)
+          - [FRAME] "Container" (57078:11175)
+            - [TEXT] "Text" (57078:11176) text: "Sources: Eurostat SBS 2025, Mondial sector benchmark (FinTech/EU, rev. Jan 2026)" font: DM Sans 400 11px
+          - [FRAME] "Container" (57078:11177)
+            - [TEXT] "CONFIDENCE SCORE: 94.2%" (57078:11178) text: "CONFIDENCE SCORE: 94.2%" font: Inter Tight 400 10px
+      - [FRAME] "Section - SECTION 2: COMPETITIVE LANDSCAPE (Dense Data Table)" (57078:11179)
+        - [FRAME] "HorizontalBorder" (57078:11180)
+          - [FRAME] "Container" (57078:11181)
+            - [FRAME] "Background" (57078:11182)
+              - [TEXT] "02" (57078:11183) text: "02" font: Inter 600 10px
+            - [FRAME] "Container" (57078:11184)
+              - [TEXT] "COMPETITIVE LANDSCAPE & SHARE ANALYSIS" (57078:11185) text: "COMPETITIVE LANDSCAPE & SHARE ANALYSIS" font: Inter 600 11px
+          - [FRAME] "Background" (57078:11186)
+            - [TEXT] "5 BENCHMARKED PLAYERS" (57078:11187) text: "5 BENCHMARKED PLAYERS" font: Inter 500 10px
+        - [FRAME] "Table" (57078:11188)
+          - [FRAME] "Header → Row" (57078:11189)
+            - [FRAME] "Cell" (57078:11190)
+              - [TEXT] "COMPANY" (57078:11191) text: "COMPANY" font: Inter 600 11px
+            - [FRAME] "Cell" (57078:11192)
+              - [TEXT] "SEGMENT" (57078:11193) text: "SEGMENT" font: Inter 600 11px
+            - [FRAME] "Cell" (57078:11194)
+              - [TEXT] "PRICING MODEL" (57078:11195) text: "PRICING MODEL" font: Inter 600 11px
+            - [FRAME] "Cell" (57078:11196)
+              - [TEXT] "EST. SHARE" (57078:11197) text: "EST. SHARE" font: Inter 600 11px
+            - [FRAME] "Cell" (57078:11198)
+              - [TEXT] "VULNERABILITY / GAP" (57078:11199) text: "VULNERABILITY / GAP" font: Inter 600 11px
+          - [FRAME] "Body" (57078:11200)
+            - [FRAME] "Row 1: Incumbent accounting suite" (57078:11201)
+              - [FRAME] "Data" (57078:11202)
+                - [FRAME] "Container" (57078:11203)
+                  - [TEXT] "Sage Cloud Accounting" (57078:11204) text: "Sage Cloud Accounting" font: DM Sans 600 14px
+                - [TEXT] "EU Enterprise / SMB" (57078:11205) text: "EU Enterprise / SMB" font: Inter Tight 400 10px
+              - [FRAME] "Data" (57078:11206)
+                - [FRAME] "Background+Border" (57078:11207)
+                  - [TEXT] "Incumbent suite" (57078:11208) text: "Incumbent suite" font: DM Sans 500 12px
+              - [FRAME] "Data" (57078:11209)
+                - [TEXT] "Per-seat tiered monthly" (57078:11210) text: "Per-seat tiered monthly" font: DM Mono 400 13px
+              - [FRAME] "Data" (57078:11211)
+                - [FRAME] "Background+Border" (57078:11212)
+                  - [RECTANGLE] "Background" (57078:11213)
+                - [FRAME] "Container" (57078:11214)
+                  - [TEXT] "31%" (57078:11215) text: "31%" font: Inter 600 13px
+              - [FRAME] "Data" (57078:11216)
+                - [TEXT] "No automated dispute resolution or self-serve API" (57078:11217) text: "No automated dispute resolution or self-serve API" font: DM Mono 400 13px
+            - [FRAME] "Row 2: Mid-market invoicing tool" (57078:11218)
+              - [FRAME] "Data" (57078:11219)
+                - [FRAME] "Container" (57078:11220)
+                  - [TEXT] "Pennylane" (57078:11221) text: "Pennylane" font: DM Sans 600 14px
+                - [TEXT] "FR / EU Mid-market" (57078:11222) text: "FR / EU Mid-market" font: Inter Tight 400 10px
+              - [FRAME] "Data" (57078:11223)
+                - [FRAME] "Background+Border" (57078:11224)
+                  - [TEXT] "Mid-market invoicing" (57078:11225) text: "Mid-market invoicing" font: DM Sans 500 12px
+              - [FRAME] "Data" (57078:11226)
+                - [TEXT] "Hybrid subscription + vol." (57078:11227) text: "Hybrid subscription + vol." font: DM Mono 400 13px
+              - [FRAME] "Data" (57078:11228)
+                - [FRAME] "Background+Border" (57078:11229)
+                  - [RECTANGLE] "Background" (57078:11230)
+                - [FRAME] "Container" (57078:11231)
+                  - [TEXT] "12%" (57078:11232) text: "12%" font: Inter 600 13px
+              - [FRAME] "Data" (57078:11233)
+                - [TEXT] "Accountant-centric; heavy onboarding overhead for SMBs" (57078:11234) text: "Accountant-centric; heavy onboarding overhead for SMBs" font: DM Mono 400 13px
+            - [FRAME] "Row 3: Freemium regional player" (57078:11235)
+              - [FRAME] "Data" (57078:11236)
+                - [FRAME] "Container" (57078:11237)
+                  - [TEXT] "Billomat" (57078:11238) text: "Billomat" font: DM Sans 600 14px
+                - [TEXT] "DACH Regional" (57078:11239) text: "DACH Regional" font: Inter Tight 400 10px
+              - [FRAME] "Data" (57078:11240)
+                - [FRAME] "Background+Border" (57078:11241)
+                  - [TEXT] "Freemium regional" (57078:11242) text: "Freemium regional" font: DM Sans 500 12px
+              - [FRAME] "Data" (57078:11243)
+                - [TEXT] "Freemium to €39/mo cap" (57078:11244) text: "Freemium to €39/mo cap" font: DM Mono 400 13px
+              - [FRAME] "Data" (57078:11245)
+                - [FRAME] "Background+Border" (57078:11246)
+                  - [RECTANGLE] "Background" (57078:11247)
+                - [FRAME] "Container" (57078:11248)
+                  - [TEXT] "9%" (57078:11249) text: "9%" font: Inter 600 13px
+              - [FRAME] "Data" (57078:11250)
+                - [TEXT] "Flat pricing punishes low- volume users; lacks PEPPOL v3" (57078:11251) text: "Flat pricing punishes low- volume users; lacks PEPPOL v3" font: DM Mono 400 13px
+            - [FRAME] "Row 4: Horizontal all-in-one" (57078:11252)
+              - [FRAME] "Data" (57078:11253)
+                - [FRAME] "Container" (57078:11254)
+                  - [TEXT] "Qonto Operations" (57078:11255) text: "Qonto Operations" font: DM Sans 600 14px
+                - [TEXT] "Pan-European Banking" (57078:11256) text: "Pan-European Banking" font: Inter Tight 400 10px
+              - [FRAME] "Data" (57078:11257)
+                - [FRAME] "Background+Border" (57078:11258)
+                  - [TEXT] "Business banking" (57078:11259) text: "Business banking" font: DM Sans 500 12px
+              - [FRAME] "Data" (57078:11260)
+                - [TEXT] "Bundled in premium tier" (57078:11261) text: "Bundled in premium tier" font: DM Mono 400 13px
+              - [FRAME] "Data" (57078:11262)
+                - [FRAME] "Background+Border" (57078:11263)
+                  - [RECTANGLE] "Background" (57078:11264)
+                - [FRAME] "Container" (57078:11265)
+                  - [TEXT] "6%" (57078:11266) text: "6%" font: Inter 600 13px
+              - [FRAME] "Data" (57078:11267)
+                - [TEXT] "Superficial invoice matching; lacks deep ERP sync" (57078:11268) text: "Superficial invoice matching; lacks deep ERP sync" font: DM Mono 400 13px
+            - [FRAME] "Row 5: Direct niche competitor" (57078:11269)
+              - [FRAME] "Data" (57078:11270)
+                - [FRAME] "Container" (57078:11271)
+                  - [TEXT] "InvoxAI" (57078:11272) text: "InvoxAI" font: DM Sans 600 14px
+                - [TEXT] "Early-stage Niche" (57078:11273) text: "Early-stage Niche" font: Inter Tight 400 10px
+              - [FRAME] "Data" (57078:11274)
+                - [FRAME] "Background+Border" (57078:11275)
+                  - [TEXT] "Direct niche AI" (57078:11276) text: "Direct niche AI" font: DM Sans 500 12px
+              - [FRAME] "Data" (57078:11277)
+                - [TEXT] "Flat €79/mo fixed" (57078:11278) text: "Flat €79/mo fixed" font: DM Mono 400 13px
+              - [FRAME] "Data" (57078:11279)
+                - [FRAME] "Background+Border" (57078:11280)
+                  - [RECTANGLE] "Background" (57078:11281)
+                - [FRAME] "Container" (57078:11282)
+                  - [TEXT] "3%" (57078:11283) text: "3%" font: Inter 600 13px
+              - [FRAME] "Data" (57078:11284)
+                - [TEXT] "No API for accountants; single-currency limitation" (57078:11285) text: "No API for accountants; single-currency limitation" font: DM Mono 400 13px
+      - [FRAME] "Section - SECTION 3: TWO CARDS SIDE BY SIDE (Demand Signals & Risks)" (57078:11286)
+        - [FRAME] "Left Card: Demand signals" (57078:11287)
+          - [FRAME] "Container" (57078:11288)
+            - [FRAME] "HorizontalBorder" (57078:11289)
+              - [FRAME] "Container" (57078:11290)
+                - [RECTANGLE] "Background" (57078:11291)
+                - [FRAME] "Heading 2" (57078:11292)
+                  - [TEXT] "DEMAND SIGNALS" (57078:11293) text: "DEMAND SIGNALS" font: Inter 600 11px
+              - [FRAME] "Background" (57078:11294)
+                - [TEXT] "LAST 12 MOS" (57078:11295) text: "LAST 12 MOS" font: Inter 500 10px
+            - [FRAME] "Container" (57078:11296)
+              - [FRAME] "Signal 1" (57078:11297)
+                - [FRAME] "Container" (57078:11298)
+                  - [TEXT] "Text" (57078:11299) text: "B2B mandatory e-invoicing search volume (EU)" font: DM Sans 600 13px
+                  - [FRAME] "Background+Border" (57078:11300)
+                    - [TEXT] "+34% YoY" (57078:11301) text: "+34% YoY" font: Inter 600 14px
+                - [FRAME] "Container" (57078:11302)
+                  - [TEXT] "Google Trends FinTech Index, EU-wide Q4 2025" (57078:11303) text: "Google Trends FinTech Index, EU-wide Q4 2025" font: DM Mono 400 11px
+              - [FRAME] "Signal 2" (57078:11304)
+                - [FRAME] "Paragraph" (57078:11305)
+                  - [TEXT] "Text" (57078:11306) text: "SMBs impacted by 2026 ViDA mandate implementation" font: DM Sans 600 13px
+                  - [TEXT] "2.1M" (57078:11307) text: "2.1M" font: Inter 600 15px
+                - [FRAME] "Container" (57078:11308)
+                  - [TEXT] "European Commission Digital Taxation Impact Assessment" (57078:11309) text: "European Commission Digital Taxation Impact Assessment" font: DM Mono 400 11px
+              - [FRAME] "Signal 3" (57078:11310)
+                - [FRAME] "Container" (57078:11311)
+                  - [TEXT] "Text" (57078:11312) text: "Median willing monthly price point for auto-reconciliation" font: DM Sans 600 13px
+                  - [FRAME] "Paragraph" (57078:11313)
+                    - [TEXT] "€89" (57078:11314) text: "€89" font: Inter 600 15px
+                    - [TEXT] "/mo" (57078:11315) text: "/mo" font: Inter Tight 400 11px
+                - [FRAME] "Container" (57078:11316)
+                  - [TEXT] "Mondial Creator Cohort Survey (n=140 European SMB finance heads)" (57078:11317) text: "Mondial Creator Cohort Survey (n=140 European SMB finance heads)" font: DM Mono 400 11px
+              - [FRAME] "Signal 4" (57078:11318)
+                - [FRAME] "Container" (57078:11319)
+                  - [TEXT] "Text" (57078:11320) text: "Annual churn for legacy on-premise accounting software" font: DM Sans 600 13px
+                  - [FRAME] "Background+Border" (57078:11321)
+                    - [TEXT] "−12%" (57078:11322) text: "−12%" font: Inter 600 14px
+                - [FRAME] "Container" (57078:11323)
+                  - [TEXT] "Gartner European Enterprise Software Report 2025" (57078:11324) text: "Gartner European Enterprise Software Report 2025" font: DM Mono 400 11px
+        - [FRAME] "Right Card: Risks to this sizing" (57078:11325)
+          - [FRAME] "Container" (57078:11326)
+            - [FRAME] "HorizontalBorder" (57078:11327)
+              - [FRAME] "Container" (57078:11328)
+                - [RECTANGLE] "Background" (57078:11329)
+                - [FRAME] "Heading 2" (57078:11330)
+                  - [TEXT] "RISKS TO THIS SIZING" (57078:11331) text: "RISKS TO THIS SIZING" font: Inter 600 11px
+              - [FRAME] "Background" (57078:11332)
+                - [TEXT] "EVALUATION MODEL" (57078:11333) text: "EVALUATION MODEL" font: Inter 500 10px
+            - [FRAME] "Container" (57078:11334)
+              - [FRAME] "Risk 1" (57078:11335)
+                - [FRAME] "Container" (57078:11336)
+                  - [FRAME] "Paragraph" (57078:11337)
+                    - [TEXT] "01." (57078:11338) text: "01." font: Inter 600 11px
+                    - [TEXT] "Regulatory timeline slippage in member-state" (57078:11339) text: " Regulatory timeline slippage in member-state" font: DM Mono 400 13px
+                    - [TEXT] "transpositions could delay immediate SMB urgency." (57078:11340) text: "transpositions could delay immediate SMB urgency." font: DM Mono 400 13px
+                  - [FRAME] "Background+Border" (57078:11341)
+                    - [TEXT] "HIGH" (57078:11342) text: "HIGH" font: Inter 600 10px
+              - [FRAME] "Risk 2" (57078:11343)
+                - [FRAME] "Container" (57078:11344)
+                  - [FRAME] "Paragraph" (57078:11345)
+                    - [TEXT] "02." (57078:11346) text: "02." font: Inter 600 11px
+                    - [TEXT] "Tier-1 incumbents (Sage, Pennylane) releasing native" (57078:11347) text: " Tier-1 incumbents (Sage, Pennylane) releasing native" font: DM Mono 400 13px
+                    - [TEXT] "OCR line-item reconciliation modules without extra cost." (57078:11348) text: "OCR line-item reconciliation modules without extra cost." font: DM Mono 400 13px
+                  - [FRAME] "Background+Border" (57078:11349)
+                    - [TEXT] "MEDIUM" (57078:11350) text: "MEDIUM" font: Inter 600 10px
+              - [FRAME] "Risk 3" (57078:11351)
+                - [FRAME] "Container" (57078:11352)
+                  - [FRAME] "Paragraph" (57078:11353)
+                    - [TEXT] "03." (57078:11354) text: "03." font: Inter 600 11px
+                    - [TEXT] "Customer acquisition costs through accounting" (57078:11355) text: " Customer acquisition costs through accounting" font: DM Mono 400 13px
+                    - [TEXT] "marketplace ecosystems trending upward post-GDPR revision." (57078:11356) text: "marketplace ecosystems trending upward post-GDPR revision." font: DM Mono 400 13px
+                  - [FRAME] "Background+Border" (57078:11357)
+                    - [TEXT] "LOW" (57078:11358) text: "LOW" font: Inter 600 10px
+      - [FRAME] "Section - SECTION 4: GAP VALIDATION (Full-width card with green left border accent)" (57078:11359)
+        - [FRAME] "Container" (57078:11360)
+          - [FRAME] "Left Column: Your Stated Gap" (57078:11361)
+            - [FRAME] "Container" (57078:11362)
+              - [FRAME] "Container" (57078:11363)
+                - [TEXT] "HYPOTHESIS 01" (57078:11364) text: "HYPOTHESIS 01" font: Inter 600 10px
+              - [FRAME] "Container" (57078:11365)
+                - [TEXT] "·" (57078:11366) text: "·" font: DM Mono 400 11px
+              - [FRAME] "Container" (57078:11367)
+                - [TEXT] "YOUR STATED GAP" (57078:11368) text: "YOUR STATED GAP" font: Inter 600 10px
+            - [FRAME] "VerticalBorder" (57078:11369)
+              - [FRAME] "Container" (57078:11370)
+                - [TEXT] "“Mid-market tools are built for certified accountants, while modern self-serve SMBs lack zero-touch line-item reconciliation that conforms natively to EU ViDA standards.”" (57078:11371) text: "“Mid-market tools are built for certified accountants, while modern self-serve SMBs lack zero-touch line-item reconciliation that conforms natively to EU ViDA standards.”" font: DM Sans 400 16px
+          - [FRAME] "Right Column: Benchmark Assessment" (57078:11372)
+            - [FRAME] "Container" (57078:11373)
+              - [FRAME] "Container" (57078:11374)
+                - [TEXT] "EVIDENCE SYNTHESIS" (57078:11375) text: "EVIDENCE SYNTHESIS" font: Inter 600 10px
+              - [FRAME] "Container" (57078:11376)
+                - [TEXT] "·" (57078:11377) text: "·" font: DM Mono 400 11px
+              - [FRAME] "Container" (57078:11378)
+                - [TEXT] "BENCHMARK ASSESSMENT" (57078:11379) text: "BENCHMARK ASSESSMENT" font: Inter 600 10px
+            - [FRAME] "Container" (57078:11380)
+              - [TEXT] "Validated against Q4 competitor feature audits. Existing suites demand manual human validation workflows and charge enterprise tiers for bi- directional PEPPOL gateway integration." (57078:11381) text: "Validated against Q4 competitor feature audits. Existing suites demand manual human validation workflows and charge enterprise tiers for bi- directional PEPPOL gateway integration." font: DM Mono 400 13px
+            - [FRAME] "Background+Border" (57078:11382)
+              - [FRAME] "SVG" (57078:11383)
+                - [VECTOR] "Vector" (57078:11384)
+              - [FRAME] "Container" (57078:11385)
+                - [TEXT] "Text" (57078:11386) text: "Supported — 3 of 5 tracked competitors lack self-serve onboarding" font: JetBrains Mono 400 11px
+        - [FRAME] "Top Right Status Badge" (57078:11387)
+          - [FRAME] "Background+Border" (57078:11388)
+            - [RECTANGLE] "Background" (57078:11389)
+            - [TEXT] "Supported by benchmark data" (57078:11390) text: "Supported by benchmark data" font: DM Sans 500 12px
+    - [FRAME] "Footer - FOOTER ACTION ROW (Not sticky, 48px top margin, hairline top border)" (57078:11391)
+      - [TEXT] "← Market study inputs" (57078:11392) text: "← Market study inputs" font: DM Sans 500 14px
+      - [FRAME] "Button - Right: Filled blue button (Only filled saturated element on entire page)" (57078:11393)
+        - [TEXT] "Continue to business model →" (57078:11394) text: "Continue to business model →" font: DM Sans 500 15px

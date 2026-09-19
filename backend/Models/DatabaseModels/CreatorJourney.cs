@@ -2,6 +2,7 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System.Linq;
 using System.Text.Json.Serialization;
+using WebApp.Models.DatabaseModels.Legal;
 
 namespace WebApp.Models.DatabaseModels
 {
@@ -179,6 +180,7 @@ namespace WebApp.Models.DatabaseModels
         public string ForecastSessionId { get; set; }
         public string BusinessPlanSessionId { get; set; }
         public CreatorLegalChecklist LegalChecklist { get; set; }
+        public CreatorLegalAssessment? LegalAssessment { get; set; }
         public CreatorFormationGenerator FormationGenerator { get; set; }
         public CreatorInvestorReadinessScore InvestorReadinessScore { get; set; }
     }
@@ -192,14 +194,27 @@ namespace WebApp.Models.DatabaseModels
 
     public class CreatorLegalChecklistItem
     {
-        public string Id { get; set; }
-        public string Label { get; set; }
-        public string Category { get; set; }       // mandatory | conditional | optional
-        public string Status { get; set; } = "pending"; // pending | in_progress | done
-        public string Badge { get; set; }          // urgent | fintech | null
+        public string Id { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;       // corporate | ip | data_privacy | consumer_protection | regulatory
+        public string Stage { get; set; } = LegalStages.CompanyCreation; // before_creation | company_creation | before_launch | before_sale | ongoing
+        public string Priority { get; set; } = LegalPriorities.Recommended; // critical | recommended | optional
+        public string Status { get; set; } = LegalItemStatuses.LegacyPending; // not_started | in_progress | completed | not_applicable (or legacy pending/done)
+        public string Badge { get; set; } = string.Empty;          // urgent | fintech | null
+        public string WhyItApplies { get; set; } = string.Empty;
+        public OfficialSourceReference? OfficialSource { get; set; }
+        public bool RequiresEvidence { get; set; }
+        public string? EvidenceDocType { get; set; }
+        public string? EvidenceDocumentId { get; set; }
+        public string? EvidenceFileName { get; set; }
+        public string EvaluationStatus { get; set; } = ApplicabilityEvaluationStatuses.Applicable;
         public bool ShowFindSp { get; set; }
-        public string SpSpecialty { get; set; }
+        public string SpSpecialty { get; set; } = string.Empty;
         public bool AiGenerable { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public bool IsNewRequirement { get; set; }
+        public string? Notes { get; set; }
     }
 
     public class CreatorFormationGenerator
@@ -275,6 +290,9 @@ namespace WebApp.Models.DatabaseModels
         public string Label { get; set; } // Not Ready | Developing | Strong | Investor-Ready
         public CreatorReadinessBreakdown Breakdown { get; set; } = new();
         public List<CreatorReadinessDeduction> Deductions { get; set; } = new();
+        public DateTime? EvaluatedAt { get; set; }
+        public bool UpdateAvailable { get; set; }
+        public List<string> ChangedSources { get; set; } = new();
     }
 
     public class CreatorReadinessBreakdown

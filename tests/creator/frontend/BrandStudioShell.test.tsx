@@ -12,6 +12,8 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
 }));
 
 const mockCompletedStrategyAndDirectionKit: BrandKit = {
@@ -194,11 +196,11 @@ describe('BrandStudioShell Component', () => {
       },
       colors: {
         roles: [
-          { roleName: 'Primary', hex: '#0052FF', isDark: true, provenance: 'stated' },
-          { roleName: 'Secondary', hex: '#0F172A', isDark: true, provenance: 'stated' },
-          { roleName: 'Accent', hex: '#38BDF8', isDark: false, provenance: 'stated' },
-          { roleName: 'Background', hex: '#F8FAFC', isDark: false, provenance: 'stated' },
-          { roleName: 'Text', hex: '#09090B', isDark: true, provenance: 'stated' },
+          { roleName: 'Primary', hex: '#0052FF', rgb: '0, 82, 255', usageNote: 'Primary', isLocked: false, provenance: 'stated' },
+          { roleName: 'Secondary', hex: '#0F172A', rgb: '15, 23, 42', usageNote: 'Secondary', isLocked: false, provenance: 'stated' },
+          { roleName: 'Accent', hex: '#38BDF8', rgb: '56, 189, 248', usageNote: 'Accent', isLocked: false, provenance: 'stated' },
+          { roleName: 'Background', hex: '#F8FAFC', rgb: '248, 250, 252', usageNote: 'Background', isLocked: false, provenance: 'stated' },
+          { roleName: 'Text', hex: '#09090B', rgb: '9, 9, 11', usageNote: 'Text', isLocked: false, provenance: 'stated' },
         ],
         regenerateCount: 0,
         confirmedAt: '2026-09-15T11:30:00Z',
@@ -269,11 +271,11 @@ describe('BrandStudioShell Component', () => {
       },
       colors: {
         roles: [
-          { roleName: 'Primary', hex: '#0052FF', isDark: true, provenance: 'stated' },
-          { roleName: 'Secondary', hex: '#0F172A', isDark: true, provenance: 'stated' },
-          { roleName: 'Accent', hex: '#38BDF8', isDark: false, provenance: 'stated' },
-          { roleName: 'Background', hex: '#F8FAFC', isDark: false, provenance: 'stated' },
-          { roleName: 'Text', hex: '#09090B', isDark: true, provenance: 'stated' },
+          { roleName: 'Primary', hex: '#0052FF', rgb: '0, 82, 255', usageNote: 'Primary', isLocked: false, provenance: 'stated' },
+          { roleName: 'Secondary', hex: '#0F172A', rgb: '15, 23, 42', usageNote: 'Secondary', isLocked: false, provenance: 'stated' },
+          { roleName: 'Accent', hex: '#38BDF8', rgb: '56, 189, 248', usageNote: 'Accent', isLocked: false, provenance: 'stated' },
+          { roleName: 'Background', hex: '#F8FAFC', rgb: '248, 250, 252', usageNote: 'Background', isLocked: false, provenance: 'stated' },
+          { roleName: 'Text', hex: '#09090B', rgb: '9, 9, 11', usageNote: 'Text', isLocked: false, provenance: 'stated' },
         ],
         regenerateCount: 0,
         confirmedAt: '2026-09-15T11:30:00Z',

@@ -1,0 +1,49 @@
+sequenceDiagram
+    autonumber
+    actor Creator as Creator / Founder
+    participant FE as Next.js Creator UI (src/app/dashboard/creator)
+    participant AC as Auth & Identity (api/auth)
+    participant CC as CreatorIdeasController (api/creator/ideas)
+    participant AI as AI Controllers (clarifier, market-study, etc.)
+    participant HF as Hangfire Server (ai queue)
+    participant LLM as OpenRouter (google/gemini-3.8-flash)
+    participant DB as MongoDB (CreatorIdeas, AI Sessions)
+
+    Creator->>FE: 1. Submit Business Idea
+    FE->>CC: POST /api/creator/ideas
+    CC->>DB: Save CreatorIdea (Project metadata)
+    DB-->>CC: Idea Created (businessIdeaId)
+    CC-->>FE: Return Idea Object
+
+    Creator->>FE: 2. Start Idea Clarification
+    FE->>AI: POST /api/ai/clarifier { businessIdeaId }
+    AI->>DB: Check & Debit AI Credits (20 credits)
+    AI->>DB: Create ClarifierSession (Pending)
+    AI->>HF: Enqueue AiJobType.IdeaClarifier
+    AI-->>FE: Return sessionId & jobId
+
+    HF->>DB: Load Canonical Idea Core
+    HF->>LLM: Complete structured clarification prompt
+    LLM-->>HF: Return clarified problem/solution JSON
+    HF->>DB: Save ClarifierSession.Output & update CreatorIdea
+    HF-->>FE: Realtime Notification (Clarification Complete)
+
+    Creator->>FE: 3. Generate Project Intelligence (P3 Pipeline)
+    Note over FE,DB: Executes MarketStudy -> BusinessModel -> BusinessPlan -> Forecast
+    FE->>AI: POST /api/ai/market-study
+    AI->>HF: Enqueue MarketStudy (20 credits) -> LLM -> Save MarketStudySession
+    FE->>AI: POST /api/ai/business-model
+    AI->>HF: Enqueue BusinessModel (18 credits) -> LLM -> Save BusinessModelSession
+    FE->>AI: POST /api/ai/business-plan
+    AI->>HF: Enqueue BusinessPlan (33 credits) -> LLM -> Save BusinessPlanSession
+    FE->>AI: POST /api/ai/forecast
+    AI->>HF: Enqueue Forecast (32 credits) -> LLM -> Save ForecastSession
+
+    Creator->>FE: 4. Brand Visual Identity Studio (Phase 2)
+    FE->>CC: POST /api/creator/brand-kit/generate
+    CC->>DB: Save BrandKit (Logos, Color harmonies, Typography)
+    CC-->>FE: Return Rendered SVG Brand Assets
+
+    Creator->>FE: 5. Transition to Marketplace / Deals
+    FE->>CC: POST /api/creator/crossroads/publish
+    CC->>DB: Update CreatorJourney.Status = Published

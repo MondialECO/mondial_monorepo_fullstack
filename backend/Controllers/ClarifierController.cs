@@ -89,9 +89,10 @@ namespace WebApp.Controllers
             var (created, activeSession) = await _sessions.TryCreateInFlightAsync(session);
             if (!created)
             {
+                var joinedSession = activeSession ?? session;
                 _logger.LogInformation("In-flight ClarifierSession {SessionId} joined for idea {BusinessIdeaId} by user {UserId}.",
-                    activeSession.Id, request.BusinessIdeaId, owner);
-                return Ok(ApiResponse.Ok("Idea Clarifier started.", new { sessionId = activeSession.Id, jobId = activeSession.RequestId }));
+                    joinedSession.Id, request.BusinessIdeaId, owner);
+                return Ok(ApiResponse.Ok("Idea Clarifier started.", new { sessionId = joinedSession.Id, jobId = joinedSession.RequestId }));
             }
 
             _audit.Record("IdeaClarifier.Start", owner, success: true,

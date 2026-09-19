@@ -71,7 +71,6 @@ const mockCyberKit: BrandKit = {
   },
   colors: { roles: [], regenerateCount: 0 },
   typography: { roles: [], regenerateCount: 0 },
-  history: [],
 };
 
 const mockShortNameKit: BrandKit = {

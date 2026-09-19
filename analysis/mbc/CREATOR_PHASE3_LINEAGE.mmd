@@ -1,0 +1,77 @@
+graph TD
+    %% ========================================================
+    %% CREATOR PHASE 3 / PROJECT INTELLIGENCE DATA LINEAGE
+    %% ========================================================
+
+    subgraph CoreContext["Authoritative Context Store"]
+        IdeaCore["CreatorIdea.Project<br/>(CANONICAL IDEA CORE)<br/>- Problem, Solution, Target Audience<br/>- Preserves founder manual edits"]
+        Phase3Data["CreatorIdea.Phase3Data<br/>(Pointer Catalog)<br/>- MarketStudySessionId<br/>- BusinessModelSessionId<br/>- BusinessPlanSessionId<br/>- ForecastSessionId"]
+    end
+
+    subgraph Step1["Step 1: Idea Clarifier"]
+        Clarifier_In["Input: Raw Founder Concept"]
+        Clarifier_Exec["Handler: IdeaClarifierHandler<br/>Model: google/gemini-3.8-flash"]
+        Clarifier_Out["Store: ClarifierSession.Output<br/>- Problem Statement<br/>- Proposed Solution<br/>- Core Value Proposition"]
+    end
+
+    subgraph Step2["Step 2: Market Study (Phase 3.1)"]
+        MS_In["Inputs:<br/>1. Canonical Idea Core<br/>2. Clarifier Output<br/>3. Sector Benchmarks (ResolveAsync)"]
+        MS_Exec["Handler: MarketStudyHandler<br/>Model: google/gemini-3.8-flash"]
+        MS_Out["Store: MarketStudySession.Content<br/>- TAM / SAM / SOM Valuation<br/>- Competitor Landscape<br/>- Market Demand Signals"]
+    end
+
+    subgraph Step3["Step 3: Business Model (Phase 3.2)"]
+        BM_In["Inputs:<br/>1. Canonical Idea Core<br/>2. Market Study Output<br/>3. Clarifier Output"]
+        BM_Exec["Handler: BusinessModelHandler<br/>Model: google/gemini-3.8-flash"]
+        BM_Out["Store: BusinessModelSession.Content<br/>- 9 Lean Canvas Blocks<br/>- Revenue Streams<br/>- Cost Structure"]
+    end
+
+    subgraph Step4["Step 4: Business Plan (C-3)"]
+        BP_Gate["Controller Gate (BusinessPlanController:119)<br/>Enforces: MarketStudy & BusinessModel completed"]
+        BP_In["ACTUAL PROMPT INPUTS (BusinessPlanHandler:80-115):<br/>1. Canonical Idea Core<br/>2. Clarifier Output<br/>3. Legacy Founder Submission"]
+        BP_Exec["Handler: BusinessPlanHandler<br/>Model: google/gemini-3.8-flash"]
+        BP_Out["Store: BusinessPlanSession.Content<br/>- Executive Summary<br/>- Market Strategy<br/>- Operational Plan"]
+    end
+
+    subgraph Step5["Step 5: Financial Forecast (C-4)"]
+        FC_In["Inputs (ForecastHandler:74-88):<br/>1. BusinessPlanSession.Content<br/>2. ARPU, OPEX, Growth, TAM, Churn"]
+        FC_Exec["Handler: ForecastHandler<br/>Model: google/gemini-3.8-flash"]
+        FC_Out["Store: ForecastSession.Content<br/>- 12-Month Cashflow/P&L<br/>- Break-Even Month<br/>- Runway & Growth Metrics"]
+    end
+
+    subgraph Step6["Step 6: Legal & Formation (Phase 3.3 / 3.4)"]
+        P3_Ctrl["CreatorPhase3Controller<br/>Synchronous Deterministic Engine"]
+        Formation["Store: CreatorFormationOption<br/>- SAS vs SARL evaluation<br/>- Legal Checklist items"]
+    end
+
+    %% Flow connections
+    Clarifier_In --> Clarifier_Exec --> Clarifier_Out
+    IdeaCore --> MS_In
+    Clarifier_Out --> MS_In
+    MS_In --> MS_Exec --> MS_Out
+
+    IdeaCore --> BM_In
+    MS_Out --> BM_In
+    Clarifier_Out --> BM_In
+    BM_In --> BM_Exec --> BM_Out
+
+    MS_Out -.->|Gating check only| BP_Gate
+    BM_Out -.->|Gating check only| BP_Gate
+    BP_Gate --> BP_In
+    IdeaCore --> BP_In
+    Clarifier_Out --> BP_In
+    BP_In --> BP_Exec --> BP_Out
+
+    BP_Out --> FC_In
+    FC_In --> FC_Exec --> FC_Out
+
+    FC_Out --> P3_Ctrl
+    BP_Out --> P3_Ctrl
+    P3_Ctrl --> Formation
+
+    %% GAP ANNOTATION
+    MS_Out -.->|GAP: NOT INJECTED INTO PROMPT| BP_In
+    BM_Out -.->|GAP: NOT INJECTED INTO PROMPT| BP_In
+
+    classDef gap stroke:#f43f5e,stroke-width:2px,stroke-dasharray: 5 5,fill:#fff1f2;
+    class MS_Out,BM_Out,BP_In gap;

@@ -1,0 +1,50 @@
+sequenceDiagram
+    autonumber
+    actor SP as Service Provider
+    actor Client as Founder / Entrepreneur
+    participant UI as Next.js (/services, /workroom)
+    participant PPC as ProfessionalProfilesController
+    participant SLC as ServiceListingsController
+    participant CBC as ClientBriefsController
+    participant WEC as WorkroomEngagementsController
+    participant CC as ContractsController
+    participant InvC as InvoicesController
+    participant DB as MongoDB Collections
+
+    Note over SP,DB: Phase 1: Provider Onboarding & Profile
+    SP->>UI: Create Professional / Provider Profile
+    UI->>PPC: POST /api/professionalprofiles
+    PPC->>DB: Write ProfessionalProfiles & ServiceProviderProfiles
+
+    Note over SP,DB: Phase 2: Catalog Publishing
+    SP->>UI: Create Service Package (Pricing, Scope, Milestones)
+    UI->>SLC: POST /api/servicelistings
+    SLC->>DB: Write ServiceListings (Status: Published)
+
+    Note over Client,DB: Phase 3: Brief Submission & Matching
+    Client->>UI: Submit Client Brief / Project Need
+    UI->>CBC: POST /api/clientbriefs
+    CBC->>DB: Write ClientBriefs
+    Client->>UI: Select Service Listing or Invite Provider
+    Client->>CBC: POST /api/clientbriefs/{id}/proposals
+
+    Note over SP,DB: Phase 4: Engagement & Workroom
+    Client->>UI: Accept Proposal & Initiate Workroom
+    UI->>WEC: POST /api/workroomengagements
+    WEC->>DB: Create WorkroomEngagements record
+    WEC->>DB: Initialize Workroom Activities & Milestones
+
+    Note over Client,DB: Phase 5: Contract & Escrow
+    Client->>UI: Generate Contract from Workroom
+    UI->>CC: POST /api/contracts
+    CC->>DB: Write Contracts (Milestones, IP transfer clauses)
+    Client->>CC: POST /api/contracts/{id}/sign
+    SP->>CC: POST /api/contracts/{id}/sign
+
+    Note over SP,DB: Phase 6: Invoicing & Payout
+    SP->>UI: Complete Milestone & Request Payment
+    UI->>InvC: POST /api/invoices
+    InvC->>DB: Write Invoices (Status: PendingApproval)
+    Client->>InvC: POST /api/invoices/{id}/pay
+    InvC->>DB: Update Invoices (Status: Paid)
+    InvC->>DB: Update WorkroomEngagements / ProfessionalProfiles (Reputation score)

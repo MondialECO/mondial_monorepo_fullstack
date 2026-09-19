@@ -1,0 +1,46 @@
+flowchart TD
+    subgraph FrontendConsumers["Frontend Consumers (src/app/marketplace, src/components/marketplace)"]
+        MPC_UI["Marketplace Page / Explorer"]
+        ProjectCard["Project Cards (Creator & Company)"]
+        ProviderCard["Provider Cards (Services)"]
+        InvestorCard["Investor Cards (Discovery)"]
+    end
+
+    subgraph API_Controllers["Backend API Controllers"]
+        MPC["MarketplaceProjectsController.cs (Direct DB Queries)"]
+        SLC["ServiceListingsController.cs"]
+        IC["InvestorsController.cs / InvestorMatchesController.cs"]
+        EC["EntrepreneurNeeds / NeedsController.cs"]
+    end
+
+    subgraph MongoDB_Collections["MongoDB Direct Data Layer"]
+        ColCompanies[("Companies")]
+        ColInvestments[("Investments")]
+        ColCreatorIdeas[("CreatorIdeas")]
+        ColAccessGrants[("MarketplaceProjectAccessGrants")]
+        ColInterests[("ProjectInterests")]
+        ColServices[("ServiceListings")]
+        ColProfiles[("ProfessionalProfiles")]
+        ColInvestors[("Investors")]
+    end
+
+    %% Connections
+    MPC_UI -->|GET /api/marketplaceprojects| MPC
+    ProjectCard -->|GET /api/marketplaceprojects/{id}| MPC
+    ProviderCard -->|GET /api/servicelistings| SLC
+    InvestorCard -->|GET /api/investormatches| IC
+
+    %% MPC Direct Query Bypass
+    MPC -.->|Direct Read| ColCompanies
+    MPC -.->|Direct Read| ColInvestments
+    MPC -.->|Direct Read| ColCreatorIdeas
+    MPC -.->|Read/Write Grants| ColAccessGrants
+    MPC -.->|Read/Write Interests| ColInterests
+
+    %% Other controllers
+    SLC -->|Read| ColServices
+    SLC -->|Read| ColProfiles
+    IC -->|Read| ColInvestors
+
+    classDef bypass fill:#ffebee,stroke:#c62828,stroke-width:2px;
+    class MPC,ColCompanies,ColInvestments,ColCreatorIdeas bypass;

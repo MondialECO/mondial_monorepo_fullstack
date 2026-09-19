@@ -11,6 +11,8 @@ vi.mock('next/navigation', () => ({
     push: mockPush,
     replace: vi.fn(),
   }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
 }));
 
 vi.mock('@/providers/CreatorProgressProvider', () => ({

@@ -20,6 +20,7 @@ import { BrandKit } from "@/types/creator/brand-kit";
 import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import type { ComputedJourneyStatus } from "@/types/creator/journey-api";
 import { useState, useEffect } from "react";
+import { withIdeaContext } from "@/lib/creator-routes";
 
 // Phase 3 Tools as specified in Figma node 57007:12780
 const PHASE3_TOOLS = [
@@ -127,20 +128,20 @@ export default function Phase2CompletePage() {
           message:
             "You haven't named your concept yet. Finish naming it to unlock Project Intelligence.",
           cta: "Name your concept",
-          href: "/dashboard/creator/phase-2/concept-name",
+          href: withIdeaContext("/dashboard/creator/phase-2/concept-name", state.activeIdeaId || state.project?.projectId),
         }
       : computed?.phase2?.currentStep === 9
       ? {
           message:
             "Your branding decision isn't complete yet. Finish it to unlock Project Intelligence.",
           cta: "Finish branding",
-          href: "/dashboard/creator/phase-2/branding",
+          href: withIdeaContext("/dashboard/creator/phase-2/branding", state.activeIdeaId || state.project?.projectId),
         }
       : {
           message:
             "Your idea setup isn't finished yet. Complete the remaining Phase 2 steps to unlock Project Intelligence.",
           cta: "Finish idea setup",
-          href: "/dashboard/creator/phase-2",
+          href: withIdeaContext("/dashboard/creator/phase-2", state.activeIdeaId || state.project?.projectId),
         };
 
   // Gate: don't render real content until backend hydration completes.
@@ -280,9 +281,7 @@ export default function Phase2CompletePage() {
     "DM Sans";
 
   const effectiveIdeaId = brandKit?.ideaId || state.activeIdeaId || state.project?.projectId;
-  const hubUrl = `/dashboard/creator/phase-2/brand-kit${
-    effectiveIdeaId ? `?ideaId=${encodeURIComponent(effectiveIdeaId)}` : ""
-  }`;
+  const hubUrl = withIdeaContext("/dashboard/creator/phase-2/brand-kit", effectiveIdeaId);
 
   const logoCount = Object.keys(brandKit?.logo?.variations ?? {}).length || 7;
   const colorCount = orderedColorRoles.length || 5;
@@ -292,13 +291,13 @@ export default function Phase2CompletePage() {
     if (!canContinue) return;
     setIsNavigating(true);
     if (state.journeyState?.phase3?.status === "locked") advancePhase(2);
-    router.push("/dashboard/creator/phase-3");
+    router.push(withIdeaContext("/dashboard/creator/phase-3", effectiveIdeaId));
   };
 
   const handleSkip = () => {
     setIsSkipping(true);
     if (canContinue && state.journeyState?.phase3?.status === "locked") advancePhase(2);
-    router.push("/dashboard/creator");
+    router.push(withIdeaContext("/dashboard/creator", effectiveIdeaId));
   };
 
   return (

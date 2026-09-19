@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.DatabaseModels.Legal;
 using WebApp.Models.Dtos;
 using WebApp.DbContext;
 using WebApp.Services.Implementations;
@@ -20,6 +21,15 @@ public class CompanyService : ICompanyService
     private readonly IDealEventPublisher _dealEvents;
     private readonly IServiceProvider? _serviceProvider;
     private readonly ILogger<CompanyService>? _logger;
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _levelUpLocks = new();
+
+    private static CreatorLegalAssessment? CloneLegalAssessment(CreatorLegalAssessment? source)
+    {
+        if (source == null) return null;
+        var json = System.Text.Json.JsonSerializer.Serialize(source);
+        return System.Text.Json.JsonSerializer.Deserialize<CreatorLegalAssessment>(json);
+    }
 
     public CompanyService(
         MongoDbContext dbContext,
@@ -277,15 +287,35 @@ public class CompanyService : ICompanyService
         string userId, string sourceLink, string legalStructure, double? fundingAsk,
         IClientSessionHandle session = null)
     {
-        return EnsureLevelUpCompanyAsync(userId, sourceLink, legalStructure, fundingAsk, null, null, null, session);
+        return EnsureLevelUpCompanyAsync(userId, sourceLink, legalStructure, fundingAsk, null, null, null, null, null, null, null, null, null, null, session);
+    }
+
+    public Task<Companies> EnsureLevelUpCompanyAsync(
+        string userId, string sourceLink, string legalStructure, double? fundingAsk,
+        string? companyName, string? industry, string? tagline,
+        IClientSessionHandle session = null)
+    {
+        return EnsureLevelUpCompanyAsync(userId, sourceLink, legalStructure, fundingAsk, companyName, industry, tagline, null, null, null, null, null, null, null, session);
     }
 
     public async Task<Companies> EnsureLevelUpCompanyAsync(
         string userId, string sourceLink, string legalStructure, double? fundingAsk,
         string? companyName, string? industry, string? tagline,
+        string? journeyId,
+        double? baselineReadiness,
+        string? forecastId,
+        string? businessPlanId,
+        CreatorLegalAssessment? legalAssessment,
+        string? logo,
+        List<CreatorIdeaDocument>? documents,
         IClientSessionHandle session = null)
     {
-        // Multi-Idea safe idempotency:
+        var lockKey = $"{userId}:{sourceLink ?? ""}";
+        var sem = _levelUpLocks.GetOrAdd(lockKey, _ => new SemaphoreSlim(1, 1));
+        await sem.WaitAsync();
+        try
+        {
+            // Multi-Idea safe idempotency:
         // Match by OwnerId + SourceBusinessIdeaId so Idea A and Idea B create/bind distinct Companies.
         // For backwards-compatibility with legacy companies, if no match is found by SourceBusinessIdeaId,
         // we check for a legacy unassociated company (SourceBusinessIdeaId is empty).
@@ -322,6 +352,28 @@ public class CompanyService : ICompanyService
             var changed = false;
             if (string.IsNullOrWhiteSpace(existing.SourceBusinessIdeaId) && !string.IsNullOrWhiteSpace(sourceLink))
             { existing.SourceBusinessIdeaId = sourceLink; changed = true; }
+            if (string.IsNullOrWhiteSpace(existing.SourceCreatorIdeaId) && !string.IsNullOrWhiteSpace(sourceLink))
+            { existing.SourceCreatorIdeaId = sourceLink; changed = true; }
+            if (string.IsNullOrWhiteSpace(existing.SourceCreatorJourneyId) && !string.IsNullOrWhiteSpace(journeyId))
+            { existing.SourceCreatorJourneyId = journeyId; changed = true; }
+            if (!existing.PromotedFromCreator)
+            { existing.PromotedFromCreator = true; changed = true; }
+            if (!existing.PromotedAt.HasValue)
+            { existing.PromotedAt = DateTime.UtcNow; changed = true; }
+            if (string.IsNullOrWhiteSpace(existing.PromotedByUserId))
+            { existing.PromotedByUserId = userId; changed = true; }
+            if (existing.TransferVersion <= 0)
+            { existing.TransferVersion = 1; changed = true; }
+            if (!existing.BaselineReadinessScore.HasValue && baselineReadiness.HasValue)
+            { existing.BaselineReadinessScore = baselineReadiness; changed = true; }
+            if (string.IsNullOrWhiteSpace(existing.SourceForecastId) && !string.IsNullOrWhiteSpace(forecastId))
+            { existing.SourceForecastId = forecastId; changed = true; }
+            if (string.IsNullOrWhiteSpace(existing.SourceBusinessPlanSessionId) && !string.IsNullOrWhiteSpace(businessPlanId))
+            { existing.SourceBusinessPlanSessionId = businessPlanId; changed = true; }
+            if (existing.LegalAssessment == null && legalAssessment != null)
+            { existing.LegalAssessment = CloneLegalAssessment(legalAssessment); changed = true; }
+            if (string.IsNullOrWhiteSpace(existing.Logo) && !string.IsNullOrWhiteSpace(logo))
+            { existing.Logo = logo; changed = true; }
             if (string.IsNullOrWhiteSpace(existing.CompanyName) && !string.IsNullOrWhiteSpace(companyName))
             { existing.CompanyName = companyName; changed = true; }
             if (string.IsNullOrWhiteSpace(existing.Industry) && !string.IsNullOrWhiteSpace(industry))
@@ -332,6 +384,60 @@ public class CompanyService : ICompanyService
             { existing.LegalStructure = legalStructure; changed = true; }
             if (existing.FundingAskAmount == null && fundingAsk.HasValue)
             { existing.FundingAskAmount = fundingAsk; changed = true; }
+
+            // Document references (ZERO physical duplication)
+            if (documents != null && documents.Count > 0)
+            {
+                existing.DataRoomDocuments ??= new List<DataRoomDocumentResponse>();
+                foreach (var doc in documents)
+                {
+                    if (!existing.DataRoomDocuments.Any(d => d.DocumentId == doc.Id || d.StoragePath == doc.StorageReference))
+                    {
+                        var category = doc.DocumentType switch
+                        {
+                            CreatorIdeaDocumentTypes.BusinessPlan => "business",
+                            CreatorIdeaDocumentTypes.FinancialForecast => "financial",
+                            CreatorIdeaDocumentTypes.LegalEvidence or CreatorIdeaDocumentTypes.KbisExtract or CreatorIdeaDocumentTypes.StatutsDraft => "legal",
+                            _ => "business"
+                        };
+
+                        existing.DataRoomDocuments.Add(new DataRoomDocumentResponse
+                        {
+                            DocumentId = doc.Id,
+                            Title = string.IsNullOrWhiteSpace(doc.Title) ? doc.FileName : doc.Title,
+                            Category = category,
+                            Status = "draft", // Strict privacy: not published to external parties without founder action
+                            UploadedAt = doc.CreatedAt,
+                            FileName = doc.FileName,
+                            MimeType = doc.MimeType,
+                            FileSize = doc.SizeBytes ?? 0,
+                            StoragePath = doc.StorageReference, // Same physical reference! Zero duplication!
+                            UploadedBy = userId
+                        });
+                        changed = true;
+                    }
+
+                    if (doc.DocumentType == CreatorIdeaDocumentTypes.KbisExtract ||
+                        doc.DocumentType == CreatorIdeaDocumentTypes.StatutsDraft ||
+                        doc.DocumentType == CreatorIdeaDocumentTypes.LegalEvidence)
+                    {
+                        existing.Documents ??= new List<CompanyDocument>();
+                        if (!existing.Documents.Any(cd => cd.S3Key == doc.StorageReference))
+                        {
+                            existing.Documents.Add(new CompanyDocument
+                            {
+                                DocType = doc.DocumentType,
+                                S3Key = doc.StorageReference,
+                                FileName = doc.FileName,
+                                Status = "pending",
+                                UploadedAt = doc.CreatedAt
+                            });
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
             if (changed)
             {
                 existing.UpdatedAt = DateTime.UtcNow;
@@ -350,9 +456,20 @@ public class CompanyService : ICompanyService
             Id = ObjectId.GenerateNewId().ToString(),
             OwnerId = userId,
             SourceBusinessIdeaId = sourceLink,   // provenance: businessIdeaId, else journey id
+            SourceCreatorIdeaId = sourceLink,
+            SourceCreatorJourneyId = journeyId,
+            PromotedFromCreator = true,
+            PromotedAt = DateTime.UtcNow,
+            PromotedByUserId = userId,
+            TransferVersion = 1,
+            BaselineReadinessScore = baselineReadiness,
+            SourceForecastId = forecastId,
+            SourceBusinessPlanSessionId = businessPlanId,
+            LegalAssessment = CloneLegalAssessment(legalAssessment),
             CompanyName = companyName ?? string.Empty,
             Industry = industry ?? string.Empty,
             Tagline = tagline ?? string.Empty,
+            Logo = logo,
             CurrentPhase = 2,                    // universal Phase 1 already complete
             CompletedPhases = new List<int>(),
             LegalStructure = legalStructure,     // plan (creator confirms in Phase 2)
@@ -362,11 +479,73 @@ public class CompanyService : ICompanyService
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         };
-        if (session is null)
-            await _dbContext.Companies.InsertOneAsync(company);
-        else
-            await _dbContext.Companies.InsertOneAsync(session, company);
-        return company;
+
+        if (documents != null && documents.Count > 0)
+        {
+            foreach (var doc in documents)
+            {
+                var category = doc.DocumentType switch
+                {
+                    CreatorIdeaDocumentTypes.BusinessPlan => "business",
+                    CreatorIdeaDocumentTypes.FinancialForecast => "financial",
+                    CreatorIdeaDocumentTypes.LegalEvidence or CreatorIdeaDocumentTypes.KbisExtract or CreatorIdeaDocumentTypes.StatutsDraft => "legal",
+                    _ => "business"
+                };
+
+                company.DataRoomDocuments.Add(new DataRoomDocumentResponse
+                {
+                    DocumentId = doc.Id,
+                    Title = string.IsNullOrWhiteSpace(doc.Title) ? doc.FileName : doc.Title,
+                    Category = category,
+                    Status = "draft",
+                    UploadedAt = doc.CreatedAt,
+                    FileName = doc.FileName,
+                    MimeType = doc.MimeType,
+                    FileSize = doc.SizeBytes ?? 0,
+                    StoragePath = doc.StorageReference,
+                    UploadedBy = userId
+                });
+
+                if (doc.DocumentType == CreatorIdeaDocumentTypes.KbisExtract ||
+                    doc.DocumentType == CreatorIdeaDocumentTypes.StatutsDraft ||
+                    doc.DocumentType == CreatorIdeaDocumentTypes.LegalEvidence)
+                {
+                    company.Documents.Add(new CompanyDocument
+                    {
+                        DocType = doc.DocumentType,
+                        S3Key = doc.StorageReference,
+                        FileName = doc.FileName,
+                        Status = "pending",
+                        UploadedAt = doc.CreatedAt
+                    });
+                }
+            }
+        }
+
+        try
+        {
+            if (session is null)
+                await _dbContext.Companies.InsertOneAsync(company);
+            else
+                await _dbContext.Companies.InsertOneAsync(session, company);
+            return company;
+        }
+        catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        {
+            // Concurrent race won by another call; re-fetch existing company
+            var existingAfterRace = session is null
+                ? await _dbContext.Companies.Find(c => c.OwnerId == userId && c.SourceBusinessIdeaId == sourceLink).FirstOrDefaultAsync()
+                : await _dbContext.Companies.Find(session, c => c.OwnerId == userId && c.SourceBusinessIdeaId == sourceLink).FirstOrDefaultAsync();
+
+            if (existingAfterRace != null)
+                return existingAfterRace;
+            throw;
+        }
+        }
+        finally
+        {
+            sem.Release();
+        }
     }
 
     public async Task<(Companies Company, bool AlreadyExisted)> BuildCompanyFromAcquisitionAsync(
@@ -812,11 +991,15 @@ public class CompanyService : ICompanyService
             LegalName = c.LegalName,
             Industry = c.Industry,
             Tagline = c.Tagline,
-            Logo = null,
+            Logo = c.Logo,
             LegalStructure = c.LegalStructure,
             CurrentPhase = c.CurrentPhase,
             CompletedPhases = c.CompletedPhases ?? new List<int>(),
             SourceBusinessIdeaId = c.SourceBusinessIdeaId,
+            SourceCreatorIdeaId = c.SourceCreatorIdeaId ?? c.SourceBusinessIdeaId,
+            PromotedFromCreator = c.PromotedFromCreator,
+            PromotedAt = c.PromotedAt,
+            BaselineReadinessScore = c.BaselineReadinessScore,
             IsInvestorReady = c.IsInvestorReady,
             IsActive = !string.IsNullOrEmpty(activeCompanyId) && c.Id == activeCompanyId,
             UpdatedAt = c.UpdatedAt
@@ -2475,21 +2658,65 @@ public class CompanyService : ICompanyService
 
         await EnsureDataRoomAccessAsync(company, callerUserId, callerIsOwner, requireDownloadPermission: requireDownloadPermission);
 
-        byte[] bytes;
-        var resolvedPath = !string.IsNullOrWhiteSpace(doc.StoragePath)
-            ? (Path.IsPathRooted(doc.StoragePath) ? doc.StoragePath : Path.Combine(Directory.GetCurrentDirectory(), doc.StoragePath))
-            : null;
-
-        if (resolvedPath != null && File.Exists(resolvedPath))
-        {
-            bytes = await File.ReadAllBytesAsync(resolvedPath);
-        }
-        else
-        {
-            bytes = System.Text.Encoding.UTF8.GetBytes($"[Mondial Eco - Data Room Document]\n\nDocument Title: {doc.Title}\nFile Name: {doc.FileName}\nCategory: {doc.Category}\nCompany: {company.CompanyName}\nTimestamp: {DateTime.UtcNow:u}");
-        }
+        byte[] bytes = ResolveAndReadDocumentContent(company, doc);
 
         return (bytes, doc);
+    }
+
+    private byte[] ResolveAndReadDocumentContent(Companies company, DataRoomDocumentResponse doc)
+    {
+        if (string.IsNullOrWhiteSpace(doc.StoragePath))
+        {
+            return System.Text.Encoding.UTF8.GetBytes($"[Mondial Eco - Data Room Document]\n\nDocument Title: {doc.Title}\nFile Name: {doc.FileName}\nCategory: {doc.Category}\nCompany: {company.CompanyName}\nTimestamp: {DateTime.UtcNow:u}");
+        }
+
+        // Canonical roots
+        var currentDir = Directory.GetCurrentDirectory();
+        var uploadsCanonicalRoot = Path.GetFullPath(Path.Combine(currentDir, "uploads"));
+
+        // Guard against traversal attacks
+        if (doc.StoragePath.Contains("..") || doc.StoragePath.Contains('/') || doc.StoragePath.Contains('\\'))
+        {
+            var rawCandidate = Path.GetFullPath(Path.IsPathRooted(doc.StoragePath) ? doc.StoragePath : Path.Combine(currentDir, doc.StoragePath));
+            if (!rawCandidate.StartsWith(uploadsCanonicalRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(rawCandidate, uploadsCanonicalRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Path traversal or unauthorized storage path access detected.");
+            }
+        }
+
+        var safeFileName = Path.GetFileName(doc.StoragePath);
+
+        // Permitted candidate directories for this specific company
+        var allowedSearchDirectories = new List<string>();
+
+        // 1. If promoted from Creator idea, search the owner's idea upload directory
+        if (!string.IsNullOrWhiteSpace(company.SourceBusinessIdeaId) && !string.IsNullOrWhiteSpace(company.OwnerId))
+        {
+            allowedSearchDirectories.Add(Path.GetFullPath(Path.Combine(uploadsCanonicalRoot, "creator-ideas", company.OwnerId, company.SourceBusinessIdeaId)));
+        }
+
+        // 2. Company specific data-room / company directory
+        if (!string.IsNullOrWhiteSpace(company.Id))
+        {
+            allowedSearchDirectories.Add(Path.GetFullPath(Path.Combine(uploadsCanonicalRoot, "dataroom", company.Id)));
+            allowedSearchDirectories.Add(Path.GetFullPath(Path.Combine(uploadsCanonicalRoot, "companies", company.Id)));
+        }
+
+        // 3. General uploads root fallback (relative storage paths)
+        allowedSearchDirectories.Add(uploadsCanonicalRoot);
+
+        foreach (var dir in allowedSearchDirectories)
+        {
+            var candidate = Path.GetFullPath(Path.Combine(dir, safeFileName));
+            if (candidate.StartsWith(dir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && File.Exists(candidate))
+            {
+                return File.ReadAllBytes(candidate);
+            }
+        }
+
+        // If not found on disk, return generated placeholder
+        return System.Text.Encoding.UTF8.GetBytes($"[Mondial Eco - Data Room Document]\n\nDocument Title: {doc.Title}\nFile Name: {doc.FileName}\nCategory: {doc.Category}\nCompany: {company.CompanyName}\nTimestamp: {DateTime.UtcNow:u}");
     }
 
 
@@ -4743,7 +4970,11 @@ public class CompanyService : ICompanyService
             TrustScore = company.TrustScore,
             IsInvestorReady = company.IsInvestorReady,
             CreatedAt = company.CreatedAt,
-            LastUpdatedAt = company.UpdatedAt
+            LastUpdatedAt = company.UpdatedAt,
+            PromotedFromCreator = company.PromotedFromCreator,
+            PromotedAt = company.PromotedAt,
+            BaselineReadinessScore = company.BaselineReadinessScore,
+            SourceCreatorIdeaId = company.SourceCreatorIdeaId ?? company.SourceBusinessIdeaId
         };
     }
 

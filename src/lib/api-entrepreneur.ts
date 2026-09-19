@@ -11,6 +11,10 @@ export interface CompanyProgressResponse {
   isInvestorReady: boolean;
   createdAt: string;
   lastUpdatedAt: string;
+  promotedFromCreator?: boolean;
+  promotedAt?: string;
+  baselineReadinessScore?: number;
+  sourceCreatorIdeaId?: string;
 }
 
 export interface CompanySummaryDto {
@@ -24,6 +28,10 @@ export interface CompanySummaryDto {
   currentPhase: number;
   completedPhases: number[];
   sourceBusinessIdeaId?: string;
+  sourceCreatorIdeaId?: string;
+  promotedFromCreator?: boolean;
+  promotedAt?: string;
+  baselineReadinessScore?: number;
   isInvestorReady: boolean;
   isActive: boolean;
   updatedAt?: string;

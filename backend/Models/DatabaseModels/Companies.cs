@@ -3,6 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 using Twilio.Annotations;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using WebApp.Models.Dtos;
+using WebApp.Models.DatabaseModels.Legal;
 
 namespace WebApp.Models.DatabaseModels;
 
@@ -17,6 +18,18 @@ public class Companies
     // creator->entrepreneur transition, this holds the source idea id.
     public string SourceBusinessIdeaId { get; set; }
 
+    // Stable Origin Link & Provenance for Creator -> Entrepreneur Level-Up Transfer (Stage 11)
+    public string? SourceCreatorIdeaId { get; set; }
+    public string? SourceCreatorJourneyId { get; set; }
+    public bool PromotedFromCreator { get; set; } = false;
+    public DateTime? PromotedAt { get; set; }
+    public string? PromotedByUserId { get; set; }
+    public int TransferVersion { get; set; } = 1;
+    public double? BaselineReadinessScore { get; set; }
+    public string? SourceForecastId { get; set; }
+    public string? SourceBusinessPlanSessionId { get; set; }
+    public CreatorLegalAssessment? LegalAssessment { get; set; }
+
     // Provenance: when a Company is created or linked via equity partnership deal activation
     public string? SourceDealId { get; set; }
 
@@ -25,6 +38,7 @@ public class Companies
     public string Industry { get; set; }
     public string Website { get; set; }
     public string Tagline { get; set; }
+    public string? Logo { get; set; }
 
     // Phase tracking - Entrepreneur phases start at 2; Universal Phase 1 is already complete
     public int CurrentPhase { get; set; } = 2;

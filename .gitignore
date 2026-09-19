@@ -100,4 +100,13 @@ scripts/private/
 scripts/*token*.json
 scripts/*credentials*.json
 
+# Scratch, outputs, and local tool directories
+/scratch/
+/outputs/
+backend/outputs/
+backend/tests/outputs/
+backend/tests/exported_logos.json
+.tools/
+
+
 

@@ -117,9 +117,21 @@ namespace WebApp.Models.DatabaseModels
     {
         public const string BusinessPlan = "business_plan";
         public const string FinancialForecast = "financial_forecast";
+        public const string LegalEvidence = "legal_evidence";
+        public const string KbisExtract = "kbis_extract";
+        public const string StatutsDraft = "statuts_draft";
+        public const string CapitalDepositCert = "capital_deposit_cert";
+        public const string ProofOfAddress = "proof_of_address";
+        public const string GdprPolicy = "gdpr_policy";
 
         public static bool IsSupported(string? documentType) =>
             string.Equals(documentType, BusinessPlan, StringComparison.Ordinal) ||
-            string.Equals(documentType, FinancialForecast, StringComparison.Ordinal);
+            string.Equals(documentType, FinancialForecast, StringComparison.Ordinal) ||
+            string.Equals(documentType, LegalEvidence, StringComparison.Ordinal) ||
+            string.Equals(documentType, KbisExtract, StringComparison.Ordinal) ||
+            string.Equals(documentType, StatutsDraft, StringComparison.Ordinal) ||
+            string.Equals(documentType, CapitalDepositCert, StringComparison.Ordinal) ||
+            string.Equals(documentType, ProofOfAddress, StringComparison.Ordinal) ||
+            string.Equals(documentType, GdprPolicy, StringComparison.Ordinal);
     }
 }

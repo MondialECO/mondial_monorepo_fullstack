@@ -11,7 +11,7 @@ namespace WebApp.Tests.Creator.Unit
 {
     public class LogoRenderExporter
     {
-        [Fact]
+        [Fact(Skip = "Offline logo export utility; requires live AI service container")]
         public async Task ExportAllReviewLogoData()
         {
             var outputDir = Path.Combine(Directory.GetCurrentDirectory(), "raw_logo_exports");

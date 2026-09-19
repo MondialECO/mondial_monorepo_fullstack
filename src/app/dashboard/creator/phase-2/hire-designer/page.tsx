@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, Star, MapPin, CheckCircle2, MessageSquare, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorJourneyApi, type Designer as ApiDesigner } from "@/lib/api-creator-journey";
 import { toAiError } from "@/lib/ai-errors";
+import { withIdeaContext } from "@/lib/creator-routes";
 
 interface Designer {
   id: string;
@@ -48,7 +49,10 @@ const mapDesigner = (d: ApiDesigner): Designer => ({
 
 export default function HireDesignerPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { state, setState } = useCreatorProgress();
+  const effectiveIdeaId = searchParams.get("ideaId") || state.activeIdeaId;
+
   const [designers, setDesigners] = useState<Designer[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -96,6 +100,7 @@ export default function HireDesignerPage() {
             colorPalette: [],
             paletteName: "Designer engaged — awaiting delivery",
             typographyPairing: "Awaiting Designer Delivery",
+            brandingMethod: "m50_designer",
           },
           exists: true,
         },
@@ -108,7 +113,7 @@ export default function HireDesignerPage() {
   };
 
   const handleContinue = () => {
-    router.push("/dashboard/creator/phase-2/complete");
+    router.push(withIdeaContext("/dashboard/creator/phase-2/complete", effectiveIdeaId));
   };
 
   return (
@@ -117,7 +122,7 @@ export default function HireDesignerPage() {
       <header className="flex items-center justify-between border-b border-border bg-card/50 backdrop-blur-xs px-6 py-4">
         <Button
           variant="ghost"
-          onClick={() => router.push("/dashboard/creator/phase-2/branding")}
+          onClick={() => router.push(withIdeaContext("/dashboard/creator/phase-2/branding", effectiveIdeaId))}
           className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />

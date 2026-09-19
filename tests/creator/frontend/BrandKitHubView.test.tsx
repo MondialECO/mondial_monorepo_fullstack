@@ -11,6 +11,8 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
 }));
 
 const mockCompleteKit: BrandKit = {
@@ -64,16 +66,14 @@ const mockCompleteKit: BrandKit = {
     concepts: [
       {
         key: 'concept_1',
-        name: 'Sentinel Shield',
-        rationale: 'Precision lattice icon',
-        svgMarkup: '<svg><circle cx="12" cy="12" r="10"/></svg>',
-        contrastOnLight: 14.5,
-        contrastOnDark: 12.0,
-        provenance: 'ai',
+        descriptorLine: 'Sentinel Shield - Precision lattice icon',
+        markAssetUri: '<svg><circle cx="12" cy="12" r="10"/></svg>',
+        lockupAssetUri: '<svg><circle cx="12" cy="12" r="10"/></svg>',
+        regenerateCount: 0,
         parameters: {
           family: 'Space Grotesk',
-          motif: 'lattice',
-          weight: '700',
+          descriptor: 'lattice',
+          values: { motif: 'lattice', weight: '700' },
         },
       },
     ],

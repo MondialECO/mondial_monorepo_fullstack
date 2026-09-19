@@ -331,9 +331,145 @@ export interface BusinessPlanOutput {
     impact?: string;
     mitigation?: string;
   }[];
+  legalFramework?: LegalRegulatoryFramework;
   // Per-section provenance, keyed by C-3 field name (e.g. "executiveSummary").
   // Stamped server-side by the shared splice: "generated" (AI rewrite) | "edited" (manual).
   _sectionMeta?: Record<string, { status?: 'generated' | 'edited'; lastEditedAt?: string }>;
+}
+
+export interface LegalFrameworkSubsection {
+  subsectionKey: string;
+  title: string;
+  summary: string;
+  keyObligations: string[];
+  applicableAuthorities: string[];
+  requirementCount: number;
+  addressedCount: number;
+  status: string;
+}
+
+export interface LegalRoadmapStageSummary {
+  stage: string;
+  stageTitle: string;
+  addressedCount: number;
+  totalCount: number;
+  completionPercentage: number;
+  status: string;
+}
+
+export interface LegalPriorityOpenItem {
+  requirementId: string;
+  title: string;
+  stage: string;
+  priority: string;
+  status: string;
+  recommendedAction: string;
+  officialAuthority: string;
+}
+
+export interface LegalNeedsInformationItem {
+  requirementId: string;
+  title: string;
+  stage: string;
+  clarificationGuidance: string;
+}
+
+export interface LegalOfficialSource {
+  authorityName: string;
+  documentTitle: string;
+  url: string;
+  description: string;
+}
+
+export interface LegalEvidenceSummary {
+  totalRequirementsWithEvidence: number;
+  totalDocumentsLinked: number;
+  needsReviewCount: number;
+  acceptedForPlanningCount: number;
+  summaryText: string;
+}
+
+export interface LegalSignalDiff {
+  signalKey: string;
+  humanLabel: string;
+  previousValue: boolean;
+  currentValue: boolean;
+  changeType: 'added' | 'removed' | 'modified';
+  humanDescription: string;
+}
+
+export interface LegalStaleMetadata {
+  isStale: boolean;
+  staleReason: string;
+  staleDetectedAt?: string | null;
+  lastEvaluatedAt?: string | null;
+  currentRulesVersion: string;
+  assessmentRulesVersion: string;
+  diffs: LegalSignalDiff[];
+  humanChangeDescriptions: string[];
+}
+
+export interface ReconciliationRequirementItem {
+  id: string;
+  title: string;
+  stage: string;
+  priority: string;
+  category: string;
+}
+
+export interface LegalReconciliationSummary {
+  addedRequirements: ReconciliationRequirementItem[];
+  removedRequirements: ReconciliationRequirementItem[];
+  unchangedRequirementsCount: number;
+  totalApplicableCount: number;
+  reconciledAt: string;
+}
+
+export interface Phase3FreshnessOverview {
+  anyStale: boolean;
+  forecastNeedsReview: boolean;
+  forecastReviewReason: string;
+  isTamOverridden: boolean;
+  marketStudyTam?: number | null;
+  forecastTam?: number | null;
+  legalIsStale: boolean;
+  legalStaleReason: string;
+  legalStaleMetadata?: LegalStaleMetadata | null;
+  businessPlanIsStale: boolean;
+  businessPlanStaleSections: string[];
+  section12IsStale: boolean;
+  section12HasUserEdits: boolean;
+  readinessUpdateAvailable: boolean;
+  readinessChangedSources: string[];
+}
+
+export interface LegalRegulatoryFramework {
+  summary: string;
+  jurisdiction: string;
+  rulesVersion?: string;
+  assessmentVersion?: number;
+  businessProfileSnapshotHash?: string;
+  generatedAt?: string;
+  assessmentDateUtc?: string;
+  isStale?: boolean;
+  staleReason?: string;
+  changedSignals?: string[];
+  staleMetadata?: LegalStaleMetadata | null;
+  planningReadinessPercentage: number;
+  addressedRequirementsCount: number;
+  totalApplicableRequirementsCount: number;
+  proposedLegalStructure: string;
+  primaryRegulations: string[];
+  roadmapHighlights: string[];
+  intellectualPropertyStrategy: string;
+  complianceGovernanceNote: string;
+  disclaimerNotice?: string;
+  subsections?: LegalFrameworkSubsection[];
+  roadmapSummary?: LegalRoadmapStageSummary[];
+  priorityOpenItems?: LegalPriorityOpenItem[];
+  needsInformationItems?: LegalNeedsInformationItem[];
+  officialSources?: LegalOfficialSource[];
+  evidenceSummary?: LegalEvidenceSummary;
 }
 
 export interface BusinessPlanSession {

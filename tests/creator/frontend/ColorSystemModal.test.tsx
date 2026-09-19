@@ -116,7 +116,6 @@ const mockColorKit: BrandKit = {
     confirmedAt: null,
   },
   typography: { roles: [], regenerateCount: 0 },
-  history: [],
 };
 
 describe('ColorSystemModal Component', () => {

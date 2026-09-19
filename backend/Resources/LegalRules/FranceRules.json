@@ -1,0 +1,441 @@
+{
+  "rulesVersion": "FR-2026.1",
+  "jurisdiction": "FR",
+  "title": "Catalogue National des Règles Légales et Réglementaires Françaises",
+  "lastUpdated": "2026-09-19",
+  "rules": [
+    {
+      "id": "FR-CORP-001",
+      "title": "Dépôt du capital social et attestation de blocage des fonds",
+      "category": "corporate",
+      "stage": "before_creation",
+      "priority": "critical",
+      "description": "Dépôt obligatoire des apports en numéraire constitutifs du capital social auprès d'une banque, d'un notaire ou de la Caisse des Dépôts, avec délivrance de l'attestation de dépôt indispensable à la signature définitive des statuts.",
+      "whyItApplies": "Toute création de société commerciale en France (SAS, SARL, SASU, EURL) impose le dépôt préalable des fonds constitutifs du capital social.",
+      "conditions": {
+        "always": true
+      },
+      "officialSource": {
+        "authority": "Service-Public.fr",
+        "title": "Dépôt du capital social d'une société commerciale",
+        "url": "https://www.service-public.fr/professionnels-entreprises/vosdroits/F31440",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-06-01",
+        "articleReference": "Code de commerce, Articles L223-7 et L225-3",
+        "notes": "L'attestation de dépôt est indispensable pour l'immatriculation."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "capital_deposit_cert",
+      "evidenceLabel": "Attestation de dépôt des fonds délivrée par l'établissement dépositaire"
+    },
+    {
+      "id": "FR-CORP-002",
+      "title": "Rédaction et signature des statuts constitutifs",
+      "category": "corporate",
+      "stage": "before_creation",
+      "priority": "critical",
+      "description": "Rédaction des statuts de la société définissant les modalités de gouvernance, l'objet social, la dénomination sociale, la durée de la société et la répartition des parts ou actions entre associés fondateurs.",
+      "whyItApplies": "Document fondateur obligatoire régissant le fonctionnement juridique et statutaire de l'entreprise.",
+      "conditions": {
+        "always": true
+      },
+      "officialSource": {
+        "authority": "Entreprendre.Service-Public.fr",
+        "title": "Rédaction des statuts d'une société",
+        "url": "https://entreprendre.service-public.fr/vosdroits/F32230",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-06-01",
+        "articleReference": "Code civil, Article 1835",
+        "notes": "Les statuts doivent être paraphés et signés par tous les associés."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "statuts_draft",
+      "evidenceLabel": "Projet ou exemplaire signé des statuts constitutifs"
+    },
+    {
+      "id": "FR-CORP-003",
+      "title": "Publication de l'avis de constitution au Journal d'Annonces Légales (JAL)",
+      "category": "corporate",
+      "stage": "company_creation",
+      "priority": "critical",
+      "description": "Publication d'un avis de constitution dans un Journal d'Annonces Légales (JAL) ou service de presse en ligne habilité dans le département du siège social pour informer les tiers de la création de la personne morale.",
+      "whyItApplies": "Formalité de publicité légale impérative préalable au dépôt de la demande d'immatriculation.",
+      "conditions": {
+        "always": true
+      },
+      "officialSource": {
+        "authority": "Service-Public.fr / SHAL",
+        "title": "Annonces légales : publication d'une annonce dans un support habilité",
+        "url": "https://entreprendre.service-public.fr/vosdroits/F21852",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-05-20",
+        "articleReference": "Code de commerce, Article R210-3",
+        "notes": "L'attestation de parution est requise par le guichet unique."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Attestation de parution dans un Journal d'Annonces Légales (JAL)"
+    },
+    {
+      "id": "FR-CORP-004",
+      "title": "Formalités d'immatriculation au Guichet Unique INPI (Kbis / RNE)",
+      "category": "corporate",
+      "stage": "company_creation",
+      "priority": "critical",
+      "description": "Déclaration d'immatriculation obligatoire de l'entreprise via le Guichet Unique opéré par l'INPI pour l'inscription au Registre National des Entreprises (RNE), au RCS, et l'attribution des numéros SIREN, SIRET et de l'extrait Kbis.",
+      "whyItApplies": "Depuis le 1er janvier 2023, le guichet unique INPI est la seule voie légale d'immatriculation pour toute entreprise créée en France (Loi PACTE).",
+      "conditions": {
+        "always": true
+      },
+      "officialSource": {
+        "authority": "INPI / Guichet Unique",
+        "title": "Portail des formalités d'entreprises",
+        "url": "https://formalites.entreprises.gouv.fr/",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-06-15",
+        "articleReference": "Code de commerce, Article L123-33",
+        "notes": "Attribue le SIREN et génère l'extrait Kbis officiel."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "kbis_extract",
+      "evidenceLabel": "Extrait Kbis ou récépissé de dépôt de dossier au Guichet Unique"
+    },
+    {
+      "id": "FR-CORP-005",
+      "title": "Déclaration des Bénéficiaires Effectifs (RBE)",
+      "category": "corporate",
+      "stage": "company_creation",
+      "priority": "critical",
+      "description": "Déclaration légale identifiant toute personne physique exerçant un contrôle direct ou indirect sur la société (détention de plus de 25% du capital ou des droits de vote) dans le cadre des obligations de lutte contre le blanchiment et le terrorisme.",
+      "whyItApplies": "Obligation légale pour toutes les sociétés commerciales enregistrées en France.",
+      "conditions": {
+        "always": true
+      },
+      "officialSource": {
+        "authority": "INPI / Greffe du Tribunal de Commerce",
+        "title": "Déclaration des bénéficiaires effectifs",
+        "url": "https://entreprendre.service-public.fr/vosdroits/F36284",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-06-01",
+        "articleReference": "Code monétaire et financier, Articles L561-46 et R561-55",
+        "notes": "Déposé en même temps que la formalité d'immatriculation."
+      },
+      "requiresEvidence": false,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Récépissé de déclaration des bénéficiaires effectifs"
+    },
+    {
+      "id": "FR-IP-001",
+      "title": "Dépôt de marque et cession des droits de propriété intellectuelle",
+      "category": "intellectual_property",
+      "stage": "before_launch",
+      "priority": "recommended",
+      "description": "Vérification de la disponibilité du nom commercial auprès de l'INPI, dépôt de la marque dans les classes pertinentes et signature d'un accord formel de cession des droits de PI (code, designs, brevets) entre fondateurs/prestataires et la personne morale.",
+      "whyItApplies": "Votre projet commercialise une solution avec une identité commerciale distinctive ou des actifs logiciels nécessitant une protection formelle.",
+      "conditions": {
+        "hasWebsite": true
+      },
+      "officialSource": {
+        "authority": "INPI (Institut National de la Propriété Industrielle)",
+        "title": "Déposer une marque en France",
+        "url": "https://www.inpi.fr/deposer-une-marque",
+        "sourceType": "regulatory_agency",
+        "lastVerified": "2026-05-15",
+        "articleReference": "Code de la propriété intellectuelle, Article L711-1",
+        "notes": "Vérifier préalablement la base de marques INPI pour éviter les conflits."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Certificat de dépôt de marque INPI ou contrat de cession de droits"
+    },
+    {
+      "id": "FR-PRIV-001",
+      "title": "Politique de confidentialité conforme RGPD & Information des personnes",
+      "category": "privacy",
+      "stage": "before_launch",
+      "priority": "critical",
+      "description": "Rédaction et publication d'une politique de confidentialité détaillée explicitant les finalités des traitements de données, les bases légales, les destinataires, les durées de conservation et les modalités d'exercice des droits (accès, rectification, effacement).",
+      "whyItApplies": "Votre service collecte ou traite des données personnelles d'utilisateurs résidant dans l'Union Européenne.",
+      "conditions": {
+        "collectsPersonalData": true
+      },
+      "officialSource": {
+        "authority": "CNIL",
+        "title": "RGPD : par où commencer ?",
+        "url": "https://www.cnil.fr/fr/rgpd-par-ou-commencer",
+        "sourceType": "regulatory_agency",
+        "lastVerified": "2026-06-01",
+        "articleReference": "Règlement Général sur la Protection des Données (RGPD), Articles 12, 13 et 14",
+        "notes": "Doit être accessible facilement sur toutes les interfaces de collecte."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "gdpr_policy",
+      "evidenceLabel": "Politique de confidentialité publiée ou documentée"
+    },
+    {
+      "id": "FR-PRIV-002",
+      "title": "Recueil du consentement aux cookies et traceurs d'analyse",
+      "category": "privacy",
+      "stage": "before_launch",
+      "priority": "critical",
+      "description": "Mise en place d'un bandeau ou module de consentement (CMP) conforme aux exigences de la CNIL permettant aux internautes d'accepter ou de refuser les cookies et traceurs non strictement nécessaires avec la même facilité.",
+      "whyItApplies": "Votre plateforme déploie des cookies d'analyse, d'audience ou de mesure d'usage nécessitant le consentement libre et préalable de l'internaute.",
+      "conditions": {
+        "usesAnalyticsOrTracking": true
+      },
+      "officialSource": {
+        "authority": "CNIL",
+        "title": "Cookies et autres traceurs : les règles applicables",
+        "url": "https://www.cnil.fr/fr/cookies-et-autres-traceurs/regles/cookies-solutions-pour-les-outils-de-mesure-daudience",
+        "sourceType": "regulatory_agency",
+        "lastVerified": "2026-06-01",
+        "articleReference": "Loi Informatique et Libertés, Article 82 et Lignes directrices CNIL (Délibération 2020-091)",
+        "notes": "Le refus doit être aussi simple que l'acceptation ('Tout refuser' obligatoire)."
+      },
+      "requiresEvidence": false,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Capture ou configuration du bandeau de consentement aux cookies"
+    },
+    {
+      "id": "FR-PRIV-003",
+      "title": "Tenue du Registre des activités de traitement (Article 30 RGPD)",
+      "category": "privacy",
+      "stage": "ongoing",
+      "priority": "recommended",
+      "description": "Création et mise à jour régulière du registre interne consignant chaque catégorie d'activités de traitement de données personnelles (gestion des clients, facturation, support, ressources humaines).",
+      "whyItApplies": "Obligation légale pour documenter la conformité continue des traitements de données nominatives.",
+      "conditions": {
+        "collectsPersonalData": true
+      },
+      "officialSource": {
+        "authority": "CNIL",
+        "title": "Le registre des activités de traitement",
+        "url": "https://www.cnil.fr/fr/modele-de-registre-des-traitements",
+        "sourceType": "regulatory_agency",
+        "lastVerified": "2026-05-15",
+        "articleReference": "Règlement Général sur la Protection des Données (RGPD), Article 30",
+        "notes": "La CNIL propose un modèle officiel téléchargeable."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Registre des activités de traitement renseigné"
+    },
+    {
+      "id": "FR-WEB-001",
+      "title": "Mentions légales obligatoires du service en ligne (LCEN)",
+      "category": "consumer_protection",
+      "stage": "before_launch",
+      "priority": "critical",
+      "description": "Publication obligatoire sur le site internet ou l'application mobile des mentions légales complètes : raison sociale, forme juridique, montant du capital, adresse du siège, numéro RCS et TVA intracommunautaire, nom du directeur de la publication et coordonnées de l'hébergeur.",
+      "whyItApplies": "Tout service de communication au public en ligne établi en France est légalement tenu de publier ses mentions légales.",
+      "conditions": {
+        "hasWebsite": true
+      },
+      "officialSource": {
+        "authority": "DGCCRF / Legifrance",
+        "title": "Mentions obligatoires sur un site internet professionnel",
+        "url": "https://entreprendre.service-public.fr/vosdroits/F31228",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-06-01",
+        "articleReference": "Loi n° 2004-575 pour la confiance dans l'économie numérique (LCEN), Article 6",
+        "notes": "Les sanctions pénales en cas de défaut de mentions légales peuvent atteindre 75 000 €."
+      },
+      "requiresEvidence": false,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Lien vers la page des mentions légales publiques"
+    },
+    {
+      "id": "FR-CONS-001",
+      "title": "Conditions Générales de Vente (CGV) B2C & Droit de rétractation de 14 jours",
+      "category": "consumer_protection",
+      "stage": "before_sale",
+      "priority": "critical",
+      "description": "Rédaction et acceptation préalable des CGV B2C précisant le prix TTC, les modalités d'exécution du service ou de livraison, les garanties légales de conformité et l'information précontractuelle sur le droit de rétractation de 14 jours avec formulaire type.",
+      "whyItApplies": "Votre modèle prévoit la vente de produits ou services en direct à des consommateurs particuliers résidant en France.",
+      "conditions": {
+        "isB2C": true
+      },
+      "officialSource": {
+        "authority": "DGCCRF / Service-Public.fr",
+        "title": "Vente à distance : règles applicables aux contrats conclus avec des consommateurs",
+        "url": "https://www.service-public.fr/professionnels-entreprises/vosdroits/F31228",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-05-15",
+        "articleReference": "Code de la consommation, Articles L221-18 et suivants",
+        "notes": "Pour les contenus numériques sans support matériel, le renoncement exprès au droit de rétractation doit être recueilli si l'exécution commence immédiatement."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Conditions Générales de Vente B2C publiées"
+    },
+    {
+      "id": "FR-CONS-002",
+      "title": "Conditions Générales de Vente (CGV) B2B & Délais de paiement légaux",
+      "category": "commercial_contracts",
+      "stage": "before_sale",
+      "priority": "recommended",
+      "description": "Élaboration des CGV applicables aux relations commerciales entre professionnels, précisant les conditions de règlement, les taux de pénalités de retard applicables de plein droit et l'indemnité forfaitaire de recouvrement obligatoire de 40 €.",
+      "whyItApplies": "Votre offre commerciale s'adresse à des entreprises, indépendants ou personnes morales de droit professionnel.",
+      "conditions": {
+        "isB2B": true
+      },
+      "officialSource": {
+        "authority": "DGCCRF",
+        "title": "Conditions Générales de Vente entre professionnels",
+        "url": "https://entreprendre.service-public.fr/vosdroits/F23211",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-05-10",
+        "articleReference": "Code de commerce, Articles L441-1 et L441-10",
+        "notes": "Les CGV B2B doivent être obligatoirement communiquées à tout acheteur professionnel qui en fait la demande."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Conditions Générales de Vente B2B formalisées"
+    },
+    {
+      "id": "FR-CONS-003",
+      "title": "Bouton de résiliation en '3 clics' pour contrats avec abonnement",
+      "category": "consumer_protection",
+      "stage": "before_sale",
+      "priority": "critical",
+      "description": "Intégration d'une fonctionnalité directe, facilement accessible et sans frais permettant aux consommateurs de notifier en ligne la résiliation de leur abonnement en respectant un parcours simplifié ne dépassant pas trois étapes.",
+      "whyItApplies": "Vous commercialisez des abonnements récurrents en ligne auprès de consommateurs particuliers.",
+      "conditions": {
+        "hasSubscription": true,
+        "isB2C": true
+      },
+      "officialSource": {
+        "authority": "DGCCRF",
+        "title": "Résiliation des contrats conclus par voie électronique (Résiliation en 3 clics)",
+        "url": "https://www.economie.gouv.fr/dgccrf/la-resiliation-en-trois-clics",
+        "sourceType": "regulatory_agency",
+        "lastVerified": "2026-06-01",
+        "articleReference": "Code de la consommation, Article L215-1-1 (Décret n° 2023-417)",
+        "notes": "Obligation entrée en vigueur le 1er juin 2023."
+      },
+      "requiresEvidence": false,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Vérification fonctionnelle du parcours de désabonnement en ligne"
+    },
+    {
+      "id": "FR-PAY-001",
+      "title": "Conformité de la passerelle de paiement en ligne (DSP2 / PCI-DSS SAQ-A)",
+      "category": "payments",
+      "stage": "before_sale",
+      "priority": "critical",
+      "description": "Sélection d'un prestataire de services de paiement (PSP) agréé par l'ACPR, assurant l'authentification forte du client (3DS2) et déchargeant l'entreprise du stockage direct de données bancaires sensibles (champ PCI-DSS SAQ-A).",
+      "whyItApplies": "Votre plateforme encaisse directement des paiements électroniques par carte bancaire ou prélèvement SEPA.",
+      "conditions": {
+        "hasOnlinePayments": true
+      },
+      "officialSource": {
+        "authority": "Banque de France / ACPR",
+        "title": "Sécurité des paiements en ligne et directive DSP2",
+        "url": "https://acpr.banque-france.fr/autorisations/paiement-et-monnaie-electronique",
+        "sourceType": "regulatory_agency",
+        "lastVerified": "2026-05-01",
+        "articleReference": "Code monétaire et financier, Article L133-44 (Directive DSP2)",
+        "notes": "Les PSP majeurs comme Stripe ou Adyen fournissent l'attestation de conformité PCI-DSS SAQ-A."
+      },
+      "requiresEvidence": false,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Attestation de conformité du prestataire de paiement ou certificat d'intégration"
+    },
+    {
+      "id": "FR-MKT-001",
+      "title": "Obligations de transparence et loyauté des plateformes de mise en relation",
+      "category": "marketplace",
+      "stage": "before_sale",
+      "priority": "critical",
+      "description": "Rédaction des Conditions Générales d'Utilisation (CGU) détaillant explicitement les modalités de référencement, de déréférencement, de classement des offres, ainsi que la qualité des offreurs (professionnels ou particuliers) et l'existence d'un lien capitalistique éventuel.",
+      "whyItApplies": "Votre modèle économique est une place de marché mettant en relation des offreurs et des demandeurs de biens ou services.",
+      "conditions": {
+        "isMarketplace": true
+      },
+      "officialSource": {
+        "authority": "DGCCRF",
+        "title": "Fiche pratique : Plateformes en ligne et obligations de transparence",
+        "url": "https://www.economie.gouv.fr/dgccrf/Publications/Vie-pratique/Fiches-pratiques/plateformes-en-ligne",
+        "sourceType": "regulatory_agency",
+        "lastVerified": "2026-05-15",
+        "articleReference": "Code de la consommation, Article L111-7 et Décret n° 2017-1434",
+        "notes": "Obligation de transparence renforcée pour les intermédiaires de mise en relation."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Conditions Générales d'Utilisation (CGU) Marketplace publiées"
+    },
+    {
+      "id": "FR-INS-001",
+      "title": "Souscription d'une Assurance Responsabilité Civile Professionnelle (RC Pro)",
+      "category": "insurance",
+      "stage": "before_sale",
+      "priority": "recommended",
+      "description": "Souscription d'une police d'assurance responsabilité civile professionnelle adaptée à l'activité afin de couvrir les dommages corporels, matériels, et immatériels consécutifs ou non pouvant être causés aux clients ou partenaires.",
+      "whyItApplies": "Recommandée pour toute entreprise commerciale afin de prémunir le bilan des risques d'exploitation et de responsabilité contractuelle.",
+      "conditions": {
+        "always": true
+      },
+      "officialSource": {
+        "authority": "Service-Public.fr",
+        "title": "Assurance responsabilité civile professionnelle",
+        "url": "https://entreprendre.service-public.fr/vosdroits/F23668",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-05-10",
+        "articleReference": "Code des assurances, Article L111-1",
+        "notes": "Indispensable pour de nombreux contrats commerciaux et appels d'offres."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Attestation d'assurance Responsabilité Civile Professionnelle en cours de validité"
+    },
+    {
+      "id": "FR-SOC-001",
+      "title": "Affiliation sociale des dirigeants et déclarations URSSAF",
+      "category": "social",
+      "stage": "ongoing",
+      "priority": "critical",
+      "description": "Rattachement au régime social adéquat (Régime général de la Sécurité sociale pour les dirigeants assimilés salariés de SAS/SASU, ou Sécurité Sociale des Indépendants pour les gérants majoritaires de SARL) et déclarations sociales périodiques (DSN).",
+      "whyItApplies": "Obligation légale pour toute société en activité rémunérant ou déclarant ses mandataires et éventuels salariés.",
+      "conditions": {
+        "always": true
+      },
+      "officialSource": {
+        "authority": "URSSAF",
+        "title": "Créateur d'entreprise : déclarations et cotisations sociales",
+        "url": "https://www.urssaf.fr/portail/home/createur-dentreprise.html",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-06-01",
+        "articleReference": "Code de la sécurité sociale, Articles L311-3 et L611-1",
+        "notes": "Les démarches initiales sont automatiquement transmises via le Guichet Unique."
+      },
+      "requiresEvidence": false,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Attestation de vigilance ou d'affiliation URSSAF"
+    },
+    {
+      "id": "FR-REG-001",
+      "title": "Vérification des conditions d'accès et qualifications professionnelles réglementées",
+      "category": "regulated",
+      "stage": "before_creation",
+      "priority": "critical",
+      "description": "Contrôle des autorisations d'exercer, diplômes d'État, agréments administratifs ou enregistrements auprès d'un ordre professionnel préalablement à l'immatriculation si l'activité projetée est réglementée en droit français.",
+      "whyItApplies": "Votre secteur d'activité présente des caractéristiques potentielles de profession réglementée nécessitant une confirmation.",
+      "conditions": {
+        "mayBeRegulatedActivity": true
+      },
+      "officialSource": {
+        "authority": "Guichet Entreprises / Ministères de tutelle",
+        "title": "Activités réglementées en France",
+        "url": "https://entreprendre.service-public.fr/vosdroits/F33814",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-05-01",
+        "articleReference": "Code de commerce, Article L123-11-1",
+        "notes": "En cas d'activité réglementée, le greffe rejette l'immatriculation si le justificatif n'est pas fourni."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Diplôme d'État, carte professionnelle ou autorisation administrative d'exercer"
+    }
+  ]
+}

@@ -1,0 +1,231 @@
+{
+  "system": "Mondial Business Creation (MBC)",
+  "root": {
+    "id": "sys:mbc",
+    "name": "MBC Monorepo",
+    "kind": "system",
+    "children": [
+      {
+        "id": "dom:creator",
+        "name": "Creator & Project Intelligence",
+        "kind": "domain",
+        "children": [
+          { "id": "mod:creator_ui", "name": "Creator Flow UI (src/app/creator)", "kind": "screen", "language": "typescript", "loc": 4500 },
+          { "id": "mod:creator_ideas_ctrl", "name": "CreatorIdeasController.cs", "kind": "module", "language": "csharp", "loc": 1820 },
+          { "id": "mod:business_plan_ctrl", "name": "BusinessPlanController.cs", "kind": "module", "language": "csharp", "loc": 980 },
+          { "id": "mod:phase3_ctrl", "name": "Phase3Controllers (Market/Model/Forecast)", "kind": "module", "language": "csharp", "loc": 2840 },
+          { "id": "mod:ai_handlers", "name": "AI Handlers (BusinessPlan, Clarifier, MarketStudy)", "kind": "job", "language": "csharp", "loc": 3450 },
+          { "id": "mod:hangfire_runner", "name": "Hangfire Job Runner & Queue", "kind": "job", "language": "csharp", "loc": 1200 },
+          { "id": "mod:openrouter_client", "name": "OpenRouter LLM Client", "kind": "module", "language": "csharp", "loc": 850 }
+        ]
+      },
+      {
+        "id": "dom:entrepreneur",
+        "name": "Entrepreneur & Company",
+        "kind": "domain",
+        "children": [
+          { "id": "mod:entrepreneur_ui", "name": "Entrepreneur UI (src/app/entrepreneur)", "kind": "screen", "language": "typescript", "loc": 5200 },
+          { "id": "mod:companies_ctrl", "name": "CompaniesController.cs", "kind": "module", "language": "csharp", "loc": 1450 },
+          { "id": "mod:company_service", "name": "CompanyService.cs (God Service)", "kind": "module", "language": "csharp", "loc": 5952 },
+          { "id": "mod:dataroom_ctrl", "name": "DataRoomController.cs", "kind": "module", "language": "csharp", "loc": 890 },
+          { "id": "mod:captable_service", "name": "CapTable Math & Dilution Engine", "kind": "module", "language": "csharp", "loc": 1120 }
+        ]
+      },
+      {
+        "id": "dom:deals",
+        "name": "Deals & Investment Formation",
+        "kind": "domain",
+        "children": [
+          { "id": "mod:deals_ui", "name": "Deals UI (src/app/deals)", "kind": "screen", "language": "typescript", "loc": 3800 },
+          { "id": "mod:deals_ctrl", "name": "DealsController.cs (Fat Controller)", "kind": "module", "language": "csharp", "loc": 8376 },
+          { "id": "mod:escrow_service", "name": "Escrow & Transaction Engine", "kind": "module", "language": "csharp", "loc": 1250 },
+          { "id": "mod:legal_signing", "name": "Document & Signature Engine", "kind": "module", "language": "csharp", "loc": 980 }
+        ]
+      },
+      {
+        "id": "dom:investor",
+        "name": "Investor & Diligence",
+        "kind": "domain",
+        "children": [
+          { "id": "mod:investor_ui", "name": "Investor UI (src/app/investor)", "kind": "screen", "language": "typescript", "loc": 4100 },
+          { "id": "mod:investors_ctrl", "name": "InvestorsController.cs", "kind": "module", "language": "csharp", "loc": 1100 },
+          { "id": "mod:investor_matches_ctrl", "name": "InvestorMatchesController.cs", "kind": "module", "language": "csharp", "loc": 920 },
+          { "id": "mod:diligence_service", "name": "DiligenceService.cs", "kind": "module", "language": "csharp", "loc": 1340 },
+          { "id": "mod:portfolio_service", "name": "PortfolioService.cs", "kind": "module", "language": "csharp", "loc": 880 }
+        ]
+      },
+      {
+        "id": "dom:service_provider",
+        "name": "Service Provider & Workroom",
+        "kind": "domain",
+        "children": [
+          { "id": "mod:provider_ui", "name": "Service Provider UI (src/app/services)", "kind": "screen", "language": "typescript", "loc": 4600 },
+          { "id": "mod:prof_profiles_ctrl", "name": "ProfessionalProfilesController.cs", "kind": "module", "language": "csharp", "loc": 1280 },
+          { "id": "mod:service_listings_ctrl", "name": "ServiceListingsController.cs", "kind": "module", "language": "csharp", "loc": 1150 },
+          { "id": "mod:client_briefs_ctrl", "name": "ClientBriefsController.cs", "kind": "module", "language": "csharp", "loc": 940 },
+          { "id": "mod:workroom_ctrl", "name": "WorkroomEngagementsController.cs", "kind": "module", "language": "csharp", "loc": 1620 },
+          { "id": "mod:contracts_invoices_ctrl", "name": "Contracts & Invoices Controllers", "kind": "module", "language": "csharp", "loc": 2100 }
+        ]
+      },
+      {
+        "id": "dom:marketplace",
+        "name": "Marketplace Aggregation",
+        "kind": "domain",
+        "children": [
+          { "id": "mod:marketplace_ui", "name": "Marketplace UI (src/app/marketplace)", "kind": "screen", "language": "typescript", "loc": 3200 },
+          { "id": "mod:marketplace_projects_ctrl", "name": "MarketplaceProjectsController.cs (Direct DB Bypass)", "kind": "module", "language": "csharp", "loc": 2021 },
+          { "id": "mod:marketplace_filter_engine", "name": "Marketplace In-Memory Filter Engine", "kind": "module", "language": "csharp", "loc": 650 }
+        ]
+      },
+      {
+        "id": "dom:messenger",
+        "name": "Messenger & Realtime Comms",
+        "kind": "domain",
+        "children": [
+          { "id": "mod:messenger_ui", "name": "Messenger UI (src/components/chat)", "kind": "screen", "language": "typescript", "loc": 2900 },
+          { "id": "mod:chat_ctrl", "name": "ChatController.cs", "kind": "module", "language": "csharp", "loc": 1380 },
+          { "id": "mod:chat_hub", "name": "ChatHub.cs (SignalR)", "kind": "module", "language": "csharp", "loc": 720 },
+          { "id": "mod:redis_backplane", "name": "Redis Pub/Sub Backplane", "kind": "job", "language": "csharp", "loc": 410 },
+          { "id": "mod:response_rate_service", "name": "ResponseRateService.cs", "kind": "module", "language": "csharp", "loc": 530 }
+        ]
+      },
+      {
+        "id": "dom:verification",
+        "name": "Verification & Compliance (Dual KYC)",
+        "kind": "domain",
+        "children": [
+          { "id": "mod:kyc_ui", "name": "KYC Views (Sumsub WebSDK & Legacy)", "kind": "screen", "language": "typescript", "loc": 1800 },
+          { "id": "mod:identity_ctrl", "name": "IdentityController.cs (Sumsub Modern)", "kind": "module", "language": "csharp", "loc": 980 },
+          { "id": "mod:identity_service", "name": "IdentityVerificationService.cs", "kind": "module", "language": "csharp", "loc": 1140 },
+          { "id": "mod:varification_ctrl", "name": "VarificationController.cs (Disk Legacy)", "kind": "module", "language": "csharp", "loc": 850 },
+          { "id": "mod:kyc_storage_service", "name": "KycStorageService.cs (Local FS)", "kind": "module", "language": "csharp", "loc": 420 }
+        ]
+      },
+      {
+        "id": "dom:datastores",
+        "name": "MongoDB Data Layer",
+        "kind": "domain",
+        "children": [
+          { "id": "store:creator_ideas", "name": "CreatorIdeas Collection", "kind": "datastore", "language": "sql", "loc": 0 },
+          { "id": "store:ai_sessions", "name": "AI Sessions Collections (BusinessPlan, Clarifier)", "kind": "datastore", "language": "sql", "loc": 0 },
+          { "id": "store:companies", "name": "Companies & CapTables", "kind": "datastore", "language": "sql", "loc": 0 },
+          { "id": "store:deals", "name": "Deals & DealExecutions", "kind": "datastore", "language": "sql", "loc": 0 },
+          { "id": "store:investments", "name": "Investments & Holdings", "kind": "datastore", "language": "sql", "loc": 0 },
+          { "id": "store:services", "name": "ServiceListings & Profiles", "kind": "datastore", "language": "sql", "loc": 0 },
+          { "id": "store:workroom", "name": "Workrooms, Contracts, Invoices", "kind": "datastore", "language": "sql", "loc": 0 },
+          { "id": "store:chat", "name": "Conversations & ChatMessages", "kind": "datastore", "language": "sql", "loc": 0 },
+          { "id": "store:verifications", "name": "UniversalIdentityVerifications", "kind": "datastore", "language": "sql", "loc": 0 },
+          { "id": "store:local_fs", "name": "Local Disk: uploads/kyc", "kind": "datastore", "language": "sql", "loc": 0 }
+        ]
+      }
+    ]
+  },
+  "edges": [
+    { "source": "mod:creator_ui", "target": "mod:creator_ideas_ctrl", "kind": "call" },
+    { "source": "mod:creator_ui", "target": "mod:business_plan_ctrl", "kind": "call" },
+    { "source": "mod:creator_ideas_ctrl", "target": "store:creator_ideas", "kind": "write" },
+    { "source": "mod:business_plan_ctrl", "target": "store:creator_ideas", "kind": "read" },
+    { "source": "mod:business_plan_ctrl", "target": "mod:hangfire_runner", "kind": "dispatch" },
+    { "source": "mod:hangfire_runner", "target": "mod:ai_handlers", "kind": "dispatch" },
+    { "source": "mod:ai_handlers", "target": "store:creator_ideas", "kind": "read" },
+    { "source": "mod:ai_handlers", "target": "mod:openrouter_client", "kind": "call" },
+    { "source": "mod:ai_handlers", "target": "store:ai_sessions", "kind": "write" },
+    { "source": "mod:entrepreneur_ui", "target": "mod:companies_ctrl", "kind": "call" },
+    { "source": "mod:companies_ctrl", "target": "mod:company_service", "kind": "call" },
+    { "source": "mod:company_service", "target": "store:companies", "kind": "write" },
+    { "source": "mod:company_service", "target": "mod:captable_service", "kind": "call" },
+    { "source": "mod:deals_ui", "target": "mod:deals_ctrl", "kind": "call" },
+    { "source": "mod:deals_ctrl", "target": "store:deals", "kind": "write" },
+    { "source": "mod:deals_ctrl", "target": "store:companies", "kind": "write" },
+    { "source": "mod:deals_ctrl", "target": "store:investments", "kind": "write" },
+    { "source": "mod:investor_ui", "target": "mod:investors_ctrl", "kind": "call" },
+    { "source": "mod:investors_ctrl", "target": "mod:diligence_service", "kind": "call" },
+    { "source": "mod:diligence_service", "target": "store:companies", "kind": "read" },
+    { "source": "mod:investor_matches_ctrl", "target": "store:companies", "kind": "read" },
+    { "source": "mod:provider_ui", "target": "mod:prof_profiles_ctrl", "kind": "call" },
+    { "source": "mod:provider_ui", "target": "mod:service_listings_ctrl", "kind": "call" },
+    { "source": "mod:service_listings_ctrl", "target": "store:services", "kind": "write" },
+    { "source": "mod:workroom_ctrl", "target": "store:workroom", "kind": "write" },
+    { "source": "mod:marketplace_ui", "target": "mod:marketplace_projects_ctrl", "kind": "call" },
+    { "source": "mod:marketplace_projects_ctrl", "target": "store:companies", "kind": "read" },
+    { "source": "mod:marketplace_projects_ctrl", "target": "store:creator_ideas", "kind": "read" },
+    { "source": "mod:marketplace_projects_ctrl", "target": "store:investments", "kind": "read" },
+    { "source": "mod:messenger_ui", "target": "mod:chat_ctrl", "kind": "call" },
+    { "source": "mod:chat_ctrl", "target": "store:chat", "kind": "write" },
+    { "source": "mod:chat_ctrl", "target": "mod:chat_hub", "kind": "dispatch" },
+    { "source": "mod:chat_hub", "target": "mod:redis_backplane", "kind": "dispatch" },
+    { "source": "mod:chat_ctrl", "target": "mod:response_rate_service", "kind": "call" },
+    { "source": "mod:kyc_ui", "target": "mod:identity_ctrl", "kind": "call" },
+    { "source": "mod:identity_ctrl", "target": "mod:identity_service", "kind": "call" },
+    { "source": "mod:identity_service", "target": "store:verifications", "kind": "write" },
+    { "source": "mod:kyc_ui", "target": "mod:varification_ctrl", "kind": "call" },
+    { "source": "mod:varification_ctrl", "target": "mod:kyc_storage_service", "kind": "call" },
+    { "source": "mod:kyc_storage_service", "target": "store:local_fs", "kind": "write" }
+  ],
+  "entryPoints": [
+    "mod:creator_ui",
+    "mod:entrepreneur_ui",
+    "mod:deals_ui",
+    "mod:investor_ui",
+    "mod:provider_ui",
+    "mod:marketplace_ui",
+    "mod:messenger_ui",
+    "mod:kyc_ui"
+  ],
+  "deadEnds": [
+    "mod:kyc_storage_service"
+  ],
+  "observations": [
+    "CONFIRMED Business Plan Context Gap: BusinessPlanHandler receives only Canonical Idea Core and Clarifier Output, omitting TAM/SAM/SOM market study findings and Business Model Canvas blocks despite BusinessPlanController requiring their completion.",
+    "Dual KYC Divergence: Modern IdentityController (Sumsub WebSDK) writes UniversalIdentityVerifications while legacy VarificationController writes raw files to local uploads/kyc disk storage.",
+    "Fat Controller Hotspot: DealsController.cs exceeds 8,370 lines containing 79 endpoints and directly mutating Deals, DealExecutions, Companies, and Investments.",
+    "God Service Hotspot: CompanyService.cs spans 5,952 lines across 121 public methods driving all 9 entrepreneur phases.",
+    "Marketplace Direct DB Bypass: MarketplaceProjectsController queries Companies, CreatorIdeas, and Investments directly without an intermediate domain service."
+  ],
+  "flows": [
+    {
+      "name": "Creator AI Business Plan Generation",
+      "persona": "Creator",
+      "description": "Creator initiates AI-driven business plan generation from canonical idea and previous session context",
+      "steps": [
+        { "label": "Creator Form UI", "nodes": ["mod:creator_ui"] },
+        { "label": "API Request Gate", "nodes": ["mod:business_plan_ctrl", "store:creator_ideas"] },
+        { "label": "Background Job Dispatch", "nodes": ["mod:hangfire_runner"] },
+        { "label": "AI Execution & LLM Prompt", "nodes": ["mod:ai_handlers", "mod:openrouter_client"] },
+        { "label": "Session & Stage Persistence", "nodes": ["store:ai_sessions", "store:creator_ideas"] }
+      ]
+    },
+    {
+      "name": "Deal Term Sheet & Equity Execution",
+      "persona": "Entrepreneur / Investor",
+      "description": "Investor and founder negotiate deal terms, simulate dilution, and close transaction",
+      "steps": [
+        { "label": "Deals UI Proposal", "nodes": ["mod:deals_ui"] },
+        { "label": "Fat Controller Negotiation API", "nodes": ["mod:deals_ctrl"] },
+        { "label": "Cap Table Dilution Math", "nodes": ["mod:captable_service", "store:companies"] },
+        { "label": "Escrow Verification & Closing", "nodes": ["mod:escrow_service", "store:deals", "store:investments"] }
+      ]
+    },
+    {
+      "name": "Service Provider Workroom Engagement",
+      "persona": "Service Provider",
+      "description": "Provider publishes service listing, accepts client brief, and executes milestone contract",
+      "steps": [
+        { "label": "Catalog Publishing UI", "nodes": ["mod:provider_ui", "mod:service_listings_ctrl"] },
+        { "label": "Proposal & Client Brief Match", "nodes": ["mod:client_briefs_ctrl"] },
+        { "label": "Workroom Milestone Execution", "nodes": ["mod:workroom_ctrl", "store:workroom"] },
+        { "label": "Contract & Invoice Payout", "nodes": ["mod:contracts_invoices_ctrl"] }
+      ]
+    },
+    {
+      "name": "Marketplace Cross-Persona Aggregation",
+      "persona": "Cross-Persona",
+      "description": "Public and accredited users explore projects, services, and companies with direct MongoDB projection",
+      "steps": [
+        { "label": "Marketplace Explorer UI", "nodes": ["mod:marketplace_ui"] },
+        { "label": "Direct Database Controller Bypass", "nodes": ["mod:marketplace_projects_ctrl"] },
+        { "label": "Multi-Collection Projection", "nodes": ["store:companies", "store:creator_ideas", "store:investments"] }
+      ]
+    }
+  ]
+}

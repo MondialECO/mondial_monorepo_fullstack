@@ -32,6 +32,7 @@ import { toAiError, type AiError } from '@/lib/ai-errors';
 import MarketStudyPrintView from '@/components/creator/MarketStudyPrintView';
 import { brandKitApi } from '@/lib/api-creator-brand-kit';
 import { resolveMediaUrl } from '@/lib/brand-kit-media';
+import { withIdeaContext } from '@/lib/creator-routes';
 
 function formatCurrency(amount?: number, currency = 'USD'): string {
   if (amount === undefined || amount === null || Number.isNaN(amount)) return '—';
@@ -198,8 +199,9 @@ export default function MarketStudyPage() {
 
   const handleNext = () => {
     completeStep(3, 1);
-    router.push('/dashboard/creator/phase-3/business-model');
+    router.push(withIdeaContext('/dashboard/creator/phase-3/business-model', businessIdeaId));
   };
+
 
   const isGenerating = session.phase === 'polling' || startMutation.isPending || regenerateMutation.isPending;
 
@@ -281,7 +283,7 @@ export default function MarketStudyPage() {
         ) : undefined
       }
     >
-      <div className="w-full space-y-8 pb-12 font-sans">
+      <div className="w-full min-w-0 max-w-full space-y-8 pb-12 font-sans">
         {/* Error Banners */}
         {startError && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 flex items-start gap-3">
@@ -456,10 +458,10 @@ export default function MarketStudyPage() {
 
                 {/* Step Reduction Note 1 */}
                 <div className="flex justify-end pr-4 sm:pr-12">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/30 text-badge font-mono text-muted-foreground shadow-none">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/30 text-badge font-mono text-muted-foreground shadow-none max-w-full flex-wrap">
                     <ArrowDown className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="font-semibold text-foreground">−{samReductionPct}%</span>
-                    <span className="font-sans">· {sam?.derivation ? sam.derivation.split('.')[0] : 'EU-27 only, SMB segment filtering'}</span>
+                    <span className="font-semibold text-foreground shrink-0">−{samReductionPct}%</span>
+                    <span className="font-sans truncate min-w-0">· {sam?.derivation ? sam.derivation.split('.')[0] : 'EU-27 only, SMB segment filtering'}</span>
                   </div>
                 </div>
 
@@ -491,11 +493,11 @@ export default function MarketStudyPage() {
                 </div>
 
                 {/* Step Reduction Note 2 */}
-                <div className="flex justify-start pl-4 sm:pl-24">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/30 text-badge font-mono text-muted-foreground shadow-none">
+                <div className="flex justify-start pl-4 sm:pl-24 max-w-full min-w-0">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/80 bg-muted/30 text-badge font-mono text-muted-foreground shadow-none max-w-full flex-wrap">
                     <ArrowDown className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="font-semibold text-foreground">−{somReductionPct}%</span>
-                    <span className="font-sans">· {som?.derivation ? som.derivation.split('.')[0] : 'Self-serve GTM capture cap, 3-yr horizon'}</span>
+                    <span className="font-semibold text-foreground shrink-0">−{somReductionPct}%</span>
+                    <span className="font-sans truncate min-w-0">· {som?.derivation ? som.derivation.split('.')[0] : 'Self-serve GTM capture cap, 3-yr horizon'}</span>
                   </div>
                 </div>
 
@@ -591,8 +593,8 @@ export default function MarketStudyPage() {
 
             {/* 02 // COMPETITIVE LANDSCAPE & SHARE ANALYSIS */}
             {output.competitorLandscape && (
-              <Card className="rounded-xl border border-border/80 bg-card shadow-none overflow-hidden">
-                <div className="px-6 pt-6 pb-4 border-b border-border/60 flex items-center justify-between">
+              <Card className="rounded-xl border border-border/80 bg-card shadow-none overflow-hidden min-w-0">
+                <div className="px-4 sm:px-6 pt-6 pb-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-5 rounded-[4px] bg-muted flex items-center justify-center text-badge font-mono font-semibold text-foreground">
                       02
@@ -854,7 +856,7 @@ export default function MarketStudyPage() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/70 pt-6 mt-12">
               <Button
                 variant="ghost"
-                onClick={() => router.push('/dashboard/creator/phase-2/complete')}
+                onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-2/complete', businessIdeaId))}
                 className="text-body font-medium text-muted-foreground hover:text-foreground rounded-lg p-0 h-auto hover:bg-transparent font-sans"
               >
                 ← Market study inputs

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   TrendingUp,
   ArrowLeft,
@@ -44,14 +44,17 @@ import {
 import {
   useForecastSessionTimed,
   useBusinessPlanSessionTimed,
+  useMarketStudySessionTimed,
   useAiCredits,
   useStartForecast,
 } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
+import { creatorAiApi } from '@/lib/api-creator-ai';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 import { formatMoney } from '@/lib/format-money';
-import { hasAiOutput, type ForecastOutput, type BusinessPlanOutput } from '@/types/creator/ai';
+import { hasAiOutput, type ForecastOutput, type BusinessPlanOutput, type MarketStudyOutput } from '@/types/creator/ai';
+import { withIdeaContext } from '@/lib/creator-routes';
 
 const fmt = (n?: number | null, currency = 'EUR') => formatMoney(n, currency);
 
@@ -95,11 +98,14 @@ const likelihoodVariant = (v?: string) => {
 
 export default function ForecastPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const ideaId = searchParams.get('ideaId');
   const { completeStep } = useCreatorProgress();
 
   const [loadingJourney, setLoadingJourney] = useState(true);
   const [forecastSessionId, setForecastSessionId] = useState<string | null>(null);
   const [businessPlanSessionId, setBusinessPlanSessionId] = useState<string | null>(null);
+  const [marketStudySessionId, setMarketStudySessionId] = useState<string | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [showAssumptionsEditor, setShowAssumptionsEditor] = useState(false);
   const [activeTab, setActiveTab] = useState<'charts' | 'table' | 'model'>('charts');
@@ -126,6 +132,11 @@ export default function ForecastPage() {
   const planSession = useBusinessPlanSessionTimed(businessPlanSessionId);
   const planOutput = (planSession.data as { output?: BusinessPlanOutput } | undefined)?.output ?? null;
 
+  const marketStudySession = useMarketStudySessionTimed(marketStudySessionId);
+  const marketStudyOutput = (marketStudySession.data as { output?: MarketStudyOutput } | undefined)?.output ?? null;
+  const marketStudyTam = marketStudyOutput?.marketSizing?.tam?.value ?? null;
+  const marketStudyTamSource = marketStudyOutput?.marketSizing?.tam?.sourceAttribution ?? null;
+
   const sessionInputs = (session.data as {
     inputs?: { arpu?: number | null; opex?: number | null; monthlyGrowthPct?: number | null; tam?: number | null; monthlyChurnPct?: number | null } | null;
   } | undefined)?.inputs ?? null;
@@ -138,12 +149,14 @@ export default function ForecastPage() {
         const p3 = journey.phase3Data as {
           forecastSessionId?: string;
           businessPlanSessionId?: string;
+          marketStudySessionId?: string;
           formationGenerator?: { youNeed?: { label: string }[] };
         };
         const p5 = journey.phase5Data as { pathB?: { seedFunding?: { totalAsk?: number } } };
         if (!active) return;
         setForecastSessionId(p3?.forecastSessionId ?? null);
         setBusinessPlanSessionId(p3?.businessPlanSessionId ?? null);
+        setMarketStudySessionId(p3?.marketStudySessionId ?? null);
         setProject({
           name: journey.project?.name ?? '',
           problem: journey.project?.problem ?? '',
@@ -165,16 +178,29 @@ export default function ForecastPage() {
 
   const seededRef = useRef(false);
   useEffect(() => {
-    if (seededRef.current || !sessionInputs) return;
-    seededRef.current = true;
-    setInputs((prev) => ({
-      arpu: sessionInputs.arpu ?? prev.arpu,
-      opex: sessionInputs.opex ?? prev.opex,
-      growth: sessionInputs.monthlyGrowthPct ?? prev.growth,
-      tam: sessionInputs.tam ?? prev.tam,
-      churn: sessionInputs.monthlyChurnPct ?? prev.churn,
-    }));
-  }, [sessionInputs]);
+    // Provenance guarantee: If a saved Forecast session exists, do NOT overwrite its saved TAM.
+    if (sessionInputs) {
+      if (!seededRef.current) {
+        seededRef.current = true;
+        setInputs((prev) => ({
+          arpu: sessionInputs.arpu ?? prev.arpu,
+          opex: sessionInputs.opex ?? prev.opex,
+          growth: sessionInputs.monthlyGrowthPct ?? prev.growth,
+          tam: sessionInputs.tam ?? (marketStudyTam ?? prev.tam),
+          churn: sessionInputs.monthlyChurnPct ?? prev.churn,
+        }));
+      }
+      return;
+    }
+
+    // Auto-seed TAM from Step 3.1 Market Study if no saved Forecast session yet
+    if (!seededRef.current && marketStudyTam != null && marketStudyTam > 0) {
+      setInputs((prev) => ({
+        ...prev,
+        tam: marketStudyTam,
+      }));
+    }
+  }, [sessionInputs, marketStudyTam]);
 
   const output = (session.data as { output?: ForecastOutput } | undefined)?.output;
   const completed =
@@ -203,13 +229,10 @@ export default function ForecastPage() {
 
   const handleGenerate = async () => {
     setStartError(null);
-    if (!businessPlanSessionId) {
-      setStartError({ kind: 'other', message: 'Generate your Business Plan first — the forecast builds on it.' });
-      return;
-    }
     try {
       const res = await startForecast.mutateAsync({
-        businessPlanSessionId,
+        businessPlanSessionId: businessPlanSessionId || undefined,
+        businessIdeaId: (ideaId as string) || undefined,
         arpu: inputs.arpu,
         opex: inputs.opex,
         monthlyGrowthPct: inputs.growth,
@@ -225,8 +248,8 @@ export default function ForecastPage() {
   };
 
   const handleNext = () => {
-    completeStep(3, 4);
-    router.push('/dashboard/creator/phase-3/compliance');
+    completeStep(3, 3);
+    router.push(withIdeaContext('/dashboard/creator/phase-3/compliance', ideaId));
   };
 
   return (
@@ -244,7 +267,7 @@ export default function ForecastPage() {
 
       <Phase3SetupShell
         fullWidth
-        stepEyebrow="Step 3.4"
+        stepEyebrow="Step 3.3"
         title="Financial Projections & Simulations"
         description="Unified 36-month financial model. Adjust key assumptions and re-simulate, or explore detailed projections and break-even trajectories."
       >
@@ -324,8 +347,32 @@ export default function ForecastPage() {
                   <span className="text-body font-normal text-muted-foreground block">Expected monthly customer/revenue attrition.</span>
                 </label>
 
-                <label className="text-xs font-semibold font-sans space-y-1.5 sm:col-span-2">
-                  <span className="text-foreground">Total Addressable Market — TAM (€)</span>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <span className="text-xs font-semibold font-sans text-foreground">Total Addressable Market — TAM (€)</span>
+                    {marketStudyTam != null && (
+                      <div className="flex items-center gap-2">
+                        {inputs.tam === marketStudyTam ? (
+                          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] py-0 px-1.5">
+                            Synced from Step 3.1 Market Study {marketStudyTamSource ? `(${marketStudyTamSource})` : ''}
+                          </Badge>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] py-0 px-1.5">
+                              Custom Scenario Override (Step 3.1: €{marketStudyTam.toLocaleString()})
+                            </Badge>
+                            <button
+                              type="button"
+                              onClick={() => setInputs((s) => ({ ...s, tam: marketStudyTam }))}
+                              className="text-primary hover:underline text-[10px] font-medium font-sans"
+                            >
+                              Reset to Step 3.1 TAM
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <input
                     type="number"
                     min={10000}
@@ -334,8 +381,8 @@ export default function ForecastPage() {
                     className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     placeholder="50000000"
                   />
-                  <span className="text-body font-normal text-muted-foreground block">Total annual market size for sizing ceilings.</span>
-                </label>
+                  <span className="text-body font-normal text-muted-foreground block">Total annual market size for sizing ceilings and investor benchmarks.</span>
+                </div>
               </div>
 
               {/* Live Assumption Warnings */}
@@ -365,12 +412,12 @@ export default function ForecastPage() {
               )}
 
               <div className="flex items-center justify-between gap-3 pt-4 border-t border-border">
-                <Button variant="ghost" onClick={() => router.push('/dashboard/creator/phase-3/business-plan')} className="text-xs font-medium font-sans">
-                  <ArrowLeft className="w-4 h-4 mr-1.5" /> Business Plan
+                <Button variant="ghost" onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/business-model', ideaId))} className="text-xs font-medium font-sans">
+                  <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Business Model
                 </Button>
                 <Button
                   onClick={handleGenerate}
-                  disabled={startForecast.isPending || !businessPlanSessionId || insufficientCredits || isCostLoading || isCostError}
+                  disabled={startForecast.isPending || insufficientCredits || isCostLoading || isCostError}
                   className="gap-2 font-sans font-semibold rounded-xl"
                 >
                   {startForecast.isPending ? (
@@ -945,10 +992,10 @@ export default function ForecastPage() {
             <div className="flex items-center justify-between gap-4 pt-6 border-t border-border">
               <Button
                 variant="ghost"
-                onClick={() => router.push('/dashboard/creator/phase-3/business-plan')}
+                onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/business-model', ideaId))}
                 className="text-xs font-medium font-sans text-muted-foreground hover:text-foreground"
               >
-                <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Business Plan
+                <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Business Model
               </Button>
               <Button onClick={handleNext} className="gap-2 font-sans font-semibold rounded-xl">
                 Proceed to Legal &amp; Compliance <ArrowRight className="h-4 w-4" />

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, type ComponentType } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { withIdeaContext } from '@/lib/creator-routes';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -23,6 +24,7 @@ import {
   ShieldCheck,
   TrendingUp,
   Users,
+  RotateCw,
 } from 'lucide-react';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
@@ -33,6 +35,7 @@ import {
   type InvestorReadinessScore,
   type ReadinessDeduction,
 } from '@/lib/api-creator-journey';
+import type { Phase3FreshnessOverview } from '@/types/creator/ai';
 import type { ComputedJourneyStatus } from '@/types/creator/journey-api';
 import { cn } from '@/lib/utils';
 
@@ -106,17 +109,46 @@ function ProgressTrack({
 
 export default function Phase3CompletePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryIdeaId = searchParams.get('ideaId');
   const {
     state: { activeIdeaId },
     advancePhase,
   } = useCreatorProgress();
+  const currentIdeaId = queryIdeaId || activeIdeaId || null;
 
   const [computed, setComputed] = useState<ComputedJourneyStatus | null>(null);
   const [readiness, setReadiness] = useState<InvestorReadinessScore | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [freshness, setFreshness] = useState<Phase3FreshnessOverview | null>(null);
+  const [isRecomputing, setIsRecomputing] = useState(false);
   const hasCompletedRef = useRef(false);
+
+  const loadFreshness = async () => {
+    try {
+      const f = await creatorJourneyApi.getPhase3Freshness(currentIdeaId);
+      setFreshness(f);
+    } catch {
+      // Non-blocking
+    }
+  };
+
+  const handleRecompute = async () => {
+    try {
+      setIsRecomputing(true);
+      const res = await creatorJourneyApi.computeReadiness(currentIdeaId);
+      if (res?.investorReadinessScore) {
+        setReadiness(res.investorReadinessScore);
+      }
+      await loadFreshness();
+    } catch (e) {
+      console.error('Failed to recompute readiness score', e);
+    } finally {
+      setIsRecomputing(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -125,7 +157,7 @@ export default function Phase3CompletePage() {
         if (!hasCompletedRef.current) {
           hasCompletedRef.current = true;
           try {
-            const { investorReadinessScore } = await creatorJourneyApi.completeMasterplan(activeIdeaId);
+            const { investorReadinessScore } = await creatorJourneyApi.completeMasterplan(currentIdeaId);
             if (active) setReadiness(investorReadinessScore);
           } catch (error) {
             if (axios.isAxiosError(error) && error.response?.status === 422) {
@@ -134,7 +166,7 @@ export default function Phase3CompletePage() {
             }
           }
         }
-        const { journey, computedStatus } = await creatorJourneyApi.get(activeIdeaId);
+        const { journey, computedStatus } = await creatorJourneyApi.get(currentIdeaId);
         if (active) {
           setComputed(computedStatus);
           const p3 = journey.phase3Data as { investorReadinessScore?: InvestorReadinessScore };
@@ -142,6 +174,7 @@ export default function Phase3CompletePage() {
             setReadiness(p3.investorReadinessScore);
           }
         }
+        loadFreshness();
       } finally {
         if (active) setLoading(false);
       }
@@ -149,7 +182,7 @@ export default function Phase3CompletePage() {
     return () => {
       active = false;
     };
-  }, [activeIdeaId]);
+  }, [currentIdeaId]);
 
   const canContinue =
     computed?.phase3.status === 'completed' && computed?.phase4.status === 'available';
@@ -169,7 +202,7 @@ export default function Phase3CompletePage() {
       }
     }
 
-    router.push('/dashboard/creator/offer-pricing');
+    router.push(withIdeaContext('/dashboard/creator/offer-pricing', currentIdeaId));
   };
 
   const dimensions = readiness?.breakdown
@@ -263,6 +296,29 @@ export default function Phase3CompletePage() {
 
         {!loading && readiness && (
           <>
+            {/* Upstream Changes / Update Available Alert */}
+            {(readiness.updateAvailable || freshness?.readinessUpdateAvailable) && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <span className="font-bold">Readiness update available:</span>{' '}
+                    Upstream Phase 3 modules ({readiness.changedSources?.join(', ') || freshness?.readinessChangedSources?.join(', ') || 'Business Model / Legal / Projections'}) were modified since this score was computed.
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRecompute}
+                  disabled={isRecomputing}
+                  className="h-8 text-xs border-amber-500/40 text-amber-900 dark:text-amber-100 hover:bg-amber-500/20 shrink-0 font-medium"
+                >
+                  {isRecomputing ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : <RotateCw className="size-3.5 mr-1.5" />}
+                  Re-evaluate Score
+                </Button>
+              </div>
+            )}
+
             {/* Score Hero Summary Card */}
             <Card className="rounded-3xl border border-border/70 bg-card p-6 shadow-sm sm:p-8 space-y-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-6 border-b border-border/70">
@@ -385,7 +441,7 @@ export default function Phase3CompletePage() {
                                     size="sm"
                                     className="h-7 shrink-0 gap-1.5 rounded-lg border-primary/25 bg-card px-2.5 text-badge font-medium text-primary hover:bg-primary/5 shadow-none"
                                   >
-                                    <Link href={deduction.remediationRoute}>
+                                    <Link href={withIdeaContext(deduction.remediationRoute, currentIdeaId)}>
                                       <span>{deduction.remediationTitle}</span>
                                       <ChevronRight className="size-3" />
                                     </Link>
@@ -438,11 +494,11 @@ export default function Phase3CompletePage() {
         <div className="flex flex-col-reverse items-stretch justify-between gap-3 border-t border-border pt-6 sm:flex-row sm:items-center">
           <Button
             variant="outline"
-            onClick={() => router.push('/dashboard/creator/phase-3/formation')}
+            onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/business-plan', currentIdeaId))}
             disabled={isNavigating}
             className="h-10 rounded-xl border-border px-4 text-sm font-medium text-muted-foreground shadow-none"
           >
-            <ArrowLeft className="size-4 mr-2" /> Company Formation
+            <ArrowLeft className="size-4 mr-2" /> Business Plan
           </Button>
           <Button
             onClick={handleContinue}

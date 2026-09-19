@@ -1,0 +1,118 @@
+[
+  {
+    "id": "AUD-P2-001",
+    "phase": "Phase 2",
+    "step": "2.9",
+    "route": "/dashboard/creator/phase-2/hire-designer",
+    "severity": "HIGH",
+    "category": "Dead Route",
+    "description": "The M50 Designer Marketplace booking interface exists with full backend integration, but has no inbound link or active entry point from the canonical branding gateway.",
+    "evidence": "src/app/dashboard/creator/phase-2/branding/page.tsx only renders 'Open Brand Studio' and 'Skip for now'.",
+    "filePaths": [
+      "src/app/dashboard/creator/phase-2/branding/page.tsx",
+      "src/app/dashboard/creator/phase-2/hire-designer/page.tsx"
+    ],
+    "recommendedAction": "Either add a secondary CTA on /phase-2/branding ('Or work with an M50 Designer') or deprecate and redirect to the service provider directory."
+  },
+  {
+    "id": "AUD-P2-002",
+    "phase": "Phase 2",
+    "step": "2.10",
+    "route": "/dashboard/creator/phase-2/logo-tool",
+    "severity": "HIGH",
+    "category": "Dead Route / Prototype Remnant",
+    "description": "Legacy 30-line standalone page rendering LogoCreationModal in isolation, bypassing the 7-step BrandStudioShell and breaking brand system completeness.",
+    "evidence": "src/app/dashboard/creator/phase-2/logo-tool/page.tsx renders LogoCreationModal directly and navigates to complete.",
+    "filePaths": [
+      "src/app/dashboard/creator/phase-2/logo-tool/page.tsx"
+    ],
+    "recommendedAction": "Deprecate the route and redirect all inbound traffic to /dashboard/creator/phase-2/brand-studio."
+  },
+  {
+    "id": "AUD-P2-003",
+    "phase": "Phase 2",
+    "step": "2.0",
+    "route": "/dashboard/creator/phase-2",
+    "severity": "LOW",
+    "category": "Step Numbering Inconsistency",
+    "description": "Backend DerivePhase2Step uses legacy step integers (6, 7, 8, 9, 12) from an older 12-step path, which differs from frontend 5-screen step presentation.",
+    "evidence": "CreatorJourneyService.cs lines 410-417 return integers 6, 7, 8, 9, 12.",
+    "filePaths": [
+      "backend/Services/Implementations/CreatorJourneyService.cs"
+    ],
+    "recommendedAction": "Add clear code documentation explaining the legacy step integer mappings or normalize to 1-5 in a future API revision."
+  },
+  {
+    "id": "AUD-P3-001",
+    "phase": "Phase 3",
+    "step": "3.4",
+    "route": "/dashboard/creator/phase-3/forecast",
+    "severity": "MEDIUM",
+    "category": "Data Disconnection / Repeated Input",
+    "description": "Market Study computes a validated TAM in Step 3.1, but Step 3.4 Forecast input defaults to €50,000,000 rather than reading the calculated value.",
+    "evidence": "src/app/dashboard/creator/phase-3/forecast/page.tsx line 113 initializes inputs.tam to 50_000_000.",
+    "filePaths": [
+      "src/app/dashboard/creator/phase-3/forecast/page.tsx",
+      "src/app/dashboard/creator/phase-3/market-study/page.tsx"
+    ],
+    "recommendedAction": "Seed inputs.tam in ForecastPage from journey.phase3Data.marketStudySession.output.tamSamSom.tam.amount if present."
+  },
+  {
+    "id": "AUD-P3-002",
+    "phase": "Phase 3",
+    "step": "3.3",
+    "route": "/dashboard/creator/phase-3/business-plan",
+    "severity": "MEDIUM",
+    "category": "Forward Dependency in Continuous Document",
+    "description": "Business Plan is positioned at Step 3.3 before Forecast (3.4), Compliance (3.5), and Formation (3.6). As a result, Sections 7, 8, and 12 display unhydrated placeholder states on first view.",
+    "evidence": "BusinessPlanPage.tsx lines 144-153, 158-167, 207-214 show fallback messages when upstream modules are not yet completed.",
+    "filePaths": [
+      "src/app/dashboard/creator/phase-3/business-plan/page.tsx"
+    ],
+    "recommendedAction": "Add clear status indicators ('Will sync automatically upon completing Step 3.4/3.5') on unhydrated sections or offer a final review step."
+  },
+  {
+    "id": "AUD-P3-003",
+    "phase": "Phase 3",
+    "step": "3.5",
+    "route": "/dashboard/creator/phase-3/compliance",
+    "severity": "MEDIUM",
+    "category": "Deep Link State Continuity",
+    "description": "Deep links to Step 3.5 without ?ideaId= rely on in-memory or fallback active idea, which can desynchronize if the user switches active ventures in another tab.",
+    "evidence": "ComplianceWorkspacePage.tsx reads searchParams.get('ideaId'), but breadcrumb/back navigation does not consistently append ?ideaId=.",
+    "filePaths": [
+      "src/app/dashboard/creator/phase-3/compliance/page.tsx",
+      "src/components/creator/Phase3SetupShell.tsx"
+    ],
+    "recommendedAction": "Standardize all intra-phase route transitions to append ?ideaId=${activeIdeaId} when an explicit idea is active."
+  },
+  {
+    "id": "AUD-P3-004",
+    "phase": "Phase 3",
+    "step": "3.5",
+    "route": "/dashboard/creator/phase-3/compliance",
+    "severity": "LOW",
+    "category": "Mobile Layout Stacking",
+    "description": "On viewport widths < 1024px, the 3-column layout (Navigation, Canvas, AI Guide Rail) stacks vertically, pushing the contextual AI guide rail to the bottom.",
+    "evidence": "src/app/dashboard/creator/phase-3/compliance/page.tsx line 386 uses grid-cols-1 lg:grid-cols-[280px_1fr_320px].",
+    "filePaths": [
+      "src/app/dashboard/creator/phase-3/compliance/page.tsx"
+    ],
+    "recommendedAction": "Implement a tabbed view or bottom sheet for the AI Guide Rail on viewports below 1024px."
+  },
+  {
+    "id": "AUD-P3-005",
+    "phase": "Phase 3",
+    "step": "3.7",
+    "route": "/dashboard/creator/phase-3/complete",
+    "severity": "LOW",
+    "category": "Gating Transparency",
+    "description": "If a user attempts to complete Step 3.7 without an AI forecast or business plan, the backend returns a 422 error which displays a toast, but does not provide a 1-click jump to the missing module.",
+    "evidence": "CreatorPhase3Controller.cs lines 881-893 return 422 with 'Missing module: financial_forecast' or 'business_plan'.",
+    "filePaths": [
+      "backend/Controllers/CreatorPhase3Controller.cs",
+      "src/app/dashboard/creator/phase-3/complete/page.tsx"
+    ],
+    "recommendedAction": "Render an interactive missing module remediation card linking directly to the incomplete step if a 422 is returned."
+  }
+]

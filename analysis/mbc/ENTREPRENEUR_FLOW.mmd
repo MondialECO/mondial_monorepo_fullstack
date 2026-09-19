@@ -1,0 +1,41 @@
+sequenceDiagram
+    autonumber
+    actor Founder as Entrepreneur
+    participant FE as Entrepreneur Dashboard (src/app/dashboard/entrepreneur)
+    participant CC as CompanyController (api/company)
+    participant CS as CompanyService (5,952 lines)
+    participant DC as DealsController (api/deals)
+    participant DB as MongoDB (Companies, CapTable, DataRooms, Deals)
+
+    Founder->>FE: 1. Complete Onboarding / Level Up
+    FE->>CC: POST /api/company/level-up
+    CC->>CS: EnsureLevelUpCompanyAsync(userId, ideaId)
+    CS->>DB: Insert Companies document
+    CS->>DB: SeedCapTableFromOwnershipAsync (Phase 4)
+    CC-->>FE: Return Company Profile
+
+    Founder->>FE: 2. Cap Table & Dilution Setup (Phase 4)
+    FE->>CC: POST /api/company/cap-table/vesting
+    CC->>CS: SaveVestingSchedulesAsync
+    CS->>DB: Insert Phase4VestingSchedules & Phase4CapTables
+
+    Founder->>FE: 3. Data Room Document Ingestion (Phase 6)
+    FE->>CC: POST /api/company/data-room/upload
+    CC->>CS: UploadDataRoomDocumentAsync
+    CS->>DB: Store Document & Access Rules
+    FE->>CC: POST /api/company/data-room/publish
+    CC->>CS: PublishDataRoomAsync
+
+    Founder->>FE: 4. Matchmaking & Diligence Review (Phase 7/8)
+    FE->>CC: GET /api/company/matched-investors
+    CC->>CS: GetMatchedInvestorsAsync
+    CS->>DB: Query InvestorMatches & SmartMatchRuns
+
+    Founder->>FE: 5. Term Sheet & Deal Negotiation (Phase 9)
+    FE->>DC: POST /api/deals/{dealId}/counter
+    DC->>DB: Update Deal status = CounterOffered
+    DC->>DB: Write DealExecutions audit log
+    FE->>DC: POST /api/deals/{dealId}/signing/sign
+    DC->>DB: Update Deal status = FullySigned
+    DC->>CS: ApplyEquityDealToCapTableAsync
+    CS->>DB: Mutate Phase4CapTable & RecordShareIssuance

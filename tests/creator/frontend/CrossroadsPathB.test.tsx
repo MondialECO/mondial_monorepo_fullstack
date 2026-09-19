@@ -43,18 +43,17 @@ describe("CrossroadsPathB", () => {
     );
 
     // Title and Body
-    expect(screen.getByText("Build this project yourself")).toBeInTheDocument();
-    expect(screen.getByText(/You are choosing to continue this project as the entrepreneur/i)).toBeInTheDocument();
+    expect(screen.getByText("Ready to build your company?")).toBeInTheDocument();
+    expect(screen.getByText(/Your Creator project will become the foundation of your Entrepreneur workspace/i)).toBeInTheDocument();
 
     // Summary fields
-    expect(screen.getByText("CleanWater AI")).toBeInTheDocument();
+    expect(screen.getAllByText("CleanWater AI").length).toBeGreaterThan(0);
     expect(screen.getByText("SAS-U")).toBeInTheDocument();
     expect(screen.getByText("100% Founder")).toBeInTheDocument();
-    expect(screen.getByText("Set later in Entrepreneur Funding phase")).toBeInTheDocument();
+    expect(screen.getByText(/Stage 11 · Level-Up Continuity Bridge/i)).toBeInTheDocument();
 
     // Actions
     expect(screen.getByRole("button", { name: /Continue as Entrepreneur/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Back to options/i })).toBeInTheDocument();
 
     // Verify obsolete inputs are NOT present
     expect(screen.queryByLabelText("Your funding target")).not.toBeInTheDocument();
@@ -71,7 +70,7 @@ describe("CrossroadsPathB", () => {
       />
     );
 
-    expect(screen.getByText("SolarEdge")).toBeInTheDocument();
+    expect(screen.getAllByText("SolarEdge").length).toBeGreaterThan(0);
     expect(screen.getByText("SARL")).toBeInTheDocument();
     expect(screen.getByText("100% Founder")).toBeInTheDocument();
   });
@@ -107,8 +106,8 @@ describe("CrossroadsPathB", () => {
       />
     );
 
-    expect(screen.getByText("Project already moved to Entrepreneur journey")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Open Entrepreneur Dashboard/i })).toBeInTheDocument();
+    expect(screen.getByText("Project already moved to Entrepreneur workspace")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Open Entrepreneur Workspace/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Continue as Entrepreneur/i })).not.toBeInTheDocument();
   });
 
@@ -133,7 +132,7 @@ describe("CrossroadsPathB", () => {
 
     // Should immediately call levelUp and enter loading state
     expect(creatorJourneyApi.levelUp).toHaveBeenCalledWith("idea-flow");
-    expect(screen.getByText(/Moving to Entrepreneur workspace…/i)).toBeInTheDocument();
+    expect(screen.getByText(/Connecting venture to Entrepreneur workspace…/i)).toBeInTheDocument();
     expect(cta).toBeDisabled();
 
     // Resolve Level Up

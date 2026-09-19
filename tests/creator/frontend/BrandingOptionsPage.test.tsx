@@ -11,6 +11,8 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
 }));
 
 vi.mock('@/providers/CreatorProgressProvider', () => ({
@@ -36,7 +38,7 @@ describe('BrandingOptionsPage Component', () => {
     // Header & title
     expect(screen.getByText('Build your brand identity')).toBeInTheDocument();
     expect(screen.getByText('Brand Visual Identity Studio')).toBeInTheDocument();
-    expect(screen.getByText('6')).toBeInTheDocument();
+    expect(screen.getByText('7')).toBeInTheDocument();
     expect(screen.getByText(/steps/i)).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
     expect(screen.getByText(/minutes/i)).toBeInTheDocument();
@@ -56,10 +58,10 @@ describe('BrandingOptionsPage Component', () => {
 
     // Verify informational text lines
     expect(
-      screen.getByText(/Everything lands in My Brand Kit — you can change any part of it later\./i)
+      screen.getByText(/Work with an M50 Verified Designer/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Prefer a human designer\? Hiring verified designers arrives when the marketplace opens\./i)
+      screen.getByText(/Neutral placeholders will be used; you can brand your venture anytime\./i)
     ).toBeInTheDocument();
   });
 

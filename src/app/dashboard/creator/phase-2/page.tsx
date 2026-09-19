@@ -1,19 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { Loader2 } from "lucide-react";
+import { withIdeaContext } from "@/lib/creator-routes";
 
 export default function Phase2EntryPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const ideaId = searchParams.get("ideaId");
   const { setEntryPath, updateProject } = useCreatorProgress();
 
   useEffect(() => {
     setEntryPath("already_have_idea");
     updateProject({ exists: true });
-    router.replace("/dashboard/creator/phase-2/clarifier");
-  }, [router, setEntryPath, updateProject]);
+    router.replace(withIdeaContext("/dashboard/creator/phase-2/clarifier", ideaId));
+  }, [router, setEntryPath, updateProject, ideaId]);
 
   return (
     <div
@@ -25,3 +28,4 @@ export default function Phase2EntryPage() {
     </div>
   );
 }
+
