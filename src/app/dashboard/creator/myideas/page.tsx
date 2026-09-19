@@ -337,7 +337,7 @@ export default function MyIdeasPage() {
   // 1. EMPTY STATE
   if (!hasIdea) {
     return (
-      <div className="mx-auto w-full max-w-[1140px] py-10 px-4 sm:px-6">
+      <div className="mx-auto w-full max-w-[1140px] py-6">
         <div className="mb-8 space-y-2">
           <div className="text-xs font-bold text-primary uppercase tracking-wider">Phase 2 — Project Identity</div>
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">My Idea</h1>
@@ -390,7 +390,7 @@ export default function MyIdeasPage() {
     const progressPercent = Math.round((journeyState.phase2.currentStep / 12) * 100);
 
     return (
-      <div className="mx-auto w-full max-w-[1140px] py-10 px-4 sm:px-6">
+      <div className="mx-auto w-full max-w-[1140px] py-6">
         <div className="mb-8 space-y-2">
           <div className="text-xs font-bold text-primary uppercase tracking-wider">Phase 2 — Project Identity</div>
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Project Identity in progress</h1>
@@ -481,7 +481,7 @@ export default function MyIdeasPage() {
     : "Skipped / Not Started";
 
   return (
-    <div className="mx-auto w-full max-w-[1140px] py-6 px-4 sm:px-6">
+    <div className="mx-auto w-full max-w-[1140px] py-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 sm:mb-8">
         <div className="space-y-1">

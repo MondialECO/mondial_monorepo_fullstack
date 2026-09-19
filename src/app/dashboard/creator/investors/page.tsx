@@ -11,6 +11,7 @@ import { creatorJourneyApi, type CreatorReadiness, type SmartMatch } from "@/lib
 import { useCreateConversation } from "@/hooks/queries/chat";
 import { LevelUpCelebration } from "@/components/creator/phase6/LevelUpCelebration";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
   const router = useRouter();
@@ -115,7 +116,7 @@ export default function InvestorsPage() {
   if (leveling) return <LevelUpCelebration ideaId={activeIdeaId} onDone={(redirect) => router.push(redirect)} onCancel={() => setLeveling(false)} />;
 
   return (
-    <div className="w-full min-h-screen bg-background text-foreground">
+    <div className="w-full min-h-full bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4">
         <h1 className="text-sm font-bold">Growth, readiness & matching</h1>
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -123,7 +124,7 @@ export default function InvestorsPage() {
         </div>
       </header>
 
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <PageContainer variant="standard" className="space-y-6">
         {data?.matchingTip && !loading && (
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground"><Info className="h-4 w-4 text-primary" /> {data.matchingTip}</div>
         )}
@@ -281,7 +282,7 @@ export default function InvestorsPage() {
             )}
           </>
         )}
-      </main>
+      </PageContainer>
     </div>
   );
 }

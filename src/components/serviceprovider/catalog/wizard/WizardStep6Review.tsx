@@ -259,7 +259,7 @@ export function WizardStep6Review({
       )}
 
       {/* STICKY FOOTER */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-white p-4">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[1920px] border-t border-border bg-white p-4">
         <div className="mx-auto flex max-w-6xl gap-2">
           <Button onClick={onBack} variant="outline" disabled={isPublishing}>
             <ChevronLeft className="size-4" />

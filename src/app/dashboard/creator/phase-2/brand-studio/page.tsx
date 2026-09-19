@@ -15,7 +15,7 @@ function BrandStudioContent() {
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col min-h-screen">
+    <div className="w-full flex-1 flex flex-col h-full min-h-0 overflow-hidden">
       <BrandStudioShell ideaId={ideaId} onBack={handleBack} />
     </div>
   );
@@ -25,7 +25,7 @@ export default function BrandStudioPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen w-full items-center justify-center bg-[#EFEFF1]">
+        <div className="flex h-full min-h-0 flex-1 w-full items-center justify-center bg-[#EFEFF1]">
           <Loader2 className="size-8 animate-spin text-primary" />
         </div>
       }

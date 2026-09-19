@@ -124,7 +124,7 @@ export default function Footer() {
       className="w-full bg-[#F9F9FA] text-[#070707] font-sans border-t border-[rgba(0,0,0,0.06)]"
       data-testid="public-footer"
     >
-      <div className="max-w-[1224px] mx-auto px-6 lg:px-0 pt-16 md:pt-20 pb-12 flex flex-col gap-12">
+      <div className="max-w-[1224px] mx-auto px-4 sm:px-6 xl:px-0 pt-16 md:pt-20 pb-12 flex flex-col gap-12">
         {/* ================= ZONE 1: ECOSYSTEM ROLES & BRAND CTA ================= */}
         <div className="w-full flex flex-col lg:flex-row justify-between items-start gap-10 lg:gap-0">
           {/* Brand & CTA */}
@@ -164,9 +164,9 @@ export default function Footer() {
           </div>
 
           {/* 4 Ecosystem Role Columns */}
-          <div className="w-full lg:w-auto grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 lg:gap-10">
+          <div className="w-full lg:w-auto grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-6 xl:gap-10">
             {ECOSYSTEM_COLUMNS.map((col) => (
-              <div key={col.title} className="w-full sm:w-[150px] lg:w-[160px] flex flex-col gap-3 sm:gap-4">
+              <div key={col.title} className="w-full sm:w-[140px] xl:w-[160px] flex flex-col gap-3 sm:gap-4">
                 <span className="text-[11px] leading-[16px] font-medium text-[#5E5E5E] tracking-wider uppercase">
                   {col.title}
                 </span>
@@ -201,9 +201,9 @@ export default function Footer() {
           </div>
 
           {/* 3 Secondary Navigation Columns */}
-          <div className="w-full lg:w-auto grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
+          <div className="w-full lg:w-auto grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-6 xl:gap-10">
             {COMPANY_COLUMNS.map((col) => (
-              <div key={col.title} className="w-full sm:w-[150px] lg:w-[160px] flex flex-col gap-3 sm:gap-4">
+              <div key={col.title} className="w-full sm:w-[140px] xl:w-[160px] flex flex-col gap-3 sm:gap-4">
                 <span className="text-[11px] leading-[16px] font-medium text-[#5E5E5E] tracking-wider uppercase">
                   {col.title}
                 </span>

@@ -27,8 +27,8 @@ export function ProfileMediaManager({ profile }: { profile: ServiceProviderProfi
 
   const overview = useProviderOverview("EUR", isServiceProvider);
   const capacity = useCapacity(isServiceProvider);
-  const tierLabel = isServiceProvider ? overview.data?.provider.tierLabel : undefined;
-  const available = isServiceProvider ? (capacity.data?.newOrderAvailability ?? overview.data?.provider.availableNow) : undefined;
+  const tierLabel = isServiceProvider ? overview.data?.provider?.tierLabel : undefined;
+  const available = isServiceProvider ? (capacity.data?.newOrderAvailability ?? overview.data?.provider?.availableNow) : undefined;
   const profileImageUrl = resolveProviderMediaUrl(profile.profileImage?.publicUrl ?? (profile.profileImage as any)?.url);
   const coverImageUrl = resolveProviderMediaUrl(profile.coverImage?.publicUrl ?? (profile.coverImage as any)?.url);
   const initials = providerName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "M";

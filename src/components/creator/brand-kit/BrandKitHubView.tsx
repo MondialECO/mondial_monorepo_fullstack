@@ -278,7 +278,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
       )}
 
       {/* Main Canonical 1080px Centered Container (Figma Node 57004:12057) */}
-      <main className="mx-auto max-w-[1080px] w-full px-4 sm:px-6 pt-10 space-y-10">
+      <section aria-label="Brand Kit Hub" className="mx-auto max-w-[1080px] w-full px-4 sm:px-6 pt-10 space-y-10">
         
         {/* =========================================================================
             1. IDENTITY BLOCK (Figma Node 57004:12057)
@@ -973,7 +973,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             <ArrowRight className="size-4" />
           </Button>
         </div>
-      </main>
+      </section>
 
       {/* =========================================================================
           MODALS & RE-ENTRY FLOWS

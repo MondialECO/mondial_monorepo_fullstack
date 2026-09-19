@@ -609,7 +609,7 @@ export function ColorSystemModal({
       aria-labelledby="color-system-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
     >
-      <div className="relative w-full max-w-5xl rounded-2xl bg-card shadow-2xl border border-border flex flex-col max-h-[92vh] overflow-hidden text-card-foreground">
+      <div className="relative w-full max-w-5xl 2xl:max-w-6xl rounded-2xl bg-card shadow-2xl border border-border flex flex-col max-h-[92vh] overflow-hidden text-card-foreground">
         
         {/* Header & 6-Step Workflow Track (Figma Node 57004:11484) */}
         <ModalWorkflowHeader

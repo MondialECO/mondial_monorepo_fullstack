@@ -6,7 +6,7 @@ export default function Phase2Layout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-full">
       {/* Content (provided by page and sub-routes) */}
       <div className="flex-1">
         {children}

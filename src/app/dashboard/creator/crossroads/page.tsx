@@ -11,6 +11,7 @@ import { CrossroadsPathA } from "@/components/creator/phase5/CrossroadsPathA";
 import { CrossroadsPathB } from "@/components/creator/phase5/CrossroadsPathB";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import type { ComputedJourneyStatus } from "@/types/creator/journey-api";
+import { PageContainer } from "@/components/layout/PageContainer";
 
 export default function CrossroadsPage() {
   const router = useRouter();
@@ -65,8 +66,7 @@ export default function CrossroadsPage() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-background text-foreground">
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <PageContainer variant="standard" className="space-y-6">
         {/* Project strip */}
         <Card className="rounded-2xl border border-border bg-card p-6 flex items-center justify-between">
           <div>
@@ -216,7 +216,6 @@ export default function CrossroadsPage() {
             <span className="text-xs text-muted-foreground">Complete your chosen path to continue.</span>
           )}
         </div>
-      </main>
-    </div>
+    </PageContainer>
   );
 }

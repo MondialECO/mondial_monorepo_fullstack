@@ -7,6 +7,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import MessageIcon from "@/components/messages/MessageIcon";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import ThemeToggle from "@/components/ThemeToggle";
 import { SpAccountMenu } from "@/components/serviceprovider/SpAccountMenu";
 import { getServiceProviderPageTitle, SERVICE_PROVIDER_ROOT } from "@/lib/service-provider-navigation";
 
@@ -47,7 +48,8 @@ export function SpDesktopTopbar() {
           </nav>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1" aria-label="Workspace controls">
+        <div className="flex shrink-0 items-center gap-1.5" aria-label="Workspace controls">
+          <ThemeToggle className="size-11 rounded-lg hover:bg-[#F4F5F7] text-[#4B5563]" />
           <div className="[&_button]:size-11"><MessageIcon /></div>
           <NotificationBell triggerClassName="size-11" />
           <SpAccountMenu />

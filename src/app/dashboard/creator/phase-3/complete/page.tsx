@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ComponentType } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { withIdeaContext } from '@/lib/creator-routes';
+import { PageContainer } from '@/components/layout/PageContainer';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -258,9 +259,8 @@ export default function Phase3CompletePage() {
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/30 px-4 py-10 text-foreground sm:px-8 lg:py-14">
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8">
-        {/* Header - Diagnostic, Objective, Institutional */}
+    <PageContainer variant="focused" className="flex flex-col gap-8">
+      {/* Header - Diagnostic, Objective, Institutional */}
         <header className="flex flex-col items-center gap-2.5 text-center max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary uppercase tracking-wider font-mono">
             <span>Phase 3 Evaluation · Step 3.7</span>
@@ -510,7 +510,6 @@ export default function Phase3CompletePage() {
             {!isNavigating && <ArrowRight className="size-4" />}
           </Button>
         </div>
-      </main>
-    </div>
+    </PageContainer>
   );
 }

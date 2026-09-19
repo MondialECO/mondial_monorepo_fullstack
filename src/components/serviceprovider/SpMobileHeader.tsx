@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
+import ThemeToggle from "@/components/ThemeToggle";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { SpAccountMenu } from "@/components/serviceprovider/SpAccountMenu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -35,6 +36,7 @@ export function SpMobileHeader() {
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
+        <ThemeToggle className="size-11 rounded-lg text-[#4B5563]" />
         <NotificationBell triggerClassName="size-11" />
         <SpAccountMenu />
       </div>

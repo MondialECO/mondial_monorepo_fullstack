@@ -25,3 +25,14 @@ export function isPhase2ChromeRoute(pathname: string): boolean {
     return false;
   });
 }
+
+/**
+ * Semantic layout-mode decision: Check if a route manages its own full-bleed workspace
+ * and should not receive the default outer dashboard shell content padding.
+ * Standard pages receive shell padding; true workspace routes own their internal spacing.
+ */
+export function isUnpaddedDashboardRoute(pathname: string): boolean {
+  // Phase 2 chrome routes manage their own full-bleed canvas and internal padding
+  if (isPhase2ChromeRoute(pathname)) return true;
+  return false;
+}

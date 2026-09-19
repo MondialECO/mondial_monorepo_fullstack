@@ -1130,7 +1130,7 @@ export default function BusinessPlanPage() {
               </aside>
 
               {/* Continuous Document Canvas */}
-              <main className="lg:col-span-8 space-y-6">
+              <section aria-label="Business Plan Document" className="lg:col-span-8 space-y-6">
                 {startError && (
                   <div className="p-3.5 rounded-xl bg-destructive/10 text-destructive text-sm border border-destructive/20 font-sans">
                     {startError.message}
@@ -1364,7 +1364,7 @@ export default function BusinessPlanPage() {
                     Proceed to Investor Readiness <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
-              </main>
+              </section>
             </div>
           </div>
         )}

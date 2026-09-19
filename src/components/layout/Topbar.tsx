@@ -68,7 +68,7 @@ export default function Topbar() {
     // Reduced Phase 2 chrome: logo tile, breadcrumb, switcher, avatar
     return (
       <header className="sticky top-0 z-40 w-full border-b flex-shrink-0" style={{ borderColor: "var(--border)", backgroundColor: "var(--card)" }}>
-        <div className="flex h-[72px] items-center justify-between px-6 sm:px-6">
+        <div className="flex h-[72px] items-center justify-between px-4 sm:px-6 lg:px-8">
 
           {/* LEFT: Logo tile + Breadcrumb */}
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
@@ -114,10 +114,11 @@ export default function Topbar() {
             </nav>
           </div>
 
-          {/* RIGHT: Switcher + Credits + Avatar */}
+          {/* RIGHT: Switcher + Credits + ThemeToggle + Avatar */}
           <div className="flex items-center gap-3">
             {showCredits && <AiCreditBadge />}
             {isEntrepreneurContext && <CompanySwitcher />}
+            <ThemeToggle />
             <div className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ backgroundColor: "var(--muted)", color: "var(--foreground)" }}>
               {user?.name?.charAt(0).toUpperCase() || "U"}
             </div>
@@ -131,7 +132,7 @@ export default function Topbar() {
   // Standard topbar for all other routes
   return (
     <header className="sticky top-0 z-40 w-full border-b border-sidebar-border bg-card text-muted-foreground">
-      <div className="flex h-[72px] items-center justify-between px-4 sm:px-5 md:px-5 lg:px-5">
+      <div className="flex h-[72px] items-center justify-between px-4 sm:px-6 lg:px-8">
 
         {/* LEFT */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -186,6 +187,7 @@ export default function Topbar() {
         <div className="flex items-center gap-2.5 sm:gap-3 lg:gap-5">
           {isEntrepreneurContext && <CompanySwitcher />}
           {showCredits && <AiCreditBadge />}
+          <ThemeToggle />
           <MessageIcon />
           <NotificationBell />
           {(role === UserRole.SUPERADMIN || role === UserRole.ADMIN) && (

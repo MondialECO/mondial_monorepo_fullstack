@@ -21,7 +21,6 @@ import {
   Briefcase,
   TrendingUp,
   Compass,
-  FileCheck2,
   BarChart3,
   Search,
 } from 'lucide-react';
@@ -317,7 +316,7 @@ export default function PublicHeader() {
   return (
     <header
       ref={headerContainerRef}
-      className="w-full fixed top-4 sm:top-6 left-0 z-50 flex flex-col items-center px-3 sm:px-4"
+      className="w-full max-w-[1920px] fixed top-4 sm:top-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center px-3 sm:px-4"
       onMouseLeave={handleRoleMouseLeave}
       onMouseEnter={clearTimer}
     >
@@ -437,7 +436,7 @@ export default function PublicHeader() {
       {/* ================= DESKTOP MEGA MENU DROPDOWN (1024px Max, 8px Below Header) ================= */}
       {activeRole && currentMegaData && (
         <div
-          className="hidden lg:block w-[1024px] mt-2 bg-[#F9F9FA] border border-[rgba(0,0,0,0.06)] rounded-[20px] p-[28px_32px] shadow-[0_0_22px_rgba(0,0,0,0.06)] animate-in fade-in slide-in-from-top-2 duration-150 relative z-30"
+          className="hidden lg:block w-full max-w-[1024px] mt-2 bg-[#F9F9FA] border border-[rgba(0,0,0,0.06)] rounded-[20px] p-[28px_32px] shadow-[0_0_22px_rgba(0,0,0,0.06)] animate-in fade-in slide-in-from-top-2 duration-150 relative z-30"
           onMouseEnter={clearTimer}
           onMouseLeave={handleRoleMouseLeave}
           data-testid={`mega-menu-${activeRole}`}
