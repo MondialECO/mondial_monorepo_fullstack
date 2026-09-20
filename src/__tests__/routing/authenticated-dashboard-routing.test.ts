@@ -52,7 +52,7 @@ describe("authenticated dashboard route contract", () => {
     expectRoute("/dashboard/creator/profile");
     expectRoute("/dashboard/creator/messages");
     expectRoute("/dashboard/creator/notifications");
-    expectRoute("/dashboard/creator/project-studio");
+    expectRoute("/dashboard/creator/ai");
     expectRoute("/dashboard/creator/phase-1");
   });
 

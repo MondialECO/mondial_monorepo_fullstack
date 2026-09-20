@@ -102,7 +102,6 @@ import IpVaultRedirect from '@/app/dashboard/creator/ip-vault/page';
 import HireProvidersRedirect from '@/app/dashboard/creator/hire-providers/page';
 import CreatorMarketplaceRedirect from '@/app/dashboard/creator/marketplace/page';
 import SettingsPage from '@/app/dashboard/creator/settings/page';
-import ProjectStudioPage from '@/app/dashboard/creator/project-studio/page';
 import CreatorDashboard from '@/app/dashboard/creator/page';
 
 describe('Creator Stabilization 02 — Route Redirects Contract', () => {
@@ -176,33 +175,6 @@ describe('Creator Stabilization 02 — Settings Real Data & Mock Removal', () =>
 
     const link = screen.getByRole('link', { name: /Edit Universal Profile/i });
     expect(link.getAttribute('href')).toBe('/dashboard/profile/edit');
-  });
-});
-
-describe('Creator Stabilization 02 — Project Studio Truthful State', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockCreatorProgressState.outputs.businessPlanVersions = [];
-    mockCreatorProgressState.outputs.financialForecastVersions = [];
-  });
-
-  it('8. Project Studio displays truthful empty state when no output versions exist and no fake June 2026 data', () => {
-    render(<ProjectStudioPage />);
-
-    expect(screen.getByText('No saved versions yet.')).toBeDefined();
-    expect(screen.queryByText('June 10, 2026')).toBeNull();
-    expect(screen.queryByText('Initial concept draft generated')).toBeNull();
-  });
-
-  it('9. Project Studio renders real versions when outputs exist', () => {
-    mockCreatorProgressState.outputs.businessPlanVersions = [
-      { id: 'bp-1', version: 1, createdAt: '2026-09-01T12:00:00.000Z' },
-    ];
-
-    render(<ProjectStudioPage />);
-
-    expect(screen.getByText('Business Plan v1')).toBeDefined();
-    expect(screen.queryByText('No saved versions yet.')).toBeNull();
   });
 });
 

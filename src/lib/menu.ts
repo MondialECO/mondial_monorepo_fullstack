@@ -343,82 +343,116 @@ export const menu: Record<UserRole, MenuSection[]> = {
       ],
     },
     {
-      title: "Project Builder",
+      title: "Project Workspace",
       items: [
         {
-          label: "Project Studio",
-          href: "/dashboard/creator/project-studio",
+          label: "Build My Project",
+          href: "#build-my-project",
           icon: Layers,
+          children: [
+            {
+              label: "AI Studio",
+              href: "/dashboard/creator/ai",
+            },
+            {
+              label: "Brand Studio",
+              href: "/dashboard/creator/phase-2/brand-studio",
+            },
+            {
+              label: "Market Study",
+              href: "/dashboard/creator/phase-3/market-study",
+            },
+            {
+              label: "Business Model",
+              href: "/dashboard/creator/phase-3/business-model",
+            },
+            {
+              label: "Financial Forecast",
+              href: "/dashboard/creator/phase-3/forecast",
+            },
+            {
+              label: "Legal & Compliance",
+              href: "/dashboard/creator/phase-3/compliance",
+            },
+            {
+              label: "Company Formation",
+              href: "/dashboard/creator/phase-3/formation",
+            },
+            {
+              label: "Business Plan",
+              href: "/dashboard/creator/phase-3/business-plan",
+            },
+            {
+              label: "Project Readiness",
+              href: "/dashboard/creator/phase-3/complete",
+            },
+          ],
         },
         {
-          label: "Pricing & Equity",
+          label: "Offers & Marketplace",
           href: "/dashboard/creator/offer-pricing",
-          icon: DollarSign,
-        },
-        {
-          label: "Growth & Readiness",
-          href: "/dashboard/creator/investors",
-          icon: Sparkles,
-        },
-      ],
-    },
-    {
-      title: "Project Marketplace",
-      items: [
-        {
-          label: "Marketplace",
-          href: "/marketplace/projects",
           icon: Store,
+          children: [
+            {
+              label: "Pricing & Equity",
+              href: "/dashboard/creator/offer-pricing",
+            },
+            {
+              label: "Launch to Market",
+              href: "/dashboard/creator/crossroads",
+            },
+            {
+              label: "Marketplace",
+              href: "/marketplace/projects",
+            },
+            {
+              label: "Partnerships",
+              href: "/dashboard/creator/partnerships",
+            },
+            {
+              label: "Sales & Buyouts",
+              href: "/dashboard/creator/sales",
+            },
+            {
+              label: "Growth & Readiness",
+              href: "/dashboard/creator/investors",
+            },
+          ],
         },
         {
-          label: "Launch to Market",
-          href: "/dashboard/creator/crossroads",
-          icon: Compass,
-        },
-        {
-          label: "Partnerships",
-          href: "/dashboard/creator/partnerships",
-          icon: Handshake,
-        },
-        {
-          label: "Sales & Buyouts",
-          href: "/dashboard/creator/sales",
-          icon: DollarSign,
-        },
-      ],
-    },
-    {
-      title: "Assets & IP",
-      items: [
-        {
-          label: "IP Vault & Legal",
+          label: "Assets & Documents",
           href: "/dashboard/creator/documents",
-          icon: ShieldCheck,
-        },
-        {
-          label: "Asset Library",
-          href: "/dashboard/creator/asset-library",
           icon: Folder,
+          children: [
+            {
+              label: "IP Vault & Legal",
+              href: "/dashboard/creator/documents",
+            },
+            {
+              label: "Asset Library",
+              href: "/dashboard/creator/asset-library",
+            },
+          ],
         },
-      ],
-    },
-    {
-      title: "Services & Network",
-      items: [
         {
-          label: "Hire Providers",
+          label: "Services & Network",
           href: "/marketplace/services",
-          icon: Store,
-        },
-        {
-          label: "Active Engagements",
-          href: "/dashboard/creator/engagements",
           icon: Handshake,
+          children: [
+            {
+              label: "Hire Providers",
+              href: "/marketplace/services",
+            },
+            {
+              label: "Active Engagements",
+              href: "/dashboard/creator/engagements",
+            },
+          ],
         },
       ],
     },
     {
-      title: "Communication & Account",
+      title: "Communication",
       items: [
         {
           label: "Messages",
@@ -430,10 +464,20 @@ export const menu: Record<UserRole, MenuSection[]> = {
           href: "/dashboard/creator/notifications",
           icon: Bell,
         },
+      ],
+    },
+    {
+      title: "Account",
+      items: [
         {
           label: "Profile",
           href: "/dashboard/profile",
           icon: User,
+        },
+        {
+          label: "Billing History",
+          href: "/dashboard/creator/billinghistory",
+          icon: Wallet,
         },
         {
           label: "Settings",
