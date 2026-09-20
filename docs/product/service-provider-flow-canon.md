@@ -6,7 +6,7 @@ Source of truth for development. When code and this doc disagree, this doc wins 
 
 **All five Service Provider modules are now LIVE.** Remaining platform-wide truth in one line: the payment gateway, file scanner, and e-signature/contract-consent mechanism are **STUB** integrations; public profile/search tracking, durable proposal-event history, and test-record provenance are **deferred/not tracked**.
 
-**2026-07-29 — SP data-model split (uncommitted, in review).** Service Provider data now lives in three root collections — `ProfessionalProfiles`, `UserCredentials`, `ServiceProviderProfiles` — with the embedded `ApplicationUser.ServiceProviderProfile` retained as a **temporary read-only migration fallback**. See **Service Provider Data Ownership Architecture** and **Migration Compatibility Reader** below. Creator, Entrepreneur, and Investor models are unchanged; the new collections are currently consumed only by Service Provider workflows.
+**2026-09-20 — SP professional fields retired.** All legacy professional fields previously embedded in `ApplicationUser.ServiceProviderProfile` have been removed (`$unset` across 421 documents, snapshot `applicationUsers_backup_sp_20260920172731`, marked `[BsonIgnore]`). `ProfessionalProfiles` is now the **sole canonical home** for professional data (`Headline`, `Bio`, `Skills`, `Overview`, `Experiences`, `Education`, `Credentials`, `Languages`, `Industries`, `Images`). The embedded `ServiceProviderProfile` on `ApplicationUser` strictly retains Service Provider operational and business fields (`VerificationStatus`, `ProviderTier`, `TrustScore`, `TrustBreakdown`, `ServiceCategories`, `PricingModels`, `PortfolioItems`, `Capacity`, `FinancialSettings`, `ProviderId`, `CurrentPhase`, timestamps). All consumers (Creator Phase 3 SP matches, Phase 2 Designer cards, Marketplace listings/headers) read directly from `ProfessionalProfiles` / split records.
 
 **Release status: ⛔ NOT RELEASE-READY.** “All five modules LIVE” describes implemented product surfaces, not production-security approval. Provider/client actor separation, self-dealing and self-review prevention, Trust Score manipulation prevention, provider-only controller enforcement, server-side amount/referential/masking/URL validation, internal-path exposure, and vulnerable NuGet dependencies remain backend release blockers (§15.2, §17). Frontend containment in `3a19c1e` is defence-in-depth and must never be represented as server-side authorization or validation.
 
@@ -52,11 +52,11 @@ A verified SP sees all five at once. The order is **build order** (each produces
 
 **Profile & Trust (§5) → Service Catalog (§6) → Leads (§7) → Workroom & Earnings (§8) → Analytics & Growth (§9).**
 
-### 1.3 Storage rule — split SP root collections; embedded profile is legacy fallback *(superseded 2026-07-29)*
+### 1.3 Storage rule — split root collections; embedded professional fields retired *(updated 2026-09-20)*
 
-**LEGACY (pre-split):** `ServiceProviderProfile` stayed embedded on `ApplicationUser` while it was bounded. That rule is **superseded**: once the profile grew to include professional data, credentials, portfolio, trust, capacity, financial settings, and editor-draft state, every SP write replaced the complete `ApplicationUser` document, and the embedded shape could no longer support independent credential review querying or editor concurrency.
+**LEGACY (pre-split):** `ServiceProviderProfile` stayed embedded on `ApplicationUser` while it was bounded. That rule is **superseded**: once the profile grew to include professional data, credentials, portfolio, trust, capacity, financial settings, and editor-draft state, every SP write replaced the complete `ApplicationUser` document.
 
-**CURRENT:** SP data lives in three root collections — `ProfessionalProfiles`, `UserCredentials`, `ServiceProviderProfiles` — joined by unique `UserId` (§1A). The embedded `ApplicationUser.ServiceProviderProfile` remains only as a **temporary read-only migration fallback** (frozen after single-write cutover; removed in Phase 6, §1A). **Unbounded records from Service Catalog onward keep their top-level MongoDB collections** (`ServiceListings`, `ClientBriefs`, `WorkroomEngagements`, `PayoutRequests`, …), keyed by `ProviderId`/`UserId` or their owning domain FK — unchanged.
+**CURRENT:** SP professional data lives exclusively in root collection `ProfessionalProfiles`. Independent credential lifecycle lives in `UserCredentials`. Service Provider operational and business profile data (`VerificationStatus`, `ProviderTier`, `TrustScore`, `TrustBreakdown`, `ServiceCategories`, `PricingModels`, `PortfolioItems`, `MaximumConcurrentOrders`, `CurrentActiveOrders`, `NewOrderAvailability`, `FinancialSettings`, `ProviderId`, `CurrentPhase`, timestamps) lives on `ApplicationUser.ServiceProviderProfile` and in `ServiceProviderProfiles`. The embedded professional-profile fields (`Skills`, `Headline`, `Bio`, `Overview`, `Experiences`, `Education`, `Credentials`, `Languages`, `Industries`, `Images`, `EditorDraft`, `ProfileVersion`) have been completely unset from `ApplicationUser` in MongoDB. **Unbounded records from Service Catalog onward keep their top-level MongoDB collections** (`ServiceListings`, `ClientBriefs`, `WorkroomEngagements`, `PayoutRequests`, …), keyed by `ProviderId`/`UserId` or their owning domain FK — unchanged.
 
 > **FORBIDDEN:** embedding unbounded data (listings, engagements, leads, transactions, time entries) as arrays on `ApplicationUser`, the legacy embedded profile, or any of the three split records.
 
@@ -125,7 +125,7 @@ ApplicationUsers
 ├── EntrepreneurProfile — unchanged
 ├── InvestorProfile — unchanged
 └── Embedded ServiceProviderProfile
-    └── Temporary read-only migration fallback
+    └── SP business & operational fields only (verification, tier, trust, categories, pricing, portfolio, capacity, financial, timestamps)
 
 ProfessionalProfiles
 ├── UserId · Headline · Bio · Professional Overview

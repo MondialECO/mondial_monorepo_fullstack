@@ -233,7 +233,7 @@ namespace WebApp.Controllers
                     Headline = profile.Headline,
                     Bio = profile.Bio,
                     ProfessionalOverview = profile.ProfessionalOverview?.PlainText,
-                    Skills = profile.Skills ?? new List<string>(),
+                    Skills = (profile.Skills ?? new()).Select(s => s.Name).ToList(),
                     ExpertiseDomains = profile.Industries ?? new List<string>(),
                     Languages = profile.Languages ?? new List<string>(),
                     ExperienceCount = profile.Experiences?.Count ?? 0,

@@ -327,6 +327,9 @@ namespace WebApp.Models.DatabaseModels
         public CreatorPricingForecastContext? PricingForecastContext { get; set; }
         public CreatorResourceCalculation ResourceCalculation { get; set; }
         public CreatorGtmSetup GtmSetup { get; set; }
+        public Phase4.ConstructionSnapshot? ConstructionSnapshot { get; set; }
+        public Phase4.OperationalRoadmap? Roadmap { get; set; }
+        public Phase4.Phase4SourceVersions? SourceVersions { get; set; }
     }
 
     public class CreatorPricingForecastContext

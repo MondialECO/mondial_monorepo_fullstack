@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using MongoDB.Bson;
 using MongoDB.Bson.IO;
 using WebApp.Models.DatabaseModels;
@@ -177,7 +178,7 @@ public class ProfileDraftRequest
     public string? Headline { get; set; }
     public string? Bio { get; set; }
     public ProfessionalOverviewRequest? ProfessionalOverview { get; set; }
-    public List<string> Skills { get; set; } = new();
+    public List<ProfileSkillRequest> Skills { get; set; } = new();
     public List<string> ServiceCategories { get; set; } = new();
     public List<string> Industries { get; set; } = new();
     public List<string> PricingModels { get; set; } = new();
@@ -185,6 +186,73 @@ public class ProfileDraftRequest
     public List<ProviderEducationRequest> Education { get; set; } = new();
     public List<ProviderLanguageRequest> LanguageProficiencies { get; set; } = new();
     public List<ProfessionalSocialLinkDto> SocialLinks { get; set; } = new();
+}
+
+[JsonConverter(typeof(ProfileSkillRequestJsonConverter))]
+public class ProfileSkillRequest
+{
+    public string Name { get; set; } = "";
+    public string? Level { get; set; }
+    public string? Source { get; set; }
+    public object? Verification { get; set; }
+
+    public static implicit operator ProfileSkillRequest(string name) => new() { Name = name };
+    public override string ToString() => Name;
+}
+
+public class ProfileSkillRequestJsonConverter : JsonConverter<ProfileSkillRequest>
+{
+    public override ProfileSkillRequest? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == System.Text.Json.JsonTokenType.String)
+        {
+            return new ProfileSkillRequest { Name = reader.GetString() ?? "" };
+        }
+        if (reader.TokenType == System.Text.Json.JsonTokenType.StartObject)
+        {
+            using var doc = JsonDocument.ParseValue(ref reader);
+            var root = doc.RootElement;
+            var req = new ProfileSkillRequest();
+            if (root.TryGetProperty("name", out var n) || root.TryGetProperty("Name", out n))
+                req.Name = n.GetString() ?? "";
+            if (root.TryGetProperty("level", out var l) || root.TryGetProperty("Level", out l))
+                req.Level = l.ValueKind == JsonValueKind.Null ? null : l.GetString();
+            if (root.TryGetProperty("source", out var s) || root.TryGetProperty("Source", out s))
+                req.Source = s.ValueKind == JsonValueKind.Null ? null : s.GetString();
+            if (root.TryGetProperty("verification", out var v) || root.TryGetProperty("Verification", out v))
+                req.Verification = v.ValueKind == JsonValueKind.Null ? null : v.Clone();
+            return req;
+        }
+        return null;
+    }
+
+    public override void Write(Utf8JsonWriter writer, ProfileSkillRequest value, JsonSerializerOptions options)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("name", value.Name);
+        if (value.Level is not null) writer.WriteString("level", value.Level);
+        else writer.WriteNull("level");
+        if (value.Source is not null) writer.WriteString("source", value.Source);
+        else writer.WriteNull("source");
+        if (value.Verification is not null)
+        {
+            writer.WritePropertyName("verification");
+            JsonSerializer.Serialize(writer, value.Verification, options);
+        }
+        else writer.WriteNull("verification");
+        writer.WriteEndObject();
+    }
+}
+
+public class ProfileSkillResponse
+{
+    public string Name { get; set; } = "";
+    public string? Level { get; set; }
+    public string? Source { get; set; }
+    public object? Verification { get; set; }
+
+    public static implicit operator ProfileSkillResponse(string name) => new() { Name = name };
+    public override string ToString() => Name;
 }
 
 public class ProfileDraftResponse
@@ -201,7 +269,7 @@ public class ProfileDraftResponse
     public string? Headline { get; set; }
     public string? Bio { get; set; }
     public ProfessionalOverviewResponse ProfessionalOverview { get; set; } = new();
-    public List<string> Skills { get; set; } = new();
+    public List<ProfileSkillResponse> Skills { get; set; } = new();
     public List<string> ServiceCategories { get; set; } = new();
     public List<string> Industries { get; set; } = new();
     public List<string> PricingModels { get; set; } = new();
@@ -701,7 +769,13 @@ public static class ServiceProviderMapping
         Headline = draft.Headline,
         Bio = draft.Bio,
         ProfessionalOverview = draft.ProfessionalOverview.ToResponse(),
-        Skills = new List<string>(draft.Skills),
+        Skills = (draft.Skills ?? new()).Select(s => new ProfileSkillResponse
+        {
+            Name = s.Name,
+            Level = s.Level,
+            Source = s.Source,
+            Verification = s.Verification
+        }).ToList(),
         ServiceCategories = draft.ServiceCategories.Select(c => c.ToString()).ToList(),
         Industries = new List<string>(draft.Industries),
         PricingModels = draft.PricingModels.Select(p => p.ToString()).ToList(),

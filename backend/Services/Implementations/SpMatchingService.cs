@@ -53,6 +53,7 @@ namespace WebApp.Services.Implementations
                 matches.Add(new SpMatch
                 {
                     User = user,
+                    Professional = professional,
                     ScoreValue = ScoreRecord(record, professional, projectSector),
                 });
             }
@@ -94,33 +95,9 @@ namespace WebApp.Services.Implementations
             return sectorOverlap * 0.35 + ratingNorm * 0.25 + responseRate * 0.20 + tierNorm * 0.20;
         }
 
-        /// <summary>
-        /// Legacy embedded-shape scoring, kept for existing callers that hold an
-        /// ApplicationUser (Creator designer cards). No longer used by MatchAsync.
-        /// </summary>
-        public double Score(ApplicationUser u, string projectSector)
-        {
-            var sp = u.ServiceProviderProfile ?? new ServiceProviderProfile();
-
-            double tierNorm = u.Tier_level >= 3 ? 1.0 : u.Tier_level == 2 ? 0.7 : 0.4;
-            double rawTrust = sp.TrustScore;
-            double ratingNorm = rawTrust <= 0 ? 0.6 : rawTrust <= 5 ? rawTrust / 5.0 : Math.Min(rawTrust / 100.0, 1.0);
-
-            var responseSignal = sp.TrustBreakdown.ResponseRate;
-            double responseRate = responseSignal.HasData
-                ? Math.Clamp(responseSignal.Value / 100.0, 0, 1)
-                : 0;
-
-            double sectorOverlap;
-            if (string.IsNullOrWhiteSpace(projectSector)) sectorOverlap = 0.7;
-            else if (sp.Industries != null && sp.Industries.Any(s =>
-                         s.Contains(projectSector, StringComparison.OrdinalIgnoreCase) ||
-                         projectSector.Contains(s, StringComparison.OrdinalIgnoreCase)))
-                sectorOverlap = 1.0;
-            else sectorOverlap = 0.4;
-
-            return sectorOverlap * 0.35 + ratingNorm * 0.25 + responseRate * 0.20 + tierNorm * 0.20;
-        }
+        /// <summary>Split-record scoring formula.</summary>
+        public double Score(ServiceProviderProfileRecord record, ProfessionalProfileRecord? professional, string projectSector) =>
+            ScoreRecord(record, professional, projectSector);
 
         /// <summary>Split-record eligibility (matching source of truth after cutover).</summary>
         public static bool IsEligibleCandidate(ServiceProviderProfileRecord record, ServiceCategory specialty) =>
@@ -128,14 +105,5 @@ namespace WebApp.Services.Implementations
             record.ProviderTier >= ProviderTier.Tier2 &&
             record.ServiceCategories.Contains(specialty) && record.NewOrderAvailability &&
             (record.MaximumConcurrentOrders <= 0 || record.CurrentActiveOrders < record.MaximumConcurrentOrders);
-
-        /// <summary>Legacy embedded-shape eligibility, kept for existing tests/views.</summary>
-        public static bool IsEligibleCandidate(ApplicationUser u, ServiceCategory specialty)
-        {
-            var p = u.ServiceProviderProfile;
-            return p is not null && p.VerificationStatus == ServiceProviderVerificationStatus.Verified &&
-                p.ServiceCategories.Contains(specialty) && p.NewOrderAvailability &&
-                (p.MaximumConcurrentOrders <= 0 || p.CurrentActiveOrders < p.MaximumConcurrentOrders);
-        }
     }
 }

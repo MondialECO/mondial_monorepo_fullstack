@@ -329,7 +329,7 @@ namespace WebApp.Controllers
 
                 // Reuse the shared SP match formula, filtered to the Design specialty.
                 var matches = await _spMatching.MatchAsync(ServiceCategory.Design, sector, 5);
-                var dtos = matches.Select(m => ToDesignerDto(m.User)).ToList();
+                var dtos = matches.Select(m => ToDesignerDto(m.User, m.Professional)).ToList();
                 for (int i = 0; i < dtos.Count; i++) dtos[i].IsBestMatch = i == 0;
 
                 return Ok(ApiResponse.Ok("OK", dtos));
@@ -390,21 +390,22 @@ namespace WebApp.Controllers
         }
 
         // Maps a matched SP → the designer DTO (ranking lives in ISpMatchingService).
-        private static DesignerDto ToDesignerDto(ApplicationUser u)
+        private static DesignerDto ToDesignerDto(ApplicationUser u, ProfessionalProfileRecord? prof = null)
         {
             var sp = u.ServiceProviderProfile;
-            double rawTrust = sp.TrustScore > 0 ? sp.TrustScore : u.Trust_score;
+            double rawTrust = (sp?.TrustScore ?? 0) > 0 ? sp.TrustScore : u.Trust_score;
             double ratingNorm = rawTrust <= 0 ? 0.6 : rawTrust <= 5 ? rawTrust / 5.0 : Math.Min(rawTrust / 100.0, 1.0);
+            var headline = prof?.Headline;
             return new DesignerDto
             {
                 SpId = u.Id.ToString(),
                 Name = u.Name,
-                Title = string.IsNullOrWhiteSpace(sp.Headline) ? (u.Title ?? "Brand Designer") : sp.Headline,
+                Title = string.IsNullOrWhiteSpace(headline) ? (u.Title ?? "Brand Designer") : headline,
                 Tier = u.Tier_level,
                 Rating = Math.Round(ratingNorm * 5.0, 1),
-                ProjectCount = sp.PortfolioItems?.Count ?? 0,
+                ProjectCount = sp?.PortfolioItems?.Count ?? 0,
                 Location = u.Geography ?? u.Address?.City ?? "—",
-                Sectors = sp.Industries ?? new List<string>(),
+                Sectors = prof?.Industries ?? sp?.Industries ?? new List<string>(),
                 EstimatedPriceRange = "€500–€2,000",
                 EstimatedDays = "5–10 days",
                 IsBestMatch = false,

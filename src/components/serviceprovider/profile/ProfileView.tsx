@@ -719,14 +719,17 @@ function ProfileSections({
               {(profile.skills ?? []).length === 0 ? (
                 <p className="text-sm text-[#6B7280]">No skills added.</p>
               ) : (
-                (profile.skills ?? []).map((skill: string) => (
-                  <span
-                    key={skill}
-                    className="rounded-full border border-[#E5E7EB] px-3 py-1 text-sm text-[#374151]"
-                  >
-                    {skill}
-                  </span>
-                ))
+                (profile.skills ?? []).map((skill: any) => {
+                  const name = typeof skill === "string" ? skill : (skill?.name ?? "");
+                  return (
+                    <span
+                      key={name}
+                      className="rounded-full border border-[#E5E7EB] px-3 py-1 text-sm text-[#374151]"
+                    >
+                      {name}
+                    </span>
+                  );
+                })
               )}
             </div>
 

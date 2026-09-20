@@ -36,7 +36,10 @@ namespace WebApp.Models.DatabaseModels
         public List<ProfessionalExperience> Experiences { get; set; } = new();
         public List<ProfessionalEducation> Education { get; set; } = new();
 
-        public List<string> Skills { get; set; } = new();
+        public List<ProfileSkill> Skills { get; set; } = new();
+
+        /// <summary>Optional venture context for founders/creators/entrepreneurs.</summary>
+        public ProfileVentureContext? VentureContext { get; set; }
 
         public List<ProfessionalLanguage> LanguageProficiencies { get; set; } = new();
 
@@ -75,5 +78,89 @@ namespace WebApp.Models.DatabaseModels
 
         /// <summary>Absolute http(s) URL, validated at the request boundary.</summary>
         public string Url { get; set; } = "";
+    }
+
+    /// <summary>A leveled skill entry on the professional profile.</summary>
+    [BsonIgnoreExtraElements]
+    public class ProfileSkill
+    {
+        [BsonElement("name")]
+        public string Name { get; set; } = "";
+
+        /// <summary>Self-declared proficiency level (e.g. Beginner, Intermediate, Advanced, Expert). Never auto-inferred.</summary>
+        [BsonElement("level")]
+        public string? Level { get; set; }
+
+        /// <summary>Source of the skill entry (e.g. "legacy", "self_declared").</summary>
+        [BsonElement("source")]
+        public string? Source { get; set; }
+
+        /// <summary>Optional verification metadata or proof reference.</summary>
+        [BsonElement("verification")]
+        public object? Verification { get; set; }
+
+        [BsonExtraElements]
+        public BsonDocument? ExtraElements
+        {
+            get => null;
+            set
+            {
+                if (value == null) return;
+                if (string.IsNullOrEmpty(Name) && value.TryGetValue("Name", out var nameVal) && nameVal.IsString)
+                    Name = nameVal.AsString;
+                if (string.IsNullOrEmpty(Level) && value.TryGetValue("Level", out var levelVal) && levelVal.IsString)
+                    Level = levelVal.AsString;
+                if (string.IsNullOrEmpty(Source) && value.TryGetValue("Source", out var sourceVal) && sourceVal.IsString)
+                    Source = sourceVal.AsString;
+            }
+        }
+
+        public static implicit operator ProfileSkill(string name) => new() { Name = name, Source = "legacy" };
+        public override string ToString() => Name;
+    }
+
+    /// <summary>Optional founder venture context on the professional profile.</summary>
+    [BsonIgnoreExtraElements]
+    public class ProfileVentureContext
+    {
+        [BsonElement("currentSituation")]
+        public string? CurrentSituation { get; set; }
+
+        [BsonElement("weeklyAvailability")]
+        public string? WeeklyAvailability { get; set; }
+
+        [BsonElement("region")]
+        public string? Region { get; set; }
+
+        [BsonElement("previousEntrepreneurialExperience")]
+        public string? PreviousEntrepreneurialExperience { get; set; }
+
+        [BsonElement("learningPreference")]
+        public string? LearningPreference { get; set; }
+
+        [BsonElement("delegationPreference")]
+        public string? DelegationPreference { get; set; }
+
+        [BsonExtraElements]
+        public BsonDocument? ExtraElements
+        {
+            get => null;
+            set
+            {
+                if (value == null) return;
+                if (string.IsNullOrEmpty(CurrentSituation) && value.TryGetValue("CurrentSituation", out var cs) && cs.IsString)
+                    CurrentSituation = cs.AsString;
+                if (string.IsNullOrEmpty(WeeklyAvailability) && value.TryGetValue("WeeklyAvailability", out var wa) && wa.IsString)
+                    WeeklyAvailability = wa.AsString;
+                if (string.IsNullOrEmpty(Region) && value.TryGetValue("Region", out var reg) && reg.IsString)
+                    Region = reg.AsString;
+                if (string.IsNullOrEmpty(PreviousEntrepreneurialExperience) && value.TryGetValue("PreviousEntrepreneurialExperience", out var pe) && pe.IsString)
+                    PreviousEntrepreneurialExperience = pe.AsString;
+                if (string.IsNullOrEmpty(LearningPreference) && value.TryGetValue("LearningPreference", out var lp) && lp.IsString)
+                    LearningPreference = lp.AsString;
+                if (string.IsNullOrEmpty(DelegationPreference) && value.TryGetValue("DelegationPreference", out var dp) && dp.IsString)
+                    DelegationPreference = dp.AsString;
+            }
+        }
     }
 }

@@ -483,13 +483,13 @@ public class ProfileDraftRequestValidator : AbstractValidator<ProfileDraftReques
             RuleFor(x => x.Skills)
                 .Must(s => s.Count <= ServiceProviderLimits.MaxEditorSkills)
                     .WithMessage($"You can list at most {ServiceProviderLimits.MaxEditorSkills} skills.")
-                .Must(ServiceProviderLimits.NoBlankEntries)
+                .Must(s => s.All(skill => !string.IsNullOrWhiteSpace(skill.Name)))
                     .WithMessage("Skills cannot be blank.")
-                .Must(ServiceProviderLimits.NoDuplicatesIgnoreCase)
+                .Must(s => s.Select(skill => (skill.Name ?? "").Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count() == s.Count)
                     .WithMessage("Duplicate skills are not allowed.");
 
             RuleForEach(x => x.Skills)
-                .MaximumLength(ServiceProviderLimits.MaxSkillLength)
+                .Must(s => (s.Name ?? "").Length <= ServiceProviderLimits.MaxSkillLength)
                     .WithMessage($"Each skill must be {ServiceProviderLimits.MaxSkillLength} characters or fewer.");
         });
 

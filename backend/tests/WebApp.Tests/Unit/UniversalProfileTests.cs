@@ -77,7 +77,7 @@ public class UniversalProfileTests
             UserId = userId,
             Headline = "Digital Creator",
             Bio = "Creating digital art",
-            Skills = new List<string> { "Graphic Design", "3D Art" }
+            Skills = new() { "Graphic Design", "3D Art" }
         };
 
         _userManagerMock.Setup(m => m.FindByIdAsync(userId)).ReturnsAsync(user);
@@ -117,7 +117,7 @@ public class UniversalProfileTests
         {
             Headline = "Tech Founder & CEO",
             Bio = "Building future fintech infrastructure",
-            Skills = new List<string> { "Leadership", "Fintech", "Product Strategy" }
+            Skills = new() { "Leadership", "Fintech", "Product Strategy" }
         };
 
         var result = await controller.UpdateMyProfile(updateRequest, CancellationToken.None);
@@ -127,7 +127,7 @@ public class UniversalProfileTests
 
         prof.Headline.Should().Be("Tech Founder & CEO");
         prof.Bio.Should().Be("Building future fintech infrastructure");
-        prof.Skills.Should().Contain(new[] { "Leadership", "Fintech", "Product Strategy" });
+        prof.Skills.Select(s => s.Name).Should().Contain(new[] { "Leadership", "Fintech", "Product Strategy" });
 
         _profStoreMock.Verify(s => s.UpsertAsync(It.Is<ProfessionalProfileRecord>(p => p.UserId == userId), null, It.IsAny<CancellationToken>()), Times.Once);
     }

@@ -976,8 +976,8 @@ namespace WebApp.Controllers
                 {
                     spId = m.User.Id.ToString(),
                     name = m.User.Name,
-                    title = string.IsNullOrWhiteSpace(m.User.ServiceProviderProfile.Headline)
-                        ? (m.User.Title ?? specialty) : m.User.ServiceProviderProfile.Headline,
+                    title = string.IsNullOrWhiteSpace(m.Professional?.Headline)
+                        ? (m.User.Title ?? specialty) : m.Professional.Headline,
                     tier = m.User.Tier_level,
                     location = m.User.Geography ?? m.User.Address?.City ?? "—",
                 }).ToList();

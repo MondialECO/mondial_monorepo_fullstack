@@ -284,7 +284,7 @@ namespace WebApp.Services.Implementations
             (decimal Rating, int Count)? rating)
         {
             var coverUrl = (listing.GalleryImages?.FirstOrDefault()?.PublicUrl)
-                ?? provider?.ServiceProviderProfile?.CoverImage?.PublicUrl;
+                ?? professional?.CoverImage?.PublicUrl;
 
             return new MarketplaceListingCard
             {
@@ -373,7 +373,7 @@ namespace WebApp.Services.Implementations
             {
                 ProviderId = provider.Id.ToString(),
                 DisplayName = provider.Name ?? "Unknown",
-                Headline = profile?.Headline,
+                Headline = professional?.Headline,
                 ProfileImageUrl = ResolveMediaUrl(professional?.ProfileImage?.PublicUrl),
                 Verified = profile?.VerificationStatus == ServiceProviderVerificationStatus.Verified,
                 TrustScore = profile?.TrustScore > 0 ? (decimal)profile.TrustScore : null,

@@ -397,6 +397,11 @@ builder.Services.AddScoped<WebApp.Services.Interface.IIdentityVerificationServic
 builder.Services.AddScoped<IServiceProviderService, ServiceProviderService>();
 builder.Services.AddScoped<IServiceProviderMediaService, ServiceProviderMediaService>();
 builder.Services.AddScoped<IProfileEditorService, ProfileEditorService>();
+builder.Services.AddScoped<IProfileCompletenessResolver, ProfileCompletenessResolver>();
+builder.Services.AddSingleton<ICapabilityMatcher, CapabilityMatcher>();
+builder.Services.AddScoped<IConstructionSnapshotService, ConstructionSnapshotService>();
+builder.Services.AddSingleton<IRoadmapScheduler, RoadmapScheduler>();
+builder.Services.AddScoped<IOperationalRoadmapService, OperationalRoadmapService>();
 
 // Service Provider data split (approved SP-only migration): three root
 // collections behind thin stores, a dual-read aggregate reader, and the

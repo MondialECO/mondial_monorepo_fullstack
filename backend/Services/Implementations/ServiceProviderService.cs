@@ -87,8 +87,32 @@ public class ServiceProviderService : IServiceProviderService
         var now = DateTime.UtcNow;
 
         professional.Headline = NullIfBlank(request.Headline) ?? "";
-        professional.Bio = NullIfBlank(request.Bio) ?? "";
-        professional.Skills = NormalizeStrings(request.Skills);
+        var existingSkillsByName = (professional.Skills ?? new())
+            .Where(s => !string.IsNullOrWhiteSpace(s.Name))
+            .GroupBy(s => s.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        var normalizedSkillNames = NormalizeStrings(request.Skills);
+        professional.Skills = normalizedSkillNames.Select(name =>
+        {
+            if (existingSkillsByName.TryGetValue(name, out var existing))
+            {
+                return new ProfileSkill
+                {
+                    Name = name,
+                    Level = existing.Level,
+                    Source = existing.Source,
+                    Verification = existing.Verification
+                };
+            }
+            return new ProfileSkill
+            {
+                Name = name,
+                Level = null,
+                Source = "self_declared",
+                Verification = null
+            };
+        }).ToList();
         professional.Industries = NormalizeStrings(request.Industries);
 
         if (request.ProfessionalOverview is not null)

@@ -14,12 +14,13 @@ namespace WebApp.Services.Interface
         Task<List<SpMatch>> MatchAsync(ServiceCategory specialty, string projectSector, int take);
 
         /// <summary>The match formula for a single SP against a project sector (0–1).</summary>
-        double Score(ApplicationUser user, string projectSector);
+        double Score(ServiceProviderProfileRecord record, ProfessionalProfileRecord? professional, string projectSector);
     }
 
     public sealed class SpMatch
     {
         public ApplicationUser User { get; init; }
+        public ProfessionalProfileRecord? Professional { get; init; }
         public double ScoreValue { get; init; }
     }
 }
