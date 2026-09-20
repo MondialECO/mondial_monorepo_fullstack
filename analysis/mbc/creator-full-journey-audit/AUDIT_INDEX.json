@@ -1,0 +1,169 @@
+{
+  "audit_metadata": {
+    "audit_name": "MBC Creator Journey Full Audit (Phase 1 -> Phase 6)",
+    "audit_date": "2026-09-20",
+    "target_repo": "MondialECO/mondial_monorepo_fullstack",
+    "status": "COMPLETED",
+    "rules": "READ-ONLY, FINDINGS-ONLY, NO CODE EDITS, HEAD VERIFIED"
+  },
+  "summary": {
+    "blocker": 1,
+    "high": 4,
+    "medium": 4,
+    "low": 2,
+    "resolved": 2,
+    "unverified": 2
+  },
+  "findings": [
+    {
+      "id": "CRIT-01",
+      "status": "CONFIRMED",
+      "severity": "BLOCKER",
+      "phase": "Journey-Wide / Economy",
+      "title": "Complete absence of credit top-up or payment integration permanently halts user progression upon balance exhaustion",
+      "evidence": "backend/Services/Implementations/AiCreditService.cs:72-88, src/lib/api/error-handler.ts:toAiError",
+      "what_is_actually_true_at_head": "A full Creator journey costs 123-148 credits against a 200-credit grant. Depleted balances throw InsufficientCreditsException (HTTP 402). The codebase contains zero Stripe/payment gateway integrations and zero credit purchase endpoints.",
+      "why_it_matters": "Any creator who exhausts their starter grant is permanently hard-blocked from progressing through AI-gated steps without manual database intervention by an administrator."
+    },
+    {
+      "id": "HIGH-01",
+      "status": "CONFIRMED",
+      "severity": "HIGH",
+      "phase": "Persistence / Journey-Wide",
+      "title": "CreatorJourneyService.ReplaceAsync uses ReplaceOneAsync without optimistic concurrency",
+      "evidence": "backend/Services/Implementations/CreatorJourneyService.cs:246, 252",
+      "what_is_actually_true_at_head": "All updates to CreatorJourneys execute a full-document ReplaceOneAsync. Unlike CreatorIdeas, it lacks an ExpectedVersion check or targeted $set operators.",
+      "why_it_matters": "Concurrent operations, multi-tab browsing, or asynchronous background jobs will silently overwrite and destroy concurrent journey state."
+    },
+    {
+      "id": "HIGH-02",
+      "status": "CONFIRMED",
+      "severity": "HIGH",
+      "phase": "Phase 2",
+      "title": "Hardcoded sample invoicing copy, brand traits, and colors render on Phase 2 Complete card when branding is skipped",
+      "evidence": "src/app/dashboard/creator/phase-2/complete/page.tsx:200-280",
+      "what_is_actually_true_at_head": "If a user skips branding or has an incomplete brand kit, the completion screen renders hardcoded sample strings ('The invoicing tool that does the awkward follow-up for you', traits, and colors #2563EB, #0F172A) instead of an honest empty state.",
+      "why_it_matters": "Creators building unrelated startups see irrelevant invoicing copy and mock branding presented as their official project summary."
+    },
+    {
+      "id": "HIGH-03",
+      "status": "CONFIRMED",
+      "severity": "HIGH",
+      "phase": "Phase 2 -> Phase 3 -> Phase 4",
+      "title": "Navigation CTAs drop ?ideaId= query parameters, causing fallback to first returned idea on refresh",
+      "evidence": "src/app/dashboard/creator/phase-2/clarifier/page.tsx:378, src/app/dashboard/creator/phase-2/idea-summary/page.tsx:74, src/contexts/IdeaContext.tsx:48-65",
+      "what_is_actually_true_at_head": "Navigation pushes drop ?ideaId=. When refreshed, useIdea() queries GET /api/creator/ideas and defaults to ideas[0].",
+      "why_it_matters": "Users with multiple ideas risk silently generating Phase 3 or Phase 4 artifacts against the wrong startup project."
+    },
+    {
+      "id": "HIGH-04",
+      "status": "CONFIRMED",
+      "severity": "HIGH",
+      "phase": "Phase 3 Gate",
+      "title": "Endpoint PATCH /masterplan/complete does not validate Market Study or Business Model, but ComputePhaseStatusAsync does",
+      "evidence": "backend/Controllers/CreatorPhase3Controller.cs:633-668 vs backend/Services/Implementations/CreatorJourneyService.cs:361-365",
+      "what_is_actually_true_at_head": "PATCH /masterplan/complete validates only 4 artifacts (forecast, plan, formation, legal). ComputePhaseStatusAsync requires market_study and business_model unless the legacy bypass is met.",
+      "why_it_matters": "A user can receive a 200 OK from /masterplan/complete while their Phase 3 status remains in_progress and Phase 4 remains locked."
+    },
+    {
+      "id": "MED-01",
+      "status": "CONFIRMED",
+      "severity": "MEDIUM",
+      "phase": "Phase 3 & Phase 4",
+      "title": "Legal Checklist, Formation Memo, Investor Scorecard, and GTM Strategy lack PDF or document renderers",
+      "evidence": "src/app/dashboard/creator/asset-library/page.tsx:140-195, backend/Services/Implementations/QuestPdfGenerator.cs",
+      "what_is_actually_true_at_head": "QuestPDF renderers exist only for Market Study, Business Model, and Business Plan. The other 4 artifacts exist solely as browser DOM elements.",
+      "why_it_matters": "Creators cannot export legal compliance reports, formation memos, or investor scorecards for external stakeholders."
+    },
+    {
+      "id": "MED-02",
+      "status": "CONFIRMED",
+      "severity": "MEDIUM",
+      "phase": "Phase 2 & Phase 3",
+      "title": "Active idea payloads, brand drafts, and forecast slider inputs stored in localStorage without session expiration",
+      "evidence": "src/contexts/IdeaContext.tsx:38-45, src/app/dashboard/creator/phase-2/brand-studio/page.tsx:92-104, src/app/dashboard/creator/phase-3/forecast/page.tsx:95-102",
+      "what_is_actually_true_at_head": "Proprietary startup summaries, SVG logo code, and financial modeling assumptions are serialized to browser localStorage and persist across logout.",
+      "why_it_matters": "On shared computers, unpurged localStorage data risks cross-tenant exposure of startup intellectual property."
+    },
+    {
+      "id": "MED-03",
+      "status": "CONFIRMED",
+      "severity": "MEDIUM",
+      "phase": "Phase 3 (Step 3.3)",
+      "title": "Forecast initializes with synthetic $1M TAM, $49 ARPU, $8K OPEX, 12% growth, and 5% churn without synthetic disclaimer",
+      "evidence": "src/app/dashboard/creator/phase-3/forecast/page.tsx:115-121",
+      "what_is_actually_true_at_head": "If upstream Market Study is absent or sliders are untouched, synthetic constants populate the financial model without labeling.",
+      "why_it_matters": "Unverified synthetic defaults directly hydrate the 12-section Executive Business Plan and Investor Readiness Score."
+    },
+    {
+      "id": "MED-04",
+      "status": "CONFIRMED",
+      "severity": "MEDIUM",
+      "phase": "Phase 4",
+      "title": "Training recommendations are absent; showcase landing page and roadmap are missing from Phase 4",
+      "evidence": "src/app/dashboard/creator/offer-pricing/, backend/Controllers/CreatorPhase4Controller.cs",
+      "what_is_actually_true_at_head": "Phase 4 implements Pricing, Resource Calculator, and GTM checklist. Training recommendations are absent codebase-wide. Roadmap is in Phase 3.",
+      "why_it_matters": "Significant feature drift exists between specifications and production code."
+    },
+    {
+      "id": "LOW-01",
+      "status": "CONFIRMED",
+      "severity": "LOW",
+      "phase": "Phase 2",
+      "title": "Legacy logo tool route renders null and performs an immediate client-side redirect",
+      "evidence": "src/app/dashboard/creator/phase-2/logo-tool/page.tsx:8-12",
+      "what_is_actually_true_at_head": "Renders null and immediately executes router.replace('/dashboard/creator/phase-2/brand-studio').",
+      "why_it_matters": "Represents technical debt and redundant route entry."
+    },
+    {
+      "id": "LOW-02",
+      "status": "CONFIRMED",
+      "severity": "LOW",
+      "phase": "Phase 5 & 6",
+      "title": "UI displays 'Issue Term Sheet' and 'Instant Capital Deposit Account' buttons without backing backend APIs",
+      "evidence": "src/app/dashboard/creator/investors/page.tsx:320, src/app/dashboard/creator/crossroads/page.tsx:240",
+      "what_is_actually_true_at_head": "Clicking only triggers toast notifications or sets boolean flags in MongoDB.",
+      "why_it_matters": "Misleads users regarding the platform's automation capabilities."
+    },
+    {
+      "id": "RES-01",
+      "status": "RESOLVED",
+      "severity": "INFORMATIONAL",
+      "phase": "Phase 1",
+      "title": "Phase 1 identity verification is a real vendor API integration with Sumsub",
+      "evidence": "backend/Services/Implementations/SumsubService.cs:42-88, backend/Controllers/IdentityController.cs:117-160",
+      "what_is_actually_true_at_head": "Sumsub integration is real, fails closed if credentials are unset, and verifies webhook signatures with HMAC-SHA256.",
+      "why_it_matters": "Resolves prior concerns that Phase 1 identity verification might be stubbed or bypassed."
+    },
+    {
+      "id": "RES-02",
+      "status": "RESOLVED",
+      "severity": "INFORMATIONAL",
+      "phase": "Journey-Wide",
+      "title": "Step progression is dynamically derived from artifact state on every read rather than stored step counters",
+      "evidence": "backend/Services/Implementations/CreatorJourneyService.cs:ComputePhaseStatusAsync",
+      "what_is_actually_true_at_head": "ComputePhaseStatusAsync overwrites returned phase and step status dynamically based on database document presence.",
+      "why_it_matters": "Resolves prior concerns regarding step counter desynchronization."
+    },
+    {
+      "id": "UNV-01",
+      "status": "UNVERIFIED",
+      "severity": "INFORMATIONAL",
+      "phase": "Phase 1",
+      "title": "Live Sumsub webhook transport delivery to public ingress endpoint",
+      "evidence": "backend/Controllers/IdentityController.cs:117-160",
+      "what_is_actually_true_at_head": "HMAC verification logic is confirmed at HEAD, but external network delivery cannot be exercised in read-only local audit.",
+      "why_it_matters": "Transport-level firewall, proxy, or header rewriting behavior in production environments remains unverified."
+    },
+    {
+      "id": "UNV-02",
+      "status": "UNVERIFIED",
+      "severity": "INFORMATIONAL",
+      "phase": "Phase 5 & 6",
+      "title": "Live INSEE French Enterprise Registry API connectivity",
+      "evidence": "backend/Services/Implementations/CompanyVerificationService.cs:45-132",
+      "what_is_actually_true_at_head": "Code calls api.insee.fr, but live external API authentication and response handling cannot be exercised in read-only local audit.",
+      "why_it_matters": "Production API quota, latency, and credential validity remain unverified."
+    }
+  ]
+}

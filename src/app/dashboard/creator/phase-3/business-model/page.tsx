@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
@@ -53,7 +53,11 @@ function formatCurrencyAmount(amount?: number | null, currency = 'EUR'): string 
 
 export default function BusinessModelPage() {
   const router = useRouter();
-  const { completeStep } = useCreatorProgress();
+  const searchParams = useSearchParams();
+  const queryIdeaId = searchParams.get('ideaId');
+  const { state, completeStep } = useCreatorProgress();
+  const activeIdeaId = state?.activeIdeaId;
+  const effectiveIdeaId = queryIdeaId || activeIdeaId || getCreatorWorkspaceIdea() || null;
 
   const [loading, setLoading] = useState(true);
   const [businessModelSessionId, setBusinessModelSessionId] = useState<string | null>(null);
@@ -92,7 +96,7 @@ export default function BusinessModelPage() {
     let active = true;
     (async () => {
       try {
-        const { journey } = await creatorJourneyApi.get();
+        const { journey } = await creatorJourneyApi.get(effectiveIdeaId);
         if (!active) return;
         const p3 = journey.phase3Data as {
           businessModelSessionId?: string;
@@ -101,8 +105,7 @@ export default function BusinessModelPage() {
 
         setBusinessModelSessionId(p3?.businessModelSessionId ?? null);
         setMarketStudySessionId(p3?.marketStudySessionId ?? null);
-        const currentIdeaId = getCreatorWorkspaceIdea();
-        setBusinessIdeaId(currentIdeaId);
+        setBusinessIdeaId(effectiveIdeaId);
         setCreatorMarketGap(journey.project?.marketGap ?? null);
         setSector(journey.project?.sector ?? null);
         setGeography(journey.project?.geography ?? null);
@@ -113,6 +116,7 @@ export default function BusinessModelPage() {
         let kitVersion: number | undefined;
 
         try {
+          const currentIdeaId = effectiveIdeaId;
           const kit = await brandKitApi.getBrandKit(currentIdeaId ?? undefined);
           kitVersion = kit?.version;
           const selectedKey = kit?.logo?.selectedConceptKey;
@@ -190,7 +194,7 @@ export default function BusinessModelPage() {
 
   const handleNext = () => {
     completeStep(3, 2);
-    router.push(withIdeaContext('/dashboard/creator/phase-3/forecast', businessIdeaId));
+    router.push(withIdeaContext('/dashboard/creator/phase-3/forecast', effectiveIdeaId));
   };
 
 
@@ -217,7 +221,7 @@ export default function BusinessModelPage() {
     <Phase3SetupShell
       fullWidth
       headerAlign="left"
-      stepEyebrow="3.2 / BUSINESS MODEL"
+      stepEyebrow="STEP 3.2 · BUSINESS MODEL"
       title={`Business model : ${displayProjectName}`}
       description={`Derived from market study 3.1 · ${displaySector} · Last edited ${formattedDate}`}
       headerActions={
@@ -335,7 +339,7 @@ export default function BusinessModelPage() {
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button
                 variant="outline"
-                onClick={() => router.push('/dashboard/creator/phase-3/market-study')}
+                onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/market-study', effectiveIdeaId))}
                 className="w-full sm:w-auto text-xs font-medium"
               >
                 <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Market Study

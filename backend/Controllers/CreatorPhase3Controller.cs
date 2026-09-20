@@ -413,11 +413,18 @@ namespace WebApp.Controllers
                 var userId = GetUserId();
                 var j = await _journeys.GetOrCreateAsync(userId);
                 CreatorIdea? idea = null;
-                if (!string.IsNullOrEmpty(ideaId) && _ideas != null)
+                if (!string.IsNullOrEmpty(ideaId))
                 {
-                    idea = await _ideas.GetOwnedAsync(ideaId, userId);
+                    if (_ideas != null)
+                    {
+                        idea = await _ideas.GetOwnedAsync(ideaId, userId);
+                    }
+                    if (idea == null)
+                    {
+                        return NotFound(ApiResponse.Error("Venture idea not found or access denied"));
+                    }
                 }
-                if (idea == null && _ideas != null)
+                else if (_ideas != null)
                 {
                     var ideas = await _ideas.ListByUserAsync(userId);
                     idea = ideas.FirstOrDefault(i => string.Equals(i.Status, "active", StringComparison.OrdinalIgnoreCase)) ?? ideas.FirstOrDefault();
@@ -656,15 +663,31 @@ namespace WebApp.Controllers
                 var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced cross-phase reads
                 var p = journey.Project ?? new CreatorJourneyProject();
                 var p3 = journey.Phase3Data ?? new CreatorPhase3Data();
-                var p4 = journey.Phase4Data ?? new CreatorPhase4Data();
-                var p5 = journey.Phase5Data ?? new CreatorPhase5Data();
 
                 bool isFinTech = string.Equals(p.Sector, "FinTech", StringComparison.OrdinalIgnoreCase) ||
-                    FinTechKeywords.Any(k => (p.Solution ?? "").Contains(k, StringComparison.OrdinalIgnoreCase));
-                bool hasInvestors = (p5.PathB?.SeedFunding?.TotalAsk ?? 0) > 0;
-                bool soloFounder = (p4.ResourceCalculation?.TeamRequirements?.Count ?? 0) == 0;
+                    FinTechKeywords.Any(k => (p.Solution ?? "").Contains(k, StringComparison.OrdinalIgnoreCase)) ||
+                    (p3.LegalAssessment?.Items?.Any(i => i.Badge == "fintech" && i.EvaluationStatus == ApplicabilityEvaluationStatuses.Applicable) ?? false);
+
+                // Derive founder team structure strictly from Phase 2 / Step 3.5 inputs (never future Phase 4/5)
+                bool lookingForCofounder = !string.IsNullOrEmpty(p3.FormationGenerator?.CofounderDraft?.RoleNeeded);
+                bool hasCofounderGaps = p3.FormationGenerator?.YouNeed?.Any(g =>
+                    (g.Label ?? "").Contains("Co-Founder", StringComparison.OrdinalIgnoreCase) ||
+                    (g.Label ?? "").Contains("Partner", StringComparison.OrdinalIgnoreCase)) ?? false;
+                bool teamKeyword = ((p.CreatorEdge ?? "") + " " + (p.Solution ?? "")).ToLowerInvariant() is var teamBlob &&
+                    (teamBlob.Contains("co-founder") || teamBlob.Contains("founding team") || teamBlob.Contains("partners"));
+
+                bool soloFounder = !lookingForCofounder && !hasCofounderGaps && !teamKeyword;
+
                 bool familyRetail = ((p.Sector ?? "") + " " + (p.Concept ?? "")).ToLowerInvariant() is var blob &&
                                     (blob.Contains("family") || blob.Contains("retail"));
+
+                // Funding signal derived from forecast / project keywords / equity offer (never future Phase 5)
+                bool fundingKeywords = ((p.Concept ?? "") + " " + (p.Solution ?? "") + " " + (p.RiskiestAssumption ?? ""))
+                    .ToLowerInvariant() is var fundBlob &&
+                    (fundBlob.Contains("investor") || fundBlob.Contains("venture capital") || fundBlob.Contains("fundrais") || fundBlob.Contains("seed round"));
+                bool equityOffered = !string.IsNullOrEmpty(p3.FormationGenerator?.CofounderDraft?.EquityRange) &&
+                    p3.FormationGenerator.CofounderDraft.EquityRange != "< 5%";
+                bool hasInvestors = fundingKeywords || equityOffered;
 
                 // Only a completed, owner-scoped forecast can influence formation. The
                 // stored inputs are creator data; the current output is the version the
@@ -705,7 +728,7 @@ namespace WebApp.Controllers
                 else if (hasInvestors)
                 {
                     recommendedType = "SAS";
-                    recommendationReason = "SAS is the starting suggestion because the funding plan includes external investment and benefits from flexible governance.";
+                    recommendationReason = "SAS is the starting suggestion because the funding strategy includes external investment or equity capitalization and benefits from flexible governance.";
                 }
                 else if (forecastSupportsScale)
                 {
@@ -715,7 +738,7 @@ namespace WebApp.Controllers
                 else if (soloFounder)
                 {
                     recommendedType = "SAS-U";
-                    recommendationReason = "SAS-U is the starting suggestion because the current resource plan has no additional team requirements.";
+                    recommendationReason = "SAS-U is the starting suggestion because the venture profile operates with a single founder.";
                 }
                 else if (familyRetail)
                 {
@@ -725,7 +748,7 @@ namespace WebApp.Controllers
                 else
                 {
                     recommendedType = "SAS";
-                    recommendationReason = "SAS is the general starting suggestion based on the current venture, team, and funding data.";
+                    recommendationReason = "SAS is the general starting suggestion based on the multi-member team and venture profile.";
                 }
 
                 recommendationReason += ForecastSummary(forecastBasis);
@@ -775,7 +798,7 @@ namespace WebApp.Controllers
                     factors.Add(new FormationRecommendationFactor
                     {
                         Category = "Capital & Funding Strategy",
-                        Signal = $"Targeting external capital (${p5.PathB?.SeedFunding?.TotalAsk:N0})",
+                        Signal = equityOffered ? $"Targeting equity distribution ({p3.FormationGenerator?.CofounderDraft?.EquityRange})" : "Targeting external investment / equity capitalization",
                         Implication = "Favors SAS due to multiple share classes, preferred equity, and investor expectations."
                     });
                 }
@@ -832,7 +855,8 @@ namespace WebApp.Controllers
                     var cat = SpecialtyToCategory(need.SpSpecialty);
                     if (cat == null) continue;
                     var matches = await _spMatching.MatchAsync(cat.Value, p.Sector ?? "", 3);
-                    matchedSpIds.AddRange(matches.Select(m => m.User.Id.ToString()));
+                    if (matches != null)
+                        matchedSpIds.AddRange(matches.Select(m => m.User.Id.ToString()));
                 }
 
                 // CLOBBER GUARD (direction A): once the creator has self-declared skills on
@@ -1093,10 +1117,17 @@ namespace WebApp.Controllers
             // no forecast yet → documented marketGap fallback inside the shared helper.
             double? tam = forecast?.Inputs?.Tam;
 
-            // Market Evidence (20): TAM +8 (canonical, same tiers as IP valuation),
+            // Market Evidence (20): Market Study & TAM +8 (canonical),
             // competitor research (plan) +6, specific target +6.
+            bool hasMarketStudy = !string.IsNullOrEmpty(p3.MarketStudySessionId);
+            double tamScore = 0;
+            if (hasMarketStudy)
+            {
+                tamScore = tam.HasValue ? CreatorScoring.MarketEvidenceTamScore(tam, true) : 8.0;
+            }
+
             double marketEvidence =
-                CreatorScoring.MarketEvidenceTamScore(tam, !string.IsNullOrWhiteSpace(p.MarketGap)) +
+                tamScore +
                 (!string.IsNullOrEmpty(p3.BusinessPlanSessionId) ? 6 : 0) +
                 (!string.IsNullOrWhiteSpace(p.TargetUser) ? 6 : 0);
 
@@ -1152,19 +1183,29 @@ namespace WebApp.Controllers
             }
 
             // 2. Market Evidence (Max 20)
-            var tamScore = CreatorScoring.MarketEvidenceTamScore(tam, !string.IsNullOrWhiteSpace(p.MarketGap));
-            if (tamScore < 8)
+            if (!hasMarketStudy)
+            {
+                deductions.Add(new CreatorReadinessDeduction
+                {
+                    Dimension = "MarketEvidence",
+                    Issue = "Step 3.1 Market Study and TAM/SAM/SOM analysis not completed.",
+                    PointsLost = 8,
+                    RemediationTitle = "Complete Market Intelligence",
+                    RemediationRoute = "/dashboard/creator/phase-3/market-study",
+                });
+            }
+            else if (tamScore < 8)
             {
                 var lost = 8 - tamScore;
                 deductions.Add(new CreatorReadinessDeduction
                 {
                     Dimension = "MarketEvidence",
                     Issue = tam == null
-                        ? "No canonical TAM specified in financial forecast."
+                        ? "No canonical TAM specified in market study."
                         : $"TAM (${tam:N0}) is below $100M venture-scale threshold.",
                     PointsLost = lost,
-                    RemediationTitle = "Update Market Sizing in Forecast",
-                    RemediationRoute = "/dashboard/creator/phase-3/forecast",
+                    RemediationTitle = "Update Market Sizing in Market Study",
+                    RemediationRoute = "/dashboard/creator/phase-3/market-study",
                 });
             }
             if (string.IsNullOrEmpty(p3.BusinessPlanSessionId))

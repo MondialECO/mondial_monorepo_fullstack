@@ -156,6 +156,33 @@ public class CreatorIdeaDocumentsControllerTests : IDisposable
         (await controller.Download(IdeaAId, "plan-a")).Should().BeOfType<NotFoundObjectResult>();
     }
 
+    [Fact]
+    public async Task Download_sets_private_no_store_cache_headers()
+    {
+        // P3-AUDIT-012: Ensure private document downloads enforce Cache-Control: private, no-store
+        var document = new CreatorIdeaDocument
+        {
+            Id = "plan-a",
+            DocumentType = CreatorIdeaDocumentTypes.BusinessPlan,
+            Title = "Plan",
+            FileName = "plan.pdf",
+            MimeType = "application/pdf",
+            StorageReference = "plan-a.pdf",
+        };
+        var idea = Idea(IdeaAId, document);
+        WriteAsset(idea, document.StorageReference);
+        _ideas.Setup(store => store.GetOwnedAsync(IdeaAId, OwnerId)).ReturnsAsync(idea);
+
+        var controller = CreateController();
+        var result = await controller.Download(IdeaAId, document.Id);
+
+        result.Should().BeOfType<PhysicalFileResult>();
+        var responseHeaders = controller.Response.Headers;
+        responseHeaders["Cache-Control"].ToString().Should().Contain("private");
+        responseHeaders["Cache-Control"].ToString().Should().Contain("no-store");
+        responseHeaders["Pragma"].ToString().Should().Contain("no-cache");
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_uploadRoot)) Directory.Delete(_uploadRoot, recursive: true);

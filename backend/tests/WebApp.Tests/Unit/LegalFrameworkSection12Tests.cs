@@ -76,7 +76,7 @@ namespace WebApp.Tests.Unit
                     },
                     new()
                     {
-                        Id = "FR-DATA-001",
+                        Id = "FR-PRIV-001",
                         Category = "data_privacy",
                         Title = "Registre des traitements RGPD & DPA B2B",
                         Stage = LegalStages.BeforeLaunch,
@@ -148,7 +148,7 @@ namespace WebApp.Tests.Unit
                     },
                     new()
                     {
-                        Id = "FR-DATA-001",
+                        Id = "FR-PRIV-001",
                         Category = "data_privacy",
                         Title = "Politique de cookies et traceurs RGPD",
                         Stage = LegalStages.BeforeLaunch,
@@ -444,7 +444,7 @@ namespace WebApp.Tests.Unit
                 Items = new List<CreatorLegalChecklistItem>
                 {
                     new() { Id = "FR-CORP-001", Category = "corporate", Title = "Compte bancaire et dépôt de capital", Stage = LegalStages.BeforeCreation, Priority = LegalPriorities.Critical, Status = LegalItemStatuses.ActionRequired, EvaluationStatus = ApplicabilityEvaluationStatuses.Applicable },
-                    new() { Id = "FR-DATA-001", Category = "data_privacy", Title = "Formalités RGPD", Stage = LegalStages.BeforeLaunch, Priority = LegalPriorities.Recommended, Status = LegalItemStatuses.InProgress, EvaluationStatus = ApplicabilityEvaluationStatuses.Applicable }
+                    new() { Id = "FR-PRIV-001", Category = "data_privacy", Title = "Formalités RGPD", Stage = LegalStages.BeforeLaunch, Priority = LegalPriorities.Recommended, Status = LegalItemStatuses.InProgress, EvaluationStatus = ApplicabilityEvaluationStatuses.Applicable }
                 }
             };
 

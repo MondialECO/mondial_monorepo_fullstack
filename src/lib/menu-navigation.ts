@@ -7,10 +7,14 @@ export function getAllMenuHrefs(sections: MenuSection[]): string[] {
   const hrefs: string[] = [];
   for (const section of sections) {
     for (const item of section.items) {
-      hrefs.push(item.href);
+      if (item.href && !item.href.startsWith("#")) {
+        hrefs.push(item.href);
+      }
       if (item.children) {
         for (const child of item.children) {
-          hrefs.push(child.href);
+          if (child.href && !child.href.startsWith("#")) {
+            hrefs.push(child.href);
+          }
         }
       }
     }

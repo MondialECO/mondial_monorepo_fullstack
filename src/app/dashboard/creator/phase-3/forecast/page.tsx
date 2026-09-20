@@ -267,7 +267,7 @@ export default function ForecastPage() {
 
       <Phase3SetupShell
         fullWidth
-        stepEyebrow="Step 3.3"
+        stepEyebrow="STEP 3.3 · FINANCIAL FORECAST"
         title="Financial Projections & Simulations"
         description="Unified 36-month financial model. Adjust key assumptions and re-simulate, or explore detailed projections and break-even trajectories."
       >

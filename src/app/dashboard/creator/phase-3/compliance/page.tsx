@@ -219,7 +219,7 @@ export default function ComplianceWorkspacePage() {
   return (
     <Phase3SetupShell
       fullWidth
-      stepEyebrow="Step 3.4 · Venture Compliance"
+      stepEyebrow="STEP 3.4 · LEGAL & COMPLIANCE"
       title="Legal & Compliance Intelligence"
       description="Personalized statutory roadmap and evidence tracking based on your verified France business classification."
       headerActions={
