@@ -48,11 +48,20 @@ PHASE 3 — Business Plan Intelligence (7-Step Masterplan)
 → 3.6 Executive Business Plan (/phase-3/business-plan — 12 canonical sections)
 → 3.7 Investor Readiness (/phase-3/complete — 5 canonical dimensions)
 
-PHASE 4 — Commercial Offer & Setup
-4.1 Services & Pricing (/dashboard/creator/offer-pricing)
-→ 4.2 Resource Calculator
-→ 4.3 Web & GTM Setup
-→ 4.4 Offer Setup Complete
+PHASE 4 — Construction Architecture & Operational Roadmap
+4.1 Construction Snapshot (/dashboard/creator/phase-4)
+    ├─ Capability & Readiness Evaluation (Ready / Partially Ready / Missing / Critical / Optional)
+    ├─ Profile Completeness Pre-flight (Skills & Venture Context Guard)
+    └─ Upstream Artifact Extraction (Phase 2 Identity, Phase 3 Masterplan)
+4.2 Operational Roadmap (/dashboard/creator/phase-4/roadmap)
+    ├─ Multi-Phase Scheduling (Phases 0–3 Milestones & Task Sequences)
+    ├─ Dependency Graph Evaluation & Critical Path Resolver
+    └─ Task Status Orchestrator (NotStarted / InProgress / Completed / Blocked)
+[Commercial Offer / Legacy: /dashboard/creator/offer-pricing]
+    ├─ 4.1 Services & Pricing
+    ├─ 4.2 Resource Calculator
+    ├─ 4.3 Web & GTM Setup
+    └─ 4.4 Offer Setup Complete
 
 PHASE 5 — The Cross-Roads (30-Day Decision Window)
 Path A: Marketplace (Full Buyout OR Co-Founder / Equity)
@@ -102,6 +111,31 @@ Atomic Creator → Entrepreneur Level Up
   - Team Credibility & Founder Advantage: **20%**
 - **Actionable Deduction Breakdown:** Itemizes points lost with 1-click remediation links to the specific phase screens.
 
+### 3.7 HumainX / Professional Profile Personalization Layer
+- **Leveled Skills Architecture:** Upgraded from flat string arrays to structured objects `{ name: string, level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert', source: 'SelfDeclared' | 'Assessment' | 'Verified', verification?: string }`.
+- **VentureContext Modeling:** Rich founder operational context schema (`Stage`, `FundingTarget`, `AvailableHoursPerWeek`, `TargetLaunchDate`) embedded in `UniversalProfileRecord`.
+- **Bidirectional Data-Loss Prevention:** Round-trip persistence in `ProfileEditorService` and frontend `ProfileView.tsx` with deep differential updating to prevent cross-contamination.
+- **Migration & Database Headroom:** Idempotent migration script (`migration_skills_to_objects.mjs`) verified against MongoDB Atlas tier headroom with automated snapshot backups (`professionalProfiles_backup_skills_...`) and strict 30-day drop policies.
+
+### 3.8 Creator Phase 4.1 — Construction Snapshot Engine (`/dashboard/creator/phase-4`)
+- **Normalized ConstructionContext Adapter:** Synthesizes upstream inputs across Phase 2 (Brand Kit lockups, color/typography tokens), Phase 3 (Market study TAM/SAM/SOM, Business Model Canvas, 36-month P&L Forecast, Legal Statutory Compliance FR-2026.1, SAS/SAS-U/SARL Formation), and the HumainX Profile.
+- **5-Tier Capability Taxonomy:** Algorithmic categorization into `Critical`, `Ready`, `Partially Ready`, `Missing`, and `Optional` states without misleading percentage aggregates.
+- **Canonical Profile Guard (`Phase4ProfileGuard`):** Enforces founder profile readiness (skills declaration and venture context) before granting access to Phase 4 incubation tools.
+- **Deterministic Refresh & Staleness Detection:** Dynamic staleness detection flags changed upstream sources (`changedSources[]`), supporting idempotent re-analysis without state clobbering.
+
+### 3.9 Creator Phase 4.2 — Operational Roadmap Engine (`/dashboard/creator/phase-4/roadmap`)
+- **Deterministic Action Scheduler (`RoadmapScheduler`):** Transforms the Construction Snapshot into a realistic, sequenced action plan partitioned across 4 distinct milestone phases:
+  - *Phase 0: Foundations* (Clarification, Brand Kit, Core Specs)
+  - *Phase 1: Legal & Compliance* (Statuts constitutifs, RNE registration, IP filings, RGPD)
+  - *Phase 2: Brand & Product Spec* (Design system tokens, MVP architecture, Technical validation)
+  - *Phase 3: Commercial Launch* (Go-to-market channels, Tiered pricing, Launch telemetry)
+- **Dependency & Critical Path Resolution:** Predecessor/successor task linkages identify parallelizable tracks and calculate cumulative schedule estimates.
+- **Interactive Lifecycle Mutations:** Founder updates task execution state via `PATCH /api/creator/phase4/roadmap/tasks/{taskId}/status` (`NotStarted` $\to$ `InProgress` $\to$ `Completed` or `Blocked`).
+
+### 3.10 Next.js Client Navigation & Phase Guard Decoupling
+- **Suspense Boundary Enclosure:** Resolved Next.js 16 / React 19 client router bailouts by wrapping all `useSearchParams()` consumers in `<Suspense>` on `/dashboard/creator/phase-4` and `/dashboard/creator/phase-4/roadmap`.
+- **Decoupled Phase 4 Router Guard:** Removed blanket Phase 4 redirection in `CreatorPhaseGuard.tsx`, handing gating authority directly to `Phase4ProfileGuard.tsx` to eliminate 404/redirect loops.
+
 ---
 
 ## 4. Creator → Entrepreneur Continuity Contract
@@ -127,18 +161,18 @@ Promotion to Entrepreneur is a **continuation, not a restart**:
 
 ```text
 Backend Test Suite (xUnit.net net8.0)
-Total Discovered:       2,105
-Passed:                 1,976
+Total Discovered:       2,137
+Passed:                 2,008  (+32 Phase 4 & HumainX unit tests)
 Failed:                     0
 Skipped:                  129  (Pre-existing legacy non-Creator marketplace/escrow tests)
 Environment Blocked:        0
-Mathematical Status:    100% Reconciled (1,976 + 0 + 129 = 2,105)
+Mathematical Status:    100% Reconciled (2,008 + 0 + 129 = 2,137)
 
 Frontend Test Suite (Vitest & TypeScript)
-Vitest Test Files:        119 / 119 Passed (100%)
-Vitest Tests:           1,028 / 1,028 Passed (100%)
+Vitest Test Files:        122 / 122 Passed (100%)
+Vitest Tests:           1,050 / 1,050 Passed (100%)
 TypeScript:                 0 production errors in src/
-Production Build:         181 / 181 Next.js routes compiled (Turbopack)
+Production Build:         183 / 183 Next.js routes compiled (Turbopack)
 
 Responsive Viewport Audit
 Tested Viewports:       375px, 768px, 1440px, 1920px (Authenticated Creator sessions)
@@ -199,5 +233,7 @@ MongoDB Atlas cluster enforces a strict tier cap of **500 collections** (which p
 | Backup Collection Name | Document Count | Created At | Purpose / Associated Migration | Safe Drop Date | Drop Command |
 |---|---|---|---|---|---|
 | `applicationUsers_backup_sp_20260920172731` | 421 | 2026-09-20 | Pre-migration snapshot before unsetting legacy embedded professional-profile fields from `ApplicationUser.ServiceProviderProfile`. | **2026-10-20** (30 days post-cutover) | `db.applicationUsers_backup_sp_20260920172731.drop()` |
+| `professionalProfiles_backup_skills_20260920175233` | 18 | 2026-09-20 | Pre-migration snapshot before migrating `Skills` and `EditorDraft.Skills` to leveled objects in `ProfessionalProfiles`. | **2026-10-20** (30 days post-cutover) | `db.professionalProfiles_backup_skills_20260920175233.drop()` |
+
 
 

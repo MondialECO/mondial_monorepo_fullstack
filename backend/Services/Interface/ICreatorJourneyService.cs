@@ -120,6 +120,12 @@ namespace WebApp.Services.Interface
         /// <summary>Persist the GTM setup; append a phase-4 GTM version.</summary>
         Task<CreatorJourney> SetPhase4GtmAsync(string userId, CreatorGtmSetup gtm, string ideaId = null);
 
+        /// <summary>Persist the Phase 4.1 construction snapshot + source references.</summary>
+        Task<CreatorJourney> SetPhase4ConstructionSnapshotAsync(string userId, Models.DatabaseModels.Phase4.ConstructionSnapshot snapshot, Models.DatabaseModels.Phase4.Phase4SourceVersions sourceVersions, string ideaId = null);
+
+        /// <summary>Persist the Phase 4.2 operational roadmap.</summary>
+        Task<CreatorJourney> SetPhase4RoadmapAsync(string userId, Models.DatabaseModels.Phase4.OperationalRoadmap roadmap, string ideaId = null);
+
         // ---- Phase 5 (deterministic) — every version carries phase: 5 ----
 
         /// <summary>Persist the IP valuation (Path A); append a phase-5 valuation version.</summary>

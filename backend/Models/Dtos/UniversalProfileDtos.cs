@@ -23,7 +23,8 @@ public class UniversalProfileResponseDto
 
     public List<ProfessionalExperienceDto> Experiences { get; set; } = new();
     public List<ProfessionalEducationDto> Education { get; set; } = new();
-    public List<string> Skills { get; set; } = new();
+    public List<ProfileSkillDto> Skills { get; set; } = new();
+    public ProfileVentureContextDto? VentureContext { get; set; }
     public List<ProfessionalLanguageDto> LanguageProficiencies { get; set; } = new();
     public List<string> Languages { get; set; } = new();
     public List<string> Industries { get; set; } = new();
@@ -32,6 +33,7 @@ public class UniversalProfileResponseDto
     public bool? AvailabilityDisplay { get; set; }
     public List<string> Roles { get; set; } = new();
     public int CompletionPercentage { get; set; }
+    public ProfileCompletenessDto? Completeness { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -59,7 +61,8 @@ public class UpdateUniversalProfileRequestDto
 
     public List<ProfessionalExperienceDto>? Experiences { get; set; }
     public List<ProfessionalEducationDto>? Education { get; set; }
-    public List<string>? Skills { get; set; }
+    public List<ProfileSkillDto>? Skills { get; set; }
+    public ProfileVentureContextDto? VentureContext { get; set; }
     public List<ProfessionalLanguageDto>? LanguageProficiencies { get; set; }
     public List<string>? Industries { get; set; }
     public List<ProfessionalSocialLinkDto>? SocialLinks { get; set; }
@@ -86,6 +89,15 @@ public class ProfessionalExperienceDto
     public string? EndDate { get; set; }
     public bool IsCurrent { get; set; }
     public string? Description { get; set; }
+    public string? ExperienceType { get; set; }
+    public List<string> SkillsUsed { get; set; } = new();
+}
+
+public class ProfileCompletenessDto
+{
+    public int ProfileCompletion { get; set; }
+    public bool Phase4Ready { get; set; }
+    public List<string> MissingForPhase4 { get; set; } = new();
 }
 
 public class ProfessionalEducationDto
@@ -97,6 +109,72 @@ public class ProfessionalEducationDto
     public int StartYear { get; set; }
     public int? EndYear { get; set; }
     public string? Description { get; set; }
+}
+
+[JsonConverter(typeof(ProfileSkillDtoJsonConverter))]
+public class ProfileSkillDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Level { get; set; }
+    public string? Source { get; set; }
+    public object? Verification { get; set; }
+
+    public static implicit operator ProfileSkillDto(string name) => new() { Name = name };
+    public override string ToString() => Name;
+}
+
+public class ProfileSkillDtoJsonConverter : JsonConverter<ProfileSkillDto>
+{
+    public override ProfileSkillDto? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            return new ProfileSkillDto { Name = reader.GetString() ?? string.Empty };
+        }
+        if (reader.TokenType == JsonTokenType.StartObject)
+        {
+            using var doc = JsonDocument.ParseValue(ref reader);
+            var root = doc.RootElement;
+            var req = new ProfileSkillDto();
+            if (root.TryGetProperty("name", out var n) || root.TryGetProperty("Name", out n))
+                req.Name = n.GetString() ?? string.Empty;
+            if (root.TryGetProperty("level", out var l) || root.TryGetProperty("Level", out l))
+                req.Level = l.ValueKind == JsonValueKind.Null ? null : l.GetString();
+            if (root.TryGetProperty("source", out var s) || root.TryGetProperty("Source", out s))
+                req.Source = s.ValueKind == JsonValueKind.Null ? null : s.GetString();
+            if (root.TryGetProperty("verification", out var v) || root.TryGetProperty("Verification", out v))
+                req.Verification = v.ValueKind == JsonValueKind.Null ? null : v.Clone();
+            return req;
+        }
+        return null;
+    }
+
+    public override void Write(Utf8JsonWriter writer, ProfileSkillDto value, JsonSerializerOptions options)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("name", value.Name);
+        if (value.Level is not null) writer.WriteString("level", value.Level);
+        else writer.WriteNull("level");
+        if (value.Source is not null) writer.WriteString("source", value.Source);
+        else writer.WriteNull("source");
+        if (value.Verification is not null)
+        {
+            writer.WritePropertyName("verification");
+            JsonSerializer.Serialize(writer, value.Verification, options);
+        }
+        else writer.WriteNull("verification");
+        writer.WriteEndObject();
+    }
+}
+
+public class ProfileVentureContextDto
+{
+    public string? CurrentSituation { get; set; }
+    public string? WeeklyAvailability { get; set; }
+    public string? Region { get; set; }
+    public string? PreviousEntrepreneurialExperience { get; set; }
+    public string? LearningPreference { get; set; }
+    public string? DelegationPreference { get; set; }
 }
 
 public class ProfessionalLanguageDto

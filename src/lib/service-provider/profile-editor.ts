@@ -3,6 +3,7 @@ import type {
   LanguageProficiency,
   ProfileDraftRequest,
   ProfileDraftResponse,
+  ProfileSkillDto,
   ProviderEducation,
   ProviderExperience,
   ProviderLanguage,
@@ -58,6 +59,7 @@ export interface EditorDraftModel {
   professionalOverview: TiptapJson;
   primaryCategory: string | null;
   skills: string[];
+  skillsMetadata?: ProfileSkillDto[];
   industries: string[];
   pricingModels: string[];
   experiences: ProviderExperience[];
@@ -86,6 +88,19 @@ export function draftModelFromResponse(
   draft: ProfileDraftResponse,
   step: ProfileEditorStep
 ): EditorDraftModel {
+  const rawSkills = draft.skills ?? [];
+  const skills = rawSkills.map((s) => (typeof s === "string" ? s : s.name));
+  const skillsMetadata: ProfileSkillDto[] = rawSkills.map((s) =>
+    typeof s === "string"
+      ? { name: s }
+      : {
+          name: s.name,
+          level: s.level ?? null,
+          source: s.source ?? null,
+          verification: s.verification ?? null,
+        }
+  );
+
   return {
     basedOnVersion: draft.basedOnVersion,
     lastStep: step,
@@ -93,7 +108,8 @@ export function draftModelFromResponse(
     bio: draft.bio ?? "",
     professionalOverview: draft.professionalOverview?.document ?? EMPTY_PROFESSIONAL_OVERVIEW,
     primaryCategory: draft.serviceCategories?.[0] ?? null,
-    skills: [...(draft.skills ?? [])],
+    skills,
+    skillsMetadata,
     industries: [...(draft.industries ?? [])],
     pricingModels: [...(draft.pricingModels ?? [])],
     experiences: (draft.experiences ?? []).map((item) => ({ ...item })),
@@ -105,6 +121,32 @@ export function draftModelFromResponse(
 
 /** Serializes the model for a draft save or the final submit. */
 export function draftRequestFromModel(model: EditorDraftModel): ProfileDraftRequest {
+  const metaMap = new Map<string, ProfileSkillDto>();
+  for (const m of model.skillsMetadata ?? []) {
+    if (m?.name) {
+      metaMap.set(m.name.trim().toLowerCase(), m);
+    }
+  }
+
+  const skills: ProfileSkillDto[] = model.skills.map((skillName) => {
+    const trimmed = skillName.trim();
+    const existing = metaMap.get(trimmed.toLowerCase());
+    if (existing) {
+      return {
+        name: trimmed,
+        level: existing.level ?? null,
+        source: existing.source ?? null,
+        verification: existing.verification ?? null,
+      };
+    }
+    return {
+      name: trimmed,
+      level: null,
+      source: "self_declared",
+      verification: null,
+    };
+  });
+
   return {
     basedOnVersion: model.basedOnVersion,
     lastStep: model.lastStep,
@@ -114,7 +156,7 @@ export function draftRequestFromModel(model: EditorDraftModel): ProfileDraftRequ
       schemaVersion: 1,
       document: model.professionalOverview,
     },
-    skills: model.skills,
+    skills,
     // The editor collects a single primary category; the contract is a list.
     serviceCategories: model.primaryCategory ? [model.primaryCategory] : [],
     industries: model.industries,

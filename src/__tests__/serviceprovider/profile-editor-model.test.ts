@@ -57,6 +57,23 @@ describe("profile editor draft model", () => {
     expect(request.serviceCategories).toEqual(["Design"]);
   });
 
+  it("preserves levelled skill metadata (level, source, verification) through round trip", () => {
+    const serverResponse = draftResponse({
+      skills: [
+        { name: "React", level: "Comfortable", source: "humainx", verification: { score: 95 } },
+        { name: "TypeScript", level: "Intermediate", source: "self_declared", verification: null },
+      ],
+    });
+    const hydrated = draftModelFromResponse(serverResponse, 1);
+    expect(hydrated.skills).toEqual(["React", "TypeScript"]);
+
+    const request = draftRequestFromModel(hydrated);
+    expect(request.skills).toEqual([
+      { name: "React", level: "Comfortable", source: "humainx", verification: { score: 95 } },
+      { name: "TypeScript", level: "Intermediate", source: "self_declared", verification: null },
+    ]);
+  });
+
   it("sends locally-created records without an id so the server mints a stable one", () => {
     const request = draftRequestFromModel(
       model({

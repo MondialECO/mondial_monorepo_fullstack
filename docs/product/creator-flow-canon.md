@@ -22,8 +22,8 @@ Source of truth for development. When code and this doc disagree, this doc wins 
 > - **Four-Surface Freshness Consistency:** `PASS`
 > - **Two-Real-User Cross-Tenant JWT Test:** `PASS` (7/7 IDOR attacks returned HTTP 403 Forbidden; 0 HTTP 200 data leaks)
 > - **Directory Traversal Two-Tier Guard:** `PASS` (Router normalization [404] + Canonical-root guard [403])
-> - **Backend Test Suite:** 2,105 discovered | 1,976 passed | 0 failed | 129 skipped (legacy marketplace/escrow) | 0 blocked
-> - **Frontend Test Suite:** 119 / 119 files passed | 1,028 / 1,028 tests passed | 0 TypeScript errors | 181 / 181 Next.js routes compiled
+> - **Backend Test Suite:** 2,137 discovered | 2,008 passed | 0 failed | 129 skipped (legacy marketplace/escrow) | 0 blocked
+> - **Frontend Test Suite:** 122 / 122 files passed | 1,050 / 1,050 tests passed | 0 TypeScript errors | 183 / 183 Next.js routes compiled
 > - **Responsive Viewport Audit:** 0px horizontal overflow across 375px, 768px, 1440px, and 1920px viewports (authenticated creator sessions).
 
 ---
@@ -711,18 +711,60 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
 
 ---
 
-## 6. Phase 4 — Offer & Setup (Pricing, Resources & GTM)
+## 6. Phase 4 — Construction Architecture, Operational Roadmap & Commercial Setup
 
-Phase 4 transforms the business masterplan into commercial readiness across **four integrated steps** hosted within the `/dashboard/creator/offer-pricing` workspace:
+Phase 4 bridges strategic formulation and operational execution through three specialized engines:
 
 ```text
-/dashboard/creator/offer-pricing
-→ Step 4.1: Services & Pricing (Step 0 in wizard)
-→ Step 4.2: Resource Calculator (Step 1 in wizard)
-→ Step 4.3: Web & GTM Setup (Step 2 in wizard)
-→ Step 4.4: Offer Setup Complete (Step 3 in wizard)
-→ Phase 5 (The Cross-Roads)
+CANONICAL PHASE 4 ARCHITECTURE:
+
+1. Phase 4.1: Construction Snapshot (/dashboard/creator/phase-4)
+   WHAT is ready / missing / critical
+   - Capability extraction from Phase 2 & Phase 3
+   - HumainX Founder profile completeness gate (leveled skills & venture context)
+   - 5-Tier taxonomy: Critical, Ready, Partially Ready, Missing, Optional
+
+2. Phase 4.2: Operational Roadmap (/dashboard/creator/phase-4/roadmap)
+   WHEN and IN WHAT ORDER work should happen
+   - Phase 0 Foundations → Phase 1 Legal/Compliance → Phase 2 Product Spec → Phase 3 Commercial Launch
+   - Dependency graph evaluation & critical path calculation
+   - Interactive task lifecycle: NotStarted → InProgress → Completed / Blocked
+
+3. Commercial Offer & Setup (/dashboard/creator/offer-pricing)
+   HOW the venture is priced and resourced
+   - Step 4.1: Services & Pricing Model
+   - Step 4.2: Resource Calculator
+   - Step 4.3: Web & GTM Setup
+   - Step 4.4: Offer Setup Complete → Phase 5 Cross-Roads
 ```
+
+### 6.0 Architecture & Navigation Invariants
+- **Profile Completeness Gate (`Phase4ProfileGuard`):** Access to `/dashboard/creator/phase-4` and `/dashboard/creator/phase-4/roadmap` requires completed HumainX profile metadata (at least 1 declared skill with level, plus venture context). Founders with incomplete profiles are guided to `/dashboard/creator/profile` via an onboarding card.
+- **Route Guard Decoupling:** `CreatorPhaseGuard.tsx` does not blanket-block or redirect `/dashboard/creator/phase-4`. Fine-grained readiness checks are delegated to `Phase4ProfileGuard.tsx` to prevent router redirect loops.
+- **Suspense Boundary Enclosure:** To guarantee zero router de-optimization in Next.js App Router (React 19), pages consuming `useSearchParams()` wrap their interactive child components in explicit `<Suspense>` boundaries.
+
+### 6.0.1 Phase 4.1 — Construction Snapshot Engine (`ConstructionSnapshotView.tsx`)
+- **Route:** `/dashboard/creator/phase-4`
+- **Controller:** `CreatorPhase4ConstructionController.GetSnapshot` (`GET /api/creator/phase4/snapshot`).
+- **Services:** `ConstructionSnapshotService`, `CapabilityMatcher`, `ProfileCompletenessResolver`.
+- **Taxonomy Categories:**
+  - `Critical Attention`: Blocking items requiring immediate resolution before launch (e.g. mandatory statutory filings, missing core skill).
+  - `Ready`: Confirmed assets ready for deployment (e.g. confirmed Brand Kit, validated Osterwalder canvas).
+  - `Partially Ready`: In-progress items or sections requiring review.
+  - `Missing`: Omitted foundation components.
+  - `Optional`: Enhancements that can be safely deferred.
+- **No Deceptive Percentages:** The snapshot reports raw category counts (e.g. 1 Critical, 1 Ready, 1 Partial, 1 Missing) rather than misleading composite percentages.
+
+### 6.0.2 Phase 4.2 — Operational Roadmap Engine (`OperationalRoadmapView.tsx`)
+- **Route:** `/dashboard/creator/phase-4/roadmap`
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/roadmap`, `PATCH /api/creator/phase4/roadmap/tasks/{taskId}/status`).
+- **Services:** `OperationalRoadmapService`, `RoadmapScheduler`.
+- **4 Milestone Execution Tracks:**
+  - `Phase 0: Foundations` (Identity, problem definition, clarified concept).
+  - `Phase 1: Legal & Compliance` (Company formation, statutory compliance checklist FR-2026.1, INPI trademark).
+  - `Phase 2: Brand & Product Spec` (Brand Kit SVGs, MVP tech specification, prototype validation).
+  - `Phase 3: Commercial Launch` (Pricing tiers, GTM distribution channels, telemetry setup).
+- **Dependency & Status Management:** Evaluates predecessor dependencies (`Prerequisites`), calculates task time estimates, and allows founders to interactively transition task status (`NotStarted` → `InProgress` → `Completed` or `Blocked`).
 
 ### 6.1 Step 4.1 — Services & Pricing Model (`Phase4Pricing.tsx`)
 - **Route / Surface:** `/dashboard/creator/offer-pricing` (Step 0)

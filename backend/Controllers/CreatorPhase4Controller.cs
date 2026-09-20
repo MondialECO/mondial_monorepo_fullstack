@@ -25,15 +25,21 @@ namespace WebApp.Controllers
         private readonly ICreatorJourneyService _journeys;
         private readonly IMarketBenchmarkResolver _benchmarks;
         private readonly IForecastSessionStore? _forecasts;
+        private readonly IProfessionalProfileStore? _professionalStore;
+        private readonly IProfileCompletenessResolver? _completenessResolver;
 
         public CreatorPhase4Controller(
             ICreatorJourneyService journeys,
             IMarketBenchmarkResolver benchmarks,
-            IForecastSessionStore? forecasts = null)
+            IForecastSessionStore? forecasts = null,
+            IProfessionalProfileStore? professionalStore = null,
+            IProfileCompletenessResolver? completenessResolver = null)
         {
             _journeys = journeys;
             _benchmarks = benchmarks;
             _forecasts = forecasts;
+            _professionalStore = professionalStore;
+            _completenessResolver = completenessResolver;
         }
 
         private string GetUserId() =>
@@ -42,6 +48,63 @@ namespace WebApp.Controllers
 
         private static readonly HashSet<string> PricingModels =
             new(StringComparer.OrdinalIgnoreCase) { "subscription", "one_time", "freemium", "usage_based" };
+
+        private async Task<IActionResult?> EnforcePhase4GateAsync(string userId, string? ideaId)
+        {
+            var current = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+            var phaseStatus = await _journeys.ComputePhaseStatusAsync(current, phase1Complete: true);
+            if (phaseStatus.Phase3.Status != "completed")
+            {
+                return StatusCode(403, ApiResponse.Error("Phase 3 must be completed before entering Phase 4."));
+            }
+
+            if (_professionalStore != null)
+            {
+                var profile = await _professionalStore.GetByUserIdAsync(userId);
+                var completeness = (_completenessResolver ?? new ProfileCompletenessResolver()).Resolve(profile);
+                if (!completeness.Phase4Ready)
+                {
+                    return StatusCode(403, new
+                    {
+                        success = false,
+                        message = "Professional profile is incomplete for Phase 4 personalization.",
+                        phase4Ready = false,
+                        missingForPhase4 = completeness.MissingForPhase4
+                    });
+                }
+            }
+
+            return null;
+        }
+
+        // GET /api/creator/offer/readiness
+        [HttpGet("readiness")]
+        public async Task<IActionResult> GetPhase4Readiness([FromQuery] string? ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var current = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+                var phaseStatus = await _journeys.ComputePhaseStatusAsync(current, phase1Complete: true);
+                bool phase3Complete = phaseStatus.Phase3.Status == "completed";
+
+                var profile = _professionalStore != null ? await _professionalStore.GetByUserIdAsync(userId) : null;
+                var completeness = (_completenessResolver ?? new ProfileCompletenessResolver()).Resolve(profile);
+
+                bool ready = phase3Complete && completeness.Phase4Ready;
+
+                return Ok(ApiResponse.Ok("Phase 4 readiness evaluated", new
+                {
+                    phase3Complete,
+                    phase4Ready = completeness.Phase4Ready,
+                    ready,
+                    missingForPhase4 = completeness.MissingForPhase4,
+                    profileCompletion = completeness.ProfileCompletion
+                }));
+            }
+            catch (UnauthorizedAccessException ex) { return StatusCode(401, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
 
         // GET /api/creator/offer/benchmark?sector=FinTech
         // Reference-data read: standard controller auth applies, but it does not
@@ -115,6 +178,9 @@ namespace WebApp.Controllers
             try
             {
                 var userId = GetUserId();
+                var gateError = await EnforcePhase4GateAsync(userId, ideaId);
+                if (gateError != null) return gateError;
+
                 if (request == null || string.IsNullOrWhiteSpace(request.PricingModel) || !PricingModels.Contains(request.PricingModel))
                     return UnprocessableEntity(ApiResponse.Error("pricingModel must be subscription | one_time | freemium | usage_based."));
 
@@ -166,6 +232,9 @@ namespace WebApp.Controllers
             try
             {
                 var userId = GetUserId();
+                var gateError = await EnforcePhase4GateAsync(userId, ideaId);
+                if (gateError != null) return gateError;
+
                 var current = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
                 var resolution = await _benchmarks.ResolveAsync(current.Project?.Sector);
                 var benchmark = resolution.Benchmark;
@@ -251,6 +320,9 @@ namespace WebApp.Controllers
             try
             {
                 var userId = GetUserId();
+                var gateError = await EnforcePhase4GateAsync(userId, ideaId);
+                if (gateError != null) return gateError;
+
                 var current = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
                 var resolution = await _benchmarks.ResolveAsync(current.Project?.Sector);
                 var saved = current.Phase4Data?.GtmSetup;

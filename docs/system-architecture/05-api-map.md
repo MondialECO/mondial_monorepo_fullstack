@@ -49,6 +49,11 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `GET /api/identity/status`: Query authoritative verification status (`Pending`, `Verified`, `Rejected`).
   - `POST /api/identity/retry`: Archive rejected attempt and initialize a fresh verification attempt.
   - `POST /api/identity/webhook/sumsub`: Canonical HMAC-SHA256 signed webhook receiver for Sumsub review results.
+- **`ProfileController`** (`/api/profile`):
+  - `GET /api/profile`: Retrieve universal profile including HumainX leveled skills and founder venture context.
+  - `PATCH /api/profile/personalization`: Partially update founder profile personalization, skills, and venture context.
+  - `POST /api/profile/editor-draft`: Save draft in `EditorDraft` without overwriting published profile state.
+  - `POST /api/profile/editor-publish`: Publish verified profile editor draft to active `ProfessionalProfileRecord`.
 
 ### B. Creator System & Phases 2–6 (68 Endpoints)
 - **`CreatorIdeasController` & `CreatorJourneyController`** (`/api/creator/ideas`, `/api/creator/journey`):
@@ -114,8 +119,16 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/creator/workroom/open`: Open a workroom with a matched SP.
   - `POST /api/creator/journey/phase3/session`: Link AI session IDs to the journey.
   - `PATCH /api/creator/masterplan/complete`: Trigger Phase 3 completion gate.
-- **`CreatorPhase4Controller`** (`/api/creator/phase-4`):
+- **`CreatorPhase4ConstructionController`** (`/api/creator/phase4`):
+  - `GET /api/creator/phase4/snapshot`: Read or generate normalized Phase 4.1 construction snapshot (critical, ready, partial, missing, optional) with source staleness check.
+  - `GET /api/creator/phase4/roadmap`: Read or generate Phase 4.2 operational roadmap scheduling tasks across Phase 0–3 tracks.
+  - `PATCH /api/creator/phase4/roadmap/tasks/{taskId}/status`: Update status of a specific roadmap task (`NotStarted`, `InProgress`, `Completed`, `Blocked`).
+- **`CreatorPhase4Controller`** (`/api/creator`):
   - `GET /api/creator/phase-4/offer-pricing`: Calculate recommended asset valuation using market benchmarks.
+  - `POST /api/creator/pricing`: Save Phase 4 tiered pricing model.
+  - `POST /api/creator/resources`: Save resource and SaaS stack calculation.
+  - `POST /api/creator/gtm`: Save Go-to-market setup and 12-week launch schedule.
+  - `POST /api/creator/offer-setup/complete`: Finalize commercial offer setup and unlock Phase 5.
 - **`CreatorPhase5Controller`** (`/api/creator/phase-5`):
   - `POST /api/creator/phase-5/crossroads`: Submit decision path (`FULL_BUYOUT`, `EQUITY_PARTNERSHIP`, `BUILD_YOURSELF`).
 - **`CreatorPhase6Controller`** (`/api/creator/phase-6`):

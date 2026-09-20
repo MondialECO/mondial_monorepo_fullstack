@@ -9,6 +9,7 @@ import { Phase4Pricing } from "@/components/creator/phase4/Phase4Pricing";
 import { Phase4Resource } from "@/components/creator/phase4/Phase4Resource";
 import { Phase4Gtm } from "@/components/creator/phase4/Phase4Gtm";
 import { Phase4Complete } from "@/components/creator/phase4/Phase4Complete";
+import { Phase4ProfileGuard } from "@/components/creator/phase4/Phase4ProfileGuard";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { PageContainer } from "@/components/layout/PageContainer";
 import {
@@ -70,7 +71,7 @@ function Phase4HydrationSkeleton() {
   );
 }
 
-export default function OfferPricingPage() {
+function OfferPricingContent() {
   const router = useRouter();
   const { state: { activeIdeaId }, isLoading: progressLoading } = useCreatorProgress();
   const [step, setStep] = useState(0);
@@ -138,76 +139,84 @@ export default function OfferPricingPage() {
                   className={`flex shrink-0 items-center gap-1 rounded-full border py-1 pl-1 pr-3 ${
                     active
                       ? "border-black/[0.06] bg-secondary text-primary"
-                      : "border-black/[0.06] bg-muted text-muted-foreground"
+                      : "border-transparent text-muted-foreground"
                   }`}
-                  aria-current={active ? "step" : undefined}
                 >
                   <span
-                    className={`flex size-5 items-center justify-center rounded-full text-badge font-medium leading-4 ${
-                      active
-                        ? "border border-[#a7b9f5] bg-primary text-primary-foreground"
-                        : "bg-[#606060] text-white"
+                    className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                      active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                     }`}
                   >
                     {index + 1}
                   </span>
-                  <span className="whitespace-nowrap text-xs font-medium leading-4">{label}</span>
+                  <span className="text-xs font-medium">{label}</span>
                 </div>
-                {index < STEPS.length - 1 && <span className="h-px min-w-8 flex-1 bg-border" aria-hidden="true" />}
+                {index < STEPS.length - 1 && (
+                  <div className="mx-2 h-px w-6 shrink-0 bg-border" aria-hidden="true" />
+                )}
               </div>
             );
           })}
         </div>
 
         <div className="mt-8">
-          {hydrating && (
+          {hydrating ? (
             <Phase4HydrationSkeleton />
-          )}
-
-          {!hydrating && hydrateError && (
-            <div className="flex flex-col items-center gap-3 py-12">
-              <p className="text-sm text-destructive">
-                Couldn&apos;t load your saved Phase-4 data. Continuing without it could overwrite your plan, so please retry.
-              </p>
-              <Button variant="outline" size="sm" onClick={() => setAttempt((value) => value + 1)}>
+          ) : hydrateError ? (
+            <div
+              role="alert"
+              className="flex items-center justify-between rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-destructive"
+            >
+              <div className="text-sm font-medium">
+                Could not load your saved offer plan. Retry to reload without losing progress.
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                onClick={() => setAttempt((count) => count + 1)}
+              >
                 Retry
               </Button>
             </div>
-          )}
-
-          {!hydrating && !hydrateError && (
+          ) : (
             <>
               {benchmarkError && !benchmarkNoticeDismissed && (
                 <div
                   role="status"
-                  className="mb-5 flex max-w-5xl items-start justify-between gap-4 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm"
+                  aria-live="polite"
+                  className="mb-6 flex items-center justify-between rounded-2xl border border-warning/30 bg-warning/5 p-4 text-warning"
                 >
-                  <div>
-                    <p className="font-medium text-foreground">Couldn&apos;t load reference estimates.</p>
-                    <p className="mt-0.5 text-muted-foreground">You can still enter your own numbers and save the form.</p>
+                  <div className="text-sm font-medium">
+                    Sector pricing benchmarks could not be loaded. You can still define your pricing manually.
                   </div>
                   <Button
-                    type="button"
                     variant="ghost"
-                    size="icon"
-                    className="size-7 shrink-0"
-                    aria-label="Dismiss reference estimate notice"
+                    size="sm"
+                    className="text-warning hover:bg-warning/10"
                     onClick={() => setBenchmarkNoticeDismissed(true)}
                   >
-                    <X className="size-4" />
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Dismiss benchmark warning</span>
                   </Button>
                 </div>
               )}
+
               {step === 0 && (
                 <Phase4Pricing
                   ideaId={activeIdeaId}
                   initial={{
-                    pricingModel: saved.pricingModel,
-                    tiers: saved.tiers,
-                    pricingForecastContext: saved.pricingForecastContext,
+                    pricingModel: saved.pricingModel ?? null,
+                    tiers: saved.tiers ?? null,
+                    pricingForecastContext: saved.pricingForecastContext ?? null,
                   }}
-                  currency={benchmark?.currency ?? "EUR"}
-                  onSaved={(phase4) => setSaved((phase4 ?? {}) as SavedPhase4Data)}
+                  onSaved={(phase4: any) =>
+                    setSaved((current) => ({
+                      ...current,
+                      pricingModel: phase4?.pricingModel ?? current.pricingModel,
+                      tiers: phase4?.tiers ?? current.tiers,
+                    }))
+                  }
                   onNext={() => setStep(1)}
                 />
               )}
@@ -216,7 +225,7 @@ export default function OfferPricingPage() {
                   ideaId={activeIdeaId}
                   initial={saved.resourceCalculation ?? null}
                   benchmark={benchmark}
-                  onSaved={(calculation) => setSaved((current) => ({ ...current, resourceCalculation: calculation }))}
+                  onSaved={(calc) => setSaved((current) => ({ ...current, resourceCalculation: calc }))}
                   onNext={() => setStep(2)}
                   onBack={() => setStep(0)}
                 />
@@ -241,5 +250,13 @@ export default function OfferPricingPage() {
           )}
         </div>
     </PageContainer>
+  );
+}
+
+export default function OfferPricingPage() {
+  return (
+    <Phase4ProfileGuard>
+      <OfferPricingContent />
+    </Phase4ProfileGuard>
   );
 }

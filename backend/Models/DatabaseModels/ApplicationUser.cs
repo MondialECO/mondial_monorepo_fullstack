@@ -432,11 +432,14 @@ namespace WebApp.Models.DatabaseModels
     /// One employment-history record (editor Step 2). Id is server-owned and stable
     /// so edits and deletes never address a record by its array position.
     /// </summary>
+    [BsonIgnoreExtraElements]
     public class ProfessionalExperience
     {
         public string Id { get; set; } = Guid.NewGuid().ToString("N");
         public string JobTitle { get; set; } = "";
         public string CompanyName { get; set; } = "";
+        public string? ExperienceType { get; set; }
+        public List<string> SkillsUsed { get; set; } = new();
 
         /// <summary>First day of the start month, UTC. Only year and month are meaningful.</summary>
         public DateTime StartDate { get; set; }
@@ -541,7 +544,7 @@ namespace WebApp.Models.DatabaseModels
         public string? Headline { get; set; }
         public string? Bio { get; set; }
         public ProfessionalOverviewContent ProfessionalOverview { get; set; } = new();
-        public List<string> Skills { get; set; } = new();
+        public List<ProfileSkill> Skills { get; set; } = new();
         public List<ServiceCategory> ServiceCategories { get; set; } = new();
         public List<string> Industries { get; set; } = new();
         public List<PricingModel> PricingModels { get; set; } = new();

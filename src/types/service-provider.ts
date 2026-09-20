@@ -181,7 +181,7 @@ export interface ProfileDraftRequest {
   headline?: string | null;
   bio?: string | null;
   professionalOverview?: { schemaVersion: number; document: TiptapJson } | null;
-  skills: string[];
+  skills: Array<string | ProfileSkillDto>;
   serviceCategories: string[];
   industries: string[];
   pricingModels: string[];
@@ -189,6 +189,13 @@ export interface ProfileDraftRequest {
   education: Array<Omit<ProviderEducation, "id"> & { id?: string | null }>;
   languageProficiencies: Array<Omit<ProviderLanguage, "id"> & { id?: string | null }>;
   socialLinks?: Array<Omit<ProviderSocialLink, "id"> & { id?: string | null }>;
+}
+
+export interface ProfileSkillDto {
+  name: string;
+  level?: string | null;
+  source?: string | null;
+  verification?: unknown;
 }
 
 export interface ProfileDraftResponse {
@@ -201,7 +208,7 @@ export interface ProfileDraftResponse {
   headline?: string | null;
   bio?: string | null;
   professionalOverview: ProfessionalOverviewContent;
-  skills: string[];
+  skills: Array<string | ProfileSkillDto>;
   serviceCategories: string[];
   industries: string[];
   pricingModels: string[];

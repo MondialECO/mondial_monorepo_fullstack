@@ -31,6 +31,7 @@ public class ProfileController : ControllerBase
     private readonly IServiceProviderProfileSplitMigration _migration;
     private readonly IProfileEditorService _editor;
     private readonly IServiceProviderMediaService _media;
+    private readonly IProfileCompletenessResolver _completenessResolver;
     private readonly MongoDbContext? _context;
 
     public ProfileController(
@@ -41,7 +42,8 @@ public class ProfileController : ControllerBase
         IProfileEditorService editor,
         IServiceProviderMediaService media,
         MongoDbContext? context = null,
-        IUserCredentialStore? credentialStore = null)
+        IUserCredentialStore? credentialStore = null,
+        IProfileCompletenessResolver? completenessResolver = null)
     {
         _userManager = userManager;
         _professionalStore = professionalStore;
@@ -51,6 +53,7 @@ public class ProfileController : ControllerBase
         _media = media;
         _context = context;
         _credentialStore = credentialStore;
+        _completenessResolver = completenessResolver ?? new ProfileCompletenessResolver();
     }
 
     private string? CurrentUserId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -169,6 +172,29 @@ public class ProfileController : ControllerBase
         return Ok(new { success = true, data = dto });
     }
 
+    [HttpGet("me/completeness")]
+    [Authorize]
+    public async Task<IActionResult> GetMyProfileCompleteness(CancellationToken ct)
+    {
+        var userId = CurrentUserId;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized(new { success = false, message = "User is not authenticated." });
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return NotFound(new { success = false, message = "User not found." });
+
+        var professional = await _migration.EnsureProfessionalProfileAsync(user, ct);
+        var res = _completenessResolver.Resolve(professional);
+
+        return Ok(ApiResponse.Ok("Profile completeness retrieved", new
+        {
+            profileCompletion = res.ProfileCompletion,
+            phase4Ready = res.Phase4Ready,
+            missingForPhase4 = res.MissingForPhase4
+        }));
+    }
+
     [HttpPut("me")]
     [Authorize]
     public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateUniversalProfileRequestDto request, CancellationToken ct)
@@ -220,6 +246,8 @@ public class ProfileController : ControllerBase
                 Id = string.IsNullOrWhiteSpace(e.Id) ? Guid.NewGuid().ToString("N") : e.Id,
                 JobTitle = e.JobTitle,
                 CompanyName = e.CompanyName,
+                ExperienceType = e.ExperienceType,
+                SkillsUsed = e.SkillsUsed ?? new(),
                 StartDate = ParseDate(e.StartDate),
                 EndDate = ParseNullableDate(e.EndDate),
                 IsCurrent = e.IsCurrent,
@@ -245,7 +273,41 @@ public class ProfileController : ControllerBase
 
         if (request.Skills is not null)
         {
-            professional.Skills = request.Skills.Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList();
+            var existingByName = (professional.Skills ?? new())
+                .Where(s => !string.IsNullOrWhiteSpace(s.Name))
+                .GroupBy(s => s.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            professional.Skills = request.Skills
+                .Where(s => !string.IsNullOrWhiteSpace(s.Name))
+                .Select(s =>
+                {
+                    var trimmedName = s.Name.Trim();
+                    existingByName.TryGetValue(trimmedName, out var existing);
+                    return new ProfileSkill
+                    {
+                        Name = trimmedName,
+                        Level = !string.IsNullOrWhiteSpace(s.Level) ? s.Level : existing?.Level,
+                        Source = !string.IsNullOrWhiteSpace(s.Source) ? s.Source : (existing?.Source ?? "self_declared"),
+                        Verification = s.Verification ?? existing?.Verification
+                    };
+                })
+                .GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .ToList();
+        }
+
+        if (request.VentureContext is not null)
+        {
+            professional.VentureContext = new ProfileVentureContext
+            {
+                CurrentSituation = request.VentureContext.CurrentSituation,
+                WeeklyAvailability = request.VentureContext.WeeklyAvailability,
+                Region = request.VentureContext.Region,
+                PreviousEntrepreneurialExperience = request.VentureContext.PreviousEntrepreneurialExperience,
+                LearningPreference = request.VentureContext.LearningPreference,
+                DelegationPreference = request.VentureContext.DelegationPreference
+            };
         }
 
         if (request.LanguageProficiencies is not null)
@@ -550,7 +612,7 @@ public class ProfileController : ControllerBase
         return Ok(new { success = true, data = publicDto });
     }
 
-    private static UniversalProfileResponseDto MapToUniversalDto(
+    private UniversalProfileResponseDto MapToUniversalDto(
         ProfessionalProfileRecord record,
         ApplicationUser user,
         IList<string> roles)
@@ -578,6 +640,8 @@ public class ProfileController : ControllerBase
                 PlainText = record.ProfessionalOverview.PlainText ?? string.Empty
             };
         }
+
+        var completenessResult = _completenessResolver.Resolve(record);
 
         return new UniversalProfileResponseDto
         {
@@ -610,6 +674,8 @@ public class ProfileController : ControllerBase
                 Id = e.Id,
                 JobTitle = e.JobTitle,
                 CompanyName = e.CompanyName,
+                ExperienceType = e.ExperienceType,
+                SkillsUsed = e.SkillsUsed ?? new(),
                 StartDate = e.StartDate.ToString("yyyy-MM"),
                 EndDate = e.EndDate?.ToString("yyyy-MM"),
                 IsCurrent = e.IsCurrent,
@@ -625,7 +691,22 @@ public class ProfileController : ControllerBase
                 EndYear = e.EndYear,
                 Description = e.Description
             }).ToList(),
-            Skills = record.Skills ?? new(),
+            Skills = (record.Skills ?? new()).Select(s => new ProfileSkillDto
+            {
+                Name = s.Name,
+                Level = s.Level,
+                Source = s.Source,
+                Verification = s.Verification
+            }).ToList(),
+            VentureContext = record.VentureContext is not null ? new ProfileVentureContextDto
+            {
+                CurrentSituation = record.VentureContext.CurrentSituation,
+                WeeklyAvailability = record.VentureContext.WeeklyAvailability,
+                Region = record.VentureContext.Region,
+                PreviousEntrepreneurialExperience = record.VentureContext.PreviousEntrepreneurialExperience,
+                LearningPreference = record.VentureContext.LearningPreference,
+                DelegationPreference = record.VentureContext.DelegationPreference
+            } : null,
             LanguageProficiencies = (record.LanguageProficiencies ?? new()).Select(l => new ProfessionalLanguageDto
             {
                 Id = l.Id,
@@ -642,24 +723,21 @@ public class ProfileController : ControllerBase
             }).ToList(),
             AvailabilityDisplay = record.AvailabilityDisplay,
             Roles = roles.ToList(),
-            CompletionPercentage = CalculateCompletion(record),
+            CompletionPercentage = completenessResult.ProfileCompletion,
+            Completeness = new ProfileCompletenessDto
+            {
+                ProfileCompletion = completenessResult.ProfileCompletion,
+                Phase4Ready = completenessResult.Phase4Ready,
+                MissingForPhase4 = completenessResult.MissingForPhase4
+            },
             CreatedAt = record.CreatedAt,
             UpdatedAt = record.UpdatedAt
         };
     }
 
-    private static int CalculateCompletion(ProfessionalProfileRecord p)
+    private int CalculateCompletion(ProfessionalProfileRecord p)
     {
-        var score = 0;
-        if (!string.IsNullOrWhiteSpace(p.Headline)) score += 15;
-        if (!string.IsNullOrWhiteSpace(p.Bio)) score += 15;
-        if (p.ProfileImage is not null && !string.IsNullOrWhiteSpace(p.ProfileImage.PublicUrl)) score += 15;
-        if (p.CoverImage is not null && !string.IsNullOrWhiteSpace(p.CoverImage.PublicUrl)) score += 15;
-        if ((p.Experiences ?? new()).Count > 0) score += 10;
-        if ((p.Education ?? new()).Count > 0) score += 10;
-        if ((p.Skills ?? new()).Count > 0) score += 10;
-        if ((p.LanguageProficiencies ?? new()).Count > 0) score += 10;
-        return Math.Min(100, score);
+        return _completenessResolver.Resolve(p).ProfileCompletion;
     }
 
     private static DateTime ParseDate(string? dateStr)

@@ -475,6 +475,80 @@ public class ServiceProviderProfileSplitTests
         professional.ProfileVersion.Should().Be(3); // draft saves never bump the version
     }
 
+    [Fact]
+    public async Task Save_profile_with_levelled_skill_through_editor_preserves_level_source_and_verification()
+    {
+        var user = GivenUser(CompleteEmbeddedUser());
+        await _harness.CreateMigrator(_users.Object).EnsureMigratedAsync(user);
+
+        // A founder/user has a levelled skill declared (e.g. from HumainX)
+        var profRecord = _harness.Professional.Records[user.Id.ToString()];
+        profRecord.Skills = new List<ProfileSkill>
+        {
+            new() { Name = "React", Level = "Comfortable", Source = "humainx", Verification = new { Score = 98 } },
+            new() { Name = "Design", Level = "Expert", Source = "self_declared", Verification = null }
+        };
+
+        // User later opens the editor and saves a draft sending only skill names
+        var editor = Editor();
+        var draftReq = new ProfileDraftRequest
+        {
+            BasedOnVersion = profRecord.ProfileVersion,
+            LastStep = 1,
+            Headline = "Updated Headline Through Editor",
+            Skills = new List<ProfileSkillRequest>
+            {
+                new() { Name = "React" }, // bare name, no level specified
+                new() { Name = "Design" },
+                new() { Name = "NewSkill" }
+            }
+        };
+
+        var saveResult = await editor.SaveDraftAsync(user.Id.ToString(), draftReq);
+        saveResult.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+
+        // Read back the draft via GetDraftAsync and assert level survived
+        var readDraft = await editor.GetDraftAsync(user.Id.ToString());
+        readDraft.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+        var reactDraftSkill = readDraft.Value!.Skills.First(s => s.Name == "React");
+        reactDraftSkill.Level.Should().Be("Comfortable");
+        reactDraftSkill.Source.Should().Be("humainx");
+        reactDraftSkill.Verification.Should().NotBeNull();
+
+        // Submit the profile through the editor with bare skill names
+        var submitReq = new SubmitProfileEditorRequest
+        {
+            BasedOnVersion = profRecord.ProfileVersion,
+            Draft = new ProfileDraftRequest
+            {
+                BasedOnVersion = profRecord.ProfileVersion,
+                LastStep = 4,
+                Headline = "Final Published Headline",
+                ServiceCategories = new() { "Finance" },
+                Skills = new List<ProfileSkillRequest>
+                {
+                    new() { Name = "React" },
+                    new() { Name = "Design" }
+                }
+            }
+        };
+
+        var submitResult = await editor.SubmitAsync(user.Id.ToString(), submitReq);
+        submitResult.Outcome.Should().Be(ServiceProviderOutcome.Ok);
+
+        // Read back published record and assert the level survived
+        var publishedRecord = _harness.Professional.Records[user.Id.ToString()];
+        publishedRecord.Headline.Should().Be("Final Published Headline");
+        var reactPublishedSkill = publishedRecord.Skills.First(s => s.Name == "React");
+        reactPublishedSkill.Level.Should().Be("Comfortable");
+        reactPublishedSkill.Source.Should().Be("humainx");
+        reactPublishedSkill.Verification.Should().NotBeNull();
+
+        var designPublishedSkill = publishedRecord.Skills.First(s => s.Name == "Design");
+        designPublishedSkill.Level.Should().Be("Expert");
+        designPublishedSkill.Source.Should().Be("self_declared");
+    }
+
     // ---------------- Tier via matching ----------------
 
     [Fact]

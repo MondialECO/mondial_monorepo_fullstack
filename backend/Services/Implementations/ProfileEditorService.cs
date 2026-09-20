@@ -102,7 +102,7 @@ public sealed class ProfileEditorService(
             professional = await migrator.EnsureProfessionalProfileAsync(user, cancellationToken);
         }
 
-        var draft = BuildDraft(request, professional.EditorDraft);
+        var draft = BuildDraft(request, professional.EditorDraft, professional);
         if (draft.Error is not null)
             return ServiceProviderResult<ProfileDraftResponse>.Invalid(draft.Error);
 
@@ -183,7 +183,7 @@ public sealed class ProfileEditorService(
         if (request.BasedOnVersion != professional.ProfileVersion)
             return StaleConflict();
 
-        var built = BuildDraft(request.Draft, professional.EditorDraft);
+        var built = BuildDraft(request.Draft, professional.EditorDraft, professional);
         if (built.Error is not null)
             return ServiceProviderResult<ProfileEditorSubmitResponse>.Invalid(built.Error);
         var draft = built.Value!;
@@ -318,7 +318,8 @@ public sealed class ProfileEditorService(
         CoverImage = current.CoverImage,
         Experiences = draft.Experiences,
         Education = draft.Education,
-        Skills = new List<string>(draft.Skills),
+        Skills = new List<ProfileSkill>(draft.Skills),
+        VentureContext = current.VentureContext,
         LanguageProficiencies = draft.LanguageProficiencies,
         // Legacy mirror stays in step for existing readers until Phase 6.
         Languages = draft.LanguageProficiencies.Select(l => l.Language).ToList(),
@@ -537,15 +538,51 @@ public sealed class ProfileEditorService(
     /// </summary>
     private static (ProfessionalProfileDraft? Value, string? Error) BuildDraft(
         ProfileDraftRequest request,
-        ProfessionalProfileDraft? existing)
+        ProfessionalProfileDraft? existing,
+        ProfessionalProfileRecord? published = null)
     {
+        var existingSkillsByName = new Dictionary<string, ProfileSkill>(StringComparer.OrdinalIgnoreCase);
+        if (published?.Skills != null)
+        {
+            foreach (var s in published.Skills.Where(s => !string.IsNullOrWhiteSpace(s.Name)))
+            {
+                existingSkillsByName[s.Name.Trim()] = s;
+            }
+        }
+        if (existing?.Skills != null)
+        {
+            foreach (var s in existing.Skills.Where(s => !string.IsNullOrWhiteSpace(s.Name)))
+            {
+                existingSkillsByName[s.Name.Trim()] = s;
+            }
+        }
+
+        var normalizedSkills = new List<ProfileSkill>();
+        var seenSkillNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var reqSkill in request.Skills ?? new())
+        {
+            var name = (reqSkill.Name ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(name)) continue;
+            if (!seenSkillNames.Add(name)) continue;
+
+            existingSkillsByName.TryGetValue(name, out var prev);
+
+            normalizedSkills.Add(new ProfileSkill
+            {
+                Name = name,
+                Level = !string.IsNullOrWhiteSpace(reqSkill.Level) ? reqSkill.Level.Trim() : prev?.Level,
+                Source = !string.IsNullOrWhiteSpace(reqSkill.Source) ? reqSkill.Source.Trim() : (prev?.Source ?? "self_declared"),
+                Verification = reqSkill.Verification ?? prev?.Verification
+            });
+        }
+
         var draft = new ProfessionalProfileDraft
         {
             BasedOnVersion = request.BasedOnVersion,
             LastStep = Math.Clamp(request.LastStep, 1, 4),
             Headline = NullIfBlank(request.Headline),
             Bio = NullIfBlank(request.Bio),
-            Skills = ServiceProviderService.NormalizeStrings(request.Skills),
+            Skills = normalizedSkills,
             ServiceCategories = ServiceProviderService.NormalizeCategories(request.ServiceCategories),
             Industries = ServiceProviderService.NormalizeStrings(request.Industries),
             PricingModels = ServiceProviderService.NormalizePricingModels(request.PricingModels),
@@ -656,7 +693,7 @@ public sealed class ProfileEditorService(
             Headline = NullIfBlank(professional.Headline),
             Bio = NullIfBlank(professional.Bio),
             ProfessionalOverview = professional.ProfessionalOverview,
-            Skills = new List<string>(professional.Skills),
+            Skills = new List<ProfileSkill>(professional.Skills),
             ServiceCategories = new List<ServiceCategory>(sp.ServiceCategories),
             Industries = new List<string>(professional.Industries),
             PricingModels = new List<PricingModel>(sp.PricingModels),

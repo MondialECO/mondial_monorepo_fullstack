@@ -45,6 +45,7 @@ import { creatorDocumentsApi } from '@/lib/api-creator-documents';
 import type { ForecastOutput } from '@/types/creator/ai';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Phase3LegalCard } from '@/components/creator/Phase3LegalCard';
+import { HumainXDashboardCard } from '@/components/creator/dashboard/HumainXDashboardCard';
 
 // Compact relative time for real timestamps ("2m", "3h", "5d", "now").
 function timeAgo(iso?: string | null): string {
@@ -356,6 +357,9 @@ export default function CreatorDashboard() {
           </div>
         </Card>
       )}
+
+      {/* HumainX Profile Personalization Entry Card */}
+      <HumainXDashboardCard ideaId={state.activeIdeaId} />
 
       {/* Row 3: Main Grid Layout (2-Column) */}
       <div className="grid gap-6 lg:grid-cols-3">
