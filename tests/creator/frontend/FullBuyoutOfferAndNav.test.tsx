@@ -18,7 +18,7 @@ describe('Creator Canonical Navigation Menu — Final Product-Journey Reorganiza
   it('contains the canonical menu sections with exact items and routes in product-journey order', () => {
     const creatorMenu = menu[UserRole.CREATOR];
     expect(creatorMenu).toBeDefined();
-    expect(creatorMenu.length).toBe(6);
+    expect(creatorMenu.length).toBe(4);
 
     // 1. DASHBOARD
     expect(creatorMenu[0].title).toBe('Dashboard');
@@ -27,50 +27,37 @@ describe('Creator Canonical Navigation Menu — Final Product-Journey Reorganiza
       { label: 'My Ideas', href: '/dashboard/creator/myideas' },
     ]);
 
-    // 2. PROJECT BUILDER
-    expect(creatorMenu[1].title).toBe('Project Builder');
-    expect(creatorMenu[1].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
-      { label: 'Project Studio', href: '/dashboard/creator/project-studio' },
-      { label: 'Pricing & Equity', href: '/dashboard/creator/offer-pricing' },
-      { label: 'Growth & Readiness', href: '/dashboard/creator/investors' },
+    // 2. PROJECT WORKSPACE
+    expect(creatorMenu[1].title).toBe('Project Workspace');
+    const workspaceLabels = creatorMenu[1].items.map((i) => i.label);
+    expect(workspaceLabels).toEqual([
+      'Build My Project',
+      'Offers & Marketplace',
+      'Assets & Documents',
+      'Services & Network',
     ]);
 
-    // 3. PROJECT MARKETPLACE
-    expect(creatorMenu[2].title).toBe('Project Marketplace');
+    // 3. COMMUNICATION
+    expect(creatorMenu[2].title).toBe('Communication');
     expect(creatorMenu[2].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
-      { label: 'Marketplace', href: '/marketplace/projects' },
-      { label: 'Launch to Market', href: '/dashboard/creator/crossroads' },
-      { label: 'Partnerships', href: '/dashboard/creator/partnerships' },
-      { label: 'Sales & Buyouts', href: '/dashboard/creator/sales' },
-    ]);
-
-    // 4. ASSETS & IP
-    expect(creatorMenu[3].title).toBe('Assets & IP');
-    expect(creatorMenu[3].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
-      { label: 'IP Vault & Legal', href: '/dashboard/creator/documents' },
-      { label: 'Asset Library', href: '/dashboard/creator/asset-library' },
-    ]);
-
-    // 5. SERVICES & NETWORK
-    expect(creatorMenu[4].title).toBe('Services & Network');
-    expect(creatorMenu[4].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
-      { label: 'Hire Providers', href: '/marketplace/services' },
-      { label: 'Active Engagements', href: '/dashboard/creator/engagements' },
-    ]);
-
-    // 6. COMMUNICATION & ACCOUNT
-    expect(creatorMenu[5].title).toBe('Communication & Account');
-    expect(creatorMenu[5].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
       { label: 'Messages', href: '/dashboard/creator/messages' },
       { label: 'Notifications', href: '/dashboard/creator/notifications' },
+    ]);
+
+    // 4. ACCOUNT
+    expect(creatorMenu[3].title).toBe('Account');
+    expect(creatorMenu[3].items.map((i) => ({ label: i.label, href: i.href }))).toEqual([
       { label: 'Profile', href: '/dashboard/profile' },
+      { label: 'Billing History', href: '/dashboard/creator/billinghistory' },
       { label: 'Settings', href: '/dashboard/creator/settings' },
     ]);
+
     const labels = creatorMenu.flatMap((s) => s.items).map((i) => i.label);
     expect(labels).not.toContain('Sold Projects');
     expect(labels).not.toContain('The Crossroads');
     expect(labels).not.toContain('Sell Idea');
     expect(labels).not.toContain('Sell Project');
+    expect(labels).not.toContain('Project Studio');
   });
 
   it('correctly calculates active state for parent and child routes in AppSidebar logic', () => {

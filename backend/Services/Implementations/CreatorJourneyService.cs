@@ -1186,6 +1186,16 @@ namespace WebApp.Services.Implementations
             UpdateDefinition<CreatorIdea> ideaUpdate;
             switch (kind)
             {
+                case "marketStudy":
+                    p3.MarketStudySessionId = sessionId;
+                    ideaUpdate = Builders<CreatorIdea>.Update
+                        .Set(x => x.Phase3Data.MarketStudySessionId, sessionId);
+                    break;
+                case "businessModel":
+                    p3.BusinessModelSessionId = sessionId;
+                    ideaUpdate = Builders<CreatorIdea>.Update
+                        .Set(x => x.Phase3Data.BusinessModelSessionId, sessionId);
+                    break;
                 case "forecast":
                     p3.ForecastSessionId = sessionId;
                     ideaUpdate = Builders<CreatorIdea>.Update
@@ -1201,7 +1211,7 @@ namespace WebApp.Services.Implementations
                               CreatorJourneyVersioning.Append(snaps.BusinessPlanVersions, 3, sessionId, null));
                     break;
                 default:
-                    throw new CreatorJourneyException(400, "kind must be \"forecast\" or \"businessPlan\".");
+                    throw new CreatorJourneyException(400, "kind must be \"marketStudy\", \"businessModel\", \"forecast\", or \"businessPlan\".");
             }
 
             await WriteIdeaAsync(idea, ideaUpdate);

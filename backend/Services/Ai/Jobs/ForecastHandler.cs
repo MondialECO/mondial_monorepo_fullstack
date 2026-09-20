@@ -5,6 +5,7 @@ using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos.Ai;
 using WebApp.Services.Ai.Prompts;
 using WebApp.Services.Ai.Providers;
+using WebApp.Services.Repository;
 using WebApp.Services.Repository.Ai;
 
 namespace WebApp.Services.Ai.Jobs
@@ -12,15 +13,10 @@ namespace WebApp.Services.Ai.Jobs
     /// <summary>
     /// C-4 Forecast handler (one-shot, single structured JSON completion).
     /// <see cref="PrepareAsync"/> loads the referenced <see cref="BusinessPlanSession"/>
-    /// — owner-scoped and Completed — and uses its <b>current version's editable
-    /// Content</b> (NOT the immutable GeneratedContent) as the sole authoritative
-    /// input, turning it into the prompt's User Context / Task layers.
+    /// and Step 3.2 <see cref="BusinessModelSession"/> as authoritative commercial context.
     /// <see cref="InterpretAsync"/> parses the model's JSON into the locked
     /// seven-field ForecastOutput contract and appends it as a new immutable version
-    /// on the <see cref="ForecastSession"/> (history is never overwritten), then
-    /// writes an <see cref="AiInsight"/>. A parse/validation failure is NOT thrown:
-    /// the session is marked NeedsReview (raw text preserved on the response) and the
-    /// job completes normally — mirroring <see cref="BusinessPlanHandler"/>.
+    /// on the <see cref="ForecastSession"/> (history is never overwritten).
     /// </summary>
     public sealed class ForecastHandler : IAiTaskHandler
     {
@@ -29,6 +25,8 @@ namespace WebApp.Services.Ai.Jobs
 
         private readonly IForecastSessionStore _sessions;
         private readonly IBusinessPlanSessionStore _businessPlans;
+        private readonly IBusinessModelSessionStore? _businessModels;
+        private readonly ICreatorIdeaStore? _creatorIdeas;
         private readonly IAiInsightWriter _insights;
         private readonly AiSettings _settings;
         private readonly ILogger<ForecastHandler> _logger;
@@ -38,13 +36,17 @@ namespace WebApp.Services.Ai.Jobs
             IBusinessPlanSessionStore businessPlans,
             IAiInsightWriter insights,
             ILogger<ForecastHandler> logger,
-            IOptions<AiSettings>? aiSettings = null)
+            IOptions<AiSettings>? aiSettings = null,
+            IBusinessModelSessionStore? businessModels = null,
+            ICreatorIdeaStore? creatorIdeas = null)
         {
             _sessions = sessions;
             _businessPlans = businessPlans;
             _insights = insights;
             _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger;
+            _businessModels = businessModels;
+            _creatorIdeas = creatorIdeas;
         }
 
         public AiJobType Type => AiJobType.Forecast;
@@ -58,9 +60,6 @@ namespace WebApp.Services.Ai.Jobs
             double? Num(string key) =>
                 input != null && input.TryGetValue(key, out var v) && v.IsNumeric ? v.ToDouble() : (double?)null;
 
-            // The business plan (revenue model, market analysis from C-3) is the
-            // AUTHORITATIVE context again (forecast follows the plan in the new order).
-            // The numeric inputs (ARPU/OPEX/growth/TAM/churn) are explicit supporting parameters.
             var arpu = Num("arpu");
             var opex = Num("opex");
             var growth = Num("monthlyGrowthPct");
@@ -68,14 +67,63 @@ namespace WebApp.Services.Ai.Jobs
             var churn = Num("monthlyChurnPct");
 
             var businessPlanSessionId = Field("businessPlanSessionId");
+            var businessIdeaId = Field("businessIdeaId");
+            var businessModelSessionId = Field("businessModelSessionId");
+
+            var contextLines = new List<string>();
+
+            // Step 3.2 Business Model Canvas context (pricing tiers, unit economics, revenue streams)
+            BusinessModelSession? businessModel = null;
+            if (!string.IsNullOrEmpty(businessModelSessionId) && _businessModels != null)
+            {
+                businessModel = await _businessModels.GetOwnedAsync(businessModelSessionId, request.OwnerUserId);
+            }
+            else if (!string.IsNullOrEmpty(businessIdeaId) && _creatorIdeas != null && _businessModels != null)
+            {
+                var creatorIdea = await _creatorIdeas.GetOwnedAsync(businessIdeaId, request.OwnerUserId);
+                if (!string.IsNullOrEmpty(creatorIdea?.Phase3Data?.BusinessModelSessionId))
+                {
+                    businessModel = await _businessModels.GetOwnedAsync(creatorIdea.Phase3Data.BusinessModelSessionId, request.OwnerUserId);
+                }
+            }
+
+            if (businessModel != null)
+            {
+                var currentBmVersion = businessModel.Versions.FirstOrDefault(v => v.Version == businessModel.CurrentVersion);
+                if (currentBmVersion?.Content != null)
+                {
+                    var bmDoc = currentBmVersion.Content;
+                    var bmSummary = new List<string>();
+                    if (bmDoc.Contains("revenueTiers"))
+                        bmSummary.Add("Pricing & Revenue Tiers: " + bmDoc["revenueTiers"].ToJson());
+                    if (bmDoc.Contains("unitEconomics"))
+                        bmSummary.Add("Unit Economics: " + bmDoc["unitEconomics"].ToJson());
+                    if (bmDoc.Contains("canvas") && bmDoc["canvas"].IsBsonDocument)
+                    {
+                        var canvas = bmDoc["canvas"].AsBsonDocument;
+                        if (canvas.Contains("revenueStreams"))
+                            bmSummary.Add("Revenue Streams: " + canvas["revenueStreams"].ToJson());
+                        if (canvas.Contains("costStructure"))
+                            bmSummary.Add("Cost Structure: " + canvas["costStructure"].ToJson());
+                        if (canvas.Contains("customerSegments"))
+                            bmSummary.Add("Customer Segments: " + canvas["customerSegments"].ToJson());
+                    }
+
+                    if (bmSummary.Count > 0)
+                    {
+                        contextLines.Add("BUSINESS MODEL (Step 3.2 — authoritative commercial & pricing foundation):\n" + string.Join("\n", bmSummary));
+                    }
+                }
+            }
+
+            // The business plan (revenue model, market analysis from C-3) when available
             var plan = businessPlanSessionId.Length > 0
                 ? await _businessPlans.GetOwnedAsync(businessPlanSessionId, request.OwnerUserId)
                 : null;
             var planContent = CurrentVersionContent(plan);
 
-            var contextLines = new List<string>();
             if (planContent is not null)
-                contextLines.Add("BUSINESS PLAN (authoritative source — base the forecast on this):\n" + planContent.ToJson());
+                contextLines.Add("BUSINESS PLAN (supporting source):\n" + planContent.ToJson());
 
             var inputLines = new List<string>();
             if (arpu.HasValue) inputLines.Add($"ARPU (€/month): {arpu.Value}");
@@ -84,18 +132,18 @@ namespace WebApp.Services.Ai.Jobs
             if (tam.HasValue) inputLines.Add($"TAM (€): {tam.Value}");
             if (churn.HasValue) inputLines.Add($"Monthly churn rate (%): {churn.Value}");
             if (inputLines.Count > 0)
-                contextLines.Add("FORECAST PARAMETERS (supporting figures):\n" + string.Join("\n", inputLines));
+                contextLines.Add("FORECAST PARAMETERS (explicit parameters — take priority over baseline assumptions):\n" + string.Join("\n", inputLines));
 
             if (contextLines.Count == 0)
             {
-                _logger.LogWarning("Forecast request {RequestId} has neither a business plan nor inputs.", request.Id);
+                _logger.LogWarning("Forecast request {RequestId} has neither business model/plan nor inputs.", request.Id);
                 contextLines.Add("CONTEXT: (none provided — state conservative assumptions explicitly).");
             }
 
             var userContext = string.Join("\n\n", contextLines);
 
             const string task =
-                "Produce a compact 12-month financial forecast grounded in the BUSINESS PLAN above " +
+                "Produce a compact 12-month financial forecast grounded in the BUSINESS MODEL and BUSINESS PLAN above " +
                 "and refined by the FORECAST PARAMETERS (ARPU, OPEX, monthly growth, TAM, monthly churn), " +
                 "following the output contract exactly: 12 consecutive monthly periods, " +
                 "numeric monthly arrays, no funding ask. Keep summaries, notes, and narrative concise. State driving assumptions. " +

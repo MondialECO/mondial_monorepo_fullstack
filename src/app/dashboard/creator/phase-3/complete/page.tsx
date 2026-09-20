@@ -263,7 +263,7 @@ export default function Phase3CompletePage() {
         {/* Header - Diagnostic, Objective, Institutional */}
         <header className="flex flex-col items-center gap-2.5 text-center max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary uppercase tracking-wider font-mono">
-            <span>Phase 3 Evaluation · Step 3.7</span>
+            <span>STEP 3.7 · INVESTOR READINESS</span>
           </div>
 
           <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl font-sans">

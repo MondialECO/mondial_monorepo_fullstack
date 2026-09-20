@@ -252,12 +252,14 @@ function SectionExtras({
   legalFramework,
   onRefreshLegal,
   router,
+  activeIdeaId,
 }: {
   id: string;
   bp?: BusinessPlanOutput;
   legalFramework?: LegalRegulatoryFramework | null;
   onRefreshLegal?: () => void;
   router?: ReturnType<typeof useRouter>;
+  activeIdeaId?: string | null;
 }) {
   if (!bp && !legalFramework) return null;
   const blocks: ReactNode[] = [];
@@ -635,10 +637,10 @@ function SectionExtras({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => router.push('/dashboard/creator/phase-3/compliance')}
+                        onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/compliance', activeIdeaId))}
                         className="text-xs text-primary gap-1 shrink-0 h-7"
                       >
-                        View in 3.5 <ArrowRight className="w-3 h-3" />
+                        View in 3.4 <ArrowRight className="w-3 h-3" />
                       </Button>
                     )}
                   </div>
@@ -722,7 +724,8 @@ export default function BusinessPlanPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const ideaId = searchParams.get('ideaId');
-  const { completeStep } = useCreatorProgress();
+  const { state: { activeIdeaId }, completeStep } = useCreatorProgress();
+  const effectiveIdeaId = ideaId || activeIdeaId || null;
 
   const [loading, setLoading] = useState(true);
   const [bpSessionId, setBpSessionId] = useState<string | null>(null);
@@ -766,7 +769,7 @@ export default function BusinessPlanPage() {
     let active = true;
     (async () => {
       try {
-        const { journey } = await creatorJourneyApi.get();
+        const { journey } = await creatorJourneyApi.get(effectiveIdeaId);
         if (!active) return;
         const p3 = journey.phase3Data as {
           businessPlanSessionId?: string; clarifierSessionId?: string; forecastSessionId?: string;
@@ -824,8 +827,8 @@ export default function BusinessPlanPage() {
   const failedIsCredits = !failedIsProviderBilling && /402|credit|insufficient|payment/i.test(bpError ?? '');
 
   const { data: legalFramework, refetch: refetchLegal } = useQuery({
-    queryKey: ['business-plan-section-12'],
-    queryFn: () => creatorJourneyApi.getBusinessPlanSection12(),
+    queryKey: ['business-plan-section-12', effectiveIdeaId],
+    queryFn: () => creatorJourneyApi.getBusinessPlanSection12(effectiveIdeaId),
     staleTime: 60_000,
   });
   const [refreshingLegal, setRefreshingLegal] = useState(false);
@@ -833,7 +836,7 @@ export default function BusinessPlanPage() {
   const handleRefreshLegal = async () => {
     try {
       setRefreshingLegal(true);
-      await creatorJourneyApi.evaluateLegalCompliance(ideaId);
+      await creatorJourneyApi.evaluateLegalCompliance(effectiveIdeaId);
       await refetchLegal();
     } catch (e) {
       console.error('Failed to refresh legal assessment', e);
@@ -900,7 +903,7 @@ export default function BusinessPlanPage() {
 
   const handleNext = () => {
     completeStep(3, 6);
-    router.push(withIdeaContext('/dashboard/creator/phase-3/complete', ideaId));
+    router.push(withIdeaContext('/dashboard/creator/phase-3/complete', effectiveIdeaId));
   };
 
   return (
@@ -917,7 +920,7 @@ export default function BusinessPlanPage() {
       />
       <Phase3SetupShell
         fullWidth
-        stepEyebrow="Step 3.6 · Executive Business Plan"
+        stepEyebrow="STEP 3.6 · EXECUTIVE BUSINESS PLAN"
         title="AI Business Plan"
         description="Your comprehensive 12-section business plan. Edit owned sections directly or navigate to authoritative source modules."
       >
@@ -952,10 +955,10 @@ export default function BusinessPlanPage() {
             <div className="flex items-center justify-between border-t border-border pt-4 mt-4">
               <Button
                 variant="ghost"
-                onClick={() => router.push('/dashboard/creator/phase-3/business-model')}
+                onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/formation', effectiveIdeaId))}
                 className="text-xs font-bold text-muted-foreground font-sans"
               >
-                <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Business Model
+                <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Company Formation
               </Button>
               <Button
                 onClick={handleStart}
@@ -1335,6 +1338,7 @@ export default function BusinessPlanPage() {
                               legalFramework={legalFramework}
                               onRefreshLegal={handleRefreshLegal}
                               router={router}
+                              activeIdeaId={effectiveIdeaId}
                             />
 
                             {saved && (
@@ -1355,7 +1359,7 @@ export default function BusinessPlanPage() {
                   <Button
                     variant="ghost"
                     size="lg"
-                    onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/formation', ideaId))}
+                    onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/formation', effectiveIdeaId))}
                     className="font-sans font-semibold gap-1.5"
                   >
                     <ArrowLeft className="w-4 h-4" /> Back to Company Formation

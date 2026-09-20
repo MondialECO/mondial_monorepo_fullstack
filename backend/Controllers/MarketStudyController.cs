@@ -87,9 +87,10 @@ namespace WebApp.Controllers
                 ? clarifier.BusinessIdeaId
                 : (string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId);
 
+            CreatorIdea? creatorIdea = null;
             if (!string.IsNullOrWhiteSpace(businessIdeaId))
             {
-                if (!ObjectId.TryParse(businessIdeaId, out _) || await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner) == null)
+                if (!ObjectId.TryParse(businessIdeaId, out _) || (creatorIdea = await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner)) == null)
                     return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
             }
 
@@ -146,7 +147,7 @@ namespace WebApp.Controllers
                 if (!string.IsNullOrWhiteSpace(session.BusinessIdeaId))
                 {
                     var updateDef = Builders<CreatorIdea>.Update.Set(x => x.Phase3Data.MarketStudySessionId, session.Id);
-                    await _creatorIdeas.UpdateAsync(session.BusinessIdeaId, owner, updateDef);
+                    await _creatorIdeas.UpdateAsync(session.BusinessIdeaId, owner, updateDef, creatorIdea?.Version);
                 }
 
                 _audit.Record("MarketStudy.Start", owner, success: true,

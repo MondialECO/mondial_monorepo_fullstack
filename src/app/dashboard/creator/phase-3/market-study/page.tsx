@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
@@ -60,7 +60,11 @@ function parseShareNumber(shareStr?: string): number {
 
 export default function MarketStudyPage() {
   const router = useRouter();
-  const { completeStep } = useCreatorProgress();
+  const searchParams = useSearchParams();
+  const queryIdeaId = searchParams.get('ideaId');
+  const { state, completeStep } = useCreatorProgress();
+  const activeIdeaId = state?.activeIdeaId;
+  const effectiveIdeaId = queryIdeaId || activeIdeaId || getCreatorWorkspaceIdea() || null;
 
   const [loading, setLoading] = useState(true);
   const [marketStudySessionId, setMarketStudySessionId] = useState<string | null>(null);
@@ -99,7 +103,7 @@ export default function MarketStudyPage() {
     let active = true;
     (async () => {
       try {
-        const { journey } = await creatorJourneyApi.get();
+        const { journey } = await creatorJourneyApi.get(effectiveIdeaId);
         if (!active) return;
         const p3 = journey.phase3Data as {
           marketStudySessionId?: string;
@@ -109,7 +113,7 @@ export default function MarketStudyPage() {
 
         setMarketStudySessionId(p3?.marketStudySessionId ?? null);
         setClarifierSessionId(p3?.clarifierSessionId ?? p2?.clarifierSessionId ?? null);
-        setBusinessIdeaId(getCreatorWorkspaceIdea());
+        setBusinessIdeaId(effectiveIdeaId);
         setCreatorMarketGap(journey.project?.marketGap ?? null);
         setSector(journey.project?.sector ?? null);
         setGeography(journey.project?.geography ?? null);
@@ -119,7 +123,7 @@ export default function MarketStudyPage() {
         let candidateLogoUri: string | null = null;
         let kitVersion: number | undefined = undefined;
         try {
-          const currentIdeaId = getCreatorWorkspaceIdea();
+          const currentIdeaId = effectiveIdeaId;
           const kit = await brandKitApi.getBrandKit(currentIdeaId ?? undefined);
           kitVersion = kit?.version;
           const selectedKey = kit?.logo?.selectedConceptKey;
@@ -199,7 +203,7 @@ export default function MarketStudyPage() {
 
   const handleNext = () => {
     completeStep(3, 1);
-    router.push(withIdeaContext('/dashboard/creator/phase-3/business-model', businessIdeaId));
+    router.push(withIdeaContext('/dashboard/creator/phase-3/business-model', effectiveIdeaId));
   };
 
 
@@ -252,7 +256,7 @@ export default function MarketStudyPage() {
     <Phase3SetupShell
       fullWidth
       headerAlign="left"
-      stepEyebrow="3.1 / MARKET STUDY"
+      stepEyebrow="STEP 3.1 · MARKET STUDY"
       title={projectName ? `Market study — ${projectName}` : 'Market study & Competitive Intelligence'}
       description={
         completed && output
@@ -364,7 +368,7 @@ export default function MarketStudyPage() {
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button
                 variant="outline"
-                onClick={() => router.push('/dashboard/creator/phase-2/complete')}
+                onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-2/complete', effectiveIdeaId))}
                 className="w-full sm:w-auto text-xs font-medium rounded-lg"
               >
                 <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Phase 2

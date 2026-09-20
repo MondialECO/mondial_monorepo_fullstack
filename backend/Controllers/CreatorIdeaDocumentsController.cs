@@ -154,6 +154,8 @@ public class CreatorIdeaDocumentsController : ControllerBase
             if (document == null || !TryResolveExistingFile(idea, document, out var info))
                 return NotFound(ApiResponse.Error("Document not found."));
 
+            Response.Headers.Append("Cache-Control", "private, no-cache, no-store, must-revalidate");
+            Response.Headers.Append("Pragma", "no-cache");
             return PhysicalFile(info!.FullName, document.MimeType, Path.GetFileName(document.FileName));
         }
         catch (KeyNotFoundException ex) { return NotFound(ApiResponse.Error(ex.Message)); }

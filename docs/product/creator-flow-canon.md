@@ -598,10 +598,13 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Authoritative National Catalogue (France):**
   - **Catalogue Version:** `FR-2026.1`
   - **Canonical Rules (18 Total):** Fully declared in `backend/Resources/LegalRules/FranceRules.json`:
-    - *Corporate Governance & Structure (7):* `FR-CORP-001` (Dépôt capital social), `FR-CORP-002` (Statuts constitutifs), `FR-CORP-003` (Publication JAL), `FR-CORP-004` (Immatriculation RNE/INPI), `FR-CORP-005` (Déclaration RBE), `FR-CORP-006` (Compte bancaire professionnel), `FR-CORP-007` (Pacte d'associés).
-    - *Intellectual Property & Brand Protection (3):* `FR-IP-001` (Dépôt de marque INPI), `FR-IP-002` (Cession de droits d'auteur), `FR-IP-003` (Protection nom de domaine AFNIC).
-    - *Data Privacy & Consumer Protection (4):* `FR-DATA-001` (Registre RGPD Article 30), `FR-DATA-002` (Politique de confidentialité & CGU), `FR-DATA-003` (Bannière cookies CNIL), `FR-DATA-004` (Sécurisation des données & DPA).
-    - *Industry & Operational Compliance (4):* `FR-IND-001` (Agrément/Enregistrement ACPR/AMF), `FR-IND-002` (Déclaration plateforme ARCOM/LCEN), `FR-IND-003` (Conformité hébergement HDS), `FR-IND-004` (Assurance RC Professionnelle).
+    - *Corporate Governance (5):* `FR-CORP-001` (Dépôt capital social), `FR-CORP-002` (Statuts constitutifs), `FR-CORP-003` (Publication JAL), `FR-CORP-004` (Immatriculation RNE/INPI), `FR-CORP-005` (Déclaration RBE).
+    - *Intellectual Property (1):* `FR-IP-001` (Dépôt marque INPI).
+    - *Data Privacy (3):* `FR-PRIV-001` (Registre RGPD Art 30), `FR-PRIV-002` (Politique de confidentialité), `FR-PRIV-003` (Cookies et traceurs).
+    - *Web Presence (1):* `FR-WEB-001` (Mentions légales site/application).
+    - *Consumer Protection (3):* `FR-CONS-001` (CGV consommateurs), `FR-CONS-002` (Droit de rétractation), `FR-CONS-003` (Médiation de la consommation).
+    - *Payment & Commercial (2):* `FR-PAY-001` (Recours PSP agréé), `FR-MKT-001` (Démarchage électronique).
+    - *Operations & Sector (3):* `FR-INS-001` (Assurance RC Pro), `FR-SOC-001` (Affiliation sociale & DPAE), `FR-REG-001` (Activités réglementées).
 - **Legal Source-Of-Truth Architecture:**
   - **Before Level Up:** `CreatorJourney.Phase3Data.LegalAssessment` (and `CreatorIdeas.Phase3Data.LegalAssessment`) serves as the active Creator legal source of truth.
   - **At Level Up:** The active Creator legal assessment is preserved intact as the immutable Creator baseline.

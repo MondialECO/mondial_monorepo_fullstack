@@ -1,27 +1,23 @@
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 using WebApp.Configuration.AiOptions;
+using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos.Ai;
 using WebApp.Services.Ai.Prompts;
 using WebApp.Services.Ai.Providers;
 using WebApp.Services.Repository;
 using WebApp.Services.Repository.Ai;
+using WebApp.Models.DatabaseModels.Legal;
 
 namespace WebApp.Services.Ai.Jobs
 {
     /// <summary>
     /// C-3 Business Plan handler (one-shot, single structured JSON completion).
-    /// <see cref="PrepareAsync"/> loads the canonical Creator Idea Core as the
-    /// authoritative input and retains the linked clarifier session as historical
-    /// compatibility context, then turns them into the
-    /// prompt's User Context / Task layers. <see cref="InterpretAsync"/> parses the
-    /// model's JSON into the locked seven-section BusinessPlanOutput contract and
-    /// appends it as a new immutable version on the <see cref="BusinessPlanSession"/>
-    /// (history is never overwritten — locked C-3 decision #5), then writes an
-    /// <see cref="AiInsight"/>. A parse/validation failure is NOT thrown: the session
-    /// is marked NeedsReview (raw text preserved on the response) and the job
-    /// completes normally — mirroring <see cref="IdeaClarifierHandler"/>.
+    /// <see cref="PrepareAsync"/> loads the canonical Creator Idea Core and completed
+    /// upstream Phase 3 artifacts (Market Study, Business Model, Forecast, Formation, Legal)
+    /// as authoritative input, turning them into the prompt's User Context / Task layers.
+    /// <see cref="InterpretAsync"/> parses the model's JSON into the BusinessPlanOutput contract.
     /// </summary>
     public sealed class BusinessPlanHandler : IAiTaskHandler
     {
@@ -35,6 +31,9 @@ namespace WebApp.Services.Ai.Jobs
         private readonly IAiInsightWriter _insights;
         private readonly AiSettings _settings;
         private readonly ILogger<BusinessPlanHandler> _logger;
+        private readonly IMarketStudySessionStore? _marketStudies;
+        private readonly IBusinessModelSessionStore? _businessModels;
+        private readonly IForecastSessionStore? _forecasts;
 
         public BusinessPlanHandler(
             IBusinessPlanSessionStore sessions,
@@ -43,7 +42,10 @@ namespace WebApp.Services.Ai.Jobs
             BusinessIdeasRepository ideas,
             IAiInsightWriter insights,
             ILogger<BusinessPlanHandler> logger,
-            IOptions<AiSettings>? aiSettings = null)
+            IOptions<AiSettings>? aiSettings = null,
+            IMarketStudySessionStore? marketStudies = null,
+            IBusinessModelSessionStore? businessModels = null,
+            IForecastSessionStore? forecasts = null)
         {
             _sessions = sessions;
             _clarifiers = clarifiers;
@@ -52,6 +54,9 @@ namespace WebApp.Services.Ai.Jobs
             _insights = insights;
             _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger;
+            _marketStudies = marketStudies;
+            _businessModels = businessModels;
+            _forecasts = forecasts;
         }
 
         public AiJobType Type => AiJobType.BusinessPlan;
@@ -80,6 +85,64 @@ namespace WebApp.Services.Ai.Jobs
                     contextLines.Add(
                         "CANONICAL IDEA CORE (authoritative source — preserve creator edits):\n" +
                         creatorIdea.Project.ToBsonDocument().ToJson());
+                }
+
+                var p3 = creatorIdea?.Phase3Data;
+                if (p3 != null)
+                {
+                    // 1. Upstream Step 3.1 Market Study
+                    if (!string.IsNullOrEmpty(p3.MarketStudySessionId) && _marketStudies != null)
+                    {
+                        var mkt = await _marketStudies.GetOwnedAsync(p3.MarketStudySessionId, request.OwnerUserId);
+                        var currentMkt = mkt?.Versions.FirstOrDefault(v => v.Version == mkt.CurrentVersion);
+                        if (currentMkt?.Content != null)
+                        {
+                            contextLines.Add("MARKET INTELLIGENCE (Step 3.1 — authoritative TAM/SAM/SOM, market definition, and competitive landscape):\n" + currentMkt.Content.ToJson());
+                        }
+                    }
+
+                    // 2. Upstream Step 3.2 Business Model Canvas
+                    if (!string.IsNullOrEmpty(p3.BusinessModelSessionId) && _businessModels != null)
+                    {
+                        var bm = await _businessModels.GetOwnedAsync(p3.BusinessModelSessionId, request.OwnerUserId);
+                        var currentBm = bm?.Versions.FirstOrDefault(v => v.Version == bm.CurrentVersion);
+                        if (currentBm?.Content != null)
+                        {
+                            contextLines.Add("BUSINESS MODEL CANVAS (Step 3.2 — authoritative value propositions, customer segments, channels, pricing tiers, and revenue streams):\n" + currentBm.Content.ToJson());
+                        }
+                    }
+
+                    // 3. Upstream Step 3.3 Financial Forecast
+                    if (!string.IsNullOrEmpty(p3.ForecastSessionId) && _forecasts != null)
+                    {
+                        var fc = await _forecasts.GetOwnedAsync(p3.ForecastSessionId, request.OwnerUserId);
+                        var currentFc = fc?.Versions.FirstOrDefault(v => v.Version == fc.CurrentVersion);
+                        if (currentFc?.Content != null)
+                        {
+                            contextLines.Add("FINANCIAL FORECAST (Step 3.3 — authoritative 36-month P&L, breakeven, and runway projections):\n" + currentFc.Content.ToJson());
+                        }
+                    }
+
+                    // 4. Upstream Step 3.5 Formation & Team
+                    if (p3.FormationGenerator != null)
+                    {
+                        var fg = p3.FormationGenerator;
+                        var formSummary = new List<string>();
+                        if (!string.IsNullOrEmpty(fg.SelectedType ?? fg.RecommendedType))
+                            formSummary.Add($"Entity Structure: {fg.SelectedType ?? fg.RecommendedType}");
+                        if (fg.YouHave != null && fg.YouHave.Count > 0)
+                            formSummary.Add($"Founding Skills: {string.Join(", ", fg.YouHave)}");
+                        if (fg.YouNeed != null && fg.YouNeed.Count > 0)
+                            formSummary.Add($"Skill Gaps & Roles Needed: {string.Join(", ", fg.YouNeed.Select(n => n.Label))}");
+                        if (formSummary.Count > 0)
+                            contextLines.Add("COMPANY FORMATION & TEAM ARCHITECTURE (Step 3.5):\n" + string.Join("\n", formSummary));
+                    }
+
+                    // 5. Upstream Step 3.4 Legal Assessment summary
+                    if (p3.LegalAssessment != null)
+                    {
+                        contextLines.Add($"LEGAL COMPLIANCE OVERVIEW (Step 3.4):\nPlanning Readiness: {p3.LegalAssessment.PlanningReadinessPct}%. Applicable Requirements: {p3.LegalAssessment.Items?.Count(i => i.EvaluationStatus == ApplicabilityEvaluationStatuses.Applicable) ?? 0}.");
+                    }
                 }
             }
 
@@ -129,8 +192,7 @@ namespace WebApp.Services.Ai.Jobs
                 var session = sessionId.Length > 0
                     ? await _sessions.GetOwnedAsync(sessionId, request.OwnerUserId)
                     : null;
-                var current = session?.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion);
-                var existingPlan = current?.Content?.ToJson() ?? "(no current plan)";
+                var existingPlan = session?.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion)?.Content?.ToJson() ?? "(none)";
 
                 var sectionContext =
                     "EXISTING BUSINESS PLAN (keep every OTHER section unchanged — only the " +
@@ -155,7 +217,8 @@ namespace WebApp.Services.Ai.Jobs
             }
 
             const string task =
-                "Produce a complete, structured business plan for the canonical Idea Core " +
+                "Produce a complete, structured 12-section business plan grounded in the canonical Idea Core and completed " +
+                "upstream artifacts (Market Study, Business Model Canvas, Financial Forecast, and Formation Architecture) " +
                 "above, following the output contract exactly. Preserve creator edits in " +
                 "that core; use supporting history only to fill gaps, never to override it. " +
                 "Keep every section concise, decision-useful, and non-repetitive. Prefer " +

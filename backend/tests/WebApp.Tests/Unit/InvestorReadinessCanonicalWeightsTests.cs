@@ -33,6 +33,7 @@ public class InvestorReadinessCanonicalWeightsTests
             },
             Phase3Data = new CreatorPhase3Data
             {
+                MarketStudySessionId = "ms_session_123", // +8 MarketEvidence (Canonical Step 3.1)
                 BusinessPlanSessionId = "bp_session_123", // +6 MarketEvidence
                 FormationGenerator = new CreatorFormationGenerator
                 {
@@ -143,5 +144,60 @@ public class InvestorReadinessCanonicalWeightsTests
 
         var score = CreatorPhase3Controller.ComputeReadiness(journey, null);
         score.Breakdown.LegalReadiness.Should().Be(9.0);
+    }
+
+    [Fact]
+    public void InvestorReadiness_MarketStudyMissing_ForecastExists_DeductsMarketScore_AndRoutesToStep31()
+    {
+        // P3-AUDIT-005 Regression: Forecast exists with large TAM, but Step 3.1 Market Study is missing
+        var journey = new CreatorJourney
+        {
+            Project = new CreatorJourneyProject
+            {
+                TargetUser = "Enterprise small business owners" // +6
+            },
+            Phase3Data = new CreatorPhase3Data
+            {
+                MarketStudySessionId = null, // Missing!
+                BusinessPlanSessionId = "bp_session_123" // +6
+            }
+        };
+
+        var forecast = new ForecastSession
+        {
+            Inputs = new ForecastInputs { Tam = 1_000_000_000 }
+        };
+
+        var score = CreatorPhase3Controller.ComputeReadiness(journey, forecast);
+
+        // Market evidence must NOT use Forecast TAM to award 8 points
+        score.Breakdown.MarketEvidence.Should().Be(12.0, "Missing market study should withhold 8 points even if Forecast exists");
+        score.Deductions.Should().Contain(d =>
+            d.Dimension == "MarketEvidence" &&
+            d.PointsLost == 8 &&
+            d.RemediationRoute == "/dashboard/creator/phase-3/market-study");
+    }
+
+    [Fact]
+    public void InvestorReadiness_MarketStudyExists_ForecastMissing_EvaluatesIndependently()
+    {
+        // P3-AUDIT-005 Regression: Market Study completed, Forecast not yet created
+        var journey = new CreatorJourney
+        {
+            Project = new CreatorJourneyProject
+            {
+                TargetUser = "SMBs" // +6
+            },
+            Phase3Data = new CreatorPhase3Data
+            {
+                MarketStudySessionId = "ms_session_completed", // +8
+                BusinessPlanSessionId = null
+            }
+        };
+
+        var score = CreatorPhase3Controller.ComputeReadiness(journey, null);
+
+        score.Breakdown.MarketEvidence.Should().Be(14.0, "Market study (+8) and TargetUser (+6) evaluate independently of Forecast");
+        score.Deductions.Should().NotContain(d => d.Issue.Contains("Market sizing"));
     }
 }

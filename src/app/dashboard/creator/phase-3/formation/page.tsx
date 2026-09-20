@@ -421,7 +421,7 @@ export default function FormationPage() {
   return (
     <Phase3SetupShell
       compact
-      stepEyebrow="Step 3.5 · Company Formation & Team"
+      stepEyebrow="STEP 3.5 · COMPANY FORMATION & TEAM"
       title="Company Formation & Team"
       description="A rule-backed company structure baseline grounded in your venture profile, with transparent reasoning and skills assessment."
       contentClassName="mt-8 space-y-6 w-full min-w-0 max-w-none"

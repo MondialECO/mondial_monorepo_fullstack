@@ -94,9 +94,10 @@ namespace WebApp.Controllers
                 ? marketStudy.BusinessIdeaId
                 : (string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId);
 
+            CreatorIdea? creatorIdea = null;
             if (!string.IsNullOrWhiteSpace(businessIdeaId))
             {
-                if (!ObjectId.TryParse(businessIdeaId, out _) || await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner) == null)
+                if (!ObjectId.TryParse(businessIdeaId, out _) || (creatorIdea = await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner)) == null)
                     return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
             }
 
@@ -119,7 +120,7 @@ namespace WebApp.Controllers
             var (created, activeSession) = await _sessions.TryCreateInFlightAsync(session);
             if (!created)
             {
-                _logger.LogInformation("In-flight BusinessModelSession {SessionId} joined for market study {StudyId} by user {UserId}.",
+                _logger.LogInformation("In-flight BusinessModelSession {SessionId} joined for market study {MarketStudySessionId} by user {UserId}.",
                     activeSession.Id, request.MarketStudySessionId, owner);
                 return Ok(ApiResponse.Ok("Business model generation started.", new { sessionId = activeSession.Id, jobId = activeSession.RequestId }));
             }
@@ -138,9 +139,10 @@ namespace WebApp.Controllers
 
             try
             {
+
                 var input = new BsonDocument
                 {
-                    ["sessionId"] = session.Id,
+                    ["sessionId"] = sessionId,
                     ["marketStudySessionId"] = session.MarketStudySessionId,
                     ["clarifierSessionId"] = session.ClarifierSessionId,
                     ["creditOperationId"] = sessionId,
@@ -155,7 +157,7 @@ namespace WebApp.Controllers
                 if (!string.IsNullOrWhiteSpace(session.BusinessIdeaId))
                 {
                     var updateDef = Builders<CreatorIdea>.Update.Set(x => x.Phase3Data.BusinessModelSessionId, session.Id);
-                    await _creatorIdeas.UpdateAsync(session.BusinessIdeaId, owner, updateDef);
+                    await _creatorIdeas.UpdateAsync(session.BusinessIdeaId, owner, updateDef, creatorIdea?.Version);
                 }
 
                 _audit.Record("BusinessModel.Start", owner, success: true,
