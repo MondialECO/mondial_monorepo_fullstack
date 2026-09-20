@@ -156,7 +156,7 @@ function StandardRoleSidebar({
                     manualExpanded[item.label],
                     allHrefs
                   );
-                  const submenuId = `submenu-${item.label.toLowerCase().replace(/\s+/g, "-")}`;
+                  const submenuId = `submenu-${item.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
 
                   return (
                     <SidebarMenuItem key={item.href}>
@@ -397,7 +397,7 @@ function ServiceProviderSidebar({
                     manualExpanded[item.label],
                     allHrefs
                   );
-                  const submenuId = `submenu-${item.label.toLowerCase().replace(/\s+/g, "-")}`;
+                  const submenuId = `submenu-${item.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
                   const badge =
                     item.label === "Client Briefs" || item.label === "Client Briefs & Leads"
                       ? unreadLeads

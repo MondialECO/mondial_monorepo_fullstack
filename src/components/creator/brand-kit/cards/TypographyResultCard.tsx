@@ -2,7 +2,7 @@
 
 import React from "react";
 import { BrandKit } from "@/types/creator/brand-kit";
-import { Check, Lock, Type } from "lucide-react";
+import { Check, Lock, Type, Edit3 } from "lucide-react";
 
 interface TypographyResultCardProps {
   kit: BrandKit;
@@ -42,16 +42,31 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
             Typography System
           </span>
         </div>
-        {isConfirmed ? (
-          <span className="inline-flex items-center gap-1 font-mono text-badge font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-            <Check className="size-3 stroke-[3]" />
-            CONFIRMED
-          </span>
-        ) : (
-          <span className="font-mono text-badge text-muted-foreground">
-            Draft
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {isConfirmed ? (
+            <span className="inline-flex items-center gap-1 font-mono text-badge font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <Check className="size-3 stroke-[3]" />
+              CONFIRMED
+            </span>
+          ) : (
+            <span className="font-mono text-badge text-muted-foreground">
+              Draft
+            </span>
+          )}
+          {onEdit && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border/60 text-button font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+            >
+              <Edit3 className="size-3" />
+              <span>Edit</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Families Overview */}
