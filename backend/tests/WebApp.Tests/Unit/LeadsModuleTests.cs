@@ -85,42 +85,39 @@ public class LeadsModuleTests
     }
 
     [Fact]
-    public void Availability_is_a_hard_candidate_filter()
+    public void Matching_eligibility_respects_capacity_and_verification()
     {
-        var u = new ApplicationUser
+        var record = new ServiceProviderProfileRecord
         {
-            Tier_level = 2,
-            ServiceProviderProfile = new()
-            {
-                VerificationStatus = ServiceProviderVerificationStatus.Verified,
-                ServiceCategories = new() { ServiceCategory.Design },
-                NewOrderAvailability = false,
-            },
+            ProviderTier = ProviderTier.Tier2,
+            VerificationStatus = ServiceProviderVerificationStatus.Verified,
+            ServiceCategories = new() { ServiceCategory.Design },
+            NewOrderAvailability = false,
         };
-        SpMatchingService.IsEligibleCandidate(u, ServiceCategory.Design).Should().BeFalse();
-        u.ServiceProviderProfile.NewOrderAvailability = true;
-        u.ServiceProviderProfile.MaximumConcurrentOrders = 2;
-        u.ServiceProviderProfile.CurrentActiveOrders = 2;
-        SpMatchingService.IsEligibleCandidate(u, ServiceCategory.Design).Should().BeFalse();
-        u.ServiceProviderProfile.CurrentActiveOrders = 1;
-        SpMatchingService.IsEligibleCandidate(u, ServiceCategory.Design).Should().BeTrue();
+        SpMatchingService.IsEligibleCandidate(record, ServiceCategory.Design).Should().BeFalse();
+        record.NewOrderAvailability = true;
+        record.MaximumConcurrentOrders = 2;
+        record.CurrentActiveOrders = 2;
+        SpMatchingService.IsEligibleCandidate(record, ServiceCategory.Design).Should().BeFalse();
+        record.CurrentActiveOrders = 1;
+        SpMatchingService.IsEligibleCandidate(record, ServiceCategory.Design).Should().BeTrue();
     }
 
     [Fact]
     public void Match_score_reads_real_response_signal_not_the_old_stub()
     {
-        var u = new ApplicationUser
+        var record = new ServiceProviderProfileRecord
         {
-            Tier_level = 2,
-            ServiceProviderProfile = new()
-            {
-                VerificationStatus = ServiceProviderVerificationStatus.Verified,
-                ServiceCategories = new() { ServiceCategory.Design },
-                Industries = new() { "Fintech" },
-                TrustBreakdown = new() { ResponseRate = new() { HasData = true, Value = 50 } },
-            },
+            ProviderTier = ProviderTier.Tier2,
+            VerificationStatus = ServiceProviderVerificationStatus.Verified,
+            ServiceCategories = new() { ServiceCategory.Design },
+            TrustBreakdown = new() { ResponseRate = new() { HasData = true, Value = 50 } },
         };
-        var score = new SpMatchingService(null!, null!, null!).Score(u, "Fintech");
+        var prof = new ProfessionalProfileRecord
+        {
+            Industries = new() { "Fintech" },
+        };
+        var score = new SpMatchingService(null!, null!, null!).Score(record, prof, "Fintech");
         score.Should().BeApproximately(0.74, 0.0001); // 0.35 + 0.15 + 0.10 + 0.14
     }
 

@@ -189,3 +189,15 @@ The immediate operational sequence following RC1 freeze is:
 5. Founder Feedback & Real-World Telemetry Analysis
 ```
 *(Stage 13 feature development will only commence following the pilot evaluation).*
+
+---
+
+## 10. Database Migration Backups & Collection Headroom Ledger
+
+MongoDB Atlas cluster enforces a strict tier cap of **500 collections** (which previously blocked integration test suites during RC1). All migration snapshot collections must be recorded here with explicit drop eligibility dates to prevent phantom collections from consuming namespace headroom.
+
+| Backup Collection Name | Document Count | Created At | Purpose / Associated Migration | Safe Drop Date | Drop Command |
+|---|---|---|---|---|---|
+| `applicationUsers_backup_sp_20260920172731` | 421 | 2026-09-20 | Pre-migration snapshot before unsetting legacy embedded professional-profile fields from `ApplicationUser.ServiceProviderProfile`. | **2026-10-20** (30 days post-cutover) | `db.applicationUsers_backup_sp_20260920172731.drop()` |
+
+

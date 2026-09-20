@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Hangfire;
 using MongoDB.Driver;
 using WebApp.DbContext;
@@ -95,8 +95,9 @@ public class LeadsService : ILeadsService
     public async Task<ServiceProviderResult<List<ClientBriefResponse>>> GetInboxAsync(string providerId, LeadQueryRequest q)
     {
         var user = await _users.FindByIdAsync(providerId);
-        await HydrateProviderViewAsync(user);
-        var profile = user?.ServiceProviderProfile;
+        var composite = user is not null ? await _reader.GetCompositeForUserAsync(user) : null;
+        var profile = composite?.View;
+        if (user is not null && profile is not null) user.ServiceProviderProfile = profile;
         if (profile is null || profile.VerificationStatus != ServiceProviderVerificationStatus.Verified)
             return ServiceProviderResult<List<ClientBriefResponse>>.Conflict("A verified provider profile is required.");
         if (!IsAvailable(profile)) return ServiceProviderResult<List<ClientBriefResponse>>.Ok(new());
@@ -124,7 +125,7 @@ public class LeadsService : ILeadsService
         var interactionMap = interactions.ToDictionary(x => x.ClientBriefId);
 
         var result = candidates.Select(b => b.ToResponse(interactionMap.GetValueOrDefault(b.Id),
-            proposals.Any(p => p.ClientBriefId == b.Id), MatchScore(user!, b))).Where(x => !x.Dismissed)
+            proposals.Any(p => p.ClientBriefId == b.Id), MatchScore(composite?.Record, composite?.Professional, b))).Where(x => !x.Dismissed)
             .Where(x => !q.SavedOnly || x.Saved).ToList();
         result = q.Sort.ToLowerInvariant() switch
         {
@@ -142,8 +143,10 @@ public class LeadsService : ILeadsService
         var b = await _db.ClientBriefs.Find(x => x.Id == briefId).FirstOrDefaultAsync();
         if (b is null) return ServiceProviderResult<ClientBriefResponse>.NotFound("Brief not found.");
         var user = await _users.FindByIdAsync(providerId);
-        await HydrateProviderViewAsync(user);
-        if (user?.ServiceProviderProfile is null || !CanSurface(user.ServiceProviderProfile, providerId, b))
+        var composite = user is not null ? await _reader.GetCompositeForUserAsync(user) : null;
+        var profile = composite?.View;
+        if (user is not null && profile is not null) user.ServiceProviderProfile = profile;
+        if (profile is null || !CanSurface(profile, providerId, b))
             return ServiceProviderResult<ClientBriefResponse>.NotFound("Brief not found.");
         var i = await EnsureInteractionAsync(providerId, b);
         if (!i.Viewed)
@@ -152,7 +155,7 @@ public class LeadsService : ILeadsService
             await _db.ClientBriefInteractions.ReplaceOneAsync(x => x.Id == i.Id, i);
         }
         var submitted = await _db.Proposals.Find(x => x.ProviderId == providerId && x.ClientBriefId == briefId).AnyAsync();
-        return ServiceProviderResult<ClientBriefResponse>.Ok(b.ToResponse(i, submitted, MatchScore(user, b)));
+        return ServiceProviderResult<ClientBriefResponse>.Ok(b.ToResponse(i, submitted, MatchScore(composite?.Record, composite?.Professional, b)));
     }
 
     public async Task<ServiceProviderResult<ClientBriefResponse>> UpdateInteractionAsync(string providerId, string briefId, UpdateBriefInteractionRequest r)
@@ -497,8 +500,8 @@ public class LeadsService : ILeadsService
         return invitation?.DeliveredAt ?? brief.PublishedAt ?? brief.CreatedAt;
     }
 
-    private double MatchScore(ApplicationUser user, ClientBrief b) =>
-        b.Industries.Count == 0 ? _matching.Score(user, "") : b.Industries.Max(industry => _matching.Score(user, industry));
+    private double MatchScore(ServiceProviderProfileRecord? record, ProfessionalProfileRecord? prof, ClientBrief b) =>
+        record == null ? 0.4 : (b.Industries.Count == 0 ? _matching.Score(record, prof, "") : b.Industries.Max(industry => _matching.Score(record, prof, industry)));
     private async Task<ClientBrief?> OwnedBrief(string clientId, string id) => await _db.ClientBriefs.Find(x => x.Id == id && x.ClientId == clientId).FirstOrDefaultAsync();
     private async Task<ClientBrief?> Brief(string? id) => string.IsNullOrWhiteSpace(id) ? null : await _db.ClientBriefs.Find(x => x.Id == id).FirstOrDefaultAsync();
     private async Task<Proposal?> ProviderProposal(string id, string proposalId) => await _db.Proposals.Find(x => x.Id == proposalId && x.ProviderId == id).FirstOrDefaultAsync();

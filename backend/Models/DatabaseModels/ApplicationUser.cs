@@ -233,6 +233,7 @@ namespace WebApp.Models.DatabaseModels
     // ApplicationUser, no separate collection. Stage 1 covers verification and
     // onboarding state ONLY — no marketplace, matching, proposal, workroom,
     // milestone, escrow, review, or reputation fields belong here yet.
+    [BsonIgnoreExtraElements]
     public class ServiceProviderProfile
     {
         public string ProviderId { get; set; }
@@ -249,51 +250,29 @@ namespace WebApp.Models.DatabaseModels
         // Reputation seed for later stages; 0 until verification produces a score.
         public double TrustScore { get; set; } = 0;
 
-        public List<string> Skills { get; set; } = new();
+        // ---- Professional profile fields (RETIRED from MongoDB embedded storage) ----
+        // Authoritative home is ProfessionalProfiles and UserCredentials split collections.
+        // Marked [BsonIgnore] so MongoDB neither reads from nor writes to the embedded document.
+        // Kept as in-memory properties for SpProfileSplitMapper.ToCompositeView and ToResponse DTO projections.
+        [BsonIgnore] public List<string> Skills { get; set; } = new();
+        [BsonIgnore] public string Headline { get; set; }
+        [BsonIgnore] public string Bio { get; set; }
+        [BsonIgnore] public ProviderMediaAsset? ProfileImage { get; set; }
+        [BsonIgnore] public ProviderMediaAsset? CoverImage { get; set; }
+        [BsonIgnore] public ProfessionalOverviewContent ProfessionalOverview { get; set; } = new();
+        [BsonIgnore] public List<string> Industries { get; set; } = new();
+        [BsonIgnore] public List<string> Languages { get; set; } = new();
+        [BsonIgnore] public List<ProfessionalExperience> Experiences { get; set; } = new();
+        [BsonIgnore] public List<ProfessionalEducation> Education { get; set; } = new();
+        [BsonIgnore] public List<ProfessionalLanguage> LanguageProficiencies { get; set; } = new();
+        [BsonIgnore] public List<ProviderCredential> Credentials { get; set; } = new();
+        [BsonIgnore] public int ProfileVersion { get; set; }
+        [BsonIgnore] public ProfessionalProfileDraft? EditorDraft { get; set; }
+
+        // ---- SP Business fields (persisted in MongoDB embedded document) ----
         public List<ServiceCategory> ServiceCategories { get; set; } = new();
         public List<PortfolioItem> PortfolioItems { get; set; } = new();
-
-        // ---- Stage 2: Provider Profile (D-2 Phase 1) ----
-        // Public-facing profile fields. Additive to the embedded document: legacy
-        // Stage-1 records without these elements deserialize to safe defaults
-        // (null strings, empty lists). Per the locked D-2 decision audit:
-        // Services stays expressed by ServiceCategories (no new field); Industries
-        // and Languages are free-form strings normalized like Skills (no enum, no
-        // lookup collection); Certifications/ExternalLinks are deferred.
-        public string Headline { get; set; }
-        public string Bio { get; set; }
-        public ProviderMediaAsset? ProfileImage { get; set; }
-        public ProviderMediaAsset? CoverImage { get; set; }
-        public ProfessionalOverviewContent ProfessionalOverview { get; set; } = new();
-        public List<string> Industries { get; set; } = new();
-        public List<string> Languages { get; set; } = new();
         public List<PricingModel> PricingModels { get; set; } = new();
-
-        // ---- Profile Editor (four-step wizard) ----
-        // Additive like every block above: legacy documents deserialize to empty
-        // lists / null draft / version 0. LanguageProficiencies supersedes the
-        // plain Languages list for new writes, but Languages is NOT removed —
-        // it stays populated in parallel so existing readers (completion percent,
-        // admin queue, matching) keep working unchanged.
-        public List<ProfessionalExperience> Experiences { get; set; } = new();
-        public List<ProfessionalEducation> Education { get; set; } = new();
-        public List<ProfessionalLanguage> LanguageProficiencies { get; set; } = new();
-        public List<ProviderCredential> Credentials { get; set; } = new();
-
-        /// <summary>
-        /// Optimistic-concurrency token. Incremented by exactly one on every
-        /// successful published-profile write. A submit carrying a stale value is
-        /// rejected as a conflict rather than silently overwriting a newer edit.
-        /// Legacy documents start at 0, which is a valid first value.
-        /// </summary>
-        public int ProfileVersion { get; set; }
-
-        /// <summary>
-        /// Provider-owned working copy for the four-step editor. Null until the
-        /// editor first saves. Never read by the public profile projection — the
-        /// published fields above remain authoritative until a successful submit.
-        /// </summary>
-        public ProfessionalProfileDraft? EditorDraft { get; set; }
 
         // ---- Module 1: Profile & Trust (reputation layer) ----
         // TrustScore (above) is DERIVED from TrustBreakdown by the service recompute and

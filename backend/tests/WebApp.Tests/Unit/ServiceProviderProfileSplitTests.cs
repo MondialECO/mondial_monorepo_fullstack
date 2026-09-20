@@ -89,6 +89,36 @@ public class ServiceProviderProfileSplitTests
     }
 
     [Fact]
+    public async Task Unmigrated_user_without_embedded_professional_fields_seeds_empty_profile_without_error()
+    {
+        var user = GivenUser(new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Name = "Unmigrated Provider",
+            ServiceProviderProfile = new ServiceProviderProfile
+            {
+                ProviderId = "unmigrated-provider",
+                VerificationStatus = ServiceProviderVerificationStatus.Verified,
+                ServiceCategories = new() { ServiceCategory.Design },
+            },
+        });
+        var migrator = _harness.CreateMigrator(_users.Object);
+
+        var (professional, sp) = await migrator.EnsureMigratedAsync(user);
+
+        professional.Should().NotBeNull();
+        professional.Headline.Should().BeEmpty();
+        professional.Bio.Should().BeEmpty();
+        professional.Skills.Should().BeEmpty();
+        professional.Experiences.Should().BeEmpty();
+        professional.Education.Should().BeEmpty();
+        professional.Languages.Should().BeEmpty();
+        sp.Should().NotBeNull();
+        sp.VerificationStatus.Should().Be(ServiceProviderVerificationStatus.Verified);
+        sp.ServiceCategories.Should().Equal(ServiceCategory.Design);
+    }
+
+    [Fact]
     public async Task Migration_is_idempotent_and_never_overwrites_migrated_records()
     {
         var user = GivenUser(CompleteEmbeddedUser());
