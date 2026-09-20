@@ -253,54 +253,81 @@ Following the Clarifier:
 
 ### Brand Visual Identity Studio & Hub (LIVE)
 
-The Brand Visual Identity Studio provides a calm, generative studio workflow across 7 user-facing modal steps followed by a persistent Brand Kit Hub page. Persisted in the dedicated `BrandKits` collection (`BrandKit`) bound 1:1 to each `CreatorIdea` via `BusinessIdeaId` (unique index on `IdeaId`). Fully compiled and verified clean in full-solution backend (.NET 8) and production frontend (Next.js 16/Turbopack) builds. Responsive across 1440px to 1920px viewports with Inter headings, DM Sans body copy, and JetBrains Mono numerals/telemetry.
-
-#### 1. Studio Frontend Architecture
+The Brand Visual Identity Studio provides a calm, generative studio workflow across 7 user-facing modal steps followed by a persistent Brand Kit Hub page. Persisted in the dedicated `BrandKits` collection (`BrandKit`) bound 1:1 to each `CreatorIdea` via `BusinessIdeaId` (unique index on `IdeaId`). Fully compiled and verified clean in full-solution #### 1. Studio Frontend Architecture
 - **Studio Shell (`/dashboard/creator/phase-2/brand-studio`):**
-  - Replaces legacy prototypes; the legacy `/logo-tool` route remains in codebase for backward compatibility.
-  - Consists of one full-bleed interactive canvas and a top 6-segment progress bar (`BrandStudioProgressBar`).
-  - No AI agent rail, no prompt box, and no secondary floating toolbar; all interactions take place in focused modal overlays over the live canvas.
-  - **Accumulated Result Cards:** As steps are completed, the canvas accumulates and displays rich summary cards (`StrategyResultCard`, `DirectionResultCard`, `LogoTypeResultCard`, `LogoResultCard`, `ColorsResultCard`, `TypographyResultCard`), which persist across the session.
-  - **Completion Transition:** On Step 6 Typography confirmation when `kit.status` flips to `"complete"`, the shell automatically navigates the creator to the full Brand Kit Hub at `/dashboard/creator/phase-2/brand-kit?ideaId=...`.
+  - **Persistent Overview / Control Center:** Brand Studio operates as a persistent View Mode workspace, not a sequential wizard page. The legacy persistent wizard-style topbar (`BrandStudioProgressBar`) has been completely removed.
+  - **Removed Legacy Topbar UI:** Back, INSTALY, Visual Identity Studio, Strategy, Direction, Logo type, Logo, Colour, Typography, Studio Live, all step icons, progress connectors, active/locked state styling, connecting lines, and the `VIEW MODE` badge.
+  - **Removed UI-Only State:** Obsolete topbar-only state/handlers were removed from `BrandStudioShell.tsx` (`inFlightStatus`, `stepSegments`, `currentProgressBarKey`, `handleSelectStep`, `handleBackNavigation`) and redundant `onBack` handler in `page.tsx`. Core modal orchestration state (`activeModal`, `isSequentialFlow`) is preserved.
+  - **Streamlined Persistent Header:**
+    - Title: `Brand Studio`
+    - Subtitle: `Your Visual Identity — Review and manage your complete brand identity.`
+  - **Control Center Principle:**
+    - **Page = persistent overview/control center**
+    - **Modals = creation and editing tools**
+  - **Accumulated Section Cards:** The overview renders persistent cards for all brand aspects (`StrategyResultCard`, `DirectionResultCard`, `LogoResultCard`, `ColorsResultCard`, `TypographyResultCard`, and Final Brand Assets). Incomplete sections render `IncompleteSectionCard` with action buttons.
+- **Canonical Brand Studio Entry & Modal Orchestration:**
+  - **Brand-New Creator (No Meaningful Brand Data):**
+    ```text
+    Brand Studio loads
+    → BrandKit resolves
+    → no meaningful brand data (hasMeaningfulBrandData === false)
+    → isSequentialFlow = true
+    → StrategyReviewModal auto-opens
+    → Visual Direction (DirectionBoardModal)
+    → Logo Type (LogoTypeChooserModal)
+    → Logo Creation (LogoCreationModal)
+    → Logo Variations (VariationSetModal)
+    → Color System (ColorSystemModal)
+    → Typography (TypographySystemModal)
+    → Brand Studio View Mode (activeModal = null)
+    ```
+  - **Existing / Partial Brand:**
+    ```text
+    Brand Studio loads
+    → meaningful data exists (hasMeaningfulBrandData === true)
+    → View Mode (activeModal = null)
+    → no modal auto-opens
+    ```
+  - **Edit Existing Section:**
+    ```text
+    View Mode
+    → Creator clicks "Edit" on a specific section
+    → isSequentialFlow = false
+    → corresponding modal opens only
+    → Save
+    → modal closes (handleStepTransition(null))
+    → updated View Mode overview
+    ```
 - **First-Time Creator Entry & Transparent Auto-Provisioning:**
   - When a Creator clicks "Open Brand Studio" on `/phase-2/branding`, the router navigates to `/dashboard/creator/phase-2/brand-studio`.
   - `BrandStudioShell` mounts and invokes `brandKitApi.openStudio(ideaId)`.
   - On the backend, `POST /api/creator/journey/phase2/brand-kit/open-studio` checks for an existing `BrandKit`. If none exists (first-time creator), it transparently auto-provisions a fresh draft kit via the shared `GetOrCreateBrandKitAsync` helper (deriving initial `BrandStrategy` from `idea.Project` and seeding default 5-role Colour and 4-role Typography defaults), returning HTTP 200 with the newly created kit.
-  - Studio immediately initializes and opens Step 1 (`StrategyReviewModal`) without requiring any out-of-band pre-creation or encountering 404 errors.
-  - **Defense-in-Depth Null Guards:** `BrandStudioShell.tsx` `loadStudioSession()` applies optional chaining on every `currentKit` property access (`currentKit?.strategy?.confirmedAt`, `currentKit?.direction?.selectedAt`, `currentKit?.logo?.logoType`, `currentKit?.logo?.approvedAt`, `currentKit?.colors?.confirmedAt`, `currentKit?.logo?.selectedConceptKey`) and includes a secondary `brandKitApi.createBrandKit(ideaId)` fallback so null or missing kit states never produce unhandled runtime property errors.
+  - Studio immediately initializes and auto-opens Step 1 (`StrategyReviewModal`) without requiring manual setup button clicks or encountering 404 errors.
+  - **Defense-in-Depth Null Guards:** `BrandStudioShell.tsx` `loadStudioSession()` applies optional chaining on every `currentKit` property access and includes fallback creation so missing states never cause runtime unhandled errors.
 - **Step 1 Strategy Review & Per-Field Edit Tracking:**
   - `StrategyReviewModal.tsx` tracks 4 core `BrandProvenancedText` fields: `Concept`, `TargetAudience`, `Industry`, and `Positioning`.
   - On backend `PatchStrategy`, modifying any field's `.Value` sets `.EditedAt = DateTime.UtcNow` and `.Provenance = "user_refined"`.
   - In frontend UI, fields with non-null `editedAt` display a real relative timestamp `"EDITED {time} AGO"` (via `date-fns` `formatDistanceToNowStrict`), while unedited fields render `"From your idea"` with no timestamp.
   - `TonePosition` (Formal $\leftrightarrow$ Casual) and `FirstAppearance` (e.g. `website`, `app_icon`, `invoice`, `social`) are fully wired and consumed downstream in `LogoTypeChooserModal` (fit score reasoning), `DirectionGenerationService` & `TypographyGenerationService` (prompt tuning), and `BrandKitHubView` (summary facts).
 - **Unified Modal Step Transition Architecture (`handleStepTransition`):**
-  - **Elimination of Conflicting Modal Wiring:** Replaces earlier fragmented patterns (direct state mutation vs out-of-band step reloading vs custom router pushes) with exactly **one unified transition function** in `BrandStudioShell.tsx`:
+  - Standardized transition function in `BrandStudioShell.tsx`:
     ```ts
     const handleStepTransition = useCallback(
       (nextModalKey: StudioModalKey | null, updatedKit?: BrandKit) => { ... }
     );
     ```
-  - **Single Source of State Truth:** Whenever any modal completes a step (PATCH, generate, or confirm), it passes the fresh `updatedKit` returned from the API directly into `handleStepTransition(nextStepKey, updatedKit)`. This immediately updates `kit` state, refreshes canvas cards, and ensures the optimistic concurrency version (`kit.version`) is always accurate for the next step.
-  - **Standardized Modal Transition Contract (7 Modals Across 6 Progress Segments):**
-    1. `StrategyReviewModal` (Step 1: "Strategy"): `handleStrategyConfirm` $\to$ `handleStepTransition("direction", updatedKit)`
-    2. `DirectionBoardModal` (Step 2: "Direction"): `onSuccess` $\to$ `handleStepTransition("logo_type", updatedKit)`
-    3. `LogoTypeChooserModal` (Step 3: "Logo Type"): `onSuccess` $\to$ `handleStepTransition("logo_creation", updatedKit)`
-    4. `LogoCreationModal` (Step 4a within "Logo" segment): `onConfirm` $\to$ `handleStepTransition("variations", updatedKit)`
-    5. `VariationSetModal` (Step 4b within "Logo" segment): `onConfirm` $\to$ `handleStepTransition("colors", updatedKit)`, `onBack` $\to$ `handleStepTransition("logo_creation")`
-    6. `ColorSystemModal` (Step 5: "Colour"): `onSuccess` $\to$ `handleStepTransition("typography", updatedKit)`
-    7. `TypographySystemModal` (Step 6: "Typography"): `onSuccess` $\to$ `handleStepTransition(null, updatedKit)`
-  - **Automatic Hub Completion Hand-Off:** When `nextModalKey === null` and `updatedKit.status === "complete"`, `handleStepTransition` intercepts the transition and automatically pushes the browser to the live Brand Kit Hub (`/dashboard/creator/phase-2/brand-kit?ideaId=...`).
-  - **Standardized Close/Dismiss:** All modals bind `onClose={() => handleStepTransition(null)}`, safely dismissing the overlay to reveal the accumulated canvas cards without losing session state.
-- **Top 6-Segment Progress Bar vs 7 User-Facing Modals (Canonical Step Eyebrow Scheme):**
-  1. `strategy` (Step 1 segment: "Strategy", modal: `StrategyReviewModal` $\to$ `STEP 1 OF 6 • BRAND STRATEGY`)
-  2. `direction` (Step 2 segment: "Direction", modal: `DirectionBoardModal` $\to$ `STEP 2 OF 6 • Visual Direction Board`)
-  3. `logo_type` (Step 3 segment: "Logo Type", modal: `LogoTypeChooserModal` $\to$ `STEP 3 OF 6 • Architectural Mark Form`)
-  4. `logo` (Step 4 segment: "Logo", encompassing both Step 4a and Step 4b):
-     - `LogoCreationModal` (Step 4a) $\to$ `STEP 4 OF 6 • Logo Creation`
-     - `VariationSetModal` (Step 4b) $\to$ `STEP 4 OF 6 · VARIATIONS • LOGO SET`
-  5. `colors` (Step 5 segment: "Colour", modal: `ColorSystemModal` $\to$ `STEP 5 OF 6 · COLOUR SYSTEM`)
-  6. `typography` (Step 6 segment: "Typography", modal: `TypographySystemModal` $\to$ `STEP 6 OF 6 • TYPOGRAPHY`)
-- **Interface Typography:** Standardized on **Inter** and **DM Sans** for all UI body copy, headings, and labels across all Studio surfaces (Syne Bold was an earlier prototype mock and is NOT used). **JetBrains Mono** is used for all numerals, tokens, and telemetry badges.
+  - Whenever any modal completes a step, it passes the fresh `updatedKit` directly into `handleStepTransition(nextStepKey, updatedKit)`.
+  - In sequential mode (`isSequentialFlow = true`), saves advance to the next modal step in the 7-stage sequence.
+  - In standalone edit mode (`isSequentialFlow = false`), saves pass `null` to close the modal and return immediately to the View Mode overview.
+- **7 User-Facing Modals (Canonical Step Scheme):**
+  1. `StrategyReviewModal` (Stage 1: Brand Strategy)
+  2. `DirectionBoardModal` (Stage 2: Visual Direction Board)
+  3. `LogoTypeChooserModal` (Stage 3: Architectural Mark Form)
+  4. `LogoCreationModal` (Stage 4: Logo Creation)
+  5. `VariationSetModal` (Stage 5: Logo Variations Set)
+  6. `ColorSystemModal` (Stage 6: Colour System)
+  7. `TypographySystemModal` (Stage 7: Typography System)
+- **Interface Typography:** Standardized on **Inter** and **DM Sans** for all UI body copy, headings, and labels across all Studio surfaces (Syne Bold was an earlier prototype mock and is NOT used). **JetBrains Mono** is used for all numerals, tokens, and telemetry badges.*DM Sans** for all UI body copy, headings, and labels across all Studio surfaces (Syne Bold was an earlier prototype mock and is NOT used). **JetBrains Mono** is used for all numerals, tokens, and telemetry badges.
 - **Shared Components:**
   - `RegenerateCapBadge`: Reused across Direction, Logo Creation, Colour, and Typography to display remaining attempts (`N/3 LEFT` in neutral/muted, transitions to amber `0/3 LEFT` when cap is exhausted).
 

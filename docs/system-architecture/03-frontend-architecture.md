@@ -308,3 +308,54 @@ The canvas previously used `lg:grid-cols-5`, which activated 5 columns immediate
 | **1728x1117** | 1400px | 5 | **280px** | **240px** | **240px** | **0px** |
 | **1920x1080** | 1592px | 5 | **318px** | **278px** | **278px** | **0px** |
 | **2560x1440** | 1592px | 5 | **318px** | **278px** | **278px** | **0px** |
+
+---
+
+## 7. Creator Navigation & Brand Studio Architecture — FINAL / FROZEN
+
+### A. Creator Navigation Architecture
+- **Hierarchical Structure**: Creator sidebar structured into a Menu/Submenu hierarchy with 4 expandable parent groups:
+  1. `Build My Project` (`submenu-build-my-project`)
+  2. `Offers & Marketplace` (`submenu-offers-marketplace`)
+  3. `Assets & Documents` (`submenu-assets-documents`)
+  4. `Services & Network` (`submenu-services-network`)
+- **Canonical Routing & Aliases**: Internal workflow routes map cleanly to canonical sidebar destinations via `CREATOR_ROUTE_ALIASES` in `src/lib/menu-navigation.ts` (e.g. `/branding`, `/logo-tool`, `/brand-kit`, `/complete` all resolve to `Brand Studio`).
+- **Clarifier Workflow**: Clarifier steps retain parent `Build My Project` active/expanded context without activating child links.
+
+### B. Brand Studio Architecture
+- **Control Center Principle**:
+  - **Page = persistent overview / control center** (View Mode)
+  - **Modals = creation and editing tools**
+- **Legacy Progress Topbar Removed**:
+  - The persistent wizard-style topbar (`BrandStudioProgressBar`) has been removed from `/dashboard/creator/phase-2/brand-studio`.
+  - Removed elements: Back button, INSTALY, Visual Identity Studio, Strategy, Direction, Logo type, Logo, Colour, Typography, Studio Live, step icons, progress connectors, active/locked state styling, connecting lines, and the `VIEW MODE` badge.
+- **Streamlined Header**:
+  - Title: `Brand Studio`
+  - Subtitle: `Your Visual Identity — Review and manage your complete brand identity.`
+- **Removed UI-Only State**:
+  - Obsolete topbar-only state and handlers removed from `BrandStudioShell.tsx`: `inFlightStatus`, `stepSegments`, `currentProgressBarKey`, `handleSelectStep`, `handleBackNavigation`.
+  - Redundant `onBack` handler removed from `page.tsx`.
+  - Core modal orchestration state (`activeModal`, `isSequentialFlow`) is preserved.
+- **Workflow Orchestration**:
+  - **Brand-New Creator (No Meaningful Brand Data)**:
+    `Brand Studio loads` → `BrandKit resolves` → `no meaningful brand data` → `StrategyReviewModal auto-opens` → `Visual Direction` → `Logo Type` → `Logo Creation` → `Logo Variations` → `Color System` → `Typography` → `Brand Studio View Mode`.
+  - **Existing / Partial Brand**:
+    `Brand Studio loads` → `meaningful data exists` → `View Mode renders directly` → `no modal auto-opens`. Missing sections show `IncompleteSectionCard` with action buttons.
+  - **Edit Existing Section**:
+    `View Mode` → `Creator clicks Edit` → `corresponding modal only opens` → `Save` → `modal closes` → `updated View Mode`.
+
+### C. Test Verification Baseline (273/273 Passed)
+- **Creator Navigation Suite**: `192/192` (`npx tsx`)
+- **Brand Studio Entry & Orchestration**: `31/31` (`npx tsx`)
+- **Brand Studio View Mode & UI**: `42/42` (`npx tsx`)
+- **Creator Stabilization 02**: `8/8` (`npx vitest run`)
+- **Total Executed Tests**: **273/273 passed (0 failures)**
+
+> [!NOTE]
+> `CreatorStabilization02.test.tsx` uses `vitest` imports and must be executed with `npx vitest run`. The other suites are executed via `npx tsx`.
+
+### D. Freeze Status
+- `CREATOR NAVIGATION ARCHITECTURE — COMPLETE & FROZEN`
+- `CREATOR BRAND STUDIO ENTRY, VIEW MODE & EDITING ARCHITECTURE — COMPLETE & FROZEN`
+- `CREATOR BRAND STUDIO LEGACY PROGRESS TOPBAR — REMOVED & FROZEN`
+

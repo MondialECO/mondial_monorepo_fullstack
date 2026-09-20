@@ -1,22 +1,17 @@
 "use client";
 
 import React, { Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { BrandStudioShell } from "@/components/creator/brand-kit/BrandStudioShell";
 import { Loader2 } from "lucide-react";
 
 function BrandStudioContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const ideaId = searchParams.get("ideaId") || undefined;
 
-  const handleBack = () => {
-    router.push("/dashboard/creator/phase-2/branding");
-  };
-
   return (
     <div className="w-full flex-1 flex flex-col h-full min-h-0 overflow-hidden">
-      <BrandStudioShell ideaId={ideaId} onBack={handleBack} />
+      <BrandStudioShell ideaId={ideaId} />
     </div>
   );
 }

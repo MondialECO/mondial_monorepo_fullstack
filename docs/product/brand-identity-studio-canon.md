@@ -2,23 +2,39 @@
 
 Source of truth for development and architecture of the **Brand Identity Studio (Creator Phase 2 / Visual Identity)**.
 
-**Last reconciled with code: 2026-09-19.**
+**Last reconciled with code: 2026-09-20.**
 
 ---
 
 ## 1. Overview & Architectural Principles
 
-The **Brand Identity Studio** is an enterprise-grade visual identity creation engine built into Creator Phase 2. It guides the creator through the branding entry screen followed by a structured 6-step guided modal workflow on a live canvas:
+The **Brand Identity Studio** (`/dashboard/creator/phase-2/brand-studio`) operates as an enterprise-grade visual identity workspace built into Creator Phase 2.
 
+### Architectural Canon
+- **Control Center Principle**:
+  - **Page = persistent overview / control center** (View Mode)
+  - **Modals = creation and editing tools** (on-demand or sequential)
+- **Legacy Wizard Topbar Removed**: The legacy persistent wizard-style topbar (`BrandStudioProgressBar`) has been completely removed from `/dashboard/creator/phase-2/brand-studio`.
+  - Removed elements: Back, INSTALY, Visual Identity Studio, Strategy, Direction, Logo type, Logo, Colour, Typography, Studio Live, step icons, progress connectors, active/locked state styling, connecting lines, and the `VIEW MODE` badge.
+  - Streamlined persistent header:
+    - **Title**: `Brand Studio`
+    - **Subtitle**: `Your Visual Identity — Review and manage your complete brand identity.`
+- **Removed UI-Only State**: Obsolete topbar-only state and handlers (`inFlightStatus`, `stepSegments`, `currentProgressBarKey`, `handleSelectStep`, `handleBackNavigation`) and redundant `onBack` in `page.tsx` were eliminated. Core modal orchestration state (`activeModal`, `isSequentialFlow`) remains canonical.
+- **Workflow Modes**:
+  1. **Brand-New Creator (First-Time Setup)**: If `hasMeaningfulBrandData(kit)` evaluates to false, Studio auto-launches `StrategyReviewModal` in sequential mode (`isSequentialFlow = true`) chaining across all 7 stages:
+     `StrategyReviewModal` → `DirectionBoardModal` → `LogoTypeChooserModal` → `LogoCreationModal` → `VariationSetModal` → `ColorSystemModal` → `TypographySystemModal` → View Mode.
+  2. **Existing / Partial Brand**: If meaningful brand data exists, Studio renders View Mode directly without auto-opening any modal (`activeModal = null`). Incomplete sections render `IncompleteSectionCard` with action buttons.
+  3. **On-Demand Section Edit**: The creator clicks "Edit" on a specific card, opening only that modal (`isSequentialFlow = false`). Saving returns the user directly to the View Mode overview.
+
+### The 7 Modal Workflow Tools
 0. **Entry: Branding Options** (`/dashboard/creator/phase-2/branding`) — Single-card presentation reconciled with Figma (`57007:12780` revision).
-1. **Step 1: Strategy Review** (`StrategyReviewModal.tsx`) — Figma Node `57003:9780` / `57004:9812`
-2. **Step 2: Direction Board** (`DirectionBoardModal.tsx`) — Figma Node `57012:9066`
-3. **Step 3: Logo Type Chooser** (`LogoTypeChooserModal.tsx`) — Figma Node `57004:10297`
-4. **Step 4: Logo Creation & Variations**:
-   - **4A: Logo Generation & Inspection** (`LogoCreationModal.tsx`) — Figma Node `57004:10578`
-   - **4B: Approved Logo Variation Set** (`VariationSetModal.tsx`) — Figma Node `57004:11174`
-5. **Step 5: Color System** (`ColorSystemModal.tsx`) — Figma Node `57004:11600`
-6. **Step 6: Typography System** (`TypographySystemModal.tsx`) — Figma Node `57004:12100`
+1. **Stage 1: Strategy Review** (`StrategyReviewModal.tsx`) — Figma Node `57003:9780` / `57004:9812`
+2. **Stage 2: Direction Board** (`DirectionBoardModal.tsx`) — Figma Node `57012:9066`
+3. **Stage 3: Logo Type Chooser** (`LogoTypeChooserModal.tsx`) — Figma Node `57004:10297`
+4. **Stage 4: Logo Creation** (`LogoCreationModal.tsx`) — Figma Node `57004:10578`
+5. **Stage 5: Logo Variations Set** (`VariationSetModal.tsx`) — Figma Node `57004:11174`
+6. **Stage 6: Color System** (`ColorSystemModal.tsx`) — Figma Node `57004:11600`
+7. **Stage 7: Typography System** (`TypographySystemModal.tsx`) — Figma Node `57004:12100`
 
 ### 1.1 Viewport Responsiveness & Typography Scale Canon
 - **Viewport Scaling**: Authored at 1440px desktop base, engineered to stay fluidly responsive from 1440px up to 1920px (and down to mobile viewports).
@@ -283,7 +299,7 @@ The **Brand Identity Studio** is an enterprise-grade visual identity creation en
 ---
 
 ## 4. Testing & Verification Canon
-- All Brand Studio components and export pipelines are covered by automated Vitest unit and integration suites:
+- All Brand Studio components and export pipelines are covered by automated unit and integration suites:
   - `tests/creator/frontend/BrandKitExport.test.ts` (Canonical resolver, concept fallback, and fail-loud error verification)
   - `tests/creator/frontend/AssetLibrary.test.tsx` (Asset library rendering, lazy session loading, ZIP download, and error alert rendering)
   - `tests/creator/frontend/BrandKitLogoCreationModal.test.tsx`
@@ -291,6 +307,21 @@ The **Brand Identity Studio** is an enterprise-grade visual identity creation en
   - `tests/creator/frontend/LogoTypeChooserModal.test.tsx`
   - `tests/creator/frontend/BrandKitHubView.test.tsx`
   - `tests/creator/frontend/BrandStudioShell.test.tsx`
+- **Current Canonical Test Baseline (273/273 Passed)**:
+  - Creator Navigation Suite: `192/192` (`npx tsx`)
+  - Brand Studio Entry & Orchestration: `31/31` (`npx tsx`)
+  - Brand Studio View Mode & UI: `42/42` (`npx tsx`)
+  - Creator Stabilization 02: `8/8` (`npx vitest run`)
+  - **Total**: **273/273 tests passed (0 failures)**
 - **Real Browser Verification**:
   - `scripts/verify_brand_kit_real_browser.mjs`: Automated Playwright test verifying Case A (full variations download & ZIP unpacking), Case B (concept fallback ZIP unpacking), and Case C (deliberate 404 injection & on-screen error banner confirmation).
+
+---
+
+## 5. Freeze Status
+
+- `CREATOR NAVIGATION ARCHITECTURE — COMPLETE & FROZEN`
+- `CREATOR BRAND STUDIO ENTRY, VIEW MODE & EDITING ARCHITECTURE — COMPLETE & FROZEN`
+- `CREATOR BRAND STUDIO LEGACY PROGRESS TOPBAR — REMOVED & FROZEN`
+
 

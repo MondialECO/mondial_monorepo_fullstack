@@ -7,11 +7,6 @@ import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import { exportBrandKitZip } from "@/lib/brand-kit-export";
 import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import { Button } from "@/components/ui/button";
-import {
-  BrandStudioProgressBar,
-  StudioStepKey,
-  StepSegmentMeta,
-} from "./BrandStudioProgressBar";
 import { StrategyResultCard } from "./cards/StrategyResultCard";
 import { DirectionResultCard } from "./cards/DirectionResultCard";
 import { ColorsResultCard } from "./cards/ColorsResultCard";
@@ -42,7 +37,6 @@ import {
 export interface BrandStudioShellProps {
   ideaId?: string;
   initialKit?: BrandKit | null;
-  onBack?: () => void;
 }
 
 type StudioModalKey =
@@ -175,7 +169,6 @@ function IncompleteSectionCard({
 export function BrandStudioShell({
   ideaId,
   initialKit,
-  onBack,
 }: BrandStudioShellProps) {
   const router = useRouter();
   const [kit, setKit] = useState<BrandKit | null>(initialKit ?? null);
@@ -183,7 +176,6 @@ export function BrandStudioShell({
   const [isSequentialFlow, setIsSequentialFlow] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState<boolean>(false);
-  const [inFlightStatus, setInFlightStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const brandName =
@@ -191,94 +183,7 @@ export function BrandStudioShell({
     kit?.strategy?.businessName ||
     "Brand";
 
-  // 1. Calculate 6-segment status derived directly from server state
-  const stepSegments = useMemo<StepSegmentMeta[]>(() => {
-    const isStrategyComplete = Boolean(kit?.strategy?.confirmedAt);
-    const isDirectionComplete = Boolean(
-      kit?.direction?.selectedAt || kit?.direction?.selectedDirectionKey
-    );
-    const isLogoTypeComplete = Boolean(kit?.logo?.logoType);
-    const isLogoComplete = Boolean(kit?.logo?.approvedAt);
-    const isColorsComplete = Boolean(
-      kit?.colors?.confirmedAt || (kit?.colors?.roles && kit.colors.roles.length === 5)
-    );
-    const isTypographyComplete = Boolean(
-      kit?.typography?.confirmedAt || (kit?.typography?.roles && kit.typography.roles.length > 0)
-    );
 
-    return [
-      {
-        key: "strategy",
-        stepNumber: 1,
-        label: "Strategy",
-        status: isStrategyComplete ? "complete" : "active",
-      },
-      {
-        key: "direction",
-        stepNumber: 2,
-        label: "Direction",
-        status: isDirectionComplete
-          ? "complete"
-          : isStrategyComplete
-            ? "active"
-            : "locked",
-      },
-      {
-        key: "logo_type",
-        stepNumber: 3,
-        label: "Logo type",
-        status: isLogoTypeComplete
-          ? "complete"
-          : isDirectionComplete
-            ? "active"
-            : "locked",
-      },
-      {
-        key: "logo",
-        stepNumber: 4,
-        label: "Logo",
-        status: isLogoComplete
-          ? "complete"
-          : isLogoTypeComplete
-            ? "active"
-            : "locked",
-      },
-      {
-        key: "colors",
-        stepNumber: 5,
-        label: "Colour",
-        status: isColorsComplete
-          ? "complete"
-          : isLogoComplete
-            ? "active"
-            : "locked",
-      },
-      {
-        key: "typography",
-        stepNumber: 6,
-        label: "Typography",
-        status: isTypographyComplete
-          ? "complete"
-          : isColorsComplete
-            ? "active"
-            : "locked",
-      },
-    ];
-  }, [kit]);
-
-  // 2. Map segment key to corresponding modal key
-  const getModalKeyForStep = useCallback(
-    (stepKey: StudioStepKey, currentKit: BrandKit | null): StudioModalKey => {
-      if (stepKey === "logo") {
-        if (currentKit?.logo?.selectedConceptKey && !currentKit.logo.approvedAt) {
-          return "variations";
-        }
-        return "logo_creation";
-      }
-      return stepKey as StudioModalKey;
-    },
-    []
-  );
 
   // 3. Initial Load: Fetch Brand Kit and branch based on meaningful saved data
   useEffect(() => {
@@ -287,7 +192,6 @@ export function BrandStudioShell({
     async function loadStudioSession() {
       setIsLoading(true);
       setError(null);
-      setInFlightStatus("Initializing Studio session...");
 
       try {
         let currentKit = initialKit;
@@ -336,7 +240,6 @@ export function BrandStudioShell({
       } finally {
         if (isMounted) {
           setIsLoading(false);
-          setInFlightStatus(null);
         }
       }
     }
@@ -375,7 +278,6 @@ export function BrandStudioShell({
     try {
       setIsLoading(true);
       setError(null);
-      setInFlightStatus("Saving Brand Strategy...");
 
       const updatedKit = await brandKitApi.patchStrategy(
         {
@@ -405,22 +307,10 @@ export function BrandStudioShell({
       );
     } finally {
       setIsLoading(false);
-      setInFlightStatus(null);
     }
   };
 
-  const handleSelectStep = (stepKey: StudioStepKey) => {
-    const modalKey = getModalKeyForStep(stepKey, kit);
-    handleOpenModal(modalKey);
-  };
 
-  const handleBackNavigation = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      router.push("/dashboard/creator");
-    }
-  };
 
   const handleExportZip = async () => {
     if (!kit) return;
@@ -435,17 +325,7 @@ export function BrandStudioShell({
     }
   };
 
-  // Determine current active progress bar key
-  const currentProgressBarKey: StudioStepKey = useMemo(() => {
-    if (activeModal === "logo_creation" || activeModal === "variations") {
-      return "logo";
-    }
-    if (activeModal) {
-      return activeModal as StudioStepKey;
-    }
-    const activeSeg = stepSegments.find((s) => s.status === "active");
-    return activeSeg ? activeSeg.key : "strategy";
-  }, [activeModal, stepSegments]);
+
 
   // Section completion status
   const isStrategyComplete = Boolean(kit?.strategy?.confirmedAt);
@@ -553,15 +433,6 @@ export function BrandStudioShell({
 
   return (
     <div className="relative flex flex-col h-full min-h-0 w-full bg-[#EFEFF1] dark:bg-background overflow-hidden">
-      {/* 1. Top Fixed Progress Bar */}
-      <BrandStudioProgressBar
-        segments={stepSegments}
-        activeStepKey={currentProgressBarKey}
-        brandName={brandName}
-        inFlightStatus={inFlightStatus}
-        onSelectStep={handleSelectStep}
-        onBack={handleBackNavigation}
-      />
 
       {/* Global Error Banner */}
       {error && (
@@ -587,7 +458,7 @@ export function BrandStudioShell({
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <Loader2 className="size-8 animate-spin text-primary" />
             <p className="text-sm font-medium text-muted-foreground">
-              Loading Visual Identity Studio...
+              Loading Brand Studio...
             </p>
           </div>
         ) : (
@@ -596,16 +467,11 @@ export function BrandStudioShell({
             {/* Header Banner */}
             <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold font-heading text-foreground tracking-tight">
-                    Brand Studio
-                  </h1>
-                  <span className="text-badge font-mono font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                    VIEW MODE
-                  </span>
-                </div>
+                <h1 className="text-2xl font-bold font-heading text-foreground tracking-tight">
+                  Brand Studio
+                </h1>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  Your complete brand identity. Review your brand and edit any section when needed.
+                  Your Visual Identity — Review and manage your complete brand identity.
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
