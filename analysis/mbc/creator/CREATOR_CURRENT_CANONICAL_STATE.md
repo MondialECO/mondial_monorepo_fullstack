@@ -24,7 +24,7 @@ Universal Onboarding (Identity, Documents, Verification)
 Creator Role Selected (`role === 'Creator'`)
       ↓
 [GATE] HumainX Quick Start (`/dashboard/creator/humainx`)
-      ↓ (Computed Profile Completion)
+      ↓ (Dual Gate: Profile Completeness && Local Journey Completion)
 Creator Dashboard Workspace (`/dashboard/creator`)
       ↓
 Phase 1 — Project Identity & Access
@@ -54,6 +54,9 @@ The **HumainX Quick Start** is a mandatory 3-screen frontend journey gate positi
 - **Route:** `/dashboard/creator/humainx`
 - **Isolation:** Strictly Creator-only (`normalizeUserRole(user?.role) === UserRole.CREATOR`).
 - **Zero Impact on Other Roles:** Investors (`/dashboard/investor`), Entrepreneurs (`/dashboard/entrepreneur`), and Service Providers (`/dashboard/serviceprovider`) never mount or interact with this guard.
+- **Architectural Nature:** It is NOT authentication, backend authorization, a global role gate, a second profile entity, or a replacement for Phase 4 backend validation.
+- **Dual-Gate Formula:** Creator Dashboard access strictly requires both data completeness and explicit sequential journey confirmation:
+  $$\text{DashboardAllowed} = \text{isQuickStartComplete}(\text{profile}) \land \text{isQuickStartJourneyComplete}(\text{userId})$$
 
 ### 2.2 Data Model: Single Canonical Truth
 There is **NO duplicate HumainX profile entity** in Mondial ECO. Quick Start and Deep HumainX interact exclusively with the existing canonical `ProfessionalProfileRecord`:
@@ -87,11 +90,13 @@ The visual design is frozen to Figma Node `57125:16446` (656px centered max-widt
 - **Your Region:** French regions select dropdown pre-populated from `VentureContext.Region`. Truthful verification badge displays `"Territory Verified"` only if profile context contains an authoritative address/territory verification signal; otherwise displays `"Selected region"`.
 - **Current Situation (7 Cards):** Employed, Self-employed or freelance, Looking for work, Student, In training, Already running a business, Something else.
 - **Weekly Availability (7 Pills):** Under 5 hrs, 5–10 hrs, 10–20 hrs, 20–30 hrs, 30+ hrs, Full-time, Not sure yet. Mapped to canonical strings consumed by `IFounderCapacityResolver`.
+- **Advance Contract:** Validates Step 1 → Persists data to `ProfessionalProfile` → Marks `step1Confirmed` in browser journey state → Advances to Step 2. Never navigates to Dashboard.
 
 ### Screen 2 — Your Skills
 - **Skill Requirements:** Minimum 1 skill required (`Skills.length >= 1`). Every selected skill must have a valid level: `Beginner`, `Comfortable`, or `Advanced`.
 - **Skill Management:** Curated suggested chips + custom skill entry with duplicate prevention and removal.
-- **"I'll add these later" Link:** Visually preserved in the footer per Figma. **NO synthetic skill bypass**: if `skills.length === 0`, clicking it triggers inline validation and strictly blocks advancement to Step 3.
+- **"I'll add these later" Link:** Visually preserved in the footer per Figma. **NO synthetic skill bypass**: if `skills.length === 0`, clicking it triggers inline validation and strictly blocks advancement to Step 3. The former fake `"General Business / Comfortable"` fallback is permanently removed.
+- **Advance Contract:** Validates `Skills.length >= 1` → Persists data → Marks `step2Confirmed` → Advances to Step 3. Never navigates to Dashboard.
 
 ### Screen 3 — How You Build
 - **Previous Experience (6 Cards):** This is my first time, I've explored an idea, I've worked on a business project, I've freelanced, I've created a company before, I run something right now.
@@ -100,23 +105,51 @@ The visual design is frozen to Figma Node `57125:16446` (656px centered max-widt
   - *I'd rather hand it off* → `learningPreference`: "Focus on core strengths only", `delegationPreference`: "I prefer to delegate when possible"
   - *A bit of both* → `learningPreference`: "A mix of learning and delegation", `delegationPreference`: "A mix of learning and delegation"
   - *Help me decide* → `learningPreference`: "I'm not sure — recommend the best option", `delegationPreference`: "I'm not sure — recommend the best option"
+  (All 4 choices remain round-trip distinguishable after reload).
 
 ---
 
-## 4. HUMAINX QUICK START — VERIFIED FRONTEND LOGIC RULES
+## 4. HUMAINX QUICK START — DUAL-GATE & VERIFIED FRONTEND LOGIC RULES
 
-1. **Computed Completion (Derived Truth):**
-   `isQuickStartComplete(profile)` requires all three steps to evaluate `true`. If profile data is missing or incomplete, the dashboard stays locked.
-2. **Save-Failure Blocks Step Advance:**
+1. **Separation of Profile Data Completeness and Journey Completion:**
+   - **Profile Data Completeness (`isQuickStartComplete(profile)`):** Checks whether canonical `ProfessionalProfileRecord` has all required fields across Steps 1, 2, and 3.
+   - **Journey Completion (`isQuickStartJourneyComplete(userId)`):** Verifies that the founder has explicitly navigated through and confirmed all 3 wizard screens.
+2. **Frontend Journey State Model:**
+   ```typescript
+   interface HumainXJourneyState {
+     step1Confirmed: boolean;
+     step2Confirmed: boolean;
+     step3Confirmed: boolean;
+     completed: boolean;
+   }
+   ```
+   Stored in browser localStorage under key `humainx_journey_state_${userId}`. Contains zero duplicate business fields.
+3. **CURRENT FRONTEND-ONLY UX PERSISTENCE LIMITATION:**
+   Because journey confirmation is browser-local:
+   - Same account + same browser: Journey state persists smoothly.
+   - Same account + different browser/device: Local journey state may not exist; user re-confirms wizard steps (pre-populated with existing profile data).
+   - Browser storage cleared: Local journey state is reset; user re-confirms steps.
+   `ProfessionalProfile` remains the sole durable account-level business data in MongoDB.
+4. **Debounced Autosave (400ms):**
+   Autosave handles profile **data only**. Autosave MUST NOT confirm Step 1, confirm Step 2, complete Step 3, complete Quick Start, or unlock the Creator Dashboard. Only explicit CTA button actions alter journey confirmation states.
+5. **Only Final CTA Completes Quick Start:**
+   Only clicking `"Start my project"` on Step 3 can finalize HumainX Quick Start.
+   Canonical sequence:
+   $$\text{Flush pending autosave} \to \text{Persist latest data} \to \text{Reconcile profile} \to \text{Assert profile complete} \to \text{Mark step3Confirmed \& completed} \to \text{Navigate to Dashboard}$$
+6. **Pre-Existing Data Pre-populates but CANNOT Skip:**
+   Pre-existing `ProfessionalProfile` data pre-fills wizard screens. It does not bypass screens. A founder returning with complete data still visits Step 1 $\to$ Step 2 (pre-populated) $\to$ Step 3 (pre-populated) $\to$ clicks "Start my project" $\to$ Dashboard.
+7. **Sequential Navigation Enforcement:**
+   - `!step1Confirmed` $\implies$ Maximum allowed step is 1.
+   - `step1Confirmed && !step2Confirmed` $\implies$ Maximum allowed step is 2.
+   - `step1Confirmed && step2Confirmed && !completed` $\implies$ Allowed step is 3.
+   - `completed && isQuickStartComplete` $\implies$ Dashboard.
+   URL query parameters (`?step=N`) cannot skip ahead beyond confirmed milestones.
+8. **Save-Failure Blocks Step Advance:**
    `handleNext()` awaits `persistChanges()`. If persistence fails, the UI remains on the current step and displays actionable error feedback.
-3. **Real Debounced Autosave (400ms):**
-   Local state changes trigger debounced saves. Request sequencing via `activeRequestIdRef` guarantees stale responses never overwrite newer state. Explicit navigation flushes and cancels pending autosaves.
-4. **Step Normalization on Direct URL:**
-   Direct navigation to `?step=N` is validated against `getFirstIncompleteStep(profile)`. If Step 1 is incomplete, navigating to `?step=2` or `?step=3` immediately normalizes to Step 1. Invalid query params safely normalize to the first incomplete step.
-5. **Completed User Handling:**
-   Completed creators navigating to `/dashboard/creator/humainx` are smoothly deflected to `/dashboard/creator` with zero redirect flash.
-6. **Data Safety:**
-   Payload generation (`buildSavePayloadFromQuickStart`) preserves all unrelated `ProfessionalProfile` fields (`Experiences`, `Education`, `Languages`, `Certifications`).
+9. **Completed User Deflection:**
+   Fully completed creators (data complete + journey complete) navigating directly to `/dashboard/creator/humainx` are smoothly deflected to `/dashboard/creator` with zero redirect flash.
+10. **Data Safety:**
+    Payload generation (`buildSavePayloadFromQuickStart`) preserves all unrelated `ProfessionalProfile` fields (`Experiences`, `Education`, `Languages`, `Certifications`).
 
 ---
 
@@ -266,8 +299,8 @@ The legacy, unaligned Phase 4 implementation has been completely retired:
 
 | Test Suite | Files | Tests Passed | Status |
 | :--- | :--- | :--- | :--- |
-| **HumainX Quick Start Suite** | 1 | **38 / 38** | **PASS** |
-| **Creator Full Frontend Suite** | 10 | **109 / 109** | **PASS** |
+| **HumainX Quick Start Suite** | 1 | **53 / 53** | **PASS** |
+| **Creator Full Frontend Suite** | 10 | **124 / 124** | **PASS** |
 | **Routing & Auth Guard Suite** | 4 | **31 / 31** | **PASS** |
 | **Backend Targeted Phase 4 / HumainX** | 1 | **213 / 213** | **PASS** |
 | **TypeScript Compiler (`tsc --noEmit`)** | Whole repo | **0 errors (Exit 0)** | **PASS** |

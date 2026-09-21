@@ -4,6 +4,7 @@ sequenceDiagram
     autonumber
     actor Creator as Creator
     participant Auth as Auth & Onboarding (/onboarding)
+    participant HX as HumainX Gate (/dashboard/creator/humainx)
     participant Dash as Creator Dashboard (/dashboard/creator)
     participant AI as AI Engine (OpenRouter)
     participant Mkt as Project Marketplace (/marketplace/projects)
@@ -13,8 +14,10 @@ sequenceDiagram
 
     %% Login & Onboarding
     Creator->>Auth: Log in with credentials
-    Auth->>Auth: Verify Phase 1 KYC Certification
-    Auth-->>Dash: Redirect to /dashboard/creator
+    Auth->>Auth: Verify Phase 1 KYC Certification & Role Selection (Creator)
+    Auth-->>HX: Redirect to /dashboard/creator/humainx (Dual-Gate)
+    HX->>HX: Confirm Step 1, Step 2, Step 3 & Persist ProfessionalProfile
+    HX-->>Dash: Final CTA "Start my project" -> Unlock /dashboard/creator
 
     %% Idea Refinement
     Dash->>AI: Trigger Idea Clarifier AI
@@ -22,8 +25,8 @@ sequenceDiagram
     Dash->>AI: Generate Institutional Business Plan & 5-Year Forecast
     AI-->>Dash: Persist in CreatorIdeas.OutputSnapshots
 
-    %% Pricing & Crossroads
-    Dash->>Dash: Calculate Recommended Buyout Price (€75,000)
+    %% Phase 4 Construction Engine & Crossroads
+    Dash->>Dash: Execute Phase 4 Construction Engine (4.1-4.7)
     Dash->>Dash: Select Crossroads: Path A (Full Buyout)
 
     %% Marketplace & Acquisition

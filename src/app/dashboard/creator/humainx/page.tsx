@@ -28,6 +28,7 @@ import {
   ArrowUp,
   HelpCircle,
 } from 'lucide-react';
+import { useAuth } from '@/app/_providers/AuthProvider';
 import { creatorProfileApi } from '@/lib/api-creator-profile';
 import {
   FRENCH_REGIONS,
@@ -39,8 +40,15 @@ import {
   PROGRESS_PREFERENCE_UI_OPTIONS,
   HumainXQuickStartSkill,
   HumainXQuickStartData,
+  HumainXJourneyState,
+  isStep1Complete,
+  isStep2Complete,
+  isStep3Complete,
   isQuickStartComplete,
   getFirstIncompleteStep,
+  getQuickStartJourneyState,
+  saveQuickStartJourneyState,
+  resolveTargetQuickStartStep,
   mapSituationFromCanonical,
   mapAvailabilityFromCanonical,
   mapExperienceFromCanonical,
@@ -171,27 +179,43 @@ function HumainXQuickStartInner() {
     };
   }, []);
 
-  // Initial step resolution with strict order normalization (FIX 05)
+  const { user } = useAuth();
+  const userId = user?.id || null;
+
+  // Initial step resolution with strict order normalization
+  const getMaxAllowedStep = useCallback(() => {
+    const jState = getQuickStartJourneyState(userId);
+    let max = 1;
+    if (jState.step1Confirmed && isStep1Complete(profile)) {
+      max = 2;
+    }
+    if (jState.step1Confirmed && jState.step2Confirmed && isStep1Complete(profile) && isStep2Complete(profile)) {
+      max = 3;
+    }
+    return max;
+  }, [userId, profile]);
+
   useEffect(() => {
     if (hasInitializedStep || isProfileLoading || !profile) return;
 
-    const firstIncomplete = getFirstIncompleteStep(profile);
-    const maxAllowedStep = firstIncomplete ?? 3;
+    const jState = getQuickStartJourneyState(userId);
+    const recommendedStep = resolveTargetQuickStartStep(profile, jState);
+    const maxAllowedStep = getMaxAllowedStep();
+
     const stepParam = searchParams.get('step');
     const parsedStep = stepParam ? parseInt(stepParam, 10) : null;
 
     let targetStep: number;
     if (parsedStep && [1, 2, 3].includes(parsedStep)) {
       // Step normalization rule:
-      // A user cannot view a later step if an earlier step is incomplete
+      // A user cannot view a later step if an earlier step is incomplete or unconfirmed
       if (parsedStep <= maxAllowedStep) {
         targetStep = parsedStep;
       } else {
-        targetStep = firstIncomplete ?? 1;
+        targetStep = maxAllowedStep;
       }
     } else {
-      // Invalid step query (?step=0, ?step=4, ?step=abc, etc.) normalizes safely to firstIncomplete
-      targetStep = firstIncomplete ?? 1;
+      targetStep = recommendedStep;
     }
 
     setCurrentStep(targetStep);
@@ -199,28 +223,26 @@ function HumainXQuickStartInner() {
       router.replace(`/dashboard/creator/humainx?step=${targetStep}`);
     }
     setHasInitializedStep(true);
-  }, [profile, isProfileLoading, searchParams, hasInitializedStep, router]);
+  }, [profile, isProfileLoading, searchParams, hasInitializedStep, userId, getMaxAllowedStep, router]);
 
   // Reactive step order enforcement for in-session navigation
   useEffect(() => {
     if (!hasInitializedStep || !profile) return;
-    const firstIncomplete = getFirstIncompleteStep(profile);
-    const maxAllowedStep = firstIncomplete ?? 3;
+    const maxAllowedStep = getMaxAllowedStep();
     const stepParam = searchParams.get('step');
     const parsedStep = stepParam ? parseInt(stepParam, 10) : null;
 
     if (parsedStep && [1, 2, 3].includes(parsedStep)) {
       if (parsedStep > maxAllowedStep) {
-        const fallback = firstIncomplete ?? 1;
-        setCurrentStep(fallback);
-        router.replace(`/dashboard/creator/humainx?step=${fallback}`);
+        setCurrentStep(maxAllowedStep);
+        router.replace(`/dashboard/creator/humainx?step=${maxAllowedStep}`);
       } else if (parsedStep !== currentStep) {
         setCurrentStep(parsedStep);
       }
     } else if (stepParam !== null && stepParam !== String(currentStep)) {
       router.replace(`/dashboard/creator/humainx?step=${currentStep}`);
     }
-  }, [searchParams, hasInitializedStep, profile, currentStep, router]);
+  }, [searchParams, hasInitializedStep, profile, currentStep, getMaxAllowedStep, router]);
 
   // Current state snapshot
   const currentFormData: HumainXQuickStartData = {
@@ -406,9 +428,19 @@ function HumainXQuickStartInner() {
       return;
     }
 
-    const next = Math.min(currentStep + 1, 3);
-    setCurrentStep(next);
-    router.replace(`/dashboard/creator/humainx?step=${next}`);
+    if (currentStep === 1) {
+      if (userId) {
+        saveQuickStartJourneyState(userId, { step1Confirmed: true });
+      }
+      setCurrentStep(2);
+      router.replace('/dashboard/creator/humainx?step=2');
+    } else if (currentStep === 2) {
+      if (userId) {
+        saveQuickStartJourneyState(userId, { step2Confirmed: true });
+      }
+      setCurrentStep(3);
+      router.replace('/dashboard/creator/humainx?step=3');
+    }
   };
 
   const handleBack = () => {
@@ -437,6 +469,10 @@ function HumainXQuickStartInner() {
     setIsSubmitting(true);
     setSubmitError(null);
 
+    if (autosaveTimeoutRef.current) {
+      clearTimeout(autosaveTimeoutRef.current);
+    }
+
     try {
       const success = await persistChanges();
       if (!success) {
@@ -449,15 +485,32 @@ function HumainXQuickStartInner() {
       const refetched = await refetch();
       const latestProfile = refetched.data || profile;
 
-      if (isQuickStartComplete(latestProfile)) {
-        router.replace('/dashboard/creator');
-      } else {
+      if (!isQuickStartComplete(latestProfile)) {
         const missing = getMissingFields(latestProfile);
         setSubmitError(
           `Profile incomplete: Missing required information (${missing.join(', ')}). Please review your entries.`
         );
         setIsSubmitting(false);
+        return;
       }
+
+      // Journey verification: Step 1 and Step 2 must be confirmed
+      const jState = getQuickStartJourneyState(userId);
+      if (!jState.step1Confirmed || !jState.step2Confirmed) {
+        setSubmitError('Please complete all previous steps before starting your project.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Mark journey completed
+      if (userId) {
+        saveQuickStartJourneyState(userId, {
+          step3Confirmed: true,
+          completed: true,
+        });
+      }
+
+      router.replace('/dashboard/creator');
     } catch (err: any) {
       setSubmitError(err?.message || 'An unexpected error occurred. Please try again.');
       setIsSubmitting(false);

@@ -10,6 +10,9 @@ import { creatorProfileApi } from '@/lib/api-creator-profile';
 import {
   isQuickStartComplete,
   getFirstIncompleteStep,
+  getQuickStartJourneyState,
+  isQuickStartJourneyComplete,
+  resolveTargetQuickStartStep,
 } from '@/lib/humainx-quick-start';
 
 export interface CreatorHumainXQuickStartGuardProps {
@@ -39,8 +42,12 @@ export default function CreatorHumainXQuickStartGuard({
   });
 
   const isHumainXRoute = pathname.startsWith('/dashboard/creator/humainx');
-  const isComplete = profile ? isQuickStartComplete(profile) : false;
-  const firstIncompleteStep = profile ? getFirstIncompleteStep(profile) ?? 1 : 1;
+  const isProfileComplete = profile ? isQuickStartComplete(profile) : false;
+  const isJourneyComplete = user?.id ? isQuickStartJourneyComplete(user.id) : false;
+  const canAccessDashboard = isProfileComplete && isJourneyComplete;
+
+  const journeyState = getQuickStartJourneyState(user?.id);
+  const targetStep = resolveTargetQuickStartStep(profile, journeyState);
 
   useEffect(() => {
     // 1. Wait until auth and profile hydration settle
@@ -50,14 +57,14 @@ export default function CreatorHumainXQuickStartGuard({
     if (user.onboardingPhase === 0) return; // Managed by universal onboarding
     if (isProfileLoading || !isFetched) return; // Prevent premature redirection
 
-    // 2. Incomplete creator attempting to access Creator Dashboard or child routes
-    if (!isComplete && !isHumainXRoute) {
-      router.replace(`/dashboard/creator/humainx?step=${firstIncompleteStep}`);
+    // 2. Creator attempting to access Creator Dashboard or child routes before completing BOTH journey and profile
+    if (!canAccessDashboard && !isHumainXRoute) {
+      router.replace(`/dashboard/creator/humainx?step=${targetStep}`);
       return;
     }
 
-    // 3. Completed creator attempting to access HumainX Quick Start gate
-    if (isComplete && isHumainXRoute) {
+    // 3. Completed creator (both journey confirmed and profile complete) attempting to access HumainX Quick Start gate
+    if (canAccessDashboard && isHumainXRoute) {
       router.replace('/dashboard/creator');
       return;
     }
@@ -68,9 +75,9 @@ export default function CreatorHumainXQuickStartGuard({
     user,
     isProfileLoading,
     isFetched,
-    isComplete,
+    canAccessDashboard,
     isHumainXRoute,
-    firstIncompleteStep,
+    targetStep,
     router,
   ]);
 
@@ -93,7 +100,7 @@ export default function CreatorHumainXQuickStartGuard({
   }
 
   // Prevent flash of protected dashboard if incomplete
-  if (!isComplete && !isHumainXRoute) {
+  if (!canAccessDashboard && !isHumainXRoute) {
     return (
       <div
         data-testid="humainx-guard-redirecting"
@@ -106,7 +113,7 @@ export default function CreatorHumainXQuickStartGuard({
   }
 
   // Prevent flash of HumainX route if already complete
-  if (isComplete && isHumainXRoute) {
+  if (canAccessDashboard && isHumainXRoute) {
     return (
       <div
         data-testid="humainx-guard-redirecting-dashboard"

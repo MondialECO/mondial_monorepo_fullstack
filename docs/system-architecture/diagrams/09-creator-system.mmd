@@ -3,6 +3,7 @@ graph TD
 
     subgraph INGRESS["Creator Entry & Session"]
         LOGIN["/login & /onboarding"]
+        HX_GATE["/dashboard/creator/humainx<br/>HumainX Quick Start Gate<br/>(Dual Gate: Profile + Journey)"]
         DASH["/dashboard/creator<br/>Active Ideas Hub"]
     end
 
@@ -33,13 +34,19 @@ graph TD
         SESS_FCST[("ForecastSessions Collection")]
     end
 
-    subgraph PHASE4["Phase 4: Valuation & Offer Pricing"]
-        P4_PRICE["/dashboard/creator/offer-pricing"]
-        P4_ENGINE["Valuation Engine & Benchmarks<br/>Market Multiples (Phase4Requirements)"]
+    subgraph PHASE4["Phase 4: Construction & Launch Preparation"]
+        P4_START["/dashboard/creator/phase-4<br/>Construction Snapshot (4.1)"]
+        P4_ROAD["Operational Roadmap (4.2)"]
+        P4_NEEDS["Needs Analysis (4.3)"]
+        P4_SKILLS["Skills & Training (4.4)"]
+        P4_SUPP["Aids & Grants Support (4.5)"]
+        P4_PRICE["Pricing & Revenue Model (4.6)"]
+        P4_GTM["GTM & Launch Strategy (4.7)"]
+        P4_ASSETS["Launch Assets (4.8 - Next)"]
+        P4_READY["Construction Readiness (4.9 - Reserved)"]
         P4_VAULT["IP Vault & Document Storage<br/>/dashboard/creator/ip-vault"]
 
-        DB_VAL[("IpValuations Collection")]
-        DB_BENCH[("MarketBenchmarks Collection")]
+        DB_P4[("CreatorJourney.Phase4Data")]
     end
 
     subgraph PHASE5["Phase 5: The Crossroads Decision"]
@@ -72,7 +79,8 @@ graph TD
     %% Flow connections
     LOGIN --> P1_GATE
     P1_GATE --> P1_USER
-    P1_USER --> DASH
+    P1_USER --> HX_GATE
+    HX_GATE --> DASH
 
     DASH --> P2_START
     P2_START --> P2_AI_CLAR
@@ -93,13 +101,17 @@ graph TD
     SESS_PLAN --> IDEA_STORE
     SESS_FCST --> IDEA_STORE
 
-    P3_START --> P4_PRICE
-    P4_PRICE --> P4_ENGINE
-    P4_ENGINE --> DB_BENCH
-    P4_PRICE --> DB_VAL
-    P4_PRICE --> P4_VAULT
+    P3_START --> P4_START
+    P4_START --> P4_ROAD
+    P4_ROAD --> P4_NEEDS
+    P4_NEEDS --> P4_SKILLS
+    P4_SKILLS --> P4_SUPP
+    P4_SUPP --> P4_PRICE
+    P4_PRICE --> P4_GTM
+    P4_GTM --> DB_P4
+    P4_START --> P4_VAULT
 
-    P4_PRICE --> P5_CROSS
+    P4_GTM --> P5_CROSS
     P5_CROSS --> PATH_A
     P5_CROSS --> PATH_B
     P5_CROSS --> PATH_C

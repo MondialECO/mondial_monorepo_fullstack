@@ -311,6 +311,107 @@ export function getFirstIncompleteStep(profile: any): 1 | 2 | 3 | null {
   return null;
 }
 
+// ==========================================
+// FRONTEND JOURNEY STATE & COMPLETION (v1)
+// ==========================================
+
+export interface HumainXJourneyState {
+  step1Confirmed: boolean;
+  step2Confirmed: boolean;
+  step3Confirmed: boolean;
+  completed: boolean;
+}
+
+export function getQuickStartStorageKey(userId: string): string {
+  return `creatorHumainxQuickStart:v1:${userId}`;
+}
+
+export function getQuickStartJourneyState(userId?: string | null): HumainXJourneyState {
+  const defaultState: HumainXJourneyState = {
+    step1Confirmed: false,
+    step2Confirmed: false,
+    step3Confirmed: false,
+    completed: false,
+  };
+
+  if (!userId || typeof window === 'undefined') return defaultState;
+
+  try {
+    const raw = localStorage.getItem(getQuickStartStorageKey(userId));
+    if (!raw) return defaultState;
+    const parsed = JSON.parse(raw);
+    return {
+      step1Confirmed: Boolean(parsed?.step1Confirmed),
+      step2Confirmed: Boolean(parsed?.step2Confirmed),
+      step3Confirmed: Boolean(parsed?.step3Confirmed),
+      completed: Boolean(parsed?.completed),
+    };
+  } catch {
+    return defaultState;
+  }
+}
+
+export function saveQuickStartJourneyState(
+  userId: string,
+  state: Partial<HumainXJourneyState>
+): HumainXJourneyState {
+  const defaultState: HumainXJourneyState = {
+    step1Confirmed: false,
+    step2Confirmed: false,
+    step3Confirmed: false,
+    completed: false,
+  };
+
+  if (!userId || typeof window === 'undefined') return defaultState;
+
+  try {
+    const current = getQuickStartJourneyState(userId);
+    const updated: HumainXJourneyState = {
+      ...current,
+      ...state,
+    };
+    localStorage.setItem(getQuickStartStorageKey(userId), JSON.stringify(updated));
+    return updated;
+  } catch {
+    return defaultState;
+  }
+}
+
+export function resetQuickStartJourneyState(userId: string): void {
+  if (!userId || typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(getQuickStartStorageKey(userId));
+  } catch {
+    // ignore storage exceptions
+  }
+}
+
+export function isQuickStartJourneyComplete(userId?: string | null): boolean {
+  if (!userId) return false;
+  const state = getQuickStartJourneyState(userId);
+  return state.completed && state.step1Confirmed && state.step2Confirmed && state.step3Confirmed;
+}
+
+export function getNextQuickStartJourneyStep(journeyState: HumainXJourneyState): 1 | 2 | 3 | null {
+  if (!journeyState.step1Confirmed) return 1;
+  if (!journeyState.step2Confirmed) return 2;
+  if (!journeyState.completed) return 3;
+  return null;
+}
+
+export function resolveTargetQuickStartStep(profile: any, journeyState: HumainXJourneyState): 1 | 2 | 3 {
+  // If step 1 is not confirmed in journey OR profile data for step 1 is incomplete, must do step 1
+  if (!journeyState.step1Confirmed || !isStep1Complete(profile)) return 1;
+
+  // If step 2 is not confirmed in journey OR profile data for step 2 is incomplete, must do step 2
+  if (!journeyState.step2Confirmed || !isStep2Complete(profile)) return 2;
+
+  // If journey not finalized with "Start my project" OR profile data for step 3 is incomplete, must do step 3
+  if (!journeyState.completed || !isStep3Complete(profile)) return 3;
+
+  return 1;
+}
+
 export function getMissingFields(profile: any): string[] {
   const missing: string[] = [];
   const vc = getProfileVentureContext(profile);

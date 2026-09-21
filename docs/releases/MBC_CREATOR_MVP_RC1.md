@@ -29,6 +29,10 @@ The frozen, authoritative Creator user journey consists of:
 PHASE 1 — Universal Onboarding & KYC
 Email OTP + Phone OTP → Identity Document Upload → Role Selection
 
+[GATE] HUMAINX QUICK START (/dashboard/creator/humainx)
+Mandatory 3-Screen Frontend Gate (Situation, Skills, How You Build)
+Dual-Gate Enforcement: isQuickStartComplete(profile) && isQuickStartJourneyComplete(userId)
+
 PHASE 2 — Project Identity & Branding
 Clarifier (/phase-2/clarifier)
 → Idea Summary (/phase-2/idea-summary)

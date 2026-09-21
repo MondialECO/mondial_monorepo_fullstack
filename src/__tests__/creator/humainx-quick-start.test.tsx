@@ -19,6 +19,12 @@ import {
   mapProgressPreferenceToCanonical,
   deriveProgressPreference,
   buildSavePayloadFromQuickStart,
+  getQuickStartJourneyState,
+  saveQuickStartJourneyState,
+  resetQuickStartJourneyState,
+  isQuickStartJourneyComplete,
+  getNextQuickStartJourneyStep,
+  resolveTargetQuickStartStep,
 } from '@/lib/humainx-quick-start';
 import { UserRole } from '@/lib/roles';
 import api from '@/lib/axios';
@@ -349,6 +355,7 @@ describe('CreatorHumainXQuickStartGuard Guarding & Role Isolation', () => {
     };
     mockIsAuthLoading = false;
     mockIsAuthenticated = true;
+    localStorage.clear();
   });
 
   it('CreatorIncompleteQuickStart_IsRedirectedToIncompleteStep', async () => {
@@ -374,7 +381,8 @@ describe('CreatorHumainXQuickStartGuard Guarding & Role Isolation', () => {
     expect(screen.queryByTestId('dashboard-content')).toBeNull();
   });
 
-  it('CreatorCompleteQuickStart_CanAccessCreatorDashboard', async () => {
+  it('DashboardBlocked_WhenProfileCompleteButJourneyNotCompleted', async () => {
+    // Crucial Bug Regression: Profile data is 100% complete, but journey was NOT completed by user
     const completeProfile = {
       skills: [{ name: 'Coding', level: 'Advanced' }],
       ventureContext: {
@@ -386,8 +394,48 @@ describe('CreatorHumainXQuickStartGuard Guarding & Role Isolation', () => {
         delegationPreference: 'Minimal delegation',
       },
     };
-
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
+
+    // Journey is NOT completed
+    resetQuickStartJourneyState(mockAuthUser.id);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CreatorHumainXQuickStartGuard>
+          <div data-testid="dashboard-content">Creator Dashboard Content</div>
+        </CreatorHumainXQuickStartGuard>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      // Must redirect to HumainX because journey has not been confirmed!
+      expect(mockRouter.replace).toHaveBeenCalledWith(expect.stringContaining('/dashboard/creator/humainx'));
+    });
+    expect(screen.queryByTestId('dashboard-content')).toBeNull();
+  });
+
+  it('DashboardAllowed_WhenProfileAndJourneyBothComplete', async () => {
+    const completeProfile = {
+      skills: [{ name: 'Coding', level: 'Advanced' }],
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+        previousEntrepreneurialExperience: 'No, this is my first project',
+        learningPreference: 'I want to learn them myself',
+        delegationPreference: 'Minimal delegation',
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
+
+    // Both profile AND journey are complete
+    saveQuickStartJourneyState(mockAuthUser.id, {
+      step1Confirmed: true,
+      step2Confirmed: true,
+      step3Confirmed: true,
+      completed: true,
+    });
 
     const queryClient = createTestQueryClient();
     render(
@@ -402,6 +450,45 @@ describe('CreatorHumainXQuickStartGuard Guarding & Role Isolation', () => {
       expect(screen.getByTestId('dashboard-content')).toBeDefined();
     });
     expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('ProfileBecomesIncomplete_AfterJourneyCompletion_GateBlocksAgain', async () => {
+    // Journey was previously completed, but profile data became invalid later
+    saveQuickStartJourneyState(mockAuthUser.id, {
+      step1Confirmed: true,
+      step2Confirmed: true,
+      step3Confirmed: true,
+      completed: true,
+    });
+
+    // Profile skills became empty
+    const profileMissingSkills = {
+      skills: [],
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+        previousEntrepreneurialExperience: 'No, this is my first project',
+        learningPreference: 'I want to learn them myself',
+        delegationPreference: 'Minimal delegation',
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profileMissingSkills);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CreatorHumainXQuickStartGuard>
+          <div data-testid="dashboard-content">Creator Dashboard Content</div>
+        </CreatorHumainXQuickStartGuard>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      // Must block and redirect to Step 2!
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=2');
+    });
+    expect(screen.queryByTestId('dashboard-content')).toBeNull();
   });
 
   it('CompletedCreator_BehaviorRemainsUnchanged', async () => {
@@ -421,6 +508,12 @@ describe('CreatorHumainXQuickStartGuard Guarding & Role Isolation', () => {
     };
 
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
+    saveQuickStartJourneyState(mockAuthUser.id, {
+      step1Confirmed: true,
+      step2Confirmed: true,
+      step3Confirmed: true,
+      completed: true,
+    });
 
     const queryClient = createTestQueryClient();
     render(
@@ -534,7 +627,17 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
     mockRouter.replace.mockClear();
     mockPathname = '/dashboard/creator/humainx';
     mockSearchParamString = 'step=1';
+    mockAuthUser = {
+      id: 'usr-creator-1',
+      name: 'Test Creator',
+      role: UserRole.CREATOR,
+      roles: [UserRole.CREATOR],
+      onboardingPhase: 1,
+    };
+    mockIsAuthLoading = false;
+    mockIsAuthenticated = true;
     vi.mocked(api.put).mockResolvedValue({ data: { success: true } });
+    localStorage.clear();
   });
 
   it('ExistingProfileData_PrepopulatesStep1', async () => {
@@ -627,6 +730,9 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
 
   it('DirectStep3_WhenStep2Incomplete_NormalizesToStep2', async () => {
     mockSearchParamString = 'step=3';
+    // User already completed/confirmed Step 1 in journey
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true });
+
     // Step 1 is done, but Step 2 (skills) is incomplete
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue({
       skills: [],
@@ -703,6 +809,8 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
 
   it('SkipLink_DoesNotInjectSyntheticSkill', async () => {
     mockSearchParamString = 'step=2';
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true });
+
     const profileOnStep2 = {
       skills: [],
       ventureContext: {
@@ -733,6 +841,8 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
 
   it('Step2_SaveFailure_DoesNotAdvance', async () => {
     mockSearchParamString = 'step=2';
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true });
+
     const profileOnStep2 = {
       skills: [{ name: 'Coding', level: 'Advanced' }],
       ventureContext: {
@@ -844,6 +954,8 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
 
   it('Autosave_PersistsSkillLevel', async () => {
     mockSearchParamString = 'step=2';
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true });
+
     const existingProfile = {
       skills: [{ name: 'Coding', level: 'Comfortable' }],
       ventureContext: {
@@ -959,6 +1071,8 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
 
   it('ExistingSkills_PrepopulateStep2', async () => {
     mockSearchParamString = 'step=2';
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true });
+
     const existingProfile = {
       skills: [
         { name: 'Coding', level: 'Advanced' },
@@ -988,6 +1102,8 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
 
   it('FinalSubmit_PersistsBeforeDashboardRedirect', async () => {
     mockSearchParamString = 'step=3';
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true, step2Confirmed: true });
+
     const profileOnStep3 = {
       skills: [{ name: 'Coding', level: 'Advanced' }],
       ventureContext: {
@@ -1018,10 +1134,14 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
       expect(api.put).toHaveBeenCalledWith('/profile/me', expect.anything());
       expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator');
     });
+
+    expect(isQuickStartJourneyComplete('usr-creator-1')).toBe(true);
   });
 
   it('FinalSaveFailure_DoesNotUnlockDashboard', async () => {
     mockSearchParamString = 'step=3';
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true, step2Confirmed: true });
+
     const profileOnStep3 = {
       skills: [{ name: 'Coding', level: 'Advanced' }],
       ventureContext: {
@@ -1050,6 +1170,392 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
       expect(screen.getByRole('alert')).toBeDefined();
     });
     // Crucial: Must NOT navigate to dashboard if persistence failed
+    expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator');
+    expect(isQuickStartJourneyComplete('usr-creator-1')).toBe(false);
+  });
+
+  it('Step1Completion_DoesNotRedirectToDashboard', async () => {
+    mockSearchParamString = 'step=1';
+    const profile = {
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+      },
+      skills: [],
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
+    vi.mocked(api.put).mockResolvedValue({ data: { success: true } });
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    const continueBtn = await screen.findByRole('button', { name: /Continue/i });
+    fireEvent.click(continueBtn);
+
+    await waitFor(() => {
+      // Must advance ONLY to step 2, NEVER to /dashboard/creator
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=2');
+      expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator');
+    });
+
+    expect(getQuickStartJourneyState('usr-creator-1').step1Confirmed).toBe(true);
+  });
+
+  it('Step1Completion_WithPreexistingStep2And3Data_StillShowsStep2', async () => {
+    mockSearchParamString = 'step=1';
+    // User already has skills and step 3 data, so isQuickStartComplete is ALREADY true
+    const completeProfile = {
+      skills: [{ name: 'Coding', level: 'Advanced' }],
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+        previousEntrepreneurialExperience: 'No, this is my first project',
+        learningPreference: 'I want to learn them myself',
+        delegationPreference: 'Minimal delegation',
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
+    vi.mocked(api.put).mockResolvedValue({ data: { success: true } });
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    const continueBtn = await screen.findByRole('button', { name: /Continue/i });
+    fireEvent.click(continueBtn);
+
+    await waitFor(() => {
+      // CRUCIAL BUG FIX VERIFICATION:
+      // Even though profile is 100% complete, Step 1 completion MUST navigate to step 2, NOT to /dashboard/creator
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=2');
+      expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator');
+    });
+  });
+
+  it('Step2Completion_DoesNotRedirectToDashboard', async () => {
+    mockSearchParamString = 'step=2';
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true });
+
+    const profile = {
+      skills: [{ name: 'Coding', level: 'Advanced' }],
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
+    vi.mocked(api.put).mockResolvedValue({ data: { success: true } });
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    const continueBtn = await screen.findByRole('button', { name: /Continue/i });
+    fireEvent.click(continueBtn);
+
+    await waitFor(() => {
+      // Must advance ONLY to step 3, NEVER to /dashboard/creator
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=3');
+      expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator');
+    });
+
+    expect(getQuickStartJourneyState('usr-creator-1').step2Confirmed).toBe(true);
+  });
+
+  it('Step2Completion_WithPreexistingStep3Data_StillShowsStep3', async () => {
+    mockSearchParamString = 'step=2';
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true });
+
+    const completeProfile = {
+      skills: [{ name: 'Coding', level: 'Advanced' }],
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+        previousEntrepreneurialExperience: 'No, this is my first project',
+        learningPreference: 'I want to learn them myself',
+        delegationPreference: 'Minimal delegation',
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
+    vi.mocked(api.put).mockResolvedValue({ data: { success: true } });
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    const continueBtn = await screen.findByRole('button', { name: /Continue/i });
+    fireEvent.click(continueBtn);
+
+    await waitFor(() => {
+      // Must advance to step 3, NOT to /dashboard/creator
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=3');
+      expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator');
+    });
+  });
+
+  it('OnlyStartMyProject_CanCompleteQuickStartJourney', async () => {
+    mockSearchParamString = 'step=3';
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true, step2Confirmed: true });
+
+    const profile = {
+      skills: [{ name: 'Coding', level: 'Advanced' }],
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+        previousEntrepreneurialExperience: 'No, this is my first project',
+        learningPreference: 'I want to learn them myself',
+        delegationPreference: 'Minimal delegation',
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
+    vi.mocked(api.put).mockResolvedValue({ data: { success: true } });
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    expect(isQuickStartJourneyComplete('usr-creator-1')).toBe(false);
+
+    const submitBtn = await screen.findByRole('button', { name: /Start my project/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator');
+      expect(isQuickStartJourneyComplete('usr-creator-1')).toBe(true);
+    });
+  });
+
+  it('Step3Autosave_DoesNotCompleteJourney', async () => {
+    mockSearchParamString = 'step=3';
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true, step2Confirmed: true });
+
+    const profile = {
+      skills: [{ name: 'Coding', level: 'Advanced' }],
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+        previousEntrepreneurialExperience: 'No, this is my first project',
+        learningPreference: 'I want to learn them myself',
+        delegationPreference: 'Minimal delegation',
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
+    vi.mocked(api.put).mockResolvedValue({ data: { success: true } });
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    const learnPrefCard = await screen.findByText("I'd rather learn it");
+    fireEvent.click(learnPrefCard);
+
+    // Autosave triggers PUT
+    await waitFor(
+      () => {
+        expect(api.put).toHaveBeenCalled();
+      },
+      { timeout: 2500 }
+    );
+
+    // CRUCIAL: Autosave does NOT complete journey or redirect to dashboard!
+    expect(isQuickStartJourneyComplete('usr-creator-1')).toBe(false);
+    expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator');
+  });
+
+  it('ReloadAfterStep1_ResumesStep2', async () => {
+    mockSearchParamString = ''; // no ?step query
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true, step2Confirmed: false });
+
+    const profile = {
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+      },
+      skills: [],
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=2');
+    });
+  });
+
+  it('ReloadAfterStep2_ResumesStep3', async () => {
+    mockSearchParamString = ''; // no ?step query
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true, step2Confirmed: true });
+
+    const profile = {
+      skills: [{ name: 'Coding', level: 'Advanced' }],
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=3');
+    });
+  });
+
+  it('DirectStep3_BeforeStep1Confirmation_NormalizesToStep1', async () => {
+    mockSearchParamString = 'step=3';
+    // User hasn't confirmed step 1
+    resetQuickStartJourneyState('usr-creator-1');
+
+    const profile = {
+      skills: [],
+      ventureContext: {},
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=1');
+    });
+  });
+
+  it('DirectStep3_BeforeStep2Confirmation_NormalizesToStep2', async () => {
+    mockSearchParamString = 'step=3';
+    // User confirmed step 1, but NOT step 2
+    saveQuickStartJourneyState('usr-creator-1', { step1Confirmed: true, step2Confirmed: false });
+
+    const profile = {
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+      },
+      skills: [],
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=2');
+    });
+  });
+
+  it('JourneyState_IsScopedPerCreatorUser', () => {
+    saveQuickStartJourneyState('user-A', { step1Confirmed: true, step2Confirmed: true, step3Confirmed: true, completed: true });
+    expect(isQuickStartJourneyComplete('user-A')).toBe(true);
+
+    const stateB = getQuickStartJourneyState('user-B');
+    expect(stateB.step1Confirmed).toBe(false);
+    expect(stateB.step2Confirmed).toBe(false);
+    expect(stateB.completed).toBe(false);
+    expect(isQuickStartJourneyComplete('user-B')).toBe(false);
+  });
+
+  it('SaveFailure_DoesNotMarkStepConfirmed', async () => {
+    mockSearchParamString = 'step=1';
+    const profile = {
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+      },
+      skills: [],
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
+    vi.mocked(api.put).mockRejectedValue(new Error('Network failure'));
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    const continueBtn = await screen.findByRole('button', { name: /Continue/i });
+    fireEvent.click(continueBtn);
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalled();
+    });
+
+    expect(getQuickStartJourneyState('usr-creator-1').step1Confirmed).toBe(false);
+    expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator/humainx?step=2');
+  });
+
+  it('ExistingProfileData_PrepopulatesWithoutSkippingScreens', async () => {
+    mockSearchParamString = 'step=1';
+    const completeProfile = {
+      skills: [{ name: 'Coding', level: 'Advanced' }],
+      ventureContext: {
+        region: 'Hauts-de-France',
+        currentSituation: 'Employed',
+        weeklyAvailability: '10–20 hours/week',
+        previousEntrepreneurialExperience: 'No, this is my first project',
+        learningPreference: 'I want to learn them myself',
+        delegationPreference: 'Minimal delegation',
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXQuickStartPage />
+      </QueryClientProvider>
+    );
+
+    // Verify Step 1 is rendered and not bypassed
+    const regionSelect = await screen.findByLabelText('Your region') as HTMLSelectElement;
+    expect(regionSelect.value).toBe('Hauts-de-France');
     expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator');
   });
 });

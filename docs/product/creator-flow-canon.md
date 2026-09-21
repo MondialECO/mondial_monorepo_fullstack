@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-19 (Creator MVP RC1 Freeze).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-22 (Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -146,12 +146,36 @@ Three historical drift incidents establish this permanent architectural mandate:
 Email OTP, Phone OTP, Identity Document Upload, Role Selection (`Creator` / `Entrepreneur`).
 
 ### [GATE] HUMAINX QUICK START (`/dashboard/creator/humainx`)
-Mandatory Creator-only 3-screen frontend gate before Creator Dashboard access:
-- **Step 1: Your Situation** — Region, CurrentSituation, WeeklyAvailability
-- **Step 2: Your Skills** — Skills[] (min 1 skill, levels: Beginner, Comfortable, Advanced)
-- **Step 3: How You Build** — PreviousEntrepreneurialExperience, ProgressPreference
-- **Derived Truth:** `isQuickStartComplete(profile)` computed from canonical `ProfessionalProfileRecord`
-- **Frontend Engine:** 400ms debounced autosave, race-safe request sequencing, step order normalization
+Mandatory Creator-only 3-screen frontend journey gate positioned directly after universal onboarding and before Creator Dashboard access:
+- **Scope & Isolation:** Strictly Creator-only (`normalizeUserRole(user?.role) === UserRole.CREATOR`). It is NOT authentication, backend authorization, a global role gate, a second profile entity, or a replacement for Phase 4 backend validation.
+- **Screen 1: Your Situation** — Region, CurrentSituation, WeeklyAvailability in canonical `ProfessionalProfile.VentureContext`. Advancing requires validating, persisting, and marking `step1Confirmed`. Never redirects directly to Dashboard.
+- **Screen 2: Your Skills** — Skills[] (minimum 1 skill required; every skill must have a valid level: `Beginner`, `Comfortable`, `Advanced`). No synthetic skill fallback is allowed. The former fake `"General Business / Comfortable"` completion bypass is completely removed. Visual footer link cannot bypass validation or create synthetic data. Step 2 continue persists and marks `step2Confirmed` before advancing to Step 3. Never redirects to Dashboard.
+- **Screen 3: How You Build** — `PreviousEntrepreneurialExperience` and progress preference mapped to canonical `LearningPreference` and `DelegationPreference` (4 options: `"I'd rather learn it"`, `"I'd rather hand it off"`, `"A bit of both"`, `"Help me decide"`), round-trip distinguishable after reload.
+- **Critical Dual-Gate Architecture:**
+  - *Profile Data Completeness* and *Quick Start Journey Completion* are strictly separate concepts.
+  - Creator Dashboard access requires: `isQuickStartComplete(profile) && isQuickStartJourneyComplete(userId)`.
+  - Conceptually: `DashboardAllowed = ProfileDataComplete && JourneyCompleted`.
+- **Frontend Journey State Model:**
+  ```typescript
+  interface HumainXJourneyState {
+    step1Confirmed: boolean;
+    step2Confirmed: boolean;
+    step3Confirmed: boolean;
+    completed: boolean;
+  }
+  ```
+  Scoped per authenticated Creator user ID, persisted browser-locally in localStorage (`humainx_journey_state_${userId}`). It is UX state only and never duplicates business data.
+- **CURRENT FRONTEND-ONLY UX PERSISTENCE LIMITATION:**
+  Because journey state is browser-local: same account + same browser persists; different browser/device or cleared storage requires re-confirming wizard steps. `ProfessionalProfile` remains the durable account-level business data in MongoDB.
+- **Autosave Rule:** 400ms debounced autosave persists profile data only. Autosave MUST NOT confirm Step 1, confirm Step 2, complete Step 3, complete Quick Start, or unlock the Creator Dashboard. Only explicit CTA button actions change journey confirmation state.
+- **Only Final CTA Completes Quick Start:** Only the explicit `"Start my project"` CTA on Step 3 can mark `step3Confirmed` and `completed: true`. Sequence: flush pending autosave → persist latest data → save succeeds → reconcile profile → profile completeness passes → confirm steps → mark completed → navigate to Creator Dashboard.
+- **Pre-Existing Data Rule:** Pre-existing `ProfessionalProfile` data prepopulates screens but CANNOT skip wizard steps.
+- **Sequential Navigation Enforcement:**
+  - `step1Confirmed === false` → maximum allowed screen is Step 1.
+  - `step1Confirmed === true && step2Confirmed === false` → maximum allowed screen is Step 2.
+  - `step1Confirmed === true && step2Confirmed === true && completed === false` → Step 3.
+  - `completed === true && isQuickStartComplete(profile)` → Dashboard.
+  Manual query parameter tampering cannot bypass step gating.
 
 ### PHASE 2 — Project Identity & Branding
 ```text
@@ -1031,6 +1055,14 @@ RC1 Freeze
 - **Mono-on-Prose Leakage Resolution:** Removed `font-mono` on natural language paragraphs (Audience, Positioning, Concept summaries, and loading messages) in `BrandKitHubView.tsx` and `VariationSetModal.tsx`, restoring `font-sans text-body`. `font-mono` is strictly restricted to HEX/RGB values, character counts, file sizes, step numbers, and telemetry.
 - **Viewport Scroll Measurement Audit:** Measured all 7 Brand Studio modals at 1440×900 and 1920×1080 across Light and Dark themes. Verified that all internal containers maintain clean overflow scrolling with sticky header/footer action strips.
 - **Build Breakage Audit & Reconciliation:** Resolved pre-existing TypeScript and JSX compilation breaks in `PlanForecastPrintView.tsx`, `asset-library/page.tsx`, `investors/page.tsx`, `api-creator-journey.ts`, `myideas/page.tsx`, `phase-3/forecast/page.tsx`, and `complete/page.tsx`. Next.js build clean with 181/181 routes prerendered.
+
+**2026-09-22 — Creator HumainX Dual-Gate Architecture, Premature Redirect Elimination & Canonical Sync.**
+- **Critical HumainX Dual-Gate Architecture (§2):** Fixed regression where profile data completeness allowed skipping Quick Start steps and prematurely unlocking the Creator Dashboard. Decoupled durable profile data completeness (`isQuickStartComplete(profile)`) from browser-local wizard journey completion (`isQuickStartJourneyComplete(userId)`). Dashboard access now strictly enforces `DashboardAllowed = ProfileDataComplete && JourneyCompleted`.
+- **Three Wizard Screens Enforced:** Step 1 (Situation), Step 2 (Skills, min 1, valid levels, zero synthetic fallbacks, removed fake `"General Business / Comfortable"` bypass), and Step 3 (How You Build, 4 round-trip distinguishable progress options). Pre-populated profile data cannot skip screens; only explicit `"Start my project"` final CTA on Step 3 completes Quick Start.
+- **Frontend Journey State Model:** Introduced `HumainXJourneyState { step1Confirmed, step2Confirmed, step3Confirmed, completed }` scoped per user ID in browser `localStorage`. Formally documented as a `CURRENT FRONTEND-ONLY UX PERSISTENCE LIMITATION`.
+- **Debounced Autosave Scope:** 400ms debounced autosave restricted to profile data only; autosave is strictly prohibited from altering journey confirmation milestones.
+- **Phase 4 Canonical Alignment & Architecture Freeze:** Documented Phase 4.1–4.7 as LIVE & FROZEN, Stage 4.8 Launch Assets as NEXT APPROVED STAGE (One-Page Launch Website), and Stage 4.9 Construction Readiness as RESERVED. Reconciled retired legacy Phase 4 routes (`/offer-pricing`), controllers (`CreatorPhase4Controller`), and UI across all system architecture docs and diagrams.
+- **Test Suite Verification:** HumainX Quick Start dedicated suite: 53/53 tests passing. Full Creator frontend suite: 124/124 tests passing. Routing suite: 31/31 passing. Backend targeted Phase 4/HumainX suite: 213/213 passing. TypeScript: 0 errors. Production build: Exit 0.
 
 ---
 
