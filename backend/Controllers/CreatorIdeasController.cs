@@ -116,7 +116,7 @@ namespace WebApp.Controllers
         {
             if (i.Phase5Data?.ChosenPath == "build" || i.Phase5Data?.PathB?.SeedFunding != null || i.Phase5Data?.PathA?.MarketplaceListing != null) return 6;
             if (!string.IsNullOrEmpty(i.Phase5Data?.ChosenPath)) return 5;
-            if (!string.IsNullOrEmpty(i.Phase4Data?.PricingModel) || i.Phase4Data?.ResourceCalculation != null || i.Phase4Data?.GtmSetup != null) return 4;
+            if (i.Phase4Data?.PricingStrategy != null || i.Phase4Data?.NeedsAnalysis != null || i.Phase4Data?.GtmStrategy != null || i.Phase4Data?.ConstructionSnapshot != null) return 4;
             if (!string.IsNullOrEmpty(i.Phase3Data?.BusinessPlanSessionId) || i.Phase3Data?.LegalChecklist != null || i.Phase3Data?.FormationGenerator != null) return 3;
             return 2;
         }

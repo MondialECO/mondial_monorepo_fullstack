@@ -26,7 +26,7 @@ let mockSearchParamString = "ideaId=idea-456";
 vi.mock("next/navigation", () => ({
   useRouter: () => mockRouter,
   useSearchParams: () => new URLSearchParams(mockSearchParamString),
-  usePathname: () => "/dashboard/creator/offer-pricing",
+  usePathname: () => "/dashboard/creator/phase-4",
 }));
 
 vi.mock("next/link", () => ({

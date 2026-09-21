@@ -143,26 +143,7 @@ namespace WebApp.Models.Dtos
         public string SessionId { get; set; }
     }
 
-    // ---------------- Phase 4 ----------------
 
-    public class SetPricingRequest
-    {
-        public string PricingModel { get; set; }
-        public List<CreatorPricingTier> Tiers { get; set; } = new();
-    }
-
-    public class ResourceCalcRequest
-    {
-        public List<CreatorTeamRequirement> TeamRequirements { get; set; } = new();
-        public List<CreatorSaasItem> SaasStack { get; set; } = new();
-    }
-
-    public class GtmSetupRequest
-    {
-        public List<CreatorWebPresenceItem> WebPresence { get; set; } = new();
-        public List<string> TargetAudiences { get; set; } = new();
-        public List<CreatorChannelMix> ChannelMix { get; set; } = new();
-    }
 
     // ---------------- Phase 5 ----------------
 

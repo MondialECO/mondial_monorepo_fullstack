@@ -36,6 +36,7 @@ graph LR
     end
 
     subgraph CREATOR_ROUTES["Creator Domain Routes"]
+        RC_HX["/dashboard/creator/humainx (Dual Gate)"]
         RC_DASH["/dashboard/creator"]
         RC_AI["/dashboard/creator/ai"]
         RC_CLAR["/dashboard/creator/clarifier"]
@@ -43,7 +44,13 @@ graph LR
         RC_STUDIO["/dashboard/creator/project-studio"]
         RC_DOCS["/dashboard/creator/documents"]
         RC_VAULT["/dashboard/creator/ip-vault"]
-        RC_PRICING["/dashboard/creator/offer-pricing"]
+        RC_P4["/dashboard/creator/phase-4 (Snapshot)"]
+        RC_P4_ROAD["/dashboard/creator/phase-4/roadmap"]
+        RC_P4_NEED["/dashboard/creator/phase-4/needs"]
+        RC_P4_SKIL["/dashboard/creator/phase-4/skills"]
+        RC_P4_SUPP["/dashboard/creator/phase-4/support"]
+        RC_P4_PRIC["/dashboard/creator/phase-4/pricing"]
+        RC_P4_GTM["/dashboard/creator/phase-4/gtm"]
         RC_CROSS["/dashboard/creator/crossroads"]
         RC_P2["/dashboard/creator/phase-2"]
         RC_P2_CLR["/dashboard/creator/phase-2/clarifier"]
@@ -147,14 +154,15 @@ graph LR
     %% Key navigation / transition paths
     R_LOGIN -->|Authenticate| R_ONB
     R_ONB -->|Verify Identity| R_ONB_CMP
-    R_ONB_CMP -->|Launch Dashboard| RC_DASH
+    R_ONB_CMP -->|Role: Creator (Gate)| RC_HX
+    RC_HX -->|Dual Gate Pass| RC_DASH
     R_ONB_CMP -->|Launch Dashboard| RE_DASH
     R_ONB_CMP -->|Launch Dashboard| RI_DASH
     R_ONB_CMP -->|Launch Dashboard| RP_DASH
 
     %% Creator to Marketplace / Deals
-    RC_CROSS -->|Path A: Buyout| RC_PRICING
-    RC_PRICING -->|Publish Listing| RM_PRJ
+    RC_CROSS -->|Path A: Buyout| RC_P4_PRIC
+    RC_P4_PRIC -->|Publish Listing| RM_PRJ
     RM_PRJ -->|Entrepreneur Buys| RE_ACQ_ID
     RE_ACQ_ID -->|Complete Acquisition| RE_ACQ_BLD
     RE_ACQ_BLD -->|Spin Out Company| RE_P2

@@ -358,15 +358,9 @@ namespace WebApp.Tests.Unit
                 Project = new CreatorJourneyProject { Problem = "P", TargetUser = "U", Solution = "S" },
                 Phase4Data = new CreatorPhase4Data
                 {
-                    PricingModel = "Subscription",
-                    Tiers = new List<CreatorPricingTier>
-                    {
-                        new() { Name = "T1", Price = 10 },
-                        new() { Name = "T2", Price = 20 },
-                        new() { Name = "T3", Price = 30 }
-                    },
-                    ResourceCalculation = new CreatorResourceCalculation(),
-                    GtmSetup = new CreatorGtmSetup()
+                    NeedsAnalysis = new Models.DatabaseModels.Phase4.NeedsAnalysis { Status = "Completed" },
+                    PricingStrategy = new Models.DatabaseModels.Phase4.PricingStrategy { Status = Models.DatabaseModels.Phase4.PricingStatus.Generated },
+                    GtmStrategy = new Models.DatabaseModels.Phase4.GtmStrategy { Status = "Valid" }
                 },
                 Phase5Data = new CreatorPhase5Data
                 {
@@ -376,8 +370,7 @@ namespace WebApp.Tests.Unit
             };
 
             var p4 = journey.Phase4Data;
-            bool hasPricing = !string.IsNullOrEmpty(p4.PricingModel) && (p4.Tiers?.Count ?? 0) >= 3;
-            bool p4Done = hasPricing && p4.ResourceCalculation != null && p4.GtmSetup != null;
+            bool p4Done = p4.NeedsAnalysis != null && p4.PricingStrategy != null && p4.GtmStrategy != null;
 
             var p5 = journey.Phase5Data;
             bool chosen = !string.IsNullOrEmpty(p5.ChosenPath);
@@ -926,18 +919,7 @@ namespace WebApp.Tests.Unit
                     ForecastSessionId = "fc-15",
                     FormationGenerator = new CreatorFormationGenerator { RecommendedType = "SAS" }
                 },
-                Phase4Data = new CreatorPhase4Data
-                {
-                    PricingModel = "subscription",
-                    Tiers = new List<CreatorPricingTier>
-                    {
-                        new() { Name = "P1", Price = 10 },
-                        new() { Name = "P2", Price = 30 },
-                        new() { Name = "P3", Price = 50 }
-                    },
-                    ResourceCalculation = new CreatorResourceCalculation(),
-                    GtmSetup = new CreatorGtmSetup()
-                },
+                Phase4Data = new CreatorPhase4Data(),
                 Phase5Data = new CreatorPhase5Data
                 {
                     ChosenPath = "build",
@@ -1045,7 +1027,7 @@ namespace WebApp.Tests.Unit
                 },
                 Phase2Data = new CreatorPhase2Data { ClarifierSessionId = "c-17" },
                 Phase3Data = new CreatorPhase3Data { BusinessPlanSessionId = "bp-17", ForecastSessionId = "fc-17" },
-                Phase4Data = new CreatorPhase4Data { PricingModel = "subscription", Tiers = new List<CreatorPricingTier> { new() { Price = 10 } } },
+                Phase4Data = new CreatorPhase4Data(),
                 Phase5Data = new CreatorPhase5Data { ChosenPath = "build", PathB = null }
             });
 
@@ -1105,7 +1087,7 @@ namespace WebApp.Tests.Unit
                 },
                 Phase2Data = new CreatorPhase2Data { ClarifierSessionId = "c-18" },
                 Phase3Data = new CreatorPhase3Data { BusinessPlanSessionId = "bp-18", ForecastSessionId = "fc-18" },
-                Phase4Data = new CreatorPhase4Data { PricingModel = "subscription", Tiers = new List<CreatorPricingTier> { new() { Price = 10 } } },
+                Phase4Data = new CreatorPhase4Data(),
                 Phase5Data = new CreatorPhase5Data { ChosenPath = "build", PathB = null }
             });
 
@@ -1157,7 +1139,7 @@ namespace WebApp.Tests.Unit
                 },
                 Phase2Data = new CreatorPhase2Data { ClarifierSessionId = "c-19" },
                 Phase3Data = new CreatorPhase3Data { BusinessPlanSessionId = "bp-19", ForecastSessionId = "fc-19" },
-                Phase4Data = new CreatorPhase4Data { PricingModel = "subscription", Tiers = new List<CreatorPricingTier> { new() { Price = 10 } } },
+                Phase4Data = new CreatorPhase4Data(),
                 Phase5Data = new CreatorPhase5Data { ChosenPath = "build", PathB = null }
             });
 

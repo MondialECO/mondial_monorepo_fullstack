@@ -143,10 +143,50 @@ namespace WebApp.Services.Implementations
         /// </summary>
         private static CreatorJourney OverlayIdea(CreatorJourney j, CreatorIdea idea)
         {
+            var canonicalNeeds = j.Phase4Data?.NeedsAnalysis;
+            var canonicalSkills = j.Phase4Data?.SkillsPlan;
+            var canonicalSupport = j.Phase4Data?.SupportPlan;
+            var canonicalPricing = j.Phase4Data?.PricingStrategy;
+            var canonicalGtm = j.Phase4Data?.GtmStrategy;
+            var canonicalSnapshot = j.Phase4Data?.ConstructionSnapshot;
+            var canonicalRoadmap = j.Phase4Data?.Roadmap;
+            var canonicalVersions = j.Phase4Data?.SourceVersions;
             j.Project = idea.Project ??= new CreatorJourneyProject();
             j.Phase2Data = idea.Phase2Data ??= new CreatorPhase2Data();
             j.Phase3Data = idea.Phase3Data ??= new CreatorPhase3Data();
             j.Phase4Data = idea.Phase4Data ??= new CreatorPhase4Data();
+            if (canonicalNeeds != null)
+            {
+                j.Phase4Data.NeedsAnalysis = canonicalNeeds;
+            }
+            if (canonicalSkills != null)
+            {
+                j.Phase4Data.SkillsPlan = canonicalSkills;
+            }
+            if (canonicalSupport != null)
+            {
+                j.Phase4Data.SupportPlan = canonicalSupport;
+            }
+            if (canonicalPricing != null)
+            {
+                j.Phase4Data.PricingStrategy = canonicalPricing;
+            }
+            if (canonicalGtm != null)
+            {
+                j.Phase4Data.GtmStrategy = canonicalGtm;
+            }
+            if (canonicalSnapshot != null)
+            {
+                j.Phase4Data.ConstructionSnapshot = canonicalSnapshot;
+            }
+            if (canonicalRoadmap != null)
+            {
+                j.Phase4Data.Roadmap = canonicalRoadmap;
+            }
+            if (canonicalVersions != null)
+            {
+                j.Phase4Data.SourceVersions = canonicalVersions;
+            }
             j.Phase5Data = idea.Phase5Data ??= new CreatorPhase5Data();
             var p6 = j.Phase6Data ??= new CreatorPhase6Data();
             p6.SmartMatchmaking = idea.SmartMatchmaking ??= new CreatorSmartMatchmaking();
@@ -363,18 +403,20 @@ namespace WebApp.Services.Implementations
 
             bool p3Done = s.Phase3.Status == "completed";
 
-            // ---- Phase 4 ----
+            // ---- Phase 4 (Construction Engine) ----
             var p4 = j.Phase4Data ?? new CreatorPhase4Data();
-            bool hasPricing = !string.IsNullOrEmpty(p4.PricingModel) && (p4.Tiers?.Count ?? 0) >= 3;
-            bool hasResource = p4.ResourceCalculation != null;
-            bool hasGtm = p4.GtmSetup != null;
-            bool anyP4 = hasPricing || hasResource || hasGtm || (p4.Tiers?.Count ?? 0) > 0;
+            bool hasSnapshot = p4.ConstructionSnapshot != null;
+            bool hasNeeds = p4.NeedsAnalysis != null;
+            bool hasPricing = p4.PricingStrategy != null;
+            bool hasGtm = p4.GtmStrategy != null;
+            bool anyP4 = hasSnapshot || hasNeeds || hasPricing || hasGtm || p4.Roadmap != null || p4.SkillsPlan != null || p4.SupportPlan != null;
+            bool p4Complete = hasNeeds && hasPricing && hasGtm;
 
             if (!p3Done) s.Phase4.Status = "locked";
-            else if (hasPricing && hasResource && hasGtm) s.Phase4.Status = "completed";
+            else if (p4Complete) s.Phase4.Status = "completed";
             else if (anyP4) s.Phase4.Status = "in_progress";
             else s.Phase4.Status = "available";
-            s.Phase4.CurrentStep = !hasPricing ? 1 : !hasResource ? 2 : !hasGtm ? 3 : 4;
+            s.Phase4.CurrentStep = !hasSnapshot ? 1 : !hasNeeds ? 3 : !hasPricing ? 6 : !hasGtm ? 7 : 8;
 
             bool p4Done = s.Phase4.Status == "completed";
 
@@ -1229,66 +1271,7 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
-        // ---- Phase 4 ----
-
-        public async Task<CreatorJourney> SetPhase4PricingAsync(string userId, string pricingModel, List<CreatorPricingTier> tiers, CreatorPricingForecastContext? forecastContext = null, string ideaId = null)
-        {
-            var j = await GetOrCreateAsync(userId);
-            var idea = await ResolveIdeaAsync(j, ideaId);
-            OverlayIdea(j, idea);
-            var p4 = j.Phase4Data ??= new CreatorPhase4Data();
-            p4.PricingModel = pricingModel;
-            p4.Tiers = tiers ?? new List<CreatorPricingTier>();
-            p4.PricingForecastContext = forecastContext;
-            var entry = CreatorJourneyVersioning.Append(
-                (j.OutputSnapshots ??= new CreatorOutputSnapshots()).PricingVersions, 4, null,
-                new BsonDocument { ["pricingModel"] = pricingModel, ["tierCount"] = p4.Tiers.Count });
-
-            // Atomic: $set only this method's own Phase4Data fields + $push its own
-            // version array (disjoint from Resource/Gtm). Idea = source of truth.
-            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Phase4Data.PricingModel, p4.PricingModel)
-                .Set(x => x.Phase4Data.Tiers, p4.Tiers)
-                .Set(x => x.Phase4Data.PricingForecastContext, p4.PricingForecastContext)
-                .Push(x => x.OutputSnapshots.PricingVersions, entry));
-            return j;
-        }
-
-        public async Task<CreatorJourney> SetPhase4ResourceAsync(string userId, CreatorResourceCalculation calc, string ideaId = null)
-        {
-            var j = await GetOrCreateAsync(userId);
-            var idea = await ResolveIdeaAsync(j, ideaId);
-            OverlayIdea(j, idea);
-            (j.Phase4Data ??= new CreatorPhase4Data()).ResourceCalculation = calc;
-            var entry = CreatorJourneyVersioning.Append(
-                (j.OutputSnapshots ??= new CreatorOutputSnapshots()).ResourcePlanVersions, 4, null,
-                calc?.ToBsonDocument());
-
-            // Atomic: $set only ResourceCalculation + $push its own version array —
-            // disjoint from Pricing/Gtm. Idea = source of truth.
-            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Phase4Data.ResourceCalculation, calc)
-                .Push(x => x.OutputSnapshots.ResourcePlanVersions, entry));
-            return j;
-        }
-
-        public async Task<CreatorJourney> SetPhase4GtmAsync(string userId, CreatorGtmSetup gtm, string ideaId = null)
-        {
-            var j = await GetOrCreateAsync(userId);
-            var idea = await ResolveIdeaAsync(j, ideaId);
-            OverlayIdea(j, idea);
-            (j.Phase4Data ??= new CreatorPhase4Data()).GtmSetup = gtm;
-            var entry = CreatorJourneyVersioning.Append(
-                (j.OutputSnapshots ??= new CreatorOutputSnapshots()).GtmPlanVersions, 4, null,
-                gtm?.ToBsonDocument());
-
-            // Atomic: $set only GtmSetup + $push its own version array — disjoint from
-            // Pricing/Resource. Idea = source of truth.
-            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Phase4Data.GtmSetup, gtm)
-                .Push(x => x.OutputSnapshots.GtmPlanVersions, entry));
-            return j;
-        }
+        // ---- Phase 4 (Construction Engine) ----
 
         public async Task<CreatorJourney> SetPhase4ConstructionSnapshotAsync(string userId, Models.DatabaseModels.Phase4.ConstructionSnapshot snapshot, Models.DatabaseModels.Phase4.Phase4SourceVersions sourceVersions, string ideaId = null)
         {
@@ -1315,6 +1298,81 @@ namespace WebApp.Services.Implementations
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Phase4Data.Roadmap, roadmap));
+            return j;
+        }
+
+        public async Task<CreatorJourney> SetPhase4NeedsAnalysisAsync(string userId, Models.DatabaseModels.Phase4.NeedsAnalysis needsAnalysis, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var p4 = j.Phase4Data ??= new CreatorPhase4Data();
+            p4.NeedsAnalysis = needsAnalysis;
+
+            // Single source of truth: Persisted on CreatorJourney, NO dual write to CreatorIdea
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase4Data.NeedsAnalysis, needsAnalysis)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            return j;
+        }
+
+        public async Task<CreatorJourney> SetPhase4SkillsPlanAsync(string userId, Models.DatabaseModels.Phase4.SkillsPlan skillsPlan, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var p4 = j.Phase4Data ??= new CreatorPhase4Data();
+            p4.SkillsPlan = skillsPlan;
+
+            // Single source of truth: Persisted on CreatorJourney, NO dual write to CreatorIdea
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase4Data.SkillsPlan, skillsPlan)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            return j;
+        }
+
+        public async Task<CreatorJourney> SetPhase4SupportPlanAsync(string userId, Models.DatabaseModels.Phase4.SupportPlan supportPlan, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var p4 = j.Phase4Data ??= new CreatorPhase4Data();
+            p4.SupportPlan = supportPlan;
+
+            // Single source of truth: Persisted on CreatorJourney, NO dual write to CreatorIdea
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase4Data.SupportPlan, supportPlan)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            return j;
+        }
+
+        public async Task<CreatorJourney> SetPhase4PricingStrategyAsync(string userId, Models.DatabaseModels.Phase4.PricingStrategy pricingStrategy, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var p4 = j.Phase4Data ??= new CreatorPhase4Data();
+            p4.PricingStrategy = pricingStrategy;
+
+            // Single source of truth: Persisted on CreatorJourney, NO dual write to CreatorIdea
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase4Data.PricingStrategy, pricingStrategy)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            return j;
+        }
+
+        public async Task<CreatorJourney> SetPhase4GtmStrategyAsync(string userId, Models.DatabaseModels.Phase4.GtmStrategy gtmStrategy, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var p4 = j.Phase4Data ??= new CreatorPhase4Data();
+            p4.GtmStrategy = gtmStrategy;
+
+            // Single source of truth: Persisted on CreatorJourney, NO dual write to CreatorIdea
+            await _context.CreatorJourneys.UpdateOneAsync(
+                f => f.Id == j.Id,
+                Builders<CreatorJourney>.Update
+                    .Set(x => x.Phase4Data.GtmStrategy, gtmStrategy)
+                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
             return j;
         }
 

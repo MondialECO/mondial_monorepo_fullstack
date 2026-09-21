@@ -9,18 +9,16 @@ namespace WebApp.Services.Implementations
 {
     public class RoadmapScheduler : IRoadmapScheduler
     {
+        private readonly IFounderCapacityResolver _capacityResolver;
+
+        public RoadmapScheduler(IFounderCapacityResolver? capacityResolver = null)
+        {
+            _capacityResolver = capacityResolver ?? new FounderCapacityResolver();
+        }
+
         public CapacityTier ResolveCapacityTier(string? weeklyAvailability)
         {
-            if (string.IsNullOrWhiteSpace(weeklyAvailability)) return CapacityTier.Conservative;
-            var wa = weeklyAvailability.Trim().ToLowerInvariant();
-
-            if (wa.Contains("<5") || wa.Contains("less than 5")) return CapacityTier.VeryLight;
-            if (wa.Contains("5–10") || wa.Contains("5-10")) return CapacityTier.Light;
-            if (wa.Contains("10–20") || wa.Contains("10-20")) return CapacityTier.Standard;
-            if (wa.Contains("20–30") || wa.Contains("20-30")) return CapacityTier.Accelerated;
-            if (wa.Contains("30+") || wa.Contains("30 +") || wa.Contains("full-time") || wa.Contains("full time")) return CapacityTier.Intensive;
-
-            return CapacityTier.Conservative;
+            return _capacityResolver.ResolveCapacityTier(weeklyAvailability);
         }
 
         public bool ValidateAndDetectCycles(List<RoadmapTask> tasks, out List<string> cycleTaskKeys)

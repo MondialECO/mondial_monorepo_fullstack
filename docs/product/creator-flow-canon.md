@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-19 (Creator MVP RC1 Freeze).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-22 (Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -145,6 +145,38 @@ Three historical drift incidents establish this permanent architectural mandate:
 ### PHASE 1 — KYC + Role Selection
 Email OTP, Phone OTP, Identity Document Upload, Role Selection (`Creator` / `Entrepreneur`).
 
+### [GATE] HUMAINX QUICK START (`/dashboard/creator/humainx`)
+Mandatory Creator-only 3-screen frontend journey gate positioned directly after universal onboarding and before Creator Dashboard access:
+- **Scope & Isolation:** Strictly Creator-only (`normalizeUserRole(user?.role) === UserRole.CREATOR`). It is NOT authentication, backend authorization, a global role gate, a second profile entity, or a replacement for Phase 4 backend validation.
+- **Screen 1: Your Situation** — Region, CurrentSituation, WeeklyAvailability in canonical `ProfessionalProfile.VentureContext`. Advancing requires validating, persisting, and marking `step1Confirmed`. Never redirects directly to Dashboard.
+- **Screen 2: Your Skills** — Skills[] (minimum 1 skill required; every skill must have a valid level: `Beginner`, `Comfortable`, `Advanced`). No synthetic skill fallback is allowed. The former fake `"General Business / Comfortable"` completion bypass is completely removed. Visual footer link cannot bypass validation or create synthetic data. Step 2 continue persists and marks `step2Confirmed` before advancing to Step 3. Never redirects to Dashboard.
+- **Screen 3: How You Build** — `PreviousEntrepreneurialExperience` and progress preference mapped to canonical `LearningPreference` and `DelegationPreference` (4 options: `"I'd rather learn it"`, `"I'd rather hand it off"`, `"A bit of both"`, `"Help me decide"`), round-trip distinguishable after reload.
+- **Critical Dual-Gate Architecture:**
+  - *Profile Data Completeness* and *Quick Start Journey Completion* are strictly separate concepts.
+  - Creator Dashboard access requires: `isQuickStartComplete(profile) && isQuickStartJourneyComplete(userId)`.
+  - Conceptually: `DashboardAllowed = ProfileDataComplete && JourneyCompleted`.
+- **Frontend Journey State Model:**
+  ```typescript
+  interface HumainXJourneyState {
+    step1Confirmed: boolean;
+    step2Confirmed: boolean;
+    step3Confirmed: boolean;
+    completed: boolean;
+  }
+  ```
+  Scoped per authenticated Creator user ID, persisted browser-locally in localStorage (`humainx_journey_state_${userId}`). It is UX state only and never duplicates business data.
+- **CURRENT FRONTEND-ONLY UX PERSISTENCE LIMITATION:**
+  Because journey state is browser-local: same account + same browser persists; different browser/device or cleared storage requires re-confirming wizard steps. `ProfessionalProfile` remains the durable account-level business data in MongoDB.
+- **Autosave Rule:** 400ms debounced autosave persists profile data only. Autosave MUST NOT confirm Step 1, confirm Step 2, complete Step 3, complete Quick Start, or unlock the Creator Dashboard. Only explicit CTA button actions change journey confirmation state.
+- **Only Final CTA Completes Quick Start:** Only the explicit `"Start my project"` CTA on Step 3 can mark `step3Confirmed` and `completed: true`. Sequence: flush pending autosave → persist latest data → save succeeds → reconcile profile → profile completeness passes → confirm steps → mark completed → navigate to Creator Dashboard.
+- **Pre-Existing Data Rule:** Pre-existing `ProfessionalProfile` data prepopulates screens but CANNOT skip wizard steps.
+- **Sequential Navigation Enforcement:**
+  - `step1Confirmed === false` → maximum allowed screen is Step 1.
+  - `step1Confirmed === true && step2Confirmed === false` → maximum allowed screen is Step 2.
+  - `step1Confirmed === true && step2Confirmed === true && completed === false` → Step 3.
+  - `completed === true && isQuickStartComplete(profile)` → Dashboard.
+  Manual query parameter tampering cannot bypass step gating.
+
 ### PHASE 2 — Project Identity & Branding
 ```text
 Clarifier (/phase-2/clarifier)
@@ -168,12 +200,17 @@ Clarifier (/phase-2/clarifier)
 → 3.7 Investor Readiness (/phase-3/complete — 5 canonical weighted dimensions)
 ```
 
-### PHASE 4 — Commercial Offer & Setup
+### PHASE 4 — Construction & Launch Preparation (Canonical Engine — 4.1 → 4.7 LIVE)
 ```text
-4.1 Services & Pricing (/dashboard/creator/offer-pricing Step 0)
-→ 4.2 Resource Calculator (Step 1)
-→ 4.3 Web & GTM Setup (Step 2)
-→ 4.4 Offer Setup Complete (Step 3)
+4.1 Construction Snapshot (/dashboard/creator/phase-4)
+→ 4.2 Operational Roadmap (/dashboard/creator/phase-4/roadmap)
+→ 4.3 Needs & Requirements (/dashboard/creator/phase-4/needs)
+→ 4.4 Skills & Training (/dashboard/creator/phase-4/skills)
+→ 4.5 Aids, Grants & Support (/dashboard/creator/phase-4/support)
+→ 4.6 Pricing & Revenue Model (/dashboard/creator/phase-4/pricing)
+→ 4.7 GTM & Launch Strategy (/dashboard/creator/phase-4/gtm)
+→ 4.8 Launch Assets (Next approved stage — One-Page Professional Launch Website)
+→ 4.9 Construction Readiness (Reserved for final certification)
 ```
 
 ### PHASE 5 — The Cross-Roads (30-Day Decision Window)
@@ -711,102 +748,124 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
 
 ---
 
-## 6. Phase 4 — Construction Architecture, Operational Roadmap & Commercial Setup
+## 6. Phase 4 — Construction & Launch Preparation (Canonical Engine — LIVE & FROZEN)
 
-Phase 4 bridges strategic formulation and operational execution through three specialized engines:
+Phase 4 bridges strategic formulation and operational execution through seven canonical, interconnected engines. It shifts the venture from *"Understanding the Business"* (Phase 3) into *"Preparing to Build and Launch"*:
 
 ```text
-CANONICAL PHASE 4 ARCHITECTURE:
+CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
 
 1. Phase 4.1: Construction Snapshot (/dashboard/creator/phase-4)
-   WHAT is ready / missing / critical
-   - Capability extraction from Phase 2 & Phase 3
-   - HumainX Founder profile completeness gate (leveled skills & venture context)
-   - 5-Tier taxonomy: Critical, Ready, Partially Ready, Missing, Optional
+   WHAT is ready, partial, missing, or critical across the business foundation.
 
 2. Phase 4.2: Operational Roadmap (/dashboard/creator/phase-4/roadmap)
-   WHEN and IN WHAT ORDER work should happen
-   - Phase 0 Foundations → Phase 1 Legal/Compliance → Phase 2 Product Spec → Phase 3 Commercial Launch
-   - Dependency graph evaluation & critical path calculation
-   - Interactive task lifecycle: NotStarted → InProgress → Completed / Blocked
+   WHEN and IN WHAT ORDER work should happen across 6 operational horizons.
 
-3. Commercial Offer & Setup (/dashboard/creator/offer-pricing)
-   HOW the venture is priced and resourced
-   - Step 4.1: Services & Pricing Model
-   - Step 4.2: Resource Calculator
-   - Step 4.3: Web & GTM Setup
-   - Step 4.4: Offer Setup Complete → Phase 5 Cross-Roads
+3. Phase 4.3: Needs Analysis & Requirements (/dashboard/creator/phase-4/needs)
+   WHAT resources/services/tech/finance/legal/admin/infrastructure are needed.
+
+4. Phase 4.4: Skills & Training Plan (/dashboard/creator/phase-4/skills)
+   HOW capability gaps are resolved: LEARN / DELEGATE / VERIFY.
+
+5. Phase 4.5: Aids, Grants & Public Support (/dashboard/creator/phase-4/support)
+   WHICH public/institutional support schemes and grants may apply.
+
+6. Phase 4.6: Pricing & Revenue Model (/dashboard/creator/phase-4/pricing)
+   WHAT customer pricing and revenue mechanics produce positive contribution margin.
+
+7. Phase 4.7: GTM & Launch Strategy (/dashboard/creator/phase-4/gtm)
+   HOW early customers are systematically acquired, validated, and converted.
+
+8. Phase 4.8: Launch Assets (NEXT APPROVED STAGE — One-Page Professional Launch Website)
+   CREATE customer-facing launch materials (Website, messaging, collateral).
+
+9. Phase 4.9: Construction Readiness (RESERVED)
+   Final global readiness assessment prior to commercial activation (Phase 5).
 ```
 
-### 6.0 Architecture & Navigation Invariants
-- **Profile Completeness Gate (`Phase4ProfileGuard`):** Access to `/dashboard/creator/phase-4` and `/dashboard/creator/phase-4/roadmap` requires completed HumainX profile metadata (at least 1 declared skill with level, plus venture context). Founders with incomplete profiles are guided to `/dashboard/creator/profile` via an onboarding card.
-- **Route Guard Decoupling:** `CreatorPhaseGuard.tsx` does not blanket-block or redirect `/dashboard/creator/phase-4`. Fine-grained readiness checks are delegated to `Phase4ProfileGuard.tsx` to prevent router redirect loops.
-- **Suspense Boundary Enclosure:** To guarantee zero router de-optimization in Next.js App Router (React 19), pages consuming `useSearchParams()` wrap their interactive child components in explicit `<Suspense>` boundaries.
+### 6.0 Core Architectural Invariants
 
-### 6.0.1 Phase 4.1 — Construction Snapshot Engine (`ConstructionSnapshotView.tsx`)
+1. **State Ownership:** `CreatorJourney.Phase4Data` owns all project Phase 4 state in MongoDB.
+2. **Upstream Referencing:** Phase 4 stages reference upstream data by IDs/versions rather than duplicating large upstream objects.
+3. **Staleness Model:** Explicit provenance tracking (`Update Available`, `Changed Sources`, `Review Changes`, `Refresh`, `Keep Current`). Founder edits are **never silently overwritten**.
+4. **Deterministic Policy vs AI:**
+   - Deterministic logic owns statuses, math, floor prices, applicability, eligibility rules, and capacity limits.
+   - AI is strictly advisory, explanatory, and presentational.
+5. **No Premature Global Readiness %:** Global Construction Readiness is owned exclusively by Stage 4.9. Stages 4.1–4.7 track only their own completion status.
+6. **Retirement of Legacy Phase 4:** The legacy `/dashboard/creator/offer-pricing` route, `CreatorPhase4Controller`, and legacy components (`Phase4Pricing`, `Phase4Resource`, `Phase4Gtm`, `Phase4Complete`) are completely retired.
+
+### 6.1 Stage 4.1 — Construction Snapshot (`ConstructionSnapshotView.tsx`)
 - **Route:** `/dashboard/creator/phase-4`
 - **Controller:** `CreatorPhase4ConstructionController.GetSnapshot` (`GET /api/creator/phase4/snapshot`).
-- **Services:** `ConstructionSnapshotService`, `CapabilityMatcher`, `ProfileCompletenessResolver`.
-- **Taxonomy Categories:**
-  - `Critical Attention`: Blocking items requiring immediate resolution before launch (e.g. mandatory statutory filings, missing core skill).
-  - `Ready`: Confirmed assets ready for deployment (e.g. confirmed Brand Kit, validated Osterwalder canvas).
-  - `Partially Ready`: In-progress items or sections requiring review.
-  - `Missing`: Omitted foundation components.
-  - `Optional`: Enhancements that can be safely deferred.
-- **No Deceptive Percentages:** The snapshot reports raw category counts (e.g. 1 Critical, 1 Ready, 1 Partial, 1 Missing) rather than misleading composite percentages.
+- **Services:** `ConstructionSnapshotService`, `ProfileCompletenessResolver`.
+- **Taxonomy Categories:** `Critical Attention`, `Ready`, `Partially Ready`, `Missing`, `Optional`, `NeedsReview`.
+- **Operations:** Read-only `GET`, idempotent `generate`, explicit `refresh`.
+- **No Deceptive Percentages:** The snapshot reports raw category counts rather than misleading composite percentages.
 
-### 6.0.2 Phase 4.2 — Operational Roadmap Engine (`OperationalRoadmapView.tsx`)
+### 6.2 Stage 4.2 — Operational Roadmap (`OperationalRoadmapView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/roadmap`
-- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/roadmap`, `PATCH /api/creator/phase4/roadmap/tasks/{taskId}/status`).
-- **Services:** `OperationalRoadmapService`, `RoadmapScheduler`.
-- **4 Milestone Execution Tracks:**
-  - `Phase 0: Foundations` (Identity, problem definition, clarified concept).
-  - `Phase 1: Legal & Compliance` (Company formation, statutory compliance checklist FR-2026.1, INPI trademark).
-  - `Phase 2: Brand & Product Spec` (Brand Kit SVGs, MVP tech specification, prototype validation).
-  - `Phase 3: Commercial Launch` (Pricing tiers, GTM distribution channels, telemetry setup).
-- **Dependency & Status Management:** Evaluates predecessor dependencies (`Prerequisites`), calculates task time estimates, and allows founders to interactively transition task status (`NotStarted` → `InProgress` → `Completed` or `Blocked`).
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/roadmap`, `PATCH /api/creator/phase4/roadmap/task`).
+- **Services:** `OperationalRoadmapService`, `RoadmapScheduler`, `IFounderCapacityResolver`.
+- **6 Execution Horizons:** `NOW`, `NEXT_30_DAYS`, `DAYS_30_TO_60`, `DAYS_60_TO_90`, `BEFORE_LAUNCH`, `POST_LAUNCH`.
+- **Task Statuses:** `NotStarted`, `InProgress`, `Blocked`, `Done`, `Skipped`, `NeedsReview`.
+- **Capacity Constraint:** Constrained by founder weekly availability. Completed tasks are never resurrected on refresh.
 
-### 6.1 Step 4.1 — Services & Pricing Model (`Phase4Pricing.tsx`)
-- **Route / Surface:** `/dashboard/creator/offer-pricing` (Step 0)
-- **Backing Controller & Endpoint:** `CreatorPhase4Controller.SavePricing` (`POST /api/creator/pricing`).
-- **Data Model:** Stored in `CreatorIdeas.Phase4Data.PricingModel` and `CreatorIdeas.Phase4Data.Tiers` (`List<PricingTier>`).
-- **Core Functionality:**
-  - **4 Pricing Model Archetypes:** `Subscription` (recurring MRR/ARR), `One-Time` (fixed transaction fee), `Freemium` (tiered access with free tier), `Usage-Based` (consumption metering).
-  - **Dynamic Tier Configuration (3–5 Tiers):** Tier Name, Monthly/Annual Price, Billing Frequency, Target Segment, Key Value Proposition, and Feature Tag List.
-  - **Forecast Context Check:** Compares declared ARPU in Phase 4 against Phase 3 Step 3.4 forecast assumptions, rendering an interactive notice (`isPotentiallyOutdated`) if pricing structures diverge.
-  - **Validation & Persistence:** Strictly validates tier presence, positive numerical pricing, and unique tier naming before persisting to MongoDB.
+### 6.3 Stage 4.3 — Needs Analysis & Requirements (`NeedsAnalysisView.tsx`)
+- **Route:** `/dashboard/creator/phase-4/needs`
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/needs`, `POST /api/creator/phase4/needs/generate`, `POST /api/creator/phase4/needs/refresh`, `PATCH /api/creator/phase4/needs/{needKey}`).
+- **Services:** `NeedsAnalysisService`.
+- **SystemStatus:** `Identified`, `NeedsReview`, `Satisfied`, `NotRequired`.
+- **FounderState:** `Unreviewed`, `Confirmed`, `InProgress`, `Deferred`, `ClaimedSatisfied`.
+- **Core Invariant:** Active Need ≠ Covered Need. `TrainingCandidate` is reserved exclusively for formal/mandatory training needs.
 
-### 6.2 Step 4.2 — Resource Calculator (`Phase4Resource.tsx`)
-- **Route / Surface:** `/dashboard/creator/offer-pricing` (Step 1)
-- **Backing Controller & Endpoint:** `CreatorPhase4Controller.SaveResourceCalculation` (`POST /api/creator/resources`).
-- **Data Model:** Stored in `CreatorIdeas.Phase4Data.ResourceCalculation` (`TotalMinBudget`, `TotalMaxBudget`, `EstimatedMonthsToLaunch`, `TeamRequirements[]`, `SaasStack[]`).
-- **Sector-Specific Benchmark Engine:** Consumes `MarketBenchmarkResolver` based on `CreatorIdea.Project.Sector` to synthesize:
-  1. **Team Requirements:** Required functional roles (e.g., Fullstack Lead, Product Designer, Growth Marketer), estimated headcount, monthly cost ranges (min/max), and duration in months.
-  2. **Essential SaaS & Tooling Stack:** Curated software infrastructure (Cloud Hosting, AI API credits, Analytics, CRM, Legal/Accounting) with itemized monthly costs.
-  3. **Launch Budget Modeling:** Computes dynamic minimum and maximum launch capital requirements (`TotalMinBudget` / `TotalMaxBudget`) based on duration and burn rate.
+### 6.4 Stage 4.4 — Skills & Training Plan (`SkillsPlanView.tsx`)
+- **Route:** `/dashboard/creator/phase-4/skills`
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/skills-plan`, `POST /api/creator/phase4/skills-plan/generate`, `POST /api/creator/phase4/skills-plan/refresh`, `PATCH /api/creator/phase4/skills-plan/{resolutionKey}`).
+- **Services:** `SkillsResolutionService`, `CapabilityResolutionPolicy`.
+- **Resolution Modes:**
+  - `Advanced` / `Comfortable` → normally covered.
+  - `Comfortable` + critical/blocking requirement without verified track record → `NeedsReview`.
+  - `Beginner` → never auto-covered (routes to `LEARN` or `DELEGATE`).
+  - `null` / unassessed → `NeedsReview`.
+- **Mandatory Legal Verification:** Regulated/statutory requirements enforce `VERIFY`. Learning alone cannot bypass legal compliance.
 
-### 6.3 Step 4.3 — Web & Go-To-Market Setup (`Phase4Gtm.tsx`)
-- **Route / Surface:** `/dashboard/creator/offer-pricing` (Step 2)
-- **Backing Controller & Endpoint:** `CreatorPhase4Controller.SaveGtmSetup` (`POST /api/creator/gtm`).
-- **Data Model:** Stored in `CreatorIdeas.Phase4Data.GtmSetup` (`TargetLaunchDate`, `PrimaryChannels[]`, `Week1FoundationsDone`, `TwelveWeekRoadmap[]`).
-- **Core Functionality:**
-  - **GTM Channel Mix:** Channel allocation (Organic Search/SEO, Paid Acquisition, Direct Sales, Developer Community, Content Marketing) with budget weighting and conversion goals.
-  - **12-Week Launch Roadmap:** Milestone-sequenced roadmap covering Weeks 1–12, featuring an automated Week 1 foundations checklist.
-  - **Landing Page Generator:** Links directly to the AI landing page asset studio to seed high-converting web presence using confirmed Phase 2 Brand Kit tokens and Phase 3 Value Propositions.
+### 6.5 Stage 4.5 — Aids, Grants & Public Support (`SupportPlanView.tsx`)
+- **Route:** `/dashboard/creator/phase-4/support`
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/support`, `POST /api/creator/phase4/support/generate`, `POST /api/creator/phase4/support/refresh`, `PATCH /api/creator/phase4/support/{supportKey}`).
+- **Services:** `SupportPlanService`, `SupportCatalogueService`, `SupportEligibilityEngine`, `SupportMatchingService`.
+- **Selection Modes:** `Entitlement`, `Discretionary`, `Competitive`, `CreditAssessment`, `NeedsReview`.
+- **Eligibility Statuses:** `EligibleToApply`, `Awarded`.
+- **Critical Invariant:** `EligibleToApply` ≠ spendable launch cash. Potential or unawarded grants are strictly excluded from spendable launch budgets.
 
-### 6.4 Step 4.4 — Offer Setup Complete (`Phase4Complete.tsx`)
-- **Route / Surface:** `/dashboard/creator/offer-pricing` (Step 3)
-- **Backing Controller & Endpoint:** `CreatorPhase4Controller.CompleteOfferSetup` (`POST /api/creator/offer-setup/complete`).
-- **Behavior:**
-  - Summarizes the finalized commercial architecture: Selected Pricing Model & Tiers, Total Launch Budget Range, Key Team Roles, and Target Launch Timeline.
-  - Formally advances the creator journey status (`Phase4.CurrentStep = 4`, `Phase4.Status = "complete"`).
-  - Unlocks navigation to **Phase 5: The Cross-Roads** (`/dashboard/creator/crossroads`).
+### 6.6 Stage 4.6 — Pricing & Revenue Model (`PricingStrategyView.tsx`)
+- **Route:** `/dashboard/creator/phase-4/pricing`
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/pricing`, `POST /api/creator/phase4/pricing/generate`, `POST /api/creator/phase4/pricing/refresh`, `PATCH /api/creator/phase4/pricing/{offerKey}`).
+- **Services:** `PricingStrategyService`, `PricingPolicyEngine`.
+- **13 Supported Models:** OneTime, Subscription, UsageBased, TransactionFee, Commission, Retainer, ProjectBased, Freemium, Tiered, MarketplaceFee, Licensing, Hybrid, Other.
+- **Floor Formulas:**
+  - Percentage contribution margin: $P_{min} = \frac{VC}{1 - m}$
+  - Absolute contribution: $P_{min} = VC + A$
+- **Tax Semantics:** Explicit `ConfiguredTaxMode` (`HT`, `TTC`, `Exempt`, `Unknown`). Zero crude B2B/B2C automatic tax inferences.
+- **Four-Price Independence:** `RecommendedPrice`, `FounderSelectedPrice`, `MarketReferencePrice`, and `ValidatedMarketPrice` are tracked independently. `ValidatedMarketPrice` strictly requires empirical evidence (paid pilot, preorder, historical sale).
 
-### 6.5 Cross-Module Data Flow
-- **Business Plan §6 (`goToMarket`):** The `auto_built_43` badge on Business Plan Section 6 lights up upon completing Step 4.3 (GTM Setup).
-- **Resource Gaps to Marketplace:** Team roles identified in Step 4.2 provide deep links to `/marketplace?category=services` for contractor acquisition.
+### 6.7 Stage 4.7 — GTM & Launch Strategy (`GtmStrategyView.tsx`)
+- **Route:** `/dashboard/creator/phase-4/gtm`
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/gtm`, `POST /api/creator/phase4/gtm/generate`, `POST /api/creator/phase4/gtm/refresh`, `PATCH /api/creator/phase4/gtm/channels/{channelKey}`, `POST /api/creator/phase4/gtm/experiments/{experimentKey}/runs`).
+- **Services:** `GtmStrategyService`, `GtmPolicyEngine`.
+- **Multi-Signal Sales Motion:** Considers price, founder capacity, sales cycle, and buyer persona.
+- **Budget Provenance:** Distinguishes `ForecastCacAssumption`, `ObservedCac`, and `ValidatedCac`. If pricing is `NeedsValidation`, GTM enforces validation-first testing before paid scaling.
+- **Immutable Experiment Evidence:** Completed validation runs and evidence are never deleted during refreshes.
 
-### 6.6 Typography & Token Compliance
+### 6.8 Stage 4.8 — Launch Assets (Next Approved Stage)
+- **Approved Direction:** **One-Page Professional Launch Website** (responsive, branded, component-based, section families: Hero, Problem, Solution, Features, How It Works, Offer/Pricing, Social Proof, FAQ, Final CTA).
+- **Storage Decision:** Active configuration in `CreatorJourney.Phase4Data.LaunchAssets`. Historical generated revisions stored in dedicated `LaunchAssetVersions` to avoid unbounded MongoDB documents.
+- **Current Status:** **APPROVED ARCHITECTURE / NOT PART OF CURRENT COMMIT**.
+
+### 6.9 Stage 4.9 — Construction Readiness
+- Final deterministic assessment synthesizing all 8 stages into launch certification.
+- **Current Status:** **RESERVED FOR FUTURE APPROVED TASK**.
+
+### 6.10 Typography & Token Compliance
 All Phase 4 screens strictly adhere to the project design canon:
 - **Headings:** Inter (`font-heading font-semibold text-foreground`).
 - **Body & Paragraphs:** DM Sans (`font-sans text-muted-foreground / text-foreground`).
@@ -996,6 +1055,14 @@ RC1 Freeze
 - **Mono-on-Prose Leakage Resolution:** Removed `font-mono` on natural language paragraphs (Audience, Positioning, Concept summaries, and loading messages) in `BrandKitHubView.tsx` and `VariationSetModal.tsx`, restoring `font-sans text-body`. `font-mono` is strictly restricted to HEX/RGB values, character counts, file sizes, step numbers, and telemetry.
 - **Viewport Scroll Measurement Audit:** Measured all 7 Brand Studio modals at 1440×900 and 1920×1080 across Light and Dark themes. Verified that all internal containers maintain clean overflow scrolling with sticky header/footer action strips.
 - **Build Breakage Audit & Reconciliation:** Resolved pre-existing TypeScript and JSX compilation breaks in `PlanForecastPrintView.tsx`, `asset-library/page.tsx`, `investors/page.tsx`, `api-creator-journey.ts`, `myideas/page.tsx`, `phase-3/forecast/page.tsx`, and `complete/page.tsx`. Next.js build clean with 181/181 routes prerendered.
+
+**2026-09-22 — Creator HumainX Dual-Gate Architecture, Premature Redirect Elimination & Canonical Sync.**
+- **Critical HumainX Dual-Gate Architecture (§2):** Fixed regression where profile data completeness allowed skipping Quick Start steps and prematurely unlocking the Creator Dashboard. Decoupled durable profile data completeness (`isQuickStartComplete(profile)`) from browser-local wizard journey completion (`isQuickStartJourneyComplete(userId)`). Dashboard access now strictly enforces `DashboardAllowed = ProfileDataComplete && JourneyCompleted`.
+- **Three Wizard Screens Enforced:** Step 1 (Situation), Step 2 (Skills, min 1, valid levels, zero synthetic fallbacks, removed fake `"General Business / Comfortable"` bypass), and Step 3 (How You Build, 4 round-trip distinguishable progress options). Pre-populated profile data cannot skip screens; only explicit `"Start my project"` final CTA on Step 3 completes Quick Start.
+- **Frontend Journey State Model:** Introduced `HumainXJourneyState { step1Confirmed, step2Confirmed, step3Confirmed, completed }` scoped per user ID in browser `localStorage`. Formally documented as a `CURRENT FRONTEND-ONLY UX PERSISTENCE LIMITATION`.
+- **Debounced Autosave Scope:** 400ms debounced autosave restricted to profile data only; autosave is strictly prohibited from altering journey confirmation milestones.
+- **Phase 4 Canonical Alignment & Architecture Freeze:** Documented Phase 4.1–4.7 as LIVE & FROZEN, Stage 4.8 Launch Assets as NEXT APPROVED STAGE (One-Page Launch Website), and Stage 4.9 Construction Readiness as RESERVED. Reconciled retired legacy Phase 4 routes (`/offer-pricing`), controllers (`CreatorPhase4Controller`), and UI across all system architecture docs and diagrams.
+- **Test Suite Verification:** HumainX Quick Start dedicated suite: 53/53 tests passing. Full Creator frontend suite: 124/124 tests passing. Routing suite: 31/31 passing. Backend targeted Phase 4/HumainX suite: 213/213 passing. TypeScript: 0 errors. Production build: Exit 0.
 
 ---
 

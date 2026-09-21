@@ -320,43 +320,6 @@ export const creatorJourneyApi = {
     return unwrap<{ investorReadinessScore: InvestorReadinessScore }>(res.data);
   },
 
-  // ---- Phase 4 (deterministic) ----
-
-  marketBenchmark: async (sector?: string): Promise<MarketBenchmark> => {
-    const res = await api.get('/creator/offer/benchmark', {
-      params: sector?.trim() ? { sector: sector.trim() } : undefined,
-    });
-    return unwrap<MarketBenchmark>(res.data);
-  },
-
-  pricingInsights: async (ideaId?: string | null): Promise<PricingInsights> => {
-    const res = await api.get('/creator/offer/pricing-insights', withIdeaRead(ideaId));
-    return unwrap<PricingInsights>(res.data);
-  },
-
-  setPricing: async (pricingModel: string, tiers: PricingTier[], ideaId?: string | null): Promise<{ phase4: unknown; forecastPricingOutdated: boolean; forecastArpu?: number | null }> => {
-    const res = await api.post('/creator/offer/pricing', { pricingModel, tiers }, withIdeaWrite(ideaId));
-    rememberIdeaVersion(res, ideaId);
-    return unwrap<{ phase4: unknown; forecastPricingOutdated: boolean; forecastArpu?: number | null }>(res.data);
-  },
-
-  resourceCalculator: async (teamRequirements: TeamRequirement[], saasStack: SaasItem[], ideaId?: string | null): Promise<ResourceCalculation> => {
-    const res = await api.post('/creator/offer/resource-calculator', { teamRequirements, saasStack }, withIdeaWrite(ideaId));
-    rememberIdeaVersion(res, ideaId);
-    return unwrap<ResourceCalculation>(res.data);
-  },
-
-  gtmSetup: async (payload: { webPresence: WebPresenceItem[]; targetAudiences: string[]; channelMix: ChannelMix[] }, ideaId?: string | null): Promise<GtmSetup> => {
-    const res = await api.post('/creator/offer/gtm-setup', payload, withIdeaWrite(ideaId));
-    rememberIdeaVersion(res, ideaId);
-    return unwrap<GtmSetup>(res.data);
-  },
-
-  completeOffer: async (ideaId?: string | null): Promise<void> => {
-    const res = await api.patch('/creator/offer/complete', {}, withIdeaWrite(ideaId));
-    rememberIdeaVersion(res, ideaId);
-  },
-
   // ---- Phase 5 (Crossroads) ----
 
   ipValuation: async (ideaId?: string | null): Promise<IpValuation> => {
@@ -533,12 +496,6 @@ export interface IpValuation {
 export interface OwnershipEntry { holder: string; percent: number; isFounder: boolean; isEsop: boolean; }
 export interface UseOfFunds { category: string; percent: number; }
 
-export interface PricingTier { id?: string; name: string; price: number; billingCycle?: string; features: string[]; isHighlighted: boolean; }
-export interface PricingForecastContext {
-  sessionId: string;
-  arpu: number;
-  updatedAt: string;
-}
 export interface CreatorReadinessRequirement {
   id?: string;
   key: string;
@@ -566,61 +523,7 @@ export interface CreatorReadiness {
   missingRequired: string[];
   nextBestAction?: CreatorReadinessRequirement | null;
 }
-export interface PricingInsights {
-  selectedEntryPrice?: number | null;
-  forecastContext?: PricingForecastContext | null;
-  recommendation?: { suggestedEntryPrice: number; source: 'forecast_assumption'; message: string } | null;
-  competitorPricing: { available: false; message: string };
-  marketBenchmark: { available: false; message: string };
-}
-export interface TeamRequirement { role: string; cost: number; durationMonths: number; oneTime: boolean; }
-export interface SaasItem { name: string; monthlyCost: number; }
-export interface ResourceCalculation {
-  totalLaunchBudgetMin: number; totalLaunchBudgetMax: number; monthlyRunningCost: number;
-  timeToLaunchWeeksMin: number; timeToLaunchWeeksMax: number;
-  budgetBreakdown: { teamPct: number; toolsPct: number; legalPct: number; miscPct: number };
-}
-export interface WebPresenceItem { id: string; label: string; done: boolean; }
-export interface ChannelMix { channel: string; percent: number; }
-export interface GtmWeek { week: number; title: string; tasks: string[]; completed: boolean; }
-export interface GtmSetup {
-  webPresence: WebPresenceItem[];
-  targetAudiences: string[];
-  channelMix: ChannelMix[];
-  benchmarkGtmWeeks: GtmWeek[];
-}
 
-export interface MarketBenchmark {
-  requestedSector: string;
-  resolvedBenchmarkSector: string;
-  matchType: 'sector' | 'general';
-  displayLabel: string;
-  region: string;
-  currency: string;
-  resourceDefaults: {
-    developerCostPerMonth: number;
-    developerDurationMonths: number;
-    hostingCostPerMonth: number;
-    legalCost: number;
-    miscPercentage: number;
-    launchDurationWeeksMin: number;
-    launchDurationWeeksMax: number;
-    launchVarianceMinPercentage: number;
-    launchVarianceMaxPercentage: number;
-  };
-  gtmDefaults: {
-    channelSplit: ChannelMix[];
-    benchmarkGtmWeeks: GtmWeek[];
-  };
-  source: {
-    label: string;
-    url?: string | null;
-    provenance: string;
-  };
-  effectiveDate: string;
-  version: number;
-  lastUpdatedAt: string;
-}
 
 export interface ReadinessDeduction {
   dimension: string;

@@ -402,6 +402,34 @@ builder.Services.AddSingleton<ICapabilityMatcher, CapabilityMatcher>();
 builder.Services.AddScoped<IConstructionSnapshotService, ConstructionSnapshotService>();
 builder.Services.AddSingleton<IRoadmapScheduler, RoadmapScheduler>();
 builder.Services.AddScoped<IOperationalRoadmapService, OperationalRoadmapService>();
+builder.Services.AddScoped<INeedsAnalysisService, NeedsAnalysisService>();
+builder.Services.AddScoped<ICapabilityResolutionPolicy, CapabilityResolutionPolicy>();
+builder.Services.AddScoped<ISkillsResolutionService, SkillsResolutionService>();
+
+// Phase 4.5 — Aids, Grants & Support Engine
+builder.Services.AddSingleton<ISupportSourceAdapter, WebApp.Services.Implementations.SupportAdapters.AidesEntreprisesOpenDataAdapter>();
+builder.Services.AddSingleton<ISupportSourceAdapter, WebApp.Services.Implementations.SupportAdapters.ServicePublicAdapter>();
+builder.Services.AddSingleton<ISupportSourceAdapter, WebApp.Services.Implementations.SupportAdapters.BpifranceAdapter>();
+builder.Services.AddSingleton<ISupportSourceAdapter, WebApp.Services.Implementations.SupportAdapters.FranceTravailAdapter>();
+builder.Services.AddSingleton<ISupportSourceAdapter, WebApp.Services.Implementations.SupportAdapters.IleDeFranceSupportAdapter>();
+builder.Services.AddSingleton<ISupportSourceAdapter, WebApp.Services.Implementations.SupportAdapters.HautsDeFranceSupportAdapter>();
+builder.Services.AddSingleton<ISupportSourceAdapter, WebApp.Services.Implementations.SupportAdapters.EuropeanSupportAdapter>();
+builder.Services.AddSingleton<IRegionalSupportAdapter, WebApp.Services.Implementations.SupportAdapters.IleDeFranceSupportAdapter>();
+builder.Services.AddSingleton<IRegionalSupportAdapter, WebApp.Services.Implementations.SupportAdapters.HautsDeFranceSupportAdapter>();
+
+builder.Services.AddScoped<ISupportCatalogueService, SupportCatalogueService>();
+builder.Services.AddScoped<ISupportEligibilityEngine, SupportEligibilityEngine>();
+builder.Services.AddScoped<ISupportMatchingService, SupportMatchingService>();
+builder.Services.AddScoped<ISupportPlanService, SupportPlanService>();
+
+// Phase 4.6 — Pricing & Revenue Model Engine
+builder.Services.AddScoped<IPricingPolicyEngine, PricingPolicyEngine>();
+builder.Services.AddScoped<IPricingStrategyService, PricingStrategyService>();
+
+// Phase 4.7 — GTM & Launch Strategy Engine
+builder.Services.AddSingleton<IFounderCapacityResolver, FounderCapacityResolver>();
+builder.Services.AddScoped<IGtmPolicyEngine, GtmPolicyEngine>();
+builder.Services.AddScoped<IGtmStrategyService, GtmStrategyService>();
 
 // Service Provider data split (approved SP-only migration): three root
 // collections behind thin stores, a dual-read aggregate reader, and the

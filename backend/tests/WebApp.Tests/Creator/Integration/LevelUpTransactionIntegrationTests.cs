@@ -145,13 +145,7 @@ public class LevelUpTransactionIntegrationTests : IClassFixture<ReplicaSetAppFix
             BusinessPlanSessionId = planId, ForecastSessionId = forecastId,
             FormationGenerator = new CreatorFormationGenerator { SelectedType = "SAS" },
         };
-        idea.Phase4Data = new CreatorPhase4Data
-        {
-            PricingModel = "subscription",
-            Tiers = new() { new CreatorPricingTier { Name = "Starter" }, new CreatorPricingTier { Name = "Growth" }, new CreatorPricingTier { Name = "Scale" } },
-            ResourceCalculation = new CreatorResourceCalculation { MonthlyRunningCost = 2_000 },
-            GtmSetup = new CreatorGtmSetup(),
-        };
+        idea.Phase4Data = new CreatorPhase4Data();
         idea.Phase5Data = new CreatorPhase5Data
         {
             ChosenPath = "build",

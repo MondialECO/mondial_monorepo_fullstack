@@ -6,7 +6,7 @@ graph TD
         UI_PLAN["Business Plan Studio (/phase-3/business-plan)"]
         UI_FCST["Financial Forecast Studio (/phase-3/forecast)"]
         UI_NAME["Concept Name Generator (/phase-2/concept-name)"]
-        UI_VAL["IP Valuation Calculator (/offer-pricing)"]
+        UI_VAL["Pricing & Revenue Studio (/dashboard/creator/phase-4/pricing)"]
     end
 
     subgraph API_INGRESS["API Controllers & Security"]
@@ -14,7 +14,7 @@ graph TD
         CTRL_PLAN["BusinessPlanController (/api/ai/business-plan)"]
         CTRL_FCST["ForecastController (/api/ai/forecast)"]
         CTRL_GEN["IdeaGeneratorController (/api/ai/idea-generator)"]
-        CTRL_VAL["CreatorPhase4Controller (/api/creator/phase-4)"]
+        CTRL_VAL["CreatorPhase4ConstructionController (/api/creator/phase-4)"]
         
         OWNER_GUARD["Ownership & Multi-Idea Anchor Check<br/>(CurrentUserId == Idea.CreatorId)"]
         RATE_LIMIT_AI["RateLimiter Policy 'ai'<br/>(Max 20 req/min per User)"]

@@ -390,7 +390,7 @@ export default function CreatorAssetLibraryPage() {
       isDownloadableV1: false,
       isReady: isPhase4Ready,
       lastUpdatedText: formatDate(journey?.updatedAt),
-      stepUrl: withIdeaContext('/dashboard/creator/offer-pricing', currentIdeaId),
+      stepUrl: withIdeaContext('/dashboard/creator/phase-4', currentIdeaId),
       nonDownloadableNote: 'Offer architecture confirmed · Standalone PDF export is not yet supported for this format.',
     },
   ];

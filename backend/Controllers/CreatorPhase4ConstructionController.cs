@@ -19,13 +19,28 @@ namespace WebApp.Controllers
     {
         private readonly IConstructionSnapshotService _snapshotService;
         private readonly IOperationalRoadmapService _roadmapService;
+        private readonly INeedsAnalysisService _needsService;
+        private readonly ISkillsResolutionService _skillsService;
+        private readonly ISupportPlanService _supportService;
+        private readonly IPricingStrategyService _pricingService;
+        private readonly IGtmStrategyService _gtmService;
 
         public CreatorPhase4ConstructionController(
             IConstructionSnapshotService snapshotService,
-            IOperationalRoadmapService roadmapService)
+            IOperationalRoadmapService roadmapService,
+            INeedsAnalysisService needsService,
+            ISkillsResolutionService skillsService,
+            ISupportPlanService supportService,
+            IPricingStrategyService pricingService,
+            IGtmStrategyService gtmService)
         {
             _snapshotService = snapshotService;
             _roadmapService = roadmapService;
+            _needsService = needsService;
+            _skillsService = skillsService;
+            _supportService = supportService;
+            _pricingService = pricingService;
+            _gtmService = gtmService;
         }
 
         private string GetUserId() =>
@@ -187,6 +202,626 @@ namespace WebApp.Controllers
                 var userId = GetUserId();
                 var result = await _roadmapService.UpdateTaskStateAsync(userId, request);
                 return Ok(ApiResponse.Ok("Roadmap task updated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(404, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // ---------------- STEP 4.3 NEEDS & REQUIREMENTS ----------------
+
+        // GET /api/creator/phase4/needs?ideaId={ideaId}
+        [HttpGet("needs")]
+        public async Task<IActionResult> GetNeeds([FromQuery] string? ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _needsService.GetNeedsAnalysisAsync(userId, ideaId);
+                return Ok(ApiResponse.Ok("Needs analysis retrieved", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/needs/generate
+        [HttpPost("needs/generate")]
+        public async Task<IActionResult> GenerateNeeds([FromBody] GenerateSnapshotRequest? request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _needsService.GenerateNeedsAnalysisAsync(userId, request?.IdeaId);
+                return Ok(ApiResponse.Ok("Needs analysis generated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/needs/refresh
+        [HttpPost("needs/refresh")]
+        public async Task<IActionResult> RefreshNeeds([FromBody] GenerateSnapshotRequest? request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _needsService.RefreshNeedsAnalysisAsync(userId, request?.IdeaId);
+                return Ok(ApiResponse.Ok("Needs analysis refreshed", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // PATCH /api/creator/phase4/needs/{needKey}?ideaId={ideaId}
+        [HttpPatch("needs/{needKey}")]
+        public async Task<IActionResult> UpdateNeedState([FromRoute] string needKey, [FromQuery] string? ideaId, [FromBody] Models.DatabaseModels.Phase4.UpdateNeedStateRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.UpdateNeedStateRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                var result = await _needsService.UpdateNeedStateAsync(userId, needKey, request);
+                return Ok(ApiResponse.Ok("Need state updated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(404, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // GET /api/creator/phase4/skills-plan?ideaId={ideaId}
+        [HttpGet("skills-plan")]
+        public async Task<IActionResult> GetSkillsPlan([FromQuery] string? ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _skillsService.GetSkillsPlanAsync(userId, ideaId);
+                return Ok(ApiResponse.Ok("Skills plan retrieved", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/skills-plan/generate
+        [HttpPost("skills-plan/generate")]
+        public async Task<IActionResult> GenerateSkillsPlan([FromBody] GenerateSnapshotRequest? request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _skillsService.GenerateSkillsPlanAsync(userId, request?.IdeaId);
+                return Ok(ApiResponse.Ok("Skills plan generated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/skills-plan/refresh
+        [HttpPost("skills-plan/refresh")]
+        public async Task<IActionResult> RefreshSkillsPlan([FromBody] GenerateSnapshotRequest? request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _skillsService.RefreshSkillsPlanAsync(userId, request?.IdeaId);
+                return Ok(ApiResponse.Ok("Skills plan refreshed", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // PATCH /api/creator/phase4/skills-plan/{resolutionKey}?ideaId={ideaId}
+        [HttpPatch("skills-plan/{resolutionKey}")]
+        public async Task<IActionResult> UpdateResolution(
+            [FromRoute] string resolutionKey,
+            [FromQuery] string? ideaId,
+            [FromBody] Models.DatabaseModels.Phase4.UpdateResolutionRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.UpdateResolutionRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                var result = await _skillsService.UpdateResolutionAsync(userId, resolutionKey, request);
+                return Ok(ApiResponse.Ok("Resolution updated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(404, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // =========================================================================
+        // PHASE 4.5 — AIDS, GRANTS & SUPPORT ENGINE
+        // =========================================================================
+
+        // GET /api/creator/phase4/support?ideaId={ideaId}
+        [HttpGet("support")]
+        public async Task<IActionResult> GetSupportPlan([FromQuery] string? ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _supportService.GetSupportPlanAsync(userId, ideaId);
+                return Ok(ApiResponse.Ok("Support plan retrieved", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/support/generate
+        [HttpPost("support/generate")]
+        public async Task<IActionResult> GenerateSupportPlan([FromBody] GenerateSnapshotRequest? request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _supportService.GenerateSupportPlanAsync(userId, request?.IdeaId);
+                return Ok(ApiResponse.Ok("Support plan generated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/support/refresh
+        [HttpPost("support/refresh")]
+        public async Task<IActionResult> RefreshSupportPlan([FromBody] GenerateSnapshotRequest? request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _supportService.RefreshSupportPlanAsync(userId, request?.IdeaId);
+                return Ok(ApiResponse.Ok("Support plan refreshed", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // PATCH /api/creator/phase4/support/{matchKey}?ideaId={ideaId}
+        [HttpPatch("support/{matchKey}")]
+        public async Task<IActionResult> UpdateFounderSupportState(
+            [FromRoute] string matchKey,
+            [FromQuery] string? ideaId,
+            [FromBody] Models.DatabaseModels.Phase4.UpdateFounderSupportStateRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.UpdateFounderSupportStateRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                var result = await _supportService.UpdateFounderSupportStateAsync(userId, matchKey, request);
+                return Ok(ApiResponse.Ok("Support application state updated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(404, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // PATCH /api/creator/phase4/support/context/{factKey}?ideaId={ideaId}
+        [HttpPatch("support/context/{factKey}")]
+        public async Task<IActionResult> AnswerEligibilityFact(
+            [FromRoute] string factKey,
+            [FromQuery] string? ideaId,
+            [FromBody] Models.DatabaseModels.Phase4.AnswerEligibilityFactRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.AnswerEligibilityFactRequest();
+                var effectiveIdeaId = !string.IsNullOrWhiteSpace(ideaId) ? ideaId : request.IdeaId;
+                var result = await _supportService.AnswerEligibilityFactAsync(userId, factKey, request.Value, effectiveIdeaId);
+                return Ok(ApiResponse.Ok("Eligibility context fact updated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(404, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // =====================================================================
+        // STEP 4.6 · PRICING & REVENUE MODEL ENDPOINTS
+        // =====================================================================
+
+        // GET /api/creator/phase4/pricing?ideaId={ideaId}
+        [HttpGet("pricing")]
+        public async Task<IActionResult> GetPricing([FromQuery] string? ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _pricingService.GetPricingStrategyAsync(userId, ideaId);
+                return Ok(ApiResponse.Ok("Pricing strategy retrieved", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/pricing/generate
+        [HttpPost("pricing/generate")]
+        public async Task<IActionResult> GeneratePricing([FromBody] Models.DatabaseModels.Phase4.GeneratePricingRequest? request = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _pricingService.GeneratePricingStrategyAsync(userId, request?.IdeaId);
+                return Ok(ApiResponse.Ok("Pricing strategy generated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/pricing/refresh
+        [HttpPost("pricing/refresh")]
+        public async Task<IActionResult> RefreshPricing([FromBody] Models.DatabaseModels.Phase4.RefreshPricingRequest? request = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _pricingService.RefreshPricingStrategyAsync(userId, request?.IdeaId);
+                return Ok(ApiResponse.Ok("Pricing strategy refreshed", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // PATCH /api/creator/phase4/pricing/{offerKey}?ideaId={ideaId}
+        [HttpPatch("pricing/{offerKey}")]
+        public async Task<IActionResult> UpdatePricingOffer(
+            [FromRoute] string offerKey,
+            [FromQuery] string? ideaId,
+            [FromBody] Models.DatabaseModels.Phase4.UpdatePricingOfferRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.UpdatePricingOfferRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                var result = await _pricingService.UpdatePricingOfferAsync(userId, offerKey, request);
+                return Ok(ApiResponse.Ok("Pricing offer updated and economics recalculated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(404, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // =====================================================================
+        // STEP 4.7 · GTM & LAUNCH STRATEGY ENDPOINTS
+        // =====================================================================
+
+        // GET /api/creator/phase4/gtm?ideaId={ideaId}
+        [HttpGet("gtm")]
+        public async Task<IActionResult> GetGtm([FromQuery] string? ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _gtmService.GetGtmStrategyAsync(userId, ideaId);
+                return Ok(ApiResponse.Ok("GTM launch strategy retrieved", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/gtm/generate
+        [HttpPost("gtm/generate")]
+        public async Task<IActionResult> GenerateGtm([FromBody] Models.DatabaseModels.Phase4.GenerateGtmRequest? request = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _gtmService.GenerateGtmStrategyAsync(userId, request?.IdeaId);
+                return Ok(ApiResponse.Ok("GTM launch strategy generated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/gtm/refresh
+        [HttpPost("gtm/refresh")]
+        public async Task<IActionResult> RefreshGtm([FromBody] Models.DatabaseModels.Phase4.RefreshGtmRequest? request = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _gtmService.RefreshGtmStrategyAsync(userId, request?.IdeaId);
+                return Ok(ApiResponse.Ok("GTM launch strategy refreshed", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // PATCH /api/creator/phase4/gtm/{channelKey}?ideaId={ideaId}
+        [HttpPatch("gtm/{channelKey}")]
+        public async Task<IActionResult> UpdateGtmChannel(
+            [FromRoute] string channelKey,
+            [FromQuery] string? ideaId,
+            [FromBody] Models.DatabaseModels.Phase4.UpdateGtmChannelRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.UpdateGtmChannelRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                var result = await _gtmService.UpdateGtmChannelAsync(userId, channelKey, request);
+                return Ok(ApiResponse.Ok("GTM channel updated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(401, ApiResponse.Error(ex.Message));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(404, ApiResponse.Error(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // PATCH /api/creator/phase4/gtm/experiments/{experimentKey}?ideaId={ideaId}
+        [HttpPatch("gtm/experiments/{experimentKey}")]
+        public async Task<IActionResult> RecordExperimentRun(
+            [FromRoute] string experimentKey,
+            [FromQuery] string? ideaId,
+            [FromBody] Models.DatabaseModels.Phase4.RecordExperimentRunRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.RecordExperimentRunRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                var result = await _gtmService.RecordExperimentRunAsync(userId, experimentKey, request);
+                return Ok(ApiResponse.Ok("Experiment run recorded", result));
             }
             catch (UnauthorizedAccessException ex)
             {

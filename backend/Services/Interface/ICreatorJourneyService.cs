@@ -109,22 +109,20 @@ namespace WebApp.Services.Interface
         /// <summary>Store the computed investor-readiness score on phase3Data.</summary>
         Task<CreatorJourney> SetInvestorReadinessAsync(string userId, CreatorInvestorReadinessScore score, string ideaId = null);
 
-        // ---- Phase 4 (deterministic) — every version carries phase: 4 (R6) ----
-
-        /// <summary>Persist pricing model + tiers; append a phase-4 pricing version.</summary>
-        Task<CreatorJourney> SetPhase4PricingAsync(string userId, string pricingModel, List<CreatorPricingTier> tiers, CreatorPricingForecastContext? forecastContext = null, string ideaId = null);
-
-        /// <summary>Persist the resource calculation; append a phase-4 resource version.</summary>
-        Task<CreatorJourney> SetPhase4ResourceAsync(string userId, CreatorResourceCalculation calc, string ideaId = null);
-
-        /// <summary>Persist the GTM setup; append a phase-4 GTM version.</summary>
-        Task<CreatorJourney> SetPhase4GtmAsync(string userId, CreatorGtmSetup gtm, string ideaId = null);
+        // ---- Phase 4 (Construction Engine) ----
 
         /// <summary>Persist the Phase 4.1 construction snapshot + source references.</summary>
         Task<CreatorJourney> SetPhase4ConstructionSnapshotAsync(string userId, Models.DatabaseModels.Phase4.ConstructionSnapshot snapshot, Models.DatabaseModels.Phase4.Phase4SourceVersions sourceVersions, string ideaId = null);
 
         /// <summary>Persist the Phase 4.2 operational roadmap.</summary>
         Task<CreatorJourney> SetPhase4RoadmapAsync(string userId, Models.DatabaseModels.Phase4.OperationalRoadmap roadmap, string ideaId = null);
+
+        /// <summary>Persist the Phase 4.3 needs analysis (single source of truth on journey).</summary>
+        Task<CreatorJourney> SetPhase4NeedsAnalysisAsync(string userId, Models.DatabaseModels.Phase4.NeedsAnalysis needsAnalysis, string ideaId = null);
+        Task<CreatorJourney> SetPhase4SkillsPlanAsync(string userId, Models.DatabaseModels.Phase4.SkillsPlan skillsPlan, string ideaId = null);
+        Task<CreatorJourney> SetPhase4SupportPlanAsync(string userId, Models.DatabaseModels.Phase4.SupportPlan supportPlan, string ideaId = null);
+        Task<CreatorJourney> SetPhase4PricingStrategyAsync(string userId, Models.DatabaseModels.Phase4.PricingStrategy pricingStrategy, string ideaId = null);
+        Task<CreatorJourney> SetPhase4GtmStrategyAsync(string userId, Models.DatabaseModels.Phase4.GtmStrategy gtmStrategy, string ideaId = null);
 
         // ---- Phase 5 (deterministic) — every version carries phase: 5 ----
 

@@ -76,7 +76,7 @@ describe('Creator Canonical Navigation Menu — Final Product-Journey Reorganiza
     expect(isActive('/dashboard/creator/crossroads', '/dashboard/creator/crossroads')).toBe(true);
     expect(isActive('/dashboard/creator/partnerships', '/dashboard/creator/partnerships')).toBe(true);
     expect(isActive('/dashboard/creator/investors', '/dashboard/creator/investors')).toBe(true);
-    expect(isActive('/dashboard/creator/offer-pricing', '/dashboard/creator/offer-pricing')).toBe(true);
+    expect(isActive('/dashboard/creator/phase-4', '/dashboard/creator/phase-4')).toBe(true);
 
     // Child route matches (e.g. partnership deal detail)
     expect(isActive('/dashboard/creator/partnerships', '/dashboard/creator/partnerships/deal-123')).toBe(true);

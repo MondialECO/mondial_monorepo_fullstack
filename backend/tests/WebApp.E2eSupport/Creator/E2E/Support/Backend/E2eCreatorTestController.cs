@@ -157,13 +157,7 @@ public sealed class E2eCreatorTestController : ControllerBase
 
         idea.Project = new CreatorJourneyProject { Name = "E2E Build Project", Problem = "A verified problem", TargetUser = "A verified user", Solution = "A verified solution", ClarityScore = 80, Branding = new CreatorBranding { BrandingMethod = "designer" } };
         idea.Phase3Data = new CreatorPhase3Data { BusinessPlanSessionId = planId, ForecastSessionId = forecastId, FormationGenerator = new CreatorFormationGenerator { SelectedType = "SAS" } };
-        idea.Phase4Data = new CreatorPhase4Data
-        {
-            PricingModel = "subscription",
-            Tiers = new() { new CreatorPricingTier { Name = "Starter" }, new CreatorPricingTier { Name = "Growth" }, new CreatorPricingTier { Name = "Scale" } },
-            ResourceCalculation = new CreatorResourceCalculation { TotalLaunchBudgetMin = 10000, TotalLaunchBudgetMax = 20000, MonthlyRunningCost = 2000 },
-            GtmSetup = new CreatorGtmSetup(),
-        };
+        idea.Phase4Data = new CreatorPhase4Data();
         if (fixture != "CreatorBuildReadyForCrossroads") idea.Phase5Data.ChosenPath = "build";
         if (fixture == "CreatorBuildEligible")
         {

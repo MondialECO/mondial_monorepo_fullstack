@@ -282,15 +282,13 @@ export function OperationalRoadmapView({
           </p>
         </div>
 
-        <button
-          disabled
-          className="px-6 py-3 bg-slate-800 text-slate-400 font-medium rounded-xl cursor-not-allowed border border-slate-700/50 flex items-center gap-2 shrink-0"
+        <Link
+          href={`/dashboard/creator/phase-4/needs?ideaId=${encodeURIComponent(ideaId)}`}
+          className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition-all shadow-lg shadow-indigo-950/40 hover:scale-[1.02] flex items-center gap-2 shrink-0"
         >
           <span>Review My Needs</span>
-          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-semibold">
-            Coming Next
-          </span>
-        </button>
+          <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
     </div>
   );

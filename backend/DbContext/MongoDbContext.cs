@@ -25,6 +25,7 @@ namespace WebApp.DbContext
             EnsureApplicationUserIndexes();
             EnsureReportsAndAuditIndexes();
             EnsureUniversalIdentityVerificationIndexes();
+            EnsureSupportCatalogueIndexes();
         }
 
         public MongoDbContext(IMongoDatabase database)
@@ -43,6 +44,7 @@ namespace WebApp.DbContext
             EnsureApplicationUserIndexes();
             EnsureReportsAndAuditIndexes();
             EnsureUniversalIdentityVerificationIndexes();
+            EnsureSupportCatalogueIndexes();
         }
 
         // Smart Matchmaking outbox indexes: Status (consumer polling), CompanyId
@@ -294,6 +296,52 @@ namespace WebApp.DbContext
                 // Best-effort; never block or fail context construction.
             }
         }
+
+        private void EnsureSupportCatalogueIndexes()
+        {
+            try
+            {
+                SupportOpportunities.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Models.DatabaseModels.Phase4.SupportOpportunity>(
+                        Builders<Models.DatabaseModels.Phase4.SupportOpportunity>.IndexKeys.Ascending(x => x.Jurisdiction),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Models.DatabaseModels.Phase4.SupportOpportunity>(
+                        Builders<Models.DatabaseModels.Phase4.SupportOpportunity>.IndexKeys.Ascending(x => x.SourceId),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Models.DatabaseModels.Phase4.SupportOpportunity>(
+                        Builders<Models.DatabaseModels.Phase4.SupportOpportunity>.IndexKeys.Ascending(x => x.Status),
+                        new CreateIndexOptions { Background = true }),
+                    new CreateIndexModel<Models.DatabaseModels.Phase4.SupportOpportunity>(
+                        Builders<Models.DatabaseModels.Phase4.SupportOpportunity>.IndexKeys.Ascending(x => x.SupportType),
+                        new CreateIndexOptions { Background = true }),
+                });
+
+                SupportSourceRegistry.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Models.DatabaseModels.Phase4.SupportSourceRegistryRecord>(
+                        Builders<Models.DatabaseModels.Phase4.SupportSourceRegistryRecord>.IndexKeys.Ascending(x => x.SourceId),
+                        new CreateIndexOptions { Unique = true, Background = true }),
+                });
+
+                SupportSourceSnapshots.Indexes.CreateMany(new[]
+                {
+                    new CreateIndexModel<Models.DatabaseModels.Phase4.SupportSourceSnapshot>(
+                        Builders<Models.DatabaseModels.Phase4.SupportSourceSnapshot>.IndexKeys.Ascending(x => x.SourceId).Ascending(x => x.OpportunityExternalId),
+                        new CreateIndexOptions { Background = true }),
+                });
+            }
+            catch
+            {
+                // Best-effort; never block or fail context construction.
+            }
+        }
+
+        // Phase 4.5 Support Catalogue & Provenance
+        public virtual IMongoCollection<Models.DatabaseModels.Phase4.SupportOpportunity> SupportOpportunities => _database.GetCollection<Models.DatabaseModels.Phase4.SupportOpportunity>("SupportOpportunities");
+        public virtual IMongoCollection<Models.DatabaseModels.Phase4.SupportSourceRegistryRecord> SupportSourceRegistry => _database.GetCollection<Models.DatabaseModels.Phase4.SupportSourceRegistryRecord>("SupportSourceRegistry");
+        public virtual IMongoCollection<Models.DatabaseModels.Phase4.SupportRuleVersionRecord> SupportRuleVersions => _database.GetCollection<Models.DatabaseModels.Phase4.SupportRuleVersionRecord>("SupportRuleVersions");
+        public virtual IMongoCollection<Models.DatabaseModels.Phase4.SupportSourceSnapshot> SupportSourceSnapshots => _database.GetCollection<Models.DatabaseModels.Phase4.SupportSourceSnapshot>("SupportSourceSnapshots");
 
         public virtual IMongoCollection<UniversalIdentityVerification> UniversalIdentityVerifications => _database.GetCollection<UniversalIdentityVerification>("UniversalIdentityVerifications");
         public virtual IMongoCollection<IdentityWebhookDeliveryLog> IdentityWebhookDeliveryLogs => _database.GetCollection<IdentityWebhookDeliveryLog>("IdentityWebhookDeliveryLogs");

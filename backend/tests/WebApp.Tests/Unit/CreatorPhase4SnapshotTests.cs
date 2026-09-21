@@ -102,16 +102,7 @@ namespace WebApp.Tests.Unit
                         EvaluatedAt = DateTime.UtcNow.AddDays(-1)
                     }
                 },
-                Phase4Data = new CreatorPhase4Data
-                {
-                    PricingModel = "subscription",
-                    Tiers = new List<CreatorPricingTier>
-                    {
-                        new() { Id = "t1", Name = "Starter", Price = 29 },
-                        new() { Id = "t2", Name = "Growth", Price = 79 },
-                        new() { Id = "t3", Name = "Enterprise", Price = 199 }
-                    }
-                },
+                Phase4Data = new CreatorPhase4Data(),
                 UpdatedAt = DateTime.UtcNow.AddDays(-1)
             };
         }
