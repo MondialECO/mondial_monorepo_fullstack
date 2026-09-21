@@ -112,19 +112,19 @@ graph TD
     P4_START --> P4_VAULT
 
     P4_GTM --> P5_CROSS
-    P5_CROSS --> PATH_A
-    P5_CROSS --> PATH_B
-    P5_CROSS --> PATH_C
+    P5_CROSS --> OFFER_BUYOUT
+    P5_CROSS --> OFFER_EQUITY
+    P5_CROSS --> BUILD_VENTURE
 
-    PATH_A --> P6_MKT
-    PATH_B --> P6_MKT
+    OFFER_BUYOUT --> P6_MKT
+    OFFER_EQUITY --> P6_MKT
     P6_MKT --> P6_SALES
     P6_MKT --> P6_PART
 
     P6_SALES --> DB_DEALS
     P6_PART --> DB_DEALS
 
-    PATH_C --> P6_SPINOUT
+    BUILD_VENTURE --> P6_SPINOUT
     P6_PART -->|Partnership Activated| P6_SPINOUT
     P6_SPINOUT --> DB_COMPANY
 
