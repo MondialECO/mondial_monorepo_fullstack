@@ -65,7 +65,7 @@ The [system-architecture/](system-architecture/) directory contains the complete
 
 The [product/](product/) directory contains the functional specifications and domain rules:
 
-- **[Creator Flow Canon](product/creator-flow-canon.md):** Definitive guide to Creator Phases P1–P6, multi-idea architecture, AI Clarifier/Discovery, business plan generation, Marketplace listings (Full Buyout and Co-Founder / Equity), and the Level Up transition to Entrepreneur.
+- **[Creator Flow Canon](product/creator-flow-canon.md):** Definitive guide to Creator Phases P1–P6, HumainX Quick Start gate, multi-idea architecture, AI Clarifier/Discovery, business plan generation, Phase 4 Construction Engine (4.1–4.7), Marketplace listings (Full Buyout and Co-Founder / Equity), and the Level Up transition to Entrepreneur. See also the master [Creator Current Canonical State](file:///d:/mondial.eco/9-12-2026/mondial_monorepo_fullstack/analysis/mbc/creator/CREATOR_CURRENT_CANONICAL_STATE.md).
 - **[Service Provider Flow Canon](product/service-provider-flow-canon.md):** Complete specification of the Service Provider flat dashboard (no sequential wizard), 4 provider tiers, flat 12% platform commission, and split profile data architecture (`ProfessionalProfiles`, `UserCredentials`, `ServiceProviderProfiles`).
 - **[Buyer Journey Reference](product/buyer-journey-reference.md):** Operational reference for buyers and investors discovering projects and transacting on the marketplace.
 - **[Target Product Blueprints](product/blueprints/):** Product roadmap specifications for future Enterprise v2.0 capabilities (non-normative for current AS-IS code).

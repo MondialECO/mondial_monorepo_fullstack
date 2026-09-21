@@ -50,6 +50,8 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/identity/retry`: Archive rejected attempt and initialize a fresh verification attempt.
   - `POST /api/identity/webhook/sumsub`: Canonical HMAC-SHA256 signed webhook receiver for Sumsub review results.
 - **`ProfileController`** (`/api/profile`):
+  - `GET /api/profile/me`: Retrieve current authenticated user's canonical `ProfessionalProfileRecord` (consumed by HumainX Quick Start and Creator profile).
+  - `PUT /api/profile/me`: Update canonical `ProfessionalProfileRecord` with skills, venture context, and experience data.
   - `GET /api/profile`: Retrieve universal profile including HumainX leveled skills and founder venture context.
   - `PATCH /api/profile/personalization`: Partially update founder profile personalization, skills, and venture context.
   - `POST /api/profile/editor-draft`: Save draft in `EditorDraft` without overwriting published profile state.
@@ -148,12 +150,8 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/creator/phase4/gtm/refresh`: Refresh GTM recommendations against upstream consumed source changes, preserving founder channel priorities and historical experiment runs.
   - `PATCH /api/creator/phase4/gtm/channels/{channelKey}`: Override channel priority (`Primary`, `Secondary`, `Later`, `NotRecommended`) and store founder strategic notes.
   - `POST /api/creator/phase4/gtm/experiments/{experimentKey}/runs`: Commit immutable historical evidence run with actual spend, effort, observations, and outcome.
-- **`CreatorPhase4Controller`** (`/api/creator`):
-  - `GET /api/creator/phase-4/offer-pricing`: Calculate recommended asset valuation using market benchmarks.
-  - `POST /api/creator/pricing`: Save Phase 4 tiered pricing model.
-  - `POST /api/creator/resources`: Save resource and SaaS stack calculation.
-  - `POST /api/creator/gtm`: Save Go-to-market setup and 12-week launch schedule.
-  - `POST /api/creator/offer-setup/complete`: Finalize commercial offer setup and unlock Phase 5.
+- **`Legacy Phase 4 Retirement`**:
+  - `CreatorPhase4Controller` (`/api/creator/phase-4/offer-pricing`, `/api/creator/pricing`, `/api/creator/resources`, `/api/creator/gtm`, `/api/creator/offer-setup/complete`) and `/dashboard/creator/offer-pricing` have been permanently retired. All Phase 4 capabilities are consolidated under `CreatorPhase4ConstructionController` above.
 - **`CreatorPhase5Controller`** (`/api/creator/phase-5`):
   - `POST /api/creator/phase-5/crossroads`: Submit decision path (`FULL_BUYOUT`, `EQUITY_PARTNERSHIP`, `BUILD_YOURSELF`).
 - **`CreatorPhase6Controller`** (`/api/creator/phase-6`):
