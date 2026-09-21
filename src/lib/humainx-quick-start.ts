@@ -371,6 +371,9 @@ export function saveQuickStartJourneyState(
       ...state,
     };
     localStorage.setItem(getQuickStartStorageKey(userId), JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('creator_humainx_journey_updated', { detail: updated }));
+    }
     return updated;
   } catch {
     return defaultState;
@@ -381,6 +384,7 @@ export function resetQuickStartJourneyState(userId: string): void {
   if (!userId || typeof window === 'undefined') return;
   try {
     localStorage.removeItem(getQuickStartStorageKey(userId));
+    window.dispatchEvent(new CustomEvent('creator_humainx_journey_updated', { detail: null }));
   } catch {
     // ignore storage exceptions
   }

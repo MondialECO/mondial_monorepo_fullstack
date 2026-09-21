@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
@@ -13,6 +13,7 @@ import {
   getQuickStartJourneyState,
   isQuickStartJourneyComplete,
   resolveTargetQuickStartStep,
+  getQuickStartStorageKey,
 } from '@/lib/humainx-quick-start';
 
 export interface CreatorHumainXQuickStartGuardProps {
@@ -41,6 +42,25 @@ export default function CreatorHumainXQuickStartGuard({
     staleTime: 30_000,
   });
 
+  // Track journey state changes via local storage / custom window events
+  const [journeyVersion, setJourneyVersion] = useState(0);
+
+  useEffect(() => {
+    const handleJourneyUpdate = () => {
+      setJourneyVersion((v) => v + 1);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('creator_humainx_journey_updated', handleJourneyUpdate);
+      window.addEventListener('storage', handleJourneyUpdate);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('creator_humainx_journey_updated', handleJourneyUpdate);
+        window.removeEventListener('storage', handleJourneyUpdate);
+      }
+    };
+  }, []);
+
   const isHumainXRoute = pathname.startsWith('/dashboard/creator/humainx');
   const isProfileComplete = profile ? isQuickStartComplete(profile) : false;
   const isJourneyComplete = user?.id ? isQuickStartJourneyComplete(user.id) : false;
@@ -57,14 +77,21 @@ export default function CreatorHumainXQuickStartGuard({
     if (user.onboardingPhase === 0) return; // Managed by universal onboarding
     if (isProfileLoading || !isFetched) return; // Prevent premature redirection
 
+    // Evaluate live truth at execution time to protect against race conditions
+    const liveJourneyComplete = user?.id ? isQuickStartJourneyComplete(user.id) : false;
+    const liveProfileComplete = profile ? isQuickStartComplete(profile) : false;
+    const liveCanAccessDashboard = liveProfileComplete && liveJourneyComplete;
+    const liveJourneyState = getQuickStartJourneyState(user?.id);
+    const liveTargetStep = resolveTargetQuickStartStep(profile, liveJourneyState);
+
     // 2. Creator attempting to access Creator Dashboard or child routes before completing BOTH journey and profile
-    if (!canAccessDashboard && !isHumainXRoute) {
-      router.replace(`/dashboard/creator/humainx?step=${targetStep}`);
+    if (!liveCanAccessDashboard && !isHumainXRoute) {
+      router.replace(`/dashboard/creator/humainx?step=${liveTargetStep}`);
       return;
     }
 
     // 3. Completed creator (both journey confirmed and profile complete) attempting to access HumainX Quick Start gate
-    if (canAccessDashboard && isHumainXRoute) {
+    if (liveCanAccessDashboard && isHumainXRoute) {
       router.replace('/dashboard/creator');
       return;
     }
@@ -75,9 +102,10 @@ export default function CreatorHumainXQuickStartGuard({
     user,
     isProfileLoading,
     isFetched,
-    canAccessDashboard,
+    pathname,
     isHumainXRoute,
-    targetStep,
+    profile,
+    journeyVersion,
     router,
   ]);
 

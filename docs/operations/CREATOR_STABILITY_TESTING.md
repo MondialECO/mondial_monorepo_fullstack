@@ -68,11 +68,17 @@ Run the transaction-backed Level Up suite:
 dotnet test backend/tests/WebApp.Tests/WebApp.Tests.csproj --filter "FullyQualifiedName~LevelUpTransactionIntegrationTests"
 ```
 
-Run Creator frontend unit tests:
+Run Creator frontend unit & integration tests:
 
 ```powershell
-npm test -- --run src/__tests__/lib/creator-idea-scope.test.ts
-npm test -- --run src/components/creator
+# Dedicated HumainX Quick Start suite (53 tests)
+npm test -- --run src/__tests__/creator/humainx-quick-start.test.tsx
+
+# Full Creator frontend test suite (124 tests across HumainX, Profile, Phase 4)
+npm test -- --run src/__tests__/creator/
+
+# Routing & onboarding sync suites (31 tests)
+npm test -- --run src/__tests__/routing/
 ```
 
 The `Creator Transaction Tests` GitHub Actions workflow runs the same

@@ -484,8 +484,9 @@ function HumainXQuickStartInner() {
       // Re-fetch canonical profile to guarantee truth
       const refetched = await refetch();
       const latestProfile = refetched.data || profile;
+      const pComplete = isQuickStartComplete(latestProfile);
 
-      if (!isQuickStartComplete(latestProfile)) {
+      if (!pComplete) {
         const missing = getMissingFields(latestProfile);
         setSubmitError(
           `Profile incomplete: Missing required information (${missing.join(', ')}). Please review your entries.`
