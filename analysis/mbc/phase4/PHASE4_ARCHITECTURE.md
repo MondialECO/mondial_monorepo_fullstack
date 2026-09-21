@@ -18,12 +18,12 @@ Phase 2 (Brand & Assets) + Phase 3 (Business Intelligence)
 
 1. **4.1 Construction Snapshot**: Diagnostic layer — what is Ready, Partial, Missing, Critical, Optional, and NeedsReview across 15 canonical categories.
 2. **4.2 Operational Roadmap**: Sequencing and scheduling — translates diagnostic state into an ordered, dependency-aware action timeline paced by founder weekly availability, featuring a single prominent Next Best Action.
-3. **4.3 Needs & Requirements**: Granular capability and asset specifications (Unimplemented / Coming Next).
-4. **4.4 Skills & Training**: Decides Learn / Delegate / Verify pathways.
-5. **4.5 Aids, Grants & Support**: Funding and ecosystem support matching.
-6. **4.6 Pricing**: Final package and tier construction.
-7. **4.7 GTM & Launch Strategy**: Detailed launch choreography.
-8. **4.8 Showcase Website / Launch Assets**: Public-facing asset deployment.
+3. **4.3 Needs & Requirements**: Structural capability, services, technology, legal, and capital requirements inventory derived from Snapshot gaps and sequenced Roadmap tasks, with false-positive prevention against HumainX founder capabilities.
+4. **4.4 Skills & Training**: Decides Learn / Delegate / Verify pathways deterministically evaluated against founder HumainX profile and statutory legal requirements, generating an actionable, time-budgeted skills development plan.
+5. **4.5 Aids, Grants & Support**: Matches venture, needs, and skills with public and institutional grants, subsidies, and exemptions using Aides-entreprises Open Data and official primary authority verification.
+6. **4.6 Pricing & Revenue Model Engine**: Launch pricing strategy engine — packaging, price floors, multi-stream revenue architecture, unit economics, forecast alignment, empirical validation experiments, and immediate economics recalculation on founder override.
+7. **4.7 GTM & Launch Strategy**: Deterministic customer acquisition channels, reason-coded prioritization, weekly capacity reconciliation, empirical validation experiments (`NeedsBaseline`), and standardized conversion funnel metric definitions.
+8. **4.8 Showcase Website / Launch Assets**: Public-facing asset deployment (Strict Boundary Preserved; Coming Next).
 9. **4.9 Construction Readiness Score**: Quantitative composite readiness metric.
 
 ## Strict Architectural Guardrails

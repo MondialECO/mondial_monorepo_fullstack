@@ -5,6 +5,7 @@
 export const SIDEBAR_SUPPRESSED_ROUTE_PREFIXES = [
   "/dashboard/creator/phase-2",
   "/dashboard/entrepreneur/phase-2",
+  "/dashboard/creator/humainx",
 ] as const;
 
 /**

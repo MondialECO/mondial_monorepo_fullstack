@@ -209,13 +209,19 @@ describe("Creator Sales & My Ideas SOLD Integration", () => {
 
     const childLabels = marketplaceItem!.children?.map((c) => c.label) ?? [];
     expect(childLabels).toEqual([
-      "Pricing & Equity",
+      "Construction Engine",
       "Launch to Market",
       "Marketplace",
       "Partnerships",
       "Sales & Buyouts",
       "Growth & Readiness",
     ]);
+
+    // Anti-legacy assertions: ensure legacy labels and paths are absent
+    expect(childLabels).not.toContain("Pricing & Equity");
+    const childHrefs = marketplaceItem!.children?.map((c) => c.href) ?? [];
+    expect(childHrefs).toContain("/dashboard/creator/phase-4");
+    expect(childHrefs).not.toContain("/dashboard/creator/offer-pricing");
 
     const salesItem = marketplaceItem!.children?.find((c) => c.label === "Sales & Buyouts" || c.label === "Project Sales");
     expect(salesItem?.href).toBe("/dashboard/creator/sales");

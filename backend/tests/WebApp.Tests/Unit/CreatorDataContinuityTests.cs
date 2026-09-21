@@ -232,7 +232,10 @@ namespace WebApp.Tests.Unit
                 },
                 Phase4Data = new CreatorPhase4Data
                 {
-                    PricingModel = "subscription"
+                    PricingStrategy = new WebApp.Models.DatabaseModels.Phase4.PricingStrategy
+                    {
+                        PrimaryRevenueModel = WebApp.Models.DatabaseModels.Phase4.RevenueModelType.Subscription
+                    }
                 },
                 Phase5Data = new CreatorPhase5Data
                 {
@@ -340,7 +343,7 @@ namespace WebApp.Tests.Unit
             concept!.OneLiner.Should().Be("Build faster");
             concept.ProblemStatement.Should().Be("Problem X");
             concept.SolutionDescription.Should().Be("Solution Y");
-            concept.BusinessModel.Should().Be("subscription");
+            concept.BusinessModel.Should().Be("Subscription");
 
             // Verify Cap Table was seeded
             _companyServiceMock.Verify(c => c.SubmitCapTableAsync(comp.Id, It.Is<SubmitCapTableRequest>(r =>
@@ -469,7 +472,10 @@ namespace WebApp.Tests.Unit
                 },
                 Phase4Data = new CreatorPhase4Data
                 {
-                    PricingModel = "subscription"
+                    PricingStrategy = new WebApp.Models.DatabaseModels.Phase4.PricingStrategy
+                    {
+                        PrimaryRevenueModel = WebApp.Models.DatabaseModels.Phase4.RevenueModelType.Subscription
+                    }
                 }
             };
             ideasDb.Add(creatorIdea);
@@ -539,7 +545,7 @@ namespace WebApp.Tests.Unit
             seededConcept.SolutionDescription.Should().Be("Verified matchmaking and equity vesting workflows.");
             seededConcept.SectorTags.Should().Contain("FinTech");
             seededConcept.KeywordTags.Should().Contain("AI");
-            seededConcept.BusinessModel.Should().Be("subscription");
+            seededConcept.BusinessModel.Should().Be("Subscription");
         }
 
         [Fact]

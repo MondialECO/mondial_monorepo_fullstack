@@ -8,11 +8,22 @@ const api = vi.hoisted(() => ({
 
 vi.mock("@/lib/axios", () => ({ default: api }));
 
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
+
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
+import { generateConstructionSnapshot } from "@/lib/api-creator-phase4";
+import { generatePricingStrategy } from "@/lib/api-creator-pricing";
+import { generateNeedsAnalysis } from "@/lib/api-creator-needs";
+import { generateGtmStrategy } from "@/lib/api-creator-gtm";
 
 describe("Creator Formation and Phase 4 idea scoping", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: {} }),
+    });
     const response = {
       data: { data: { journey: { ideaVersion: 7 } } },
       headers: { "x-creator-idea-version": "7" },
@@ -24,7 +35,6 @@ describe("Creator Formation and Phase 4 idea scoping", () => {
 
   it("attaches the exact ideaId and expected version on Creator writes", async () => {
     const ideaId = "idea-123";
-    const readConfig = { params: { ideaId } };
     const writeConfig = { params: { ideaId, expectedVersion: 7 } };
 
     // Writes are intentionally blocked until journey hydration supplies the
@@ -34,11 +44,6 @@ describe("Creator Formation and Phase 4 idea scoping", () => {
     await creatorJourneyApi.generateFormation(ideaId);
     await creatorJourneyApi.selectFormationType("SAS", ideaId);
     await creatorJourneyApi.declareFormationSkills(["Finance"], undefined, ideaId);
-    await creatorJourneyApi.pricingInsights(ideaId);
-    await creatorJourneyApi.setPricing("subscription", [], ideaId);
-    await creatorJourneyApi.resourceCalculator([], [], ideaId);
-    await creatorJourneyApi.gtmSetup({ webPresence: [], targetAudiences: [], channelMix: [] }, ideaId);
-    await creatorJourneyApi.completeOffer(ideaId);
     await creatorJourneyApi.ipValuation(ideaId);
     await creatorJourneyApi.setCrossroadsPath("sell", ideaId);
     await creatorJourneyApi.publishMarketplace({ ndaRequired: true, askingPrice: 28000, audience: "public" }, ideaId);
@@ -52,28 +57,72 @@ describe("Creator Formation and Phase 4 idea scoping", () => {
       { youHave: ["Finance"], cofounder: null },
       writeConfig,
     );
-    expect(api.get).toHaveBeenCalledWith("/creator/offer/pricing-insights", readConfig);
-    expect(api.post).toHaveBeenCalledWith(
-      "/creator/offer/pricing",
-      { pricingModel: "subscription", tiers: [] },
-      writeConfig,
-    );
-    expect(api.post).toHaveBeenCalledWith(
-      "/creator/offer/resource-calculator",
-      { teamRequirements: [], saasStack: [] },
-      writeConfig,
-    );
-    expect(api.post).toHaveBeenCalledWith(
-      "/creator/offer/gtm-setup",
-      { webPresence: [], targetAudiences: [], channelMix: [] },
-      writeConfig,
-    );
-    expect(api.patch).toHaveBeenCalledWith("/creator/offer/complete", {}, writeConfig);
     expect(api.post).toHaveBeenCalledWith("/creator/ip-valuation", {}, writeConfig);
     expect(api.patch).toHaveBeenCalledWith("/creator/journey/phase5/path", { path: "sell" }, writeConfig);
     expect(api.post).toHaveBeenCalledWith("/creator/marketplace/publish", { ndaRequired: true, askingPrice: 28000, audience: "public" }, writeConfig);
     expect(api.post).toHaveBeenCalledWith("/creator/company-formation", { selectedType: "SAS", ownership: [] }, writeConfig);
     expect(api.post).toHaveBeenCalledWith("/creator/seed-funding", { totalAsk: 50000, useOfFunds: [], investorTypesTargeted: [] }, writeConfig);
+  });
+
+  it("CanonicalPhase4Writes_UseExactIdeaId: verifies canonical Phase 4 requests attach exact ideaId", async () => {
+    const canonicalIdeaId = "idea-canonical-456";
+
+    await generateConstructionSnapshot(canonicalIdeaId);
+    await generatePricingStrategy(canonicalIdeaId);
+    await generateNeedsAnalysis(canonicalIdeaId);
+    await generateGtmStrategy(canonicalIdeaId);
+
+    // Verify each call targeted canonical /api/creator/phase4/* endpoint with exact ideaId
+    const snapshotCall = mockFetch.mock.calls.find(([url]) => String(url).includes('/api/creator/phase4/construction-snapshot/generate'));
+    expect(snapshotCall).toBeDefined();
+    expect(JSON.parse(snapshotCall![1].body)).toEqual({ ideaId: canonicalIdeaId });
+
+    const pricingCall = mockFetch.mock.calls.find(([url]) => String(url).includes('/api/creator/phase4/pricing/generate'));
+    expect(pricingCall).toBeDefined();
+    expect(JSON.parse(pricingCall![1].body)).toEqual({ ideaId: canonicalIdeaId });
+
+    const needsCall = mockFetch.mock.calls.find(([url]) => String(url).includes('/api/creator/phase4/needs/generate'));
+    expect(needsCall).toBeDefined();
+    expect(JSON.parse(needsCall![1].body)).toEqual({ ideaId: canonicalIdeaId });
+
+    const gtmCall = mockFetch.mock.calls.find(([url]) => String(url).includes('/api/creator/phase4/gtm/generate'));
+    expect(gtmCall).toBeDefined();
+    expect(JSON.parse(gtmCall![1].body)).toEqual({ ideaId: canonicalIdeaId });
+  });
+
+  it("CanonicalPhase4Writes_UseExpectedVersion_WhenContractRequiresIt", async () => {
+    const unhydratedIdea = "idea-unhydrated-789";
+    // Attempting a write before version hydration must reject with expected error
+    await expect(creatorJourneyApi.updateProject({ name: "Unsaved Project" }, unhydratedIdea)).rejects.toThrow(
+      "Idea version is not loaded yet. Refresh and try again."
+    );
+
+    // Once hydrated, expectedVersion is strictly required and passed
+    api.get.mockResolvedValueOnce({
+      data: { data: { journey: { ideaVersion: 42 } } },
+      headers: { "x-creator-idea-version": "42" },
+    });
+    await creatorJourneyApi.get(unhydratedIdea);
+
+    await creatorJourneyApi.updateProject({ name: "Saved Project" }, unhydratedIdea);
+    expect(api.patch).toHaveBeenCalledWith(
+      "/creator/journey/project",
+      { name: "Saved Project" },
+      { params: { ideaId: unhydratedIdea, expectedVersion: 42 } }
+    );
+  });
+
+  it("CanonicalPhase4_DoesNotCallLegacyOfferEndpoints", async () => {
+    // Collect all endpoints invoked across all mocks
+    const allAxiosUrls: string[] = [
+      ...api.get.mock.calls.map(([url]) => String(url)),
+      ...api.post.mock.calls.map(([url]) => String(url)),
+      ...api.patch.mock.calls.map(([url]) => String(url)),
+    ];
+    const allFetchUrls: string[] = mockFetch.mock.calls.map(([url]) => String(url));
+
+    const legacyMatches = [...allAxiosUrls, ...allFetchUrls].filter(url => url.includes('/creator/offer'));
+    expect(legacyMatches).toEqual([]);
   });
 
   it("advances a workspace version from an Axios case-preserved response header", async () => {

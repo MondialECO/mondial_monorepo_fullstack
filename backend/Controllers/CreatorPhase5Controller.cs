@@ -116,12 +116,10 @@ namespace WebApp.Controllers
                 // TAM is retained strictly as market-opportunity context. It must never
                 // be converted into a project/IP price.
                 double? tam = await CanonicalTamAsync(userId, p3);
-                var resource = journey.Phase4Data?.ResourceCalculation;
-                var launchInvestment = resource?.TotalLaunchBudgetMax > 0
-                    ? resource.TotalLaunchBudgetMax
-                    : resource?.TotalLaunchBudgetMin ?? 0;
+                var activeNeeds = journey.Phase4Data?.NeedsAnalysis?.ActiveNeeds ?? new List<Models.DatabaseModels.Phase4.CreatorNeed>();
+                decimal launchInvestment = activeNeeds.Sum(n => n.CustomBudget ?? n.EstimatedBudget ?? 0);
                 if (launchInvestment <= 0)
-                    return UnprocessableEntity(ApiResponse.Error("Complete the Resource Calculator before creating a planning valuation estimate."));
+                    return UnprocessableEntity(ApiResponse.Error("Complete the Needs & Requirements analysis before creating a planning valuation estimate."));
 
                 double readiness = p3.InvestorReadinessScore?.Total ?? 0;
                 bool hasPlan = !string.IsNullOrEmpty(p3.BusinessPlanSessionId);
@@ -554,7 +552,14 @@ namespace WebApp.Controllers
                     return UnprocessableEntity(ApiResponse.Error("Total ask must be at least €10,000."));
 
                 var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId); // idea-sourced cross-phase reads
-                var monthlyRunning = journey.Phase4Data?.ResourceCalculation?.MonthlyRunningCost ?? 0;
+                var activeNeedsList = journey.Phase4Data?.NeedsAnalysis?.ActiveNeeds ?? new List<Models.DatabaseModels.Phase4.CreatorNeed>();
+                var monthlyRunning = activeNeedsList
+                    .Where(n => n.Timing == Models.DatabaseModels.Phase4.NeedTiming.Now || n.Category == Models.DatabaseModels.Phase4.NeedCategories.Services || n.Category == Models.DatabaseModels.Phase4.NeedCategories.Infrastructure)
+                    .Sum(n => n.CustomBudget ?? n.EstimatedBudget ?? 0);
+                if (monthlyRunning <= 0)
+                {
+                    monthlyRunning = activeNeedsList.Sum(n => n.CustomBudget ?? n.EstimatedBudget ?? 0);
+                }
                 double? runway = monthlyRunning > 0 ? (double)(request.TotalAsk / monthlyRunning) : null;
 
                 // Investor matched-count via the shared service, gated on the

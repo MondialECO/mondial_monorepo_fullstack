@@ -774,7 +774,7 @@ public class CompanyService : ICompanyService
                     ?? businessIdea?.Solution?.Description
                     ?? string.Empty;
 
-                var businessModel = creatorIdea?.Phase4Data?.PricingModel
+                var businessModel = creatorIdea?.Phase4Data?.PricingStrategy?.PrimaryRevenueModel.ToString()
                     ?? creatorIdea?.Project?.Category
                     ?? "SaaS_Subscription";
 
@@ -821,9 +821,9 @@ public class CompanyService : ICompanyService
                     existingConcept.OneLiner = creatorIdea.Project.Tagline;
                     conceptUpdated = true;
                 }
-                if (string.IsNullOrWhiteSpace(existingConcept.BusinessModel) && !string.IsNullOrWhiteSpace(creatorIdea?.Phase4Data?.PricingModel))
+                if (string.IsNullOrWhiteSpace(existingConcept.BusinessModel) && creatorIdea?.Phase4Data?.PricingStrategy != null)
                 {
-                    existingConcept.BusinessModel = creatorIdea.Phase4Data.PricingModel;
+                    existingConcept.BusinessModel = creatorIdea.Phase4Data.PricingStrategy.PrimaryRevenueModel.ToString();
                     conceptUpdated = true;
                 }
                 if ((existingConcept.SectorTags == null || existingConcept.SectorTags.Count == 0) && !string.IsNullOrEmpty(creatorIdea?.Project?.Sector))

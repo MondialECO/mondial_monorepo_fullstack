@@ -57,11 +57,39 @@ PHASE 4 — Construction Architecture & Operational Roadmap
     ├─ Multi-Phase Scheduling (Phases 0–3 Milestones & Task Sequences)
     ├─ Dependency Graph Evaluation & Critical Path Resolver
     └─ Task Status Orchestrator (NotStarted / InProgress / Completed / Blocked)
-[Commercial Offer / Legacy: /dashboard/creator/offer-pricing]
-    ├─ 4.1 Services & Pricing
-    ├─ 4.2 Resource Calculator
-    ├─ 4.3 Web & GTM Setup
-    └─ 4.4 Offer Setup Complete
+4.3 Needs & Requirements Engine (/dashboard/creator/phase-4/needs)
+    ├─ Resource & Capability Inventory (Team, Services, Technology, Finance, Legal, Operations)
+    ├─ Capability Matching & False-Positive Prevention (HumainX Profile & Team)
+    ├─ Separation of Active Needs vs. Covered Requirements
+    └─ Single Source of Truth on CreatorJourney.Phase4Data.NeedsAnalysis (Zero Dual-Writing)
+4.4 Skills & Training / Learn · Delegate · Verify Engine (/dashboard/creator/phase-4/skills)
+    ├─ Deterministic Capability Resolution (LEARN, DELEGATE, VERIFY, COVERED, NEEDS_REVIEW)
+    ├─ 6 Invariant Resolution Rules (Complexity-aware coverage, statutory lock, non-exclusive verify)
+    ├─ Actionable Skills/Training Action Plan with curated taxonomy topics and hour estimates
+    └─ Single Source of Truth on CreatorJourney.Phase4Data.SkillsPlan (Zero Dual-Writing)
+4.5 Aids, Grants & Public Support Engine (/dashboard/creator/phase-4/support)
+    ├─ Aides-entreprises Open Data bulk ingestion + Primary Authority verification
+    ├─ Deterministic Eligibility Engine with SelectionMode dimension (Eligible to Apply)
+    ├─ Multi-Tier Authority Attribution (ProgrammeOwner, ManagingAuthority, ApplicationAuthority)
+    ├─ Regional Support Adapter Architecture (IRegionalSupportAdapter: IDF, HDF, etc.)
+    ├─ Provenance Audit Snapshots (SupportSourceSnapshot with fingerprint and parser versions)
+    ├─ Rule Normalization Quarantine (VerifiedStructured/HumanValidated vs. Ambiguous/Rejected)
+    ├─ Zero Hardcoded Code Constants (Dynamic source-driven amounts and percentages)
+    └─ Single Source of Truth on CreatorJourney.Phase4Data.SupportPlan (Zero Dual-Writing)
+4.6 Pricing & Revenue Model Engine (/dashboard/creator/phase-4/pricing)
+    ├─ Packaging, price floors, and multi-stream revenue model derivation
+    ├─ Immediate economics recalculation upon founder override
+    ├─ Empirical validation experiments with hypothesis, duration, and metrics
+    └─ Single Source of Truth on CreatorJourney.Phase4Data.PricingStrategy (Zero Dual-Writing)
+4.7 Go-To-Market & Launch Strategy Engine (/dashboard/creator/phase-4/gtm)
+    ├─ Multi-signal sales motion derivation and deterministic reason-coded channel portfolio
+    ├─ Reconciled founder capacity load via shared FounderCapacityResolver
+    ├─ Empirical validation experiments with honest NeedsBaseline thresholds
+    ├─ Budget provenance (SpendableStatus / Forecast Planned vs. Confirmed Available Cash)
+    ├─ Immutable historical experiment runs (never overwritten on refresh)
+    ├─ Consumed-source-based staleness detection (zero spurious refresh cascades)
+    └─ Single Source of Truth on CreatorJourney.Phase4Data.GtmStrategy (Zero Dual-Writing)
+[Phase 4.8 Launch Assets / Phase 4.9 Construction Readiness: Strictly Deferred / Coming Next]
 
 PHASE 5 — The Cross-Roads (30-Day Decision Window)
 Path A: Marketplace (Full Buyout OR Co-Founder / Equity)
@@ -136,6 +164,28 @@ Atomic Creator → Entrepreneur Level Up
 - **Suspense Boundary Enclosure:** Resolved Next.js 16 / React 19 client router bailouts by wrapping all `useSearchParams()` consumers in `<Suspense>` on `/dashboard/creator/phase-4` and `/dashboard/creator/phase-4/roadmap`.
 - **Decoupled Phase 4 Router Guard:** Removed blanket Phase 4 redirection in `CreatorPhaseGuard.tsx`, handing gating authority directly to `Phase4ProfileGuard.tsx` to eliminate 404/redirect loops.
 
+### 3.11 Creator Phase 4.3 — Needs & Requirements Engine (`/dashboard/creator/phase-4/needs`)
+- **Operational Requirements Synthesis:** Transforms snapshot gaps, roadmap execution prerequisites, statutory legal compliance items, and forecast headcount into granular, actionable requirements.
+- **HumainX Capability Matching:** Correlates needs against founder and co-founder leveled skills to separate active needs from already-covered capabilities, eliminating false positives and list inflation.
+- **Deterministic Deduplication:** Stable hashing assigns persistent keys, enabling idempotent re-evaluation while preserving founder states (`Unreviewed`, `Confirmed`, `InProgress`, `Deferred`, `ClaimedSatisfied`) and budget notes.
+
+### 3.12 Creator Phase 4.4 — Skills & Training Resolution Engine (`/dashboard/creator/phase-4/skills`)
+- **Deterministic Resolution Policy:** Triages every active need into `LEARN` (actionable curricula and study hours), `DELEGATE` (service provider resource specifications), `VERIFY` (statutory compliance and regulatory evidence), or `COVERED`.
+- **Statutory Safety Lock:** Enforces non-overridable `VERIFY` requirements for mandatory legal certifications (e.g. RGPD DPO, statutory audits, regulated professions).
+- **Curated Curricula & Outcomes:** Produces objective-driven learning modules and partner requirements, maintaining zero upstream mutations.
+
+### 3.13 Creator Phase 4.5 — Aids, Grants & Public Support Engine (`/dashboard/creator/phase-4/support`)
+- **Deterministic Eligibility Engine:** Matches venture profile, stage, legal entity, regional location, and operational needs against authoritative French national (Bpifrance, France Travail, Urssaf) and European public funding schemes.
+- **Truthful Status Classification:** Distinguishes statutory entitlement (`Eligible (Statutory)`) from competitive calls (`Eligible to Apply`), completely eliminating deceptive "guaranteed funding" claims or fabricated probability scores.
+- **Evidence Reuse & Fact Resolution:** Reuses existing MBC artifacts to prove eligibility criteria and allows inline resolution of missing company parameters.
+
+### 3.14 Creator Phase 4.6 — Pricing & Revenue Model Engine (`/dashboard/creator/phase-4/pricing`)
+- **Multi-Stream Architecture:** Expresses realistic multi-revenue models through `PrimaryRevenueModel`, underlying `RevenueModels[]`, and distinct package `Offers[]` (e.g., Subscription + Setup Fee, Marketplace Commission + Seller Retainer).
+- **Mathematically Rigorous Price Floor:** Enforces strict non-loss pricing bounds using exact formulas: $P_{\min} = \frac{\text{VC}}{1 - m}$ for percentage margin targets, and $\text{VC} + A$ for absolute unit markups.
+- **Economic Basis Normalization:** Resolves periodic vs transactional billing discrepancies through normalized `ForecastAlignmentBasis` (`PerPeriodPerAccount` vs `PerTransaction`) with configurable materiality thresholds.
+- **French Price Presentation & Tax Handling:** Standardizes B2B HT (*Hors Taxes*) and B2C TTC (*Toutes Taxes Comprises*) presentation with compliant French VAT default modes (`NotApplicableOrUnknown`).
+- **Dynamic Founder Recalculation & Invariant Preservation:** Instantaneous client & server-side recalculation of contribution margins and forecast alignment upon founder price adjustments, strictly preserving the 3 distinct price invariants: $\text{Recommended Price} \neq \text{Founder Selected Price} \neq \text{Validated Market Price}$.
+
 ---
 
 ## 4. Creator → Entrepreneur Continuity Contract
@@ -161,18 +211,18 @@ Promotion to Entrepreneur is a **continuation, not a restart**:
 
 ```text
 Backend Test Suite (xUnit.net net8.0)
-Total Discovered:       2,137
-Passed:                 2,008  (+32 Phase 4 & HumainX unit tests)
+Total Discovered:       2,152
+Passed:                 2,023  (+47 Phase 4 & HumainX unit tests, including 15 Phase 4.5 tests)
 Failed:                     0
 Skipped:                  129  (Pre-existing legacy non-Creator marketplace/escrow tests)
 Environment Blocked:        0
-Mathematical Status:    100% Reconciled (2,008 + 0 + 129 = 2,137)
+Mathematical Status:    100% Reconciled (2,023 + 0 + 129 = 2,152)
 
 Frontend Test Suite (Vitest & TypeScript)
-Vitest Test Files:        122 / 122 Passed (100%)
-Vitest Tests:           1,050 / 1,050 Passed (100%)
+Vitest Test Files:        123 / 123 Passed (100%)
+Vitest Tests:           1,058 / 1,058 Passed (100%)
 TypeScript:                 0 production errors in src/
-Production Build:         183 / 183 Next.js routes compiled (Turbopack)
+Production Build:         185 / 185 Next.js routes compiled (Turbopack)
 
 Responsive Viewport Audit
 Tested Viewports:       375px, 768px, 1440px, 1920px (Authenticated Creator sessions)
@@ -234,6 +284,5 @@ MongoDB Atlas cluster enforces a strict tier cap of **500 collections** (which p
 |---|---|---|---|---|---|
 | `applicationUsers_backup_sp_20260920172731` | 421 | 2026-09-20 | Pre-migration snapshot before unsetting legacy embedded professional-profile fields from `ApplicationUser.ServiceProviderProfile`. | **2026-10-20** (30 days post-cutover) | `db.applicationUsers_backup_sp_20260920172731.drop()` |
 | `professionalProfiles_backup_skills_20260920175233` | 18 | 2026-09-20 | Pre-migration snapshot before migrating `Skills` and `EditorDraft.Skills` to leveled objects in `ProfessionalProfiles`. | **2026-10-20** (30 days post-cutover) | `db.professionalProfiles_backup_skills_20260920175233.drop()` |
-
 
 

@@ -202,7 +202,7 @@ export default function Phase3CompletePage() {
       }
     }
 
-    router.push(withIdeaContext('/dashboard/creator/offer-pricing', currentIdeaId));
+    router.push(withIdeaContext('/dashboard/creator/phase-4', currentIdeaId));
   };
 
   const dimensions = readiness?.breakdown

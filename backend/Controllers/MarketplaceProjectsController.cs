@@ -1641,7 +1641,7 @@ namespace WebApp.Controllers
                 ExecutiveSummary = p.Solution ?? "",
                 MarketOpportunity = p.TargetMarket ?? "",
                 CompetitiveAdvantage = p.CreatorEdge ?? p.MarketGap ?? "",
-                RevenueModel = p4.PricingModel ?? "",
+                RevenueModel = p4.PricingStrategy?.PrimaryRevenueModel.ToString() ?? "",
                 Available = bpContent != null || !string.IsNullOrWhiteSpace(p.Solution) || !string.IsNullOrWhiteSpace(p.TargetMarket)
             };
 
@@ -1776,11 +1776,11 @@ namespace WebApp.Controllers
                 Tam = basis?.Tam,
                 MonthlyGrowthPct = basis?.MonthlyGrowthPct,
                 BreakEvenMonth = basis?.BreakEvenMonth,
-                ProjectedArr = p4.PricingForecastContext?.ForecastArpu != null ? (double)p4.PricingForecastContext.ForecastArpu * 12 : null,
-                Arpu = (double?)p4.PricingForecastContext?.ForecastArpu,
+                ProjectedArr = p4.PricingStrategy?.ForecastAlignment?.ForecastArpu != null ? (double)p4.PricingStrategy.ForecastAlignment.ForecastArpu.Value * 12 : null,
+                Arpu = (double?)p4.PricingStrategy?.ForecastAlignment?.ForecastArpu,
                 EstimatedRunwayMonths = p5.PathB?.SeedFunding?.EstimatedRunwayMonths,
                 Currency = basis?.Currency ?? "EUR",
-                Available = fContent != null || basis?.Tam != null || basis?.MonthlyGrowthPct != null || p4.PricingForecastContext?.ForecastArpu != null
+                Available = fContent != null || basis?.Tam != null || basis?.MonthlyGrowthPct != null || p4.PricingStrategy?.ForecastAlignment?.ForecastArpu != null
             };
 
             if (fContent != null)
@@ -1877,74 +1877,74 @@ namespace WebApp.Controllers
 
             var pricing = new PrivatePricingDto
             {
-                PricingModel = p4.PricingModel ?? "tiered",
-                Tiers = p4.Tiers?.Select(t => new PrivatePricingTierDto
+                PricingModel = p4.PricingStrategy?.PrimaryRevenueModel.ToString() ?? "tiered",
+                Tiers = p4.PricingStrategy?.Offers?.Select(o => new PrivatePricingTierDto
                 {
-                    Name = t.Name,
-                    Price = t.Price,
-                    BillingCycle = t.BillingCycle ?? "monthly",
-                    Features = t.Features ?? new(),
-                    IsHighlighted = t.IsHighlighted
+                    Name = o.Name,
+                    Price = o.Price,
+                    BillingCycle = o.BillingFrequency.ToString().ToLowerInvariant(),
+                    Features = o.IncludedFeatures ?? new(),
+                    IsHighlighted = false
                 }).ToList() ?? new(),
-                ForecastArpu = p4.PricingForecastContext?.ForecastArpu,
-                Available = p4.Tiers?.Count > 0 || !string.IsNullOrEmpty(p4.PricingModel)
+                ForecastArpu = p4.PricingStrategy?.ForecastAlignment?.ForecastArpu,
+                Available = p4.PricingStrategy != null && (p4.PricingStrategy.Offers?.Count > 0 || p4.PricingStrategy.PrimaryRevenueModel != default)
             };
 
-            var rc = p4.ResourceCalculation;
+            var na = p4.NeedsAnalysis;
+            var activeNeeds = na?.ActiveNeeds ?? new List<Models.DatabaseModels.Phase4.CreatorNeed>();
+            var teamNeeds = activeNeeds.Where(n => n.Category == Models.DatabaseModels.Phase4.NeedCategories.Team).ToList();
+            var toolNeeds = activeNeeds.Where(n => n.Category == Models.DatabaseModels.Phase4.NeedCategories.Technology).ToList();
+            var totalCost = activeNeeds.Sum(n => n.CustomBudget ?? n.EstimatedBudget ?? 0);
+
             var resourcePlan = new PrivateResourcePlanDto
             {
-                LaunchBudgetMin = rc?.TotalLaunchBudgetMin,
-                LaunchBudgetMax = rc?.TotalLaunchBudgetMax,
-                MonthlyRunningCost = rc?.MonthlyRunningCost,
-                TimeToLaunchWeeksMin = rc?.TimeToLaunchWeeksMin,
-                TimeToLaunchWeeksMax = rc?.TimeToLaunchWeeksMax,
-                TeamRolesNeeded = rc?.TeamRequirements?.Select(r => r.Role).ToList() ?? new(),
-                TeamRequirements = rc?.TeamRequirements?.Select(tr => new PrivateTeamRequirementDto
+                LaunchBudgetMin = totalCost > 0 ? totalCost : null,
+                LaunchBudgetMax = totalCost > 0 ? totalCost * 1.2m : null,
+                MonthlyRunningCost = activeNeeds.Where(n => n.Timing == Models.DatabaseModels.Phase4.NeedTiming.Now).Sum(n => n.CustomBudget ?? n.EstimatedBudget ?? 0),
+                TimeToLaunchWeeksMin = 4,
+                TimeToLaunchWeeksMax = 12,
+                TeamRolesNeeded = teamNeeds.Select(r => r.Title).ToList(),
+                TeamRequirements = teamNeeds.Select(tr => new PrivateTeamRequirementDto
                 {
-                    Role = tr.Role,
-                    Cost = tr.Cost,
-                    DurationMonths = tr.DurationMonths,
-                    OneTime = tr.OneTime
-                }).ToList() ?? new(),
-                SaasStack = rc?.SaasStack?.Select(s => new PrivateSaasItemDto
+                    Role = tr.Title,
+                    Cost = tr.CustomBudget ?? tr.EstimatedBudget ?? 0,
+                    DurationMonths = 3,
+                    OneTime = tr.Timing != Models.DatabaseModels.Phase4.NeedTiming.Now
+                }).ToList(),
+                SaasStack = toolNeeds.Select(s => new PrivateSaasItemDto
                 {
-                    Name = s.Name,
-                    MonthlyCost = s.MonthlyCost
-                }).ToList() ?? new(),
-                BudgetBreakdown = rc?.BudgetBreakdown != null ? new PrivateBudgetBreakdownDto
+                    Name = s.Title,
+                    MonthlyCost = s.CustomBudget ?? s.EstimatedBudget ?? 0
+                }).ToList(),
+                BudgetBreakdown = totalCost > 0 ? new PrivateBudgetBreakdownDto
                 {
-                    TeamPct = rc.BudgetBreakdown.TeamPct,
-                    ToolsPct = rc.BudgetBreakdown.ToolsPct,
-                    LegalPct = rc.BudgetBreakdown.LegalPct,
-                    MiscPct = rc.BudgetBreakdown.MiscPct
+                    TeamPct = (double)(teamNeeds.Sum(n => n.CustomBudget ?? n.EstimatedBudget ?? 0) / (totalCost > 0 ? totalCost : 1) * 100),
+                    ToolsPct = (double)(toolNeeds.Sum(n => n.CustomBudget ?? n.EstimatedBudget ?? 0) / (totalCost > 0 ? totalCost : 1) * 100),
+                    LegalPct = (double)(activeNeeds.Where(n => n.Category == Models.DatabaseModels.Phase4.NeedCategories.LegalAndAdministration).Sum(n => n.CustomBudget ?? n.EstimatedBudget ?? 0) / (totalCost > 0 ? totalCost : 1) * 100),
+                    MiscPct = 0
                 } : null,
-                Available = rc != null
+                Available = na != null
             };
 
-            var gtm = p4.GtmSetup;
+            var gtm = p4.GtmStrategy;
+            var totalGtmBudget = gtm?.BudgetPlan?.TotalAvailableBudget ?? 0;
             var gtmPlan = new PrivateGtmPlanDto
             {
-                PrimaryChannels = gtm?.ChannelMix?.Select(c => c.Channel).ToList() ?? new(),
-                TargetAudiences = gtm?.TargetAudiences ?? new(),
-                WebPresenceAssets = gtm?.WebPresence?.Select(w => w.Label).ToList() ?? new(),
-                ChannelMix = gtm?.ChannelMix?.Select(c => new PrivateChannelMixDto
+                PrimaryChannels = gtm?.ChannelStrategy?.Select(c => c.ChannelName).ToList() ?? new(),
+                TargetAudiences = gtm?.SegmentStrategies?.Select(s => s.SegmentName).ToList() ?? new(),
+                WebPresenceAssets = gtm?.LaunchPlan?.PreLaunch?.Select(a => a.Title).ToList() ?? new(),
+                ChannelMix = gtm?.ChannelStrategy?.Select(c => new PrivateChannelMixDto
                 {
-                    Channel = c.Channel,
-                    Percent = c.Percent
+                    Channel = c.ChannelName,
+                    Percent = totalGtmBudget > 0 && c.BudgetAmount.HasValue ? (double)(c.BudgetAmount.Value / totalGtmBudget * 100) : 0
                 }).ToList() ?? new(),
-                WebPresence = gtm?.WebPresence?.Select(w => new PrivateWebPresenceDto
+                WebPresence = gtm?.LaunchPlan?.PreLaunch?.Select(w => new PrivateWebPresenceDto
                 {
-                    Id = w.Id,
-                    Label = w.Label,
-                    Done = w.Done
+                    Id = w.Key,
+                    Label = w.Title,
+                    Done = w.FounderStatus == "Completed"
                 }).ToList() ?? new(),
-                BenchmarkGtmWeeks = gtm?.BenchmarkGtmWeeks?.Select(bw => new PrivateGtmWeekDto
-                {
-                    Week = bw.Week,
-                    Title = bw.Title,
-                    Tasks = bw.Tasks ?? new(),
-                    Completed = bw.Completed
-                }).ToList() ?? new(),
+                BenchmarkGtmWeeks = new List<PrivateGtmWeekDto>(),
                 Available = gtm != null
             };
 

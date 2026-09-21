@@ -390,12 +390,12 @@ export const menu: Record<UserRole, MenuSection[]> = {
         },
         {
           label: "Offers & Marketplace",
-          href: "/dashboard/creator/offer-pricing",
+          href: "/dashboard/creator/phase-4",
           icon: Store,
           children: [
             {
-              label: "Pricing & Equity",
-              href: "/dashboard/creator/offer-pricing",
+              label: "Construction Engine",
+              href: "/dashboard/creator/phase-4",
             },
             {
               label: "Launch to Market",

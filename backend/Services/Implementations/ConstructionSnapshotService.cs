@@ -789,7 +789,7 @@ namespace WebApp.Services.Implementations
 
             // 12. Pricing
             var p4 = journey.Phase4Data;
-            bool hasCustomPricing = !string.IsNullOrEmpty(p4?.PricingModel) && (p4?.Tiers?.Count ?? 0) >= 3;
+            bool hasCustomPricing = p4?.PricingStrategy != null && (p4.PricingStrategy.Offers?.Count ?? 0) >= 1;
 
             if (hasCustomPricing)
             {
@@ -800,8 +800,8 @@ namespace WebApp.Services.Implementations
                     Title = "Commercial Pricing Packages",
                     Status = ConstructionItemStatus.Ready,
                     Priority = ConstructionItemPriority.Medium,
-                    Reason = $"Commercial pricing structure established ({p4!.PricingModel}) with {p4.Tiers.Count} package tiers.",
-                    Source = new List<string> { "Pricing Model" },
+                    Reason = $"Commercial pricing structure established ({p4!.PricingStrategy.PrimaryRevenueModel}) with {p4.PricingStrategy.Offers.Count} offer packages.",
+                    Source = new List<string> { "Pricing Strategy" },
                     RecommendedNextStep = "Review pricing packaging periodically.",
                     Blocking = false
                 });

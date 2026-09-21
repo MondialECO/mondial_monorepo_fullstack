@@ -82,13 +82,13 @@ export function getNextCreatorAction(state: CreatorJourneyState, ideaId?: string
     });
   }
 
-  // Phase 4 Check: Offer & Resource Setup
+  // Phase 4 Check: Construction Engine
   if (state.phase4.status !== 'completed') {
     return wrap({
       targetPhase: 4,
-      targetStep: 'offer-pricing',
-      route: '/dashboard/creator/offer-pricing',
-      buttonLabel: state.phase4.status === 'in_progress' ? 'Resume Offer & Pricing' : 'Continue Setup'
+      targetStep: 'construction',
+      route: '/dashboard/creator/phase-4',
+      buttonLabel: state.phase4.status === 'in_progress' ? 'Resume Construction' : 'Continue Setup'
     });
   }
 

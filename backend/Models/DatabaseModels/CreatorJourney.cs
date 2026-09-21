@@ -315,108 +315,19 @@ namespace WebApp.Models.DatabaseModels
 
     // ---------------- Phase 4 ----------------
 
+    [BsonIgnoreExtraElements]
     public class CreatorPhase4Data
     {
-        public string PricingModel { get; set; } // subscription | one_time | freemium | usage_based
-        public List<CreatorPricingTier> Tiers { get; set; } = new();
-        /// <summary>
-        /// The forecast input that Pricing was compared against when the Creator last
-        /// saved their chosen tiers. It is context only: the forecast is never mutated
-        /// by a commercial-pricing save.
-        /// </summary>
-        public CreatorPricingForecastContext? PricingForecastContext { get; set; }
-        public CreatorResourceCalculation ResourceCalculation { get; set; }
-        public CreatorGtmSetup GtmSetup { get; set; }
         public Phase4.ConstructionSnapshot? ConstructionSnapshot { get; set; }
         public Phase4.OperationalRoadmap? Roadmap { get; set; }
+        public Phase4.NeedsAnalysis? NeedsAnalysis { get; set; }
+        public Phase4.SkillsPlan? SkillsPlan { get; set; }
+        public Phase4.SupportPlan? SupportPlan { get; set; }
+        public Phase4.PricingStrategy? PricingStrategy { get; set; }
+        public Phase4.GtmStrategy? GtmStrategy { get; set; }
         public Phase4.Phase4SourceVersions? SourceVersions { get; set; }
     }
 
-    public class CreatorPricingForecastContext
-    {
-        public string ForecastSessionId { get; set; } = "";
-        public decimal? ForecastArpu { get; set; }
-        public DateTime ForecastUpdatedAt { get; set; }
-        public bool IsPotentiallyOutdated { get; set; }
-    }
-
-    public class CreatorPricingTier
-    {
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public decimal Price { get; set; }
-        public string BillingCycle { get; set; }
-        public List<string> Features { get; set; } = new();
-        public bool IsHighlighted { get; set; }
-    }
-
-    public class CreatorResourceCalculation
-    {
-        public List<CreatorTeamRequirement> TeamRequirements { get; set; } = new();
-        public List<CreatorSaasItem> SaasStack { get; set; } = new();
-        public decimal TotalLaunchBudgetMin { get; set; }
-        public decimal TotalLaunchBudgetMax { get; set; }
-        public int TimeToLaunchWeeksMin { get; set; }
-        public int TimeToLaunchWeeksMax { get; set; }
-        public decimal MonthlyRunningCost { get; set; }
-        public CreatorBudgetBreakdown BudgetBreakdown { get; set; } = new();
-    }
-
-    public class CreatorTeamRequirement
-    {
-        public string Role { get; set; }
-        public decimal Cost { get; set; }
-        public int DurationMonths { get; set; }
-        public bool OneTime { get; set; }
-    }
-
-    public class CreatorSaasItem
-    {
-        public string Name { get; set; }
-        public decimal MonthlyCost { get; set; }
-    }
-
-    public class CreatorBudgetBreakdown
-    {
-        public double TeamPct { get; set; }
-        public double ToolsPct { get; set; }
-        public double LegalPct { get; set; }
-        public double MiscPct { get; set; }
-    }
-
-    public class CreatorGtmSetup
-    {
-        public List<CreatorWebPresenceItem> WebPresence { get; set; } = new();
-
-        [BsonElement("BenchmarkGtmWeeks")]
-        public List<CreatorGtmWeek> BenchmarkGtmWeeks { get; set; } = new();
-
-        // Read bridge for Phase 4 documents persisted before the field was renamed.
-        // The null getter + IgnoreIfNull ensure all new writes use only the honest
-        // BenchmarkGtmWeeks name; no data migration is required.
-        [BsonElement("AiGtmWeeks")]
-        [BsonIgnoreIfNull]
-        [JsonIgnore]
-        public List<CreatorGtmWeek>? LegacyAiGtmWeeks
-        {
-            get => null;
-            set
-            {
-                if ((BenchmarkGtmWeeks == null || BenchmarkGtmWeeks.Count == 0) && value != null)
-                    BenchmarkGtmWeeks = value;
-            }
-        }
-
-        public List<string> TargetAudiences { get; set; } = new();
-        public List<CreatorChannelMix> ChannelMix { get; set; } = new();
-    }
-
-    public class CreatorWebPresenceItem
-    {
-        public string Id { get; set; }
-        public string Label { get; set; }
-        public bool Done { get; set; }
-    }
 
     public class CreatorGtmWeek
     {

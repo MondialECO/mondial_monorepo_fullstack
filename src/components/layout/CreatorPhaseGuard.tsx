@@ -26,7 +26,7 @@ export default function CreatorPhaseGuard({ children }: { children: React.ReactN
       return;
     }
 
-    if (pathname.includes('/dashboard/creator/offer-pricing') && journeyState.phase4.status === 'locked') {
+    if (pathname.includes('/dashboard/creator/phase-4') && journeyState.phase4.status === 'locked') {
       router.replace('/dashboard/creator');
       return;
     }

@@ -120,9 +120,34 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/creator/journey/phase3/session`: Link AI session IDs to the journey.
   - `PATCH /api/creator/masterplan/complete`: Trigger Phase 3 completion gate.
 - **`CreatorPhase4ConstructionController`** (`/api/creator/phase4`):
-  - `GET /api/creator/phase4/snapshot`: Read or generate normalized Phase 4.1 construction snapshot (critical, ready, partial, missing, optional) with source staleness check.
-  - `GET /api/creator/phase4/roadmap`: Read or generate Phase 4.2 operational roadmap scheduling tasks across Phase 0–3 tracks.
-  - `PATCH /api/creator/phase4/roadmap/tasks/{taskId}/status`: Update status of a specific roadmap task (`NotStarted`, `InProgress`, `Completed`, `Blocked`).
+  - `GET /api/creator/phase4/snapshot`: Read normalized Phase 4.1 construction snapshot (critical, ready, partial, missing, optional) with source staleness check.
+  - `POST /api/creator/phase4/snapshot/generate`: Idempotently generate Phase 4.1 construction snapshot.
+  - `POST /api/creator/phase4/snapshot/refresh`: Refresh construction snapshot against updated upstream sources.
+  - `GET /api/creator/phase4/roadmap`: Read Phase 4.2 operational roadmap scheduling tasks across canonical stages.
+  - `POST /api/creator/phase4/roadmap/generate`: Idempotently generate Phase 4.2 operational roadmap with cycle-safe DAG dependency resolution.
+  - `POST /api/creator/phase4/roadmap/refresh`: Refresh operational roadmap preserving founder edits and notes.
+  - `PATCH /api/creator/phase4/roadmap/task`: Update founder state/status of a specific roadmap task.
+  - `GET /api/creator/phase4/needs`: Read Phase 4.3 needs & requirements analysis with upstream freshness check.
+  - `POST /api/creator/phase4/needs/generate`: Idempotently generate Phase 4.3 needs & requirements (enforcing Snapshot and Roadmap freshness gates).
+  - `POST /api/creator/phase4/needs/refresh`: Refresh needs analysis against fresh upstream sources, preserving founder state.
+  - `PATCH /api/creator/phase4/needs/{needKey}`: Canonical PATCH endpoint updating founder state, notes, custom budget, or custom timing.
+  - `GET /api/creator/phase4/skills-plan`: Read Phase 4.4 skills & training plan (Learn, Delegate, Verify, Covered) with upstream freshness check.
+  - `POST /api/creator/phase4/skills-plan/generate`: Idempotently generate Phase 4.4 skills plan (enforcing Phase 4.3 Needs freshness gate).
+  - `POST /api/creator/phase4/skills-plan/refresh`: Refresh skills plan against fresh upstream sources, preserving founder decisions and notes.
+  - `PATCH /api/creator/phase4/skills-plan/{resolutionKey}`: Canonical resolution override endpoint updating founder decision and notes (with statutory verification safety lock).
+  - `GET /api/creator/phase4/support`: Read Phase 4.5 aids, grants & public support plan with eligibility matching across French & European schemes.
+  - `POST /api/creator/phase4/support/generate`: Idempotently generate Phase 4.5 support plan (enforcing Needs Analysis prerequisite gate).
+  - `POST /api/creator/phase4/support/refresh`: Refresh support opportunities against updated sources, preserving founder application decisions.
+  - `PATCH /api/creator/phase4/support/{supportKey}`: Canonical PATCH endpoint updating founder application status, custom amounts, or notes.
+  - `GET /api/creator/phase4/pricing`: Read Phase 4.6 launch pricing & multi-stream revenue model strategy with conditional staleness check.
+  - `POST /api/creator/phase4/pricing/generate`: Idempotently generate Phase 4.6 pricing strategy (enforcing Phase 3, Needs 4.3, and Support 4.5 prerequisite gates).
+  - `POST /api/creator/phase4/pricing/refresh`: Refresh pricing strategy against authoritative sources, preserving founder price selections while immediately recalculating unit economics.
+  - `PATCH /api/creator/phase4/pricing/{offerKey}`: Canonical PATCH endpoint updating founder selected price and rationale, immediately recalculating contribution margins, price floor violations, and forecast alignment.
+  - `GET /api/creator/phase4/gtm`: Read Phase 4.7 Go-To-Market & Launch Strategy with deterministic reason codes, weekly capacity reconciliation, and empirical validation experiments.
+  - `POST /api/creator/phase4/gtm/generate`: Idempotently generate Phase 4.7 GTM strategy (enforcing Phase 4.6 PricingStrategy prerequisite gate).
+  - `POST /api/creator/phase4/gtm/refresh`: Refresh GTM recommendations against upstream consumed source changes, preserving founder channel priorities and historical experiment runs.
+  - `PATCH /api/creator/phase4/gtm/channels/{channelKey}`: Override channel priority (`Primary`, `Secondary`, `Later`, `NotRecommended`) and store founder strategic notes.
+  - `POST /api/creator/phase4/gtm/experiments/{experimentKey}/runs`: Commit immutable historical evidence run with actual spend, effort, observations, and outcome.
 - **`CreatorPhase4Controller`** (`/api/creator`):
   - `GET /api/creator/phase-4/offer-pricing`: Calculate recommended asset valuation using market benchmarks.
   - `POST /api/creator/pricing`: Save Phase 4 tiered pricing model.

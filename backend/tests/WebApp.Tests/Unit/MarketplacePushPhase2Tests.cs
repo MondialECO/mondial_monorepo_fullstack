@@ -123,32 +123,25 @@ namespace WebApp.Tests.Unit
                 },
                 Phase4Data = new CreatorPhase4Data
                 {
-                    PricingModel = "subscription",
-                    Tiers = new List<CreatorPricingTier>
+                    PricingStrategy = new WebApp.Models.DatabaseModels.Phase4.PricingStrategy
                     {
-                        new() { Name = "Starter", Price = 999, BillingCycle = "monthly", Features = new List<string> { "2 Robots", "Standard Support" } },
-                        new() { Name = "Enterprise", Price = 4999, BillingCycle = "monthly", Features = new List<string> { "10 Robots", "24/7 SLA" }, IsHighlighted = true }
-                    },
-                    PricingForecastContext = new CreatorPricingForecastContext { ForecastArpu = 2500 },
-                    ResourceCalculation = new CreatorResourceCalculation
-                    {
-                        TotalLaunchBudgetMin = 50000,
-                        TotalLaunchBudgetMax = 80000,
-                        MonthlyRunningCost = 12000,
-                        TimeToLaunchWeeksMin = 12,
-                        TimeToLaunchWeeksMax = 20,
-                        TeamRequirements = new List<CreatorTeamRequirement>
+                        PrimaryRevenueModel = WebApp.Models.DatabaseModels.Phase4.RevenueModelType.Subscription,
+                        Offers = new List<WebApp.Models.DatabaseModels.Phase4.PricingOffer>
                         {
-                            new() { Role = "Robotics Engineer", Cost = 60000, DurationMonths = 12 }
+                            new() { Name = "Basic", Price = 49 },
+                            new() { Name = "Pro", Price = 99 }
                         }
                     },
-                    GtmSetup = new CreatorGtmSetup
+                    NeedsAnalysis = new WebApp.Models.DatabaseModels.Phase4.NeedsAnalysis
                     {
-                        TargetAudiences = new List<string> { "Urban Retailers", "3PL Providers" },
-                        ChannelMix = new List<CreatorChannelMix>
+                        ActiveNeeds = new List<WebApp.Models.DatabaseModels.Phase4.CreatorNeed>
                         {
-                            new() { Channel = "Direct B2B Sales", Percent = 60 },
-                            new() { Channel = "Logistics Expos", Percent = 40 }
+                            new()
+                            {
+                                Category = WebApp.Models.DatabaseModels.Phase4.NeedCategories.Team,
+                                Title = "Robotics Engineer",
+                                EstimatedBudget = 4000
+                            }
                         }
                     }
                 },
