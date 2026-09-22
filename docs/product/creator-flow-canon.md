@@ -643,7 +643,11 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
     - *Payment & Commercial (2):* `FR-PAY-001` (Recours PSP agréé), `FR-MKT-001` (Démarchage électronique).
     - *Operations & Sector (3):* `FR-INS-001` (Assurance RC Pro), `FR-SOC-001` (Affiliation sociale & DPAE), `FR-REG-001` (Activités réglementées).
 - **Legal Source-Of-Truth Architecture:**
-  - **Before Level Up:** `CreatorJourney.Phase3Data.LegalAssessment` (and `CreatorIdeas.Phase3Data.LegalAssessment`) serves as the active Creator legal source of truth.
+  - **Canonical Legal Authority:** `CreatorLegalAssessment` (`CreatorIdea.Phase3Data.LegalAssessment` and `CreatorJourney.Phase3Data.LegalAssessment`) serves as the sole active Creator legal source of truth.
+  - **Legacy Checklist Compatibility:** `CreatorPhase3Data.LegalChecklist` is preserved strictly as a backward-compatible BSON deserialization surface for historical documents (0 canonical active readers, 0 new writers).
+  - **Compatibility Command Adapter:** `UpdateLegalChecklistItemAsync` contains zero independent legal business logic and acts purely as an adapter delegating to canonical `UpdateLegalAssessmentItemStatusAsync`.
+  - **Compatibility HTTP Endpoints:** `POST /api/creator/ai/legal-checklist/generate` and `PATCH /api/creator/legal-checklist/item/{itemId}` are compatibility HTTP surfaces only, not separate legal authorities.
+  - **Before Level Up:** Active Creator legal assessment is the sole authority.
   - **At Level Up:** The active Creator legal assessment is preserved intact as the immutable Creator baseline.
   - **After Level Up:** `Companies.LegalAssessment` becomes the active Entrepreneur operational legal state.
   - **Deep-Copy Isolation:** Creator and Entrepreneur legal graphs use independent deep copies so mutable Entrepreneur operational changes never alter the frozen Creator baseline.
@@ -871,6 +875,42 @@ All Phase 4 screens strictly adhere to the project design canon:
 - **Body & Paragraphs:** DM Sans (`font-sans text-muted-foreground / text-foreground`).
 - **Numerals & Metrics:** JetBrains Mono (`font-mono tabular-nums`).
 - **Theme Support:** 100% semantic color tokens (`bg-card`, `border-border`, `text-primary`, etc.) across Light and Dark themes (1440px–1920px responsive).
+
+### 6.11 Phase 4 Single Source Authorities & Clean Baseline
+
+```text
+CREATOR PHASE 2–5 CLEAN BASELINE
+
+Phase 2 Brand authority:
+BrandKit (canonical visual identity authority; CreatorIdea.Project.Branding is derived projection only)
+
+Phase 3.4 Legal authority:
+CreatorLegalAssessment (CreatorIdea.Phase3Data.LegalAssessment)
+
+HumainX onboarding authority:
+ProfessionalProfileRecord.QuickStart (sole onboarding journey authority; localStorage has no access/progression authority)
+
+Phase 4 completion authority:
+Phase4CompletionResolver (sole Phase 4 completion authority across all 7 stages: 4.1–4.7)
+
+Founder capacity authority:
+IFounderCapacityResolver (sole founder-capacity authority)
+
+Pricing authority:
+PricingPolicyEngine (canonical pricing-policy authority)
+
+Legacy legal business logic:
+0
+
+Legacy compatibility surfaces:
+Retained intentionally where needed for backward compatibility (1 BSON field, 1 command adapter, 2 HTTP endpoints)
+
+Phase 4.8:
+NOT IMPLEMENTED (Next approved stage)
+
+Phase 4.9:
+RESERVED (Construction readiness)
+```
 
 ---
 

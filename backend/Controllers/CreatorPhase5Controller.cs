@@ -8,6 +8,7 @@ using System.Security.Claims;
 using WebApp.DbContext;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.DatabaseModels.Legal;
 using WebApp.Models.Dtos;
 using WebApp.Services;
 using WebApp.Services.Implementations;
@@ -123,8 +124,10 @@ namespace WebApp.Controllers
 
                 double readiness = p3.InvestorReadinessScore?.Total ?? 0;
                 bool hasPlan = !string.IsNullOrEmpty(p3.BusinessPlanSessionId);
-                bool legalOver50 = p3.LegalChecklist is { TotalCount: > 0 } &&
-                                   (double)p3.LegalChecklist.CompletedCount / p3.LegalChecklist.TotalCount > 0.5;
+                var legalItems = p3.LegalAssessment?.Items ?? p3.LegalChecklist?.Items ?? new List<CreatorLegalChecklistItem>();
+                int legalTotal = legalItems.Count;
+                int legalCompleted = legalItems.Count(i => LegalItemStatuses.IsCompleted(i.Status));
+                bool legalOver50 = legalTotal > 0 && (double)legalCompleted / legalTotal > 0.5;
                 bool brandingResolved = !string.IsNullOrEmpty(p.Branding?.BrandingMethod) && p.Branding.BrandingMethod != "pending";
                 var maturitySignals = (hasPlan ? 1 : 0) + (legalOver50 ? 1 : 0) + (brandingResolved ? 1 : 0)
                     + (p3.FormationGenerator != null ? 1 : 0);
@@ -138,7 +141,7 @@ namespace WebApp.Controllers
                 decimal max = Math.Round(planningBase * 1.20m, 0);
 
                 int p3Modules = (p3.ForecastSessionId != null ? 1 : 0) + (hasPlan ? 1 : 0) +
-                                (p3.LegalChecklist != null ? 1 : 0) + (p3.FormationGenerator != null ? 1 : 0);
+                                ((p3.LegalAssessment != null || p3.LegalChecklist != null) ? 1 : 0) + (p3.FormationGenerator != null ? 1 : 0);
                 string confidence = p3Modules >= 4 ? "high" : p3Modules >= 2 ? "medium" : "low";
 
                 var valuation = new CreatorIpValuation

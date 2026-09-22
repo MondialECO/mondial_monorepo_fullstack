@@ -150,6 +150,7 @@ export default function CreatorAssetLibraryPage() {
     businessPlanSessionId?: string | null;
     forecastSessionId?: string | null;
     formationGenerator?: { selectedOptionKey?: string; confirmedAt?: string };
+    legalAssessment?: { items?: Array<{ id: string; status: string }>; updatedAt?: string; evaluatedAt?: string };
     legalChecklist?: { items?: Array<{ id: string; status: string }>; updatedAt?: string };
   } | undefined;
 
@@ -268,7 +269,10 @@ export default function CreatorAssetLibraryPage() {
   const isBusinessPlanReady = Boolean(phase3?.businessPlanSessionId);
   const isForecastReady = Boolean(phase3?.forecastSessionId);
   const isFormationReady = Boolean(phase3?.formationGenerator?.selectedOptionKey);
-  const isLegalChecklistReady = Boolean(phase3?.legalChecklist?.items && phase3.legalChecklist.items.length > 0);
+  const isLegalChecklistReady = Boolean(
+    (phase3?.legalAssessment?.items && phase3.legalAssessment.items.length > 0) ||
+    (phase3?.legalChecklist?.items && phase3.legalChecklist.items.length > 0)
+  );
   const isPhase4Ready = Boolean(computedStatus?.phase4?.status === 'completed');
 
   const artifacts: ArtifactItem[] = [
@@ -345,7 +349,7 @@ export default function CreatorAssetLibraryPage() {
       fileFormat: 'IN_APP',
       isDownloadableV1: false,
       isReady: isLegalChecklistReady,
-      lastUpdatedText: formatDate(phase3?.legalChecklist?.updatedAt || journey?.updatedAt),
+      lastUpdatedText: formatDate(phase3?.legalAssessment?.updatedAt || phase3?.legalAssessment?.evaluatedAt || phase3?.legalChecklist?.updatedAt || journey?.updatedAt),
       stepUrl: withIdeaContext('/dashboard/creator/phase-3/compliance', currentIdeaId),
       nonDownloadableNote: 'Compliance checklist active · Standalone PDF export is not yet supported for this format.',
     },

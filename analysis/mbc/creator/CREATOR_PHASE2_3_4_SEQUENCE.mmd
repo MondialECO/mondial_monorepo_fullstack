@@ -1,0 +1,138 @@
+sequenceDiagram
+    autonumber
+    actor Creator as Creator (Founder)
+    participant FE as Frontend (Next.js)
+    participant QuickStartAPI as QuickStart API (Backend)
+    participant JourneyAPI as Creator Journey API
+    participant AI as AI Services (Jobs & Handlers)
+    participant Engine as Policy & Deterministic Engines
+    participant Mongo as MongoDB (Authoritative Store)
+
+    %% -------------------------------------------------------------------------
+    %% 1. ONBOARDING & HUMAINX QUICK START
+    %% -------------------------------------------------------------------------
+    rect rgb(240, 245, 255)
+    Note over Creator, Mongo: STEP 0 — HUMAINX QUICK START GATE (One-Time Onboarding)
+    Creator->>FE: Navigates to /dashboard/creator/humainx
+    FE->>QuickStartAPI: GET /api/creator/quick-start/status
+    QuickStartAPI->>Mongo: Read ProfessionalProfiles.QuickStart & VentureContext
+    Mongo-->>QuickStartAPI: Return profile state (e.g. nextRequiredStep: 1)
+    QuickStartAPI-->>FE: Return QuickStartStatusDto
+    Creator->>FE: Screen 1: Select Region, Situation, Weekly Availability
+    FE->>QuickStartAPI: POST /api/creator/quick-start/step1
+    QuickStartAPI->>Mongo: $set VentureContext + Step1ConfirmedAt (Atomic)
+    Creator->>FE: Screen 2: Select >= 1 Skills with Level (Beginner/Comfortable/Advanced)
+    FE->>QuickStartAPI: POST /api/creator/quick-start/step2
+    QuickStartAPI->>Mongo: $set Skills + Step2ConfirmedAt (Atomic)
+    Creator->>FE: Screen 3: Previous Experience & Progress Preference
+    FE->>QuickStartAPI: POST /api/creator/quick-start/complete
+    QuickStartAPI->>Mongo: $set Preferences + Step3ConfirmedAt + CompletedAt (Atomic)
+    QuickStartAPI-->>FE: Return completed = true
+    FE->>FE: Redirects to /dashboard/creator
+    end
+
+    %% -------------------------------------------------------------------------
+    %% 2. PHASE 2: CLARIFIER & BRAND STUDIO
+    %% -------------------------------------------------------------------------
+    rect rgb(245, 240, 255)
+    Note over Creator, Mongo: PHASE 2 — PROJECT IDENTITY & BRAND STUDIO
+    Creator->>FE: /dashboard/creator/phase-2/clarifier
+    Creator->>FE: Answers 6 conversational questions
+    FE->>JourneyAPI: POST /api/creator/journey/phase2/chat-message
+    JourneyAPI->>Mongo: Append ChatMessages to Phase2Data
+    Creator->>FE: Click "Build My Summary"
+    FE->>AI: POST /api/ai/clarifier (Start C-2 job)
+    AI-->>FE: Session ID (status: Processing)
+    FE->>FE: Poll C-2 session until Completed
+    FE->>JourneyAPI: POST /api/creator/journey/phase2/finalize-clarifier
+    JourneyAPI->>Mongo: Map clarified output to CreatorIdea.Project
+    Creator->>FE: Name Concept -> POST /api/creator/journey/update-project
+    JourneyAPI->>Mongo: Update Project.Name, Tagline, Category
+    Creator->>FE: Open Brand Studio (/phase-2/brand-studio)
+    FE->>JourneyAPI: POST /api/creator/journey/phase2/brand-kit (Provision BrandKit)
+    JourneyAPI->>Mongo: Upsert BrandKit document (Status: 'draft', Step: 1)
+    Creator->>FE: Step 1 (Strategy) -> Confirm -> Step 2 (Direction)
+    FE->>AI: POST /direction/generate -> DirectionEngine returns 4 candidates
+    Creator->>FE: Selects direction -> Step 3 & 4 (Logo System)
+    FE->>AI: POST /logo/generate-concepts -> LogoEngine produces 6 concepts
+    Creator->>FE: Chooses concept -> derives 7 SVG variations
+    Creator->>FE: Step 5 (Colors) -> Contrast AAA/AA checked -> Confirm
+    Creator->>FE: Step 6 (Typography) -> System font pairing -> Confirm
+    FE->>JourneyAPI: POST /brand-kit/advance (TargetStep: 6)
+    JourneyAPI->>Mongo: Update BrandKit (Status: 'complete', Step: 6)
+    JourneyAPI->>Mongo: Sync 4 summary fields to CreatorIdea.Project.Branding
+    Creator->>FE: View /phase-2/complete -> Click "Continue to Phase 3"
+    end
+
+    %% -------------------------------------------------------------------------
+    %% 3. PHASE 3: BUSINESS PLAN INTELLIGENCE
+    %% -------------------------------------------------------------------------
+    rect rgb(240, 255, 245)
+    Note over Creator, Mongo: PHASE 3 — BUSINESS PLAN INTELLIGENCE (3.1 to 3.7)
+    Creator->>FE: /phase-3/market-study (3.1)
+    FE->>AI: POST /api/ai/market-study (Consumes Clarifier + Project)
+    AI->>Mongo: Writes MarketStudySession with TAM/SAM/SOM & Competitors
+    Creator->>FE: /phase-3/business-model (3.2)
+    FE->>AI: POST /api/ai/business-model (Consumes Market Study)
+    AI->>Mongo: Writes BusinessModelSession (9 blocks, Pricing Tiers)
+    Creator->>FE: /phase-3/forecast (3.3)
+    FE->>AI: POST /api/ai/forecast (Inputs: Churn%, OPEX, Growth)
+    AI->>Engine: Run ExtendToThirtySixMonths() (Deterministic projection 13-36)
+    Engine->>Engine: Run RecomputeBreakEven()
+    AI->>Mongo: Writes ForecastSession (36mo Cash Flow & Break-even)
+    Creator->>FE: /phase-3/compliance (3.4)
+    FE->>JourneyAPI: POST /api/creator/legal-compliance/evaluate
+    JourneyAPI->>Engine: LegalApplicabilityEngine evaluates FranceRules.json
+    Engine-->>JourneyAPI: Reconciled LegalAssessment & PlanningReadinessPct
+    JourneyAPI->>Mongo: Writes LegalAssessment to CreatorIdea.Phase3Data
+    Creator->>FE: /phase-3/formation (3.5)
+    FE->>JourneyAPI: POST /api/creator/ai/formation-generator/start
+    JourneyAPI->>Engine: Evaluates sector, team, TAM, and growth
+    Engine-->>JourneyAPI: Recommends legal entity (SAS / SAS-U / SARL) + Checklist
+    JourneyAPI->>Mongo: Writes FormationGenerator to Phase3Data
+    Creator->>FE: /phase-3/business-plan (3.6)
+    FE->>AI: POST /api/ai/business-plan (Assembles 3.1 + 3.2 + 3.3 + 3.4 + 3.5 + Brand)
+    AI->>Mongo: Writes BusinessPlanSession with 12 synthesized sections
+    Creator->>FE: /phase-3/complete (3.7)
+    FE->>JourneyAPI: PATCH /api/creator/masterplan/complete
+    JourneyAPI->>Engine: Computes 5-dimension Investor Readiness Score (0-100)
+    JourneyAPI->>Mongo: Sets Phase3 Status = "completed"
+    end
+
+    %% -------------------------------------------------------------------------
+    %% 4. PHASE 4: CONSTRUCTION & LAUNCH PREPARATION
+    %% -------------------------------------------------------------------------
+    rect rgb(255, 250, 240)
+    Note over Creator, Mongo: PHASE 4 — CONSTRUCTION ENGINE (4.1 to 4.7)
+    Creator->>FE: Navigates to /dashboard/creator/phase-4 (4.1 Snapshot)
+    FE->>FE: Phase4ProfileGuard verifies ProfileCompletenessResolver.Phase4Ready
+    FE->>JourneyAPI: POST /api/creator/phase4/construction-snapshot/generate
+    JourneyAPI->>Engine: EnforceGateAsync (P3 Complete && Profile Phase4Ready)
+    JourneyAPI->>Engine: Evaluates foundation across 15 categories (Ready/Partial/Missing/Critical)
+    JourneyAPI->>Mongo: Persists ConstructionSnapshot in CreatorJourney.Phase4Data
+    Creator->>FE: /phase-4/roadmap (4.2)
+    FE->>JourneyAPI: POST /api/creator/phase4/roadmap/generate
+    JourneyAPI->>Engine: RoadmapScheduler resolves FounderCapacityTier and schedules 6 horizons
+    JourneyAPI->>Mongo: Persists Roadmap tasks with stable keys
+    Creator->>FE: /phase-4/needs (4.3)
+    FE->>JourneyAPI: POST /api/creator/phase4/needs/generate
+    JourneyAPI->>Engine: Synthesizes Needs across 6 categories from Snapshot & Upstream
+    JourneyAPI->>Mongo: Persists NeedsAnalysis
+    Creator->>FE: /phase-4/skills (4.4)
+    FE->>JourneyAPI: POST /api/creator/phase4/skills-plan/generate
+    JourneyAPI->>Engine: CapabilityResolutionPolicy routes gaps to LEARN, DELEGATE, or VERIFY
+    JourneyAPI->>Mongo: Persists SkillsPlan
+    Creator->>FE: /phase-4/support (4.5)
+    FE->>JourneyAPI: POST /api/creator/phase4/support/generate
+    JourneyAPI->>Engine: SupportMatchingService matches Aides-entreprises OpenData + Regional Adapters
+    JourneyAPI->>Mongo: Persists SupportPlan (EligibleToApply strictly excluded from cash)
+    Creator->>FE: /phase-4/pricing (4.6)
+    FE->>JourneyAPI: POST /api/creator/phase4/pricing/generate
+    JourneyAPI->>Engine: PricingPolicyEngine calculates unit economics, floor prices, tax mode
+    JourneyAPI->>Mongo: Persists PricingStrategy (4 independent prices)
+    Creator->>FE: /phase-4/gtm (4.7)
+    FE->>JourneyAPI: POST /api/creator/phase4/gtm/generate
+    JourneyAPI->>Engine: GtmPolicyEngine maps ICP, channels, load points, and budget safety
+    JourneyAPI->>Mongo: Persists GtmStrategy (NeedsValidation enforcement)
+    Note over FE, Mongo: Phase 4.8 (Launch Assets) is NEXT APPROVED STAGE · Phase 4.9 is RESERVED
+    end

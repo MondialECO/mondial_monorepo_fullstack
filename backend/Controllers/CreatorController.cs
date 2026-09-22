@@ -699,43 +699,6 @@ namespace WebApp.Controllers
                 return StatusCode(403, new { error = ex.Message });
             }
         }
-
-        // ============ CREATOR PHASES ============
-
-        [HttpPut("cross-roads/{ideaId}/decide")]
-        public async Task<IActionResult> DecideCrossRoads(string ideaId, [FromBody] CrossRoadsDecisionRequest request)
-        {
-            try
-            {
-                var userId = GetUserId();
-                await EnsureUniversalPhase1CompleteAsync(userId);
-                if (string.IsNullOrEmpty(ideaId) || string.IsNullOrEmpty(request?.Decision))
-                    return BadRequest(new { error = "Missing required fields" });
-
-                if (request.Decision != "PATH_A" && request.Decision != "PATH_B")
-                    return BadRequest(new { error = "Decision must be PATH_A or PATH_B" });
-
-                // Update user's CrossRoadsDecision
-                var user = await _context.ApplicationUsers.FindOneAndUpdateAsync(
-                    Builders<ApplicationUser>.Filter.Eq(u => u.Id, Guid.Parse(userId)),
-                    Builders<ApplicationUser>.Update
-                        .Set(u => u.CreatorProfile.CrossRoadsDecision, request.Decision),
-                    new FindOneAndUpdateOptions<ApplicationUser> { ReturnDocument = ReturnDocument.After }
-                );
-
-                if (user == null)
-                    return NotFound(new { error = "User not found" });
-
-                return Ok(new { message = "Crossroads decision recorded", decision = request.Decision });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, new { error = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message });
-            }
-        }
     }
 }
+

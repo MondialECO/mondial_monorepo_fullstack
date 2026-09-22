@@ -69,9 +69,6 @@ namespace WebApp.Services.Interface
 
         // ---- Phase 3 deterministic modules ----
 
-        /// <summary>Persist a generated legal checklist + append a phase-3 version.</summary>
-        Task<CreatorJourney> SetLegalChecklistAsync(string userId, CreatorLegalChecklist checklist, string ideaId = null);
-
         /// <summary>Persist a full deterministic legal assessment, syncing both LegalAssessment and LegalChecklist.</summary>
         Task<CreatorJourney> SetLegalAssessmentAsync(string userId, CreatorLegalAssessment assessment, string ideaId = null);
 

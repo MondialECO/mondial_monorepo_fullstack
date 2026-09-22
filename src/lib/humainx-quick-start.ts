@@ -390,19 +390,6 @@ export function resetQuickStartJourneyState(userId: string): void {
   }
 }
 
-export function isQuickStartJourneyComplete(userId?: string | null): boolean {
-  if (!userId) return false;
-  const state = getQuickStartJourneyState(userId);
-  return state.completed && state.step1Confirmed && state.step2Confirmed && state.step3Confirmed;
-}
-
-export function getNextQuickStartJourneyStep(journeyState: HumainXJourneyState): 1 | 2 | 3 | null {
-  if (!journeyState.step1Confirmed) return 1;
-  if (!journeyState.step2Confirmed) return 2;
-  if (!journeyState.completed) return 3;
-  return null;
-}
-
 export interface HumainXQuickStartBackendState {
   version: number;
   step1ConfirmedAt: string | null;
@@ -446,24 +433,18 @@ export function isBackendQuickStartComplete(profile: any): boolean {
   return Boolean(qs?.completedAt || qs?.CompletedAt || qs?.completed || qs?.Completed);
 }
 
-export function resolveTargetQuickStartStep(profile: any, journeyState?: HumainXJourneyState): 1 | 2 | 3 {
-  // Authoritative backend resolution
+export function resolveTargetQuickStartStep(profile: any): 1 | 2 | 3 {
+  // Authoritative backend resolution only (localStorage is never consulted for access or progression)
   if (profile?.quickStart || profile?.QuickStart) {
     const backendState = getAuthoritativeQuickStartState(profile);
     if (backendState.completed) return 1;
     return backendState.nextRequiredStep ?? 1;
   }
 
-  if (journeyState) {
-    if (!journeyState.step1Confirmed || !isStep1Complete(profile)) return 1;
-    if (!journeyState.step2Confirmed || !isStep2Complete(profile)) return 2;
-    if (!journeyState.completed || !isStep3Complete(profile)) return 3;
-    return 1;
-  }
-
   const step = getFirstIncompleteStep(profile);
   return step ?? 1;
 }
+
 
 export function getMissingFields(profile: any): string[] {
   const missing: string[] = [];

@@ -55,8 +55,10 @@ The **HumainX Quick Start** is a mandatory 3-screen frontend journey gate positi
 - **Isolation:** Strictly Creator-only (`normalizeUserRole(user?.role) === UserRole.CREATOR`).
 - **Zero Impact on Other Roles:** Investors (`/dashboard/investor`), Entrepreneurs (`/dashboard/entrepreneur`), and Service Providers (`/dashboard/serviceprovider`) never mount or interact with this guard.
 - **Architectural Nature:** It is NOT authentication, backend authorization, a global role gate, a second profile entity, or a replacement for Phase 4 backend validation.
-- **Dual-Gate Formula:** Creator Dashboard access strictly requires both data completeness and explicit sequential journey confirmation:
-  $$\text{DashboardAllowed} = \text{isQuickStartComplete}(\text{profile}) \land \text{isQuickStartJourneyComplete}(\text{userId})$$
+- **Backend-Authoritative Gate Formula:** Creator Dashboard access strictly requires authoritative backend Quick Start completion:
+  $$\text{DashboardAllowed} = \text{isBackendQuickStartComplete}(\text{profile})$$
+- **Single Source of Truth:** `ProfessionalProfileRecord.QuickStart` on the backend profile is the sole onboarding journey authority across refresh, logout/login, storage wipe, and different devices/browsers.
+- **LocalStorage Role:** `localStorage` has zero access or progression authority. It is only cleaned upon completion (`resetQuickStartJourneyState(userId)`).
 
 ### 2.2 Data Model: Single Canonical Truth
 There is **NO duplicate HumainX profile entity** in Mondial ECO. Quick Start and Deep HumainX interact exclusively with the existing canonical `ProfessionalProfileRecord`:
@@ -327,3 +329,41 @@ FROZEN / DO NOT REOPEN WITHOUT REGRESSION
 - Legacy Phase 4 Retirement
 ```
 Only reopen if a confirmed regression is introduced by future Phase 4.8 / 4.9 integration or an explicit product canon modification is authorized.
+
+---
+
+## 13. CREATOR PHASE 2–5 CLEAN BASELINE
+
+```text
+CREATOR PHASE 2–5 CLEAN BASELINE
+
+Phase 2 Brand authority:
+BrandKit (canonical visual identity authority; CreatorIdea.Project.Branding is derived projection only)
+
+Phase 3.4 Legal authority:
+CreatorLegalAssessment (CreatorIdea.Phase3Data.LegalAssessment)
+
+HumainX onboarding authority:
+ProfessionalProfileRecord.QuickStart (sole onboarding journey authority; localStorage has no access/progression authority)
+
+Phase 4 completion authority:
+Phase4CompletionResolver (sole Phase 4 completion authority)
+
+Founder capacity authority:
+IFounderCapacityResolver (sole founder-capacity authority)
+
+Pricing authority:
+PricingPolicyEngine (canonical pricing-policy authority)
+
+Legacy legal business logic:
+0
+
+Legacy compatibility surfaces:
+Retained intentionally where needed for backward compatibility (1 BSON field, 1 command adapter, 2 HTTP endpoints)
+
+Phase 4.8:
+NOT IMPLEMENTED (Next approved stage)
+
+Phase 4.9:
+RESERVED (Construction readiness)
+```

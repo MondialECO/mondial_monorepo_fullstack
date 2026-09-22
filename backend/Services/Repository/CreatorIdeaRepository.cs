@@ -51,6 +51,9 @@ namespace WebApp.Services.Repository
             string logoAsset,
             string paletteName,
             string typographyPairing,
+            string? brandKitId = null,
+            int? brandKitVersion = null,
+            DateTime? syncedAt = null,
             IClientSessionHandle? session = null);
     }
 
@@ -158,13 +161,19 @@ namespace WebApp.Services.Repository
             string logoAsset,
             string paletteName,
             string typographyPairing,
+            string? brandKitId = null,
+            int? brandKitVersion = null,
+            DateTime? syncedAt = null,
             IClientSessionHandle? session = null)
         {
             var update = Builders<CreatorIdea>.Update
                 .Set(x => x.Project.Branding.BrandingMethod, brandingMethod)
                 .Set(x => x.Project.Branding.LogoAsset, logoAsset)
                 .Set(x => x.Project.Branding.PaletteName, paletteName)
-                .Set(x => x.Project.Branding.TypographyPairing, typographyPairing);
+                .Set(x => x.Project.Branding.TypographyPairing, typographyPairing)
+                .Set(x => x.Project.Branding.BrandKitId, brandKitId)
+                .Set(x => x.Project.Branding.BrandKitVersion, brandKitVersion)
+                .Set(x => x.Project.Branding.SyncedAt, syncedAt ?? DateTime.UtcNow);
 
             return UpdateAsync(ideaId, ownerUserId, update, expectedVersion: null, session: session);
         }

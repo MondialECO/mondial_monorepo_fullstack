@@ -788,7 +788,7 @@ export default function BusinessPlanPage() {
         });
         setCross({
           hasForecast: !!p3?.forecastSessionId,
-          hasGtm: !!(journey.phase4Data as { gtmSetup?: unknown })?.gtmSetup,
+          hasGtm: Boolean(journey.phase4Data?.gtmStrategy),
           youNeed: (p3?.formationGenerator?.youNeed ?? []).map((n) => n.label),
           seedAsk: p5?.pathB?.seedFunding?.totalAsk ?? null,
         });

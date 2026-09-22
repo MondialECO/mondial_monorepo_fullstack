@@ -35,6 +35,10 @@ This matrix establishes the definitive, canonical data authority for every major
 | **AI Business Plan** | `BusinessPlanSession` | `BusinessPlanSessions` | `CreatorIdeas.BusinessPlan` | **CANONICAL**. C-3 AI session source of truth. |
 | **AI Forecast Model** | `ForecastSession` | `ForecastSessions` | `CreatorIdeas.FinancialForecast`| **CANONICAL**. C-4 AI session source of truth. |
 | **Creator Brand Kit** | `BrandKit` | `BrandKits` | `CreatorIdea.Project.Branding` | **CANONICAL**. Full visual identity source of truth (Strategy, Direction, Logo Type, Logo Concepts, 7 Derived Variations, Colors, Typography, 3-Snapshot History). Synced to thin 4-field pointer on `Project.Branding` (`BrandingMethod`, `LogoAsset`, `PaletteName`, `TypographyPairing`). |
+| **Creator Phase 3.4 Legal & Compliance** | `CreatorLegalAssessment` | `CreatorIdeas` | `CreatorPhase3Data.LegalChecklist` (historical BSON read only) | **CANONICAL**. Sole legal authority for statutory rules evaluation, compliance items, status transitions, and staleness detection (`CreatorIdea.Phase3Data.LegalAssessment`). `CreatorPhase3Data.LegalChecklist` is retained as a legacy BSON compatibility surface (0 canonical active readers, 0 new writers). `UpdateLegalChecklistItemAsync` is a compatibility command adapter only delegating to canonical `UpdateLegalAssessmentItemStatusAsync`. `POST /api/creator/ai/legal-checklist/generate` and `PATCH /api/creator/legal-checklist/item/{itemId}` are compatibility HTTP endpoints only. |
+| **Creator Phase 4 Completion Authority** | `Phase4CompletionResolver` | In-memory service | `CreatorJourneyService.ComputePhaseStatusAsync` | **CANONICAL**. Sole Phase 4 completion authority. Evaluates stage-native resolution semantics across all 7 stages (4.1–4.7). Zero duplicate predicates. Phase 4.8 is not implemented; Phase 4.9 is reserved. |
+| **Creator Founder Capacity Authority** | `IFounderCapacityResolver` | In-memory service | `ProfessionalProfileRecord.VentureContext` | **CANONICAL**. Sole founder-capacity authority calculating weekly availability, operational bandwidth, and channel constraints. |
+| **Creator Pricing Policy Authority** | `PricingPolicyEngine` | In-memory service | `CreatorPhase4PricingService` | **CANONICAL**. Canonical pricing-policy authority governing tax mode inference (`DetermineTaxMode`), margin floors, and revenue model structures. |
 | **Realtime Chat** | `ChatMessage` + `Conversation` | `ChatMessages`, `Conversations` | Redis SignalR Backplane | **CANONICAL**. Stored in MongoDB; distributed in real time via Redis SignalR. |
 | **Notifications** | `Notification` entity | `Notifications` | Browser Web Push Service Worker | **CANONICAL**. Stored in MongoDB; dispatched via `NotificationHub`. |
 
@@ -74,3 +78,50 @@ This matrix establishes the definitive, canonical data authority for every major
    - Step confirmations are idempotent: `Step1ConfirmedAt ??= now`, `Step2ConfirmedAt ??= now`, `CompletedAt ??= now`. Re-confirming will never overwrite original timestamps.
    - Progression preferences are deterministically mapped to canonical `LearningPreference` and `DelegationPreference` without introducing redundant schema fields.
    - Legacy `localStorage` migration policy: Backend state always wins. If backend state is complete, legacy `localStorage` is cleaned up. If backend state is absent, user undergoes one-time backend Quick Start onboarding. Subsequent profile edits after completion never reopen the Quick Start gate.
+9. **Creator Phase 3.4 Legal Authority & Compatibility Surface Rule**:
+   - `CreatorLegalAssessment` on `CreatorIdea.Phase3Data.LegalAssessment` is the sole canonical legal authority.
+   - `CreatorPhase3Data.LegalChecklist` is preserved strictly as a backward-compatible BSON deserialization surface for historical documents, with 0 canonical active readers and 0 active new writers.
+   - `UpdateLegalChecklistItemAsync` is a pure compatibility command adapter delegating to canonical `UpdateLegalAssessmentItemStatusAsync` with zero independent legal business rules.
+   - `POST /api/creator/ai/legal-checklist/generate` and `PATCH /api/creator/legal-checklist/item/{itemId}` are compatibility HTTP endpoints only, not separate legal authorities.
+10. **Creator Phase 4 Completion Single-Authority Rule**:
+   - `Phase4CompletionResolver` is the sole authority for determining Phase 4 completion.
+   - Generic `Status != Draft` checks and ad-hoc flags are prohibited. All 7 stages (4.1 Construction Snapshot, 4.2 Operational Roadmap, 4.3 Needs & Requirements, 4.4 Skills & Training, 4.5 Aids, Grants & Support, 4.6 Pricing Strategy, 4.7 GTM Strategy) are resolved using domain-native criteria.
+   - Phase 4.8 is not implemented; Phase 4.9 is reserved.
+
+---
+
+## 3. Creator Phase 2–5 Clean Baseline
+
+```text
+CREATOR PHASE 2–5 CLEAN BASELINE
+
+Phase 2 Brand authority:
+BrandKit (canonical visual identity authority; CreatorIdea.Project.Branding is derived projection only)
+
+Phase 3.4 Legal authority:
+CreatorLegalAssessment (CreatorIdea.Phase3Data.LegalAssessment)
+
+HumainX onboarding authority:
+ProfessionalProfileRecord.QuickStart (sole onboarding journey authority; localStorage has no access/progression authority)
+
+Phase 4 completion authority:
+Phase4CompletionResolver (sole Phase 4 completion authority)
+
+Founder capacity authority:
+IFounderCapacityResolver (sole founder-capacity authority)
+
+Pricing authority:
+PricingPolicyEngine (canonical pricing-policy authority)
+
+Legacy legal business logic:
+0
+
+Legacy compatibility surfaces:
+Retained intentionally where needed for backward compatibility (1 BSON field, 1 command adapter, 2 HTTP endpoints)
+
+Phase 4.8:
+NOT IMPLEMENTED (Next approved stage)
+
+Phase 4.9:
+RESERVED (Construction readiness)
+```

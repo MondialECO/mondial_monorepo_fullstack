@@ -220,7 +220,8 @@ namespace WebApp.Controllers
             {
                 var userId = GetUserId();
                 var journey = await _journeys.UpdateLegalChecklistItemAsync(userId, itemId, request?.Status, ideaId);
-                return Ok(ApiResponse.Ok("Item updated", journey.Phase3Data.LegalChecklist));
+                var legacyChecklist = journey.Phase3Data.LegalChecklist ?? (journey.Phase3Data.LegalAssessment != null ? new CreatorLegalChecklist { Items = journey.Phase3Data.LegalAssessment.Items, CompletedCount = journey.Phase3Data.LegalAssessment.Items.Count(i => i.Status == "done"), TotalCount = journey.Phase3Data.LegalAssessment.Items.Count } : null);
+                return Ok(ApiResponse.Ok("Item updated", legacyChecklist));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -264,7 +265,7 @@ namespace WebApp.Controllers
 
                 // Authoritative dirty / stale detection with structured metadata
                 var currentProfile = await ExtractCurrentBusinessProfileAsync(userId, idea);
-                var staleMetadata = _legalEngine.CheckFreshness(assessment, currentProfile, _rulesCatalog.RulesVersion, _rulesCatalog.Jurisdiction);
+                var staleMetadata = _legalEngine.CheckFreshness(assessment, currentProfile, _rulesCatalog.RulesVersion, _rulesCatalog.Jurisdiction, _rulesCatalog.RulesFingerprint);
 
                 bool isOutdated = staleMetadata.IsStale;
                 assessment.IsPotentiallyOutdated = isOutdated;
@@ -446,7 +447,7 @@ namespace WebApp.Controllers
                 }
                 else
                 {
-                    var staleMeta = _legalEngine.CheckFreshness(assessment, currentProfile, _rulesCatalog.RulesVersion, _rulesCatalog.Jurisdiction);
+                    var staleMeta = _legalEngine.CheckFreshness(assessment, currentProfile, _rulesCatalog.RulesVersion, _rulesCatalog.Jurisdiction, _rulesCatalog.RulesFingerprint);
                     assessment.StaleMetadata = staleMeta;
                     assessment.IsPotentiallyOutdated = staleMeta.IsStale;
                 }
@@ -491,7 +492,7 @@ namespace WebApp.Controllers
                 var p3 = idea.Phase3Data ?? new CreatorPhase3Data();
 
                 var currentProfile = await ExtractCurrentBusinessProfileAsync(userId, idea);
-                var staleMeta = _legalEngine.CheckFreshness(p3.LegalAssessment, currentProfile, _rulesCatalog.RulesVersion, _rulesCatalog.Jurisdiction);
+                var staleMeta = _legalEngine.CheckFreshness(p3.LegalAssessment, currentProfile, _rulesCatalog.RulesVersion, _rulesCatalog.Jurisdiction, _rulesCatalog.RulesFingerprint);
 
                 var freshness = new Phase3FreshnessOverviewDto
                 {
@@ -903,7 +904,8 @@ namespace WebApp.Controllers
                 return Ok(ApiResponse.Ok("Type selected", new
                 {
                     formation = journey.Phase3Data.FormationGenerator,
-                    legalChecklist = journey.Phase3Data.LegalChecklist,
+                    legalAssessment = journey.Phase3Data.LegalAssessment,
+                    legalChecklist = journey.Phase3Data.LegalChecklist ?? (journey.Phase3Data.LegalAssessment != null ? new CreatorLegalChecklist { Items = journey.Phase3Data.LegalAssessment.Items } : null),
                 }));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }

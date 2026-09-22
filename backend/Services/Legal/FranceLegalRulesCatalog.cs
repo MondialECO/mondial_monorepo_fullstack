@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,17 +19,88 @@ namespace WebApp.Services.Legal
 
         public string RulesVersion => _catalog.RulesVersion;
         public string Jurisdiction => _catalog.Jurisdiction;
+        public string RulesFingerprint { get; }
+        public string? RulesLastVerifiedAt => _catalog.Metadata?.LastVerifiedAt;
 
         public FranceLegalRulesCatalog(ILogger<FranceLegalRulesCatalog> logger, IWebHostEnvironment? env = null)
         {
             _logger = logger;
             _catalog = LoadCatalog(env);
             _rulesById = _catalog.Rules.ToDictionary(r => r.Id, StringComparer.OrdinalIgnoreCase);
+            RulesFingerprint = ComputeRulesFingerprint(_catalog);
 
             _logger.LogInformation(
-                "[FranceLegalRulesCatalog] Initialized version {Version} with {Count} authoritative statutory rules.",
+                "[FranceLegalRulesCatalog] Initialized version {Version} (fingerprint: {Fingerprint}) with {Count} authoritative statutory rules.",
                 _catalog.RulesVersion,
+                RulesFingerprint,
                 _catalog.Rules.Count);
+        }
+
+        /// <summary>
+        /// Computes a deterministic SHA-256 fingerprint of the canonical statutory rules payload.
+        /// Excludes metadata.sourceFingerprint and non-rule verification timestamps (e.g. metadata.lastVerifiedAt,
+        /// officialSource.lastVerified, or lastUpdated) so a LastVerifiedAt-only change never makes an assessment stale.
+        /// </summary>
+        public static string ComputeRulesFingerprint(LegalRulesCatalogFile catalog)
+        {
+            var normalizedRules = (catalog.Rules ?? new List<LegalRuleDefinition>())
+                .OrderBy(r => r.Id, StringComparer.Ordinal)
+                .Select(r => new
+                {
+                    id = r.Id ?? string.Empty,
+                    title = r.Title ?? string.Empty,
+                    category = r.Category ?? string.Empty,
+                    stage = r.Stage ?? string.Empty,
+                    priority = r.Priority ?? string.Empty,
+                    description = r.Description ?? string.Empty,
+                    whyItApplies = r.WhyItApplies ?? string.Empty,
+                    requiresEvidence = r.RequiresEvidence,
+                    evidenceDocType = r.EvidenceDocType ?? string.Empty,
+                    evidenceLabel = r.EvidenceLabel ?? string.Empty,
+                    conditions = new
+                    {
+                        always = r.Conditions?.Always,
+                        isSaaS = r.Conditions?.IsSaaS,
+                        isEcommerce = r.Conditions?.IsEcommerce,
+                        isMarketplace = r.Conditions?.IsMarketplace,
+                        isConsulting = r.Conditions?.IsConsulting,
+                        isPhysicalBusiness = r.Conditions?.IsPhysicalBusiness,
+                        isB2B = r.Conditions?.IsB2B,
+                        isB2C = r.Conditions?.IsB2C,
+                        hasSubscription = r.Conditions?.HasSubscription,
+                        hasOnlinePayments = r.Conditions?.HasOnlinePayments,
+                        hasWebsite = r.Conditions?.HasWebsite,
+                        sellsProducts = r.Conditions?.SellsProducts,
+                        sellsServices = r.Conditions?.SellsServices,
+                        collectsPersonalData = r.Conditions?.CollectsPersonalData,
+                        usesAnalyticsOrTracking = r.Conditions?.UsesAnalyticsOrTracking,
+                        hasEmployees = r.Conditions?.HasEmployees,
+                        hasContractors = r.Conditions?.HasContractors,
+                        hasPhysicalPremises = r.Conditions?.HasPhysicalPremises,
+                        mayBeRegulatedActivity = r.Conditions?.MayBeRegulatedActivity
+                    },
+                    source = new
+                    {
+                        authority = r.OfficialSource?.Authority ?? string.Empty,
+                        title = r.OfficialSource?.Title ?? string.Empty,
+                        url = r.OfficialSource?.Url ?? string.Empty,
+                        sourceType = r.OfficialSource?.SourceType ?? string.Empty,
+                        articleReference = r.OfficialSource?.ArticleReference ?? string.Empty,
+                        notes = r.OfficialSource?.Notes ?? string.Empty
+                        // NOTE: OfficialSource.LastVerified is deliberately excluded to prevent timestamp false staleness
+                    }
+                }).ToList();
+
+            var payload = JsonSerializer.Serialize(new
+            {
+                jurisdiction = catalog.Jurisdiction ?? "FR",
+                rulesVersion = catalog.RulesVersion ?? "FR-2026.1",
+                rules = normalizedRules
+            });
+
+            using var sha256 = SHA256.Create();
+            var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(payload));
+            return Convert.ToHexString(hashBytes).ToLowerInvariant();
         }
 
         public LegalRulesCatalogFile GetCatalog() => _catalog;
