@@ -12,7 +12,7 @@
 This cleanup phase safely eliminated confirmed dead code, obsolete prototyping endpoints, duplicate gating logic, and client-side authority drifts across Creator Phase 2–4 while strictly adhering to:
 1. **HumainX Backend Authority:** Completely removed `localStorage` fallback from HumainX step resolution and progression. The backend `profile.quickStart` (`getAuthoritativeQuickStartState(profile)`) is now the sole authority. `localStorage` is only cleaned upon completion and is never consulted for access or progression.
 2. **Phase 3.6 Business Plan GTM Independence:** Decoupled Phase 3.6 from future Phase 4.7 GTM state. Removed legacy `gtmSetup` fallback. Canonical `journey.phase4Data?.gtmStrategy` is preserved purely as a display indicator without making Phase 3 dependent on Phase 4.
-3. **Legal 3.4 Compatibility Delegation:** Any retained `UpdateLegalChecklistItemAsync` path was turned into a pure compatibility adapter delegating directly to canonical `LegalAssessment` logic with zero independent legacy business rules or duplicate calculations.
+3. **Legal 3.4 Compatibility Delegation & Authority:** Established `CreatorLegalAssessment` (`CreatorIdea.Phase3Data.LegalAssessment`) as the sole canonical legal authority. Confirmed 0 active canonical readers and 0 new writers for `LegalChecklist`. Retained 1 legacy BSON compatibility surface (`CreatorPhase3Data.LegalChecklist`) for historical deserialization, 1 legacy command adapter (`UpdateLegalChecklistItemAsync`) delegating with zero independent rules to `UpdateLegalAssessmentItemStatusAsync`, and 2 legacy compatibility HTTP endpoints (`POST /api/creator/ai/legal-checklist/generate`, `PATCH /api/creator/legal-checklist/item/{itemId}`).
 4. **Zero Phase 4.8 / 4.9 Code:** Maintained strict scope boundaries without implementing Phase 4.8 or 4.9.
 5. **Preserved Persistence Schemas:** Retained deserialization properties on MongoDB database models (`ApplicationUser.CreatorProfile.CrossRoadsDecision`, `CreatorPhase3Data.LegalChecklist`) without performing destructive database migrations.
 
@@ -27,7 +27,11 @@ This cleanup phase safely eliminated confirmed dead code, obsolete prototyping e
 | **Test Files Updated/Added** | **2** | `backend/tests/WebApp.Tests/Unit/CreatorArchitectureRemediationTests.cs`, `src/__tests__/creator/humainx-quick-start.test.tsx` |
 | **Backend Symbols Removed** | **4** | `CreatorController.DecideCrossRoads`, `ICreatorJourneyService.SetLegalChecklistAsync`, `CreatorJourneyService.SetLegalChecklistAsync`, `CreatorDtos.cs` types (`CrossRoadsDecisionRequest`, `CreatorIpOfferRequest`, `CreatorIpOfferResponse`) |
 | **Frontend Symbols Removed** | **4** | `generateLegalChecklist`, `updateLegalItem`, `isQuickStartJourneyComplete`, `getNextQuickStartJourneyStep` |
-| **Legacy Compatibility Paths Retained** | **4** | `POST /api/creator/ai/legal-checklist/generate`, `PATCH /api/creator/legal-checklist/item/{itemId}`, `ApplicationUser.CreatorProfile.CrossRoadsDecision`, `CreatorPhase3Data.LegalChecklist` |
+| **LegalChecklist Canonical Active Readers** | **0** | Zero active readers in canonical journey flow |
+| **LegalChecklist New Writers** | **0** | `SetLegalChecklistAsync` removed; zero new write operations |
+| **Legacy LegalChecklist BSON Compatibility Surface** | **1** | `CreatorPhase3Data.LegalChecklist` retained solely for backward-compatible deserialization / historical records |
+| **Legacy Legal Command Adapter** | **1** | `UpdateLegalChecklistItemAsync` (delegates to `UpdateLegalAssessmentItemStatusAsync`, contains 0 independent rules) |
+| **Legacy Legal Compatibility HTTP Endpoints** | **2** | `POST /api/creator/ai/legal-checklist/generate`, `PATCH /api/creator/legal-checklist/item/{itemId}` (compatibility surfaces only) |
 | **Duplicate Logic Consolidated** | **2** | HumainX step navigation & gating (`getMaxAllowedStep`), Phase 3.6 GTM reference (`hasGtm`) |
 
 ---
@@ -47,6 +51,7 @@ This cleanup phase safely eliminated confirmed dead code, obsolete prototyping e
 4. **Refactored LegalChecklist Compatibility Adapter:**
    - Converted `CreatorJourneyService.UpdateLegalChecklistItemAsync` into a pure passthrough adapter that maps legacy `itemId` / `status` updates to `UpdateLegalAssessmentItemStatusAsync`.
    - Contains 0 duplicate business rules or independent compliance score calculations.
+   - Writes exclusively to canonical `CreatorLegalAssessment` / `Phase3Data.LegalAssessment`.
 
 ### 3.2 Frontend Safe Removals & Consolidations
 1. **Removed Dead API Client Methods:**
@@ -107,17 +112,61 @@ This cleanup phase safely eliminated confirmed dead code, obsolete prototyping e
 
 ## 5. Final Legacy Matrix
 
-| Item | Status | Notes |
+| Item | Final Status | Notes |
 | :--- | :--- | :--- |
-| **Phase 2 legacy active code** | **0** | All branding flows route through `BrandKit` & `CreatorBrandKitController`. |
-| **Phase 3 legacy active code** | **0** | All legal assessments route through `CreatorLegalAssessment`. |
-| **LegalChecklist active writers** | **0** | `SetLegalChecklistAsync` removed. Zero new writes anywhere in repository. |
-| **LegalChecklist compatibility readers** | **2** | `CreatorPhase3Data.LegalChecklist` (BSON deserialization) + `UpdateLegalChecklistItemAsync` (legacy adapter). |
-| **Phase 4 old completion predicates** | **0** | All logic unified into `Phase4CompletionResolver`. |
+| **Phase 2 legacy business logic** | **0** | `BrandKit` is canonical visual identity authority; `CreatorIdea.Project.Branding` is derived projection only. |
+| **Phase 3 legacy business logic** | **0** | `CreatorLegalAssessment` is canonical legal authority. |
+| **LegalChecklist canonical active readers** | **0** | Zero active readers in canonical flow. |
+| **LegalChecklist new writers** | **0** | `SetLegalChecklistAsync` removed; zero active new writers across repository. |
+| **Legacy LegalChecklist BSON compatibility surface** | **1** | `CreatorPhase3Data.LegalChecklist` retained solely for backward-compatible deserialization of historical records. |
+| **Legacy legal command adapter** | **1** | `UpdateLegalChecklistItemAsync` contains zero independent legal business logic; delegates to canonical `UpdateLegalAssessmentItemStatusAsync`. Writes only to `CreatorLegalAssessment` / `Phase3Data.LegalAssessment`. |
+| **Legacy legal compatibility HTTP endpoints** | **2** | `POST /api/creator/ai/legal-checklist/generate`, `PATCH /api/creator/legal-checklist/item/{itemId}`. Compatibility surfaces only; not separate legal authorities. |
+| **Phase 4 old completion predicates** | **0** | All unified into `Phase4CompletionResolver`. |
 | **CreatorPhase4Controller active** | **NO** | Zero active routes; confirmed removed. |
 | **offer-pricing active route** | **NO** | Confirmed absent from codebase. |
-| **Old HumainX localStorage authority** | **NO** | Fully eliminated. Backend `profile.quickStart` is sole authority. |
+| **Old HumainX localStorage authority** | **NO** | Fully eliminated. Backend `profile.quickStart` (`ProfessionalProfileRecord.QuickStart`) is sole authority. |
 | **BrandKit reverse-write path** | **NO** | Branding writes flow one-way from `BrandKit` to `CreatorIdea.Project.Branding`. |
-| **Duplicate Phase 4 completion logic** | **NO** | Fully consolidated in `Phase4CompletionResolver`. |
-| **Duplicate founder capacity authority** | **NO** | Fully consolidated in `IFounderCapacityResolver`. |
+| **Duplicate Phase 4 completion authority** | **NO** | Fully consolidated in `Phase4CompletionResolver`. |
+| **Duplicate founder-capacity authority** | **NO** | Fully consolidated in `IFounderCapacityResolver`. |
 | **Duplicate pricing authority** | **NO** | Fully consolidated in `PricingPolicyEngine`. |
+
+> [!NOTE]
+> **Clarification:** "Legacy compatibility surface" does NOT mean legacy business logic is active. Current business authority remains canonical.
+
+---
+
+## 6. Canonical Clean Baseline Status
+
+```text
+CREATOR PHASE 2–5 CLEAN BASELINE
+
+Phase 2 Brand authority:
+BrandKit (canonical visual identity authority; CreatorIdea.Project.Branding is derived projection only)
+
+Phase 3.4 Legal authority:
+CreatorLegalAssessment (CreatorIdea.Phase3Data.LegalAssessment)
+
+HumainX onboarding authority:
+ProfessionalProfileRecord.QuickStart (sole onboarding journey authority; localStorage has no access/progression authority)
+
+Phase 4 completion authority:
+Phase4CompletionResolver (sole Phase 4 completion authority)
+
+Founder capacity authority:
+IFounderCapacityResolver (sole founder-capacity authority)
+
+Pricing authority:
+PricingPolicyEngine (canonical pricing-policy authority)
+
+Legacy legal business logic:
+0
+
+Legacy compatibility surfaces:
+Retained intentionally where needed for backward compatibility (1 BSON field, 1 command adapter, 2 HTTP endpoints)
+
+Phase 4.8:
+NOT IMPLEMENTED (Next approved stage)
+
+Phase 4.9:
+RESERVED (Construction readiness)
+```

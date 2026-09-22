@@ -184,3 +184,17 @@ The following symbols and files are confirmed safe for immediate removal:
    - HumainX backend authority preserved.
    - BrandKit canonical authority preserved.
    - Phase 4 completion single authority preserved.
+
+---
+
+## 11. Post-Cleanup Remediation Note (2026-09-22)
+
+Following the safe cleanup execution in commit `c9752817`:
+- All candidate removals (`CreatorController.DecideCrossRoads`, `CreatorDtos.cs`, `SetLegalChecklistAsync`, `generateLegalChecklist`, `updateLegalItem`, `isQuickStartJourneyComplete`) were safely completed and verified.
+- **Legacy Matrix Classification:**
+  - `LegalChecklist` canonical active readers: **0**
+  - `LegalChecklist` new writers: **0**
+  - Legacy LegalChecklist BSON compatibility surface: **1** (`CreatorPhase3Data.LegalChecklist`, retained strictly for deserialization of historical records)
+  - Legacy legal command adapter: **1** (`UpdateLegalChecklistItemAsync`, contains zero independent business logic; delegates to canonical `UpdateLegalAssessmentItemStatusAsync`)
+  - Legacy legal compatibility HTTP endpoints: **2** (`POST /api/creator/ai/legal-checklist/generate`, `PATCH /api/creator/legal-checklist/item/{itemId}`)
+- `CreatorLegalAssessment` (`Phase3Data.LegalAssessment`) remains the sole canonical legal authority.
