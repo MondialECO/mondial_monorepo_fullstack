@@ -104,6 +104,23 @@ function getResultCategoryIcon(category: string) {
   return <FileText className="w-4 h-4 text-primary" />;
 }
 
+function getResultStatusBadge(status?: string) {
+  const norm = (status || '').toLowerCase();
+  if (norm === 'ready' || norm === 'complete') {
+    return 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5';
+  }
+  if (norm.includes('update') || norm.includes('available')) {
+    return 'border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10';
+  }
+  if (norm.includes('review') || norm.includes('validation')) {
+    return 'border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10';
+  }
+  if (norm === 'draft' || norm.includes('progress')) {
+    return 'border-muted-foreground/30 text-muted-foreground bg-muted/40';
+  }
+  return 'border-border text-foreground bg-muted/20';
+}
+
 export default function CreatorDashboard() {
   const router = useRouter();
   const { user } = useAuth();
@@ -633,7 +650,7 @@ export default function CreatorDashboard() {
                           </div>
                           <Badge
                             variant="outline"
-                            className="text-badge font-semibold border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 px-2 py-0.2"
+                            className={`text-badge font-semibold px-2 py-0.2 ${getResultStatusBadge(item.status)}`}
                           >
                             {item.status}
                           </Badge>

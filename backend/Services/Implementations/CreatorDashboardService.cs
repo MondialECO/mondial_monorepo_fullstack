@@ -919,16 +919,21 @@ namespace WebApp.Services.Implementations
                 });
             }
 
-            // Phase 4.1 Snapshot
-            if (p4.ConstructionSnapshot != null && p4.ConstructionSnapshot.Status == "Completed")
+            // Phase 4.1 Construction Snapshot (Stage-native: "Completed", "Stale")
+            if (p4.ConstructionSnapshot != null 
+                && p4.ConstructionSnapshot.GeneratedAt != default 
+                && !string.Equals(p4.ConstructionSnapshot.Status, "Draft", StringComparison.OrdinalIgnoreCase))
             {
                 bool isStale = string.Equals(p4.ConstructionSnapshot.Status, "Stale", StringComparison.OrdinalIgnoreCase);
+                bool hasCritical = p4.ConstructionSnapshot.CriticalItems != null && p4.ConstructionSnapshot.CriticalItems.Any();
+                string status = isStale ? "Update Available" : (hasCritical ? "Needs Review" : "Ready");
+
                 results.Add(new DashboardResultItemDto
                 {
                     Key = "construction_snapshot",
                     Title = "Construction Snapshot",
                     Phase = 4,
-                    Status = isStale ? "Update Available" : "Ready",
+                    Status = status,
                     UpdatedAt = p4.ConstructionSnapshot.UpdatedAt,
                     IsStale = isStale,
                     Href = "/dashboard/creator/phase-4/construction-snapshot",
@@ -937,16 +942,21 @@ namespace WebApp.Services.Implementations
                 });
             }
 
-            // Phase 4.2 Roadmap
-            if (p4.Roadmap != null && p4.Roadmap.Status == "Active")
+            // Phase 4.2 Operational Roadmap (Stage-native: "Active", "Completed", "Stale")
+            if (p4.Roadmap != null 
+                && p4.Roadmap.GeneratedAt != default 
+                && !string.Equals(p4.Roadmap.Status, "Draft", StringComparison.OrdinalIgnoreCase))
             {
                 bool isStale = string.Equals(p4.Roadmap.Status, "Stale", StringComparison.OrdinalIgnoreCase);
+                bool hasBlocked = p4.Roadmap.Tasks != null && p4.Roadmap.Tasks.Any(t => string.Equals(t.Status, "Blocked", StringComparison.OrdinalIgnoreCase));
+                string status = isStale ? "Update Available" : (hasBlocked ? "Needs Review" : "Ready");
+
                 results.Add(new DashboardResultItemDto
                 {
                     Key = "operational_roadmap",
                     Title = "Operational Roadmap",
                     Phase = 4,
-                    Status = isStale ? "Update Available" : "Ready",
+                    Status = status,
                     UpdatedAt = p4.Roadmap.UpdatedAt,
                     IsStale = isStale,
                     Href = "/dashboard/creator/phase-4/roadmap",
@@ -955,67 +965,89 @@ namespace WebApp.Services.Implementations
                 });
             }
 
-            // Phase 4.3 Needs
-            if (p4.NeedsAnalysis != null && p4.NeedsAnalysis.Status == "Completed")
+            // Phase 4.3 Needs Analysis (Stage-native: "Completed", "Stale")
+            if (p4.NeedsAnalysis != null 
+                && p4.NeedsAnalysis.GeneratedAt != default 
+                && !string.Equals(p4.NeedsAnalysis.Status, "Draft", StringComparison.OrdinalIgnoreCase))
             {
+                bool isStale = string.Equals(p4.NeedsAnalysis.Status, "Stale", StringComparison.OrdinalIgnoreCase);
+                string status = isStale ? "Update Available" : "Ready";
+
                 results.Add(new DashboardResultItemDto
                 {
                     Key = "needs_analysis",
                     Title = "Needs & Requirements Matrix",
                     Phase = 4,
-                    Status = "Ready",
+                    Status = status,
                     UpdatedAt = p4.NeedsAnalysis.UpdatedAt,
-                    IsStale = false,
+                    IsStale = isStale,
                     Href = "/dashboard/creator/phase-4/needs",
                     Downloadable = false,
                     ExportType = "view"
                 });
             }
 
-            // Phase 4.4 Skills
-            if (p4.SkillsPlan != null && p4.SkillsPlan.Status == "Completed")
+            // Phase 4.4 Skills Plan (Stage-native: "Completed", "Stale"; 0 skill gaps is valid resolved)
+            if (p4.SkillsPlan != null 
+                && p4.SkillsPlan.GeneratedAt != default 
+                && !string.Equals(p4.SkillsPlan.Status, "Draft", StringComparison.OrdinalIgnoreCase))
             {
+                bool isStale = string.Equals(p4.SkillsPlan.Status, "Stale", StringComparison.OrdinalIgnoreCase);
+                string status = isStale ? "Update Available" : (p4.SkillsPlan.NeedsReviewCount > 0 ? "Needs Review" : "Ready");
+
                 results.Add(new DashboardResultItemDto
                 {
                     Key = "skills_plan",
                     Title = "Skills & Capability Plan",
                     Phase = 4,
-                    Status = "Ready",
+                    Status = status,
                     UpdatedAt = p4.SkillsPlan.UpdatedAt,
-                    IsStale = false,
+                    IsStale = isStale,
                     Href = "/dashboard/creator/phase-4/skills",
                     Downloadable = false,
                     ExportType = "view"
                 });
             }
 
-            // Phase 4.5 Support
-            if (p4.SupportPlan != null && p4.SupportPlan.Status != null && p4.SupportPlan.Status != "Draft")
+            // Phase 4.5 Support Plan (Stage-native: "Generated", "Refreshed", "Stale"; 0 matches is valid resolved)
+            if (p4.SupportPlan != null 
+                && p4.SupportPlan.GeneratedAt != default 
+                && !string.IsNullOrWhiteSpace(p4.SupportPlan.Status) 
+                && !string.Equals(p4.SupportPlan.Status, "Draft", StringComparison.OrdinalIgnoreCase))
             {
+                bool isStale = string.Equals(p4.SupportPlan.Status, "Stale", StringComparison.OrdinalIgnoreCase);
+                string status = isStale ? "Update Available" : "Ready";
+
                 results.Add(new DashboardResultItemDto
                 {
                     Key = "support_plan",
                     Title = "Public Support & Grants Portfolio",
                     Phase = 4,
-                    Status = "Ready",
+                    Status = status,
                     UpdatedAt = p4.SupportPlan.UpdatedAt,
-                    IsStale = false,
+                    IsStale = isStale,
                     Href = "/dashboard/creator/phase-4/support",
                     Downloadable = false,
                     ExportType = "view"
                 });
             }
 
-            // Phase 4.6 Pricing
-            if (p4.PricingStrategy != null && p4.PricingStrategy.Status != PricingStatus.Draft)
+            // Phase 4.6 Pricing Strategy (Stage-native enum: Generated, Refreshed, NeedsValidation, Stale)
+            if (p4.PricingStrategy != null 
+                && p4.PricingStrategy.GeneratedAt != default 
+                && p4.PricingStrategy.Status != PricingStatus.Draft)
             {
                 bool isStale = p4.PricingStrategy.Status == PricingStatus.Stale;
+                string status = isStale 
+                    ? "Update Available" 
+                    : (p4.PricingStrategy.Status == PricingStatus.NeedsValidation ? "Needs Validation" : "Ready");
+
                 results.Add(new DashboardResultItemDto
                 {
                     Key = "pricing_strategy",
                     Title = "Pricing & Revenue Strategy",
                     Phase = 4,
-                    Status = isStale ? "Update Available" : (p4.PricingStrategy.Status == PricingStatus.NeedsValidation ? "Needs Review" : "Ready"),
+                    Status = status,
                     UpdatedAt = p4.PricingStrategy.UpdatedAt,
                     IsStale = isStale,
                     Href = "/dashboard/creator/phase-4/pricing",
@@ -1024,16 +1056,24 @@ namespace WebApp.Services.Implementations
                 });
             }
 
-            // Phase 4.7 GTM
-            if (p4.GtmStrategy != null && !string.Equals(p4.GtmStrategy.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+            // Phase 4.7 GTM Strategy (Stage-native: "Valid", "Generated", "Stale"; validation-first: "Needs Validation")
+            if (p4.GtmStrategy != null 
+                && p4.GtmStrategy.GeneratedAt != default 
+                && !string.IsNullOrWhiteSpace(p4.GtmStrategy.Status) 
+                && !string.Equals(p4.GtmStrategy.Status, "Draft", StringComparison.OrdinalIgnoreCase))
             {
                 bool isStale = string.Equals(p4.GtmStrategy.Status, "Stale", StringComparison.OrdinalIgnoreCase);
+                bool needsValidation = p4.GtmStrategy.PricingValidationRequired || p4.GtmStrategy.CapacityWarningActive;
+                string status = isStale 
+                    ? "Update Available" 
+                    : (needsValidation ? "Needs Validation" : "Ready");
+
                 results.Add(new DashboardResultItemDto
                 {
                     Key = "gtm_strategy",
                     Title = "GTM & Launch Strategy",
                     Phase = 4,
-                    Status = isStale ? "Update Available" : "Ready",
+                    Status = status,
                     UpdatedAt = p4.GtmStrategy.UpdatedAt,
                     IsStale = isStale,
                     Href = "/dashboard/creator/phase-4/gtm",

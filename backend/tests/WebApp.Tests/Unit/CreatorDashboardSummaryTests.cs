@@ -595,5 +595,242 @@ namespace WebApp.Tests.Unit
             // Assert
             result.Result.Should().BeOfType<ForbidResult>();
         }
+
+        [Fact]
+        public async Task Roadmap_Active_IsVisible()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            journey.Phase4Data.Roadmap = new OperationalRoadmap
+            {
+                Status = "Active",
+                GeneratedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Stages = new List<RoadmapStageGroup>()
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.Results.Should().ContainSingle(r => r.Key == "operational_roadmap" && r.Status == "Ready");
+        }
+
+        [Fact]
+        public async Task Skills_ZeroGaps_IsVisibleAsResolved()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            journey.Phase4Data.SkillsPlan = new SkillsPlan
+            {
+                Status = "Completed",
+                GeneratedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Resolutions = new List<CapabilityResolution>(),
+                CoveredCapabilities = new List<CoveredCapability> { new() { Capability = "Leadership" } }
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.Results.Should().ContainSingle(r => r.Key == "skills_plan" && r.Status == "Ready");
+        }
+
+        [Fact]
+        public async Task Support_ZeroMatches_IsVisibleAsResolved()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            journey.Phase4Data.SupportPlan = new SupportPlan
+            {
+                Status = "Generated",
+                GeneratedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Matches = new List<SupportMatch>(),
+                Summary = new SupportPlanSummary { TotalEvaluatedCount = 10, EligibleCount = 0 }
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.Results.Should().ContainSingle(r => r.Key == "support_plan" && r.Status == "Ready");
+        }
+
+        [Fact]
+        public async Task Pricing_NeedsValidation_IsVisibleButNotReady()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            journey.Phase4Data.PricingStrategy = new PricingStrategy
+            {
+                Status = PricingStatus.NeedsValidation,
+                GeneratedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Offers = new List<PricingOffer> { new() { Key = "offer-1", Name = "Pro Plan" } }
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            var result = summary.Results.Should().ContainSingle(r => r.Key == "pricing_strategy").Subject;
+            result.Status.Should().Be("Needs Validation");
+            result.Status.Should().NotBe("Ready");
+        }
+
+        [Fact]
+        public async Task Gtm_NonDraft_IsVisibleWithCanonicalStatus()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            journey.Phase4Data.GtmStrategy = new GtmStrategy
+            {
+                Status = "Valid",
+                GeneratedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                SegmentStrategies = new List<GtmSegmentStrategy>(),
+                LaunchPlan = new GtmLaunchPlan()
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.Results.Should().ContainSingle(r => r.Key == "gtm_strategy" && r.Status == "Ready");
+        }
+
+        [Fact]
+        public async Task StalePhase4Result_ShowsUpdateAvailable()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            journey.Phase4Data.ConstructionSnapshot = new ConstructionSnapshot
+            {
+                Status = "Stale",
+                GeneratedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Categories = new List<string> { "Finance" }
+            };
+            journey.Phase4Data.Roadmap = new OperationalRoadmap
+            {
+                Status = "Stale",
+                GeneratedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Stages = new List<RoadmapStageGroup>()
+            };
+            journey.Phase4Data.PricingStrategy = new PricingStrategy
+            {
+                Status = PricingStatus.Stale,
+                GeneratedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Offers = new List<PricingOffer>()
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            var snapshotRes = summary.Results.Should().ContainSingle(r => r.Key == "construction_snapshot").Subject;
+            snapshotRes.Status.Should().Be("Update Available");
+            snapshotRes.IsStale.Should().BeTrue();
+
+            var roadmapRes = summary.Results.Should().ContainSingle(r => r.Key == "operational_roadmap").Subject;
+            roadmapRes.Status.Should().Be("Update Available");
+            roadmapRes.IsStale.Should().BeTrue();
+
+            var pricingRes = summary.Results.Should().ContainSingle(r => r.Key == "pricing_strategy").Subject;
+            pricingRes.Status.Should().Be("Update Available");
+            pricingRes.IsStale.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Phase4Incomplete_CanStillShowExistingResults()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            // Snapshot & Roadmap completed, but other 5 stages unresolved
+            journey.Phase4Data.ConstructionSnapshot = new ConstructionSnapshot
+            {
+                Status = "Completed",
+                GeneratedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Categories = new List<string> { "Business" }
+            };
+            journey.Phase4Data.Roadmap = new OperationalRoadmap
+            {
+                Status = "Active",
+                GeneratedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                Stages = new List<RoadmapStageGroup>()
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            // Existing stage results are visible
+            summary.Results.Should().Contain(r => r.Key == "construction_snapshot" && r.Status == "Ready");
+            summary.Results.Should().Contain(r => r.Key == "operational_roadmap" && r.Status == "Ready");
+            // Phase 5 is locked because overall Phase 4 is incomplete
+            summary.Phase5.IsUnlocked.Should().BeFalse();
+        }
     }
 }

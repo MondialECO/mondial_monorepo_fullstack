@@ -44,20 +44,19 @@ Aggregates and prioritizes up to 5 actionable issues:
 - **Missing Foundations:** Missing prerequisite data before proceeding to next phase.
 
 ### 2.4 Verified Outputs & Results Inventory
-Surfaces only real, persisted business artifacts:
-- Brand Identity & Brand Kit
-- Market Study & Competitor Analysis
-- Business Model Canvas
-- Financial Forecast Model
-- Legal & Regulatory Assessment
-- Unified Business Plan
-- Construction Snapshot
-- Execution Roadmap
-- Operational Needs Analysis
-- Founder Capability & Skills Plan
-- Public Support Matrix
-- Pricing Strategy
-- GTM Strategy & Launch Plan
+Surfaces only real, persisted business artifacts with stage-native resolution semantics (no generic `status == "completed"` requirement across disparate domain models):
+
+| Stage | Model | Raw Status | Displayable Result? | Ready Label? | Needs Review? |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **4.1 Construction Snapshot** | `ConstructionSnapshot` | `Completed`, `Stale` | Persisted & Generated (`GeneratedAt != default`, not `Draft`) | `"Ready"` (no critical items) | `"Needs Review"` (if critical items); `"Update Available"` (if `Stale`) |
+| **4.2 Operational Roadmap** | `OperationalRoadmap` | `Active`, `Completed`, `Stale` | Persisted & Generated with stages | `"Ready"` (`Active` or `Completed`) | `"Needs Review"` (if blocked tasks); `"Update Available"` (if `Stale`) |
+| **4.3 Needs Analysis** | `NeedsAnalysis` | `Completed`, `Stale` | Persisted & Generated | `"Ready"` (`Completed`) | `"Update Available"` (if `Stale`) |
+| **4.4 Skills Plan** | `SkillsPlan` | `Completed`, `Stale` | Persisted & Generated (0 skill gaps valid resolved) | `"Ready"` (`Completed`) | `"Needs Review"` (if review items); `"Update Available"` (if `Stale`) |
+| **4.5 Support Plan** | `SupportPlan` | `Generated`, `Refreshed`, `Stale` | Persisted & Evaluated (0 aid matches valid resolved) | `"Ready"` (`Generated`, `Refreshed`) | `"Update Available"` (if `Stale`) |
+| **4.6 Pricing Strategy** | `PricingStrategy` | `Draft`, `Generated`, `Refreshed`, `NeedsValidation`, `Stale` | Non-`Draft` & Generated | `"Ready"` (`Generated`, `Refreshed`) | `"Needs Validation"` (when `NeedsValidation`); `"Update Available"` (if `Stale`) |
+| **4.7 GTM Strategy** | `GtmStrategy` | `Draft`, `Valid`, `Generated`, `Stale` | Non-`Draft` & Generated | `"Ready"` (`Valid`, `Generated`) | `"Needs Validation"` (if pricing/capacity validation flag); `"Update Available"` (if `Stale`) |
+
+> **Architectural Separation:** `Phase4CompletionResolver` remains the sole canonical authority on overall Phase 4 completion (unlocking Phase 5 Crossroads). Individual results are displayable independently when their persisted artifact satisfies stage-native generation and resolution criteria, even while overall Phase 4 remains in progress.
 
 ### 2.5 Phase 5 Crossroads Gate
 - Governed strictly by `Phase4CompletionResolver.EvaluatePhase4CompletionAsync(ideaId)`.
@@ -85,7 +84,7 @@ Surfaces only real, persisted business artifacts:
 3. `backend/Services/Implementations/CreatorDashboardService.cs`
 4. `backend/Controllers/CreatorDashboardController.cs`
 5. `backend/Extensions/ServiceCollectionExtensions.cs` (Dependency Injection registration)
-6. `backend/tests/WebApp.Tests/Unit/CreatorDashboardSummaryTests.cs` (13 unit tests)
+6. `backend/tests/WebApp.Tests/Unit/CreatorDashboardSummaryTests.cs` (22 unit tests)
 
 ### Frontend Components
 1. `src/types/creator/dashboard.ts` (Canonical TypeScript interfaces)
@@ -102,8 +101,8 @@ Surfaces only real, persisted business artifacts:
 ### Backend Unit Tests
 ```
 Test run for WebApp.Tests.dll (.NETCoreApp,Version=v8.0)
-Passed! - Failed: 0, Passed: 15, Skipped: 0, Total: 15, Duration: 59 ms
-(Includes 5 dedicated security & tenant isolation tests)
+Passed! - Failed: 0, Passed: 22, Skipped: 0, Total: 22, Duration: 2.9 s
+(Includes 5 dedicated security & tenant isolation tests + 7 Phase 4 stage-native result semantic tests)
 ```
 
 ### Frontend Vitest Suite
