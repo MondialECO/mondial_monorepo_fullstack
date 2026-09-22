@@ -10,6 +10,8 @@ namespace WebApp.Services.Legal
     {
         string RulesVersion { get; }
         string Jurisdiction { get; }
+        string RulesFingerprint { get; }
+        string? RulesLastVerifiedAt { get; }
         LegalRulesCatalogFile GetCatalog();
         IReadOnlyList<LegalRuleDefinition> GetAllRules();
         LegalRuleDefinition? GetRuleById(string ruleId);

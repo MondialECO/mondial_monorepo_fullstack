@@ -405,18 +405,23 @@ namespace WebApp.Services.Implementations
 
             // ---- Phase 4 (Construction Engine) ----
             var p4 = j.Phase4Data ?? new CreatorPhase4Data();
-            bool hasSnapshot = p4.ConstructionSnapshot != null;
-            bool hasNeeds = p4.NeedsAnalysis != null;
-            bool hasPricing = p4.PricingStrategy != null;
-            bool hasGtm = p4.GtmStrategy != null;
-            bool anyP4 = hasSnapshot || hasNeeds || hasPricing || hasGtm || p4.Roadmap != null || p4.SkillsPlan != null || p4.SupportPlan != null;
-            bool p4Complete = hasNeeds && hasPricing && hasGtm;
+            var p4Eval = Phase4CompletionResolver.Resolve(p4);
+            bool anyP4 = p4Eval.SnapshotResolved || p4Eval.RoadmapResolved || p4Eval.NeedsResolved || p4Eval.SkillsResolved || p4Eval.SupportResolved || p4Eval.PricingResolved || p4Eval.GtmResolved;
+            bool p4Complete = p4Eval.IsComplete;
 
             if (!p3Done) s.Phase4.Status = "locked";
             else if (p4Complete) s.Phase4.Status = "completed";
             else if (anyP4) s.Phase4.Status = "in_progress";
             else s.Phase4.Status = "available";
-            s.Phase4.CurrentStep = !hasSnapshot ? 1 : !hasNeeds ? 3 : !hasPricing ? 6 : !hasGtm ? 7 : 8;
+
+            s.Phase4.CurrentStep =
+                !p4Eval.SnapshotResolved ? 1 :
+                !p4Eval.RoadmapResolved ? 2 :
+                !p4Eval.NeedsResolved ? 3 :
+                !p4Eval.SkillsResolved ? 4 :
+                !p4Eval.SupportResolved ? 5 :
+                !p4Eval.PricingResolved ? 6 :
+                !p4Eval.GtmResolved ? 7 : 8;
 
             bool p4Done = s.Phase4.Status == "completed";
 
@@ -549,6 +554,13 @@ namespace WebApp.Services.Implementations
             var j = await GetOrCreateAsync(userId);
             var idea = await ResolveIdeaAsync(j, ideaId);
             OverlayIdea(j, idea);
+
+            // Server-side Phase 4 completion guard:
+            var p4 = j.Phase4Data ?? new CreatorPhase4Data();
+            var p4Eval = Phase4CompletionResolver.Resolve(p4);
+            if (!p4Eval.IsComplete)
+                throw new CreatorJourneyException(403, $"Cannot choose crossroads path until Phase 4 is complete. Unresolved stages: {string.Join(", ", p4Eval.UnresolvedStages)}");
+
             var p5 = j.Phase5Data ??= new CreatorPhase5Data();
 
             // 30-day switch lock: once a path is chosen, switching is allowed only
@@ -693,45 +705,40 @@ namespace WebApp.Services.Implementations
 
         // ---- Phase 3 deterministic modules ----
 
-        public async Task<CreatorJourney> SetLegalChecklistAsync(string userId, CreatorLegalChecklist checklist, string ideaId = null)
-        {
-            var j = await GetOrCreateAsync(userId);
-            var idea = await ResolveIdeaAsync(j, ideaId);
-            OverlayIdea(j, idea);
-            checklist.TotalCount = checklist.Items?.Count ?? 0;
-            checklist.CompletedCount = checklist.Items?.Count(i => i.Status == "done") ?? 0;
-            (j.Phase3Data ??= new CreatorPhase3Data()).LegalChecklist = checklist;
-
-            var entry = CreatorJourneyVersioning.Append(
-                (j.OutputSnapshots ??= new CreatorOutputSnapshots()).LegalChecklistVersions,
-                3, null, checklist.ToBsonDocument());
-
-            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Phase3Data.LegalChecklist, checklist)
-                .Push(x => x.OutputSnapshots.LegalChecklistVersions, entry));
-            return j;
-        }
-
+        /// <summary>
+        /// Backward-compatibility adapter for legacy checklist item updates.
+        /// Purely delegates to canonical LegalAssessment logic without independent legacy business rules.
+        /// </summary>
         public async Task<CreatorJourney> UpdateLegalChecklistItemAsync(string userId, string itemId, string status, string ideaId = null)
         {
-            if (status != "pending" && status != "in_progress" && status != "done")
-                throw new CreatorJourneyException(400, "status must be pending | in_progress | done.");
-
             var j = await GetOrCreateAsync(userId);
             var idea = await ResolveIdeaAsync(j, ideaId);
             OverlayIdea(j, idea);
+
+            // Canonical: delegate directly to LegalAssessment
+            if (j.Phase3Data?.LegalAssessment != null)
+            {
+                return await UpdateLegalAssessmentItemStatusAsync(userId, itemId, status, ideaId);
+            }
+
+            // Fallback for legacy documents: migrate checklist items into LegalAssessment container and delegate
             var checklist = j.Phase3Data?.LegalChecklist
                 ?? throw new CreatorJourneyException(404, "Legal checklist not generated yet.");
 
-            var item = checklist.Items.FirstOrDefault(i => i.Id == itemId)
-                ?? throw new CreatorJourneyException(404, "Checklist item not found.");
+            var migratedAssessment = new CreatorLegalAssessment
+            {
+                CreatorIdeaId = idea.Id,
+                UserId = userId,
+                Items = checklist.Items ?? new List<CreatorLegalChecklistItem>(),
+                EvaluatedAt = DateTime.UtcNow
+            };
+            (j.Phase3Data ??= new CreatorPhase3Data()).LegalAssessment = migratedAssessment;
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase3Data.LegalAssessment, migratedAssessment));
 
-            item.Status = status;
-            checklist.CompletedCount = checklist.Items.Count(i => i.Status == "done");
-
-            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase3Data.LegalChecklist, checklist));
-            return j;
+            // Delegate to canonical logic
+            return await UpdateLegalAssessmentItemStatusAsync(userId, itemId, status, ideaId);
         }
+
 
         public async Task<CreatorJourney> SetLegalAssessmentAsync(string userId, CreatorLegalAssessment assessment, string ideaId = null)
         {
@@ -742,22 +749,8 @@ namespace WebApp.Services.Implementations
             var p3 = j.Phase3Data ??= new CreatorPhase3Data();
             p3.LegalAssessment = assessment;
 
-            var checklist = new CreatorLegalChecklist
-            {
-                Items = assessment.Items,
-                TotalCount = assessment.Items.Count,
-                CompletedCount = assessment.Items.Count(i => LegalItemStatuses.IsCompleted(i.Status))
-            };
-            p3.LegalChecklist = checklist;
-
-            var entry = CreatorJourneyVersioning.Append(
-                (j.OutputSnapshots ??= new CreatorOutputSnapshots()).LegalChecklistVersions,
-                3, null, checklist.ToBsonDocument());
-
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Phase3Data.LegalAssessment, assessment)
-                .Set(x => x.Phase3Data.LegalChecklist, checklist)
-                .Push(x => x.OutputSnapshots.LegalChecklistVersions, entry));
+                .Set(x => x.Phase3Data.LegalAssessment, assessment));
             return j;
         }
 
@@ -785,18 +778,6 @@ namespace WebApp.Services.Implementations
                 item.CompletedAt = null;
             }
 
-            // Sync with LegalChecklist if present
-            if (j.Phase3Data.LegalChecklist?.Items != null)
-            {
-                var checkItem = j.Phase3Data.LegalChecklist.Items.FirstOrDefault(i => string.Equals(i.Id, itemId, StringComparison.OrdinalIgnoreCase));
-                if (checkItem != null)
-                {
-                    checkItem.Status = status;
-                    checkItem.CompletedAt = item.CompletedAt;
-                }
-                j.Phase3Data.LegalChecklist.CompletedCount = j.Phase3Data.LegalChecklist.Items.Count(i => LegalItemStatuses.IsCompleted(i.Status));
-            }
-
             // Recompute readiness and stage breakdowns
             if (_legalEngine != null)
             {
@@ -809,8 +790,7 @@ namespace WebApp.Services.Implementations
             }
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Phase3Data.LegalAssessment, assessment)
-                .Set(x => x.Phase3Data.LegalChecklist, j.Phase3Data.LegalChecklist));
+                .Set(x => x.Phase3Data.LegalAssessment, assessment));
             return j;
         }
 
@@ -887,18 +867,6 @@ namespace WebApp.Services.Implementations
                 ActorUserId = userId
             });
 
-            // Sync with LegalChecklist if present
-            if (j.Phase3Data.LegalChecklist?.Items != null)
-            {
-                var checkItem = j.Phase3Data.LegalChecklist.Items.FirstOrDefault(i => string.Equals(i.Id, itemId, StringComparison.OrdinalIgnoreCase));
-                if (checkItem != null)
-                {
-                    checkItem.EvidenceDocumentId = doc.Id;
-                    checkItem.EvidenceFileName = doc.FileName;
-                    checkItem.Status = item.Status;
-                }
-            }
-
             if (_legalEngine != null)
             {
                 assessment.PlanningReadinessPct = _legalEngine.ComputePlanningReadiness(assessment.Items);
@@ -910,8 +878,7 @@ namespace WebApp.Services.Implementations
             }
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Phase3Data.LegalAssessment, assessment)
-                .Set(x => x.Phase3Data.LegalChecklist, j.Phase3Data.LegalChecklist));
+                .Set(x => x.Phase3Data.LegalAssessment, assessment));
             return j;
         }
 
@@ -978,18 +945,6 @@ namespace WebApp.Services.Implementations
                 ActorUserId = userId
             });
 
-            // Sync with LegalChecklist if present
-            if (j.Phase3Data.LegalChecklist?.Items != null)
-            {
-                var checkItem = j.Phase3Data.LegalChecklist.Items.FirstOrDefault(i => string.Equals(i.Id, itemId, StringComparison.OrdinalIgnoreCase));
-                if (checkItem != null)
-                {
-                    checkItem.EvidenceDocumentId = item.EvidenceDocumentId;
-                    checkItem.EvidenceFileName = item.EvidenceFileName;
-                    checkItem.Status = item.Status;
-                }
-            }
-
             if (_legalEngine != null)
             {
                 assessment.PlanningReadinessPct = _legalEngine.ComputePlanningReadiness(assessment.Items);
@@ -1001,8 +956,7 @@ namespace WebApp.Services.Implementations
             }
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Phase3Data.LegalAssessment, assessment)
-                .Set(x => x.Phase3Data.LegalChecklist, j.Phase3Data.LegalChecklist));
+                .Set(x => x.Phase3Data.LegalAssessment, assessment));
             return j;
         }
 
@@ -1105,20 +1059,8 @@ namespace WebApp.Services.Implementations
                 ActorUserId = userId
             });
 
-            // 5. Sync with LegalChecklist if present
-            if (j.Phase3Data.LegalChecklist?.Items != null)
-            {
-                var checkItem = j.Phase3Data.LegalChecklist.Items.FirstOrDefault(i => string.Equals(i.Id, item.Id, StringComparison.OrdinalIgnoreCase));
-                if (checkItem != null)
-                {
-                    checkItem.EvidenceDocumentId = item.EvidenceDocumentId;
-                    checkItem.EvidenceFileName = item.EvidenceFileName;
-                }
-            }
-
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Phase3Data.LegalAssessment, assessment)
-                .Set(x => x.Phase3Data.LegalChecklist, j.Phase3Data.LegalChecklist));
+                .Set(x => x.Phase3Data.LegalAssessment, assessment));
             return j;
         }
 
@@ -1160,14 +1102,16 @@ namespace WebApp.Services.Implementations
                 .Set(x => x.Phase3Data.FormationGenerator.SelectedType, selectedType)
                 .Set(x => x.Phase3Data.FormationGenerator.IsOverride, isOverride);
 
-            // Flip legal item 1 (company type selection) to done, if the checklist exists.
-            var item1 = j.Phase3Data.LegalChecklist?.Items?.FirstOrDefault(i => i.Id == "company-type");
-            if (item1 != null)
+            // Canonical: update company-type item in LegalAssessment if present (0 new writers to LegalChecklist)
+            var assessmentItem = j.Phase3Data.LegalAssessment?.Items?.FirstOrDefault(i => i.Id == "company-type");
+            if (assessmentItem != null)
             {
-                item1.Status = "done";
-                j.Phase3Data.LegalChecklist.CompletedCount =
-                    j.Phase3Data.LegalChecklist.Items.Count(i => i.Status == "done");
-                ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.LegalChecklist, j.Phase3Data.LegalChecklist);
+                assessmentItem.Status = "done";
+                assessmentItem.CompletedAt = DateTime.UtcNow;
+                var completed = j.Phase3Data.LegalAssessment.Items.Count(i => i.Status == "done");
+                var total = j.Phase3Data.LegalAssessment.Items.Count;
+                j.Phase3Data.LegalAssessment.PlanningReadinessPct = total > 0 ? Math.Round((double)completed / total * 100.0, 1) : 0;
+                ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.LegalAssessment, j.Phase3Data.LegalAssessment);
             }
 
             await WriteIdeaAsync(idea, ideaUpdate);

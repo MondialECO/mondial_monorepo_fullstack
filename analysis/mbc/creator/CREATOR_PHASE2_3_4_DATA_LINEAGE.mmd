@@ -1,0 +1,90 @@
+flowchart TD
+    %% =========================================================================
+    %% CREATOR PHASE 2 -> 3 -> 4 COMPLETE DATA LINEAGE
+    %% =========================================================================
+
+    subgraph PHASE2 ["Phase 2: Project Identity & Brand Studio"]
+        direction TB
+        P2_Clarifier["AI Clarifier Session<br/>(ClarifierSessions)<br/>• problemDefinition<br/>• targetAudience<br/>• proposedSolution<br/>• differentiation<br/>• clarityScore"]
+        P2_Project["CreatorIdea.Project<br/>(CreatorIdeas / CreatorJourneys)<br/>• Name, Tagline, Concept<br/>• Problem, Solution, TargetUser<br/>• MarketGap, CreatorEdge<br/>• Category, Sector, Tags<br/>• ClarityScore"]
+        P2_BrandKit["BrandKit Document<br/>(BrandKits Collection)<br/>• Strategy (Pillars, Tone, Traits)<br/>• Direction (4 Candidates)<br/>• Logo (6 Concepts, 7 SVG Variations)<br/>• Colors (5 Roles, AAA/AA Checked)<br/>• Typography (4 Roles, Font Pairings)"]
+        P2_SummaryEcho["Project.Branding Summary Echo<br/>(CreatorIdea.Project.Branding)<br/>• brandingMethod ('ai_studio'/'skipped'/...)<br/>• logoAsset (URI)<br/>• colorPalette (Hex[])<br/>• typographyPairing ('Syne + DM Sans')"]
+
+        P2_Clarifier -->|finalizeClarifier| P2_Project
+        P2_Project -->|DeriveInitialStrategy| P2_BrandKit
+        P2_BrandKit -->|CommitBrandKitAndSync| P2_SummaryEcho
+    end
+
+    subgraph PHASE3 ["Phase 3: Business Plan Intelligence"]
+        direction TB
+        P3_1["3.1 Market Study<br/>(MarketStudySessions)<br/>• TamSamSom (TAM/SAM/SOM)<br/>• Competitors[]<br/>• TargetSegments[]<br/>• SizingRisks[], GapValidation"]
+        P3_2["3.2 Business Model Canvas<br/>(BusinessModelSessions)<br/>• Canvas (9 Blocks)<br/>• RevenueTiers[]<br/>• UnitEconomics<br/>• PricingMechanisms[]"]
+        P3_3["3.3 Financial Forecast<br/>(ForecastSessions)<br/>• 12mo AI + 24mo Projected (36mo)<br/>• Revenue, Cost, Cash Flow<br/>• BreakEvenMonth, Runway<br/>• MonthlyChurnPct, ARPU, OPEX"]
+        P3_4["3.4 Legal & Compliance<br/>(CreatorIdea.Phase3Data.LegalAssessment)<br/>• ApplicableItems[]<br/>• PlanningReadinessPct<br/>• TaxMode (HT/TTC/Exempt)<br/>• StageBreakdowns[]"]
+        P3_5["3.5 Formation & Team<br/>(CreatorIdea.Phase3Data.FormationGenerator)<br/>• RecommendedType (SAS/SAS-U/SARL)<br/>• CreationChecklist[]<br/>• YouHave[] vs YouNeed[]<br/>• CofounderBrief"]
+        P3_6["3.6 Executive Business Plan<br/>(BusinessPlanSessions)<br/>• 12 Synthesized Sections<br/>• Editable working copy<br/>• PDF / Exportable Record"]
+        P3_7["3.7 Investor Readiness<br/>(CreatorIdea.Phase3Data.InvestorReadinessScore)<br/>• OverallScore (0-100), Grade A-D<br/>• 5 Dimensions Breakdown<br/>• Specific Deductions[]"]
+
+        P3_1 -->|MarketStudySessionId| P3_2
+        P3_2 -->|BusinessModelSessionId| P3_3
+        P3_1 & P3_2 & P3_3 -->|ProfileClassifier| P3_4
+        P3_3 & P3_4 -->|ForecastBasis + LegalSignals| P3_5
+        P3_1 & P3_2 & P3_3 & P3_4 & P3_5 -->|Assembled Upstream| P3_6
+        P3_1 & P3_2 & P3_3 & P3_4 & P3_5 & P3_6 -->|5 Dimensions Weighted| P3_7
+    end
+
+    subgraph HUMAINX ["HumainX Canonical Profile"]
+        direction TB
+        HX_Profile["ProfessionalProfileRecord<br/>(ProfessionalProfiles Collection)<br/>• QuickStart (Step1,2,3 Timestamps)<br/>• Skills[] (name, level, source)<br/>• VentureContext.Region<br/>• VentureContext.CurrentSituation<br/>• VentureContext.WeeklyAvailability<br/>• VentureContext.LearningPreference<br/>• VentureContext.DelegationPreference<br/>• VentureContext.PreviousEntrepreneurialExperience"]
+        HX_Resolver["ProfileCompletenessResolver<br/>• Checks 5 Required Keys<br/>• Determines Phase4Ready"]
+        HX_Capacity["IFounderCapacityResolver<br/>• WeeklyAvailability -> Tier<br/>• Effort Budget / Load Points"]
+
+        HX_Profile --> HX_Resolver
+        HX_Profile --> HX_Capacity
+    end
+
+    subgraph PHASE4 ["Phase 4: Construction & Launch Preparation Engine"]
+        direction TB
+        P4_1["4.1 Construction Snapshot<br/>(CreatorJourney.Phase4Data.ConstructionSnapshot)<br/>• ReadyItems[]<br/>• PartialItems[]<br/>• MissingItems[]<br/>• CriticalItems[]<br/>• SourceReferences[]"]
+        P4_2["4.2 Operational Roadmap<br/>(CreatorJourney.Phase4Data.Roadmap)<br/>• 6 Horizons (NOW -> POST_LAUNCH)<br/>• Tasks[] with Stable Keys<br/>• FounderCapacity Constrained<br/>• Edit Preservation"]
+        P4_3["4.3 Needs & Requirements<br/>(CreatorJourney.Phase4Data.NeedsAnalysis)<br/>• Needs[] across 6 Categories<br/>• SystemStatus vs FounderState<br/>• Active Need != Covered Need<br/>• TrainingCandidate Tagging"]
+        P4_4["4.4 Skills & Training<br/>(CreatorJourney.Phase4Data.SkillsPlan)<br/>• CapabilityResolutions[]<br/>• Modes: LEARN, DELEGATE, VERIFY<br/>• Mandatory Statutory Verification<br/>• Curated Courses / SP Matches"]
+        P4_5["4.5 Aids, Grants & Support<br/>(CreatorJourney.Phase4Data.SupportPlan)<br/>• Aides-entreprises + Regional Adapters<br/>• EligibleToApply vs Awarded<br/>• Potential Grant != Spendable Budget<br/>• Application Guidance"]
+        P4_6["4.6 Pricing Strategy<br/>(CreatorJourney.Phase4Data.PricingStrategy)<br/>• 13 Supported Revenue Models<br/>• Unit Economics & Floor Formulas<br/>• ConfiguredTaxMode (No crude B2B/B2C)<br/>• 4-Price Independence"]
+        P4_7["4.7 GTM & Launch Strategy<br/>(CreatorJourney.Phase4Data.GtmStrategy)<br/>• Primary Launch Segment & ICP<br/>• Channel Mix & Load Caps<br/>• Strict Budget Safety (Awarded vs Planned)<br/>• Validation Experiments & Stop Rules"]
+        P4_8["4.8 Launch Assets<br/>(APPROVED ARCHITECTURE ONLY)<br/>• One-Page Branded Launch Website<br/>• Section Families (Hero, Solution, Pricing)<br/>• LaunchAssetVersions (Pending)"]
+        P4_9["4.9 Construction Readiness<br/>(RESERVED / NOT IMPLEMENTED)<br/>• Final Global Launch Certification"]
+
+        P4_1 -->|Snapshot Gaps| P4_2
+        P4_1 & P4_2 -->|Resource Dependencies| P4_3
+        P4_3 -->|Uncovered Needs| P4_4
+        P4_3 & P4_4 -->|Eligible Aid Context| P4_5
+        P4_1 & P4_3 -->|Cost Structure & Floor| P4_6
+        P4_2 & P4_5 & P4_6 -->|Budget & Timeline Inputs| P4_7
+        P4_6 & P4_7 -->|Copy & Pricing Contract| P4_8
+        P4_1 & P4_2 & P4_3 & P4_4 & P4_5 & P4_6 & P4_7 & P4_8 -.->|Future Synthesis| P4_9
+    end
+
+    %% Cross-Phase Lineage Connections
+    P2_Project -->|Sector, Problem, TargetUser| P3_1
+    P2_Project -->|Positioning, Solution| P3_2
+    P2_Project & P2_SummaryEcho -->|Branding Tokens, Name| P3_6
+    P2_Project & P2_SummaryEcho -->|Brand Foundation & Visual Assets| P4_1
+    P2_SummaryEcho -.->|Colors, Typography, Logo| P4_8
+
+    P3_7 -->|Unlocks Phase 4 Gate| P4_1
+    P3_1 -->|Target Segments & Competitors| P4_7
+    P3_2 -->|Revenue Streams & Pricing Tiers| P4_6
+    P3_3 -->|Forecast ARPU, OPEX, BreakEven| P4_6
+    P3_3 -->|Planned Marketing Cash| P4_7
+    P3_4 -->|Legal Obligations & Tax Mode| P4_3
+    P3_4 -->|Statutory Verification Mandates| P4_4
+    P3_4 -->|Tax Presentation HT/TTC| P4_6
+    P3_5 -->|Founding Skills & Gaps| P4_3
+    P3_5 -->|Entity Type for Grant Eligibility| P4_5
+
+    HX_Resolver -->|EnforceGateAsync| P4_1
+    HX_Capacity -->|Effort Limits| P4_2
+    HX_Capacity -->|Channel Load Caps| P4_7
+    HX_Profile -->|Skills & Learning Preference| P4_4
+    HX_Profile -->|Region & Employment Status| P4_5

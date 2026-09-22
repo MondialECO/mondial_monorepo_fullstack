@@ -72,6 +72,13 @@ namespace WebApp.Models.DatabaseModels.Legal
         [BsonElement("RulesVersion")]
         public string RulesVersion { get; set; } = "FR-2026.1";
 
+        [BsonElement("RulesFingerprint")]
+        public string RulesFingerprint { get; set; } = string.Empty;
+
+        [BsonElement("RulesLastVerifiedAt")]
+        [BsonIgnoreIfNull]
+        public DateTime? RulesLastVerifiedAt { get; set; }
+
         [BsonElement("AssessmentVersion")]
         public int AssessmentVersion { get; set; } = 1;
 

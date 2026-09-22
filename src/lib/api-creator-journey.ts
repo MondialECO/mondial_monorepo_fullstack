@@ -208,18 +208,6 @@ export const creatorJourneyApi = {
 
   // ---- Phase 3 (deterministic modules) ----
 
-  generateLegalChecklist: async (ideaId?: string | null): Promise<LegalChecklist> => {
-    const res = await api.post('/creator/ai/legal-checklist/generate', {}, withIdeaWrite(ideaId));
-    rememberIdeaVersion(res, ideaId);
-    return unwrap<LegalChecklist>(res.data);
-  },
-
-  updateLegalItem: async (itemId: string, status: ChecklistStatus, ideaId?: string | null): Promise<LegalChecklist> => {
-    const res = await api.patch(`/creator/legal-checklist/item/${itemId}`, { status }, withIdeaWrite(ideaId));
-    rememberIdeaVersion(res, ideaId);
-    return unwrap<LegalChecklist>(res.data);
-  },
-
   getLegalOverview: async (ideaId?: string | null): Promise<LegalComplianceOverview> => {
     const res = await api.get('/creator/legal-compliance/overview', withIdeaRead(ideaId));
     return unwrap<LegalComplianceOverview>(res.data);
@@ -277,10 +265,10 @@ export const creatorJourneyApi = {
     return unwrap<FormationGenerator>(res.data);
   },
 
-  selectFormationType: async (selectedType: FormationTypeCode, ideaId?: string | null): Promise<{ formation: FormationGenerator; legalChecklist: LegalChecklist }> => {
+  selectFormationType: async (selectedType: FormationTypeCode, ideaId?: string | null): Promise<{ formation: FormationGenerator; legalChecklist?: LegalChecklist; legalAssessment?: CreatorLegalAssessmentDto }> => {
     const res = await api.patch('/creator/formation/select-type', { selectedType }, withIdeaWrite(ideaId));
     rememberIdeaVersion(res, ideaId);
-    return unwrap<{ formation: FormationGenerator; legalChecklist: LegalChecklist }>(res.data);
+    return unwrap<{ formation: FormationGenerator; legalChecklist?: LegalChecklist; legalAssessment?: CreatorLegalAssessmentDto }>(res.data);
   },
 
   // 3.5b: persist self-declared skills (+ optional co-founder draft). Backend derives the

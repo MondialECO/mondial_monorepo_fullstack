@@ -832,6 +832,7 @@ namespace WebApp.Tests.Creator.Integration
             ideaStoreMock.Setup(x => x.SyncBrandKitSummaryAsync(
                     It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
                     It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    It.IsAny<string?>(), It.IsAny<int?>(), It.IsAny<DateTime?>(),
                     It.IsAny<IClientSessionHandle>()))
                 .ThrowsAsync(new InvalidOperationException("Injected mid-transaction failure on CreatorIdea sync write"));
 

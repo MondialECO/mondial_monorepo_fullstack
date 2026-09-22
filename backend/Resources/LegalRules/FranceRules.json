@@ -3,6 +3,17 @@
   "jurisdiction": "FR",
   "title": "Catalogue National des Règles Légales et Réglementaires Françaises",
   "lastUpdated": "2026-09-19",
+  "metadata": {
+    "version": "FR-2026.1",
+    "effectiveDate": "2026-01-01",
+    "lastVerifiedAt": "2026-09-19T00:00:00Z",
+    "sourceFingerprint": "legifrance-fr-2026.1-sha256",
+    "sources": [
+      "Legifrance (Code de commerce, Code civil, Code du travail)",
+      "Service-Public.fr",
+      "INPI Guichet Unique"
+    ]
+  },
   "rules": [
     {
       "id": "FR-CORP-001",

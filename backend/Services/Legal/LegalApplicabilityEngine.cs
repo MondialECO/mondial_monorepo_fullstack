@@ -41,7 +41,8 @@ namespace WebApp.Services.Legal
             CreatorLegalAssessment? assessment,
             LegalBusinessProfile currentProfile,
             string currentRulesVersion,
-            string currentJurisdiction = "FR")
+            string currentJurisdiction = "FR",
+            string? currentRulesFingerprint = null)
         {
             if (assessment == null)
             {
@@ -56,7 +57,11 @@ namespace WebApp.Services.Legal
 
             var currentHash = ComputeSnapshotHash(currentProfile);
             bool hashChanged = !string.Equals(assessment.BusinessSnapshotHash, currentHash, StringComparison.OrdinalIgnoreCase);
-            bool rulesChanged = !string.Equals(assessment.RulesVersion, currentRulesVersion, StringComparison.OrdinalIgnoreCase);
+            bool rulesVersionChanged = !string.Equals(assessment.RulesVersion, currentRulesVersion, StringComparison.OrdinalIgnoreCase);
+            bool rulesFingerprintChanged = !string.IsNullOrEmpty(currentRulesFingerprint) &&
+                                           !string.IsNullOrEmpty(assessment.RulesFingerprint) &&
+                                           !string.Equals(assessment.RulesFingerprint, currentRulesFingerprint, StringComparison.OrdinalIgnoreCase);
+            bool rulesChanged = rulesVersionChanged || rulesFingerprintChanged;
             bool jurisdictionChanged = !string.Equals(assessment.Jurisdiction, currentJurisdiction, StringComparison.OrdinalIgnoreCase);
 
             var diffs = LegalChangeDetector.ComputeDiffs(assessment.BusinessProfile, currentProfile);
@@ -306,6 +311,8 @@ namespace WebApp.Services.Legal
                 UserId = userId,
                 Jurisdiction = _catalog.Jurisdiction,
                 RulesVersion = _catalog.RulesVersion,
+                RulesFingerprint = _catalog.RulesFingerprint,
+                RulesLastVerifiedAt = !string.IsNullOrEmpty(_catalog.RulesLastVerifiedAt) && DateTime.TryParse(_catalog.RulesLastVerifiedAt, out var verifiedDt) ? verifiedDt : null,
                 AssessmentVersion = newAssessmentVersion,
                 BusinessSnapshotHash = snapshotHash,
                 IsPotentiallyOutdated = false,

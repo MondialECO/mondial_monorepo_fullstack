@@ -37,7 +37,8 @@ namespace WebApp.Services.Legal
             CreatorLegalAssessment? assessment,
             LegalBusinessProfile currentProfile,
             string currentRulesVersion,
-            string currentJurisdiction = "FR");
+            string currentJurisdiction = "FR",
+            string? currentRulesFingerprint = null);
 
         /// <summary>
         /// Reconciles an existing legal assessment with a newly evaluated profile.

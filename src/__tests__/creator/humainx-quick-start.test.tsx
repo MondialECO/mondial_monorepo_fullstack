@@ -22,9 +22,8 @@ import {
   getQuickStartJourneyState,
   saveQuickStartJourneyState,
   resetQuickStartJourneyState,
-  isQuickStartJourneyComplete,
-  getNextQuickStartJourneyStep,
   resolveTargetQuickStartStep,
+  isBackendQuickStartComplete,
 } from '@/lib/humainx-quick-start';
 import { UserRole } from '@/lib/roles';
 import api from '@/lib/axios';
@@ -845,6 +844,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         currentSituation: 'Employed',
         weeklyAvailability: '10–20 hours/week',
       },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: null,
+        completedAt: null,
+      },
     });
 
     const queryClient = createTestQueryClient();
@@ -922,6 +927,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         currentSituation: 'Employed',
         weeklyAvailability: '10–20 hours/week',
       },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: null,
+        completedAt: null,
+      },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profileOnStep2);
 
@@ -953,6 +964,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         region: 'Hauts-de-France',
         currentSituation: 'Employed',
         weeklyAvailability: '10–20 hours/week',
+      },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: null,
+        completedAt: null,
       },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profileOnStep2);
@@ -1066,6 +1083,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         region: 'Hauts-de-France',
         currentSituation: 'Employed',
         weeklyAvailability: '10–20 hours/week',
+      },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: null,
+        completedAt: null,
       },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(existingProfile);
@@ -1187,6 +1210,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         currentSituation: 'Employed',
         weeklyAvailability: '10–20 hours/week',
       },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: null,
+        completedAt: null,
+      },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(existingProfile);
 
@@ -1218,6 +1247,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         learningPreference: 'I want to learn them myself',
         delegationPreference: 'Minimal delegation — self-reliant learning',
       },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: '2026-03-01T10:05:00Z',
+        completedAt: null,
+      },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profileOnStep3);
     vi.mocked(api.put).mockResolvedValue({ data: { success: true } });
@@ -1239,7 +1274,7 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
       expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator');
     });
 
-    expect(isQuickStartJourneyComplete('usr-creator-1')).toBe(true);
+    expect(creatorProfileApi.completeQuickStart).toHaveBeenCalled();
   });
 
   it('FinalSaveFailure_DoesNotUnlockDashboard', async () => {
@@ -1255,6 +1290,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         previousEntrepreneurialExperience: 'No, this is my first project',
         learningPreference: 'I want to learn them myself',
         delegationPreference: 'Minimal delegation',
+      },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: '2026-03-01T10:05:00Z',
+        completedAt: null,
       },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profileOnStep3);
@@ -1275,7 +1316,7 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
     });
     // Crucial: Must NOT navigate to dashboard if persistence failed
     expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator');
-    expect(isQuickStartJourneyComplete('usr-creator-1')).toBe(false);
+    expect(creatorProfileApi.completeQuickStart).not.toHaveBeenCalled();
   });
 
   it('Step1Completion_DoesNotRedirectToDashboard', async () => {
@@ -1307,7 +1348,7 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
       expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator');
     });
 
-    expect(getQuickStartJourneyState('usr-creator-1').step1Confirmed).toBe(true);
+    expect(creatorProfileApi.confirmQuickStartStep1).toHaveBeenCalled();
   });
 
   it('Step1Completion_WithPreexistingStep2And3Data_StillShowsStep2', async () => {
@@ -1356,6 +1397,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         currentSituation: 'Employed',
         weeklyAvailability: '10–20 hours/week',
       },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: null,
+        completedAt: null,
+      },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
     vi.mocked(api.put).mockResolvedValue({ data: { success: true } });
@@ -1376,7 +1423,7 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
       expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator');
     });
 
-    expect(getQuickStartJourneyState('usr-creator-1').step2Confirmed).toBe(true);
+    expect(creatorProfileApi.confirmQuickStartStep2).toHaveBeenCalled();
   });
 
   it('Step2Completion_WithPreexistingStep3Data_StillShowsStep3', async () => {
@@ -1392,6 +1439,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         previousEntrepreneurialExperience: 'No, this is my first project',
         learningPreference: 'I want to learn them myself',
         delegationPreference: 'Minimal delegation',
+      },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: null,
+        completedAt: null,
       },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
@@ -1428,6 +1481,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         learningPreference: 'I want to learn them myself',
         delegationPreference: 'Minimal delegation',
       },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: '2026-03-01T10:05:00Z',
+        completedAt: null,
+      },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
     vi.mocked(api.put).mockResolvedValue({ data: { success: true } });
@@ -1439,14 +1498,14 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
       </QueryClientProvider>
     );
 
-    expect(isQuickStartJourneyComplete('usr-creator-1')).toBe(false);
+    expect(creatorProfileApi.completeQuickStart).not.toHaveBeenCalled();
 
     const submitBtn = await screen.findByRole('button', { name: /Start my project/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
       expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator');
-      expect(isQuickStartJourneyComplete('usr-creator-1')).toBe(true);
+      expect(creatorProfileApi.completeQuickStart).toHaveBeenCalled();
     });
   });
 
@@ -1463,6 +1522,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         previousEntrepreneurialExperience: 'No, this is my first project',
         learningPreference: 'I want to learn them myself',
         delegationPreference: 'Minimal delegation',
+      },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: '2026-03-01T10:05:00Z',
+        completedAt: null,
       },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
@@ -1487,7 +1552,7 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
     );
 
     // CRUCIAL: Autosave does NOT complete journey or redirect to dashboard!
-    expect(isQuickStartJourneyComplete('usr-creator-1')).toBe(false);
+    expect(creatorProfileApi.completeQuickStart).not.toHaveBeenCalled();
     expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator');
   });
 
@@ -1502,6 +1567,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         weeklyAvailability: '10–20 hours/week',
       },
       skills: [],
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: null,
+        completedAt: null,
+      },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
 
@@ -1528,6 +1599,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         currentSituation: 'Employed',
         weeklyAvailability: '10–20 hours/week',
       },
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: '2026-03-01T10:05:00Z',
+        completedAt: null,
+      },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
 
@@ -1551,6 +1628,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
     const profile = {
       skills: [],
       ventureContext: {},
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: null,
+        step2ConfirmedAt: null,
+        completedAt: null,
+      },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
 
@@ -1578,6 +1661,12 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
         weeklyAvailability: '10–20 hours/week',
       },
       skills: [],
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-03-01T10:00:00Z',
+        step2ConfirmedAt: null,
+        completedAt: null,
+      },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profile);
 
@@ -1595,13 +1684,17 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
 
   it('JourneyState_IsScopedPerCreatorUser', () => {
     saveQuickStartJourneyState('user-A', { step1Confirmed: true, step2Confirmed: true, step3Confirmed: true, completed: true });
-    expect(isQuickStartJourneyComplete('user-A')).toBe(true);
+    const stateA = getQuickStartJourneyState('user-A');
+    expect(stateA.completed).toBe(true);
 
     const stateB = getQuickStartJourneyState('user-B');
     expect(stateB.step1Confirmed).toBe(false);
     expect(stateB.step2Confirmed).toBe(false);
     expect(stateB.completed).toBe(false);
-    expect(isQuickStartJourneyComplete('user-B')).toBe(false);
+
+    // Canonical backend authority is independent of local storage
+    expect(isBackendQuickStartComplete({ quickStart: { completed: true } })).toBe(true);
+    expect(isBackendQuickStartComplete({ quickStart: { completed: false } })).toBe(false);
   });
 
   it('SaveFailure_DoesNotMarkStepConfirmed', async () => {
@@ -1631,7 +1724,7 @@ describe('HumainX 3-Screen Flow Interactive Tests', () => {
       expect(api.put).toHaveBeenCalled();
     });
 
-    expect(getQuickStartJourneyState('usr-creator-1').step1Confirmed).toBe(false);
+    expect(creatorProfileApi.confirmQuickStartStep1).not.toHaveBeenCalled();
     expect(mockRouter.replace).not.toHaveBeenCalledWith('/dashboard/creator/humainx?step=2');
   });
 

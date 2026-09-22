@@ -121,6 +121,11 @@ namespace WebApp.Models.DatabaseModels
         public string? DesignerId { get; set; }
         public string? ConversationId { get; set; }
         public DateTime? BookedAt { get; set; }
+
+        /// <summary>Provenance: BrandKit is canonical authority; Project.Branding is a derived projection.</summary>
+        public string? BrandKitId { get; set; }
+        public int? BrandKitVersion { get; set; }
+        public DateTime? SyncedAt { get; set; }
     }
 
     // ---------------- Phase 2 ----------------

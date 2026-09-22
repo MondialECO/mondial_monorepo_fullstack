@@ -48,8 +48,6 @@ import {
   isBackendQuickStartComplete,
   getAuthoritativeQuickStartState,
   getFirstIncompleteStep,
-  getQuickStartJourneyState,
-  saveQuickStartJourneyState,
   resetQuickStartJourneyState,
   resolveTargetQuickStartStep,
   mapSituationFromCanonical,
@@ -185,24 +183,28 @@ function HumainXQuickStartInner() {
   const { user } = useAuth();
   const userId = user?.id || null;
 
-  // Initial step resolution with strict order normalization
-  const getMaxAllowedStep = useCallback(() => {
-    const jState = getQuickStartJourneyState(userId);
-    let max = 1;
-    if (jState.step1Confirmed && isStep1Complete(profile)) {
+  // Initial step resolution with strict order normalization (Backend QuickStart state is sole authority)
+  const getMaxAllowedStep = useCallback((): 1 | 2 | 3 => {
+    const backendQs = getAuthoritativeQuickStartState(profile);
+    let max: 1 | 2 | 3 = 1;
+    if (Boolean(backendQs.step1ConfirmedAt) && isStep1Complete(profile)) {
       max = 2;
     }
-    if (jState.step1Confirmed && jState.step2Confirmed && isStep1Complete(profile) && isStep2Complete(profile)) {
+    if (
+      Boolean(backendQs.step1ConfirmedAt) &&
+      Boolean(backendQs.step2ConfirmedAt) &&
+      isStep1Complete(profile) &&
+      isStep2Complete(profile)
+    ) {
       max = 3;
     }
     return max;
-  }, [userId, profile]);
+  }, [profile]);
 
   useEffect(() => {
     if (hasInitializedStep || isProfileLoading || !profile) return;
 
-    const jState = getQuickStartJourneyState(userId);
-    const recommendedStep = resolveTargetQuickStartStep(profile, jState);
+    const recommendedStep = resolveTargetQuickStartStep(profile);
     const maxAllowedStep = getMaxAllowedStep();
 
     const stepParam = searchParams.get('step');
@@ -226,7 +228,7 @@ function HumainXQuickStartInner() {
       router.replace(`/dashboard/creator/humainx?step=${targetStep}`);
     }
     setHasInitializedStep(true);
-  }, [profile, isProfileLoading, searchParams, hasInitializedStep, userId, getMaxAllowedStep, router]);
+  }, [profile, isProfileLoading, searchParams, hasInitializedStep, getMaxAllowedStep, router]);
 
   // Reactive step order enforcement for in-session navigation
   useEffect(() => {
@@ -440,12 +442,9 @@ function HumainXQuickStartInner() {
         });
         await queryClient.invalidateQueries({ queryKey: ['creator', 'my-profile'] });
       } catch {
-        // Fall back gracefully to local progress if offline/mocked
+        // Ignore background sync error
       }
 
-      if (userId) {
-        saveQuickStartJourneyState(userId, { step1Confirmed: true });
-      }
       setCurrentStep(2);
       router.replace('/dashboard/creator/humainx?step=2');
     } else if (currentStep === 2) {
@@ -455,12 +454,9 @@ function HumainXQuickStartInner() {
         });
         await queryClient.invalidateQueries({ queryKey: ['creator', 'my-profile'] });
       } catch {
-        // Fall back gracefully to local progress if offline/mocked
+        // Ignore background sync error
       }
 
-      if (userId) {
-        saveQuickStartJourneyState(userId, { step2Confirmed: true });
-      }
       setCurrentStep(3);
       router.replace('/dashboard/creator/humainx?step=3');
     }
@@ -534,12 +530,9 @@ function HumainXQuickStartInner() {
         return;
       }
 
-      // Mark journey completed
+      // Clean up any legacy localStorage on successful completion
       if (userId) {
-        saveQuickStartJourneyState(userId, {
-          step3Confirmed: true,
-          completed: true,
-        });
+        resetQuickStartJourneyState(userId);
       }
 
       router.replace('/dashboard/creator');

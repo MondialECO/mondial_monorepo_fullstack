@@ -99,7 +99,9 @@ namespace WebApp.Controllers
             string? newBrandingMethod,
             string? newLogoAsset,
             string? newPaletteName,
-            string? newTypographyPairing)
+            string? newTypographyPairing,
+            string? brandKitId = null,
+            int? brandKitVersion = null)
         {
             var currentBranding = idea.Project?.Branding;
 
@@ -143,7 +145,8 @@ namespace WebApp.Controllers
                     }
 
                     var ideaUpdated = await _creatorIdeas.SyncBrandKitSummaryAsync(
-                        ideaId, userId, methodToSync!, assetToSync!, paletteToSync!, typeToSync!, session);
+                        ideaId, userId, methodToSync!, assetToSync!, paletteToSync!, typeToSync!,
+                        brandKitId, brandKitVersion, DateTime.UtcNow, session);
                     if (!ideaUpdated)
                     {
                         await session.AbortTransactionAsync();
@@ -175,7 +178,8 @@ namespace WebApp.Controllers
 
                 // CreatorIdea (derived echo) second
                 await _creatorIdeas.SyncBrandKitSummaryAsync(
-                    ideaId, userId, methodToSync!, assetToSync!, paletteToSync!, typeToSync!, session: null);
+                    ideaId, userId, methodToSync!, assetToSync!, paletteToSync!, typeToSync!,
+                    brandKitId, brandKitVersion, DateTime.UtcNow, session: null);
 
                 return true;
             }
@@ -656,7 +660,8 @@ namespace WebApp.Controllers
 
                     updated = await CommitBrandKitAndSyncAsync(
                         idea.Id, userId, combinedUpdate, expectedVersion, options: null,
-                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName, newTypographyPairing);
+                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName, newTypographyPairing,
+                        brandKitId: kit.Id, brandKitVersion: (int?)expectedVersion ?? (int)kit.Version);
                 }
                 else
                 {
@@ -908,7 +913,8 @@ namespace WebApp.Controllers
 
                     updated = await CommitBrandKitAndSyncAsync(
                         idea.Id, userId, combinedUpdate, expectedVersion, options: null,
-                        idea, newBrandingMethod, newLogoAsset, newPaletteName, newTypographyPairing);
+                        idea, newBrandingMethod, newLogoAsset, newPaletteName, newTypographyPairing,
+                        brandKitId: kit.Id, brandKitVersion: (int?)expectedVersion ?? (int)kit.Version);
                 }
                 else
                 {
@@ -1379,7 +1385,8 @@ namespace WebApp.Controllers
 
                     updated = await CommitBrandKitAndSyncAsync(
                         idea.Id, userId, update, expectedVersion, options: null,
-                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName: null, newTypographyPairing);
+                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName: null, newTypographyPairing,
+                        brandKitId: kit.Id, brandKitVersion: (int?)expectedVersion ?? (int)kit.Version);
                 }
                 else
                 {
@@ -1474,7 +1481,8 @@ namespace WebApp.Controllers
 
                     updated = await CommitBrandKitAndSyncAsync(
                         idea.Id, userId, update, expectedVersion, options: null,
-                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName: null, newTypographyPairing);
+                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName: null, newTypographyPairing,
+                        brandKitId: kit.Id, brandKitVersion: (int?)expectedVersion ?? (int)kit.Version);
                 }
                 else
                 {
@@ -1626,7 +1634,8 @@ namespace WebApp.Controllers
 
                     updated = await CommitBrandKitAndSyncAsync(
                         idea.Id, userId, combinedUpdate, expectedVersion, options,
-                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName: null, newTypographyPairing);
+                        idea, newBrandingMethod: null, newLogoAsset: null, newPaletteName: null, newTypographyPairing,
+                        brandKitId: kit.Id, brandKitVersion: (int?)expectedVersion ?? (int)kit.Version);
                 }
                 else
                 {
@@ -1728,7 +1737,8 @@ namespace WebApp.Controllers
 
                     updated = await CommitBrandKitAndSyncAsync(
                         idea.Id, userId, combinedUpdate, expectedVersion, options: null,
-                        idea, newBrandingMethod, newLogoAsset, newPaletteName, newTypographyPairing);
+                        idea, newBrandingMethod, newLogoAsset, newPaletteName, newTypographyPairing,
+                        brandKitId: kit.Id, brandKitVersion: (int?)expectedVersion ?? (int)kit.Version);
                 }
                 else
                 {
@@ -1865,7 +1875,8 @@ namespace WebApp.Controllers
 
                 var updated = await CommitBrandKitAndSyncAsync(
                     idea.Id, userId, combinedUpdate, expectedVersion, options: null,
-                    idea, newBrandingMethod, newLogoAsset, newPaletteName, newTypographyPairing);
+                    idea, newBrandingMethod, newLogoAsset, newPaletteName, newTypographyPairing,
+                    brandKitId: kit.Id, brandKitVersion: (int?)expectedVersion ?? (int)kit.Version);
 
                 if (!updated)
                 {

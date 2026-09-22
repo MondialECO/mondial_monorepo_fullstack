@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using WebApp.Models.DatabaseModels;
+using WebApp.Models.DatabaseModels.Legal;
 using WebApp.Models.DatabaseModels.Phase4;
 using WebApp.Models.Phase4;
 using WebApp.Services.Interface;
@@ -188,10 +189,16 @@ namespace WebApp.Services.Implementations
                 {
                     HasLegalAssessment = p3.LegalAssessment != null,
                     UpdatedAt = p3.LegalAssessment?.EvaluatedAt,
-                    ChecklistCompletedCount = p3.LegalChecklist?.CompletedCount ?? 0,
-                    ChecklistTotalCount = p3.LegalChecklist?.TotalCount ?? 0,
-                    HighPriorityPendingCount = p3.LegalChecklist?.Items?
-                        .Count(i => i.Priority == "critical" && i.Status != "completed") ?? 0
+                    ChecklistCompletedCount = p3.LegalAssessment?.Items?.Count(i => LegalItemStatuses.IsCompleted(i.Status))
+                        ?? p3.LegalChecklist?.CompletedCount
+                        ?? 0,
+                    ChecklistTotalCount = p3.LegalAssessment?.Items?.Count
+                        ?? p3.LegalChecklist?.TotalCount
+                        ?? 0,
+                    HighPriorityPendingCount = p3.LegalAssessment?.Items?
+                        .Count(i => (string.Equals(i.Priority, "critical", StringComparison.OrdinalIgnoreCase) || string.Equals(i.Priority, "high", StringComparison.OrdinalIgnoreCase)) && !LegalItemStatuses.IsCompleted(i.Status))
+                        ?? p3.LegalChecklist?.Items?.Count(i => i.Priority == "critical" && i.Status != "completed")
+                        ?? 0
                 },
                 Formation = new FormationData
                 {
@@ -247,7 +254,9 @@ namespace WebApp.Services.Implementations
                     BusinessPlanSessionId = p3.BusinessPlanSessionId,
                     BusinessPlanVersion = planSession?.CurrentVersion ?? 0,
                     BusinessPlanUpdatedAt = planSession?.UpdatedAt,
-                    LegalChecklistCompletedCount = p3.LegalChecklist?.CompletedCount ?? 0,
+                    LegalChecklistCompletedCount = p3.LegalAssessment?.Items?.Count(i => LegalItemStatuses.IsCompleted(i.Status))
+                        ?? p3.LegalChecklist?.CompletedCount
+                        ?? 0,
                     LegalAssessmentUpdatedAt = p3.LegalAssessment?.EvaluatedAt,
                     FormationVersion = p3.FormationGenerator != null ? 1 : 0,
                     FormationUpdatedAt = journey.UpdatedAt,

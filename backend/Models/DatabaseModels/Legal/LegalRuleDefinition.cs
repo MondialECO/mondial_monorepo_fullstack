@@ -125,7 +125,33 @@ namespace WebApp.Models.DatabaseModels.Legal
         [JsonPropertyName("lastUpdated")]
         public string LastUpdated { get; set; } = string.Empty;
 
+        [JsonPropertyName("metadata")]
+        public LegalRulesMetadata? Metadata { get; set; }
+
         [JsonPropertyName("rules")]
         public List<LegalRuleDefinition> Rules { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Metadata block for France statutory legal rules catalog.
+    /// Excluded from statutory rules fingerprint to ensure non-rule verification timestamps
+    /// never cause false staleness.
+    /// </summary>
+    public class LegalRulesMetadata
+    {
+        [JsonPropertyName("version")]
+        public string Version { get; set; } = "FR-2026.1";
+
+        [JsonPropertyName("effectiveDate")]
+        public string EffectiveDate { get; set; } = "2026-01-01";
+
+        [JsonPropertyName("lastVerifiedAt")]
+        public string LastVerifiedAt { get; set; } = "2026-09-19T00:00:00Z";
+
+        [JsonPropertyName("sourceFingerprint")]
+        public string SourceFingerprint { get; set; } = string.Empty;
+
+        [JsonPropertyName("sources")]
+        public List<string> Sources { get; set; } = new();
     }
 }
