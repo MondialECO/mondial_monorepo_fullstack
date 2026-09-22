@@ -12,12 +12,12 @@
 
 import api from '@/lib/axios';
 import { BillingItem } from '@/types/billing';
-import type { DashboardStats, Idea } from '@/types/creator/dashboard';
+import type { DashboardStats, Idea, CreatorDashboardSummary } from '@/types/creator/dashboard';
 import type { CreateIdeaModel, SaveIdeaResponse } from '@/types/creator/create-idea-model';
 
 interface ApiEnvelope<T> {
-  success: boolean;
-  message: string;
+  success?: boolean;
+  message?: string;
   data: T;
   traceId?: string | null;
 }
@@ -30,14 +30,30 @@ const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
   return body as T;
 };
 
+// ============================================================================
+// CANONICAL DASHBOARD SUMMARY (Phase 2 -> Phase 5 Single Source of Truth)
+// ============================================================================
+
+export const getCreatorDashboardSummary = async (ideaId?: string | null): Promise<CreatorDashboardSummary> => {
+  const params = ideaId ? { ideaId } : {};
+  const res = await api.get('/creator/dashboard/summary', { params });
+  return unwrap<CreatorDashboardSummary>(res.data);
+};
+
+export const creatorDashboardApi = {
+  getSummary: getCreatorDashboardSummary,
+};
+
+// ============================================================================
+// LEGACY / SUBCOMPONENT METHODS PRESERVED
+// ============================================================================
+
 export const getDashboardStats = async (): Promise<DashboardStats> => {
   const res = await api.get('/creator/dashboard/stats');
   return unwrap<DashboardStats>(res.data);
 };
 
 export const getDashboardMyIdeas = async (): Promise<Idea[]> => {
-  // Canonical marketplace route — /creator/ideas now belongs to the multi-idea
-  // list (CreatorIdeasController), which returns a different shape.
   const res = await api.get('/creator/my-ideas');
   return unwrap<Idea[]>(res.data);
 };

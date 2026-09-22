@@ -1,191 +1,211 @@
 'use client';
 
-import type { ReactNode } from 'react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import React from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
   Check,
   Clock,
   Edit2,
-  Eye,
   FileText,
   Folder,
-  Gauge,
+  Layers,
   Lock,
   MessageSquare,
   Play,
-  Rocket,
   RotateCw,
-  ShieldCheck,
+  Scale,
   Sparkles,
-  Store,
   TrendingUp,
   Users,
   Zap,
   ChevronRight,
   AlertTriangle,
+  AlertCircle,
   Bell,
+  Briefcase,
+  Target,
 } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/app/_providers/AuthProvider';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
-import { getNextCreatorAction } from '@/lib/creator-state-resolver';
-import { useDashboardStats } from '@/hooks/queries/creator';
-import { useForecastSessionTimed } from '@/hooks/queries/creator-ai';
+import { useCreatorDashboardSummary } from '@/hooks/queries/creator';
 import { useConversations } from '@/hooks/queries/chat';
 import { useNotifications } from '@/hooks/queries/notifications';
-import { creatorJourneyApi } from '@/lib/api-creator-journey';
-import { creatorDocumentsApi } from '@/lib/api-creator-documents';
-import type { ForecastOutput } from '@/types/creator/ai';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Phase3LegalCard } from '@/components/creator/Phase3LegalCard';
 import { HumainXDashboardCard } from '@/components/creator/dashboard/HumainXDashboardCard';
+import type {
+  CreatorDashboardSummary,
+  DashboardAttentionItem,
+  DashboardPhaseMilestone,
+  DashboardResultItem,
+  DashboardSubstage,
+} from '@/types/creator/dashboard';
 
-// Compact relative time for real timestamps ("2m", "3h", "5d", "now").
+// Compact relative time format helper
 function timeAgo(iso?: string | null): string {
   if (!iso) return '';
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return '';
   const s = Math.floor((Date.now() - t) / 1000);
   if (s < 60) return 'now';
-  if (s < 3600) return `${Math.floor(s / 60)}m`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h`;
-  return `${Math.floor(s / 86400)}d`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
 }
 
-// Live forecast monthly revenue → recharts series (null-safe per the audit). This is
-// the SAME ForecastOutput the Phase-3 forecast view renders — no separate dashboard copy.
-function toRevenueChart(output?: ForecastOutput) {
-  const rev = output?.revenueForecast?.monthly ?? [];
-  return rev.map((m) => ({ name: `M${m?.month ?? ''}`, Revenue: m?.amount ?? null }));
+// Map phase numbers to titles
+const PHASE_TITLES: Record<number, string> = {
+  2: 'Identity & Brand',
+  3: 'Business Intelligence',
+  4: 'Construction',
+  5: 'The Crossroads',
+};
+
+// Map severity to style classes
+function getSeverityBadge(severity?: string) {
+  const norm = (severity || 'warning').toLowerCase();
+  switch (norm) {
+    case 'critical':
+    case 'high':
+      return 'bg-destructive/10 text-destructive border-destructive/20 font-bold';
+    case 'warning':
+    case 'medium':
+      return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 font-semibold';
+    case 'info':
+    case 'low':
+    default:
+      return 'bg-muted text-muted-foreground border-border font-medium';
+  }
 }
 
-// One honest cell for a KPI value: loading (skeleton) / error (retry, NOT zeros) /
-// empty (genuine zero-state) / data — kept visually distinct (the R11 lesson at the
-// component level). A failed request must never render as a real-looking number.
-function StatCell({
-  loading, error, empty, onRetry, children,
-}: { loading?: boolean; error?: boolean; empty?: boolean; onRetry?: () => void; children: ReactNode }) {
-  if (loading) return <Skeleton className="h-7 w-20" />;
-  if (error)
-    return (
-      <button onClick={onRetry} className="flex items-center gap-1 text-xs font-semibold text-destructive">
-        <AlertTriangle className="h-3.5 w-3.5" /> Failed — retry
-      </button>
-    );
-  if (empty) return <span className="text-2xl font-black text-muted-foreground/40 tracking-tight">—</span>;
-  return <>{children}</>;
+// Icon helper for result categories
+function getResultCategoryIcon(category: string) {
+  const norm = category.toLowerCase();
+  if (norm.includes('brand') || norm.includes('identity')) {
+    return <Sparkles className="w-4 h-4 text-primary" />;
+  }
+  if (norm.includes('legal') || norm.includes('compliance')) {
+    return <Scale className="w-4 h-4 text-emerald-500" />;
+  }
+  if (norm.includes('financial') || norm.includes('pricing') || norm.includes('forecast')) {
+    return <TrendingUp className="w-4 h-4 text-blue-500" />;
+  }
+  if (norm.includes('market') || norm.includes('gtm') || norm.includes('launch')) {
+    return <Target className="w-4 h-4 text-amber-500" />;
+  }
+  if (norm.includes('skills') || norm.includes('needs') || norm.includes('support')) {
+    return <Users className="w-4 h-4 text-purple-500" />;
+  }
+  return <FileText className="w-4 h-4 text-primary" />;
 }
 
 export default function CreatorDashboard() {
   const router = useRouter();
   const { user } = useAuth();
+  const { state } = useCreatorProgress();
+  const activeIdeaId = state.activeIdeaId;
+
+  // Single authoritative summary query
   const {
-    state, advancePhase, setCrossroadsPath,
-    isLoading: journeyLoading, error: journeyError, refetch: refetchJourney,
-  } = useCreatorProgress();
-  const { journeyState, project } = state;
-  const documentsQ = useQuery({
-    queryKey: ['creator', 'idea-documents', state.activeIdeaId],
-    queryFn: () => creatorDocumentsApi.list(state.activeIdeaId!),
-    enabled: Boolean(state.activeIdeaId),
-  });
-  const phase3Documents = documentsQ.data ?? [];
+    data: summary,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useCreatorDashboardSummary(activeIdeaId);
 
-  // ---- Real data sources (replaces every former hardcoded sample constant) ----
-  // Readiness score (P1.8) from /creator/dashboard/stats. Errors propagate (no fallback).
-  const statsQ = useDashboardStats();
-  const readiness = statsQ.data?.investorReadinessScore ?? null;
-
-  // The mapped progress state drops these raw refs, so fetch the journey once for
-  // the forecast session id + matched-investor count (real loading/error states).
-  const refsQ = useQuery({
-    queryKey: ['creator', 'dashboardRefs', state.activeIdeaId],
-    queryFn: () => creatorJourneyApi.get(state.activeIdeaId),
-    enabled: Boolean(state.activeIdeaId),
-  });
-  const forecastSessionId =
-    (refsQ.data?.journey.phase3Data as { forecastSessionId?: string } | undefined)?.forecastSessionId ?? null;
-  const matchedInvestorCount =
-    (refsQ.data?.journey.phase5Data as { pathB?: { seedFunding?: { matchedInvestorCount?: number } } } | undefined)
-      ?.pathB?.seedFunding?.matchedInvestorCount ?? null;
-
-  // Forecast — the SAME live session source as the Phase-3 forecast view.
-  const forecast = useForecastSessionTimed(forecastSessionId);
-  const forecastOutput = (forecast.data as { output?: ForecastOutput } | undefined)?.output;
-  const forecastLoading = !!forecastSessionId && forecast.phase === 'polling';
-  const forecastError = !!forecastSessionId && forecast.isError && forecast.phase !== 'polling';
-  const hasForecast = forecast.phase === 'terminal' && !!forecastOutput;
-
-  // Forecast-derived figures — same math as the Phase-3 view (null when no forecast).
-  const year3Arr = forecastOutput ? (forecastOutput.revenueForecast?.monthly?.[35]?.amount ?? 0) * 12 : null;
-  const breakEvenMonth = forecastOutput?.breakEvenAnalysis?.breakEvenMonth ?? null;
-  const breakEvenAchieved = forecastOutput?.breakEvenAnalysis?.isAchievedWithinHorizon;
-  const revenueChart = toRevenueChart(forecastOutput);
-
-  // KPI values (real; honest empty when genuinely absent — never a placeholder).
-  const clarityScore = project.clarityScore || null;
-  const assetsGenerated = phase3Documents.length;
-
-  // Real chat + notification sources (replaces the sample Messages/Notifications cards).
+  // Live communication streams
   const conversationsQ = useConversations();
   const recentConversations = (conversationsQ.data ?? []).slice(0, 3);
-  const unreadConversations = (conversationsQ.data ?? []).reduce((n, c) => n + (c.unreadCount > 0 ? 1 : 0), 0);
+  const unreadConversations = (conversationsQ.data ?? []).reduce(
+    (acc, c) => acc + (c.unreadCount > 0 ? 1 : 0),
+    0
+  );
+
   const notif = useNotifications();
-  const recentNotifications = notif.notifications.slice(0, 4);
+  const recentNotifications = (notif.notifications ?? []).slice(0, 3);
 
   const firstName = user?.name?.trim().split(/\s+/)[0] || 'there';
 
-  // Determine current active state (State A to F)
-  const isPhase1Done = journeyState.phase1.status === 'completed';
-  const isPhase2NotStarted = journeyState.phase2.status === 'locked' || journeyState.phase2.status === 'available';
-  const isPhase2InProgress = journeyState.phase2.status === 'in_progress';
-  const isPhase2Done = journeyState.phase2.status === 'completed';
-  const isPhase3Done = journeyState.phase3.status === 'completed';
-  const isPhase4Done = journeyState.phase4.status === 'completed';
-  const isPhase5Done = journeyState.phase5.status === 'completed';
+  // SKELETON LOADING STATE
+  if (isLoading) {
+    return (
+      <div className="mx-auto w-full max-w-[1280px] space-y-8 bg-background pb-12 font-sans">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48 rounded-lg" />
+          <Skeleton className="h-9 w-32 rounded-lg" />
+        </div>
+        <Skeleton className="h-32 w-full rounded-2xl" />
+        <Skeleton className="h-44 w-full rounded-2xl" />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 space-y-6">
+            <Skeleton className="h-56 w-full rounded-2xl" />
+            <Skeleton className="h-64 w-full rounded-2xl" />
+          </div>
+          <div className="space-y-6">
+            <Skeleton className="h-48 w-full rounded-2xl" />
+            <Skeleton className="h-48 w-full rounded-2xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  let dashboardState: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' = 'A';
-  if (isPhase1Done && isPhase2NotStarted) dashboardState = 'A';
-  else if (isPhase2InProgress) dashboardState = 'B';
-  else if (isPhase2Done && !isPhase3Done) dashboardState = 'C';
-  else if (isPhase3Done && !isPhase4Done) dashboardState = 'D';
-  else if (isPhase4Done && !isPhase5Done) dashboardState = 'E';
-  else if (isPhase5Done) dashboardState = 'F';
+  // ERROR STATE
+  if (isError || !summary) {
+    return (
+      <div className="mx-auto w-full max-w-[1280px] space-y-6 bg-background pb-12 font-sans">
+        <div className="p-8 border border-destructive/20 rounded-2xl bg-destructive/5 text-center space-y-4">
+          <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
+          <h2 className="text-lg font-bold text-foreground">Failed to Load Creator Dashboard</h2>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            {error instanceof Error ? error.message : 'Could not synchronize your command center state from the server.'}
+          </p>
+          <Button onClick={() => void refetch()} variant="outline" className="rounded-xl gap-2">
+            <RotateCw className="w-4 h-4" /> Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-  // Phase 6 readiness is backend-derived from the exact idea; only presentation
-  // happens here, so this dashboard never reimplements Level Up rules locally.
-  const finalReadinessQ = useQuery({
-    queryKey: ['creator', 'readiness', state.activeIdeaId],
-    queryFn: () => creatorJourneyApi.creatorReadiness(state.activeIdeaId),
-    enabled: Boolean(state.activeIdeaId) && isPhase5Done,
-  });
-  const fallbackAction = getNextCreatorAction(journeyState);
-  const readinessAction = finalReadinessQ.data?.nextBestAction;
-  const action = dashboardState === 'F' && readinessAction
-    ? { targetPhase: 6, targetStep: readinessAction.key, route: readinessAction.route, buttonLabel: readinessAction.label }
-    : fallbackAction;
+  const { project, nextAction, attentionItems, journey, results, phase5 } = summary;
+  const brand = project.brand;
+  const brandLogo = brand?.logoAsset || brand?.logoUrl;
+  const brandDisplayName = brand?.brandName || project.name || 'Brand';
+  const hasBrandLogo = Boolean(brandLogo);
 
-  // Dynamic progress calculation based on phase completion
-  let completedCount = 0;
-  if (isPhase1Done) completedCount++;
-  if (isPhase2Done) completedCount++;
-  if (isPhase3Done) completedCount++;
-  if (isPhase4Done) completedCount++;
-  if (isPhase5Done) completedCount++;
+  // Active substages extraction
+  const activeMilestone = journey.phases.find(
+    (p) => (p.phaseNumber ?? p.phase) === journey.currentPhase
+  );
+  const activeSubstages = journey.activeSubstages ?? activeMilestone?.substageProgress ?? [];
+
+  // Overall progress percentage calculation
+  const overallProgress =
+    journey.overallProgress ??
+    Math.round(((journey.completedPhasesCount || 0) / (journey.totalPhasesCount || 4)) * 100);
+
+  // Chosen path extraction
+  const chosenPath = phase5.chosenPath || phase5.selectedPath;
 
   return (
-    <div className="mx-auto w-full max-w-[1136px] space-y-6 bg-background pb-8 font-sans">
-      {/* Header Breadcrumbs */}
+    <div className="mx-auto w-full max-w-[1280px] space-y-6 bg-background pb-12 font-sans">
+      {/* Header Breadcrumbs & Quick Date */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" aria-label="Back to dashboard" className="h-8 w-8 rounded-lg border-border/70" asChild>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Back to dashboard"
+            className="h-8 w-8 rounded-lg border-border/70"
+            asChild
+          >
             <Link href="/dashboard">
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -193,488 +213,466 @@ export default function CreatorDashboard() {
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             <span>Creator Flow</span>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />
-            <span className="text-foreground">Dashboard</span>
+            <span className="text-foreground">Command Center</span>
           </div>
         </div>
-      </div>
-
-      {/* Row 1: Welcome Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-foreground sm:text-3xl leading-tight">
-            Good morning, {firstName} 👋
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {dashboardState === 'A' && 'Your identity is verified. Start your first project concept below.'}
-            {dashboardState === 'B' && 'Refining your project concept. Complete the questions to unlock forecasts.'}
-            {dashboardState === 'C' && 'Project concept defined successfully. Continue setup to model financials.'}
-            {dashboardState === 'D' && 'Project intelligence is fully modeled. Complete pricing options to proceed.'}
-            {dashboardState === 'E' && 'Checklists complete! Proceed to the Crossroads decision board.'}
-            {dashboardState === 'F' && `${project.name || 'Your project'} is gaining traction. Phase 5/6 reached!`}
-          </p>
-        </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="h-9 rounded-lg bg-card text-muted-foreground px-3 flex items-center gap-1.5 border-border">
+          <Badge variant="outline" className="h-8 rounded-lg bg-card text-muted-foreground px-3 flex items-center gap-1.5 border-border text-xs">
             <Clock className="w-3.5 h-3.5" />
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
+            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
           </Badge>
-          {dashboardState === 'A' ? (
-            <Button variant="outline" asChild className="rounded-lg border-border bg-card text-foreground font-semibold text-xs px-4 h-9">
-              <Link href="/dashboard/creator/phase-2">New Idea</Link>
-            </Button>
-          ) : (
-            <Button variant="outline" asChild className="rounded-lg border-border bg-card text-foreground text-xs px-4 h-9">
-              {/* <Link href="/dashboard/creator/phase-2">Edit Concept</Link> */}
-              <Link href={action.route}>Edit Concept</Link>
-            </Button>
-          )}
-          <Button variant="outline" className="rounded-lg border-border bg-card text-foreground font-semibold text-xs px-4 h-9">
-            <Sparkles className="w-3.5 h-3.5 mr-1" />
-            AI Tools
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="rounded-lg border-border bg-card text-foreground font-semibold text-xs h-8"
+          >
+            <Link href="/dashboard/creator/myideas">Switch Idea</Link>
           </Button>
         </div>
       </div>
 
-      {/* Row 2: KPI Metrics Grid — real data, honest loading/error/empty/data states */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Idea Clarity Score — journey project (backend-authoritative) */}
-        <Card className="rounded-2xl border-border bg-card p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-primary/5 text-primary rounded-lg">
-              <Gauge className="h-4.5 w-4.5" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-foreground tracking-tight">
-              <StatCell loading={journeyLoading} error={!!journeyError} empty={clarityScore == null} onRetry={refetchJourney}>
-                {clarityScore}
-                <span className="text-xs text-muted-foreground font-normal">/100</span>
-              </StatCell>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1.5 font-medium">Idea Clarity Score</div>
-          </div>
-        </Card>
-
-        {/* AI Assets Generated — real journey documents count */}
-        <Card className="rounded-2xl border-border bg-card p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-success-light text-success-text rounded-lg">
-              <FileText className="h-4.5 w-4.5" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-foreground tracking-tight">
-              <StatCell
-                loading={journeyLoading || documentsQ.isLoading}
-                error={!!journeyError || documentsQ.isError}
-                empty={assetsGenerated === 0}
-                onRetry={() => { void refetchJourney(); void documentsQ.refetch(); }}
-              >
-                {assetsGenerated}
-              </StatCell>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1.5 font-medium">AI Assets Generated</div>
-          </div>
-        </Card>
-
-        {/* Investor Readiness — /creator/dashboard/stats (P1.8). Replaces the former
-            "Est. IP Valuation" tile, which had no real dashboard source. */}
-        <Card className="rounded-2xl border-border bg-card p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-primary/5 text-primary rounded-lg">
-              <ShieldCheck className="h-4.5 w-4.5" />
-            </div>
-            {readiness?.label && (
-              <Badge className="bg-primary/10 text-primary border-0 font-bold px-2 py-0.5 text-badge">
-                {readiness.label}
-              </Badge>
+      {/* Row 1: Project Identity & Header */}
+      <Card className="rounded-2xl border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-start gap-4 min-w-0">
+            {/* Real Brand Logo or Styled Monogram Avatar */}
+            {hasBrandLogo ? (
+              <div className="w-14 h-14 rounded-2xl border border-border bg-background flex items-center justify-center overflow-hidden shrink-0 shadow-sm p-1">
+                <img
+                  src={brandLogo!}
+                  alt={brandDisplayName}
+                  className="w-full h-full object-contain rounded-xl"
+                />
+              </div>
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-primary to-amber-500 text-white flex items-center justify-center font-black text-2xl shrink-0 shadow-sm">
+                {(brandDisplayName || 'P').charAt(0).toUpperCase()}
+              </div>
             )}
-          </div>
-          <div>
-            <div className="text-2xl font-black text-foreground tracking-tight">
-              <StatCell loading={statsQ.isLoading} error={statsQ.isError} empty={readiness == null} onRetry={statsQ.refetch}>
-                {readiness ? Math.round(readiness.total) : null}
-                <span className="text-xs text-muted-foreground font-normal">/100</span>
-              </StatCell>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1.5 font-medium">Investor Readiness</div>
-          </div>
-        </Card>
 
-        {/* Interested Buyers — matched-investor count (P1.11 smart matching) */}
-        <Card className="rounded-2xl border-border bg-card p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="p-2 bg-primary/5 text-primary rounded-lg">
-              <Users className="h-4.5 w-4.5" />
-            </div>
-          </div>
-          <div>
-            <div className="text-2xl font-black text-foreground tracking-tight">
-              <StatCell loading={refsQ.isLoading} error={refsQ.isError} empty={!matchedInvestorCount} onRetry={refsQ.refetch}>
-                {matchedInvestorCount}
-              </StatCell>
-            </div>
-            <div className="text-xs text-muted-foreground mt-1.5 font-medium">Interested Buyers</div>
-          </div>
-        </Card>
-      </div>
+            <div className="space-y-1 min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight truncate">
+                  {project.name || 'Untitled Venture'}
+                </h1>
+                {/* Sector / Category badge (No SaaS badge!) */}
+                {(project.sector || project.category) && (
+                  <Badge variant="outline" className="text-xs font-semibold border-primary/20 bg-primary/5 text-primary">
+                    {project.sector || project.category}
+                  </Badge>
+                )}
+                {/* Phase milestone badge */}
+                <Badge variant="outline" className="text-xs font-medium border-border text-muted-foreground">
+                  Phase {journey.currentPhase} — {PHASE_TITLES[journey.currentPhase] || 'Active'}
+                </Badge>
+              </div>
 
-      {/* Crossroads Banner (Only in state E) */}
-      {dashboardState === 'E' && (
-        <Card className="rounded-2xl border border-warning/30 bg-gradient-to-r from-warning/5 to-primary/5 p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-xl bg-warning/10 flex items-center justify-center text-warning shrink-0">
-              <Rocket className="h-6 w-6" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                ⚡ You've reached The Crossroads — Phase 5
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
-                Fully packaged idea. Sell the project through a Full Buyout, or build your company. Select your strategic path below.
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed line-clamp-2 max-w-3xl">
+                {project.tagline || project.concept || 'Develop and refine your project identity, intelligence, and execution models.'}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <Button
-              className="flex-1 md:flex-none rounded-xl bg-warning text-white hover:bg-warning/95 text-xs font-bold px-5 h-10"
-              onClick={() => {
-                setCrossroadsPath('sell');
-                advancePhase(5);
-              }}
-            >
-              Sell the Project
+
+          <div className="flex items-center gap-3 shrink-0 self-start md:self-center">
+            {journey.currentPhase >= 2 && (
+              <Button variant="outline" size="sm" asChild className="rounded-xl border-border text-xs h-9">
+                <Link href="/dashboard/creator/phase-2">
+                  <Edit2 className="w-3.5 h-3.5 mr-1.5" /> Brand Identity
+                </Link>
+              </Button>
+            )}
+            <Button variant="outline" size="sm" asChild className="rounded-xl border-border text-xs h-9">
+              <Link href="/dashboard/creator/documents">
+                <Folder className="w-3.5 h-3.5 mr-1.5" /> Vault
+              </Link>
             </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Row 2: Dominant CTA — Next Recommended Action */}
+      <Card className="rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-card via-card to-primary/[0.04] p-6 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10 pointer-events-none" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-3xl">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary">
+                <Zap className="w-4 h-4 fill-primary text-primary" />
+                Next Recommended Action
+              </span>
+              <Badge variant="secondary" className="text-xs font-semibold px-2 py-0.5">
+                Phase {nextAction.phase}
+              </Badge>
+            </div>
+            <h2 className="text-lg sm:text-xl font-black text-foreground">
+              {nextAction.title}
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              {nextAction.description}
+            </p>
+          </div>
+
+          <div className="shrink-0">
             <Button
-              className="flex-1 md:flex-none rounded-xl bg-primary text-white hover:bg-primary/95 text-xs font-bold px-5 h-10"
-              onClick={() => {
-                setCrossroadsPath('build');
-                advancePhase(5);
-              }}
+              asChild
+              size="lg"
+              className="w-full md:w-auto rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-md text-sm px-6 h-11"
             >
-              Build It
+              <Link href={nextAction.href}>
+                {nextAction.buttonLabel}
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Link>
             </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Row 3: Priority Attention Items (Only rendered if items exist) */}
+      {attentionItems && attentionItems.length > 0 && (
+        <Card className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.02] p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-xs uppercase tracking-wider">
+              <AlertTriangle className="w-4 h-4" />
+              Items Requiring Attention ({attentionItems.length})
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {attentionItems.map((item: DashboardAttentionItem) => (
+              <div
+                key={item.id}
+                className="flex flex-col justify-between p-4 rounded-xl border border-border bg-card shadow-xs space-y-3"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="outline" className={`text-badge px-1.5 py-0.2 ${getSeverityBadge(item.severity)}`}>
+                      {item.severity} priority
+                    </Badge>
+                    <span className="text-footnote text-muted-foreground">Phase {item.phase}</span>
+                  </div>
+                  <h3 className="text-xs font-bold text-foreground leading-snug">
+                    {item.title}
+                  </h3>
+                  <p className="text-caption text-muted-foreground leading-relaxed line-clamp-2">
+                    {item.description}
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="w-full text-xs font-semibold rounded-lg h-8 border-border"
+                >
+                  <Link href={item.href}>
+                    {item.actionLabel || 'Resolve'}
+                    <ArrowRight className="w-3 h-3 ml-1.5" />
+                  </Link>
+                </Button>
+              </div>
+            ))}
           </div>
         </Card>
       )}
 
-      {/* HumainX Profile Personalization Entry Card */}
-      <HumainXDashboardCard ideaId={state.activeIdeaId} />
-
-      {/* Row 3: Main Grid Layout (2-Column) */}
+      {/* Main 2-Column Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column: Project, Forecast, and Asset Library */}
+        {/* Left Column (2 Cols): Journey Overview, Phase 5 Gate, Verified Outputs */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Your Project Card */}
-          <Card className="rounded-2xl border-border bg-card shadow-sm p-6 space-y-6">
+          {/* Creator Journey Overview (Phases 2 to 5) */}
+          <Card className="rounded-2xl border-border bg-card p-6 shadow-sm space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <Rocket className="w-4 h-4 text-warning" />
-                Your Project
-              </h3>
-              {dashboardState !== 'A' ? (
-                <Badge className="bg-success-light text-success-text border-0 font-bold px-3 py-1 text-xs">
-                  Identity Ready
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-muted-foreground border-border text-xs px-3 py-1">
-                  Draft Not Started
-                </Badge>
-              )}
-            </div>
-
-            {/* Hero / Logo detail */}
-            {dashboardState === 'A' ? (
-              <div className="p-6 border border-dashed border-border rounded-xl text-center space-y-3 bg-muted/10">
-                <p className="text-xs text-muted-foreground">
-                  You haven't initialized your project branding. Launch the Smart Gate wizard to build your draft identity.
+              <div>
+                <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-primary" />
+                  Creator Journey Overview
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Progress tracking across four canonical stages
                 </p>
-                <Button asChild size="sm" className="rounded-lg bg-primary text-white hover:bg-primary/95 text-xs">
-                  <Link href={action.route}>Start Project Now</Link>
-                </Button>
               </div>
-            ) : (
-              <div className="flex gap-4 items-start p-4 bg-muted/10 border border-border/50 rounded-xl relative">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-primary to-warning flex items-center justify-center font-black text-xl text-white shrink-0">
-                  {project.name ? project.name.charAt(0).toUpperCase() : 'P'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-foreground text-base truncate">{project.name || 'Untitled Project'}</h4>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">
-                    {project.concept || 'Your defined project concept statement.'}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    <Badge variant="outline" className="text-badge font-semibold px-2 py-0.5 bg-warning/5 text-warning border-warning/10">
-                      {project.category || 'FinTech'}
-                    </Badge>
-                    <Badge variant="outline" className="text-badge font-semibold px-2 py-0.5 bg-primary/5 text-primary border-primary/10">
-                      SaaS
-                    </Badge>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm" asChild className="absolute top-4 right-4 rounded-lg text-xs h-7 border-border px-2">
-                  <Link href="/dashboard/creator/phase-2">
-                    <Edit2 className="w-3.5 h-3.5 mr-1" />
-                    Edit
-                  </Link>
-                </Button>
-              </div>
-            )}
-
-            {/* Stepper progress indicator */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-foreground">Creator Journey</span>
-                <span className="text-muted-foreground">{completedCount} of 6 phases completed</span>
-              </div>
-              <div className="relative flex justify-between items-start pt-2">
-                {/* Connector line */}
-                <div className="absolute top-5 left-4 right-4 h-0.5 bg-border -z-10" />
-                <div
-                  className="absolute top-5 left-4 h-0.5 bg-gradient-to-r from-success-text to-primary -z-10 transition-all duration-500"
-                  style={{ width: `${Math.max(0, ((completedCount - 1) / 5) * 100)}%` }}
-                />
-
-                {/* Steps */}
-                <div className="flex flex-col items-center gap-1.5 z-10">
-                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${isPhase1Done ? 'bg-success-text border-success-text text-white' : 'bg-card border-border text-muted-foreground'}`}>
-                    {isPhase1Done ? <Check className="w-4 h-4" /> : '1'}
-                  </div>
-                  <span className="text-label text-muted-foreground font-medium">Identity</span>
-                </div>
-
-                <div className="flex flex-col items-center gap-1.5 z-10">
-                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${isPhase2Done ? 'bg-success-text border-success-text text-white' : dashboardState === 'B' ? 'bg-warning border-warning text-white ring-4 ring-warning/10' : 'bg-card border-border text-muted-foreground'}`}>
-                    {isPhase2Done ? <Check className="w-4 h-4" /> : '2'}
-                  </div>
-                  <span className={`text-label font-medium ${dashboardState === 'B' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Concept</span>
-                </div>
-
-                <div className="flex flex-col items-center gap-1.5 z-10">
-                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${isPhase3Done ? 'bg-success-text border-success-text text-white' : dashboardState === 'C' ? 'bg-warning border-warning text-white ring-4 ring-warning/10' : 'bg-card border-border text-muted-foreground'}`}>
-                    {isPhase3Done ? <Check className="w-4 h-4" /> : '3'}
-                  </div>
-                  <span className={`text-label font-medium ${dashboardState === 'C' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Intel</span>
-                </div>
-
-                <div className="flex flex-col items-center gap-1.5 z-10">
-                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${isPhase4Done ? 'bg-success-text border-success-text text-white' : dashboardState === 'D' ? 'bg-warning border-warning text-white ring-4 ring-warning/10' : 'bg-card border-border text-muted-foreground'}`}>
-                    {isPhase4Done ? <Check className="w-4 h-4" /> : '4'}
-                  </div>
-                  <span className={`text-label font-medium ${dashboardState === 'D' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Pricing</span>
-                </div>
-
-                <div className="flex flex-col items-center gap-1.5 z-10">
-                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${isPhase5Done ? 'bg-success-text border-success-text text-white' : dashboardState === 'E' ? 'bg-warning border-warning text-white ring-4 ring-warning/10' : 'bg-card border-border text-muted-foreground'}`}>
-                    {isPhase5Done ? <Check className="w-4 h-4" /> : '5'}
-                  </div>
-                  <span className={`text-label font-medium ${dashboardState === 'E' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Crossroads</span>
-                </div>
-
-                <div className="flex flex-col items-center gap-1.5 z-10">
-                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold ${dashboardState === 'F' ? 'bg-warning border-warning text-white ring-4 ring-warning/10' : 'bg-card border-border text-muted-foreground'}`}>
-                    6
-                  </div>
-                  <span className={`text-label font-medium ${dashboardState === 'F' ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>Matching</span>
-                </div>
-              </div>
+              <Badge variant="outline" className="text-xs font-semibold">
+                {overallProgress}% Complete
+              </Badge>
             </div>
 
-            {/* Continue to current phase — shown when there's an active phase */}
-            {dashboardState !== 'A' && dashboardState !== 'F' && (
-              <div className="flex items-center justify-between p-4 bg-primary/5 border border-primary/10 rounded-xl">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <Play className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-label font-bold text-primary uppercase tracking-wider">
-                      Currently on
+            {/* 4-Step Stepper Bar */}
+            <div className="grid grid-cols-4 gap-2 pt-2">
+              {journey.phases.map((phaseItem: DashboardPhaseMilestone) => {
+                const phaseNum = phaseItem.phaseNumber ?? phaseItem.phase ?? 2;
+                const isCompleted = phaseItem.status === 'Completed';
+                const isInProgress = phaseItem.status === 'In Progress';
+                const isLocked = phaseItem.status === 'Locked';
+
+                return (
+                  <div
+                    key={phaseNum}
+                    className={`flex flex-col p-3 rounded-xl border transition-all ${
+                      isInProgress
+                        ? 'border-primary/50 bg-primary/5'
+                        : isCompleted
+                        ? 'border-emerald-500/30 bg-emerald-500/5'
+                        : 'border-border/60 bg-muted/10 opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-footnote font-bold text-muted-foreground">
+                        Phase {phaseNum}
+                      </span>
+                      {isCompleted ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      ) : isLocked ? (
+                        <Lock className="w-3.5 h-3.5 text-muted-foreground/60" />
+                      ) : (
+                        <Play className="w-3 h-3 text-primary fill-primary" />
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-foreground truncate">
+                      {phaseItem.title}
                     </span>
-                    <span className="block text-xs font-bold text-foreground truncate">
-                      {dashboardState === 'B' && 'Phase 2 — Idea Refinement'}
-                      {dashboardState === 'C' && 'Phase 3 — Project Intelligence'}
-                      {dashboardState === 'D' && 'Phase 4 — Offer & Pricing'}
-                      {dashboardState === 'E' && 'Phase 5 — The Crossroads'}
+                    <span className="text-caption text-muted-foreground mt-1">
+                      {phaseItem.status}
                     </span>
                   </div>
-                </div>
-                <Button asChild size="sm" className="rounded-full px-5 text-xs font-bold shrink-0">
-                  <Link href={action.route}>
-                    Continue
-                    <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                  </Link>
-                </Button>
-              </div>
-            )}
-            {dashboardState === 'F' && finalReadinessQ.data && (
-              <div className="flex items-center justify-between gap-4 p-4 bg-primary/5 border border-primary/10 rounded-xl">
-                <div className="min-w-0">
-                  <span className="block text-label font-bold text-primary uppercase tracking-wider">Project readiness</span>
-                  <span className="block text-sm font-bold text-foreground truncate">
-                    {finalReadinessQ.data.levelUpEligible ? 'Ready to become an Entrepreneur' : `${finalReadinessQ.data.overallProgress}% ready`}
+                );
+              })}
+            </div>
+
+            {/* Active Phase Substages (Concise breakdown of current phase) */}
+            {activeSubstages && activeSubstages.length > 0 && (
+              <div className="space-y-3 pt-3 border-t border-border/60">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-foreground">
+                    Current Milestones — Phase {journey.currentPhase}
                   </span>
-                  {!finalReadinessQ.data.levelUpEligible && <span className="block text-xs text-muted-foreground truncate">Next: {finalReadinessQ.data.nextBestAction?.label}</span>}
+                  <span className="text-muted-foreground">
+                    {activeSubstages.filter((s: DashboardSubstage) => s.isCompleted ?? s.status === 'Completed').length} of{' '}
+                    {activeSubstages.length} done
+                  </span>
                 </div>
-                {readinessAction && <Button asChild size="sm" className="rounded-full px-5 text-xs font-bold shrink-0"><Link href={readinessAction.route}>Continue <ArrowRight className="w-3.5 h-3.5 ml-1.5" /></Link></Button>}
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {activeSubstages.map((sub: DashboardSubstage) => {
+                    const subKey = sub.key || sub.id || sub.label;
+                    const subTitle = sub.title || sub.label;
+                    const isSubDone = sub.isCompleted ?? sub.status === 'Completed';
+
+                    return (
+                      <Link
+                        key={subKey}
+                        href={sub.href}
+                        className="flex items-center justify-between p-3 rounded-xl border border-border/70 hover:border-primary/40 hover:bg-muted/10 transition-colors group"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className={`w-5 h-5 rounded-full flex items-center justify-center text-xs shrink-0 ${
+                              isSubDone
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {isSubDone ? <Check className="w-3 h-3" /> : '•'}
+                          </div>
+                          <span className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                            {subTitle}
+                          </span>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={`text-badge px-1.5 py-0 ${
+                            isSubDone
+                              ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5'
+                              : 'border-border text-muted-foreground'
+                          }`}
+                        >
+                          {sub.status}
+                        </Badge>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </Card>
 
-          {/* AI Financial Forecast Card */}
-          <Card className="rounded-2xl border-border bg-card shadow-sm p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                AI Financial Forecast
-              </h3>
-              {hasForecast && (
-                <Button variant="outline" size="sm" asChild className="rounded-lg text-xs h-7 border-border px-2.5">
-                  <Link href="/dashboard/creator/phase-3/forecast">View full</Link>
-                </Button>
-              )}
-            </div>
+          {/* Phase 5 Crossroads Gate Banner */}
+          <Card
+            className={`rounded-2xl p-6 transition-all ${
+              phase5.isUnlocked
+                ? 'border-2 border-primary/40 bg-gradient-to-r from-primary/[0.04] to-amber-500/[0.04] shadow-sm'
+                : 'border border-border/70 bg-muted/15'
+            }`}
+          >
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-start gap-4">
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                    phase5.isUnlocked
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {phase5.isUnlocked ? (
+                    <Sparkles className="w-6 h-6 text-primary" />
+                  ) : (
+                    <Lock className="w-6 h-6 text-muted-foreground" />
+                  )}
+                </div>
 
-            {!forecastSessionId ? (
-              // EMPTY (no forecast run yet) — honest CTA, never fabricated bars.
-              <div className="p-8 border border-dashed border-border rounded-xl text-center space-y-3 bg-muted/10 flex flex-col items-center justify-center min-h-[200px]">
-                <TrendingUp className="w-6 h-6 text-muted-foreground/45" />
                 <div className="space-y-1">
-                  <h4 className="text-xs font-bold text-foreground">No forecast yet</h4>
-                  <p className="text-caption text-muted-foreground max-w-xs leading-relaxed">
-                    Run your financial forecast in Phase 3 to see your projected revenue, break-even, and cash flow here.
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-foreground">
+                      Phase 5 — The Crossroads
+                    </h3>
+                    <Badge
+                      variant="outline"
+                      className={`text-badge font-semibold ${
+                        phase5.isUnlocked
+                          ? 'border-emerald-500/30 text-emerald-600 bg-emerald-500/10'
+                          : 'border-border text-muted-foreground'
+                      }`}
+                    >
+                      {phase5.isUnlocked ? 'Unlocked' : 'Locked'}
+                    </Badge>
+                    {chosenPath && (
+                      <Badge variant="secondary" className="text-badge font-semibold">
+                        Path: {chosenPath === 'sell' ? 'Full Buyout' : 'Build Company'}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+                    {phase5.guidanceText}
                   </p>
                 </div>
-                <Button asChild size="sm" className="rounded-lg bg-primary text-white hover:bg-primary/95 text-xs">
-                  <Link href="/dashboard/creator/phase-3/forecast">Run your forecast</Link>
-                </Button>
               </div>
-            ) : forecastLoading ? (
-              // LOADING — skeleton, not fake data.
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 border-b border-border/50 pb-4">
-                  {[0, 1, 2].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
-                </div>
-                <Skeleton className="h-[150px] w-full" />
-              </div>
-            ) : forecastError ? (
-              // ERROR — distinct from empty; retry, never zeros.
-              <div className="p-8 border border-dashed border-destructive/30 rounded-xl text-center space-y-3 bg-destructive/5 flex flex-col items-center justify-center min-h-[200px]">
-                <AlertTriangle className="w-6 h-6 text-destructive" />
-                <p className="text-caption text-destructive max-w-xs leading-relaxed">Your forecast failed to load.</p>
-                <Button variant="outline" size="sm" onClick={() => forecast.retry()} className="rounded-lg text-xs gap-1.5">
-                  <RotateCw className="w-3.5 h-3.5" /> Retry
-                </Button>
-              </div>
-            ) : hasForecast ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 border-b border-border/50 pb-4">
-                  <div className="space-y-0.5">
-                    <span className="text-label text-muted-foreground font-semibold uppercase tracking-wider">Year 3 ARR</span>
-                    <div className="text-lg font-bold text-foreground">
-                      {year3Arr != null ? `€${Math.round(year3Arr).toLocaleString()}` : '—'}
-                    </div>
-                  </div>
-                  <div className="space-y-0.5">
-                    <span className="text-label text-muted-foreground font-semibold uppercase tracking-wider">Break-even</span>
-                    <div className="text-lg font-bold text-foreground">
-                      {breakEvenMonth == null ? '—' : breakEvenAchieved === false ? 'Not in 36 mo' : `Month ${breakEvenMonth}`}
-                    </div>
-                  </div>
-                  <div className="space-y-0.5">
-                    <span className="text-label text-muted-foreground font-semibold uppercase tracking-wider">EBITDA Margin</span>
-                    {/* No margin field in the live forecast contract — honest unavailable. */}
-                    <div className="text-lg font-bold text-muted-foreground/50">—</div>
-                  </div>
-                </div>
 
-                {revenueChart.length > 0 && (
-                  <div className="h-[150px] w-full pt-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={revenueChart} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border/40" />
-                        <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={8} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                        <YAxis stroke="var(--muted-foreground)" fontSize={8} tickLine={false} axisLine={false} tickFormatter={(v) => (v != null ? `€${Math.round(Number(v) / 1000)}k` : '')} />
-                        <Tooltip formatter={(v) => (v != null ? [`€${Number(v).toLocaleString()}`] : [])} contentStyle={{ background: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '10px' }} />
-                        <Bar dataKey="Revenue" fill="var(--primary)" radius={[3, 3, 0, 0]} maxBarSize={14} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+              <div className="shrink-0">
+                {phase5.isUnlocked ? (
+                  <Button
+                    asChild
+                    className="w-full md:w-auto rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/95 text-xs px-5 h-10 shadow-sm"
+                  >
+                    <Link href={phase5.href}>
+                      Enter The Crossroads
+                      <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    disabled
+                    variant="outline"
+                    className="w-full md:w-auto rounded-xl text-xs font-semibold h-10 border-border text-muted-foreground/60 cursor-not-allowed"
+                  >
+                    <Lock className="w-3.5 h-3.5 mr-1.5" />
+                    Crossroads Locked
+                  </Button>
                 )}
               </div>
-            ) : (
-              // Terminal but no usable output (e.g. needs-review) — honest, not fabricated.
-              <div className="p-8 border border-dashed border-border rounded-xl text-center space-y-1.5 bg-muted/10 flex flex-col items-center justify-center min-h-[200px]">
-                <TrendingUp className="w-6 h-6 text-muted-foreground/45" />
-                <p className="text-caption text-muted-foreground max-w-xs leading-relaxed">Forecast results aren&apos;t available yet.</p>
-              </div>
-            )}
+            </div>
           </Card>
 
-          {/* Legal & Compliance Intelligence Card (Stage 6 Smart Card) */}
-          <Phase3LegalCard ideaId={state.activeIdeaId} />
-
-          {/* Document Vault summary — real persisted idea assets only. */}
-          <Card className="rounded-2xl border-border bg-card shadow-sm p-6 space-y-4">
+          {/* Real Outputs & Assets Grid */}
+          <Card className="rounded-2xl border-border bg-card p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <Folder className="w-4 h-4 text-primary" />
-                Document Vault
-              </h3>
+              <div>
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" />
+                  Verified Outputs & Assets ({results.length})
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Authoritative artifacts and plans produced during your journey
+                </p>
+              </div>
               <Button variant="outline" size="sm" asChild className="rounded-lg text-xs h-7 border-border px-2.5">
-                <Link href="/dashboard/creator/documents">View vault</Link>
+                <Link href="/dashboard/creator/documents">View Vault</Link>
               </Button>
             </div>
 
-            {documentsQ.isLoading ? (
-              <div className="space-y-3"><Skeleton className="h-11 w-full" /><Skeleton className="h-11 w-full" /></div>
-            ) : documentsQ.isError ? (
-              <div className="flex flex-col items-center gap-2 py-6 text-center">
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-                <p className="text-caption text-destructive">Couldn&apos;t load your documents.</p>
-                <Button variant="outline" size="sm" onClick={() => documentsQ.refetch()} className="gap-1.5 text-xs"><RotateCw className="h-3.5 w-3.5" /> Retry</Button>
-              </div>
-            ) : phase3Documents.length === 0 ? (
-              <div className="p-8 border border-dashed border-border rounded-xl text-center space-y-1.5 bg-muted/10 flex flex-col items-center justify-center">
-                <Folder className="w-6 h-6 text-muted-foreground/40" />
-                <h4 className="text-xs font-bold text-foreground">No documents yet</h4>
-                <p className="text-caption text-muted-foreground leading-relaxed">
-                  Documents generated for this idea will appear here.
-                </p>
+            {results.length === 0 ? (
+              <div className="p-8 border border-dashed border-border rounded-xl text-center space-y-3 bg-muted/10 flex flex-col items-center justify-center">
+                <Folder className="w-8 h-8 text-muted-foreground/40" />
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-foreground">No outputs generated yet</h4>
+                  <p className="text-caption text-muted-foreground max-w-sm leading-relaxed">
+                    As you complete each stage of your Creator journey, finalized plans and models will appear here.
+                  </p>
+                </div>
+                <Button asChild size="sm" className="rounded-lg bg-primary text-primary-foreground text-xs">
+                  <Link href={nextAction.href}>Start with {nextAction.title}</Link>
+                </Button>
               </div>
             ) : (
-              <div className="divide-y divide-border/60">
-                {phase3Documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-                        <FileText className="w-4.5 h-4.5" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-bold text-foreground">{doc.title || doc.fileName}</h4>
-                        <span className="text-caption text-muted-foreground">{doc.documentType === 'business_plan' ? 'Business Plan' : 'Financial Forecast'}</span>
-                      </div>
-                    </div>
-                    <Link href="/dashboard/creator/documents" aria-label="Open Document Vault" className="text-muted-foreground hover:text-foreground"><ArrowRight className="w-4 h-4" /></Link>
-                  </div>
-                ))}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {results.map((item: DashboardResultItem) => {
+                  const itemKey = item.key || item.id || item.title;
+                  const itemCategory =
+                    item.category ||
+                    (item.phase === 2
+                      ? 'Brand'
+                      : item.phase === 3
+                      ? 'Intelligence'
+                      : 'Construction');
+                  const itemTime = item.updatedAtUtc || item.updatedAt;
 
+                  return (
+                    <Link
+                      key={itemKey}
+                      href={item.href}
+                      className="flex flex-col justify-between p-4 rounded-xl border border-border/70 hover:border-primary/50 hover:bg-muted/10 transition-all group space-y-3"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-primary/10">
+                              {getResultCategoryIcon(itemCategory)}
+                            </div>
+                            <span className="text-caption font-bold text-muted-foreground uppercase tracking-wider">
+                              {itemCategory}
+                            </span>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className="text-badge font-semibold border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 px-2 py-0.2"
+                          >
+                            {item.status}
+                          </Badge>
+                        </div>
+
+                        <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors leading-snug">
+                          {item.title}
+                        </h4>
+                      </div>
+
+                      <div className="flex items-center justify-between text-footnote text-muted-foreground pt-1 border-t border-border/40">
+                        <span>{timeAgo(itemTime)}</span>
+                        <span className="flex items-center gap-1 font-semibold group-hover:text-foreground">
+                          Open Asset
+                          <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </Card>
         </div>
 
-        {/* Right Column: Messages, Notifications, and Marketplace/Smart Matching */}
+        {/* Right Column (1 Col): HumainX Profile, Live Communication, Shortcuts */}
         <div className="space-y-6">
-          {/* Messages Card — real recent conversations (chat infra) */}
+          {/* HumainX Profile Onboarding Card */}
+          <HumainXDashboardCard ideaId={activeIdeaId} />
+
+          {/* Messages Card — Real chat conversations */}
           <Card className="rounded-2xl border-border bg-card shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-warning" />
+                <MessageSquare className="w-4 h-4 text-amber-500" />
                 Messages
               </h3>
               {unreadConversations > 0 && (
-                <Badge className="bg-warning/15 text-warning font-bold text-badge border-0 px-2 py-0.5">
+                <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-badge border-0 px-2 py-0.5">
                   {unreadConversations} new
                 </Badge>
               )}
@@ -682,195 +680,200 @@ export default function CreatorDashboard() {
 
             {conversationsQ.isLoading ? (
               <div className="space-y-3">
-                {[0, 1, 2].map((i) => <Skeleton key={i} className="h-11 w-full" />)}
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-11 w-full rounded-lg" />
+                ))}
               </div>
             ) : conversationsQ.isError ? (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
                 <AlertTriangle className="h-5 w-5 text-destructive" />
-                <p className="text-caption text-destructive">Couldn&apos;t load your messages.</p>
-                <Button variant="outline" size="sm" onClick={() => conversationsQ.refetch()} className="gap-1.5 text-xs"><RotateCw className="h-3.5 w-3.5" /> Retry</Button>
+                <p className="text-caption text-destructive">Couldn&apos;t load messages.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => conversationsQ.refetch()}
+                  className="gap-1.5 text-xs"
+                >
+                  <RotateCw className="w-3.5 h-3.5" /> Retry
+                </Button>
               </div>
             ) : recentConversations.length === 0 ? (
               <p className="text-caption text-muted-foreground text-center py-6 leading-relaxed">
-                No conversations yet. Reach out to an investor or provider to start one.
+                No active conversations yet. Messages with service providers and partners will appear here.
               </p>
             ) : (
               <div className="space-y-3">
                 {recentConversations.map((c) => {
-                  const other = c.participants.find((p) => p.id !== user?.id) ?? c.participants[0];
+                  const other = c.participants?.find((p) => p.id !== user?.id) ?? c.participants?.[0];
                   const name = other?.name?.trim() || 'Conversation';
-                  const initials = name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+                  const initials =
+                    name
+                      .split(/\s+/)
+                      .map((w) => w[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase() || '?';
+
                   return (
-                    <Link key={c.id} href={`/dashboard/creator/messages?c=${c.id}`} className="flex items-center gap-3 hover:bg-muted/10 p-1 rounded-lg transition-colors">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-primary to-warning text-white flex items-center justify-center font-bold text-xs shrink-0">
+                    <Link
+                      key={c.id}
+                      href={`/dashboard/creator/messages?c=${c.id}`}
+                      className="flex items-center gap-3 hover:bg-muted/10 p-1.5 rounded-lg transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-amber-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
                         {initials}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline">
                           <h4 className="text-xs font-bold text-foreground truncate">{name}</h4>
-                          <span className="text-footnote text-muted-foreground shrink-0 ml-2">{timeAgo(c.lastMessageAt)}</span>
+                          <span className="text-footnote text-muted-foreground shrink-0 ml-2">
+                            {timeAgo(c.lastMessageAt)}
+                          </span>
                         </div>
-                        <p className="text-caption text-muted-foreground truncate mt-0.5">{c.lastMessage || 'No messages yet.'}</p>
+                        <p className="text-caption text-muted-foreground truncate mt-0.5">
+                          {c.lastMessage || 'No messages yet.'}
+                        </p>
                       </div>
-                      {c.unreadCount > 0 && <div className="w-1.5 h-1.5 rounded-full bg-warning shrink-0" />}
+                      {c.unreadCount > 0 && <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />}
                     </Link>
                   );
                 })}
 
-                <Button variant="outline" size="sm" asChild className="w-full text-xs rounded-xl h-9 mt-2 font-bold text-muted-foreground hover:text-foreground">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="w-full text-xs rounded-xl h-9 mt-2 font-bold text-muted-foreground hover:text-foreground"
+                >
                   <Link href="/dashboard/creator/messages">
                     <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
-                    Open Messages
+                    Open Messenger
                   </Link>
                 </Button>
               </div>
             )}
           </Card>
 
-          {/* Notifications Card — real notifications (notification infra) */}
+          {/* Notifications Card — Real notifications */}
           <Card className="rounded-2xl border-border bg-card shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <Bell className="w-4 h-4 text-success-text" />
+                <Bell className="w-4 h-4 text-emerald-500" />
                 Notifications
               </h3>
               {notif.unreadCount > 0 && (
-                <Badge className="bg-success-light text-success-text font-bold text-badge border-0 px-2 py-0.5">
+                <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-badge border-0 px-2 py-0.5">
                   {notif.unreadCount} new
                 </Badge>
               )}
             </div>
 
             {notif.isLoading ? (
-              <div className="space-y-3.5">
-                {[0, 1, 2].map((i) => <Skeleton key={i} className="h-8 w-full" />)}
+              <div className="space-y-3">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} className="h-8 w-full rounded-lg" />
+                ))}
               </div>
             ) : notif.isError ? (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
                 <AlertTriangle className="h-5 w-5 text-destructive" />
                 <p className="text-caption text-destructive">Couldn&apos;t load notifications.</p>
-                <Button variant="outline" size="sm" onClick={() => notif.refetch()} className="gap-1.5 text-xs"><RotateCw className="h-3.5 w-3.5" /> Retry</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => notif.refetch()}
+                  className="gap-1.5 text-xs"
+                >
+                  <RotateCw className="w-3.5 h-3.5" /> Retry
+                </Button>
               </div>
             ) : recentNotifications.length === 0 ? (
               <p className="text-caption text-muted-foreground text-center py-6 leading-relaxed">
-                You&apos;re all caught up — no notifications yet.
+                You&apos;re all caught up — no new notifications.
               </p>
             ) : (
-              <div className="space-y-3.5">
+              <div className="space-y-3">
                 {recentNotifications.map((n) => (
                   <div key={n.id} className="flex gap-2.5 items-start">
-                    <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${n.isRead ? 'bg-muted-foreground/30' : 'bg-success-text'}`} />
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
+                        n.isRead ? 'bg-muted-foreground/30' : 'bg-emerald-500'
+                      }`}
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-foreground leading-snug">{n.title || n.body}</p>
-                      <span className="text-footnote text-muted-foreground mt-0.5 block">{timeAgo(n.createdAt)}</span>
+                      <span className="text-footnote text-muted-foreground mt-0.5 block">
+                        {timeAgo(n.createdAt)}
+                      </span>
                     </div>
                   </div>
                 ))}
 
-                <Button variant="outline" size="sm" asChild className="w-full text-xs rounded-xl h-9 mt-2 font-bold text-muted-foreground hover:text-foreground">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="w-full text-xs rounded-xl h-9 mt-2 font-bold text-muted-foreground hover:text-foreground"
+                >
                   <Link href="/dashboard/creator/notifications">
                     <Bell className="w-3.5 h-3.5 mr-1.5" />
-                    View all notifications
+                    View All Notifications
                   </Link>
                 </Button>
               </div>
             )}
           </Card>
 
-          {/* Marketplace / Matches Card */}
-          <Card className="rounded-2xl border-border bg-card shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <Store className="w-4 h-4 text-warning" />
-                Marketplace
-              </h3>
-            </div>
-
-            {matchedInvestorCount && matchedInvestorCount > 0 ? (
-              // Real matched-investor count (P1.11). Individual buyer identities are
-              // surfaced on the Marketplace page (the investor↔chat linkage gate), not
-              // fabricated here.
-              <div className="text-center space-y-3 pt-2">
-                <div className="text-3xl font-black text-foreground">{matchedInvestorCount}</div>
-                <p className="text-xs text-muted-foreground font-medium">
-                  {matchedInvestorCount === 1 ? 'investor matched' : 'investors matched'}
-                </p>
-                <Button className="w-full text-xs rounded-xl h-9 mt-2 font-bold bg-primary hover:bg-primary/95 text-white" asChild>
-                  <Link href="/dashboard/creator/crossroads">
-                    <Eye className="w-3.5 h-3.5 mr-1.5" />
-                    Marketplace Push
-                  </Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="p-6 border border-dashed border-border rounded-xl text-center space-y-1.5 bg-muted/10 flex flex-col items-center justify-center">
-                <Lock className="w-5 h-5 text-muted-foreground/45" />
-                <h4 className="text-xs font-bold text-foreground">Smart Matching Locked</h4>
-                <p className="text-caption text-muted-foreground leading-relaxed">
-                  Completing Phase 5 Crossroads unlocks buyers and co-founder matches.
-                </p>
-              </div>
-            )}
-          </Card>
-        </div>
-      </div>
-
-      {/* Row 4: Quick Actions Grid */}
-      <div className="space-y-3 pt-2">
-        <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-          <Zap className="w-4 h-4 text-warning" />
-          Quick Actions
-        </h3>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card
-            className="rounded-2xl border-border bg-card p-4 hover:border-primary/50 cursor-pointer shadow-sm flex flex-col items-center text-center gap-2 transition-all hover:-translate-y-0.5 hover:shadow-md group"
-            onClick={() => router.push('/dashboard/creator/phase-3/business-plan')}
-          >
-            <div className="w-10 h-10 rounded-xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-white flex items-center justify-center transition-colors">
-              <FileText className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-bold text-foreground text-xs">Generate Pitch Deck</h4>
-              <p className="text-caption text-muted-foreground mt-0.5">One-click AI generator</p>
-            </div>
-          </Card>
-
-          <Card
-            className="rounded-2xl border-border bg-card p-4 hover:border-warning/50 cursor-pointer shadow-sm flex flex-col items-center text-center gap-2 transition-all hover:-translate-y-0.5 hover:shadow-md group"
-            onClick={() => router.push('/dashboard/creator/crossroads')}
-          >
-            <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning group-hover:bg-warning group-hover:text-white flex items-center justify-center transition-colors">
-              <Store className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-bold text-foreground text-xs">Marketplace Push</h4>
-              <p className="text-caption text-muted-foreground mt-0.5">Full Buyout or Co-founder</p>
-            </div>
-          </Card>
-
-          <Card
-            className="rounded-2xl border-border bg-card p-4 hover:border-success-text/50 cursor-pointer shadow-sm flex flex-col items-center text-center gap-2 transition-all hover:-translate-y-0.5 hover:shadow-md group"
-            onClick={() => router.push('/marketplace/services')}
-          >
-            <div className="w-10 h-10 rounded-xl bg-success-light/30 text-success-text group-hover:bg-success-text group-hover:text-white flex items-center justify-center transition-colors">
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-bold text-foreground text-xs">Hire a Provider</h4>
-              <p className="text-caption text-muted-foreground mt-0.5">Services marketplace</p>
-            </div>
-          </Card>
-
-          <Card
-            className="rounded-2xl border-border bg-card p-4 hover:border-warning/50 cursor-pointer shadow-sm flex flex-col items-center text-center gap-2 transition-all hover:-translate-y-0.5 hover:shadow-md group"
-            onClick={() => router.push('/dashboard/creator/crossroads')}
-          >
-            <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning group-hover:bg-warning group-hover:text-white flex items-center justify-center transition-colors">
-              <Rocket className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-bold text-foreground text-xs">Build My Company</h4>
-              <p className="text-caption text-muted-foreground mt-0.5">Transition to founder</p>
+          {/* Quick Shortcuts */}
+          <Card className="rounded-2xl border-border bg-card p-6 shadow-sm space-y-3">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">
+              Venture Hub Shortcuts
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="h-9 justify-start text-xs font-semibold rounded-lg border-border"
+              >
+                <Link href="/dashboard/creator/phase-3/legal">
+                  <Scale className="w-3.5 h-3.5 mr-1.5 text-emerald-500" />
+                  Legal Center
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="h-9 justify-start text-xs font-semibold rounded-lg border-border"
+              >
+                <Link href="/dashboard/creator/phase-4">
+                  <Briefcase className="w-3.5 h-3.5 mr-1.5 text-blue-500" />
+                  Construction
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="h-9 justify-start text-xs font-semibold rounded-lg border-border"
+              >
+                <Link href="/dashboard/creator/documents">
+                  <Folder className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
+                  IP Vault
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="h-9 justify-start text-xs font-semibold rounded-lg border-border"
+              >
+                <Link href="/marketplace/services">
+                  <Users className="w-3.5 h-3.5 mr-1.5 text-purple-500" />
+                  Marketplace
+                </Link>
+              </Button>
             </div>
           </Card>
         </div>
