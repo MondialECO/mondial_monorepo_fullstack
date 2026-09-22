@@ -41,6 +41,10 @@ namespace WebApp.Models.DatabaseModels
         /// <summary>Optional venture context for founders/creators/entrepreneurs.</summary>
         public ProfileVentureContext? VentureContext { get; set; }
 
+        /// <summary>Durable state for Creator HumainX Quick Start onboarding.</summary>
+        [BsonElement("quickStart")]
+        public HumainXQuickStartState? QuickStart { get; set; }
+
         public List<ProfessionalLanguage> LanguageProficiencies { get; set; } = new();
 
         /// <summary>Temporary compatibility mirror during migration only. Kept in
@@ -160,6 +164,44 @@ namespace WebApp.Models.DatabaseModels
                     LearningPreference = lp.AsString;
                 if (string.IsNullOrEmpty(DelegationPreference) && value.TryGetValue("DelegationPreference", out var dp) && dp.IsString)
                     DelegationPreference = dp.AsString;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Durable backend state for the one-time Creator HumainX Quick Start onboarding flow.
+    /// Canonical source of truth for dashboard access (completedAt != null).
+    /// </summary>
+    [BsonIgnoreExtraElements]
+    public class HumainXQuickStartState
+    {
+        [BsonElement("version")]
+        public int Version { get; set; } = 1;
+
+        [BsonElement("step1ConfirmedAt")]
+        public DateTime? Step1ConfirmedAt { get; set; }
+
+        [BsonElement("step2ConfirmedAt")]
+        public DateTime? Step2ConfirmedAt { get; set; }
+
+        [BsonElement("step3ConfirmedAt")]
+        public DateTime? Step3ConfirmedAt { get; set; }
+
+        [BsonElement("completedAt")]
+        public DateTime? CompletedAt { get; set; }
+
+        [BsonExtraElements]
+        public BsonDocument? ExtraElements
+        {
+            get => null;
+            set
+            {
+                if (value == null) return;
+                if (value.TryGetValue("Version", out var v) && v.IsInt32) Version = v.AsInt32;
+                if (value.TryGetValue("Step1ConfirmedAt", out var s1) && s1.IsValidDateTime) Step1ConfirmedAt = s1.ToUniversalTime();
+                if (value.TryGetValue("Step2ConfirmedAt", out var s2) && s2.IsValidDateTime) Step2ConfirmedAt = s2.ToUniversalTime();
+                if (value.TryGetValue("Step3ConfirmedAt", out var s3) && s3.IsValidDateTime) Step3ConfirmedAt = s3.ToUniversalTime();
+                if (value.TryGetValue("CompletedAt", out var comp) && comp.IsValidDateTime) CompletedAt = comp.ToUniversalTime();
             }
         }
     }

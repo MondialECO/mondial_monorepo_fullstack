@@ -129,6 +129,16 @@ export function calculateLocalCompleteness(formData: HumainXFormData): ProfileCo
   };
 }
 
+export interface HumainXQuickStartBackendStatus {
+  version: number;
+  step1ConfirmedAt: string | null;
+  step2ConfirmedAt: string | null;
+  step3ConfirmedAt: string | null;
+  completedAt: string | null;
+  completed: boolean;
+  nextRequiredStep: 1 | 2 | 3 | null;
+}
+
 export const creatorProfileApi = {
   async getCompleteness(): Promise<ProfileCompletenessResponse> {
     const res = await api.get<ApiEnvelope<ProfileCompletenessResponse>>('/profile/me/completeness');
@@ -137,6 +147,37 @@ export const creatorProfileApi = {
 
   async getMyProfile(): Promise<any> {
     const res = await api.get<ApiEnvelope<any>>('/profile/me');
+    return unwrap(res);
+  },
+
+  async getQuickStartStatus(): Promise<HumainXQuickStartBackendStatus> {
+    const res = await api.get<ApiEnvelope<HumainXQuickStartBackendStatus>>('/creator/quick-start/status');
+    return unwrap(res);
+  },
+
+  async confirmQuickStartStep1(payload: {
+    region: string;
+    currentSituation: string;
+    weeklyAvailability: string;
+  }): Promise<HumainXQuickStartBackendStatus> {
+    const res = await api.post<ApiEnvelope<HumainXQuickStartBackendStatus>>('/creator/quick-start/step1', payload);
+    return unwrap(res);
+  },
+
+  async confirmQuickStartStep2(payload: {
+    skills: { name: string; level: string; source?: string; verification?: any }[];
+  }): Promise<HumainXQuickStartBackendStatus> {
+    const res = await api.post<ApiEnvelope<HumainXQuickStartBackendStatus>>('/creator/quick-start/step2', payload);
+    return unwrap(res);
+  },
+
+  async completeQuickStart(payload: {
+    previousEntrepreneurialExperience: string;
+    progressPreference?: string;
+    learningPreference?: string;
+    delegationPreference?: string;
+  }): Promise<HumainXQuickStartBackendStatus> {
+    const res = await api.post<ApiEnvelope<HumainXQuickStartBackendStatus>>('/creator/quick-start/complete', payload);
     return unwrap(res);
   },
 

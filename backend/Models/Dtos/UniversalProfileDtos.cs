@@ -34,6 +34,7 @@ public class UniversalProfileResponseDto
     public List<string> Roles { get; set; } = new();
     public int CompletionPercentage { get; set; }
     public ProfileCompletenessDto? Completeness { get; set; }
+    public HumainXQuickStartStatusDto? QuickStart { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -278,3 +279,35 @@ public class InvestorPublicExtensionDto
     public List<string> TargetStages { get; set; } = new();
     public string Thesis { get; set; } = string.Empty;
 }
+
+public class HumainXQuickStartStatusDto
+{
+    public int Version { get; set; } = 1;
+    public DateTime? Step1ConfirmedAt { get; set; }
+    public DateTime? Step2ConfirmedAt { get; set; }
+    public DateTime? Step3ConfirmedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public bool Completed { get; set; }
+    public int? NextRequiredStep { get; set; }
+}
+
+public class QuickStartStep1RequestDto
+{
+    public string? Region { get; set; }
+    public string? CurrentSituation { get; set; }
+    public string? WeeklyAvailability { get; set; }
+}
+
+public class QuickStartStep2RequestDto
+{
+    public List<ProfileSkillDto>? Skills { get; set; }
+}
+
+public class QuickStartStep3RequestDto
+{
+    public string? PreviousEntrepreneurialExperience { get; set; }
+    public string? LearningPreference { get; set; }
+    public string? DelegationPreference { get; set; }
+    public string? ProgressPreference { get; set; }
+}
+

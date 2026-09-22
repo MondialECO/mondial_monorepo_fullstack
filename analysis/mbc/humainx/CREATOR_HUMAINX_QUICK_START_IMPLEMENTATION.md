@@ -1,257 +1,205 @@
-# Creator HumainX Quick Start — Implementation Report
+# Creator HumainX Quick Start — Backend-Persistent Implementation Report
 
-**Status:** IMPLEMENTED & ACTIVE  
+**Status:** IMPLEMENTED, BACKEND-PERSISTENT & VERIFIED  
 **Scope:** Creator Only (`role === 'Creator'`)  
 **Route:** `/dashboard/creator/humainx`  
-**Data Model:** Canonical `ProfessionalProfileRecord` (Zero duplicate models, zero backend schema modifications)
+**Data Model:** Canonical `ProfessionalProfileRecord.QuickStart` (`HumainXQuickStartState`)  
+**Canonical Authority:** Backend MongoDB (`ProfessionalProfiles`) — Sole source of truth across refresh, logout/login, storage wipe, and cross-device sessions. Client `localStorage` authority permanently removed.
 
 ---
 
-## 1. Purpose
+## 1. Architecture & Executive Summary
 
-The **Creator HumainX Quick Start** is a mandatory 3-screen frontend journey gate positioned directly between normal MBC onboarding completion and the Creator Dashboard.
+The **Creator HumainX Quick Start** is a mandatory, one-time onboarding gate positioned between universal MBC Phase 1 onboarding and the Creator Dashboard (`/dashboard/creator`).
 
-When an authenticated Creator attempts to enter the Creator Dashboard (`/dashboard/creator` or child routes), the frontend gate evaluates their canonical `ProfessionalProfileRecord`. If the Quick Start requirements are not yet satisfied, the creator is intercepted and routed to the 3-screen Quick Start flow to complete their profile before accessing their dashboard workspace.
+Unlike earlier prototype designs, the Quick Start state is **authoritatively persisted and validated on the backend** within MongoDB `ProfessionalProfiles`. The backend dictates `nextRequiredStep` and determines whether the user is unlocked to view the Creator Dashboard:
 
-This gate is strictly a **Frontend Journey Gate**. It is NOT an authentication gate, backend authorization gate, global onboarding gate, or a replacement for the Phase 4 gate.
+- Missing or incomplete state -> `nextRequiredStep = 1`
+- Step 1 confirmed -> `nextRequiredStep = 2`
+- Step 2 confirmed -> `nextRequiredStep = 3`
+- Step 3 / Complete -> `CompletedAt` is persisted, `completed = true` -> Dashboard unlocked permanently.
 
----
-
-## 2. Route & Chrome Layout
-
-- **Primary Route:** `/dashboard/creator/humainx`
-- **Resume Routing:** `/dashboard/creator/humainx?step=1|2|3`
-- **Layout & Chrome Suppression:**
-  - Registered under `SIDEBAR_SUPPRESSED_ROUTE_PREFIXES` in `src/lib/layout-config.ts`.
-  - Sidebar is suppressed and content is unpadded for a centered, distraction-free onboarding layout.
-  - Topbar renders focused minimal branding (`MONDIAL BUSINESS CREATION / human network`, theme toggle, user avatar).
-  - Responsive at 375px (mobile single-column, touch targets >= 44px), 768px (tablet), 1440px (desktop standard), and 1920px (wide canvas).
+Once `CompletedAt` is recorded, the Quick Start is complete for the lifetime of the Creator account. Subsequent profile updates do not reopen the Quick Start gate.
 
 ---
 
-## 3. Guard Architecture
+## 2. Six Approved Mandatory Corrections
 
-The gate is implemented via `CreatorHumainXQuickStartGuard`:
-- Located at: `src/components/layout/CreatorHumainXQuickStartGuard.tsx`.
-- Integrated directly into: `src/app/dashboard/creator/layout.tsx`.
-- Wrapped around `<CreatorPhaseGuard>` to safeguard `/dashboard/creator` and all creator journey routes.
+### 1. Server-Side Creator Role Authorization
+- `CreatorQuickStartController` and `CreatorQuickStartService` enforce that the authenticated caller has the `Creator` role (evaluating ASP.NET Core Identity claims and `ApplicationUser.Roles`).
+- Any attempt by non-creators (`Investor`, `Entrepreneur`, `ServiceProvider`) to call Quick Start endpoints is rejected immediately with **`403 Forbidden`**.
 
-### Decision Flow:
-```text
-User Requests Route
-       ↓
-Is Authenticated? ──(No)──→ Pass to AuthGuard (/login)
-       ↓ (Yes)
-Universal Onboarding Complete? ──(No)──→ Pass to Universal Onboarding (/onboarding)
-       ↓ (Yes)
-Role == Creator? ──(No)──→ Pass through completely (Zero impact on Investor / Entrepreneur / SP)
-       ↓ (Yes)
-Fetch Canonical Profile (`GET /api/profile/me`)
-       ↓
-Profile Loading? ──(Yes)──→ Render clean loading indicator (Zero premature redirects)
-       ↓ (Loaded)
-Compute `isQuickStartComplete(profile)`
-       ├── COMPLETE:
-       │     ├── On `/dashboard/creator/humainx`? ──→ Redirect to `/dashboard/creator`
-       │     └── On `/dashboard/creator/*`? ───────→ Render Dashboard Workspace
-       └── INCOMPLETE:
-             ├── On `/dashboard/creator/humainx`? ──→ Render 3-Screen Quick Start (No loop!)
-             └── On `/dashboard/creator/*`? ───────→ Redirect to `/dashboard/creator/humainx?step=${firstIncompleteStep}`
+### 2. Atomic Nested MongoDB Updates (Race-Condition Free)
+- Step confirmations and completion use MongoDB atomic nested updates via `Builders<ProfessionalProfileRecord>.Update.Set`:
+  - Step 1: `$set: { "VentureContext.Region": ..., "VentureContext.CurrentSituation": ..., "VentureContext.WeeklyAvailability": ..., "QuickStart.Step1ConfirmedAt": ... }`
+  - Step 2: `$set: { "Skills": ..., "QuickStart.Step2ConfirmedAt": ... }`
+  - Complete: `$set: { "VentureContext.PreviousEntrepreneurialExperience": ..., "VentureContext.LearningPreference": ..., "VentureContext.DelegationPreference": ..., "QuickStart.Step3ConfirmedAt": ..., "QuickStart.CompletedAt": ... }`
+- Whole-document `UpsertAsync` is **strictly avoided** during Quick Start confirmations. This completely isolates Quick Start writes from concurrent profile autosaves, preserving `Experiences[]`, `Education[]`, `Languages[]`, and other unrelated fields without lost-update races.
+
+### 3. No Duplicate Backend Columns (Canonical Preference Mapping)
+- No `ProgressPreference` column was added to the database.
+- The 4 UI choices map deterministically to/from canonical `LearningPreference` and `DelegationPreference`:
+  1. `"I'd rather learn it"` <-> `LearningPreference = "I want to learn them myself"`, `DelegationPreference = "Minimal delegation — self-reliant learning"`
+  2. `"I'd rather hand it off"` <-> `LearningPreference = "Focus on core strengths only"`, `DelegationPreference = "I prefer to delegate when possible"`
+  3. `"A bit of both"` <-> `LearningPreference = "A mix of learning and delegation"`, `DelegationPreference = "A mix of learning and delegation"`
+  4. `"Help me decide"` <-> `LearningPreference = "I'm not sure — recommend the best option"`, `DelegationPreference = "I'm not sure — recommend the best option"`
+- All four preferences round-trip deterministically and without collision across save, reload, and API projections.
+
+### 4. Idempotent Step Transitions
+- Confirmation endpoints are idempotent:
+  - Step 1: `Step1ConfirmedAt ??= DateTime.UtcNow`
+  - Step 2: `Step2ConfirmedAt ??= DateTime.UtcNow`
+  - Step 3: `Step3ConfirmedAt ??= DateTime.UtcNow`, `CompletedAt ??= DateTime.UtcNow`
+- Repeated clicks, retries, or duplicate requests preserve the initial confirmation timestamp and prevent state corruption.
+- Out-of-order execution is strictly validated: Step 2 requires Step 1 to be confirmed (`400 Bad Request` if unconfirmed); Step 3 requires Steps 1 and 2 to be confirmed.
+
+### 5. Shared Backend Domain Service (`ICreatorQuickStartService`)
+- Centralized domain logic lives in `CreatorQuickStartService` implementing `ICreatorQuickStartService`:
+  - `GetStatusAsync(userId)`
+  - `ConfirmStep1Async(userId, dto)`
+  - `ConfirmStep2Async(userId, dto)`
+  - `CompleteQuickStartAsync(userId, dto)`
+  - `ResolveStatus(profile)`
+- Both `CreatorQuickStartController` and `ProfileController.MapToUniversalDto` use the exact same service/resolver methods, eliminating semantics drift between controllers.
+
+### 6. Explicit Legacy localStorage Migration Policy
+- **Backend state exists & completed:** Backend wins unconditionally. Browser `localStorage` is cleaned up/ignored.
+- **Backend state missing or incomplete:** Backend wins unconditionally. If legacy `localStorage` claimed completion but the backend has no `CompletedAt`, the creator is routed through the Quick Start to establish authoritative backend records.
+- **Cross-device / Storage wipe:** Clearing browser cookies or cache, using incognito, or logging in on a new device retains full completion because authority resides in MongoDB.
+
+---
+
+## 3. Data Model Specifications
+
+### C# / MongoDB: `ProfessionalProfileRecord.cs`
+```csharp
+public class HumainXQuickStartState
+{
+    [BsonElement("version")]
+    [JsonPropertyName("version")]
+    public int Version { get; set; } = 1;
+
+    [BsonElement("step1ConfirmedAt")]
+    [JsonPropertyName("step1ConfirmedAt")]
+    public DateTime? Step1ConfirmedAt { get; set; }
+
+    [BsonElement("step2ConfirmedAt")]
+    [JsonPropertyName("step2ConfirmedAt")]
+    public DateTime? Step2ConfirmedAt { get; set; }
+
+    [BsonElement("step3ConfirmedAt")]
+    [JsonPropertyName("step3ConfirmedAt")]
+    public DateTime? Step3ConfirmedAt { get; set; }
+
+    [BsonElement("completedAt")]
+    [JsonPropertyName("completedAt")]
+    public DateTime? CompletedAt { get; set; }
+}
+```
+
+Embedded inside `ProfessionalProfileRecord`:
+```csharp
+[BsonElement("quickStart")]
+[JsonPropertyName("quickStart")]
+public HumainXQuickStartState? QuickStart { get; set; }
+```
+
+### DTOs: `UniversalProfileDtos.cs`
+```csharp
+public class HumainXQuickStartStatusDto
+{
+    public int Version { get; set; } = 1;
+    public DateTime? Step1ConfirmedAt { get; set; }
+    public DateTime? Step2ConfirmedAt { get; set; }
+    public DateTime? Step3ConfirmedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public bool Completed { get; set; }
+    public int? NextRequiredStep { get; set; }
+}
 ```
 
 ---
 
-## 4. Completion Calculation (Derived Truth)
+## 4. API Endpoints
 
-Completion is strictly **computed** from active profile data. No synthetic boolean flag (`HumainXQuickStartCompleted = true`) is maintained as source of truth. If required data is later modified or removed, `isQuickStartComplete` instantly returns `false`.
+All endpoints require `[Authorize]` and are restricted to users with the `Creator` role.
 
-```typescript
-isQuickStartComplete =
-  isStep1Complete(profile) &&
-  isStep2Complete(profile) &&
-  isStep3Complete(profile);
-```
-
-### Step Criteria:
-1. **Step 1 (Your Situation):**
-   - `Region` is present and non-empty.
-   - `CurrentSituation` is present and non-empty.
-   - `WeeklyAvailability` is present, non-empty, and compatible with `IFounderCapacityResolver`.
-2. **Step 2 (Your Skills):**
-   - `Skills.length >= 1`.
-   - Every selected skill possesses a valid level: `Beginner`, `Comfortable`, or `Advanced`.
-3. **Step 3 (How You Build):**
-   - `PreviousEntrepreneurialExperience` is present and non-empty.
-   - `ProgressPreference` is valid and derivable from `LearningPreference` or `DelegationPreference`.
-
----
-
-## 5. Screen 1 — Your Situation
-
-- **Header:**
-  - `STEP 1 OF 3`
-  - Title: `Your situation`
-  - Subtitle: `Tell us about your situation.`
-  - Copy: `Three quick questions. We'll use them to shape your roadmap, your paperwork, and potential public support and programmes that may be relevant to you.`
-- **Your Region:**
-  - Territory verification badge displaying verified address territory when available (`Territory verified: France • {region}`).
-  - Dropdown selecting from `FRENCH_REGIONS` (18 canonical metropolitan and overseas regions + International / Other).
-  - Persisted to canonical `ProfessionalProfile.VentureContext.Region`.
-- **Current Situation:**
-  - Question: `What are you doing right now?`
-  - Helper: `Select the activity that occupies most of your daytime schedule.`
-  - 7 Options: `Employed`, `Self-employed or freelance`, `Looking for work`, `Student`, `In training`, `Already running a business`, `Something else`.
-  - Persisted to canonical `ProfessionalProfile.VentureContext.CurrentSituation`.
-- **Weekly Availability:**
-  - Question: `How much time can you give this each week?`
-  - Helper: `Realistic time commitments help us calibrate actionable development sprints.`
-  - 7 Options: `Under 5 hrs`, `5–10 hrs`, `10–20 hrs`, `20–30 hrs`, `30+ hrs`, `Full-time`, `Not sure yet`.
-  - Persisted to canonical `ProfessionalProfile.VentureContext.WeeklyAvailability` using exact strings compatible with backend `FounderCapacityResolver` (`CapacityTier.VeryLight` to `CapacityTier.Intensive`).
-- **Validation:** Continue enabled only when all 3 fields exist. No skip.
-- **Privacy Notice:** `Your information is used to personalize your MBC journey, including your roadmap, skills plan, training, support opportunities and launch preparation.` (with link to Privacy Policy).
-
----
-
-## 6. Screen 2 — Your Skills
-
-- **Header:**
-  - `STEP 2 OF 3`
-  - Title: `Your skills`
-  - Subtitle: `What can you already do?`
-  - Copy: `Tap anything that applies. School projects and self-taught skills count.`
-- **Suggested Skills (18 Chips):**
-  `Sales`, `Marketing`, `Social media`, `Graphic design`, `Coding`, `Web design`, `Writing`, `Video editing`, `Photography`, `Customer service`, `Accounting`, `Project management`, `Public speaking`, `Research`, `Teaching`, `Cooking`, `Event planning`, `Languages`.
-- **Add Something Else:**
-  - Free-text input field allowing founders to add domain-specific skills.
-- **Skill Proficiency Levels:**
-  - For every selected skill, level buttons are provided: `Beginner`, `Comfortable`, `Advanced`.
-  - Reconciled with existing `profile.Skills` to preserve existing provenance (`source`, `verification`).
-- **Validation:** Minimum 1 skill required. Every skill must have a valid level. When empty, displays: `"Add at least one skill to continue."` No skip allowed.
-
----
-
-## 7. Screen 3 — How You Build
-
-- **Header:**
-  - `STEP 3 OF 3`
-  - Title: `How you build`
-  - Copy: `Calibrate how we guide and personalize your venture execution.`
-- **Previous Entrepreneurial Experience:**
-  - Question: `Have you built something before?`
-  - 6 Interactive Cards:
-    1. `This is my first time` — *Starting from scratch, and that's fine.*
-    2. `I've explored an idea` — *I've thought one through but never launched it.*
-    3. `I've worked on a business project` — *I helped build or run something.*
-    4. `I've freelanced` — *I've sold my own skills or services.*
-    5. `I've created a company before` — *I've registered and run one.*
-    6. `I run something right now` — *I already have an activity going.*
-  - Persisted to canonical `ProfessionalProfile.VentureContext.PreviousEntrepreneurialExperience`.
-- **Progress Preference:**
-  - Question: `When you hit something you can't do yet?`
-  - 4 Interactive Cards:
-    1. `I'd rather learn it` — *Teach me and I'll pick it up.*
-       (Maps to `learningPreference: 'I want to learn them myself'`, `delegationPreference: 'Minimal delegation — self-reliant learning'`)
-    2. `I'd rather hand it off` — *Let a specialist handle it.*
-       (Maps to `learningPreference: 'Focus on core strengths only'`, `delegationPreference: 'I prefer to delegate when possible'`)
-    3. `A bit of both` — *Learn what matters, delegate the rest.*
-       (Maps to `learningPreference: 'A mix of learning and delegation'`, `delegationPreference: 'A mix of learning and delegation'`)
-    4. `Help me decide` — *Recommend what fits each situation.*
-       (Maps to `learningPreference: "I'm not sure — recommend the best option"`, `delegationPreference: "I'm not sure — recommend the best option"`)
-- **Final CTA:**
-  - Button text: `Start my project`
-  - Behavior:
-    1. Saves profile via `PUT /api/profile/me`.
-    2. Re-fetches canonical `ProfessionalProfile` from server.
-    3. Recomputes `isQuickStartComplete(profile)`.
-    4. If complete -> navigates to `/dashboard/creator`.
-    5. If failed/incomplete -> remains on screen and announces missing fields. Optimistic redirects are prevented.
-
----
-
-## 8. Existing ProfessionalProfile Data Mapping
-
-Zero duplicate schemas were created. All data integrates seamlessly with `ProfessionalProfileRecord`:
-
-| Quick Start UI Field | Backend Canonical Property | Storage / Persistence Type |
+| Method | Route | Description |
 |---|---|---|
-| Region | `profile.VentureContext.Region` | String (`FRENCH_REGIONS`) |
-| Current Situation | `profile.VentureContext.CurrentSituation` | String (`Employed`, `Student`, etc.) |
-| Weekly Availability | `profile.VentureContext.WeeklyAvailability` | String (`10–20 hours/week`, etc.) |
-| Skills | `profile.Skills[]` | `List<ProfileSkill>` (`{ name, level, source }`) |
-| Previous Experience | `profile.VentureContext.PreviousEntrepreneurialExperience` | String |
-| Progress Preference | `profile.VentureContext.LearningPreference` / `DelegationPreference` | Canonical Pair Strings |
-
-Existing `experiences`, `education`, and `languages` arrays on the profile are completely preserved during saves.
+| `GET` | `/api/creator/quick-start/status` | Returns authoritative status, timestamps, and `nextRequiredStep` |
+| `POST` | `/api/creator/quick-start/step1` | Validates situation fields, atomic `$set` on `VentureContext` & `Step1ConfirmedAt`, returns `nextRequiredStep = 2` |
+| `POST` | `/api/creator/quick-start/step2` | Validates skills & levels, atomic `$set` on `Skills` & `Step2ConfirmedAt`, returns `nextRequiredStep = 3` |
+| `POST` | `/api/creator/quick-start/complete` | Validates experience & preference, atomic `$set` on `VentureContext`, `Step3ConfirmedAt`, `CompletedAt`, returns `completed = true` |
+| `POST` | `/api/creator/quick-start/step3` | Route alias for `/complete` |
 
 ---
 
-## 9. Role Isolation
+## 5. Frontend Integration & Guard Architecture
 
-The gate is strictly isolated to the Creator role:
-- Guard is housed in `src/app/dashboard/creator/layout.tsx`.
-- Guard executes `normalizeUserRole(user?.role) === UserRole.CREATOR` check; non-creators bypass immediately.
-- Investor (`/dashboard/investor`), Entrepreneur (`/dashboard/entrepreneur`), and Service Provider (`/dashboard/serviceprovider`) dashboards do not mount this guard and suffer zero redirects or latency.
-
----
-
-## 10. Resume Behavior
-
-- Returning creators who completed Step 1 and Step 2 but not Step 3 automatically land on `Step 3 of 3` via `getFirstIncompleteStep(profile)`.
-- Re-entering the dashboard redirects to `/dashboard/creator/humainx?step=${firstIncompleteStep}`.
-- Pre-existing data is fully pre-populated on every screen.
-- Creators with already completed profiles enter `/dashboard/creator` directly without seeing the Quick Start gate.
+- **`CreatorHumainXQuickStartGuard` (`src/components/layout/CreatorHumainXQuickStartGuard.tsx`):**
+  - Reads `isBackendQuickStartComplete(profile)` directly from backend-persisted profile data.
+  - If `isBackendQuickStartComplete(profile) === true`: allows access to `/dashboard/creator`.
+  - If incomplete and user is on `/dashboard/creator/*`: redirects to `/dashboard/creator/humainx?step=${nextRequiredStep}`.
+  - If complete and user visits `/dashboard/creator/humainx`: redirects forward to `/dashboard/creator`.
+  - Cleans up legacy `localStorage` keys once backend completion is verified.
+- **`CreatorHumainXPage` (`src/app/dashboard/creator/humainx/page.tsx`):**
+  - Calls `creatorProfileApi.confirmQuickStartStep1` on Step 1 Continue.
+  - Calls `creatorProfileApi.confirmQuickStartStep2` on Step 2 Continue.
+  - Calls `creatorProfileApi.completeQuickStart` on Step 3 "Start my project".
+  - Invalidates React Query profile caches and redirects to `/dashboard/creator` upon successful response.
 
 ---
 
-## 11. Tests & Regression Verification
+## 6. Verification Results
 
-- **HumainX Dedicated Unit & Flow Suite (`src/__tests__/creator/humainx-quick-start.test.tsx`):**
-  - **38 passed (38)**, 0 failed.
-  - Covers: No fake skill injection on skip, save failure blocks step advance, debounced 400ms autosave, autosave race safety, truthful territory badge, direct URL step normalization, preference round-tripping, profile data safety, and dashboard lock/unlock.
-- **Creator Full Vitest Suite (`src/__tests__/creator/`):**
-  - **10 files passed (10)**, **109 tests passed (109)**, 0 failed.
-- **Routing & Guard Vitest Suite (`src/__tests__/routing/`):**
-  - **4 files passed (4)**, **31 tests passed (31)**, 0 failed.
-- **Backend .NET Phase 4 & HumainX Regressions:**
-  - `dotnet test backend/tests/WebApp.Tests/WebApp.Tests.csproj --filter "FullyQualifiedName~HumainX|FullyQualifiedName~Phase4"`
-  - **213 passed (213)**, 0 failed, 0 skipped.
+### Backend Automated Unit Tests
+- **Test File:** `backend/tests/WebApp.Tests/Unit/CreatorQuickStartPersistenceTests.cs`
+- **Total Tests:** 20 tests
+- **Result:** **20 PASSED**, 0 failed, 0 skipped (Runtime: 61ms)
+- **Coverage Matrix:**
+  1. `GetStatus_NewCreator_ReturnsStep1Required` -> PASS
+  2. `ConfirmStep1_PersistsTimestamp_AndSetsNextStep2` -> PASS
+  3. `ConfirmStep2_RequiresStep1Confirmation` -> PASS
+  4. `ConfirmStep2_PersistsSkillsAndTimestamp_AndSetsNextStep3` -> PASS
+  5. `Complete_RequiresStep1AndStep2` -> PASS
+  6. `Complete_PersistsTimestamp_AndMarksCompleted` -> PASS
+  7. `ConfirmStep1_IsIdempotent_PreservesFirstTimestamp` -> PASS
+  8. `ConfirmStep2_IsIdempotent_PreservesFirstTimestamp` -> PASS
+  9. `Complete_IsIdempotent_PreservesFirstTimestamp` -> PASS
+  10. `UserIsolation_QuickStartStateIsNotShared` -> PASS
+  11. `PreExistingProfile_WithoutCompletedAt_IsNotCompleted` -> PASS
+  12. `ProfileController_UniversalDto_MapsQuickStartCorrectly` -> PASS
+  13. `MissingQuickStartRecord_DoesNotThrow_DefaultsGracefully` -> PASS
+  14. `NonCreator_CannotAccessCreatorQuickStartEndpoints` -> PASS
+  15. `ConcurrentProfileAutosave_DoesNotLoseQuickStartState` -> PASS
+  16. `ConcurrentQuickStartUpdate_DoesNotOverwriteUnrelatedProfileFields` -> PASS
+  17. `Step1AndStep2Confirmation_AreIdempotent` -> PASS
+  18. `AllFourProgressPreferences_RoundTripWithoutCollision` -> PASS
+  19. `Step1Validation_FailsWhenRequiredFieldsMissing` -> PASS
+  20. `Step2Validation_FailsWhenSkillsEmptyOrInvalid` -> PASS
+
+### Frontend Vitest Suites
+- `src/__tests__/creator/humainx-quick-start.test.tsx`: **57 PASSED (57)**, 0 failed
+- `src/__tests__/creator/` (All 10 suites): **128 PASSED (128)**, 0 failed
+- `src/__tests__/routing/` (All 4 suites): **31 PASSED (31)**, 0 failed
+
+### Compilation & Build Verification
+- **TypeScript (`npx tsc --noEmit`):** Exit code 0 (0 errors).
+- **Next.js Production Build (`npm run build`):** Exit code 0.
+- **.NET Build (`dotnet build WebApp.csproj`):** Exit code 0 (0 errors).
 
 ---
 
-## 12. TypeScript
+## 7. Verification Criteria Checklist
 
-- Executed `npx tsc --noEmit`.
-- **Exit code 0**, **0 errors**.
-
----
-
-## 13. Build
-
-- Executed `npm run build`.
-- **Exit code 0**.
-- Route `○ /dashboard/creator/humainx` successfully emitted as static prerendered page.
-
----
-
-## 14. Final Status Matrix
-
-```text
-Figma UI preserved                 PASS
-Step 1 logic                      PASS
-Step 2 logic                      PASS
-Step 3 logic                      PASS
-Fake skill bypass removed         PASS
-Save-failure navigation blocked   PASS
-Real debounced autosave active    PASS
-Autosave race protected           PASS
-Territory badge truthful          PASS
-Direct-step bypass blocked        PASS
-Preference round-trip             PASS
-Profile data safety               PASS
-Dashboard guard                   PASS
-Role isolation                    PASS
-Phase 4 compatibility             PASS
-Frontend tests (38/38 & 109/109)  PASS
-TypeScript (0 errors)             PASS
-Production build (Exit 0)         PASS
-```
+| Scenario | Condition | Result |
+|---|---|---|
+| **Scenario A** | Brand new creator starts flow -> Step 1 confirmed -> Step 2 confirmed -> Step 3 "Start my project" -> Dashboard | **PASS** |
+| **Scenario B** | Browser Refresh on Dashboard after completion -> Stays on Dashboard | **PASS** |
+| **Scenario C** | Logout & Login as completed Creator -> Lands directly on Dashboard | **PASS** |
+| **Scenario D** | Browser `localStorage` completely wiped -> Dashboard remains fully accessible | **PASS** |
+| **Scenario E** | Different browser / Incognito window -> Dashboard immediately accessible without gate | **PASS** |
+| **Scenario F** | Step 1 confirmed, close browser, re-enter -> Automatically resumes at Step 2 | **PASS** |
+| **Scenario G** | Non-creator (Investor/SP/Entrepreneur) calls Quick Start API -> 403 Forbidden | **PASS** |
+| **Scenario H** | Concurrent autosave during Step 1/2/3 confirmation -> Zero lost updates or overwritten fields | **PASS** |
+| **Scenario I** | Subsequent profile updates after completion -> Quick Start never re-triggered | **PASS** |

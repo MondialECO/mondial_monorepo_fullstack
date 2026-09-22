@@ -435,6 +435,7 @@ builder.Services.AddScoped<IGtmStrategyService, GtmStrategyService>();
 // collections behind thin stores, a dual-read aggregate reader, and the
 // idempotent migrate-on-write migrator.
 builder.Services.AddScoped<IProfessionalProfileStore, ProfessionalProfileStore>();
+builder.Services.AddScoped<ICreatorQuickStartService, CreatorQuickStartService>();
 builder.Services.AddScoped<IServiceProviderProfileStore, ServiceProviderProfileStore>();
 builder.Services.AddScoped<IUserCredentialStore, UserCredentialStore>();
 builder.Services.AddScoped<IServiceProviderProfileReader, ServiceProviderProfileReader>();

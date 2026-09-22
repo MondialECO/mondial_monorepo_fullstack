@@ -403,17 +403,66 @@ export function getNextQuickStartJourneyStep(journeyState: HumainXJourneyState):
   return null;
 }
 
-export function resolveTargetQuickStartStep(profile: any, journeyState: HumainXJourneyState): 1 | 2 | 3 {
-  // If step 1 is not confirmed in journey OR profile data for step 1 is incomplete, must do step 1
-  if (!journeyState.step1Confirmed || !isStep1Complete(profile)) return 1;
+export interface HumainXQuickStartBackendState {
+  version: number;
+  step1ConfirmedAt: string | null;
+  step2ConfirmedAt: string | null;
+  step3ConfirmedAt: string | null;
+  completedAt: string | null;
+  completed: boolean;
+  nextRequiredStep: 1 | 2 | 3 | null;
+}
 
-  // If step 2 is not confirmed in journey OR profile data for step 2 is incomplete, must do step 2
-  if (!journeyState.step2Confirmed || !isStep2Complete(profile)) return 2;
+export function getAuthoritativeQuickStartState(profile: any): HumainXQuickStartBackendState {
+  const qs = profile?.quickStart || profile?.QuickStart;
+  const version = qs?.version || qs?.Version || 1;
+  const step1 = qs?.step1ConfirmedAt || qs?.Step1ConfirmedAt || null;
+  const step2 = qs?.step2ConfirmedAt || qs?.Step2ConfirmedAt || null;
+  const step3 = qs?.step3ConfirmedAt || qs?.Step3ConfirmedAt || null;
+  const completedAt = qs?.completedAt || qs?.CompletedAt || null;
+  const completed = Boolean(completedAt || qs?.completed || qs?.Completed);
 
-  // If journey not finalized with "Start my project" OR profile data for step 3 is incomplete, must do step 3
-  if (!journeyState.completed || !isStep3Complete(profile)) return 3;
+  let nextRequiredStep: 1 | 2 | 3 | null = null;
+  if (!completed) {
+    if (!step1) nextRequiredStep = 1;
+    else if (!step2) nextRequiredStep = 2;
+    else nextRequiredStep = 3;
+  }
 
-  return 1;
+  return {
+    version,
+    step1ConfirmedAt: step1,
+    step2ConfirmedAt: step2,
+    step3ConfirmedAt: step3,
+    completedAt,
+    completed,
+    nextRequiredStep,
+  };
+}
+
+export function isBackendQuickStartComplete(profile: any): boolean {
+  if (!profile) return false;
+  const qs = profile.quickStart || profile.QuickStart;
+  return Boolean(qs?.completedAt || qs?.CompletedAt || qs?.completed || qs?.Completed);
+}
+
+export function resolveTargetQuickStartStep(profile: any, journeyState?: HumainXJourneyState): 1 | 2 | 3 {
+  // Authoritative backend resolution
+  if (profile?.quickStart || profile?.QuickStart) {
+    const backendState = getAuthoritativeQuickStartState(profile);
+    if (backendState.completed) return 1;
+    return backendState.nextRequiredStep ?? 1;
+  }
+
+  if (journeyState) {
+    if (!journeyState.step1Confirmed || !isStep1Complete(profile)) return 1;
+    if (!journeyState.step2Confirmed || !isStep2Complete(profile)) return 2;
+    if (!journeyState.completed || !isStep3Complete(profile)) return 3;
+    return 1;
+  }
+
+  const step = getFirstIncompleteStep(profile);
+  return step ?? 1;
 }
 
 export function getMissingFields(profile: any): string[] {

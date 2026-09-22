@@ -86,6 +86,10 @@ vi.mock('@/lib/api-creator-profile', () => ({
   creatorProfileApi: {
     getMyProfile: vi.fn(),
     saveHumainXProfile: vi.fn(),
+    getQuickStartStatus: vi.fn(),
+    confirmQuickStartStep1: vi.fn().mockResolvedValue({ step1ConfirmedAt: '2026-09-22T12:00:00Z', nextRequiredStep: 2 }),
+    confirmQuickStartStep2: vi.fn().mockResolvedValue({ step2ConfirmedAt: '2026-09-22T12:00:00Z', nextRequiredStep: 3 }),
+    completeQuickStart: vi.fn().mockResolvedValue({ completed: true, completedAt: '2026-09-22T12:00:00Z' }),
   },
 }));
 
@@ -359,10 +363,17 @@ describe('CreatorHumainXQuickStartGuard Guarding & Role Isolation', () => {
   });
 
   it('CreatorIncompleteQuickStart_IsRedirectedToIncompleteStep', async () => {
-    // Incomplete profile (missing situation and availability)
+    // Backend profile is incomplete: missing state / nextRequiredStep = 1
     const incompleteProfile = {
-      ventureContext: { region: 'Hauts-de-France' },
-      skills: [],
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: null,
+        step2ConfirmedAt: null,
+        step3ConfirmedAt: null,
+        completedAt: null,
+        completed: false,
+        nextRequiredStep: 1,
+      },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(incompleteProfile);
 
@@ -381,23 +392,19 @@ describe('CreatorHumainXQuickStartGuard Guarding & Role Isolation', () => {
     expect(screen.queryByTestId('dashboard-content')).toBeNull();
   });
 
-  it('DashboardBlocked_WhenProfileCompleteButJourneyNotCompleted', async () => {
-    // Crucial Bug Regression: Profile data is 100% complete, but journey was NOT completed by user
-    const completeProfile = {
-      skills: [{ name: 'Coding', level: 'Advanced' }],
-      ventureContext: {
-        region: 'Hauts-de-France',
-        currentSituation: 'Employed',
-        weeklyAvailability: '10–20 hours/week',
-        previousEntrepreneurialExperience: 'No, this is my first project',
-        learningPreference: 'I want to learn them myself',
-        delegationPreference: 'Minimal delegation',
+  it('BackendStep1Confirmed_ResumesAtStep2', async () => {
+    const step1Profile = {
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-09-22T10:00:00Z',
+        step2ConfirmedAt: null,
+        step3ConfirmedAt: null,
+        completedAt: null,
+        completed: false,
+        nextRequiredStep: 2,
       },
     };
-    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
-
-    // Journey is NOT completed
-    resetQuickStartJourneyState(mockAuthUser.id);
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(step1Profile);
 
     const queryClient = createTestQueryClient();
     render(
@@ -409,33 +416,53 @@ describe('CreatorHumainXQuickStartGuard Guarding & Role Isolation', () => {
     );
 
     await waitFor(() => {
-      // Must redirect to HumainX because journey has not been confirmed!
-      expect(mockRouter.replace).toHaveBeenCalledWith(expect.stringContaining('/dashboard/creator/humainx'));
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=2');
     });
     expect(screen.queryByTestId('dashboard-content')).toBeNull();
   });
 
-  it('DashboardAllowed_WhenProfileAndJourneyBothComplete', async () => {
+  it('BackendStep2Confirmed_ResumesAtStep3', async () => {
+    const step2Profile = {
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-09-22T10:00:00Z',
+        step2ConfirmedAt: '2026-09-22T10:05:00Z',
+        step3ConfirmedAt: null,
+        completedAt: null,
+        completed: false,
+        nextRequiredStep: 3,
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(step2Profile);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CreatorHumainXQuickStartGuard>
+          <div data-testid="dashboard-content">Creator Dashboard Content</div>
+        </CreatorHumainXQuickStartGuard>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=3');
+    });
+    expect(screen.queryByTestId('dashboard-content')).toBeNull();
+  });
+
+  it('DashboardAllowed_WhenBackendCompleted', async () => {
     const completeProfile = {
-      skills: [{ name: 'Coding', level: 'Advanced' }],
-      ventureContext: {
-        region: 'Hauts-de-France',
-        currentSituation: 'Employed',
-        weeklyAvailability: '10–20 hours/week',
-        previousEntrepreneurialExperience: 'No, this is my first project',
-        learningPreference: 'I want to learn them myself',
-        delegationPreference: 'Minimal delegation',
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-09-22T10:00:00Z',
+        step2ConfirmedAt: '2026-09-22T10:05:00Z',
+        step3ConfirmedAt: '2026-09-22T10:10:00Z',
+        completedAt: '2026-09-22T10:10:00Z',
+        completed: true,
+        nextRequiredStep: null,
       },
     };
     vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
-
-    // Both profile AND journey are complete
-    saveQuickStartJourneyState(mockAuthUser.id, {
-      step1Confirmed: true,
-      step2Confirmed: true,
-      step3Confirmed: true,
-      completed: true,
-    });
 
     const queryClient = createTestQueryClient();
     render(
@@ -452,28 +479,18 @@ describe('CreatorHumainXQuickStartGuard Guarding & Role Isolation', () => {
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
 
-  it('ProfileBecomesIncomplete_AfterJourneyCompletion_GateBlocksAgain', async () => {
-    // Journey was previously completed, but profile data became invalid later
-    saveQuickStartJourneyState(mockAuthUser.id, {
-      step1Confirmed: true,
-      step2Confirmed: true,
-      step3Confirmed: true,
-      completed: true,
-    });
+  it('BackendCompleted_LocalStorageMissing_AllowsDashboard', async () => {
+    // LocalStorage is completely empty
+    localStorage.clear();
 
-    // Profile skills became empty
-    const profileMissingSkills = {
-      skills: [],
-      ventureContext: {
-        region: 'Hauts-de-France',
-        currentSituation: 'Employed',
-        weeklyAvailability: '10–20 hours/week',
-        previousEntrepreneurialExperience: 'No, this is my first project',
-        learningPreference: 'I want to learn them myself',
-        delegationPreference: 'Minimal delegation',
+    const completeProfile = {
+      quickStart: {
+        version: 1,
+        completedAt: '2026-09-22T10:10:00Z',
+        completed: true,
       },
     };
-    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(profileMissingSkills);
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
 
     const queryClient = createTestQueryClient();
     render(
@@ -485,35 +502,123 @@ describe('CreatorHumainXQuickStartGuard Guarding & Role Isolation', () => {
     );
 
     await waitFor(() => {
-      // Must block and redirect to Step 2!
-      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=2');
+      expect(screen.getByTestId('dashboard-content')).toBeDefined();
     });
-    expect(screen.queryByTestId('dashboard-content')).toBeNull();
+    expect(mockRouter.replace).not.toHaveBeenCalled();
   });
 
-  it('CompletedCreator_BehaviorRemainsUnchanged', async () => {
-    // User is ALREADY complete, visits /dashboard/creator/humainx
-    mockPathname = '/dashboard/creator/humainx';
-
-    const completeProfile = {
-      skills: [{ name: 'Coding', level: 'Advanced' }],
-      ventureContext: {
-        region: 'Hauts-de-France',
-        currentSituation: 'Employed',
-        weeklyAvailability: '10–20 hours/week',
-        previousEntrepreneurialExperience: 'No, this is my first project',
-        learningPreference: 'I want to learn them myself',
-        delegationPreference: 'Minimal delegation',
-      },
-    };
-
-    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
+  it('BackendIncomplete_LocalStorageCompleted_BackendWins', async () => {
+    // LocalStorage has old/legacy completed state set to true
     saveQuickStartJourneyState(mockAuthUser.id, {
       step1Confirmed: true,
       step2Confirmed: true,
       step3Confirmed: true,
       completed: true,
     });
+
+    // Authoritative backend says FALSE
+    const incompleteProfile = {
+      quickStart: {
+        version: 1,
+        completedAt: null,
+        completed: false,
+        nextRequiredStep: 1,
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(incompleteProfile);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CreatorHumainXQuickStartGuard>
+          <div data-testid="dashboard-content">Creator Dashboard Content</div>
+        </CreatorHumainXQuickStartGuard>
+      </QueryClientProvider>
+    );
+
+    // BACKEND WINS: User must be redirected to HumainX
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator/humainx?step=1');
+    });
+    expect(screen.queryByTestId('dashboard-content')).toBeNull();
+  });
+
+  it('BackendCompleted_LocalStorageFalse_BackendWins', async () => {
+    // LocalStorage says incomplete
+    saveQuickStartJourneyState(mockAuthUser.id, {
+      step1Confirmed: false,
+      completed: false,
+    });
+
+    // Authoritative backend says TRUE
+    const completeProfile = {
+      quickStart: {
+        version: 1,
+        completedAt: '2026-09-22T10:10:00Z',
+        completed: true,
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CreatorHumainXQuickStartGuard>
+          <div data-testid="dashboard-content">Creator Dashboard Content</div>
+        </CreatorHumainXQuickStartGuard>
+      </QueryClientProvider>
+    );
+
+    // BACKEND WINS: Dashboard allowed
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-content')).toBeDefined();
+    });
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('CompletedAt_Exists_ProfileFieldChange_DoesNotReopenQuickStart', async () => {
+    // One-time onboarding rule: Once CompletedAt exists, changing/clearing profile fields later
+    // never re-triggers the Quick Start screens. Profile completeness is Phase 4's concern.
+    const completedProfileMissingSkills = {
+      skills: [], // Skills later removed or changed
+      ventureContext: {},
+      quickStart: {
+        version: 1,
+        step1ConfirmedAt: '2026-09-22T10:00:00Z',
+        step2ConfirmedAt: '2026-09-22T10:05:00Z',
+        step3ConfirmedAt: '2026-09-22T10:10:00Z',
+        completedAt: '2026-09-22T10:10:00Z',
+        completed: true,
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completedProfileMissingSkills);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CreatorHumainXQuickStartGuard>
+          <div data-testid="dashboard-content">Creator Dashboard Content</div>
+        </CreatorHumainXQuickStartGuard>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-content')).toBeDefined();
+    });
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it('CompletedCreator_OnHumainXRoute_RedirectsToDashboard', async () => {
+    mockPathname = '/dashboard/creator/humainx';
+
+    const completeProfile = {
+      quickStart: {
+        version: 1,
+        completedAt: '2026-09-22T10:10:00Z',
+        completed: true,
+      },
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValue(completeProfile);
 
     const queryClient = createTestQueryClient();
     render(
@@ -525,7 +630,6 @@ describe('CreatorHumainXQuickStartGuard Guarding & Role Isolation', () => {
     );
 
     await waitFor(() => {
-      // Bounces to /dashboard/creator as required
       expect(mockRouter.replace).toHaveBeenCalledWith('/dashboard/creator');
     });
   });
