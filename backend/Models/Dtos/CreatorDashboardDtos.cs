@@ -115,7 +115,7 @@ namespace WebApp.Models.Dtos
         public bool IsUnlocked { get; set; }
         public string? ChosenPath { get; set; } // sell | build | null
         public string Status { get; set; } = "locked"; // locked | available | in_progress | completed
-        public string Href { get; set; } = "/dashboard/creator/phase-5";
+        public string Href { get; set; } = "/dashboard/creator/crossroads";
         public string GuidanceText { get; set; } = string.Empty;
     }
 }

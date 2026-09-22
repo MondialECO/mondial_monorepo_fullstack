@@ -428,8 +428,9 @@ namespace WebApp.Tests.Unit
 
             // Assert
             summary.Phase5.IsUnlocked.Should().BeTrue();
-            summary.Phase5.Href.Should().Contain("/dashboard/creator/phase-5");
+            summary.Phase5.Href.Should().Contain("/dashboard/creator/crossroads");
             summary.NextAction.Phase.Should().Be(5);
+            summary.NextAction.Href.Should().Contain("/dashboard/creator/crossroads");
         }
 
         [Fact]
@@ -540,6 +541,59 @@ namespace WebApp.Tests.Unit
             var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
             var summary = okResult.Value.Should().BeOfType<CreatorDashboardSummaryDto>().Subject;
             summary.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task Controller_RejectsAnonymous()
+        {
+            // Arrange
+            var controller = new CreatorDashboardController(_service, _userManagerMock.Object);
+            controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) }
+            };
+
+            // Act
+            var result = await controller.GetSummary();
+
+            // Assert
+            result.Result.Should().BeOfType<UnauthorizedObjectResult>();
+        }
+
+        [Fact]
+        public async Task Controller_RejectsOtherUsersIdea()
+        {
+            // Arrange
+            var controller = new CreatorDashboardController(_service, _userManagerMock.Object);
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "creator@mondial.eco" };
+
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new(ClaimTypes.Role, "Creator")
+            };
+            var identity = new ClaimsIdentity(claims, "TestAuth");
+            var principal = new ClaimsPrincipal(identity);
+
+            controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext { User = principal }
+            };
+
+            _userManagerMock.Setup(u => u.FindByIdAsync(user.Id.ToString()))
+                .ReturnsAsync(user);
+            _userManagerMock.Setup(u => u.GetRolesAsync(user))
+                .ReturnsAsync(new List<string> { "Creator" });
+
+            // Idea owned by someone else
+            _ideasMock.Setup(i => i.GetOwnedAsync("unowned-idea", user.Id.ToString()))
+                .ReturnsAsync((CreatorIdea?)null);
+
+            // Act
+            var result = await controller.GetSummary("unowned-idea");
+
+            // Assert
+            result.Result.Should().BeOfType<ForbidResult>();
         }
     }
 }

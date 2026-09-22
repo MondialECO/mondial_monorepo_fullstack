@@ -35,7 +35,7 @@ The backend deterministically computes the single next best action:
    - Evaluates `OperationalRoadmap.NextBestAction` as the primary priority if available.
    - Falls back to the first incomplete construction module: Snapshot (4.1), Roadmap (4.2), Needs (4.3), Skills (4.4), Support (4.5), Pricing (4.6), or GTM (4.7).
    - **Strict Guardrail:** ABSOLUTELY NO Phase 4.8 (Launch Assets) or Phase 4.9 (Construction Readiness) exists anywhere in code or contracts.
-4. **Phase 5:** When Phase 4 is verified complete by `Phase4CompletionResolver`, next action directs to `/dashboard/creator/phase-5` (The Crossroads).
+4. **Phase 5:** When Phase 4 is verified complete by `Phase4CompletionResolver`, next action directs to `/dashboard/creator/crossroads` (The Crossroads).
 
 ### 2.3 Priority Attention Items Engine
 Aggregates and prioritizes up to 5 actionable issues:
@@ -62,7 +62,7 @@ Surfaces only real, persisted business artifacts:
 ### 2.5 Phase 5 Crossroads Gate
 - Governed strictly by `Phase4CompletionResolver.EvaluatePhase4CompletionAsync(ideaId)`.
 - If Phase 4 is incomplete: `isUnlocked: false`, button is disabled with label `"Crossroads Locked"`, and clear guidance text is provided.
-- If Phase 4 is complete: `isUnlocked: true`, button is active linking to `/dashboard/creator/phase-5`.
+- If Phase 4 is complete: `isUnlocked: true`, button is active linking to canonical route `/dashboard/creator/crossroads`.
 - **Client bypass eliminated:** Removed client-side `advancePhase(5)` shortcut.
 
 ---
@@ -102,7 +102,8 @@ Surfaces only real, persisted business artifacts:
 ### Backend Unit Tests
 ```
 Test run for WebApp.Tests.dll (.NETCoreApp,Version=v8.0)
-Passed! - Failed: 0, Passed: 13, Skipped: 0, Total: 13, Duration: 59 ms
+Passed! - Failed: 0, Passed: 15, Skipped: 0, Total: 15, Duration: 59 ms
+(Includes 5 dedicated security & tenant isolation tests)
 ```
 
 ### Frontend Vitest Suite

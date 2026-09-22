@@ -122,7 +122,7 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
           { phase: 2, title: 'Identity & Brand', status: 'In Progress', href: '/dashboard/creator/phase-2' },
           { phase: 3, title: 'Business Intelligence', status: 'Locked', href: '/dashboard/creator/phase-3' },
           { phase: 4, title: 'Construction', status: 'Locked', href: '/dashboard/creator/phase-4' },
-          { phase: 5, title: 'The Crossroads', status: 'Locked', href: '/dashboard/creator/phase-5' },
+          { phase: 5, title: 'The Crossroads', status: 'Locked', href: '/dashboard/creator/crossroads' },
         ],
         activeSubstages: [
           { id: 'concept', title: 'Concept Statement', isCompleted: true, status: 'Completed', href: '/dashboard/creator/phase-2' },
@@ -132,7 +132,7 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
       results: [],
       phase5: {
         isUnlocked: false,
-        href: '/dashboard/creator/phase-5',
+        href: '/dashboard/creator/crossroads',
         guidanceText: 'Complete Phase 4 Construction milestones (Snapshot, Roadmap, Needs, Skills, Support, Pricing, GTM) to unlock Phase 5 Crossroads.',
       },
     };
@@ -190,7 +190,7 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
           { phase: 2, title: 'Identity & Brand', status: 'Completed', href: '/dashboard/creator/phase-2' },
           { phase: 3, title: 'Business Intelligence', status: 'In Progress', href: '/dashboard/creator/phase-3' },
           { phase: 4, title: 'Construction', status: 'Locked', href: '/dashboard/creator/phase-4' },
-          { phase: 5, title: 'The Crossroads', status: 'Locked', href: '/dashboard/creator/phase-5' },
+          { phase: 5, title: 'The Crossroads', status: 'Locked', href: '/dashboard/creator/crossroads' },
         ],
       },
       results: [
@@ -205,7 +205,7 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
       ],
       phase5: {
         isUnlocked: false,
-        href: '/dashboard/creator/phase-5',
+        href: '/dashboard/creator/crossroads',
         guidanceText: 'Complete Phase 4 Construction milestones (Snapshot, Roadmap, Needs, Skills, Support, Pricing, GTM) to unlock Phase 5 Crossroads.',
       },
     };
@@ -240,13 +240,13 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
           { phase: 2, title: 'Identity & Brand', status: 'Completed', href: '/dashboard/creator/phase-2' },
           { phase: 3, title: 'Business Intelligence', status: 'In Progress', href: '/dashboard/creator/phase-3' },
           { phase: 4, title: 'Construction', status: 'Locked', href: '/dashboard/creator/phase-4' },
-          { phase: 5, title: 'The Crossroads', status: 'Locked', href: '/dashboard/creator/phase-5' },
+          { phase: 5, title: 'The Crossroads', status: 'Locked', href: '/dashboard/creator/crossroads' },
         ],
       },
       results: [],
       phase5: {
         isUnlocked: false,
-        href: '/dashboard/creator/phase-5',
+        href: '/dashboard/creator/crossroads',
         guidanceText: 'Complete Phase 4 Construction milestones.',
       },
     };
@@ -286,7 +286,7 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
         phases: [],
       },
       results: [],
-      phase5: { isUnlocked: false, href: '/dashboard/creator/phase-5', guidanceText: 'Locked.' },
+      phase5: { isUnlocked: false, href: '/dashboard/creator/crossroads', guidanceText: 'Locked.' },
     };
 
     render(<CreatorDashboard />);
@@ -317,7 +317,7 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
           { phase: 2, title: 'Identity & Brand', status: 'Completed', href: '/dashboard/creator/phase-2' },
           { phase: 3, title: 'Business Intelligence', status: 'Completed', href: '/dashboard/creator/phase-3' },
           { phase: 4, title: 'Construction', status: 'In Progress', href: '/dashboard/creator/phase-4' },
-          { phase: 5, title: 'The Crossroads', status: 'Locked', href: '/dashboard/creator/phase-5' },
+          { phase: 5, title: 'The Crossroads', status: 'Locked', href: '/dashboard/creator/crossroads' },
         ],
         activeSubstages: [
           { id: 'snapshot', title: 'Construction Snapshot', isCompleted: true, status: 'Completed', href: '/dashboard/creator/phase-4/snapshot' },
@@ -332,7 +332,7 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
       results: [],
       phase5: {
         isUnlocked: false,
-        href: '/dashboard/creator/phase-5',
+        href: '/dashboard/creator/crossroads',
         guidanceText: 'Complete Phase 4 Construction milestones (Snapshot, Roadmap, Needs, Skills, Support, Pricing, GTM) to unlock Phase 5 Crossroads.',
       },
     };
@@ -363,7 +363,7 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
         title: 'Choose Strategic Path at The Crossroads',
         description: 'Decide between Full Buyout and Building Your Company.',
         buttonLabel: 'Enter The Crossroads',
-        href: '/dashboard/creator/phase-5',
+        href: '/dashboard/creator/crossroads',
       },
       attentionItems: [],
       journey: {
@@ -373,13 +373,13 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
           { phase: 2, title: 'Identity & Brand', status: 'Completed', href: '/dashboard/creator/phase-2' },
           { phase: 3, title: 'Business Intelligence', status: 'Completed', href: '/dashboard/creator/phase-3' },
           { phase: 4, title: 'Construction', status: 'Completed', href: '/dashboard/creator/phase-4' },
-          { phase: 5, title: 'The Crossroads', status: 'Available', href: '/dashboard/creator/phase-5' },
+          { phase: 5, title: 'The Crossroads', status: 'Available', href: '/dashboard/creator/crossroads' },
         ],
       },
       results: [],
       phase5: {
         isUnlocked: true,
-        href: '/dashboard/creator/phase-5',
+        href: '/dashboard/creator/crossroads',
         guidanceText: 'All Phase 4 Construction milestones are complete. Enter The Crossroads to decide your launch route.',
         selectedPath: 'sell',
       },
@@ -393,7 +393,7 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
     const crossroadsLinks = screen.getAllByRole('link', { name: /Enter The Crossroads/i });
     expect(crossroadsLinks.length).toBe(2);
     crossroadsLinks.forEach((link) => {
-      expect(link).toHaveAttribute('href', '/dashboard/creator/phase-5');
+      expect(link).toHaveAttribute('href', '/dashboard/creator/crossroads');
     });
   });
 });

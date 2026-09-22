@@ -43,7 +43,15 @@ namespace WebApp.Controllers
         [HttpGet("summary")]
         public async Task<ActionResult<CreatorDashboardSummaryDto>> GetSummary([FromQuery] string? ideaId = null, CancellationToken ct = default)
         {
-            var userId = GetUserId();
+            string userId;
+            try
+            {
+                userId = GetUserId();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized(new { message = "User not authenticated." });
+            }
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
@@ -61,8 +69,15 @@ namespace WebApp.Controllers
                 return Forbid();
             }
 
-            var summary = await _dashboardService.GetSummaryAsync(userId, ideaId, ct);
-            return Ok(summary);
+            try
+            {
+                var summary = await _dashboardService.GetSummaryAsync(userId, ideaId, ct);
+                return Ok(summary);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
         }
     }
 }

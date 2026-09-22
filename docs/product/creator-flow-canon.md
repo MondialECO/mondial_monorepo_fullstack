@@ -1104,6 +1104,14 @@ RC1 Freeze
 - **Phase 4 Canonical Alignment & Architecture Freeze:** Documented Phase 4.1–4.7 as LIVE & FROZEN, Stage 4.8 Launch Assets as NEXT APPROVED STAGE (One-Page Launch Website), and Stage 4.9 Construction Readiness as RESERVED. Reconciled retired legacy Phase 4 routes (`/offer-pricing`), controllers (`CreatorPhase4Controller`), and UI across all system architecture docs and diagrams.
 - **Test Suite Verification:** HumainX Quick Start dedicated suite: 53/53 tests passing. Full Creator frontend suite: 124/124 tests passing. Routing suite: 31/31 passing. Backend targeted Phase 4/HumainX suite: 213/213 passing. TypeScript: 0 errors. Production build: Exit 0.
 
+**2026-09-22 — Creator Dashboard Canonical Architecture Rebuild & Freeze.**
+- **Project Command Center Redesign:** Rebuilt `/dashboard/creator` around a single authoritative summary endpoint (`GET /api/creator/dashboard/summary`), consolidating 10 fragmented initial requests down to 1 primary summary call.
+- **Canonical Route Binding:** Confirmed and bound Phase 5 NextAction and Crossroads gate directly to canonical route `/dashboard/creator/crossroads`.
+- **Authority Preservation:** Removed all client-side domain recalculations; dashboard state directly reflects `BrandKit`, `CreatorLegalAssessment`, `Phase4CompletionResolver`, `IFounderCapacityResolver`, `PricingPolicyEngine`, and `ProfessionalProfileRecord.QuickStart`.
+- **Legacy Artifact Elimination:** Removed hardcoded "SaaS" badge, global "Idea Readiness" score, premature Day-1 "Interested Buyers (0)" KPI, static EBITDA "—" KPI, "Generate Pitch Deck" misnomer, and client-side `advancePhase(5)` bypass.
+- **Strict Scope Boundaries:** Confirmed zero cards, routes, or progress items for Phase 4.8 (Launch Assets) or Phase 4.9 (Construction Readiness).
+
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
+

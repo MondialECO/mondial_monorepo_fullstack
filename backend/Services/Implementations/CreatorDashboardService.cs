@@ -1053,8 +1053,8 @@ namespace WebApp.Services.Implementations
         {
             bool isUnlocked = p4Eval.IsComplete;
             string href = string.IsNullOrEmpty(ideaId) 
-                ? "/dashboard/creator/phase-5" 
-                : $"/dashboard/creator/phase-5?ideaId={ideaId}";
+                ? "/dashboard/creator/crossroads" 
+                : $"/dashboard/creator/crossroads?ideaId={ideaId}";
 
             return new DashboardPhase5SummaryDto
             {
