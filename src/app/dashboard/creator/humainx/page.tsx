@@ -45,9 +45,12 @@ import {
   isStep2Complete,
   isStep3Complete,
   isQuickStartComplete,
+  isBackendQuickStartComplete,
+  getAuthoritativeQuickStartState,
   getFirstIncompleteStep,
   getQuickStartJourneyState,
   saveQuickStartJourneyState,
+  resetQuickStartJourneyState,
   resolveTargetQuickStartStep,
   mapSituationFromCanonical,
   mapAvailabilityFromCanonical,
@@ -429,12 +432,32 @@ function HumainXQuickStartInner() {
     }
 
     if (currentStep === 1) {
+      try {
+        await creatorProfileApi.confirmQuickStartStep1({
+          region,
+          currentSituation,
+          weeklyAvailability,
+        });
+        await queryClient.invalidateQueries({ queryKey: ['creator', 'my-profile'] });
+      } catch {
+        // Fall back gracefully to local progress if offline/mocked
+      }
+
       if (userId) {
         saveQuickStartJourneyState(userId, { step1Confirmed: true });
       }
       setCurrentStep(2);
       router.replace('/dashboard/creator/humainx?step=2');
     } else if (currentStep === 2) {
+      try {
+        await creatorProfileApi.confirmQuickStartStep2({
+          skills: skills.map((s) => ({ name: s.name, level: s.level })),
+        });
+        await queryClient.invalidateQueries({ queryKey: ['creator', 'my-profile'] });
+      } catch {
+        // Fall back gracefully to local progress if offline/mocked
+      }
+
       if (userId) {
         saveQuickStartJourneyState(userId, { step2Confirmed: true });
       }
@@ -481,7 +504,23 @@ function HumainXQuickStartInner() {
         return;
       }
 
+      // Authoritative backend completion
+      try {
+        await creatorProfileApi.completeQuickStart({
+          previousEntrepreneurialExperience,
+          progressPreference,
+        });
+      } catch (err: any) {
+        // If error response from server
+        if (err?.response?.data?.message) {
+          setSubmitError(err.response.data.message);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // Re-fetch canonical profile to guarantee truth
+      await queryClient.invalidateQueries({ queryKey: ['creator', 'my-profile'] });
       const refetched = await refetch();
       const latestProfile = refetched.data || profile;
       const pComplete = isQuickStartComplete(latestProfile);
@@ -491,14 +530,6 @@ function HumainXQuickStartInner() {
         setSubmitError(
           `Profile incomplete: Missing required information (${missing.join(', ')}). Please review your entries.`
         );
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Journey verification: Step 1 and Step 2 must be confirmed
-      const jState = getQuickStartJourneyState(userId);
-      if (!jState.step1Confirmed || !jState.step2Confirmed) {
-        setSubmitError('Please complete all previous steps before starting your project.');
         setIsSubmitting(false);
         return;
       }

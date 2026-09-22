@@ -8,12 +8,10 @@ import { useAuth } from '@/app/_providers/AuthProvider';
 import { UserRole, normalizeUserRole } from '@/lib/roles';
 import { creatorProfileApi } from '@/lib/api-creator-profile';
 import {
-  isQuickStartComplete,
-  getFirstIncompleteStep,
-  getQuickStartJourneyState,
-  isQuickStartJourneyComplete,
+  isBackendQuickStartComplete,
+  getAuthoritativeQuickStartState,
   resolveTargetQuickStartStep,
-  getQuickStartStorageKey,
+  resetQuickStartJourneyState,
 } from '@/lib/humainx-quick-start';
 
 export interface CreatorHumainXQuickStartGuardProps {
@@ -62,12 +60,18 @@ export default function CreatorHumainXQuickStartGuard({
   }, []);
 
   const isHumainXRoute = pathname.startsWith('/dashboard/creator/humainx');
-  const isProfileComplete = profile ? isQuickStartComplete(profile) : false;
-  const isJourneyComplete = user?.id ? isQuickStartJourneyComplete(user.id) : false;
-  const canAccessDashboard = isProfileComplete && isJourneyComplete;
+  
+  // Authoritative backend truth: backend ALWAYS wins
+  const backendState = getAuthoritativeQuickStartState(profile);
+  const isQuickStartComplete = isBackendQuickStartComplete(profile);
+  const targetStep = backendState.nextRequiredStep ?? 1;
 
-  const journeyState = getQuickStartJourneyState(user?.id);
-  const targetStep = resolveTargetQuickStartStep(profile, journeyState);
+  // Clean legacy localStorage keys after authoritative backend completion settles
+  useEffect(() => {
+    if (user?.id && isFetched && profile && isQuickStartComplete) {
+      resetQuickStartJourneyState(user.id);
+    }
+  }, [user?.id, isFetched, profile, isQuickStartComplete]);
 
   useEffect(() => {
     // 1. Wait until auth and profile hydration settle
@@ -77,21 +81,19 @@ export default function CreatorHumainXQuickStartGuard({
     if (user.onboardingPhase === 0) return; // Managed by universal onboarding
     if (isProfileLoading || !isFetched) return; // Prevent premature redirection
 
-    // Evaluate live truth at execution time to protect against race conditions
-    const liveJourneyComplete = user?.id ? isQuickStartJourneyComplete(user.id) : false;
-    const liveProfileComplete = profile ? isQuickStartComplete(profile) : false;
-    const liveCanAccessDashboard = liveProfileComplete && liveJourneyComplete;
-    const liveJourneyState = getQuickStartJourneyState(user?.id);
-    const liveTargetStep = resolveTargetQuickStartStep(profile, liveJourneyState);
+    // Evaluate live truth at execution time: backend state is authority
+    const liveBackendState = getAuthoritativeQuickStartState(profile);
+    const liveComplete = isBackendQuickStartComplete(profile);
+    const liveTargetStep = liveBackendState.nextRequiredStep ?? 1;
 
-    // 2. Creator attempting to access Creator Dashboard or child routes before completing BOTH journey and profile
-    if (!liveCanAccessDashboard && !isHumainXRoute) {
+    // 2. Creator attempting to access Creator Dashboard or child routes before completing Quick Start on backend
+    if (!liveComplete && !isHumainXRoute) {
       router.replace(`/dashboard/creator/humainx?step=${liveTargetStep}`);
       return;
     }
 
-    // 3. Completed creator (both journey confirmed and profile complete) attempting to access HumainX Quick Start gate
-    if (liveCanAccessDashboard && isHumainXRoute) {
+    // 3. Completed creator attempting to access HumainX Quick Start gate
+    if (liveComplete && isHumainXRoute) {
       router.replace('/dashboard/creator');
       return;
     }
@@ -128,7 +130,7 @@ export default function CreatorHumainXQuickStartGuard({
   }
 
   // Prevent flash of protected dashboard if incomplete
-  if (!canAccessDashboard && !isHumainXRoute) {
+  if (!isQuickStartComplete && !isHumainXRoute) {
     return (
       <div
         data-testid="humainx-guard-redirecting"
@@ -141,7 +143,7 @@ export default function CreatorHumainXQuickStartGuard({
   }
 
   // Prevent flash of HumainX route if already complete
-  if (canAccessDashboard && isHumainXRoute) {
+  if (isQuickStartComplete && isHumainXRoute) {
     return (
       <div
         data-testid="humainx-guard-redirecting-dashboard"

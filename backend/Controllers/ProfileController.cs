@@ -32,6 +32,7 @@ public class ProfileController : ControllerBase
     private readonly IProfileEditorService _editor;
     private readonly IServiceProviderMediaService _media;
     private readonly IProfileCompletenessResolver _completenessResolver;
+    private readonly ICreatorQuickStartService _quickStartService;
     private readonly MongoDbContext? _context;
 
     public ProfileController(
@@ -43,7 +44,8 @@ public class ProfileController : ControllerBase
         IServiceProviderMediaService media,
         MongoDbContext? context = null,
         IUserCredentialStore? credentialStore = null,
-        IProfileCompletenessResolver? completenessResolver = null)
+        IProfileCompletenessResolver? completenessResolver = null,
+        ICreatorQuickStartService? quickStartService = null)
     {
         _userManager = userManager;
         _professionalStore = professionalStore;
@@ -54,6 +56,7 @@ public class ProfileController : ControllerBase
         _context = context;
         _credentialStore = credentialStore;
         _completenessResolver = completenessResolver ?? new ProfileCompletenessResolver();
+        _quickStartService = quickStartService ?? new CreatorQuickStartService(userManager, professionalStore, migration, context);
     }
 
     private string? CurrentUserId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -730,6 +733,7 @@ public class ProfileController : ControllerBase
                 Phase4Ready = completenessResult.Phase4Ready,
                 MissingForPhase4 = completenessResult.MissingForPhase4
             },
+            QuickStart = _quickStartService.ResolveStatus(record.QuickStart),
             CreatedAt = record.CreatedAt,
             UpdatedAt = record.UpdatedAt
         };
