@@ -87,9 +87,9 @@ Surfaces only real, persisted business artifacts with stage-native resolution se
 6. `backend/tests/WebApp.Tests/Unit/CreatorDashboardSummaryTests.cs` (22 unit tests)
 
 ### Frontend Components
-1. `src/types/creator/dashboard.ts` (Canonical TypeScript interfaces)
-2. `src/lib/api-creator-dashboard.ts` (`getCreatorDashboardSummary`, `creatorDashboardApi`)
-3. `src/hooks/queries/creator.ts` (`useCreatorDashboardSummary`)
+1. `src/types/creator/dashboard.ts` (Canonical TypeScript interfaces; dead `DashboardStats`, `InvestorReadinessScore`, and `Investor` types purged)
+2. `src/lib/api-creator-dashboard.ts` (`getCreatorDashboardSummary`; obsolete `getDashboardStats` and `creatorDashboardApi` purged)
+3. `src/hooks/queries/creator.ts` (`useCreatorDashboardSummary`; obsolete `useDashboardStats` and query key `['creator', 'dashboardStats']` purged)
 4. `src/app/dashboard/creator/page.tsx` (Complete command center UI redesign)
 5. `src/lib/menu.ts` (Aligned sidebar navigation)
 6. `src/__tests__/creator/creator-dashboard.test.tsx` (6 comprehensive unit test scenarios)
@@ -101,7 +101,8 @@ Surfaces only real, persisted business artifacts with stage-native resolution se
 ### Backend Unit Tests
 ```
 Test run for WebApp.Tests.dll (.NETCoreApp,Version=v8.0)
-Passed! - Failed: 0, Passed: 22, Skipped: 0, Total: 22, Duration: 2.9 s
+Passed! - Failed: 0, Passed: 22, Skipped: 0, Total: 22 (CreatorDashboardSummaryTests)
+Passed! - Failed: 0, Passed: 140, Skipped: 0, Total: 140 (Creator Phase 4 & Phase 5 Tests)
 (Includes 5 dedicated security & tenant isolation tests + 7 Phase 4 stage-native result semantic tests)
 ```
 
@@ -113,15 +114,23 @@ Passed! - Failed: 0, Passed: 22, Skipped: 0, Total: 22, Duration: 2.9 s
 ✓ src/__tests__/layout/menu-navigation.test.tsx (18 tests passed)
 ```
 
-### TypeScript Typechecking
+### TypeScript Typechecking & Production Build
 ```
-npx tsc --noEmit
-Exit code: 0 (0 errors)
+npx tsc --noEmit -> Exit code: 0 (0 errors)
+npm run build    -> Exit code: 0 (204 routes compiled cleanly)
 ```
 
 ---
 
-## 5. Certification & Guarantees
-- **No Mockups:** Fully implemented with live production backend and frontend code.
-- **No Phase 4.8 or 4.9:** Both phases are strictly absent across all DTOs, services, UI components, and tests.
+## 5. Post-Rebuild Dead Code Cleanup & Certification
+- **Commit:** `31df5d12` (`refactor(creator): remove obsolete dashboard code after canonical rebuild`)
+- **Dead Code Eliminated:**
+  - Deleted `src/constants/investors.ts` (`topInvestors` orphaned mock data).
+  - Purged superseded types `DashboardStats`, `InvestorReadinessScore` (duplicate), and `Investor`.
+  - Purged unused client API `getDashboardStats` and unused export `creatorDashboardApi`.
+  - Purged unused hook `useDashboardStats` and React Query key `['creator', 'dashboardStats']`.
+- **Operational Dev Server Note:**
+  Running `npm run build` replaces `.next` with static production artifacts. If `next dev` is concurrently running, its in-memory Turbopack route cache desynchronizes, causing Next.js to serve `not-found.tsx` (404) for dynamic routes. Resolution: stop any stale dev process, purge `.next` cache, and restart via `npm run dev-monorepo`.
 - **Authority Preserved:** All underlying domain engines (BrandKit, Legal, HumainX, Founder Capacity, Pricing, Phase 4 Completion) remain the sole authorities for their data.
+- **Strict Guardrail:** Phase 4.8 (Launch Assets) is NOT implemented; Phase 4.9 (Construction Readiness) is RESERVED.
+
