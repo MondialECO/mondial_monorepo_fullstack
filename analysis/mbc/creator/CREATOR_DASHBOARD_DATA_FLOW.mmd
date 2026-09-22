@@ -1,0 +1,92 @@
+flowchart TD
+    %% =========================================================================
+    %% CREATOR DASHBOARD POST-ARCHITECTURE AUDIT: DATA FLOW & COVERAGE MAP
+    %% Shows Current Active Feeds vs Missing Architectural Connections
+    %% =========================================================================
+
+    subgraph BACKEND_AUTHORITIES ["Authoritative Backend Sources"]
+        direction TB
+        BK["BrandKit Document<br/>(BrandKits Collection)<br/>• Sole Brand Authority"]
+        CI_Proj["CreatorIdea.Project<br/>• Name, Concept, Category<br/>• ClarityScore<br/>• Derived Project.Branding"]
+        P3_1["3.1 MarketStudySessions<br/>• TAM/SAM/SOM<br/>• Competitors, Segments"]
+        P3_2["3.2 BusinessModelSessions<br/>• 9-Block Canvas<br/>• Revenue Tiers"]
+        P3_3["3.3 ForecastSessions<br/>• 36-Month Math Projection<br/>• BreakEven, ARR, Runway"]
+        P3_4["3.4 CreatorLegalAssessment<br/>• Applicable Rules<br/>• Planning Readiness %"]
+        P3_5["3.5 FormationGenerator<br/>• Corporate Form (SAS/SARL)<br/>• Team Checklist"]
+        P3_6["3.6 BusinessPlanSessions<br/>• 12 Synthesized Sections<br/>• Exportable PDF"]
+        P3_7["3.7 InvestorReadinessScore<br/>• 5 Dimensions (0-100)<br/>• Grade A-D"]
+        HX_QS["ProfessionalProfile.QuickStart<br/>• Onboarding Authority<br/>• Step Timestamps"]
+        HX_Prof["ProfessionalProfile<br/>• Skills, Availability, Region<br/>• Completeness Resolver"]
+        HX_Cap["IFounderCapacityResolver<br/>• Sole Capacity Authority"]
+        P4_Engines["Phase 4 Engines (4.1 - 4.7)<br/>• 4.1 ConstructionSnapshot<br/>• 4.2 OperationalRoadmap<br/>• 4.3 NeedsAnalysis<br/>• 4.4 SkillsPlan<br/>• 4.5 SupportPlan<br/>• 4.6 PricingStrategy<br/>• 4.7 GtmStrategy"]
+        P4_Res["Phase4CompletionResolver<br/>• Sole Phase 4 Gatekeeper<br/>• Stage-Native Resolution"]
+        P5_Cross["Phase 5 Data & Deals<br/>• Crossroads ChosenPath<br/>• DealExecutions / Matched"]
+    end
+
+    subgraph CURRENT_DASHBOARD_CLIENT ["Current Creator Dashboard Client (/dashboard/creator)"]
+        direction TB
+        Guard_HX["CreatorHumainXQuickStartGuard<br/>(layout.tsx)"]
+        Guard_Phase["CreatorPhaseGuard<br/>(layout.tsx)"]
+        
+        Hook_Progress["useCreatorProgress()<br/>• journeyState (1 to 6)<br/>• project (Name, ClarityScore)"]
+        Hook_Stats["useDashboardStats()<br/>• investorReadinessScore<br/>• deals, clicks, totalRaised"]
+        Hook_Refs["useQuery(dashboardRefs)<br/>• forecastSessionId<br/>• matchedInvestorCount"]
+        Hook_Forecast["useForecastSessionTimed()<br/>• ARR, Break-even, BarChart"]
+        Comp_LegalCard["Phase3LegalCard<br/>• getLegalOverview(ideaId)"]
+        Comp_HXCard["HumainXDashboardCard<br/>• getCompleteness()"]
+        Comp_Docs["creatorDocumentsApi.list()<br/>• Document Vault Count/List"]
+        Comp_Chat["useConversations()<br/>• Messages List"]
+        Comp_Notif["useNotifications()<br/>• Notifications List"]
+        
+        UI_Header["Welcome Header & Clarity KPI<br/>• firstName, clarityScore/100"]
+        UI_ProjectCard["Your Project Card<br/>• Name, Concept, Hardcoded 'SaaS'<br/>• Coarse 6-Step Stepper"]
+        UI_ForecastCard["AI Financial Forecast Card<br/>• ARR, Break-even, BarChart<br/>• EBITDA '—'"]
+        UI_LegalCard["Legal & Compliance Card<br/>• France Roadmap & Readiness"]
+        UI_HXCard["Builder Profile Card<br/>• % Complete, Link to Profile"]
+        UI_Vault["Document Vault Card<br/>• PDFs list"]
+        UI_ChatNotif["Messages & Notifications Cards<br/>• Recent items"]
+        UI_Marketplace["Marketplace / Matching Card<br/>• Matched investors count"]
+        UI_QuickActions["Quick Actions (4 tiles)<br/>• 'Generate Pitch Deck' (misnomer)<br/>• 'Marketplace Push', 'Hire', 'Build'"]
+        UI_Crossroads["Crossroads Banner (State E only)<br/>• 'Sell' vs 'Build'"]
+    end
+
+    %% Active Wired Flows (Solid Green)
+    HX_QS -->|Backend Timestamps Gate| Guard_HX
+    CI_Proj -->|Project Meta & Clarity| Hook_Progress
+    P3_7 -->|InvestorReadinessScore| Hook_Stats
+    P3_3 -->|forecastSessionId| Hook_Refs
+    P3_3 -->|Forecast Output & Math| Hook_Forecast
+    P3_4 -->|Overview & Readiness %| Comp_LegalCard
+    HX_Prof -->|Completeness %| Comp_HXCard
+    P5_Cross -->|Matched Count| Hook_Refs
+
+    Guard_HX --> UI_Header
+    Hook_Progress --> UI_Header
+    Hook_Progress --> UI_ProjectCard
+    Hook_Stats --> UI_Header
+    Hook_Refs --> UI_Marketplace
+    Hook_Forecast --> UI_ForecastCard
+    Comp_LegalCard --> UI_LegalCard
+    Comp_HXCard --> UI_HXCard
+    Comp_Docs --> UI_Vault
+    Comp_Chat --> UI_ChatNotif
+    Comp_Notif --> UI_ChatNotif
+    P5_Cross --> UI_Crossroads
+
+    %% Architecture Gaps / Missing Connections (Dotted Red)
+    BK -.->|MISSING: Zero BrandKit / Palette / Logo Integration| UI_ProjectCard
+    P3_1 -.->|MISSING: No Market Sizing or Competitor Status| CURRENT_DASHBOARD_CLIENT
+    P3_2 -.->|MISSING: No Business Model Status| CURRENT_DASHBOARD_CLIENT
+    P3_5 -.->|MISSING: No Corporate Formation Status| CURRENT_DASHBOARD_CLIENT
+    P3_6 -.->|MISSING: No Dedicated Business Plan Status/Export Card| CURRENT_DASHBOARD_CLIENT
+    P4_Engines -.->|CRITICAL GAP: 4.1 - 4.7 Have ZERO Dashboard Representation| CURRENT_DASHBOARD_CLIENT
+    P4_Res -.->|MISSING: Dashboard Uses Coarse State D, Not Resolver| CURRENT_DASHBOARD_CLIENT
+    HX_Cap -.->|MISSING: No Capacity Caps Displayed| CURRENT_DASHBOARD_CLIENT
+
+    classDef active fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef missing fill:#ffebee,stroke:#c62828,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef client fill:#f3f4f6,stroke:#374151,stroke-width:1px;
+
+    class Guard_HX,Hook_Progress,Hook_Stats,Hook_Refs,Hook_Forecast,Comp_LegalCard,Comp_HXCard,Comp_Docs,Comp_Chat,Comp_Notif active;
+    class BK,P3_1,P3_2,P3_5,P3_6,P4_Engines,P4_Res,HX_Cap missing;
+    class UI_Header,UI_ProjectCard,UI_ForecastCard,UI_LegalCard,UI_HXCard,UI_Vault,UI_ChatNotif,UI_Marketplace,UI_QuickActions,UI_Crossroads client;

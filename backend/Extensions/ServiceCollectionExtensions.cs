@@ -47,6 +47,9 @@ public static class ServiceCollectionExtensions
         // by any controller — cutover happens in step 4 all at once.
         services.AddScoped<ICreatorIdeaService, CreatorIdeaService>();
 
+        // Canonical Creator Dashboard summary aggregator
+        services.AddScoped<ICreatorDashboardService, CreatorDashboardService>();
+
         // Shared M50 SP match formula (Phase 2 designers + Phase 3 formation)
         services.AddScoped<ISpMatchingService, SpMatchingService>();
 

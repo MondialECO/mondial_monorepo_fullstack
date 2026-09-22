@@ -389,7 +389,7 @@ export const menu: Record<UserRole, MenuSection[]> = {
           ],
         },
         {
-          label: "Offers & Marketplace",
+          label: "Construction & Launch",
           href: "/dashboard/creator/phase-4",
           icon: Store,
           children: [

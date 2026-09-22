@@ -57,7 +57,9 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/profile/editor-draft`: Save draft in `EditorDraft` without overwriting published profile state.
   - `POST /api/profile/editor-publish`: Publish verified profile editor draft to active `ProfessionalProfileRecord`.
 
-### B. Creator System & Phases 2–6 (68 Endpoints)
+### B. Creator System & Phases 2–6 (69 Endpoints)
+- **`CreatorDashboardController`** (`/api/creator/dashboard`):
+  - `GET /api/creator/dashboard/summary`: Single authoritative command center summary endpoint returning `CreatorDashboardSummaryDto` (Project Identity & BrandKit, Next Recommended Action, Prioritized Attention Items, 4-Phase Journey Overview with active substages, Verified Outputs list, and Phase 5 Crossroads gate status).
 - **`CreatorIdeasController` & `CreatorJourneyController`** (`/api/creator/ideas`, `/api/creator/journey`):
   - `GET /api/creator/ideas`: List all created ideas owned by the authenticated Creator.
   - `POST /api/creator/ideas`: Create a new multi-idea entry with active journey anchoring.

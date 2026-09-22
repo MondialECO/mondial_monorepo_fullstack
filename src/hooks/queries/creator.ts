@@ -1,14 +1,30 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getDashboardStats, getDashboardMyIdeas, getInvestorIdeas, getProfile, getBilling, getSettings, pauseIdeaApi, getBillingHistory } from '@/lib/api-creator-dashboard';
-import type { DashboardStats, Idea, CreatorProfile, BillingInfo, CreatorSettings } from '@/types/creator/dashboard';
+import {
+  getCreatorDashboardSummary,
+  getDashboardMyIdeas,
+  getInvestorIdeas,
+  getProfile,
+  getBilling,
+  getSettings,
+  pauseIdeaApi,
+  getBillingHistory,
+} from '@/lib/api-creator-dashboard';
+import type {
+  CreatorDashboardSummary,
+  Idea,
+  CreatorProfile,
+  BillingInfo,
+  CreatorSettings,
+} from '@/types/creator/dashboard';
 import type { BillingItem } from '@/types/billing';
 
-export const useDashboardStats = () => {
-  return useQuery<DashboardStats>({
-    queryKey: ['creator', 'dashboardStats'],
-    queryFn: getDashboardStats,
+export const useCreatorDashboardSummary = (ideaId?: string | null) => {
+  return useQuery<CreatorDashboardSummary>({
+    queryKey: ['creator', 'dashboardSummary', ideaId ?? 'active'],
+    queryFn: () => getCreatorDashboardSummary(ideaId),
+    staleTime: 10_000,
   });
 };
 

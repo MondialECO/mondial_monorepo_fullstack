@@ -337,6 +337,9 @@ Only reopen if a confirmed regression is introduced by future Phase 4.8 / 4.9 in
 ```text
 CREATOR PHASE 2–5 CLEAN BASELINE
 
+Creator Dashboard authority:
+CreatorDashboardService / GET /api/creator/dashboard/summary (canonical read aggregation authority; zero competing frontend calculations)
+
 Phase 2 Brand authority:
 BrandKit (canonical visual identity authority; CreatorIdea.Project.Branding is derived projection only)
 
@@ -349,11 +352,20 @@ ProfessionalProfileRecord.QuickStart (sole onboarding journey authority; localSt
 Phase 4 completion authority:
 Phase4CompletionResolver (sole Phase 4 completion authority)
 
+Stage-native Phase 4 result semantics:
+Active and verified (35975fb7; individual results displayable per stage-native lifecycle without requiring universal completed status)
+
+Canonical Phase 5 route:
+/dashboard/creator/crossroads (verified canonical Crossroads destination; /phase-5 references eliminated)
+
 Founder capacity authority:
 IFounderCapacityResolver (sole founder-capacity authority)
 
 Pricing authority:
 PricingPolicyEngine (canonical pricing-policy authority)
+
+Legacy dashboard & dead code:
+0 (useDashboardStats, getDashboardStats, DashboardStats, topInvestors purged in 31df5d12)
 
 Legacy legal business logic:
 0
@@ -367,3 +379,4 @@ NOT IMPLEMENTED (Next approved stage)
 Phase 4.9:
 RESERVED (Construction readiness)
 ```
+
