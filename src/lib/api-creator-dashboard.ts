@@ -12,7 +12,7 @@
 
 import api from '@/lib/axios';
 import { BillingItem } from '@/types/billing';
-import type { DashboardStats, Idea, CreatorDashboardSummary } from '@/types/creator/dashboard';
+import type { Idea, CreatorDashboardSummary } from '@/types/creator/dashboard';
 import type { CreateIdeaModel, SaveIdeaResponse } from '@/types/creator/create-idea-model';
 
 interface ApiEnvelope<T> {
@@ -40,18 +40,9 @@ export const getCreatorDashboardSummary = async (ideaId?: string | null): Promis
   return unwrap<CreatorDashboardSummary>(res.data);
 };
 
-export const creatorDashboardApi = {
-  getSummary: getCreatorDashboardSummary,
-};
-
 // ============================================================================
-// LEGACY / SUBCOMPONENT METHODS PRESERVED
+// SUBCOMPONENT METHODS PRESERVED
 // ============================================================================
-
-export const getDashboardStats = async (): Promise<DashboardStats> => {
-  const res = await api.get('/creator/dashboard/stats');
-  return unwrap<DashboardStats>(res.data);
-};
 
 export const getDashboardMyIdeas = async (): Promise<Idea[]> => {
   const res = await api.get('/creator/my-ideas');

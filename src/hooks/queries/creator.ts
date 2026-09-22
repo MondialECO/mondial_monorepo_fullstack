@@ -3,7 +3,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getCreatorDashboardSummary,
-  getDashboardStats,
   getDashboardMyIdeas,
   getInvestorIdeas,
   getProfile,
@@ -14,7 +13,6 @@ import {
 } from '@/lib/api-creator-dashboard';
 import type {
   CreatorDashboardSummary,
-  DashboardStats,
   Idea,
   CreatorProfile,
   BillingInfo,
@@ -27,13 +25,6 @@ export const useCreatorDashboardSummary = (ideaId?: string | null) => {
     queryKey: ['creator', 'dashboardSummary', ideaId ?? 'active'],
     queryFn: () => getCreatorDashboardSummary(ideaId),
     staleTime: 10_000,
-  });
-};
-
-export const useDashboardStats = () => {
-  return useQuery<DashboardStats>({
-    queryKey: ['creator', 'dashboardStats'],
-    queryFn: getDashboardStats,
   });
 };
 
