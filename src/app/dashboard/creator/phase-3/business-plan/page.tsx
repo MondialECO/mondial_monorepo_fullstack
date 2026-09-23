@@ -262,12 +262,15 @@ export default function BusinessPlanPage() {
         project={project}
         plan={bpOutput}
         forecast={forecastOutput}
+        forecastBasis={forecastBasis}
+        formation={formation}
         cross={{ youNeed: cross.youNeed, seedAsk: cross.seedAsk }}
         legalFramework={legalFramework}
       />
 
       <Phase3SetupShell
         fullWidth
+        hideHeader={showDocument}
         stepEyebrow="STEP 3.6 · EXECUTIVE BUSINESS PLAN"
         title="Executive Business Plan"
         description="Comprehensive 12-chapter executive business plan synthesized directly from your verified venture inputs."

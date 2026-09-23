@@ -517,6 +517,9 @@ export interface ReadinessDeduction {
   dimension: string;
   issue: string;
   pointsLost: number;
+  currentState?: string;
+  recommendation?: string;
+  subtext?: string;
   remediationTitle: string;
   remediationRoute: string;
 }
@@ -524,6 +527,8 @@ export interface ReadinessDeduction {
 export interface InvestorReadinessScore {
   total: number;
   label: string;
+  headline?: string;
+  summary?: string;
   breakdown: {
     conceptClarity: number;
     marketEvidence: number;
