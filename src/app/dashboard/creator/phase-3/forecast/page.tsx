@@ -505,8 +505,9 @@ export default function ForecastPage() {
 
       <Phase3SetupShell
         fullWidth
-        hideHeader={true}
-        title="Your 3-year financial forecast"
+        stepEyebrow="STEP 3.3 · FINANCIAL FORECAST"
+        title="Financial Projections & Simulations"
+        description="Unified 36-month financial model. Adjust key assumptions and re-simulate, or explore detailed projections and break-even trajectories."
       >
         {loadingJourney && (
           <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center font-sans">

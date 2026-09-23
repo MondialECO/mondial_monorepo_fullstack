@@ -643,21 +643,38 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   - Net cumulative cash flow mathematically reconciled across all summary cards and table rows.
 - **Credit Cost:** **32 credits** (`AiJobType.Forecast`).
 
-### 5.4 Step 3.4 — Legal & Compliance Intelligence (LIVE)
+### 5.4 Step 3.4 — Legal & Compliance Intelligence (LIVE — 100% Figma Node 57156:9158 Aligned)
 - **Route:** `/dashboard/creator/phase-3/compliance`
-- **Backing Entity & Controller:** Backed by `CreatorPhase3Controller` (`/api/creator/phase-3/legal/assessment`, `/api/creator/phase-3/legal/refresh`, `/api/creator/phase-3/legal/evidence`).
+- **Figma Reference:** 100% verified and aligned against approved Figma Node `57156:9158` ("Legal & Compliance · Creator Phase 3.4").
+- **Backing Entity & Controller:** Backed by `CreatorPhase3Controller` (`/api/creator/phase-3/legal/assessment`, `/api/creator/phase-3/legal/refresh`, `/api/creator/phase-3/legal/item/{itemId}/status`).
 - **Core Principle & Architecture:**
   > **Legal System Principle:** Deterministic rules determine statutory applicability. AI may explain requirements or draft founder responses. AI does NOT determine statutory applicability or certify legal compliance.
-- **Authoritative National Catalogue (France):**
+- **6 Canonical UI Sections (Full-Width Responsive Flow):**
+  1. *Header & Short Introduction:* `Phase3SetupShell` header (`STEP 3.4 · LEGAL & COMPLIANCE`, `Legal & Compliance Intelligence`) followed by introduction *"Let’s make the legal side of your project easier to understand."*
+  2. *Roadmap Summary Card:* *"Your legal roadmap is ready."* with clear guidance on what to prepare before registration, launch, and day-to-day operations.
+  3. *Recommended Next Action Card:* Soft secondary background (`bg-secondary`), prominent `START HERE` badge, dynamic requirement title and justification, and `"Review this step →"` action button with deep scroll.
+  4. *About Your Project Card:* Personalized project overview dynamically synthesized from detected business archetypes and classified profile traits, with `"Update your project details ↗"` deep link to Step 3.2.
+  5. *Checklist Stage Section (`LegalFigmaStageSection.tsx`):*
+     - 3 Segmented Stage Tabs: *"Before you register"*, *"Register & prepare to launch"*, *"Running your business"* with live task count badges.
+     - Single card container with `divide-y` row separators.
+     - Completed tasks feature `#157A55` (`bg-success-strong`) checkmark, title, subtitle, and inline `"Marked done by you"` badge (`bg-success-light text-success-strong`).
+     - Expanded tasks feature a 56px indented accordion layout with uppercase section titles (`WHY THIS APPLIES TO YOU`, `WHEN TO DO IT`, `WHAT TO DO`), canonical Official Public Guidance card with deep links to authoritative French portals (`Service-Public.fr`, `INPI`, `CNIL`), and subtle check reminder.
+     - Quiet statutory disclaimer: *"Checkmarks record your progress; they do not represent legal verification by MBC."*
+  6. *Footer Reassurance & Continuation:* Reassurance text *"You can return to this roadmap as your project moves forward."*, `"Back"` button routing back to Step 3.3 Financial Forecast (`/dashboard/creator/phase-3/forecast`), and `"Save and continue"` button completing Step 3.4 and advancing to Step 3.5 Company Formation (`/dashboard/creator/phase-3/formation`).
+- **Typography & Theme Token Canon (`globals.css`):**
+  - Zero raw HEX literals and zero arbitrary bracket font sizes (`text-[...]`).
+  - Uses role-based font classes (`text-page-heading`, `text-card-title`, `text-section-title`, `text-body`, `text-label`, `text-button`, `text-caption`, `text-badge`, `text-footnote`).
+  - Colors strictly bind to semantic tokens: `text-foreground`, `text-muted-foreground`, `text-primary`, `bg-card`, `bg-muted`, `bg-primary`, `bg-secondary`, `bg-success-strong`, `bg-success-light`, `border-border`.
+- **Authoritative National Catalogue (France — 100% English):**
   - **Catalogue Version:** `FR-2026.1`
-  - **Canonical Rules (18 Total):** Fully declared in `backend/Resources/LegalRules/FranceRules.json`:
-    - *Corporate Governance (5):* `FR-CORP-001` (Dépôt capital social), `FR-CORP-002` (Statuts constitutifs), `FR-CORP-003` (Publication JAL), `FR-CORP-004` (Immatriculation RNE/INPI), `FR-CORP-005` (Déclaration RBE).
-    - *Intellectual Property (1):* `FR-IP-001` (Dépôt marque INPI).
-    - *Data Privacy (3):* `FR-PRIV-001` (Registre RGPD Art 30), `FR-PRIV-002` (Politique de confidentialité), `FR-PRIV-003` (Cookies et traceurs).
-    - *Web Presence (1):* `FR-WEB-001` (Mentions légales site/application).
-    - *Consumer Protection (3):* `FR-CONS-001` (CGV consommateurs), `FR-CONS-002` (Droit de rétractation), `FR-CONS-003` (Médiation de la consommation).
-    - *Payment & Commercial (2):* `FR-PAY-001` (Recours PSP agréé), `FR-MKT-001` (Démarchage électronique).
-    - *Operations & Sector (3):* `FR-INS-001` (Assurance RC Pro), `FR-SOC-001` (Affiliation sociale & DPAE), `FR-REG-001` (Activités réglementées).
+  - **Canonical Rules (18 Total):** Fully declared in English in `backend/Resources/LegalRules/FranceRules.json`:
+    - *Corporate Governance (5):* `FR-CORP-001` (Share Capital Deposit & Escrow Certificate), `FR-CORP-002` (Drafting & Formal Execution of Constitutional Bylaws), `FR-CORP-003` (Statutory Legal Notice Publication in an Authorized Gazette), `FR-CORP-004` (Company Registration via INPI Guichet Unique), `FR-CORP-005` (Beneficial Ownership Declaration / RBE).
+    - *Intellectual Property (1):* `FR-IP-001` (Trademark & Brand Name Rights Verification with INPI).
+    - *Data Privacy (3):* `FR-PRIV-001` (Article 30 GDPR Data Processing Records), `FR-PRIV-002` (GDPR Privacy Policy & Data Subject Disclosures), `FR-PRIV-003` (Cookie & Online Tracker Consent Compliance).
+    - *Web Presence (1):* `FR-WEB-001` (Mandatory Website Legal Notice / Mentions Légales).
+    - *Consumer Protection (3):* `FR-CONS-001` (Standard B2C Terms of Sale / CGV), `FR-CONS-002` (Mandatory 14-Day Consumer Withdrawal Right), `FR-CONS-003` (Consumer Dispute Mediation Designation).
+    - *Payment & Commercial (2):* `FR-PAY-001` (Authorized Payment Service Provider Integration), `FR-MKT-001` (Direct Electronic Marketing & Commercial Communications).
+    - *Operations & Sector (3):* `FR-INS-001` (Professional Liability Insurance Coverage / RC Pro), `FR-SOC-001` (Social Security Affiliation & Pre-Employment Declaration), `FR-REG-001` (Regulated Activities & Professional Qualifications).
 - **Legal Source-Of-Truth Architecture:**
   - **Canonical Legal Authority:** `CreatorLegalAssessment` (`CreatorIdea.Phase3Data.LegalAssessment` and `CreatorJourney.Phase3Data.LegalAssessment`) serves as the sole active Creator legal source of truth.
   - **Legacy Checklist Compatibility:** `CreatorPhase3Data.LegalChecklist` is preserved strictly as a backward-compatible BSON deserialization surface for historical documents (0 canonical active readers, 0 new writers).
@@ -767,7 +784,8 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
 - **Step 3.1 Market Study:** 100% verified against approved Figma design reference (Figma Node `57078:11039` / `57156:8209`) with responsive 1440px–1920px verification, proportional funnel, competitor matrix, and synchronized PDF export.
 - **Step 3.2 Business Model:** 100% verified against approved Figma design reference (Figma Node `57156:8456`) with responsive 1440px–1920px verification, 9-block Osterwalder canvas, calibrated unit economics strip, completion checklist, and synchronized PDF export.
 - **Step 3.3 Financial Forecast:** 100% verified against approved Figma design references (Figma Node `57157:9297` & `57157:9348`) with responsive 1440px–1920px verification, continuous 8-section command dashboard, exact 1:1 vector SVG summary cards (`RevenueAreaSvg`, `CostVsRevenueCrossingSvg`, `Cash36BarSvg`), live 36-month consolidated data table, zero static fallback data, and synchronized PDF export.
-- **Steps 3.4 through 3.7:** **No approved Figma design references exist yet in the repository** for Screens 3.4 (Legal & Compliance Intelligence), 3.5 (Company Formation & Team), 3.6 (Executive Business Plan), or 3.7 (Phase 3 Complete & Investor Readiness Audit). These screens conform strictly to technical schema contracts and typography canon, but await formal pixel-level Figma references.
+- **Step 3.4 Legal & Compliance Intelligence:** 100% verified against approved Figma design reference (Figma Node `57156:9158`) with responsive full-width layout, canonical Phase 3 shell header, 6 structured sections (Header, Stage Selector segmented tabs, Stage Description & Count, Interactive Checklist with done state badges and 56px indented official public guidance accordions, Legal Disclaimers, and Save & continue with Back navigation), 100% globals.css token compliance, and 18 English statutory rules.
+- **Steps 3.5 through 3.7:** **No approved Figma design references exist yet in the repository** for Screens 3.5 (Company Formation & Team), 3.6 (Executive Business Plan), or 3.7 (Phase 3 Complete & Investor Readiness Audit). These screens conform strictly to technical schema contracts and typography canon, but await formal pixel-level Figma references.
 
 ---
 
