@@ -21,6 +21,7 @@ namespace WebApp.Services.Ai.Jobs
             new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase)
             {
                 ["executive"] = ("executiveSummary", "overview"),
+                ["problem-solution"] = ("problemSolution", "problem"),
                 ["target-market"] = ("marketAnalysis", "overview"),
                 ["business-model"] = ("revenueModel", "summary"),
                 ["competitive"] = ("competitorAnalysis", "overview"),

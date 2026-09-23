@@ -729,30 +729,32 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Override Tracking:** Persists `IsOverride` (`bool`) on `CreatorFormationGenerator` whenever a founder chooses an alternative entity structure over the automated recommendation.
 - **Skills Declaration & Protected Clobber Guard:** Clear separation between *Founder-Declared Capabilities (Self-Reported)* and *System-Derived Competence Gaps (Inferred Baseline)* with deep links to `/marketplace?category={specialty}`. Atomic clobber guard prevents rule-engine echoes from overwriting self-declared skills.
 
-### 5.6 Step 3.6 — Executive Business Plan (C-3, LIVE)
+### 5.6 Step 3.6 — Executive Business Plan (C-3, LIVE & FIGMA-ALIGNED)
 - **Route:** `/dashboard/creator/phase-3/business-plan`
+- **Figma Reference:** 100% verified against approved Figma Node `57158:10712` (`Mondial-Dashboard-EDU`).
 - **Backing Entity & Controller:** `BusinessPlanSession` stored in `BusinessPlanSessions` collection via `BusinessPlanController` (`/api/ai/business-plan`).
-- **Inputs Consumed:** `ClarifierSessionId` + `BusinessIdeaId`.
+- **Inputs Consumed:** `ClarifierSessionId` + `BusinessIdeaId` + live Step 3.3 Financial Forecast Basis + Step 3.5 Formation Generator state.
 - **Prerequisite Gate & Branching Rule:**
   - Server-side enforced in `BusinessPlanController.Start`.
   - Fresh Creators without an existing completed Business Plan session MUST complete Step 3.1 (Market Study) and Step 3.2 (Business Model) first (`!hasMarketStudy || !hasBusinessModel` returns HTTP 422 Unprocessable Entity).
   - Legacy Creators who already have a completed Business Plan session keep their position and continue without blocker.
-- **Continuous Document Architecture (12 Canonical Sections):** Rendered as a single continuous scrollable executive document with a sticky 12-section sidebar index. UI, print view, and PDF/export view all share this exact 12-section structure:
-  1. Executive Summary
-  2. Problem & Market Opportunity
-  3. Solution & Value Proposition
-  4. Market Analysis & Competition
-  5. Business Model & Pricing
-  6. Go-to-Market & Customer Acquisition
-  7. Operations & Technology
-  8. Team & Organizational Structure
-  9. Financial Plan & Projections
-  10. Risk Analysis & Mitigation
-  11. Milestones & Implementation Roadmap
-  12. **Legal & Regulatory Framework** (Synced to Step 3.4 Compliance with live FR-2026.1 rules badge)
-- **Universal Inline Markdown Editing:** All owned sections support instant inline editing with real-time word counting, diff tracking, and persistent session updates via `PATCH /api/ai/business-plan/{id}/section/{sectionId}`.
+- **Continuous Document Architecture (12 Canonical Chapters):** Rendered as a single continuous scrollable executive document (`BusinessPlanFigmaFlow.tsx`) with a sticky 12-chapter left sidebar navigator (260px) and reactive `Draft` / `Reviewed` badges:
+  1. **Executive Summary:** Narrative paragraphs, collapsible *BUILT FROM ASSEMBLED INPUTS* chips (`Project Concept`, `Business Model`, `Financial Forecast`, `Company Setup`), *Mark reviewed*, *Edit text*, and *Rewrite with AI*.
+  2. **Problem & Solution (AI Synthesized):** Dual cards (*THE PROBLEM* & *THE PROPOSED SOLUTION*) surfacing AI-synthesized deep problem statements and proposed solutions with `AI Synthesized` badges, full text editing modal, and *Rewrite with AI* (`onRewriteSection('problem-solution')`).
+  3. **Market & Customers:** Bound dynamically to `bpOutput.marketAnalysis.targetSegments` and Phase 2 Clarifier pain points.
+  4. **Business Model:** Executive summary and 4-cell metric grid (*REVENUE MODEL*, *PRICING*, *DELIVERY*, *MAIN COST AREAS*).
+  5. **Competition & Positioning:** 3-column comparative matrix (*ALTERNATIVE*, *CURRENT APPROACH*, *PROPOSED FOCUS*).
+  6. **Go-to-Market:** Strategy narrative and *FIRST ACQUISITION CHANNEL* card with dynamic *Active Channel* badge.
+  7. **Financial Plan:** 3-Year metrics table (Revenue, Operating costs, Net) + dynamic vector SVG Bar Chart (*FORECAST PROJECTION (3 YEARS)*) calculated from real Step 3.3 monthly forecast cash flows with automated scale ceiling.
+  8. **Company & Team:** Bound directly to Step 3.5 Formation Generator (Entity structure `SASU`, 100% Founder, Leadership, Founder Responsibilities, Support).
+  9. **Funding Requirements:** Milestone-indexed seed ask deployment and valuation assumptions.
+  10. **Operations & Milestones:** 4-stage execution roadmap (*Validate*, *Build*, *Pilot*, *Launch*).
+  11. **Risks & Next Steps:** Categorized risk matrix (Regulatory, Adoption, Financial) + 3 prioritized immediate actions.
+  12. **Legal & Compliance:** France-first compliance roadmap synced to Step 3.4 Greffe/CNIL statutory requirements.
+- **Zero Static Data Policy:** No fabricated numbers or placeholder text; calculates live totals from project records or defaults gracefully to real parameters.
+- **Universal Inline Editing & AI Rewrites:** All editable chapters support modal text edits and AI rewriting with credit verification.
 - **Credit Costs & Job Types:**
-  - Full Business Plan Synthesis: **33 credits** (`AiJobType.BusinessPlan`).
+  - Full Business Plan Synthesis: **25 credits** (`AiJobType.BusinessPlan`).
   - Single Section Rewrite: **5 credits** (`AiJobType.BusinessPlanSectionRewrite`).
 
 ### 5.7 Step 3.7 — Phase 3 Complete & Investor Readiness Audit (LIVE)
@@ -809,7 +811,8 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
 - **Step 3.2 Business Model:** 100% verified against approved Figma design reference (Figma Node `57156:8456`) with responsive 1440px–1920px verification, 9-block Osterwalder canvas, calibrated unit economics strip, completion checklist, and synchronized PDF export.
 - **Step 3.3 Financial Forecast:** 100% verified against approved Figma design references (Figma Node `57157:9297` & `57157:9348`) with responsive 1440px–1920px verification, continuous 8-section command dashboard, exact 1:1 vector SVG summary cards (`RevenueAreaSvg`, `CostVsRevenueCrossingSvg`, `Cash36BarSvg`), live 36-month consolidated data table, zero static fallback data, and synchronized PDF export.
 - **Step 3.5 Company Formation & Team:** 100% verified against approved Figma design reference (Figma Node `57156:8767`) with continuous 13-section single-scroll executive layout, interactive starting plan selector (Just me / With co-founders / I’m not sure yet), dynamic entity recommendation card (SASU / SAS / SARL) with 4-cell Quick Facts strip, visual 100% ownership breakdown bar, leadership role card, starting capital plan with inline validation, 3-column team capability distribution (You Can Handle / You May Need Help With / Not Needed Yet), priority launch need deep-dive (Backend development / external specialist pathway), professional support cards (Accountant & Legal), Day 1 vs Later team roadmap, dual summary dossiers (Company & Team), and 100% globals.css token compliance.
-- **Steps 3.6 through 3.7:** **No approved Figma design references exist yet in the repository** for Screens 3.6 (Executive Business Plan) or 3.7 (Phase 3 Complete & Investor Readiness Audit). These screens conform strictly to technical schema contracts and typography canon, but await formal pixel-level Figma references.
+- **Step 3.6 Executive Business Plan:** 100% verified against approved Figma design reference (Figma Node `57158:10712`) with continuous 12-chapter document layout, sticky 260px chapter navigator with interactive `Draft`/`Reviewed` status, AI-synthesized Chapter 02 Problem & Solution with inline edits and section rewrites, live 3-Year forecast table and vector SVG chart, zero-static data binding to Step 3.3 and Step 3.5, and responsive 1440px–1920px verification.
+- **Step 3.7:** **No approved Figma design reference exists yet in the repository** for Screen 3.7 (Phase 3 Complete & Investor Readiness Audit). This screen conforms strictly to technical schema contracts and typography canon, but awaits formal pixel-level Figma reference.
 
 ---
 

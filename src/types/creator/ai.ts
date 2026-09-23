@@ -291,6 +291,10 @@ export interface BusinessPlanOutput {
     valueProposition?: string;
     highlights?: string[];
   };
+  problemSolution?: {
+    problem?: string;
+    solution?: string;
+  };
   marketAnalysis?: {
     overview?: string;
     targetSegments?: string[];

@@ -551,6 +551,17 @@ namespace WebApp.Controllers
         private static BusinessPlanSessionDto ToDto(BusinessPlanSession s, bool includeVersionContent)
         {
             var current = s.Versions.FirstOrDefault(v => v.Version == s.CurrentVersion);
+            if (current?.Content != null && !current.Content.Contains("problemSolution"))
+            {
+                var exec = current.Content.TryGetValue("executiveSummary", out var exVal) && exVal.IsBsonDocument ? exVal.AsBsonDocument : null;
+                var ov = exec?.TryGetValue("overview", out var o) == true && o.IsString ? o.AsString : "";
+                var vp = exec?.TryGetValue("valueProposition", out var v) == true && v.IsString ? v.AsString : "";
+                current.Content["problemSolution"] = new BsonDocument
+                {
+                    ["problem"] = ov,
+                    ["solution"] = vp,
+                };
+            }
 
             return new BusinessPlanSessionDto
             {

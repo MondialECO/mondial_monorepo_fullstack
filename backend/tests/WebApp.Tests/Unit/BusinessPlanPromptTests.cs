@@ -42,6 +42,7 @@ public class BusinessPlanPromptTests
 
     [Theory]
     [InlineData("executiveSummary")]
+    [InlineData("problemSolution")]
     [InlineData("marketAnalysis")]
     [InlineData("competitorAnalysis")]
     [InlineData("revenueModel")]

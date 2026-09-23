@@ -17,6 +17,7 @@ namespace WebApp.Models.Dtos.Ai
         public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
         public ExecutiveSummaryDto ExecutiveSummary { get; set; } = new();
+        public ProblemSolutionDto ProblemSolution { get; set; } = new();
 
         public MarketAnalysisDto MarketAnalysis { get; set; } = new();
 
@@ -41,6 +42,12 @@ namespace WebApp.Models.Dtos.Ai
         public string Overview { get; set; } = "";
         public string? ValueProposition { get; set; }
         public List<string> Highlights { get; set; } = new();
+    }
+
+    public class ProblemSolutionDto
+    {
+        public string Problem { get; set; } = "";
+        public string Solution { get; set; } = "";
     }
 
     public class MarketAnalysisDto
