@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { LegalRequirementCanvas } from '@/components/creator/legal/LegalRequirementCanvas';
+import { LegalFigmaStageSection } from '@/components/creator/legal/LegalFigmaStageSection';
 import AssetLibraryPage from '@/app/dashboard/creator/asset-library/page';
 import * as creatorJourneyApiModule from '@/lib/api-creator-journey';
 import * as brandKitApiModule from '@/lib/api-creator-brand-kit';
@@ -68,31 +68,27 @@ describe('Phase 3.4 Legal Assessment UI (Canonical State & Rendering)', () => {
     },
   ];
 
-  it('proves LegalRequirementCanvas reads and renders statutory items from LegalAssessment', () => {
-    const handleSelect = vi.fn();
+  it('proves LegalFigmaStageSection reads and renders statutory items from LegalAssessment', () => {
+    const handleToggleExpand = vi.fn();
     const handleStatusChange = vi.fn().mockResolvedValue(undefined);
     const handleOpenEvidence = vi.fn();
 
     render(
-      <LegalRequirementCanvas
-        selectedStage="before_creation"
-        stageName="Stage 1 // Pre-Creation Formalities"
+      <LegalFigmaStageSection
         items={mockAssessmentItems}
-        selectedItem={mockAssessmentItems[0]}
-        onSelectItem={handleSelect}
+        activeTab="before_register"
+        onTabChange={vi.fn()}
+        expandedItemId={mockAssessmentItems[0].id}
+        onToggleExpand={handleToggleExpand}
         onStatusChange={handleStatusChange}
         onOpenEvidenceModal={handleOpenEvidence}
-        documents={[]}
-        detectedArchetypes={['SaaS / Software Subscription']}
-        planningReadinessPct={50.0}
-        onGoToStage={vi.fn()}
       />
     );
 
     // Verifies the items loaded from LegalAssessment are displayed
     expect(screen.getAllByText('Capital Deposit and Escrow Certificate').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('GDPR Processing Activities Register').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/1 \/ 2 Done/)).toBeDefined();
+    expect(screen.getByText('Marked done by you')).toBeDefined();
   });
 
   it('proves AssetLibrary recognizes legal checklist readiness directly from phase3.legalAssessment with 0 legalChecklist', async () => {

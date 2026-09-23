@@ -1,7 +1,7 @@
 {
   "rulesVersion": "FR-2026.1",
   "jurisdiction": "FR",
-  "title": "Catalogue National des Règles Légales et Réglementaires Françaises",
+  "title": "National Catalogue of Statutory Legal & Regulatory Rules for France",
   "lastUpdated": "2026-09-19",
   "metadata": {
     "version": "FR-2026.1",
@@ -17,436 +17,436 @@
   "rules": [
     {
       "id": "FR-CORP-001",
-      "title": "Dépôt du capital social et attestation de blocage des fonds",
+      "title": "Share Capital Deposit & Escrow Certificate",
       "category": "corporate",
       "stage": "before_creation",
       "priority": "critical",
-      "description": "Dépôt obligatoire des apports en numéraire constitutifs du capital social auprès d'une banque, d'un notaire ou de la Caisse des Dépôts, avec délivrance de l'attestation de dépôt indispensable à la signature définitive des statuts.",
-      "whyItApplies": "Toute création de société commerciale en France (SAS, SARL, SASU, EURL) impose le dépôt préalable des fonds constitutifs du capital social.",
+      "description": "Mandatory deposit of initial cash contributions forming the share capital with an accredited bank, notaire, or the Caisse des Dépôts, generating the deposit certificate required for signing constitutional bylaws.",
+      "whyItApplies": "Every commercial company formation in France (SAS, SARL, SASU, EURL) mandates the prior deposit of founding share capital.",
       "conditions": {
         "always": true
       },
       "officialSource": {
         "authority": "Service-Public.fr",
-        "title": "Dépôt du capital social d'une société commerciale",
+        "title": "Share capital deposit for commercial companies",
         "url": "https://www.service-public.fr/professionnels-entreprises/vosdroits/F31440",
         "sourceType": "official_portal",
         "lastVerified": "2026-06-01",
         "articleReference": "Code de commerce, Articles L223-7 et L225-3",
-        "notes": "L'attestation de dépôt est indispensable pour l'immatriculation."
+        "notes": "The deposit certificate (attestation de dépôt) is mandatory for official company registration."
       },
       "requiresEvidence": true,
       "evidenceDocType": "capital_deposit_cert",
-      "evidenceLabel": "Attestation de dépôt des fonds délivrée par l'établissement dépositaire"
+      "evidenceLabel": "Share capital deposit certificate issued by an accredited financial institution"
     },
     {
       "id": "FR-CORP-002",
-      "title": "Rédaction et signature des statuts constitutifs",
+      "title": "Drafting & Formal Execution of Constitutional Bylaws (Statuts)",
       "category": "corporate",
       "stage": "before_creation",
       "priority": "critical",
-      "description": "Rédaction des statuts de la société définissant les modalités de gouvernance, l'objet social, la dénomination sociale, la durée de la société et la répartition des parts ou actions entre associés fondateurs.",
-      "whyItApplies": "Document fondateur obligatoire régissant le fonctionnement juridique et statutaire de l'entreprise.",
+      "description": "Drafting constitutional bylaws defining corporate governance, corporate purpose, registered name, duration, and shareholding split among founding partners.",
+      "whyItApplies": "Mandatory founding document governing the legal, governance, and operational rules of the enterprise.",
       "conditions": {
         "always": true
       },
       "officialSource": {
         "authority": "Entreprendre.Service-Public.fr",
-        "title": "Rédaction des statuts d'une société",
+        "title": "Drafting articles of association for a company",
         "url": "https://entreprendre.service-public.fr/vosdroits/F32230",
         "sourceType": "official_portal",
         "lastVerified": "2026-06-01",
         "articleReference": "Code civil, Article 1835",
-        "notes": "Les statuts doivent être paraphés et signés par tous les associés."
+        "notes": "Bylaws must be initialed and signed by all founding shareholders."
       },
       "requiresEvidence": true,
       "evidenceDocType": "statuts_draft",
-      "evidenceLabel": "Projet ou exemplaire signé des statuts constitutifs"
+      "evidenceLabel": "Executed constitutional bylaws signed by all founding shareholders"
     },
     {
       "id": "FR-CORP-003",
-      "title": "Publication de l'avis de constitution au Journal d'Annonces Légales (JAL)",
+      "title": "Publication of Incorporation Notice in Legal Gazette (JAL)",
       "category": "corporate",
       "stage": "company_creation",
       "priority": "critical",
-      "description": "Publication d'un avis de constitution dans un Journal d'Annonces Légales (JAL) ou service de presse en ligne habilité dans le département du siège social pour informer les tiers de la création de la personne morale.",
-      "whyItApplies": "Formalité de publicité légale impérative préalable au dépôt de la demande d'immatriculation.",
+      "description": "Mandatory publication of a legal notice of incorporation in an authorized legal gazette (JAL) or certified digital press service in the département of the registered headquarters to inform third parties.",
+      "whyItApplies": "Statutory public notice formality required prior to filing the registration dossier.",
       "conditions": {
         "always": true
       },
       "officialSource": {
         "authority": "Service-Public.fr / SHAL",
-        "title": "Annonces légales : publication d'une annonce dans un support habilité",
+        "title": "Legal notices: publication in an authorized journal",
         "url": "https://entreprendre.service-public.fr/vosdroits/F21852",
         "sourceType": "official_portal",
         "lastVerified": "2026-05-20",
         "articleReference": "Code de commerce, Article R210-3",
-        "notes": "L'attestation de parution est requise par le guichet unique."
+        "notes": "The publication certificate (attestation de parution) is required by the INPI Guichet Unique."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Attestation de parution dans un Journal d'Annonces Légales (JAL)"
+      "evidenceLabel": "Publication certificate issued by an authorized Legal Gazette (JAL)"
     },
     {
       "id": "FR-CORP-004",
-      "title": "Formalités d'immatriculation au Guichet Unique INPI (Kbis / RNE)",
+      "title": "Company Registration via INPI Guichet Unique (SIREN & Kbis)",
       "category": "corporate",
       "stage": "company_creation",
       "priority": "critical",
-      "description": "Déclaration d'immatriculation obligatoire de l'entreprise via le Guichet Unique opéré par l'INPI pour l'inscription au Registre National des Entreprises (RNE), au RCS, et l'attribution des numéros SIREN, SIRET et de l'extrait Kbis.",
-      "whyItApplies": "Depuis le 1er janvier 2023, le guichet unique INPI est la seule voie légale d'immatriculation pour toute entreprise créée en France (Loi PACTE).",
+      "description": "Mandatory company registration filing via the INPI Guichet Unique portal to register in the National Register of Companies (RNE) and Trade Register (RCS), issuing SIREN, SIRET numbers, and official Kbis extract.",
+      "whyItApplies": "Under French law (PACTE Act), the INPI Guichet Unique is the sole legal channel for incorporating any enterprise in France.",
       "conditions": {
         "always": true
       },
       "officialSource": {
         "authority": "INPI / Guichet Unique",
-        "title": "Portail des formalités d'entreprises",
+        "title": "Single window portal for business formalities",
         "url": "https://formalites.entreprises.gouv.fr/",
         "sourceType": "official_portal",
         "lastVerified": "2026-06-15",
         "articleReference": "Code de commerce, Article L123-33",
-        "notes": "Attribue le SIREN et génère l'extrait Kbis officiel."
+        "notes": "Assigns official SIREN/SIRET numbers and generates the formal Kbis extract."
       },
       "requiresEvidence": true,
       "evidenceDocType": "kbis_extract",
-      "evidenceLabel": "Extrait Kbis ou récépissé de dépôt de dossier au Guichet Unique"
+      "evidenceLabel": "Official Kbis extract or Guichet Unique filing confirmation receipt"
     },
     {
       "id": "FR-CORP-005",
-      "title": "Déclaration des Bénéficiaires Effectifs (RBE)",
+      "title": "Declaration of Beneficial Ownership (RBE Register)",
       "category": "corporate",
       "stage": "company_creation",
       "priority": "critical",
-      "description": "Déclaration légale identifiant toute personne physique exerçant un contrôle direct ou indirect sur la société (détention de plus de 25% du capital ou des droits de vote) dans le cadre des obligations de lutte contre le blanchiment et le terrorisme.",
-      "whyItApplies": "Obligation légale pour toutes les sociétés commerciales enregistrées en France.",
+      "description": "Mandatory statutory declaration identifying any individual exercising direct or indirect control over the company (holding more than 25% of capital or voting rights) under anti-money laundering and counter-terrorist financing obligations.",
+      "whyItApplies": "Statutory obligation for all registered commercial enterprises in France.",
       "conditions": {
         "always": true
       },
       "officialSource": {
         "authority": "INPI / Greffe du Tribunal de Commerce",
-        "title": "Déclaration des bénéficiaires effectifs",
+        "title": "Declaration of beneficial owners",
         "url": "https://entreprendre.service-public.fr/vosdroits/F36284",
         "sourceType": "official_portal",
         "lastVerified": "2026-06-01",
         "articleReference": "Code monétaire et financier, Articles L561-46 et R561-55",
-        "notes": "Déposé en même temps que la formalité d'immatriculation."
+        "notes": "Submitted concurrently with the company incorporation filing."
       },
       "requiresEvidence": false,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Récépissé de déclaration des bénéficiaires effectifs"
+      "evidenceLabel": "Beneficial ownership declaration receipt (RBE)"
     },
     {
       "id": "FR-IP-001",
-      "title": "Dépôt de marque et cession des droits de propriété intellectuelle",
+      "title": "Trademark & Brand Name Protection (INPI Register)",
       "category": "intellectual_property",
       "stage": "before_launch",
       "priority": "recommended",
-      "description": "Vérification de la disponibilité du nom commercial auprès de l'INPI, dépôt de la marque dans les classes pertinentes et signature d'un accord formel de cession des droits de PI (code, designs, brevets) entre fondateurs/prestataires et la personne morale.",
-      "whyItApplies": "Votre projet commercialise une solution avec une identité commerciale distinctive ou des actifs logiciels nécessitant une protection formelle.",
+      "description": "Verification of brand name availability on the INPI register, registration in relevant Nice classes, and execution of formal IP assignment agreements between founders/contractors and the corporate entity.",
+      "whyItApplies": "Your venture markets a proprietary solution with a distinctive commercial identity and digital assets requiring intellectual property protection.",
       "conditions": {
         "hasWebsite": true
       },
       "officialSource": {
         "authority": "INPI (Institut National de la Propriété Industrielle)",
-        "title": "Déposer une marque en France",
+        "title": "Filing a trademark in France",
         "url": "https://www.inpi.fr/deposer-une-marque",
         "sourceType": "regulatory_agency",
         "lastVerified": "2026-05-15",
         "articleReference": "Code de la propriété intellectuelle, Article L711-1",
-        "notes": "Vérifier préalablement la base de marques INPI pour éviter les conflits."
+        "notes": "Search the INPI trademark database prior to filing to prevent infringement conflicts."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Certificat de dépôt de marque INPI ou contrat de cession de droits"
+      "evidenceLabel": "INPI trademark filing certificate or IP assignment agreement"
     },
     {
       "id": "FR-PRIV-001",
-      "title": "Politique de confidentialité conforme RGPD & Information des personnes",
+      "title": "GDPR Privacy Policy & Data Subject Disclosures",
       "category": "privacy",
       "stage": "before_launch",
       "priority": "critical",
-      "description": "Rédaction et publication d'une politique de confidentialité détaillée explicitant les finalités des traitements de données, les bases légales, les destinataires, les durées de conservation et les modalités d'exercice des droits (accès, rectification, effacement).",
-      "whyItApplies": "Votre service collecte ou traite des données personnelles d'utilisateurs résidant dans l'Union Européenne.",
+      "description": "Drafting and publication of a comprehensive Privacy Policy detailing data processing purposes, legal bases, third-party recipients, retention periods, and rights of access, rectification, and erasure.",
+      "whyItApplies": "Your service collects or processes personal data of individuals residing within the European Union.",
       "conditions": {
         "collectsPersonalData": true
       },
       "officialSource": {
         "authority": "CNIL",
-        "title": "RGPD : par où commencer ?",
+        "title": "GDPR: Getting started with compliance",
         "url": "https://www.cnil.fr/fr/rgpd-par-ou-commencer",
         "sourceType": "regulatory_agency",
         "lastVerified": "2026-06-01",
         "articleReference": "Règlement Général sur la Protection des Données (RGPD), Articles 12, 13 et 14",
-        "notes": "Doit être accessible facilement sur toutes les interfaces de collecte."
+        "notes": "Must be easily accessible on all data collection forms and interfaces."
       },
       "requiresEvidence": true,
       "evidenceDocType": "gdpr_policy",
-      "evidenceLabel": "Politique de confidentialité publiée ou documentée"
+      "evidenceLabel": "Published Privacy Policy URL or formal documentation"
     },
     {
       "id": "FR-PRIV-002",
-      "title": "Recueil du consentement aux cookies et traceurs d'analyse",
+      "title": "Cookie Consent Management & User Tracking Compliance",
       "category": "privacy",
       "stage": "before_launch",
       "priority": "critical",
-      "description": "Mise en place d'un bandeau ou module de consentement (CMP) conforme aux exigences de la CNIL permettant aux internautes d'accepter ou de refuser les cookies et traceurs non strictement nécessaires avec la même facilité.",
-      "whyItApplies": "Votre plateforme déploie des cookies d'analyse, d'audience ou de mesure d'usage nécessitant le consentement libre et préalable de l'internaute.",
+      "description": "Implementation of a Consent Management Platform (CMP) conforming to CNIL guidelines, enabling website visitors to accept or refuse non-essential cookies and analytics trackers with equal ease.",
+      "whyItApplies": "Your platform deploys web analytics, audience measurement, or tracking cookies requiring prior free and informed consent.",
       "conditions": {
         "usesAnalyticsOrTracking": true
       },
       "officialSource": {
         "authority": "CNIL",
-        "title": "Cookies et autres traceurs : les règles applicables",
+        "title": "Cookies and trackers: applicable regulatory standards",
         "url": "https://www.cnil.fr/fr/cookies-et-autres-traceurs/regles/cookies-solutions-pour-les-outils-de-mesure-daudience",
         "sourceType": "regulatory_agency",
         "lastVerified": "2026-06-01",
         "articleReference": "Loi Informatique et Libertés, Article 82 et Lignes directrices CNIL (Délibération 2020-091)",
-        "notes": "Le refus doit être aussi simple que l'acceptation ('Tout refuser' obligatoire)."
+        "notes": "Refusal must be as easy as acceptance (a visible 'Refuse All' button is mandatory)."
       },
       "requiresEvidence": false,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Capture ou configuration du bandeau de consentement aux cookies"
+      "evidenceLabel": "Screenshot or configuration link of the active Cookie Consent Banner"
     },
     {
       "id": "FR-PRIV-003",
-      "title": "Tenue du Registre des activités de traitement (Article 30 RGPD)",
+      "title": "Maintenance of GDPR Processing Activities Register (Art. 30)",
       "category": "privacy",
       "stage": "ongoing",
       "priority": "recommended",
-      "description": "Création et mise à jour régulière du registre interne consignant chaque catégorie d'activités de traitement de données personnelles (gestion des clients, facturation, support, ressources humaines).",
-      "whyItApplies": "Obligation légale pour documenter la conformité continue des traitements de données nominatives.",
+      "description": "Creation and recurring maintenance of an internal register recording every category of personal data processing (customer accounts, billing, customer support, personnel).",
+      "whyItApplies": "Statutory obligation to document ongoing compliance with GDPR personal data processing principles.",
       "conditions": {
         "collectsPersonalData": true
       },
       "officialSource": {
         "authority": "CNIL",
-        "title": "Le registre des activités de traitement",
+        "title": "Register of processing activities",
         "url": "https://www.cnil.fr/fr/modele-de-registre-des-traitements",
         "sourceType": "regulatory_agency",
         "lastVerified": "2026-05-15",
         "articleReference": "Règlement Général sur la Protection des Données (RGPD), Article 30",
-        "notes": "La CNIL propose un modèle officiel téléchargeable."
+        "notes": "CNIL provides an official downloadable register template."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Registre des activités de traitement renseigné"
+      "evidenceLabel": "Completed GDPR Article 30 Processing Register document"
     },
     {
       "id": "FR-WEB-001",
-      "title": "Mentions légales obligatoires du service en ligne (LCEN)",
+      "title": "Mandatory Legal Notices for Website & App (LCEN)",
       "category": "consumer_protection",
       "stage": "before_launch",
       "priority": "critical",
-      "description": "Publication obligatoire sur le site internet ou l'application mobile des mentions légales complètes : raison sociale, forme juridique, montant du capital, adresse du siège, numéro RCS et TVA intracommunautaire, nom du directeur de la publication et coordonnées de l'hébergeur.",
-      "whyItApplies": "Tout service de communication au public en ligne établi en France est légalement tenu de publier ses mentions légales.",
+      "description": "Mandatory publication of complete legal notices on the website or mobile app: company name, legal structure, share capital, registered address, RCS and EU VAT numbers, publication director name, and hosting provider details.",
+      "whyItApplies": "Every electronic communication service open to the public in France is legally required to publish statutory legal notices.",
       "conditions": {
         "hasWebsite": true
       },
       "officialSource": {
         "authority": "DGCCRF / Legifrance",
-        "title": "Mentions obligatoires sur un site internet professionnel",
+        "title": "Mandatory legal disclosures on professional websites",
         "url": "https://entreprendre.service-public.fr/vosdroits/F31228",
         "sourceType": "official_portal",
         "lastVerified": "2026-06-01",
         "articleReference": "Loi n° 2004-575 pour la confiance dans l'économie numérique (LCEN), Article 6",
-        "notes": "Les sanctions pénales en cas de défaut de mentions légales peuvent atteindre 75 000 €."
+        "notes": "Failing to provide mandatory legal notices can incur fines up to €75,000."
       },
       "requiresEvidence": false,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Lien vers la page des mentions légales publiques"
+      "evidenceLabel": "Direct URL link to public Legal Notices (Mentions Légales) page"
     },
     {
       "id": "FR-CONS-001",
-      "title": "Conditions Générales de Vente (CGV) B2C & Droit de rétractation de 14 jours",
+      "title": "General Terms of Sale (CGV) & Consumer Protection",
       "category": "consumer_protection",
       "stage": "before_sale",
       "priority": "critical",
-      "description": "Rédaction et acceptation préalable des CGV B2C précisant le prix TTC, les modalités d'exécution du service ou de livraison, les garanties légales de conformité et l'information précontractuelle sur le droit de rétractation de 14 jours avec formulaire type.",
-      "whyItApplies": "Votre modèle prévoit la vente de produits ou services en direct à des consommateurs particuliers résidant en France.",
+      "description": "Drafting and pre-purchase acceptance of consumer Terms of Sale specifying total price including taxes (TTC), service execution terms, statutory warranties, and 14-day statutory right of withdrawal information with standard form.",
+      "whyItApplies": "Your business model sells digital services or products directly to consumer retail customers in France.",
       "conditions": {
         "isB2C": true
       },
       "officialSource": {
         "authority": "DGCCRF / Service-Public.fr",
-        "title": "Vente à distance : règles applicables aux contrats conclus avec des consommateurs",
+        "title": "Distance selling: consumer contract requirements",
         "url": "https://www.service-public.fr/professionnels-entreprises/vosdroits/F31228",
         "sourceType": "official_portal",
         "lastVerified": "2026-05-15",
         "articleReference": "Code de la consommation, Articles L221-18 et suivants",
-        "notes": "Pour les contenus numériques sans support matériel, le renoncement exprès au droit de rétractation doit être recueilli si l'exécution commence immédiatement."
+        "notes": "For immediate digital content delivery, express waiver of the 14-day retraction right must be collected."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Conditions Générales de Vente B2C publiées"
+      "evidenceLabel": "Published General Terms of Sale (CGV) for Consumers"
     },
     {
       "id": "FR-CONS-002",
-      "title": "Conditions Générales de Vente (CGV) B2B & Délais de paiement légaux",
+      "title": "B2B Commercial Terms of Sale & Payment Terms",
       "category": "commercial_contracts",
       "stage": "before_sale",
       "priority": "recommended",
-      "description": "Élaboration des CGV applicables aux relations commerciales entre professionnels, précisant les conditions de règlement, les taux de pénalités de retard applicables de plein droit et l'indemnité forfaitaire de recouvrement obligatoire de 40 €.",
-      "whyItApplies": "Votre offre commerciale s'adresse à des entreprises, indépendants ou personnes morales de droit professionnel.",
+      "description": "Drafting commercial terms of sale applicable to B2B business relationships, specifying payment timelines, statutory late payment interest rates, and mandatory €40 fixed recovery indemnity.",
+      "whyItApplies": "Your offering addresses businesses, self-employed professionals, or corporate entities.",
       "conditions": {
         "isB2B": true
       },
       "officialSource": {
         "authority": "DGCCRF",
-        "title": "Conditions Générales de Vente entre professionnels",
+        "title": "Commercial terms of sale between professionals",
         "url": "https://entreprendre.service-public.fr/vosdroits/F23211",
         "sourceType": "official_portal",
         "lastVerified": "2026-05-10",
         "articleReference": "Code de commerce, Articles L441-1 et L441-10",
-        "notes": "Les CGV B2B doivent être obligatoirement communiquées à tout acheteur professionnel qui en fait la demande."
+        "notes": "B2B terms must be communicated upon request to any professional buyer."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Conditions Générales de Vente B2B formalisées"
+      "evidenceLabel": "Formalized B2B Terms of Sale document"
     },
     {
       "id": "FR-CONS-003",
-      "title": "Bouton de résiliation en '3 clics' pour contrats avec abonnement",
+      "title": "3-Click Online Subscription Cancellation Mechanism",
       "category": "consumer_protection",
       "stage": "before_sale",
       "priority": "critical",
-      "description": "Intégration d'une fonctionnalité directe, facilement accessible et sans frais permettant aux consommateurs de notifier en ligne la résiliation de leur abonnement en respectant un parcours simplifié ne dépassant pas trois étapes.",
-      "whyItApplies": "Vous commercialisez des abonnements récurrents en ligne auprès de consommateurs particuliers.",
+      "description": "Integration of a direct, easily accessible, and free online feature allowing consumers to cancel ongoing subscriptions in a simplified workflow not exceeding three clicks.",
+      "whyItApplies": "You offer recurring subscription plans online to consumer customers in France.",
       "conditions": {
         "hasSubscription": true,
         "isB2C": true
       },
       "officialSource": {
         "authority": "DGCCRF",
-        "title": "Résiliation des contrats conclus par voie électronique (Résiliation en 3 clics)",
+        "title": "Electronic contract cancellation in 3 clicks",
         "url": "https://www.economie.gouv.fr/dgccrf/la-resiliation-en-trois-clics",
         "sourceType": "regulatory_agency",
         "lastVerified": "2026-06-01",
         "articleReference": "Code de la consommation, Article L215-1-1 (Décret n° 2023-417)",
-        "notes": "Obligation entrée en vigueur le 1er juin 2023."
+        "notes": "Mandatory French consumer protection requirement in force since June 1, 2023."
       },
       "requiresEvidence": false,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Vérification fonctionnelle du parcours de désabonnement en ligne"
+      "evidenceLabel": "Functional verification or screenshot of the 3-click cancellation flow"
     },
     {
       "id": "FR-PAY-001",
-      "title": "Conformité de la passerelle de paiement en ligne (DSP2 / PCI-DSS SAQ-A)",
+      "title": "Online Payment Gateway Compliance (DSP2 & PCI-DSS)",
       "category": "payments",
       "stage": "before_sale",
       "priority": "critical",
-      "description": "Sélection d'un prestataire de services de paiement (PSP) agréé par l'ACPR, assurant l'authentification forte du client (3DS2) et déchargeant l'entreprise du stockage direct de données bancaires sensibles (champ PCI-DSS SAQ-A).",
-      "whyItApplies": "Votre plateforme encaisse directement des paiements électroniques par carte bancaire ou prélèvement SEPA.",
+      "description": "Selection of an ACPR-licensed Payment Service Provider (PSP) enforcing Strong Customer Authentication (3DS2) and shielding the business from handling raw credit card data (PCI-DSS SAQ-A scope).",
+      "whyItApplies": "Your platform directly collects online payments via credit card or SEPA direct debit.",
       "conditions": {
         "hasOnlinePayments": true
       },
       "officialSource": {
         "authority": "Banque de France / ACPR",
-        "title": "Sécurité des paiements en ligne et directive DSP2",
+        "title": "Online payment security and DSP2 regulation",
         "url": "https://acpr.banque-france.fr/autorisations/paiement-et-monnaie-electronique",
         "sourceType": "regulatory_agency",
         "lastVerified": "2026-05-01",
         "articleReference": "Code monétaire et financier, Article L133-44 (Directive DSP2)",
-        "notes": "Les PSP majeurs comme Stripe ou Adyen fournissent l'attestation de conformité PCI-DSS SAQ-A."
+        "notes": "Major PSPs like Stripe or Adyen supply the PCI-DSS SAQ-A compliance certificate."
       },
       "requiresEvidence": false,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Attestation de conformité du prestataire de paiement ou certificat d'intégration"
+      "evidenceLabel": "Payment provider compliance confirmation or integration certificate"
     },
     {
       "id": "FR-MKT-001",
-      "title": "Obligations de transparence et loyauté des plateformes de mise en relation",
+      "title": "Marketplace Platform Transparency & Disclosure Rules",
       "category": "marketplace",
       "stage": "before_sale",
       "priority": "critical",
-      "description": "Rédaction des Conditions Générales d'Utilisation (CGU) détaillant explicitement les modalités de référencement, de déréférencement, de classement des offres, ainsi que la qualité des offreurs (professionnels ou particuliers) et l'existence d'un lien capitalistique éventuel.",
-      "whyItApplies": "Votre modèle économique est une place de marché mettant en relation des offreurs et des demandeurs de biens ou services.",
+      "description": "Drafting platform Terms of Service (CGU) disclosing listing criteria, ranking algorithms, search visibility, vendor status (professional or private individual), and any corporate ownership ties.",
+      "whyItApplies": "Your venture operates as a digital marketplace connecting buyers and sellers of products or services.",
       "conditions": {
         "isMarketplace": true
       },
       "officialSource": {
         "authority": "DGCCRF",
-        "title": "Fiche pratique : Plateformes en ligne et obligations de transparence",
+        "title": "Online platforms and transparency obligations",
         "url": "https://www.economie.gouv.fr/dgccrf/Publications/Vie-pratique/Fiches-pratiques/plateformes-en-ligne",
         "sourceType": "regulatory_agency",
         "lastVerified": "2026-05-15",
         "articleReference": "Code de la consommation, Article L111-7 et Décret n° 2017-1434",
-        "notes": "Obligation de transparence renforcée pour les intermédiaires de mise en relation."
+        "notes": "Strict transparency obligations for digital intermediaries and matching platforms."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Conditions Générales d'Utilisation (CGU) Marketplace publiées"
+      "evidenceLabel": "Published Marketplace Terms of Service (CGU)"
     },
     {
       "id": "FR-INS-001",
-      "title": "Souscription d'une Assurance Responsabilité Civile Professionnelle (RC Pro)",
+      "title": "Professional Liability Insurance Coverage (RC Pro)",
       "category": "insurance",
       "stage": "before_sale",
       "priority": "recommended",
-      "description": "Souscription d'une police d'assurance responsabilité civile professionnelle adaptée à l'activité afin de couvrir les dommages corporels, matériels, et immatériels consécutifs ou non pouvant être causés aux clients ou partenaires.",
-      "whyItApplies": "Recommandée pour toute entreprise commerciale afin de prémunir le bilan des risques d'exploitation et de responsabilité contractuelle.",
+      "description": "Underwriting a professional liability insurance policy tailored to the sector to cover physical, material, and consequential damages that may arise during business operations.",
+      "whyItApplies": "Recommended for commercial entities to protect against operational liability and client contract risks.",
       "conditions": {
         "always": true
       },
       "officialSource": {
         "authority": "Service-Public.fr",
-        "title": "Assurance responsabilité civile professionnelle",
+        "title": "Professional liability insurance for businesses",
         "url": "https://entreprendre.service-public.fr/vosdroits/F23668",
         "sourceType": "official_portal",
         "lastVerified": "2026-05-10",
         "articleReference": "Code des assurances, Article L111-1",
-        "notes": "Indispensable pour de nombreux contrats commerciaux et appels d'offres."
+        "notes": "Essential for commercial contracts, corporate client onboarding, and tender bids."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Attestation d'assurance Responsabilité Civile Professionnelle en cours de validité"
+      "evidenceLabel": "Valid Professional Liability Insurance (RC Pro) certificate"
     },
     {
       "id": "FR-SOC-001",
-      "title": "Affiliation sociale des dirigeants et déclarations URSSAF",
+      "title": "Social Security Affiliation & Pre-Hiring Filings (URSSAF)",
       "category": "social",
       "stage": "ongoing",
       "priority": "critical",
-      "description": "Rattachement au régime social adéquat (Régime général de la Sécurité sociale pour les dirigeants assimilés salariés de SAS/SASU, ou Sécurité Sociale des Indépendants pour les gérants majoritaires de SARL) et déclarations sociales périodiques (DSN).",
-      "whyItApplies": "Obligation légale pour toute société en activité rémunérant ou déclarant ses mandataires et éventuels salariés.",
+      "description": "Registration with the relevant French social security regime (General Social Security for SAS/SASU executives or Self-Employed regime for SARL managing partners) and statutory filings (DPAE, periodic social declarations).",
+      "whyItApplies": "Statutory obligation for active commercial entities remunerating officers, founders, or employees.",
       "conditions": {
         "always": true
       },
       "officialSource": {
         "authority": "URSSAF",
-        "title": "Créateur d'entreprise : déclarations et cotisations sociales",
+        "title": "Business creator: social declarations and contributions",
         "url": "https://www.urssaf.fr/portail/home/createur-dentreprise.html",
         "sourceType": "official_portal",
         "lastVerified": "2026-06-01",
         "articleReference": "Code de la sécurité sociale, Articles L311-3 et L611-1",
-        "notes": "Les démarches initiales sont automatiquement transmises via le Guichet Unique."
+        "notes": "Initial social registration details are automatically transmitted via the INPI Guichet Unique."
       },
       "requiresEvidence": false,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Attestation de vigilance ou d'affiliation URSSAF"
+      "evidenceLabel": "URSSAF social security affiliation or compliance certificate"
     },
     {
       "id": "FR-REG-001",
-      "title": "Vérification des conditions d'accès et qualifications professionnelles réglementées",
+      "title": "Regulated Activity Licensing & Qualification Checks",
       "category": "regulated",
       "stage": "before_creation",
       "priority": "critical",
-      "description": "Contrôle des autorisations d'exercer, diplômes d'État, agréments administratifs ou enregistrements auprès d'un ordre professionnel préalablement à l'immatriculation si l'activité projetée est réglementée en droit français.",
-      "whyItApplies": "Votre secteur d'activité présente des caractéristiques potentielles de profession réglementée nécessitant une confirmation.",
+      "description": "Verification and acquisition of professional licenses, state certifications, administrative permits, or professional body registrations prior to incorporation if the venture operates in a regulated French sector.",
+      "whyItApplies": "Your sector exhibits characteristics of regulated professions requiring statutory qualification confirmation.",
       "conditions": {
         "mayBeRegulatedActivity": true
       },
       "officialSource": {
         "authority": "Guichet Entreprises / Ministères de tutelle",
-        "title": "Activités réglementées en France",
+        "title": "Regulated activities in France",
         "url": "https://entreprendre.service-public.fr/vosdroits/F33814",
         "sourceType": "official_portal",
         "lastVerified": "2026-05-01",
         "articleReference": "Code de commerce, Article L123-11-1",
-        "notes": "En cas d'activité réglementée, le greffe rejette l'immatriculation si le justificatif n'est pas fourni."
+        "notes": "For regulated activities, the commercial court registry rejects incorporation without required permits."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Diplôme d'État, carte professionnelle ou autorisation administrative d'exercer"
+      "evidenceLabel": "State qualification certificate, professional card, or administrative permit"
     }
   ]
 }

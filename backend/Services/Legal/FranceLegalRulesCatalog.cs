@@ -174,17 +174,17 @@ namespace WebApp.Services.Legal
                     new()
                     {
                         Id = "FR-CORP-001",
-                        Title = "Dépôt du capital social et attestation de blocage des fonds",
+                        Title = "Share Capital Deposit & Escrow Certificate",
                         Category = "corporate",
                         Stage = LegalStages.BeforeCreation,
                         Priority = LegalPriorities.Critical,
-                        Description = "Dépôt obligatoire des apports en numéraire constitutifs du capital social auprès d'une banque ou d'un notaire.",
-                        WhyItApplies = "Toute création de société commerciale en France impose le dépôt préalable des fonds constitutifs.",
+                        Description = "Mandatory deposit of initial cash contributions forming the share capital with an accredited bank, notaire, or public depository.",
+                        WhyItApplies = "Every commercial company formation in France mandates the prior deposit of founding share capital.",
                         Conditions = new LegalRuleCondition { Always = true },
                         OfficialSource = new OfficialSourceReference
                         {
                             Authority = "Service-Public.fr",
-                            Title = "Dépôt du capital social d'une société commerciale",
+                            Title = "Share capital deposit for commercial companies",
                             Url = "https://www.service-public.fr/professionnels-entreprises/vosdroits/F31440",
                             SourceType = "official_portal",
                             LastVerified = "2026-06-01",
@@ -192,22 +192,22 @@ namespace WebApp.Services.Legal
                         },
                         RequiresEvidence = true,
                         EvidenceDocType = "capital_deposit_cert",
-                        EvidenceLabel = "Attestation de dépôt des fonds délivrée par l'établissement dépositaire"
+                        EvidenceLabel = "Share capital deposit certificate issued by an accredited financial institution"
                     },
                     new()
                     {
                         Id = "FR-CORP-004",
-                        Title = "Formalités d'immatriculation au Guichet Unique INPI (Kbis / RNE)",
+                        Title = "Company Registration via INPI Guichet Unique (SIREN & Kbis)",
                         Category = "corporate",
                         Stage = LegalStages.CompanyCreation,
                         Priority = LegalPriorities.Critical,
-                        Description = "Déclaration d'immatriculation obligatoire de l'entreprise via le Guichet Unique opéré par l'INPI.",
-                        WhyItApplies = "Depuis le 1er janvier 2023, le guichet unique INPI est la seule voie légale d'immatriculation pour toute entreprise en France.",
+                        Description = "Mandatory company registration filing via the INPI Guichet Unique portal to register in the National Register of Companies.",
+                        WhyItApplies = "Under French law (PACTE Act), the INPI Guichet Unique is the sole legal channel for incorporating any enterprise in France.",
                         Conditions = new LegalRuleCondition { Always = true },
                         OfficialSource = new OfficialSourceReference
                         {
                             Authority = "INPI / Guichet Unique",
-                            Title = "Portail des formalités d'entreprises",
+                            Title = "Single window portal for business formalities",
                             Url = "https://formalites.entreprises.gouv.fr/",
                             SourceType = "official_portal",
                             LastVerified = "2026-06-15",
@@ -215,7 +215,7 @@ namespace WebApp.Services.Legal
                         },
                         RequiresEvidence = true,
                         EvidenceDocType = "kbis_extract",
-                        EvidenceLabel = "Extrait Kbis ou récépissé de dépôt de dossier au Guichet Unique"
+                        EvidenceLabel = "Official Kbis extract or Guichet Unique filing confirmation receipt"
                     }
                 }
             };
