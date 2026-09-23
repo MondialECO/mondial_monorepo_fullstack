@@ -291,8 +291,8 @@ The canvas previously used `lg:grid-cols-5`, which activated 5 columns immediate
      - Result at 1920px: 318px gross / 278px usable.
 2. **Hairline Dividers**: Replaced fragile `divide-x lg:divide-y-0` with `gap-px bg-border` and `bg-card` on all cells. This guarantees uniform 1px borders horizontally and vertically across all wrapping breakpoints without orphaned lines.
 3. **Row 2 (Financials)**: `grid grid-cols-1 md:grid-cols-2 gap-px bg-border border-t border-border`. Cost Structure and Revenue Streams evenly split available width.
-4. **Unit Economics Strip**: `grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-border`. Retains 3 columns at 1024px (232px/metric) and activates 5 columns at 1280px+.
-5. **Section 3 (Revenue Model Detail & Assumptions)**: `grid grid-cols-1 xl:grid-cols-2 gap-6 items-start`. Stacks into 1 full-width column at 1024px (giving the Revenue Model table 696px width) and splits into 2 equal cards at >=1280px.
+4. **Unit Economics Strip**: Dedicated 4-card metric strip (`CAC`, `LTV`, `LTV / CAC` with healthy ratio badge, and `ESTIMATED PAYBACK`) accompanied by "Calibrated based on benchmarks" subheader, rendered across responsive grid cards with monospace font numerals (`font-mono`).
+5. **Completion Checklist & Footer Action Row**: Clean "STEP COMPLETE" checklist card featuring 5 verified milestone checkboxes, followed by the action footer with "Back" (returns to Step 3.1 Market Study) and "Build Financial Forecast" triggers (while "Regenerate" is maintained in the header actions bar). *(Note: Legacy pricing tiers table and assumptions register not present in Figma Node `57156:8456` were cleanly removed to achieve 1:1 design fidelity).*
 
 ### C. Empirical Business Model Geometry Matrix (10 Viewports)
 
@@ -308,6 +308,58 @@ The canvas previously used `lg:grid-cols-5`, which activated 5 columns immediate
 | **1728x1117** | 1400px | 5 | **280px** | **240px** | **240px** | **0px** |
 | **1920x1080** | 1592px | 5 | **318px** | **278px** | **278px** | **0px** |
 | **2560x1440** | 1592px | 5 | **318px** | **278px** | **278px** | **0px** |
+
+---
+
+### D. Step 3.3 Financial Forecast Architecture (Figma Node 57157:9297)
+
+Following Figma Node `57157:9297` (`Financial Forecast · Creator Phase 3.3`), Step 3.3 is structured as a continuous 8-section financial command dashboard replacing legacy tabbed navigation:
+
+1. **Header Bar & Persistent Actions (Section 1)**:
+   - Eyebrow: `STEP 3.3 · FINANCIAL FORECAST`
+   - Title: `Your 3-year financial forecast`
+   - Subtitle: `36 months · Months 1–12 modelled, 13–36 projected · EUR`
+   - Persistent Actions: `Download report` (PDF preview overlay) and `Regenerate` button with live credit balance pill (`Uses 32 credits · balance [X]`).
+2. **Conditional Out-of-Date Alert Strip (Section 2)**:
+   - Activates when live simulation operational drivers deviate from last saved run: *"Assumptions changed since last run — results may be out of date. Click Regenerate to update forecast projections."*
+3. **Executive Verdict Hero Card (Section 2.5)**:
+   - High-impact milestone headline highlighting dynamically computed Break-even Month (`M{breakEvenMonth}`) and Loss Recovery Month (`M{lossRecoveryMonth}`), budget exhaustion runway, and funding gap calculation with dynamic badge (`Funding gap` in warm amber or `Fully funded` in emerald). When zero funding gap exists, displays affirmative operational runway without deficit.
+4. **Three Summary Cards (Section 3 — Figma Node 57157:9348)**:
+   - Encapsulated in `rounded-[20px] p-6 bg-card border border-border shadow-sm` cards conforming to system tokens and typography canon.
+   - `REVENUE`: Net growth badge (`+X% Y1→Y3`), Year 3 ARR run-rate stat (`€X ARR (Y3)`), Y1/Y2/Y3 mini-breakdown pills, and custom 341x112 SVG area chart (`RevenueAreaSvg`) featuring:
+     - Solid line for Months 1–12 (`Modelled`).
+     - Dashed line (`strokeDasharray="4 3"`) for Months 12–36 (`Projected`).
+     - Month 12 vertical divider line with `M12` and `Modelled / Projected` typography.
+     - On-curve break-even indicator dot and floating pill badge `M{breakEvenMonth} break-even`.
+   - `COST VS REVENUE`: Revenue vs Total Cost dual curves (`CostVsRevenueCrossingSvg`), drop line at break-even month with outer/inner circle dot and floating badge `€{breakEvenRevenue} ({breakEvenSubs} subs)`, Inflection Point stat (`Month {x}`), and break-even subscriber callout.
+   - `CASH POSITION`: Deficit duration badge (`Deficit: M{x}–M{y}` or `Fully funded`), lowest cash point stat (`−€{minCumulative}` or `Cash positive`), and liquidity trajectory chart (`Cash36BarSvg`) featuring:
+     - 36 individual vertical bars with 5.7px width and 9.47px pitch across a 341px SVG viewport.
+     - Horizontal zero baseline with negative/positive value distribution.
+     - Quad-color semantic coding: slate bars for initial cash, warm amber (`#965F11`) for deficit, vibrant amber (`#D97706`) for the lowest cash month, and teal (`#0D9488`) for positive cash flow.
+     - Dotted vertical callouts for `Budget runs out · M{x}` and `Cash positive · M{y}`.
+5. **Assumptions & Live Simulation Parameters Grid (Section 4)**:
+   - Responsive 8-card operational driver grid: Starting budget, Subscribers at launch, New subscribers % MoM, Monthly churn %, Price per subscriber (Linked from 3.2), Variable cost/sub, Fixed costs/mo, and Market size TAM (Linked from 3.1 with reset trigger).
+   - Real-time parameter tweaking dynamically recalculates all 36 months, break-even, and runway, with live warning banners for tight economics, high growth, and churn risks.
+6. **Continuous 36-Month Consolidated Data Table (Section 5)**:
+   - Direct, continuous 10-column table across 36 months: `MONTH`, `SUBSCRIBERS`, `REVENUE`, `FIXED COST`, `VARIABLE COST`, `TOTAL COST`, `NET CASH FLOW`, `CUMULATIVE`, `CASH ON HAND`, `NOTES`.
+   - Distinct year grouping headers (`YEAR 1 · MODELLED`, `YEAR 2 · PROJECTED`, `YEAR 3 · PROJECTED`) and subtotal rows (`Y1 SUBTOTAL`, `Y2 SUBTOTAL`, `Y3 SUBTOTAL`).
+   - Milestone highlight tags: `Budget runs out`, `Lowest cash point`, `Break-even`, `Cash positive again`, `All losses recovered`.
+7. **Break-Even & Unit Economics Side-by-Side (Section 6)**:
+   - Left: Break-even analysis with 4 key metrics, narrative analysis, and exact contribution margin formula breakdown.
+   - Right: Unit economics with CAC, LTV, LTV/CAC (Healthy badge), Payback period, Gross margin %, and Month 1 Burn.
+8. **Key Assumptions & Risk Assessment (Section 7)**:
+   - Left: 7 key model assumptions tagged with provenance badges (`YOUR INPUT`, `FROM 3.2`, `MODEL`).
+   - Right: 4-tier risk assessment matrix with severity badges (Funding risk, Growth shortfall, Subscriber retention, Delivery cost) dynamically driven by model parameters.
+9. **Milestones Complete & Navigation Footer (Section 8)**:
+   - Step Complete checklist (6/6 milestones verified).
+   - Navigation footer: `Business Model` Back button (navigates to Step 3.2 `/dashboard/creator/phase-3/business-model`), and `Continue to Legal & Compliance` button (navigates to Step 3.4 `/dashboard/creator/phase-3/compliance`).
+10. **Zero-Mock & Complete Mathematical Reconciliation**:
+    - All metrics, charts, and table rows are 100% dynamic, computed on the fly from live database session data and simulated operational drivers.
+    - Zero static fallback data across all sections: starting budget is read directly from session state, TAM is dynamically parsed from Step 3.1, break-even and runway reflect true calculated values, and cumulative net cash flow matches across every visualization.
+11. **Dedicated Financial Forecast PDF Export (`ForecastPrintView.tsx`)**:
+    - Triggered via 'Download report' button in the Step 3.3 header bar and 'Export PDF' in the Creator Asset Library.
+    - Strictly contains 100% Step 3.3 financial forecast data with zero business plan contamination (all Executive Summary, Problem & Solution, Target Market, GTM, Operations, and Legal frameworks from other steps are cleanly excluded).
+    - Design mirrors the Step 3.3 screen layout with 100% pixel fidelity: Executive Verdict Hero Card, Three Summary Cards with vector SVGs (`RevenueAreaSvg`, `CostVsRevenueCrossingSvg`, `Cash36BarSvg`), 8-card operational assumptions grid, continuous 36-month consolidated table with year headers and subtotals, break-even & unit economics side-by-side cards, 4-tier risk assessment matrix, transparent brand logo, and print CSS page-break isolation.
 
 ---
 

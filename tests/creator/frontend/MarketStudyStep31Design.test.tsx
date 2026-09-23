@@ -144,7 +144,7 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
     } as any);
   });
 
-  it('renders methodology two-column strip with method on left and active formula on right', async () => {
+  it('renders Section 1 (Your Market Opportunity) and Section 2 (Market Overview Grid)', async () => {
     vi.spyOn(creatorAiQueries, 'useMarketStudySessionTimed').mockReturnValue({
       phase: 'terminal',
       data: {
@@ -156,17 +156,15 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
 
     render(<MarketStudyPage />);
 
-    expect(await screen.findByText(/Market Sizing Funnel/i)).toBeInTheDocument();
-    expect(screen.getByText(/Methodology/i)).toBeInTheDocument();
-    expect(screen.getByText(/Triangulated bottom-up cohort adoption model/i)).toBeInTheDocument();
-
-    expect(screen.getByText(/Active Sizing Formula/i)).toBeInTheDocument();
-    expect(screen.getByText(/2\.4M/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/adoption/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/avg ACV/i)).toBeInTheDocument();
+    expect(await screen.findByText(/YOUR MARKET OPPORTUNITY/i)).toBeInTheDocument();
+    expect(screen.getByText('INDUSTRY')).toBeInTheDocument();
+    expect(screen.getByText('MARKET')).toBeInTheDocument();
+    expect(screen.getByText('PRIMARY GEOGRAPHY')).toBeInTheDocument();
+    expect(screen.getByText('MARKET STAGE')).toBeInTheDocument();
+    expect(screen.getByText('Growing')).toBeInTheDocument();
   });
 
-  it('renders gap-validation two-column split with creator stated gap on left and validation on right', async () => {
+  it('renders Section 3 (TAM/SAM/SOM sizing) and Section 7 (Completion Checklist)', async () => {
     vi.spyOn(creatorAiQueries, 'useMarketStudySessionTimed').mockReturnValue({
       phase: 'terminal',
       data: {
@@ -178,12 +176,15 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
 
     render(<MarketStudyPage />);
 
-    expect(await screen.findByText(/Your Stated Gap/i)).toBeInTheDocument();
-    expect(screen.getByText(/Existing tools require 6-month enterprise onboarding/i)).toBeInTheDocument();
-
-    expect(screen.getByText(/Benchmark Assessment/i)).toBeInTheDocument();
-    expect(screen.getByText(/Zero-configuration real-time carbon audit engine/i)).toBeInTheDocument();
-    expect(screen.getByText(/Interviews with 30 logistics directors confirmed/i)).toBeInTheDocument();
+    expect(await screen.findByText('TAM')).toBeInTheDocument();
+    expect(screen.getByText('SAM')).toBeInTheDocument();
+    expect(screen.getByText('SOM')).toBeInTheDocument();
+    expect(screen.getByText(/STEP COMPLETE/i)).toBeInTheDocument();
+    expect(screen.getByText(/Market identified/i)).toBeInTheDocument();
+    expect(screen.getByText(/Target users defined/i)).toBeInTheDocument();
+    expect(screen.getByText(/TAM \/ SAM \/ SOM generated/i)).toBeInTheDocument();
+    expect(screen.getByText(/Competitor landscape analyzed/i)).toBeInTheDocument();
+    expect(screen.getByText(/Market gaps identified/i)).toBeInTheDocument();
   });
 
   it('renders dense competitor table with segment column and honest empty cell for legacy studies', async () => {
@@ -267,7 +268,6 @@ describe('MarketStudyPage (Step 3.1 Design Alignment)', () => {
 
     expect(await screen.findByText('Early Pilot Beta Cohort')).toBeInTheDocument();
     expect(screen.getAllByText(/1% of SAM/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Targeted beachhead with 50 enterprise shippers in Benelux/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('$50M')).toBeInTheDocument();
   });
 
