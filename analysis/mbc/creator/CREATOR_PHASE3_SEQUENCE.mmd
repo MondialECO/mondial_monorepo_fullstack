@@ -1,0 +1,117 @@
+sequenceDiagram
+    autonumber
+    actor Creator as Creator (User)
+    participant UI as Next.js Phase 3 UI (/dashboard/creator/phase-3/*)
+    participant API as Frontend API Client (api-creator-journey.ts)
+    participant Backend as ASP.NET Core Backend Controllers
+    participant Engine as AI Handlers & Deterministic Engines
+    participant DB as MongoDB Collections (Ideas, Sessions, Profiles)
+
+    Note over Creator, DB: STEP 3.1 — MARKET INTELLIGENCE
+    Creator->>UI: Enter /phase-3/market-study & Click "Generate Market Study"
+    UI->>API: POST /api/ai/market-study { clarifierSessionId, businessIdeaId }
+    API->>Backend: MarketStudyController.Start()
+    Backend->>Engine: MarketStudyHandler.ExecuteAsync() (AI Job, 20 Credits)
+    Engine->>DB: Insert MarketStudySession (TAM/SAM/SOM, Competitors, Segments)
+    Backend-->>API: 200 OK { sessionId, status: "Pending" }
+    UI->>API: Poll GET /api/ai/market-study/{sessionId}
+    API->>Backend: MarketStudyController.Get()
+    Backend->>DB: Query MarketStudySessions by Id & OwnerUserId
+    Backend-->>UI: 200 OK { status: "Completed", content: { tamSamSom, competitorLandscape, ... } }
+    UI->>API: POST /api/creator/journey/phase3/session { kind: "marketStudy", sessionId }
+    API->>Backend: CreatorPhase3Controller.SetPhase3Session()
+    Backend->>DB: $set Phase3Data.MarketStudySessionId
+
+    Note over Creator, DB: STEP 3.2 — BUSINESS MODEL CANVAS
+    Creator->>UI: Advance to /phase-3/business-model & Click "Generate Canvas"
+    UI->>API: POST /api/ai/business-model { marketStudySessionId, businessIdeaId }
+    API->>Backend: BusinessModelController.Start() (Asserts MarketStudy Completed)
+    Backend->>Engine: BusinessModelHandler.ExecuteAsync() (AI Job, 15 Credits)
+    Engine->>DB: Insert BusinessModelSession (9 Blocks, Revenue Tiers, Unit Economics)
+    Backend-->>API: 200 OK { sessionId }
+    UI->>API: Poll GET /api/ai/business-model/{sessionId}
+    Backend-->>UI: 200 OK { status: "Completed", content: { canvas, revenueTiers, ... } }
+    UI->>API: POST /api/creator/journey/phase3/session { kind: "businessModel", sessionId }
+    Backend->>DB: $set Phase3Data.BusinessModelSessionId
+
+    Note over Creator, DB: STEP 3.3 — FINANCIAL FORECAST
+    Creator->>UI: Advance to /phase-3/forecast, enter ARPU/OPEX/Growth/Churn & Run
+    UI->>API: POST /api/ai/forecast { businessIdeaId, arpu, opex, growth, churn }
+    API->>Backend: ForecastController.Start() (Validates Churn 0 < churn <= 50%)
+    Backend->>Engine: ForecastHandler.ExecuteAsync() (AI 1–12 Mo + Deterministic 13–36 Mo)
+    Note over Engine: Deterministic ExtendToThirtySixMonths() & RecomputeBreakEven()
+    Engine->>DB: Insert ForecastSession (36-month P&L, Cash Flow, Break-Even)
+    Backend-->>API: 200 OK { sessionId }
+    UI->>API: Poll GET /api/ai/forecast/{sessionId}
+    Backend-->>UI: 200 OK { status: "Completed", content: 36 Months Forecast }
+    UI->>API: POST /api/creator/journey/phase3/session { kind: "forecast", sessionId }
+    Backend->>DB: $set Phase3Data.ForecastSessionId
+
+    Note over Creator, DB: STEP 3.4 — LEGAL & COMPLIANCE FRAMEWORK
+    Creator->>UI: Advance to /phase-3/compliance
+    UI->>API: GET /api/creator/legal-compliance/overview?ideaId={id}
+    API->>Backend: CreatorPhase3Controller.GetLegalOverview()
+    Backend->>DB: Read CreatorIdea.Phase3Data.LegalAssessment
+    alt LegalAssessment Null or Refresh Requested
+        Creator->>UI: Click "Evaluate / Refresh Legal Roadmap"
+        UI->>API: POST /api/creator/legal-compliance/evaluate?ideaId={id}
+        API->>Backend: CreatorPhase3Controller.EvaluateLegalCompliance()
+        Backend->>Engine: LegalApplicabilityEngine.ReconcileAndEvaluate()
+        Note over Engine: Evaluates FranceRules.json (FR-2026.1), Preserves Progress & Evidence
+        Engine->>DB: Write CreatorIdea.Phase3Data.LegalAssessment
+        Backend-->>UI: 200 OK { assessment, planningReadinessPct }
+    else LegalAssessment Already Exists
+        Backend-->>UI: 200 OK { assessment, items, planningReadinessPct, staleMetadata }
+    end
+    opt Attach Evidence Document
+        Creator->>UI: Select item & upload/attach document from Vault
+        UI->>API: POST /api/creator/legal-compliance/item/{itemId}/evidence
+        Backend->>DB: Link documentId, update status to 'ready_for_review', append audit trail
+    end
+
+    Note over Creator, DB: STEP 3.5 — COMPANY FORMATION & TEAM
+    Creator->>UI: Advance to /phase-3/formation
+    UI->>API: POST /api/creator/ai/formation-generator/start?ideaId={id}
+    API->>Backend: CreatorPhase3Controller.GenerateFormation()
+    Backend->>Engine: Deterministic Formation Recommendation (SAS / SAS-U / SARL)
+    Note over Engine: Consumes Project Sector, FinTech signal, Forecast TAM/Growth, Solo/Team
+    Engine->>DB: Write CreatorIdea.Phase3Data.FormationGenerator
+    Backend-->>UI: 200 OK { recommendedType, options, youHave, youNeed, matchedSpIds }
+    opt Founder Customizes Structure or Skills
+        Creator->>UI: Select entity type & declare skills/cofounder needs
+        UI->>API: PATCH /api/creator/formation/select-type & PATCH .../formation/skills
+        Backend->>DB: $set FormationGenerator.SelectedType, YouHave, YouNeed, CofounderDraft
+    end
+
+    Note over Creator, DB: STEP 3.6 — EXECUTIVE BUSINESS PLAN
+    Creator->>UI: Advance to /phase-3/business-plan & Click "Generate Plan"
+    UI->>API: POST /api/ai/business-plan { clarifierSessionId, businessIdeaId }
+    API->>Backend: BusinessPlanController.Start() (Asserts 3.1 & 3.2 Completed)
+    Backend->>Engine: BusinessPlanHandler.ExecuteAsync() (Synthesizes 3.1–3.5 + Project Core)
+    Engine->>DB: Insert BusinessPlanSession (12 Synthesized Standard Sections)
+    Backend-->>API: 200 OK { sessionId }
+    UI->>API: Poll GET /api/ai/business-plan/{sessionId}
+    Backend-->>UI: 200 OK { status: "Completed", content: 12 Sections }
+    UI->>API: POST /api/creator/journey/phase3/session { kind: "businessPlan", sessionId }
+    Backend->>DB: $set Phase3Data.BusinessPlanSessionId
+
+    Note over Creator, DB: STEP 3.7 — INVESTOR READINESS & PHASE 3 COMPLETION
+    Creator->>UI: Advance to /phase-3/complete
+    UI->>API: PATCH /api/creator/masterplan/complete?ideaId={id}
+    API->>Backend: CreatorPhase3Controller.CompleteMasterplan()
+    Backend->>Backend: Verify Modules Complete (Forecast, Business Plan, Formation, Legal)
+    Backend->>Engine: InvestorReadinessCalculator.ComputeReadiness()
+    Note over Engine: Deterministic 5-Dimension Score: Clarity(20) + Market(20) + Finance(25) + Legal(15) + Team(20)
+    Engine->>DB: Write CreatorIdea.Phase3Data.InvestorReadinessScore
+    Backend-->>UI: 200 OK { investorReadinessScore: { total, label, breakdown, deductions } }
+    UI->>API: GET /api/creator/journey
+    Backend-->>UI: 200 OK { computedStatus: { phase3: { status: "completed" }, phase4: { status: "available" } } }
+
+    Note over Creator, DB: GATE TO PHASE 4
+    Creator->>UI: Click "Continue to Phase 4"
+    UI->>UI: Check Phase4ProfileGuard (GET /api/creator/profile/phase4-readiness)
+    alt Profile Incomplete (missing skills, situation, availability, region, preference)
+        UI-->>Creator: Block with "Phase 4 Personalization Gate", redirect to /dashboard/creator/profile
+    else Profile Complete (5 mandatory keys verified)
+        UI-->>Creator: Navigate to /dashboard/creator/phase-4 (4.1 Construction Snapshot)
+    end

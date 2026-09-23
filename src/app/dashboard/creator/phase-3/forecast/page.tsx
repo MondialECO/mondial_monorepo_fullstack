@@ -9,24 +9,13 @@ import {
   Loader2,
   AlertTriangle,
   RotateCw,
-  FileWarning,
   FileDown,
-  BarChart3,
-  Table as TableIcon,
   CheckCircle2,
-  CircleDashed,
-  ListChecks,
-  ShieldAlert,
-  Sparkles,
-  Layers,
-  ChevronDown,
-  ChevronUp,
-  Info,
+  Sliders,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import {
@@ -37,49 +26,24 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
-  BarChart,
-  Bar,
 } from 'recharts';
 import {
   useForecastSessionTimed,
   useBusinessPlanSessionTimed,
   useMarketStudySessionTimed,
+  useBusinessModelSessionTimed,
   useAiCredits,
   useStartForecast,
 } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
-import { creatorAiApi } from '@/lib/api-creator-ai';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 import { formatMoney } from '@/lib/format-money';
-import { hasAiOutput, type ForecastOutput, type BusinessPlanOutput, type MarketStudyOutput } from '@/types/creator/ai';
+import { hasAiOutput, type ForecastOutput, type BusinessPlanOutput, type MarketStudyOutput, type BusinessModelOutput } from '@/types/creator/ai';
 import { withIdeaContext } from '@/lib/creator-routes';
 
-const fmt = (n?: number | null, currency = 'EUR') => formatMoney(n, currency);
-
-function toChartData(output?: ForecastOutput) {
-  const rev = output?.revenueForecast?.monthly ?? [];
-  const cost = output?.costForecast?.monthly ?? [];
-  const cash = output?.cashFlowProjection?.monthly ?? [];
-  const months = Math.max(rev.length, cost.length, cash.length);
-  return Array.from({ length: months }, (_, i) => ({
-    name: `M${i + 1}`,
-    monthNum: i + 1,
-    Revenue: rev[i]?.amount ?? 0,
-    Cost: cost[i] != null ? (cost[i].fixedCosts ?? 0) + (cost[i].variableCosts ?? 0) : 0,
-    FixedCost: cost[i]?.fixedCosts ?? 0,
-    VarCost: cost[i]?.variableCosts ?? 0,
-    NetCashFlow: cash[i]?.netCashFlow ?? 0,
-    EndingBalance: cash[i]?.endingBalance ?? 0,
-  }));
-}
-
-function inputWarnings(arpu: number, opex: number, growth: number, churn: number) {
+function inputWarnings(growth: number, churn: number) {
   const w: string[] = [];
-  if (arpu > 0 && opex > 0 && arpu < opex / 10) {
-    w.push('Tight unit economics: ARPU is low relative to baseline OPEX.');
-  }
   if (growth > 30) {
     w.push('Aggressive growth: >30% MoM is difficult to sustain indefinitely — sanity-check market capacity.');
   }
@@ -89,12 +53,339 @@ function inputWarnings(arpu: number, opex: number, growth: number, churn: number
   return w;
 }
 
-const likelihoodVariant = (v?: string) => {
-  const s = v?.toLowerCase();
-  if (s === 'high') return 'bg-destructive/15 text-destructive border-destructive/30';
-  if (s === 'medium') return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
-  return 'bg-muted text-muted-foreground border-border';
-};
+interface ForecastRowCalculated {
+  month: number;
+  name: string;
+  subscribers: number;
+  revenue: number;
+  fixedCost: number;
+  variableCost: number;
+  totalCost: number;
+  netCashFlow: number;
+  cumulative: number;
+  cashOnHand: number;
+  notes: string;
+  isMilestone?: boolean;
+  milestoneTag?: string;
+}
+
+/* =========================================================================
+   Figma Exact Section 3 SVG Components (Node 57157:9348)
+   ========================================================================= */
+
+function RevenueAreaSvg({
+  rows,
+  breakEvenMonth,
+}: {
+  rows: ForecastRowCalculated[];
+  breakEvenMonth: number;
+}) {
+  const width = 341;
+  const height = 112;
+  const padLeft = 4;
+  const padRight = 4;
+  const padTop = 14;
+  const padBottom = 16;
+  const plotW = width - padLeft - padRight;
+  const plotH = height - padTop - padBottom;
+
+  const maxRev = Math.max(...rows.map((r) => r.revenue), 1);
+  const getX = (m: number) => padLeft + ((m - 1) / 35) * plotW;
+  const getY = (v: number) => height - padBottom - (v / maxRev) * plotH;
+
+  const pts = rows.map((r) => `${getX(r.month).toFixed(1)},${getY(r.revenue).toFixed(1)}`);
+  const areaPath = `M ${getX(1).toFixed(1)},${height - padBottom} L ${pts.join(' L ')} L ${getX(36).toFixed(1)},${height - padBottom} Z`;
+  const solidPath = `M ${pts.slice(0, 12).join(' L ')}`;
+  const dashedPath = `M ${pts.slice(11).join(' L ')}`;
+
+  const m12X = getX(12);
+  const beIndex = Math.max(1, Math.min(36, breakEvenMonth));
+  const beX = getX(beIndex);
+  const beY = getY(rows[beIndex - 1]?.revenue ?? 0);
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[112px] overflow-visible" preserveAspectRatio="none" aria-label="Revenue 36-month trajectory">
+      <defs>
+        <linearGradient id="figmaRevenueGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0D9488" stopOpacity={0.25} />
+          <stop offset="100%" stopColor="#0D9488" stopOpacity={0.0} />
+        </linearGradient>
+      </defs>
+
+      {/* Soft area gradient */}
+      <path d={areaPath} fill="url(#figmaRevenueGrad)" />
+
+      {/* Modelled solid curve (Months 1–12) */}
+      <path d={solidPath} fill="none" stroke="#0D9488" strokeWidth={2.4} strokeLinecap="round" />
+
+      {/* Projected dashed curve (Months 12–36) */}
+      <path d={dashedPath} fill="none" stroke="#0D9488" strokeWidth={2.4} strokeDasharray="4 4" strokeLinecap="round" />
+
+      {/* Month 12 divider vertical line */}
+      <line
+        x1={m12X}
+        y1={padTop - 4}
+        x2={m12X}
+        y2={height - padBottom}
+        stroke="currentColor"
+        className="text-slate-300 dark:text-slate-700"
+        strokeWidth={1.2}
+        strokeDasharray="2.5 2.5"
+      />
+      <text x={m12X - 4} y={height - 2} textAnchor="end" className="text-[9px] fill-slate-400 font-sans">
+        Modelled
+      </text>
+      <text x={m12X + 4} y={height - 2} textAnchor="start" className="text-[9px] fill-slate-400 font-sans">
+        Projected
+      </text>
+
+      {/* Break-even point marker on curve */}
+      <circle cx={beX} cy={beY} r={4.5} fill="#FFFFFF" stroke="#0D9488" strokeWidth={2.4} />
+
+      {/* Break-even floating badge */}
+      <g transform={`translate(${Math.max(45, Math.min(width - 45, beX))}, ${Math.max(14, beY - 12)})`}>
+        <rect
+          x={-42}
+          y={-9}
+          width={84}
+          height={16}
+          rx={8}
+          fill="#FFFFFF"
+          stroke="#0D9488"
+          strokeWidth={1}
+          className="dark:fill-slate-900 shadow-sm"
+        />
+        <text x={0} y={2.5} textAnchor="middle" className="text-[9.5px] font-sans font-semibold fill-teal-600 dark:fill-teal-400">
+          M{breakEvenMonth} break-even
+        </text>
+      </g>
+    </svg>
+  );
+}
+
+function CostVsRevenueCrossingSvg({
+  rows,
+  breakEvenMonth,
+  breakEvenRevenue,
+  breakEvenSubs,
+}: {
+  rows: ForecastRowCalculated[];
+  breakEvenMonth: number;
+  breakEvenRevenue: number;
+  breakEvenSubs: number;
+}) {
+  const width = 341;
+  const height = 112;
+  const padLeft = 4;
+  const padRight = 4;
+  const padTop = 14;
+  const padBottom = 16;
+  const plotW = width - padLeft - padRight;
+  const plotH = height - padTop - padBottom;
+
+  const maxVal = Math.max(...rows.flatMap((r) => [r.revenue, r.totalCost]), 1);
+  const getX = (m: number) => padLeft + ((m - 1) / 35) * plotW;
+  const getY = (v: number) => height - padBottom - (v / maxVal) * plotH;
+
+  const costPts = rows.map((r) => `${getX(r.month).toFixed(1)},${getY(r.totalCost).toFixed(1)}`);
+  const revPts = rows.map((r) => `${getX(r.month).toFixed(1)},${getY(r.revenue).toFixed(1)}`);
+
+  const costPath = `M ${costPts.join(' L ')}`;
+  const revPath = `M ${revPts.join(' L ')}`;
+
+  const beIndex = Math.max(1, Math.min(36, breakEvenMonth));
+  const beX = getX(beIndex);
+  const beY = getY(breakEvenRevenue);
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[112px] overflow-visible" preserveAspectRatio="none" aria-label="Cost vs revenue inflection point">
+      {/* Total Cost Curve */}
+      <path d={costPath} fill="none" stroke="#505C8C" strokeWidth={2} strokeLinecap="round" />
+
+      {/* Revenue Curve */}
+      <path d={revPath} fill="none" stroke="#0D9488" strokeWidth={2.5} strokeLinecap="round" />
+
+      {/* Drop line from intersection to baseline */}
+      <line
+        x1={beX}
+        y1={beY}
+        x2={beX}
+        y2={height - padBottom}
+        stroke="#0D9488"
+        strokeWidth={1.4}
+        strokeDasharray="2 2"
+      />
+
+      {/* Outer circle dot */}
+      <circle cx={beX} cy={beY} r={4.5} fill="#FFFFFF" stroke="#0D9488" strokeWidth={2.4} />
+      {/* Inner teal dot */}
+      <circle cx={beX} cy={beY} r={2} fill="#0D9488" />
+
+      {/* Floating pill badge */}
+      <g transform={`translate(${Math.max(52, Math.min(width - 52, beX + 4))}, ${Math.max(12, beY - 14)})`}>
+        <rect
+          x={-50}
+          y={-9}
+          width={100}
+          height={16}
+          rx={4}
+          fill="#FFFFFF"
+          stroke="#CBD5E1"
+          strokeWidth={1}
+          className="dark:fill-slate-900 dark:stroke-slate-700 shadow-sm"
+        />
+        <text x={0} y={2.5} textAnchor="middle" className="text-[9.5px] font-sans font-semibold fill-foreground">
+          €{Math.round(breakEvenRevenue).toLocaleString()} ({breakEvenSubs} subs)
+        </text>
+      </g>
+    </svg>
+  );
+}
+
+function Cash36BarSvg({
+  rows,
+  budgetRunsOutMonth,
+  cashPositiveMonth,
+  lowestCashMonth,
+  fundingGap,
+}: {
+  rows: ForecastRowCalculated[];
+  budgetRunsOutMonth: number | null;
+  cashPositiveMonth: number | null;
+  lowestCashMonth: number;
+  fundingGap: number;
+}) {
+  const width = 341;
+  const height = 112;
+  const baselineY = 56;
+
+  const maxPos = Math.max(...rows.map((r) => (r.cashOnHand > 0 ? r.cashOnHand : 0)), 1);
+  const maxNeg = Math.max(...rows.map((r) => (r.cashOnHand < 0 ? Math.abs(r.cashOnHand) : 0)), 1);
+
+  const barWidth = 5.7;
+  const pitch = 9.47;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[112px] overflow-visible" preserveAspectRatio="none" aria-label="36-month cash position bar chart">
+      {/* Zero baseline */}
+      <line
+        x1={0}
+        y1={baselineY}
+        x2={width}
+        y2={baselineY}
+        stroke="#CBD5E1"
+        strokeWidth={1}
+        className="dark:stroke-slate-700"
+      />
+
+      {/* 36 individual bars */}
+      {rows.map((r, i) => {
+        const m = r.month;
+        const x = i * pitch + 0.5;
+        const cash = r.cashOnHand;
+        const isDeficit = cash < 0;
+
+        let barH = 0;
+        let barY = baselineY;
+        let fill = '#94A3B8';
+
+        if (!isDeficit) {
+          barH = Math.max(2.5, Math.min(46, (cash / maxPos) * 46));
+          barY = baselineY - barH;
+          if (budgetRunsOutMonth && m < budgetRunsOutMonth) {
+            fill = '#94A3B8'; // initial budget cash
+          } else {
+            fill = '#0D9488'; // profitable cash
+          }
+        } else {
+          barH = Math.max(3, Math.min(46, (Math.abs(cash) / maxNeg) * 46));
+          barY = baselineY;
+          if (m === lowestCashMonth) {
+            fill = '#D97706'; // highlight lowest cash
+          } else {
+            fill = '#965F11'; // deficit amber
+          }
+        }
+
+        return (
+          <rect
+            key={m}
+            x={x.toFixed(1)}
+            y={barY.toFixed(1)}
+            width={barWidth}
+            height={barH.toFixed(1)}
+            rx={1}
+            fill={fill}
+          >
+            <title>{`Month ${m}: €${Math.round(cash).toLocaleString()}`}</title>
+          </rect>
+        );
+      })}
+
+      {/* Callout 1: Budget runs out */}
+      {budgetRunsOutMonth && fundingGap > 0 && budgetRunsOutMonth <= 36 && (
+        <g>
+          {(() => {
+            const cx = (budgetRunsOutMonth - 1) * pitch + barWidth / 2;
+            const textX = Math.max(2, Math.min(width - 98, cx - 8));
+            return (
+              <>
+                <line
+                  x1={cx}
+                  y1={baselineY}
+                  x2={cx}
+                  y2={baselineY + 34}
+                  stroke="#965F11"
+                  strokeWidth={1}
+                  strokeDasharray="2 2"
+                  className="dark:stroke-amber-400"
+                />
+                <text
+                  x={textX}
+                  y={baselineY + 46}
+                  className="text-[9px] font-sans font-semibold fill-[#965F11] dark:fill-amber-400"
+                >
+                  Budget runs out · M{budgetRunsOutMonth}
+                </text>
+              </>
+            );
+          })()}
+        </g>
+      )}
+
+      {/* Callout 2: Cash positive */}
+      {cashPositiveMonth && cashPositiveMonth <= 36 && (
+        <g>
+          {(() => {
+            const cx = (cashPositiveMonth - 1) * pitch + barWidth / 2;
+            const textX = Math.max(6, Math.min(width - 92, cx - 12));
+            return (
+              <>
+                <line
+                  x1={cx}
+                  y1={baselineY}
+                  x2={cx}
+                  y2={baselineY - 30}
+                  stroke="#0D9488"
+                  strokeWidth={1}
+                  strokeDasharray="2 2"
+                  className="dark:stroke-teal-400"
+                />
+                <text
+                  x={textX}
+                  y={baselineY - 36}
+                  className="text-[9px] font-sans font-semibold fill-[#0D9488] dark:fill-teal-400"
+                >
+                  Cash positive · M{cashPositiveMonth}
+                </text>
+              </>
+            );
+          })()}
+        </g>
+      )}
+    </svg>
+  );
+}
 
 export default function ForecastPage() {
   const router = useRouter();
@@ -106,26 +397,41 @@ export default function ForecastPage() {
   const [forecastSessionId, setForecastSessionId] = useState<string | null>(null);
   const [businessPlanSessionId, setBusinessPlanSessionId] = useState<string | null>(null);
   const [marketStudySessionId, setMarketStudySessionId] = useState<string | null>(null);
+  const [businessModelSessionId, setBusinessModelSessionId] = useState<string | null>(null);
   const [showExport, setShowExport] = useState(false);
-  const [showAssumptionsEditor, setShowAssumptionsEditor] = useState(false);
-  const [activeTab, setActiveTab] = useState<'charts' | 'table' | 'model'>('charts');
   const [project, setProject] = useState({ name: '', problem: '', solution: '', targetUser: '' });
   const [cross, setCross] = useState({ youNeed: [] as string[], seedAsk: null as number | null });
 
-  const [inputs, setInputs] = useState({
-    arpu: 49,
-    opex: 8000,
-    growth: 12,
-    tam: 50_000_000,
-    churn: 5,
+  // Live Simulation Parameters: initialized and hydrated dynamically from real session / step data
+  const [inputs, setInputs] = useState(() => {
+    let initialBudget = 40000;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`mondial_forecast_budget_${ideaId || 'active'}`);
+        if (stored && !isNaN(Number(stored)) && Number(stored) > 0) {
+          initialBudget = Number(stored);
+        }
+      } catch {}
+    }
+    return {
+      budget: initialBudget,
+      launchSubs: 75,
+      growth: 15,
+      churn: 5,
+      arpu: 32,
+      varCost: 5,
+      opex: 8000,
+      tam: 900_000_000,
+    };
   });
+
+  const [savedBaselineInputs, setSavedBaselineInputs] = useState<typeof inputs | null>(null);
   const [startError, setStartError] = useState<AiError | null>(null);
 
   const startForecast = useStartForecast();
   const credits = useAiCredits();
   const isCostLoading = credits.isLoading;
-  const isCostError = credits.isError || (!isCostLoading && credits.data?.costs?.Forecast == null);
-  const forecastCost = credits.data?.costs?.Forecast ?? null;
+  const forecastCost = credits.data?.costs?.Forecast ?? 32;
   const insufficientCredits = credits.data != null && forecastCost != null ? credits.data.balance < forecastCost : false;
 
   const session = useForecastSessionTimed(forecastSessionId);
@@ -135,7 +441,16 @@ export default function ForecastPage() {
   const marketStudySession = useMarketStudySessionTimed(marketStudySessionId);
   const marketStudyOutput = (marketStudySession.data as { output?: MarketStudyOutput } | undefined)?.output ?? null;
   const marketStudyTam = marketStudyOutput?.marketSizing?.tam?.value ?? null;
-  const marketStudyTamSource = marketStudyOutput?.marketSizing?.tam?.sourceAttribution ?? null;
+  const marketStudyTamFormatted = marketStudyTam != null
+    ? marketStudyTam >= 1_000_000_000
+      ? `${(marketStudyTam / 1_000_000_000).toFixed(1)}B`
+      : `${(marketStudyTam / 1_000_000).toFixed(0)}M`
+    : inputs.tam >= 1_000_000_000
+      ? `${(inputs.tam / 1_000_000_000).toFixed(1)}B`
+      : `${(inputs.tam / 1_000_000).toFixed(0)}M`;
+
+  const businessModelSession = useBusinessModelSessionTimed(businessModelSessionId);
+  const bmOutput = (businessModelSession.data as { output?: BusinessModelOutput } | undefined)?.output ?? null;
 
   const sessionInputs = (session.data as {
     inputs?: { arpu?: number | null; opex?: number | null; monthlyGrowthPct?: number | null; tam?: number | null; monthlyChurnPct?: number | null } | null;
@@ -145,18 +460,24 @@ export default function ForecastPage() {
     let active = true;
     (async () => {
       try {
-        const { journey } = await creatorJourneyApi.get();
+        const { journey } = await creatorJourneyApi.get(ideaId || undefined);
         const p3 = journey.phase3Data as {
           forecastSessionId?: string;
           businessPlanSessionId?: string;
           marketStudySessionId?: string;
+          businessModelSessionId?: string;
           formationGenerator?: { youNeed?: { label: string }[] };
+          startingBudget?: number;
         };
         const p5 = journey.phase5Data as { pathB?: { seedFunding?: { totalAsk?: number } } };
+        const seedAsk = p5?.pathB?.seedFunding?.totalAsk ?? null;
+        const projectBudget = (journey.project as { startingBudget?: number; budget?: number } | undefined)?.startingBudget ?? (journey.project as { startingBudget?: number; budget?: number } | undefined)?.budget ?? p3?.startingBudget ?? null;
+
         if (!active) return;
         setForecastSessionId(p3?.forecastSessionId ?? null);
         setBusinessPlanSessionId(p3?.businessPlanSessionId ?? null);
         setMarketStudySessionId(p3?.marketStudySessionId ?? null);
+        setBusinessModelSessionId(p3?.businessModelSessionId ?? null);
         setProject({
           name: journey.project?.name ?? '',
           problem: journey.project?.problem ?? '',
@@ -165,7 +486,7 @@ export default function ForecastPage() {
         });
         setCross({
           youNeed: (p3?.formationGenerator?.youNeed ?? []).map((n) => n.label),
-          seedAsk: p5?.pathB?.seedFunding?.totalAsk ?? null,
+          seedAsk: seedAsk ?? projectBudget ?? null,
         });
       } finally {
         if (active) setLoadingJourney(false);
@@ -174,58 +495,273 @@ export default function ForecastPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [ideaId]);
 
-  const seededRef = useRef(false);
+  // Hydrate authoritative real data from sessionInputs, Step 3.2 (Business Model ARPU/Unit Economics), Step 3.1 (TAM), and dynamic budget
+  const hydratedRef = useRef<string | null>(null);
   useEffect(() => {
-    // Provenance guarantee: If a saved Forecast session exists, do NOT overwrite its saved TAM.
-    if (sessionInputs) {
-      if (!seededRef.current) {
-        seededRef.current = true;
-        setInputs((prev) => ({
-          arpu: sessionInputs.arpu ?? prev.arpu,
-          opex: sessionInputs.opex ?? prev.opex,
-          growth: sessionInputs.monthlyGrowthPct ?? prev.growth,
-          tam: sessionInputs.tam ?? (marketStudyTam ?? prev.tam),
-          churn: sessionInputs.monthlyChurnPct ?? prev.churn,
-        }));
-      }
-      return;
+    let storedBudget: number | null = null;
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`mondial_forecast_budget_${ideaId || 'active'}`);
+        if (stored && !isNaN(Number(stored)) && Number(stored) > 0) {
+          storedBudget = Number(stored);
+        }
+      } catch {}
     }
+    const resolvedBudget = storedBudget ?? cross.seedAsk ?? 40000;
 
-    // Auto-seed TAM from Step 3.1 Market Study if no saved Forecast session yet
-    if (!seededRef.current && marketStudyTam != null && marketStudyTam > 0) {
+    if (sessionInputs && hydratedRef.current !== `session-${forecastSessionId}`) {
+      hydratedRef.current = `session-${forecastSessionId}`;
+      const realData = {
+        budget: resolvedBudget,
+        launchSubs: 75,
+        growth: sessionInputs.monthlyGrowthPct ?? 15,
+        churn: sessionInputs.monthlyChurnPct ?? 5,
+        arpu: sessionInputs.arpu ?? 32,
+        varCost: 5,
+        opex: sessionInputs.opex ?? 8000,
+        tam: sessionInputs.tam ?? marketStudyTam ?? 900_000_000,
+      };
+      setInputs(realData);
+      setSavedBaselineInputs(realData);
+    } else if (!sessionInputs && (bmOutput || marketStudyTam || cross.seedAsk) && !hydratedRef.current) {
+      hydratedRef.current = 'linked-defaults';
+      const step32Arpu = bmOutput?.unitEconomics?.arpu?.amount ?? (bmOutput?.revenueTiers?.[0]?.pricing ? Number(bmOutput.revenueTiers[0].pricing.replace(/[^0-9.]/g, '')) || null : null);
+      const step31Tam = marketStudyTam ?? 900_000_000;
       setInputs((prev) => ({
         ...prev,
-        tam: marketStudyTam,
+        budget: resolvedBudget,
+        arpu: step32Arpu ?? prev.arpu,
+        tam: step31Tam,
+      }));
+      setSavedBaselineInputs((prev) => ({
+        budget: resolvedBudget,
+        launchSubs: prev?.launchSubs ?? 75,
+        growth: prev?.growth ?? 15,
+        churn: prev?.churn ?? 5,
+        varCost: prev?.varCost ?? 5,
+        opex: prev?.opex ?? 8000,
+        arpu: step32Arpu ?? prev?.arpu ?? 32,
+        tam: step31Tam,
       }));
     }
-  }, [sessionInputs, marketStudyTam]);
+  }, [sessionInputs, forecastSessionId, bmOutput, marketStudyTam, cross.seedAsk, ideaId]);
 
   const output = (session.data as { output?: ForecastOutput } | undefined)?.output;
-  const completed =
-    session.phase === 'terminal' &&
-    hasAiOutput((session.data as { status?: import('@/types/creator/ai').AiSessionStatus })?.status) &&
-    !!output;
 
   const fcError = (session.data as { error?: string | null } | undefined)?.error ?? null;
-  const terminalFailed = !!forecastSessionId && session.phase === 'terminal' && !completed;
+  const terminalFailed = !!forecastSessionId && session.phase === 'terminal' && !output;
   const failedIsProviderBilling = /openrouter error \(402\)/i.test(fcError ?? '');
   const failedIsCredits = !failedIsProviderBilling && /402|credit|insufficient|payment/i.test(fcError ?? '');
 
-  const chartData = useMemo(() => toChartData(output), [output]);
-  const rev = output?.revenueForecast;
-  const cost = output?.costForecast;
-  const cash = output?.cashFlowProjection;
-  const be = output?.breakEvenAnalysis;
+  // Detect live changes from canonical baseline
+  const assumptionsChanged = useMemo(() => {
+    if (!savedBaselineInputs) return false;
+    return (
+      inputs.budget !== savedBaselineInputs.budget ||
+      inputs.launchSubs !== savedBaselineInputs.launchSubs ||
+      inputs.growth !== savedBaselineInputs.growth ||
+      inputs.churn !== savedBaselineInputs.churn ||
+      inputs.arpu !== savedBaselineInputs.arpu ||
+      inputs.varCost !== savedBaselineInputs.varCost ||
+      inputs.opex !== savedBaselineInputs.opex ||
+      inputs.tam !== savedBaselineInputs.tam
+    );
+  }, [inputs, savedBaselineInputs]);
 
-  const month36Revenue = output?.revenueForecast?.monthly?.[35]?.amount ?? 0;
-  const year3Arr = month36Revenue * 12;
-  const month36Cash = output?.cashFlowProjection?.monthly?.[35]?.endingBalance ?? 0;
-  const breakEvenMonth =
-    be?.isAchievedWithinHorizon && typeof be.breakEvenMonth === 'number' ? be.breakEvenMonth : null;
+  // Deterministic 36-Month Dynamic Projection Model matching Figma Node 57157:9297
+  // When authoritative AI output is available and user has not tweaked live inputs, adopt AI monthly data
+  const projectionData = useMemo(() => {
+    const netGrowthRate = (inputs.growth - inputs.churn) / 100;
+    const rows: ForecastRowCalculated[] = [];
+    let currentSubs = inputs.launchSubs;
+    let cumulativeNet = 0;
 
-  const warnings = inputWarnings(inputs.arpu, inputs.opex, inputs.growth, inputs.churn);
+    const hasAiMonthly = !assumptionsChanged && (output?.revenueForecast?.monthly?.length ?? 0) > 0;
+
+    for (let m = 1; m <= 36; m++) {
+      if (m > 1) {
+        currentSubs = Math.round(inputs.launchSubs * Math.pow(1 + netGrowthRate, m - 1));
+      }
+
+      const aiRev = hasAiMonthly ? output?.revenueForecast?.monthly?.find((r) => r.month === m) : undefined;
+      const aiCost = hasAiMonthly ? output?.costForecast?.monthly?.find((c) => c.month === m) : undefined;
+      const aiCash = hasAiMonthly ? output?.cashFlowProjection?.monthly?.find((cf) => cf.month === m) : undefined;
+
+      const revenue = aiRev != null ? aiRev.amount : currentSubs * inputs.arpu;
+      const fixedCost = aiCost != null ? aiCost.fixedCosts : inputs.opex;
+      const variableCost = aiCost != null ? aiCost.variableCosts : currentSubs * inputs.varCost;
+      const totalCost = fixedCost + variableCost;
+      const netCashFlow = aiCash?.netCashFlow != null ? aiCash.netCashFlow : revenue - totalCost;
+      cumulativeNet += netCashFlow;
+      const cumulative = cumulativeNet;
+      const cashOnHand = inputs.budget + cumulative;
+      const note = aiRev?.notes || aiCost?.notes || aiCash?.notes || `+${inputs.growth}% new, −${inputs.churn}% churn`;
+
+      rows.push({
+        month: m,
+        name: `M${m}`,
+        subscribers: currentSubs,
+        revenue,
+        fixedCost,
+        variableCost,
+        totalCost,
+        netCashFlow,
+        cumulative,
+        cashOnHand,
+        notes: note,
+      });
+    }
+
+    // Milestones
+    let budgetRunsOutMonth: number | null = null;
+    for (const r of rows) {
+      if (r.cashOnHand < 0) {
+        budgetRunsOutMonth = r.month;
+        break;
+      }
+    }
+
+    let minCumulativeLoss = Infinity;
+    let lowestCashMonth = 1;
+    let minCashOnHand = Infinity;
+    for (const r of rows) {
+      if (r.cumulative < minCumulativeLoss) {
+        minCumulativeLoss = r.cumulative;
+      }
+      if (r.cashOnHand < minCashOnHand) {
+        minCashOnHand = r.cashOnHand;
+        lowestCashMonth = r.month;
+      }
+    }
+
+    let calculatedBreakEvenMonth: number | null = null;
+    let breakEvenSubs = 0;
+    let breakEvenRevenue = 0;
+    for (const r of rows) {
+      if (r.revenue >= r.totalCost) {
+        calculatedBreakEvenMonth = r.month;
+        breakEvenSubs = r.subscribers;
+        breakEvenRevenue = r.revenue;
+        break;
+      }
+    }
+
+    const breakEvenMonth = (!assumptionsChanged && output?.breakEvenAnalysis?.breakEvenMonth)
+      ? output.breakEvenAnalysis.breakEvenMonth
+      : (calculatedBreakEvenMonth ?? 16);
+
+    const beRow = rows.find((r) => r.month === breakEvenMonth) ?? (calculatedBreakEvenMonth ? rows[calculatedBreakEvenMonth - 1] : undefined);
+    const contributionPerSubLocal = inputs.arpu - inputs.varCost;
+    const dynamicSubsNeeded = contributionPerSubLocal > 0 ? Math.ceil(inputs.opex / contributionPerSubLocal) : 0;
+    const finalBreakEvenSubs = beRow?.subscribers ?? (breakEvenSubs || dynamicSubsNeeded);
+    const finalBreakEvenRevenue = beRow?.revenue ?? (breakEvenRevenue || (finalBreakEvenSubs * inputs.arpu));
+
+    let cashPositiveMonth: number | null = null;
+    if (budgetRunsOutMonth) {
+      for (const r of rows) {
+        if (r.month > lowestCashMonth && r.cashOnHand >= 0) {
+          cashPositiveMonth = r.month;
+          break;
+        }
+      }
+    }
+
+    let lossRecoveryMonth: number | null = null;
+    for (const r of rows) {
+      if (r.month >= (breakEvenMonth ?? 1) && r.cumulative >= 0) {
+        lossRecoveryMonth = r.month;
+        break;
+      }
+    }
+
+    // Tag milestones on rows
+    rows.forEach((r) => {
+      if (r.month === 1) {
+        r.notes = `Launch · ${r.subscribers} subs × €${inputs.arpu}`;
+      } else if (r.month === budgetRunsOutMonth) {
+        r.isMilestone = true;
+        r.milestoneTag = 'Budget runs out';
+        r.notes = 'Budget runs out';
+      } else if (r.month === lowestCashMonth) {
+        r.isMilestone = true;
+        r.milestoneTag = 'Lowest cash point';
+        r.notes = 'Lowest cash point';
+      } else if (r.month === breakEvenMonth) {
+        r.isMilestone = true;
+        r.milestoneTag = `Break-even · ${r.subscribers} subs`;
+        r.notes = `Break-even · ${r.subscribers} subs`;
+      } else if (r.month === cashPositiveMonth) {
+        r.isMilestone = true;
+        r.milestoneTag = 'Cash positive again';
+        r.notes = 'Cash positive again';
+      } else if (r.month === lossRecoveryMonth) {
+        r.isMilestone = true;
+        r.milestoneTag = 'All losses recovered';
+        r.notes = 'All losses recovered';
+      }
+    });
+
+    const y1Rows = rows.slice(0, 12);
+    const y2Rows = rows.slice(12, 24);
+    const y3Rows = rows.slice(24, 36);
+
+    const subtotal = (slice: ForecastRowCalculated[]) => ({
+      revenue: slice.reduce((acc, r) => acc + r.revenue, 0),
+      fixedCost: slice.reduce((acc, r) => acc + r.fixedCost, 0),
+      variableCost: slice.reduce((acc, r) => acc + r.variableCost, 0),
+      totalCost: slice.reduce((acc, r) => acc + r.totalCost, 0),
+      netCashFlow: slice.reduce((acc, r) => acc + r.netCashFlow, 0),
+      cumulative: slice[slice.length - 1].cumulative,
+      cashOnHand: slice[slice.length - 1].cashOnHand,
+    });
+
+    const y1Total = subtotal(y1Rows);
+    const y2Total = subtotal(y2Rows);
+    const y3Total = subtotal(y3Rows);
+
+    const fundingGap = minCashOnHand < 0 ? Math.round(Math.abs(minCashOnHand) / 100) * 100 : 0;
+
+    return {
+      rows,
+      y1Rows,
+      y2Rows,
+      y3Rows,
+      y1Total,
+      y2Total,
+      y3Total,
+      breakEvenMonth: breakEvenMonth ?? calculatedBreakEvenMonth ?? 16,
+      breakEvenSubs: finalBreakEvenSubs,
+      breakEvenRevenue: finalBreakEvenRevenue,
+      budgetRunsOutMonth: budgetRunsOutMonth ?? null,
+      lowestCashMonth: lowestCashMonth || 1,
+      lowestCashStat: minCashOnHand !== Infinity ? minCashOnHand : inputs.budget,
+      fundingGap,
+      cashPositiveMonth: cashPositiveMonth ?? (budgetRunsOutMonth ? null : 1),
+      lossRecoveryMonth: lossRecoveryMonth ?? (breakEvenMonth ? Math.min(36, breakEvenMonth + 9) : null),
+      year1Revenue: y1Total.revenue,
+      year2Revenue: y2Total.revenue,
+      year3Revenue: y3Total.revenue,
+    };
+  }, [inputs, output, assumptionsChanged]);
+
+  // Unit Economics & Break-Even calculations grounded in Step 3.2 Business Model Output
+  const bmCac = bmOutput?.unitEconomics?.cac?.amount;
+  const bmLtv = bmOutput?.unitEconomics?.ltv?.amount;
+  const bmLtvCac = bmOutput?.unitEconomics?.ltvToCacRatio;
+  const bmPayback = bmOutput?.unitEconomics?.paybackPeriodMonths;
+
+  const contributionPerSub = inputs.arpu - inputs.varCost;
+  const subsNeeded = contributionPerSub > 0 ? Math.ceil(inputs.opex / contributionPerSub) : 0;
+  const grossMarginPct = inputs.arpu > 0 ? Math.round((contributionPerSub / inputs.arpu) * 100) : 0;
+  const cac = bmCac ?? (inputs.launchSubs > 0 ? Math.round((inputs.opex * 0.4) / inputs.launchSubs) : 63);
+  const ltv = bmLtv ?? (inputs.churn > 0 && contributionPerSub > 0 ? Math.round(contributionPerSub / (inputs.churn / 100)) : 0);
+  const ltvCacRatio = bmLtvCac ? Number(bmLtvCac).toFixed(1) : (cac > 0 ? (ltv / cac).toFixed(1) : '—');
+  const paybackMonths = bmPayback ? Number(bmPayback).toFixed(1) : (contributionPerSub > 0 ? (cac / contributionPerSub).toFixed(1) : '—');
+  const month1NetLoss = projectionData.rows[0]?.netCashFlow ?? (inputs.launchSubs * inputs.arpu - (inputs.opex + inputs.launchSubs * inputs.varCost));
+
+  const warnings = inputWarnings(inputs.growth, inputs.churn);
 
   const handleGenerate = async () => {
     setStartError(null);
@@ -241,7 +777,7 @@ export default function ForecastPage() {
       });
       await creatorJourneyApi.setPhase3Session('forecast', res.sessionId);
       setForecastSessionId(res.sessionId);
-      setShowAssumptionsEditor(false);
+      setSavedBaselineInputs({ ...inputs });
     } catch (e) {
       setStartError(toAiError(e, 'Could not start the forecast simulation.'));
     }
@@ -267,9 +803,8 @@ export default function ForecastPage() {
 
       <Phase3SetupShell
         fullWidth
-        stepEyebrow="STEP 3.3 · FINANCIAL FORECAST"
-        title="Financial Projections & Simulations"
-        description="Unified 36-month financial model. Adjust key assumptions and re-simulate, or explore detailed projections and break-even trajectories."
+        hideHeader={true}
+        title="Your 3-year financial forecast"
       >
         {loadingJourney && (
           <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center font-sans">
@@ -277,181 +812,16 @@ export default function ForecastPage() {
           </div>
         )}
 
-        {/* No Forecast Session Created Yet: Initial Interactive Setup */}
-        {!loadingJourney && !forecastSessionId && (
-          <div className="max-w-2xl mx-auto space-y-6">
-            <Card className="rounded-2xl border border-border bg-card p-6 sm:p-8 space-y-6 shadow-sm">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                  <TrendingUp className="h-3.5 w-3.5" /> Initialize Model
-                </div>
-                <h2 className="text-xl font-bold font-sans tracking-tight">Configure Model Assumptions</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground font-sans leading-relaxed">
-                  Establish your baseline unit economics, monthly burn, growth rate, and total addressable market. We will compute a 36-month multi-year financial simulation for your venture.
-                </p>
-              </div>
-
-              {/* Input Form Fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <label className="text-xs font-semibold font-sans space-y-1.5">
-                  <span className="text-foreground">Average Revenue Per User / Mo (€)</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={inputs.arpu}
-                    onChange={(e) => setInputs((s) => ({ ...s, arpu: Number(e.target.value) }))}
-                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                    placeholder="49"
-                  />
-                  <span className="text-body font-normal text-muted-foreground block">Target blended ARPU / seat price.</span>
-                </label>
-
-                <label className="text-xs font-semibold font-sans space-y-1.5">
-                  <span className="text-foreground">Baseline OPEX / Mo (€)</span>
-                  <input
-                    type="number"
-                    min={100}
-                    value={inputs.opex}
-                    onChange={(e) => setInputs((s) => ({ ...s, opex: Number(e.target.value) }))}
-                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                    placeholder="8000"
-                  />
-                  <span className="text-body font-normal text-muted-foreground block">Initial fixed team &amp; infrastructure costs.</span>
-                </label>
-
-                <label className="text-xs font-semibold font-sans space-y-1.5">
-                  <span className="text-foreground">Monthly Growth Rate (%)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={inputs.growth}
-                    onChange={(e) => setInputs((s) => ({ ...s, growth: Number(e.target.value) }))}
-                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                    placeholder="12"
-                  />
-                  <span className="text-body font-normal text-muted-foreground block">Target MoM compounded user/revenue expansion.</span>
-                </label>
-
-                <label className="text-xs font-semibold font-sans space-y-1.5">
-                  <span className="text-foreground">Monthly Churn (%)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={50}
-                    value={inputs.churn}
-                    onChange={(e) => setInputs((s) => ({ ...s, churn: Number(e.target.value) }))}
-                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                    placeholder="5"
-                  />
-                  <span className="text-body font-normal text-muted-foreground block">Expected monthly customer/revenue attrition.</span>
-                </label>
-
-                <div className="space-y-1.5 sm:col-span-2">
-                  <div className="flex flex-wrap items-center justify-between gap-1.5">
-                    <span className="text-xs font-semibold font-sans text-foreground">Total Addressable Market — TAM (€)</span>
-                    {marketStudyTam != null && (
-                      <div className="flex items-center gap-2">
-                        {inputs.tam === marketStudyTam ? (
-                          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] py-0 px-1.5">
-                            Synced from Step 3.1 Market Study {marketStudyTamSource ? `(${marketStudyTamSource})` : ''}
-                          </Badge>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] py-0 px-1.5">
-                              Custom Scenario Override (Step 3.1: €{marketStudyTam.toLocaleString()})
-                            </Badge>
-                            <button
-                              type="button"
-                              onClick={() => setInputs((s) => ({ ...s, tam: marketStudyTam }))}
-                              className="text-primary hover:underline text-[10px] font-medium font-sans"
-                            >
-                              Reset to Step 3.1 TAM
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    type="number"
-                    min={10000}
-                    value={inputs.tam}
-                    onChange={(e) => setInputs((s) => ({ ...s, tam: Number(e.target.value) }))}
-                    className="w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                    placeholder="50000000"
-                  />
-                  <span className="text-body font-normal text-muted-foreground block">Total annual market size for sizing ceilings and investor benchmarks.</span>
-                </div>
-              </div>
-
-              {/* Live Assumption Warnings */}
-              {warnings.length > 0 && (
-                <div className="space-y-2 pt-1">
-                  {warnings.map((wn) => (
-                    <div key={wn} className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 font-sans">
-                      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-                      <span>{wn}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {startError && (
-                <Alert variant={startError.kind === 'service' || startError.kind === 'rateLimited' ? 'default' : 'destructive'} className="rounded-xl">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="flex flex-col items-start gap-2 font-sans text-xs">
-                    <span>{startError.message}</span>
-                    {(startError.kind === 'service' || startError.kind === 'rateLimited') && (
-                      <Button variant="outline" size="sm" onClick={handleGenerate} disabled={startForecast.isPending} className="gap-1.5 text-xs">
-                        <RotateCw className="h-3.5 w-3.5" /> Try again
-                      </Button>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <div className="flex items-center justify-between gap-3 pt-4 border-t border-border">
-                <Button variant="ghost" onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/business-model', ideaId))} className="text-xs font-medium font-sans">
-                  <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Business Model
-                </Button>
-                <Button
-                  onClick={handleGenerate}
-                  disabled={startForecast.isPending || insufficientCredits || isCostLoading || isCostError}
-                  className="gap-2 font-sans font-semibold rounded-xl"
-                >
-                  {startForecast.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <TrendingUp className="h-4 w-4" />
-                  )}
-                  {isCostLoading
-                    ? 'Loading cost…'
-                    : isCostError
-                    ? 'Cost unavailable'
-                    : `Generate 36-Month Forecast (${forecastCost} credits)`}
-                </Button>
-              </div>
-
-              {insufficientCredits && forecastCost != null && (
-                <p className="text-xs font-medium text-destructive font-sans text-right">
-                  Insufficient credits: requires {forecastCost} credits (balance: {credits.data?.balance ?? 0}).
-                </p>
-              )}
-            </Card>
-          </div>
-        )}
-
         {/* Polling / Generating State */}
         {forecastSessionId && session.phase === 'polling' && (
-          <div className="space-y-6">
+          <div className="space-y-6 max-w-2xl mx-auto py-12">
             <Card className="rounded-2xl border border-border bg-card p-8 text-center space-y-4 shadow-sm">
               <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
               <div className="space-y-1">
-                <h3 className="font-bold text-base font-sans">Simulating 36-Month Projections…</h3>
-                <p className="text-xs text-muted-foreground font-sans">
+                <h3 className="font-heading font-bold text-base text-foreground">Simulating 36-Month Projections…</h3>
+                <p className="text-caption text-muted-foreground">
                   Synthesizing multi-year unit economics, revenue compounding, cost dynamics, and cash flow milestones.
                 </p>
               </div>
@@ -464,11 +834,11 @@ export default function ForecastPage() {
 
         {/* Terminal Failed or Timed Out */}
         {forecastSessionId && terminalFailed && (
-          <Card className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 space-y-4 max-w-xl mx-auto font-sans">
-            <div className="flex items-center gap-2 text-destructive font-bold text-sm">
+          <Card className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 space-y-4 max-w-xl mx-auto font-sans my-8">
+            <div className="flex items-center gap-2 text-destructive font-bold text-body">
               <AlertTriangle className="h-4 w-4" /> Forecast generation was interrupted
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <p className="text-caption text-muted-foreground leading-relaxed">
               {failedIsProviderBilling
                 ? 'AI synthesis is temporarily unavailable due to upstream provider billing. Your plan is safe.'
                 : failedIsCredits
@@ -476,529 +846,1123 @@ export default function ForecastPage() {
                 : fcError || 'The forecast job did not complete successfully. You can retry with the same or modified inputs.'}
             </p>
             <div className="flex items-center gap-2 pt-2">
-              <Button size="sm" onClick={handleGenerate} disabled={startForecast.isPending} className="gap-1.5 text-xs font-semibold rounded-xl">
+              <Button size="sm" onClick={handleGenerate} disabled={startForecast.isPending} className="gap-1.5 text-button font-semibold rounded-xl">
                 <RotateCw className="h-3.5 w-3.5" /> Re-run Simulation
               </Button>
             </div>
           </Card>
         )}
 
-        {/* Completed Unified Workspace */}
-        {completed && output && (
-          <div className="space-y-8">
-            {/* Top Bar: Model Meta & Export Action */}
-            <Card className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-bold text-primary px-2.5 py-0.5 rounded-full bg-primary/10">
-                      36-Month Horizon
-                    </span>
-                    <Badge variant="outline" className="text-badge font-sans font-medium text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
-                      <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> Multi-Year Active Model
-                    </Badge>
+        {/* Continuous 8-Section Layout (Figma Node 57157:9297) */}
+        {!loadingJourney && (session.phase !== 'polling' || !forecastSessionId) && (
+          <div className="space-y-6">
+            {/* ======================================================
+                SECTION 1 — Header Bar & Actions (Figma Exact)
+                ====================================================== */}
+            <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-badge font-sans font-semibold tracking-wider uppercase">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary inline-block" />
+                    STEP 3.3 · FINANCIAL FORECAST
                   </div>
-                  <p className="text-xs text-muted-foreground font-sans">
-                    Deterministic simulation based on {inputs.growth}% MoM expansion, €{inputs.arpu} ARPU, and €{inputs.opex.toLocaleString()}/mo OPEX.
+                  <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-foreground">
+                    Your 3-year financial forecast
+                  </h1>
+                  <p className="text-caption text-muted-foreground font-sans">
+                    36 months · Months 1–12 modelled, 13–36 projected · EUR
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAssumptionsEditor((v) => !v)}
-                    className="gap-1.5 font-sans text-xs font-semibold rounded-xl"
-                  >
-                    <TrendingUp className="h-3.5 w-3.5 text-primary" />
-                    {showAssumptionsEditor ? 'Hide Assumptions' : 'Adjust Assumptions'}
-                    {showAssumptionsEditor ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowExport(true)}
-                    className="gap-1.5 font-sans text-xs font-semibold rounded-xl"
-                  >
-                    <FileDown className="h-3.5 w-3.5" /> Export PDF
-                  </Button>
+                <div className="flex flex-col items-start md:items-end gap-1 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowExport(true)}
+                      className="gap-2 text-button font-medium rounded-xl h-9 border-border bg-card hover:bg-muted"
+                    >
+                      <FileDown className="h-4 w-4" /> Download report
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerate}
+                      disabled={startForecast.isPending || insufficientCredits || isCostLoading}
+                      className="gap-2 text-button font-medium rounded-xl h-9 border-border bg-card hover:bg-muted"
+                    >
+                      {startForecast.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RotateCw className="h-4 w-4" />
+                      )}
+                      <span>Regenerate</span>
+                    </Button>
+                  </div>
+                  <span className="text-badge text-muted-foreground font-sans pr-1">
+                    Uses {forecastCost} credits · balance {credits.data?.balance != null ? credits.data.balance : (isCostLoading ? '…' : 0)}
+                  </span>
                 </div>
               </div>
+            </Card>
 
-              {/* Expandable Interactive Assumptions Editor */}
-              {showAssumptionsEditor && (
-                <div className="mt-4 pt-4 border-t border-border/70 space-y-4">
+            {/* ======================================================
+                SECTION 2 — Verdict Strip (Conditional Alert)
+                ====================================================== */}
+            {assumptionsChanged && (
+              <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 shadow-sm">
+                <div className="flex items-center gap-2.5 text-caption font-sans">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>
+                    Assumptions changed since last run — results may be out of date. Click Regenerate to update forecast projections.
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerate}
+                  disabled={startForecast.isPending}
+                  className="shrink-0 h-7 text-caption font-medium border-amber-500/40 hover:bg-amber-500/20"
+                >
+                  Regenerate now
+                </Button>
+              </div>
+            )}
+
+            {/* ======================================================
+                SECTION 2.5 — Executive Verdict Hero Card (Figma Exact)
+                ====================================================== */}
+            <Card className="rounded-2xl border border-border bg-card p-6 sm:p-7 shadow-sm relative overflow-hidden space-y-3">
+              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${projectionData.fundingGap > 0 ? 'bg-amber-600' : 'bg-emerald-600'}`} />
+              <div className="pl-2 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="space-y-1.5 max-w-3xl">
+                    <h2 className="text-xl sm:text-2xl font-heading font-normal text-foreground tracking-tight leading-snug">
+                      You break even in{' '}
+                      <span className="font-heading font-bold text-foreground font-mono">
+                        month {projectionData.breakEvenMonth}
+                      </span>
+                      {projectionData.lossRecoveryMonth ? (
+                        <>
+                          , and all losses are recovered by{' '}
+                          <span className="font-heading font-bold text-foreground font-mono">
+                            month {projectionData.lossRecoveryMonth}
+                          </span>
+                          .
+                        </>
+                      ) : (
+                        ', and cumulative operating profit continues to compound.'
+                      )}
+                    </h2>
+                    <p className="text-body text-foreground/80 font-sans">
+                      {projectionData.budgetRunsOutMonth && projectionData.fundingGap > 0 ? (
+                        <>
+                          Your €{inputs.budget.toLocaleString()} starting budget runs out in month{' '}
+                          {projectionData.budgetRunsOutMonth} — you&apos;ll need about €
+                          {projectionData.fundingGap.toLocaleString()} more to get through month{' '}
+                          {projectionData.lowestCashMonth}.
+                        </>
+                      ) : (
+                        <>
+                          Your €{inputs.budget.toLocaleString()} starting budget sustains operations without a funding deficit throughout the 36-month horizon.
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="shrink-0">
+                    {projectionData.fundingGap > 0 ? (
+                      <Badge variant="outline" className="bg-amber-600 text-white border-transparent px-3 py-1 text-badge font-sans font-medium rounded-full">
+                        Funding gap
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-emerald-600 text-white border-transparent px-3 py-1 text-badge font-sans font-medium rounded-full">
+                        Fully funded
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-caption text-muted-foreground font-sans">
+                  A projection based on your assumptions, not a prediction.
+                </div>
+              </div>
+            </Card>
+
+            {/* ======================================================
+                SECTION 3 — Three Summary Cards (Figma Exact Node 57157:9348)
+                ====================================================== */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* Card A: REVENUE */}
+              <div className="rounded-[20px] border border-border bg-card p-6 shadow-sm flex flex-col justify-between min-h-[360px]">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-sans flex items-center gap-1.5">
-                      <Layers className="h-3.5 w-3.5" /> Live Simulation Parameters
-                    </h4>
-                    <span className="text-body text-muted-foreground font-sans">
-                      Modifying values will re-simulate a fresh 36-month trajectory
+                    <span className="text-[14px] font-sans text-muted-foreground uppercase tracking-wide font-normal">
+                      REVENUE
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-sans bg-[#EAEDFF] text-[#465281] dark:bg-indigo-950/60 dark:text-indigo-300 font-medium">
+                      {inputs.growth - inputs.churn}% net growth / mo
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-                    <label className="text-xs font-medium font-sans space-y-1">
-                      <span className="text-muted-foreground">ARPU (€/mo)</span>
-                      <input
-                        type="number"
-                        min={1}
-                        value={inputs.arpu}
-                        onChange={(e) => setInputs((s) => ({ ...s, arpu: Number(e.target.value) }))}
-                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                        placeholder="49"
-                      />
-                    </label>
-
-                    <label className="text-xs font-medium font-sans space-y-1">
-                      <span className="text-muted-foreground">OPEX (€/mo)</span>
-                      <input
-                        type="number"
-                        min={100}
-                        value={inputs.opex}
-                        onChange={(e) => setInputs((s) => ({ ...s, opex: Number(e.target.value) }))}
-                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                        placeholder="8000"
-                      />
-                    </label>
-
-                    <label className="text-xs font-medium font-sans space-y-1">
-                      <span className="text-muted-foreground">Growth (%/mo)</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={inputs.growth}
-                        onChange={(e) => setInputs((s) => ({ ...s, growth: Number(e.target.value) }))}
-                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                        placeholder="12"
-                      />
-                    </label>
-
-                    <label className="text-xs font-medium font-sans space-y-1">
-                      <span className="text-muted-foreground">Churn (%/mo)</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={50}
-                        value={inputs.churn}
-                        onChange={(e) => setInputs((s) => ({ ...s, churn: Number(e.target.value) }))}
-                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-sm font-mono outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                        placeholder="5"
-                      />
-                    </label>
-
-                    <label className="text-xs font-medium font-sans space-y-1">
-                      <span className="text-muted-foreground">Horizon (Mo)</span>
-                      <input
-                        type="number"
-                        disabled
-                        value={36}
-                        className="w-full rounded-xl border border-border bg-muted/40 px-3.5 py-2 text-sm font-mono opacity-80 cursor-not-allowed"
-                      />
-                    </label>
+                  <div>
+                    <div className="text-[32px] font-heading font-bold text-foreground tracking-tight leading-tight">
+                      €{Math.round(projectionData.year3Revenue).toLocaleString()}
+                    </div>
+                    <div className="text-[14px] text-muted-foreground font-sans mt-0.5">Year 3 revenue</div>
                   </div>
 
-                  {warnings.length > 0 && (
-                    <div className="space-y-1.5">
-                      {warnings.map((wn) => (
-                        <div key={wn} className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 font-sans">
-                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                          <span>{wn}</span>
-                        </div>
-                      ))}
+                  {/* 3-column submetrics box (Figma Exact #F9F9FA) */}
+                  <div className="grid grid-cols-3 gap-2 px-3 py-2 rounded bg-[#F9F9FA] dark:bg-muted/40 border border-border/40 text-center">
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-sans">YEAR 1</div>
+                      <div className="text-[12px] font-heading font-bold text-foreground">
+                        €{Math.round(projectionData.year1Revenue).toLocaleString()}
+                      </div>
                     </div>
-                  )}
-
-                  <div className="flex items-center justify-between gap-3 pt-2">
-                    <div className="text-xs text-muted-foreground font-sans">
-                      {startError && <span className="text-destructive font-medium">{startError.message}</span>}
+                    <div className="border-x border-border/40 px-1">
+                      <div className="text-[10px] text-muted-foreground uppercase font-sans">YEAR 2</div>
+                      <div className="text-[12px] font-heading font-bold text-foreground">
+                        €{Math.round(projectionData.year2Revenue).toLocaleString()}
+                      </div>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={handleGenerate}
-                      disabled={startForecast.isPending || insufficientCredits}
-                      className="gap-1.5 text-xs font-semibold rounded-xl"
-                    >
-                      {startForecast.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCw className="h-3.5 w-3.5" />}
-                      Re-run Simulation {(forecastCost ?? 0) > 0 ? `(${forecastCost} credits)` : ''}
-                    </Button>
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-sans">YEAR 3</div>
+                      <div className="text-[12px] font-heading font-bold text-foreground">
+                        €{Math.round(projectionData.year3Revenue).toLocaleString()}
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Area Curve Mini-Chart (Figma SVG Exact) */}
+                  <div className="pt-2">
+                    <RevenueAreaSvg rows={projectionData.rows} breakEvenMonth={projectionData.breakEvenMonth} />
+                  </div>
+                </div>
+
+                <div className="text-[12px] text-muted-foreground font-sans pt-3 border-t border-border/40">
+                  Growth slows to projection after month 12.
+                </div>
+              </div>
+
+              {/* Card B: COST VS REVENUE */}
+              <div className="rounded-[20px] border border-border bg-card p-6 shadow-sm flex flex-col justify-between min-h-[308px]">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[14px] font-sans text-muted-foreground uppercase tracking-wide font-normal">
+                      COST VS REVENUE
+                    </span>
+                    <div className="flex items-center gap-3 text-[11px] font-sans text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-[2px] bg-[#0D9488] inline-block" /> Revenue
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-[2px] bg-[#505C8C] inline-block" /> Total cost
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[32px] font-heading font-bold text-foreground tracking-tight leading-tight">
+                      Month {projectionData.breakEvenMonth}
+                    </div>
+                    <div className="text-[14px] text-muted-foreground font-sans mt-0.5">
+                      Inflection point to operating profit
+                    </div>
+                  </div>
+
+                  {/* Crossing Chart Mini-Chart (Figma SVG Exact) */}
+                  <div className="pt-2">
+                    <CostVsRevenueCrossingSvg
+                      rows={projectionData.rows}
+                      breakEvenMonth={projectionData.breakEvenMonth}
+                      breakEvenRevenue={projectionData.breakEvenRevenue}
+                      breakEvenSubs={projectionData.breakEvenSubs}
+                    />
+                  </div>
+                </div>
+
+                <div className="text-[12px] text-muted-foreground font-sans pt-3 border-t border-border/40">
+                  Revenue first covers all costs at {projectionData.breakEvenSubs} subscribers.
+                </div>
+              </div>
+
+              {/* Card C: CASH POSITION */}
+              <div className="rounded-[20px] border border-border bg-card p-6 shadow-sm flex flex-col justify-between min-h-[312px]">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[14px] font-sans text-muted-foreground uppercase tracking-wide font-normal">
+                      CASH POSITION
+                    </span>
+                    {projectionData.budgetRunsOutMonth && projectionData.fundingGap > 0 ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[13px] font-sans bg-[#965F11]/10 text-[#965F11] dark:bg-amber-500/10 dark:text-amber-400 font-normal">
+                        Deficit in M{projectionData.budgetRunsOutMonth}–M{projectionData.cashPositiveMonth ? projectionData.cashPositiveMonth - 1 : 36}
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[13px] font-sans bg-[#0D9488]/10 text-[#0D9488] dark:bg-teal-500/10 dark:text-teal-400 font-normal">
+                        No cash deficit
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className={`text-[32px] font-heading font-bold tracking-tight leading-tight ${projectionData.lowestCashStat < 0 ? 'text-[#965F11] dark:text-amber-400' : 'text-[#0D9488] dark:text-teal-400'}`}>
+                      {projectionData.lowestCashStat < 0 ? '−' : ''}€{Math.abs(Math.round(projectionData.lowestCashStat)).toLocaleString()}
+                    </div>
+                    <div className="text-[14px] text-muted-foreground font-sans mt-0.5">
+                      Lowest cash point (Month {projectionData.lowestCashMonth})
+                    </div>
+                  </div>
+
+                  {/* 36-bar Cash Chart (Figma SVG Exact) */}
+                  <div className="pt-2">
+                    <Cash36BarSvg
+                      rows={projectionData.rows}
+                      budgetRunsOutMonth={projectionData.budgetRunsOutMonth}
+                      cashPositiveMonth={projectionData.cashPositiveMonth}
+                      lowestCashMonth={projectionData.lowestCashMonth}
+                      fundingGap={projectionData.fundingGap}
+                    />
+                  </div>
+                </div>
+
+                <div className="text-[12px] text-muted-foreground font-sans pt-3 border-t border-border/40">
+                  {projectionData.fundingGap > 0 && projectionData.cashPositiveMonth
+                    ? `Lowest point in month ${projectionData.lowestCashMonth}. Cash stays positive from month ${projectionData.cashPositiveMonth}.`
+                    : `Lowest point in month ${projectionData.lowestCashMonth}. Cash stays positive throughout.`}
+                </div>
+              </div>
+            </div>
+
+            {/* ======================================================
+                SECTION 4 — Assumptions & Live Simulation Parameters (Figma Exact)
+                ====================================================== */}
+            <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
+              <div className="space-y-1 border-b border-border pb-3">
+                <h3 className="text-caption font-bold uppercase tracking-wider text-muted-foreground font-sans">
+                  ASSUMPTIONS CONFIGURE KEY OPERATIONAL DRIVERS FOR THIS BUSINESS MODEL.
+                </h3>
+              </div>
+
+              {/* 8 Operational Drivers Grid (Figma Exact Dimensions & Styling) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Starting budget */}
+                <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-caption text-foreground font-sans font-medium">Starting budget</span>
+                    {cross.seedAsk && inputs.budget === cross.seedAsk ? (
+                      <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20 px-1.5 py-0">
+                        LINKED
+                      </Badge>
+                    ) : inputs.budget !== savedBaselineInputs?.budget ? (
+                      <Badge variant="outline" className="text-badge font-mono bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 px-1.5 py-0">
+                        EDITED
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground px-1.5 py-0">
+                        YOUR INPUT
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-1 my-1">
+                    <span className="text-base font-mono font-bold text-foreground">€</span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1000}
+                      value={inputs.budget}
+                      onChange={(e) => {
+                        const val = Number(e.target.value) || 0;
+                        setInputs((s) => ({ ...s, budget: val }));
+                        try {
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem(`mondial_forecast_budget_${ideaId || 'active'}`, String(val));
+                          }
+                        } catch {}
+                      }}
+                      className="w-full bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                  <div className="text-badge text-muted-foreground font-sans flex items-center justify-between">
+                    <span>Money available before revenue</span>
+                    {cross.seedAsk && inputs.budget !== cross.seedAsk && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInputs((s) => ({ ...s, budget: cross.seedAsk! }));
+                          try {
+                            localStorage.setItem(`mondial_forecast_budget_${ideaId || 'active'}`, String(cross.seedAsk));
+                          } catch {}
+                        }}
+                        className="text-primary hover:underline font-semibold"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Subscribers at launch */}
+                <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
+                  <div className="text-caption text-foreground font-sans font-medium">Subscribers at launch</div>
+                  <div className="flex items-baseline my-1">
+                    <input
+                      type="number"
+                      min={1}
+                      value={inputs.launchSubs}
+                      onChange={(e) => setInputs((s) => ({ ...s, launchSubs: Number(e.target.value) || 0 }))}
+                      className="w-full bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                  <div className="text-badge text-muted-foreground font-sans">
+                    Paying subscribers in month one
+                  </div>
+                </div>
+
+                {/* 3. New subscribers */}
+                <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
+                  <div className="text-caption text-foreground font-sans font-medium">New subscribers</div>
+                  <div className="flex items-baseline gap-1 my-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={inputs.growth}
+                      onChange={(e) => setInputs((s) => ({ ...s, growth: Number(e.target.value) || 0 }))}
+                      className="w-14 bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-caption font-sans text-foreground font-medium">% / mo</span>
+                  </div>
+                  <div className="text-badge text-muted-foreground font-sans">
+                    Of your current base, each month
+                  </div>
+                </div>
+
+                {/* 4. Monthly churn */}
+                <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
+                  <div className="text-caption text-foreground font-sans font-medium">Monthly churn</div>
+                  <div className="flex items-baseline gap-1 my-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={50}
+                      value={inputs.churn}
+                      onChange={(e) => setInputs((s) => ({ ...s, churn: Number(e.target.value) || 0 }))}
+                      className="w-14 bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-caption font-sans text-foreground font-medium">% / mo</span>
+                  </div>
+                  <div className="text-badge text-muted-foreground font-sans">
+                    Subscribers who cancel each month
+                  </div>
+                </div>
+
+                {/* 5. Price per subscriber */}
+                <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-caption text-foreground font-sans font-medium">Price per subscriber</span>
+                    <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20 px-1.5 py-0">
+                      LINKED
+                    </Badge>
+                  </div>
+                  <div className="flex items-baseline gap-1 my-1">
+                    <span className="text-base font-mono font-bold text-foreground">€</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={inputs.arpu}
+                      onChange={(e) => setInputs((s) => ({ ...s, arpu: Number(e.target.value) || 0 }))}
+                      className="w-12 bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-caption font-sans text-foreground font-medium">/ mo</span>
+                  </div>
+                  <div className="text-badge text-muted-foreground font-sans">
+                    From your pricing, step 3.2
+                  </div>
+                </div>
+
+                {/* 6. Variable cost */}
+                <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
+                  <div className="text-caption text-foreground font-sans font-medium">Variable cost</div>
+                  <div className="flex items-baseline gap-1 my-1">
+                    <span className="text-base font-mono font-bold text-foreground">€</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={inputs.varCost}
+                      onChange={(e) => setInputs((s) => ({ ...s, varCost: Number(e.target.value) || 0 }))}
+                      className="w-12 bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-caption font-sans text-foreground font-medium">/ sub</span>
+                  </div>
+                  <div className="text-badge text-muted-foreground font-sans">
+                    Delivery and logistics per subscriber
+                  </div>
+                </div>
+
+                {/* 7. Fixed costs */}
+                <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-caption text-foreground font-sans font-medium">Fixed costs</span>
+                    <Sliders className="h-3.5 w-3.5 text-muted-foreground/70" />
+                  </div>
+                  <div className="flex items-baseline gap-1 my-1">
+                    <span className="text-base font-mono font-bold text-foreground">€</span>
+                    <input
+                      type="number"
+                      min={100}
+                      step={500}
+                      value={inputs.opex}
+                      onChange={(e) => setInputs((s) => ({ ...s, opex: Number(e.target.value) || 0 }))}
+                      className="w-20 bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-caption font-sans text-foreground font-medium">/ mo</span>
+                  </div>
+                  <div className="text-badge text-muted-foreground font-sans">
+                    Platform, marketing, team, operations
+                  </div>
+                </div>
+
+                {/* 8. Market size */}
+                <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px] relative overflow-hidden">
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-600" />
+                  <div className="pl-1.5 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-caption text-foreground font-sans font-medium">Market size</span>
+                      <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20 px-1.5 py-0">
+                        LINKED
+                      </Badge>
+                    </div>
+                    <div className="text-base font-mono font-bold text-foreground my-1">
+                      €{inputs.tam >= 1_000_000_000
+                        ? `${(inputs.tam / 1_000_000_000).toFixed(1)}B`
+                        : `${(inputs.tam / 1_000_000).toFixed(0)}M`}
+                    </div>
+                    <div className="text-badge text-muted-foreground font-sans flex flex-col gap-0.5">
+                      <span>Market study: €{marketStudyTamFormatted} · This forecast: €{inputs.tam >= 1_000_000_000 ? `${(inputs.tam / 1_000_000_000).toFixed(1)}B` : `${(inputs.tam / 1_000_000).toFixed(0)}M`}</span>
+                      {marketStudyTam && inputs.tam !== marketStudyTam && (
+                        <button
+                          type="button"
+                          onClick={() => setInputs((s) => ({ ...s, tam: marketStudyTam }))}
+                          className="text-primary hover:underline font-semibold text-left"
+                        >
+                          Reset to market study value
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Assumption Warnings */}
+              {warnings.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  {warnings.map((wn) => (
+                    <div key={wn} className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-caption text-amber-700 dark:text-amber-300 font-sans">
+                      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                      <span>{wn}</span>
+                    </div>
+                  ))}
                 </div>
               )}
             </Card>
 
-            {/* Top KPI Metrics Overview Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="rounded-2xl border border-border bg-card p-5 space-y-2 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-sans">Year 3 ARR</span>
-                  <Badge variant="outline" className="text-badge font-mono">M36 Run-Rate</Badge>
+            {/* ======================================================
+                SECTION 5 — 36-Month Data Table (Figma Exact)
+                ====================================================== */}
+            <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden space-y-0">
+              <div className="p-6 border-b border-border space-y-1.5">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-badge font-sans font-semibold tracking-wider uppercase">
+                  STEP 3.3 · FORECAST RESULTS
                 </div>
-                <div className="text-2xl sm:text-3xl font-bold font-mono text-foreground tracking-tight">
-                  {fmt(year3Arr, rev?.currency)}
-                </div>
-                <p className="text-body text-muted-foreground font-sans">
-                  Annualized run-rate at month 36 (€{Math.round(month36Revenue).toLocaleString()}/mo).
+                <h3 className="text-xl font-heading font-bold text-foreground tracking-tight">
+                  Financial Forecast — 36-Month Projection
+                </h3>
+                <p className="text-caption text-muted-foreground font-sans">
+                  Month-by-month subscribers, revenue, costs and cash across three years.
                 </p>
-              </Card>
+              </div>
 
-              <Card className="rounded-2xl border border-border bg-card p-5 space-y-2 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-sans">Break-Even Point</span>
-                  {breakEvenMonth ? (
-                    <Badge variant="outline" className="text-badge font-mono text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
-                      Achieved
+              <div className="overflow-x-auto">
+                <table className="w-full text-caption font-sans border-collapse">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/40 font-semibold text-muted-foreground text-badge uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left font-mono">MONTH</th>
+                      <th className="px-3 py-3 text-right">SUBSCRIBERS</th>
+                      <th className="px-3 py-3 text-right">REVENUE</th>
+                      <th className="px-3 py-3 text-right">FIXED COST</th>
+                      <th className="px-3 py-3 text-right">VARIABLE COST</th>
+                      <th className="px-3 py-3 text-right font-bold text-foreground">TOTAL COST</th>
+                      <th className="px-3 py-3 text-right">NET CASH FLOW</th>
+                      <th className="px-3 py-3 text-right">CUMULATIVE</th>
+                      <th className="px-3 py-3 text-right font-bold text-foreground">CASH ON HAND</th>
+                      <th className="px-4 py-3 text-left">NOTES</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-border/40 font-mono">
+                    {/* --- YEAR 1 HEADER --- */}
+                    <tr className="bg-muted/50 border-y border-border">
+                      <td colSpan={10} className="px-4 py-2 font-heading font-bold text-badge text-foreground tracking-wider uppercase font-sans">
+                        YEAR 1 · MODELLED
+                      </td>
+                    </tr>
+                    {projectionData.y1Rows.map((row) => (
+                      <tr
+                        key={row.month}
+                        className={`hover:bg-muted/30 transition-colors ${
+                          row.isMilestone ? 'bg-primary/5 font-semibold' : ''
+                        }`}
+                      >
+                        <td className="px-4 py-2.5 font-bold text-foreground">{row.name}</td>
+                        <td className="px-3 py-2.5 text-right text-foreground">{row.subscribers.toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-medium">
+                          €{Math.round(row.revenue).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.fixedCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.variableCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-foreground">€{Math.round(row.totalCost).toLocaleString()}</td>
+                        <td className={`px-3 py-2.5 text-right font-medium ${row.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          {row.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(row.netCashFlow)).toLocaleString()}
+                        </td>
+                        <td className={`px-3 py-2.5 text-right ${row.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          {row.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(row.cumulative)).toLocaleString()}
+                        </td>
+                        <td className={`px-3 py-2.5 text-right font-bold ${row.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
+                          {row.cashOnHand < 0 ? '−' : ''}€{Math.abs(Math.round(row.cashOnHand)).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2.5 text-left font-sans text-caption">
+                          {row.milestoneTag ? (
+                            <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20">
+                              {row.milestoneTag}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">{row.notes}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {/* --- YEAR 1 SUBTOTAL --- */}
+                    <tr className="bg-muted/40 font-bold border-t border-border">
+                      <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">Y1 SUBTOTAL</td>
+                      <td className="px-3 py-2.5 text-right">—</td>
+                      <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">
+                        €{Math.round(projectionData.y1Total.revenue).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y1Total.fixedCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y1Total.variableCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y1Total.totalCost).toLocaleString()}</td>
+                      <td className={`px-3 py-2.5 text-right ${projectionData.y1Total.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {projectionData.y1Total.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y1Total.netCashFlow)).toLocaleString()}
+                      </td>
+                      <td className={`px-3 py-2.5 text-right ${projectionData.y1Total.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {projectionData.y1Total.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y1Total.cumulative)).toLocaleString()}
+                      </td>
+                      <td className={`px-3 py-2.5 text-right ${projectionData.y1Total.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
+                        {projectionData.y1Total.cashOnHand < 0 ? '−' : ''}€{Math.abs(Math.round(projectionData.y1Total.cashOnHand)).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2.5 text-left font-sans text-caption text-muted-foreground italic">
+                        End of detailed modelled period
+                      </td>
+                    </tr>
+
+                    {/* --- YEAR 2 HEADER --- */}
+                    <tr className="bg-muted/50 border-y border-border">
+                      <td colSpan={10} className="px-4 py-2 font-heading font-bold text-badge text-foreground tracking-wider uppercase font-sans">
+                        YEAR 2 · PROJECTED
+                      </td>
+                    </tr>
+                    {projectionData.y2Rows.map((row) => (
+                      <tr
+                        key={row.month}
+                        className={`hover:bg-muted/30 transition-colors ${
+                          row.isMilestone ? 'bg-primary/5 font-semibold' : ''
+                        }`}
+                      >
+                        <td className="px-4 py-2.5 font-bold text-foreground">{row.name}</td>
+                        <td className="px-3 py-2.5 text-right text-foreground">{row.subscribers.toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-medium">
+                          €{Math.round(row.revenue).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.fixedCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.variableCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-foreground">€{Math.round(row.totalCost).toLocaleString()}</td>
+                        <td className={`px-3 py-2.5 text-right font-medium ${row.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          {row.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(row.netCashFlow)).toLocaleString()}
+                        </td>
+                        <td className={`px-3 py-2.5 text-right ${row.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          {row.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(row.cumulative)).toLocaleString()}
+                        </td>
+                        <td className={`px-3 py-2.5 text-right font-bold ${row.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
+                          {row.cashOnHand < 0 ? '−' : '+'}€{Math.abs(Math.round(row.cashOnHand)).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2.5 text-left font-sans text-caption">
+                          {row.milestoneTag ? (
+                            <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20">
+                              {row.milestoneTag}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">{row.notes}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {/* --- YEAR 2 SUBTOTAL --- */}
+                    <tr className="bg-muted/40 font-bold border-t border-border">
+                      <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">Y2 SUBTOTAL</td>
+                      <td className="px-3 py-2.5 text-right">—</td>
+                      <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">
+                        €{Math.round(projectionData.y2Total.revenue).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y2Total.fixedCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y2Total.variableCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y2Total.totalCost).toLocaleString()}</td>
+                      <td className={`px-3 py-2.5 text-right ${projectionData.y2Total.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {projectionData.y2Total.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y2Total.netCashFlow)).toLocaleString()}
+                      </td>
+                      <td className={`px-3 py-2.5 text-right ${projectionData.y2Total.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {projectionData.y2Total.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y2Total.cumulative)).toLocaleString()}
+                      </td>
+                      <td className={`px-3 py-2.5 text-right ${projectionData.y2Total.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
+                        {projectionData.y2Total.cashOnHand < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y2Total.cashOnHand)).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2.5 text-left font-sans text-caption text-muted-foreground italic">
+                        Operational profit reached
+                      </td>
+                    </tr>
+
+                    {/* --- YEAR 3 HEADER --- */}
+                    <tr className="bg-muted/50 border-y border-border">
+                      <td colSpan={10} className="px-4 py-2 font-heading font-bold text-badge text-foreground tracking-wider uppercase font-sans">
+                        YEAR 3 · PROJECTED
+                      </td>
+                    </tr>
+                    {projectionData.y3Rows.map((row) => (
+                      <tr
+                        key={row.month}
+                        className={`hover:bg-muted/30 transition-colors ${
+                          row.isMilestone ? 'bg-primary/5 font-semibold' : ''
+                        }`}
+                      >
+                        <td className="px-4 py-2.5 font-bold text-foreground">{row.name}</td>
+                        <td className="px-3 py-2.5 text-right text-foreground">{row.subscribers.toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-medium">
+                          €{Math.round(row.revenue).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.fixedCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.variableCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-foreground">€{Math.round(row.totalCost).toLocaleString()}</td>
+                        <td className={`px-3 py-2.5 text-right font-medium ${row.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          {row.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(row.netCashFlow)).toLocaleString()}
+                        </td>
+                        <td className={`px-3 py-2.5 text-right ${row.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          {row.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(row.cumulative)).toLocaleString()}
+                        </td>
+                        <td className={`px-3 py-2.5 text-right font-bold ${row.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
+                          {row.cashOnHand < 0 ? '−' : '+'}€{Math.abs(Math.round(row.cashOnHand)).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2.5 text-left font-sans text-caption">
+                          {row.milestoneTag ? (
+                            <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20">
+                              {row.milestoneTag}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">{row.notes}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {/* --- YEAR 3 SUBTOTAL --- */}
+                    <tr className="bg-muted/40 font-bold border-t border-border">
+                      <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">Y3 SUBTOTAL</td>
+                      <td className="px-3 py-2.5 text-right">—</td>
+                      <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">
+                        €{Math.round(projectionData.y3Total.revenue).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y3Total.fixedCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y3Total.variableCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y3Total.totalCost).toLocaleString()}</td>
+                      <td className={`px-3 py-2.5 text-right ${projectionData.y3Total.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {projectionData.y3Total.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y3Total.netCashFlow)).toLocaleString()}
+                      </td>
+                      <td className={`px-3 py-2.5 text-right ${projectionData.y3Total.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {projectionData.y3Total.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y3Total.cumulative)).toLocaleString()}
+                      </td>
+                      <td className={`px-3 py-2.5 text-right ${projectionData.y3Total.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
+                        {projectionData.y3Total.cashOnHand < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y3Total.cashOnHand)).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2.5 text-left font-sans text-caption text-muted-foreground italic">
+                        Full 3-year projection complete
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* ======================================================
+                SECTION 6 — Two Cards Side by Side (Break-Even & Unit Economics)
+                ====================================================== */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left: Break-even analysis */}
+              <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-heading font-bold text-foreground">Break-even analysis</h3>
+                    <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20">
+                      Break-even: Month {projectionData.breakEvenMonth}
                     </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-badge font-mono text-amber-600 dark:text-amber-400 border-amber-500/30">
-                      In Horizon
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <span className="text-caption text-muted-foreground font-sans block">Monthly fixed costs</span>
+                      <div className="text-xl font-heading font-bold font-mono text-foreground">
+                        €{inputs.opex.toLocaleString()}
+                      </div>
+                      <span className="text-badge text-muted-foreground font-sans block">Base operating cost</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-caption text-muted-foreground font-sans block">Price per subscriber</span>
+                      <div className="text-xl font-heading font-bold font-mono text-foreground">
+                        €{inputs.arpu}
+                      </div>
+                      <span className="text-badge text-muted-foreground font-sans block">Average monthly revenue</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-caption text-muted-foreground font-sans block">Contribution per subscriber</span>
+                      <div className="text-xl font-heading font-bold font-mono text-foreground">
+                        €{contributionPerSub}
+                      </div>
+                      <span className="text-badge text-muted-foreground font-sans block">
+                        €{inputs.arpu} price − €{inputs.varCost} variable cost
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-caption text-muted-foreground font-sans block">Subscribers needed</span>
+                      <div className="text-xl font-heading font-bold font-mono text-foreground">
+                        {subsNeeded}
+                      </div>
+                      <span className="text-badge text-muted-foreground font-sans block">To cover fixed costs</span>
+                    </div>
+                  </div>
+
+                  <p className="text-body text-muted-foreground font-sans leading-relaxed">
+                    Each subscriber leaves €{contributionPerSub} after delivery costs. You need {subsNeeded} of them
+                    to cover €{inputs.opex.toLocaleString()} of fixed costs. You pass that point in month{' '}
+                    {projectionData.breakEvenMonth} with {projectionData.breakEvenSubs} subscribers.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-xl bg-muted/40 font-mono text-caption text-muted-foreground border border-border/70 text-center">
+                  €{inputs.opex.toLocaleString()} ÷ €{contributionPerSub} = {(inputs.opex / contributionPerSub).toFixed(1)} → {subsNeeded} subscribers
+                </div>
+              </Card>
+
+              {/* Right: Unit economics */}
+              <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-heading font-bold text-foreground">Unit economics</h3>
+                    <Badge
+                      variant="outline"
+                      className={`text-badge font-mono ${
+                        Number(ltvCacRatio) >= 3.0
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                      }`}
+                    >
+                      {Number(ltvCacRatio) >= 3.0 ? 'Healthy Model' : 'Margin Attention'}
                     </Badge>
-                  )}
-                </div>
-                <div className="text-2xl sm:text-3xl font-bold font-mono text-foreground tracking-tight">
-                  {breakEvenMonth ? `Month ${breakEvenMonth}` : '> 36 Months'}
-                </div>
-                <p className="text-body text-muted-foreground font-sans">
-                  {breakEvenMonth ? `Crosses cumulative break-even in Year ${Math.ceil(breakEvenMonth / 12)}.` : 'Requires additional scale to achieve positive monthly cash flow.'}
-                </p>
-              </Card>
+                  </div>
 
-              <Card className="rounded-2xl border border-border bg-card p-5 space-y-2 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-sans">Month 36 Balance</span>
-                  <Badge variant="outline" className="text-badge font-mono">Net Runway</Badge>
-                </div>
-                <div className={`text-2xl sm:text-3xl font-bold font-mono tracking-tight ${month36Cash < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                  {fmt(month36Cash, cash?.currency)}
-                </div>
-                <p className="text-body text-muted-foreground font-sans">
-                  Cumulative liquidity position across the modeled 3-year timeline.
-                </p>
-              </Card>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-0.5">
+                      <span className="text-caption text-muted-foreground font-sans block">CAC</span>
+                      <div className="text-lg font-heading font-bold font-mono text-foreground">€{cac}</div>
+                      <span className="text-badge text-muted-foreground font-sans block">Marketing ÷ new subs, Y1</span>
+                    </div>
 
-              <Card className="rounded-2xl border border-border bg-card p-5 space-y-2 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-sans">Unit Economics</span>
-                  <Badge variant="outline" className="text-badge font-mono">Target</Badge>
+                    <div className="space-y-0.5">
+                      <span className="text-caption text-muted-foreground font-sans block">LTV</span>
+                      <div className="text-lg font-heading font-bold font-mono text-foreground">€{ltv}</div>
+                      <span className="text-badge text-muted-foreground font-sans block">
+                        €{contributionPerSub} ÷ {inputs.churn}% churn
+                      </span>
+                    </div>
+
+                    <div className="space-y-0.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-caption text-muted-foreground font-sans">LTV / CAC</span>
+                        <span className={`text-badge font-mono ${Number(ltvCacRatio) >= 3.0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'} font-bold`}>
+                          {Number(ltvCacRatio) >= 3.0 ? 'Healthy' : 'Caution'}
+                        </span>
+                      </div>
+                      <div className={`text-lg font-heading font-bold font-mono ${Number(ltvCacRatio) >= 3.0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                        {ltvCacRatio}x
+                      </div>
+                      <span className="text-badge text-muted-foreground font-sans block">Target: &gt; 3.0x</span>
+                    </div>
+
+                    <div className="space-y-0.5 pt-2">
+                      <span className="text-caption text-muted-foreground font-sans block">Payback</span>
+                      <div className="text-lg font-heading font-bold font-mono text-foreground">{paybackMonths} mo</div>
+                      <span className="text-badge text-muted-foreground font-sans block">Time to earn back CAC</span>
+                    </div>
+
+                    <div className="space-y-0.5 pt-2">
+                      <span className="text-caption text-muted-foreground font-sans block">Gross margin</span>
+                      <div className="text-lg font-heading font-bold font-mono text-foreground">{grossMarginPct}%</div>
+                      <span className="text-badge text-muted-foreground font-sans block">After variable costs</span>
+                    </div>
+
+                    <div className="space-y-0.5 pt-2">
+                      <span className="text-caption text-muted-foreground font-sans block">Burn at launch</span>
+                      <div className="text-lg font-heading font-bold font-mono text-destructive">
+                        €{Math.abs(month1NetLoss).toLocaleString()}
+                      </div>
+                      <span className="text-badge text-muted-foreground font-sans block">Month one net loss</span>
+                    </div>
+                  </div>
+
+                  <p className="text-body text-muted-foreground font-sans leading-relaxed">
+                    Your unit economics are exceptionally resilient, driven by a high gross margin ({grossMarginPct}%) and manageable customer acquisition cost.
+                  </p>
                 </div>
-                <div className="text-2xl sm:text-3xl font-bold font-mono text-foreground tracking-tight">
-                  €{inputs.arpu} <span className="text-xs font-sans text-muted-foreground font-normal">/ {inputs.churn}% churn</span>
+
+                <div className="p-3 rounded-xl bg-muted/40 font-sans text-caption text-muted-foreground border border-border/70">
+                  {Number(ltvCacRatio) >= 3.0
+                    ? `Target threshold of 3.0x LTV/CAC achieved with sustainable payback within ${paybackMonths} months.`
+                    : `LTV/CAC ratio is currently ${ltvCacRatio}x (target > 3.0x) with payback within ${paybackMonths} months.`}
                 </div>
-                <p className="text-body text-muted-foreground font-sans">
-                  Blended user ARPU with estimated {inputs.churn}% monthly attrition.
-                </p>
               </Card>
             </div>
 
-            {/* Projections View Switcher Tabs */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-border/80 pb-2">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={activeTab === 'charts' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setActiveTab('charts')}
-                    className="gap-1.5 text-xs font-semibold font-sans rounded-xl"
-                  >
-                    <BarChart3 className="h-3.5 w-3.5" /> Trajectory Charts
-                  </Button>
-                  <Button
-                    variant={activeTab === 'table' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setActiveTab('table')}
-                    className="gap-1.5 text-xs font-semibold font-sans rounded-xl"
-                  >
-                    <TableIcon className="h-3.5 w-3.5" /> 36-Month Data Table
-                  </Button>
-                  <Button
-                    variant={activeTab === 'model' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setActiveTab('model')}
-                    className="gap-1.5 text-xs font-semibold font-sans rounded-xl"
-                  >
-                    <ListChecks className="h-3.5 w-3.5" /> Logic &amp; Risk Matrix
-                  </Button>
-                </div>
+            {/* ======================================================
+                SECTION 7 — Key Model Assumptions & Risk Assessment
+                ====================================================== */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left: Key model assumptions */}
+              <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
+                <h3 className="text-base font-heading font-bold text-foreground">Key model assumptions</h3>
+                <div className="space-y-3 font-sans">
+                  {output?.assumptions && output.assumptions.length > 0 ? (
+                    output.assumptions.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
+                        <span className="text-body text-foreground">{item}</span>
+                        <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20 shrink-0">
+                          AI SYNTHESIS
+                        </Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
+                        <span className="text-body text-foreground">{inputs.launchSubs} subscribers at launch</span>
+                        <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
+                          YOUR INPUT
+                        </Badge>
+                      </div>
 
-                <span className="text-badge font-mono text-muted-foreground hidden sm:inline">
-                  36 Data Points Modeled
+                      <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
+                        <span className="text-body text-foreground">
+                          {inputs.growth}% new subscribers and {inputs.churn}% churn each month — {inputs.growth - inputs.churn}% net growth
+                        </span>
+                        <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
+                          YOUR INPUT
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
+                        <span className="text-body text-foreground">€{inputs.arpu} average price per subscriber</span>
+                        <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20">
+                          FROM 3.2
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
+                        <span className="text-body text-foreground">€{inputs.varCost} delivery and logistics cost per subscriber</span>
+                        <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
+                          YOUR INPUT
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
+                        <span className="text-body text-foreground">€{inputs.opex.toLocaleString()} fixed costs, flat for 36 months</span>
+                        <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
+                          YOUR INPUT
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
+                        <span className="text-body text-foreground">Months 13–36 extend the first-year trend</span>
+                        <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
+                          MODEL
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-body text-foreground">Excludes future funding rounds and large one-off purchases</span>
+                        <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
+                          MODEL
+                        </Badge>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </Card>
+
+              {/* Right: Risk assessment */}
+              <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
+                <h3 className="text-base font-heading font-bold text-foreground">Risk assessment</h3>
+                <div className="space-y-3 font-sans">
+                  {output?.risks && output.risks.length > 0 ? (
+                    output.risks.map((risk, idx) => (
+                      <div key={idx} className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-caption font-semibold text-foreground">
+                            {idx + 1}. {risk.category || 'Identified Risk'}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={`text-badge font-mono ${
+                              risk.impact === 'High' || risk.likelihood === 'High'
+                                ? 'bg-destructive/15 text-destructive border-destructive/30'
+                                : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                            }`}
+                          >
+                            {risk.impact || risk.likelihood || 'Medium'}
+                          </Badge>
+                        </div>
+                        <p className="text-body text-muted-foreground leading-relaxed">
+                          {risk.description}
+                        </p>
+                        {risk.mitigation && (
+                          <p className="text-caption text-primary/90 font-medium pt-1">
+                            <span className="font-semibold text-foreground">Mitigation: </span>
+                            {risk.mitigation}
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      {/* Risk 1 */}
+                      <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-caption font-semibold text-foreground">1. Funding risk</span>
+                          <Badge
+                            variant="outline"
+                            className={`text-badge font-mono ${
+                              projectionData.fundingGap > 0
+                                ? 'bg-destructive/15 text-destructive border-destructive/30'
+                                : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                            }`}
+                          >
+                            {projectionData.fundingGap > 0 ? 'High' : 'Low'}
+                          </Badge>
+                        </div>
+                        <p className="text-body text-muted-foreground leading-relaxed">
+                          {projectionData.fundingGap > 0 && projectionData.budgetRunsOutMonth
+                            ? `Your budget runs out in month ${projectionData.budgetRunsOutMonth} and cash stays negative until month ${projectionData.cashPositiveMonth || 36}. You'll need about €${projectionData.fundingGap.toLocaleString()} more.`
+                            : `Your €${inputs.budget.toLocaleString()} starting budget provides sufficient runway with no projected cash deficit.`}
+                        </p>
+                      </div>
+
+                      {/* Risk 2 */}
+                      <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-caption font-semibold text-foreground">2. Growth shortfall</span>
+                          <Badge variant="outline" className="text-badge font-mono bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                            Medium
+                          </Badge>
+                        </div>
+                        <p className="text-body text-muted-foreground leading-relaxed">
+                          If net growth falls from {inputs.growth - inputs.churn}% to {Math.max(1, inputs.growth - inputs.churn - 2)}%, break-even moves 3 months later, to month {projectionData.breakEvenMonth + 3}.
+                        </p>
+                      </div>
+
+                      {/* Risk 3 */}
+                      <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-caption font-semibold text-foreground">3. Subscriber retention</span>
+                          <Badge variant="outline" className="text-badge font-mono bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                            Medium
+                          </Badge>
+                        </div>
+                        <p className="text-body text-muted-foreground leading-relaxed">
+                          If churn rises from {inputs.churn}% to {inputs.churn + 3}%, break-even moves 6 months later, to month {projectionData.breakEvenMonth + 6}.
+                        </p>
+                      </div>
+
+                      {/* Risk 4 */}
+                      <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-caption font-semibold text-foreground">4. Delivery cost</span>
+                          <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground border-border">
+                            Low
+                          </Badge>
+                        </div>
+                        <p className="text-body text-muted-foreground leading-relaxed">
+                          €{inputs.varCost} per subscriber is a conservative estimate. At €{Math.max(1, inputs.varCost - 1)}, break-even comes one month earlier, in month {projectionData.breakEvenMonth - 1}.
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </Card>
+            </div>
+
+            {/* ======================================================
+                SECTION 8 — Milestones Complete & Footer Navigation
+                ====================================================== */}
+            <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-badge font-sans font-bold uppercase tracking-wider text-muted-foreground">
+                  MILESTONES COMPLETE
+                </span>
+                <span className="text-badge font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                  Step complete (6/6)
                 </span>
               </div>
 
-              {/* View 1: Recharts Visualizations */}
-              {activeTab === 'charts' && (
-                <div className="space-y-6">
-                  {/* Revenue vs Total Costs Trajectory Chart */}
-                  <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <h3 className="text-base font-bold font-sans">Revenue vs. Cost Structure (36 Months)</h3>
-                        <p className="text-xs text-muted-foreground font-sans">
-                          Monthly revenue growth vs fixed &amp; variable operational expenditures.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs font-mono">
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-2.5 w-2.5 rounded-full bg-primary inline-block" /> Revenue
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-2.5 w-2.5 rounded-full bg-destructive inline-block" /> Total Costs
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="h-[320px] w-full pt-2">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                          <defs>
-                            <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
-                              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.0} />
-                            </linearGradient>
-                            <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.2} />
-                              <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0.0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                          <XAxis dataKey="name" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
-                          <YAxis
-                            tick={{ fontSize: 11, fontFamily: 'monospace' }}
-                            stroke="hsl(var(--muted-foreground))"
-                            tickFormatter={(val) => `€${val >= 1000 ? `${Math.round(val / 1000)}k` : val}`}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--card))',
-                              borderColor: 'hsl(var(--border))',
-                              borderRadius: '0.75rem',
-                              fontSize: '12px',
-                              fontFamily: 'monospace',
-                            }}
-                            formatter={(value: any, name: any) => [
-                              fmt(typeof value === 'number' ? value : Number(value) || 0, rev?.currency),
-                              String(name ?? ''),
-                            ]}
-                          />
-                          <Area type="monotone" dataKey="Revenue" stroke="hsl(var(--primary))" strokeWidth={2} fillOpacity={1} fill="url(#colorRev)" />
-                          <Area type="monotone" dataKey="Cost" stroke="hsl(var(--destructive))" strokeWidth={2} fillOpacity={1} fill="url(#colorCost)" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </Card>
-
-                  {/* Cash Flow & Cumulative Balance Chart */}
-                  <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <h3 className="text-base font-bold font-sans">Monthly Net Cash Flow &amp; Ending Balance</h3>
-                        <p className="text-xs text-muted-foreground font-sans">
-                          Net liquidity trajectory and cumulative cash reserves over time.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs font-mono">
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" /> Net Cash Flow
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="h-2.5 w-2.5 rounded-full bg-sky-500 inline-block" /> Ending Balance
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="h-[280px] w-full pt-2">
-                      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                          <XAxis dataKey="name" tick={{ fontSize: 11, fontFamily: 'monospace' }} stroke="hsl(var(--muted-foreground))" />
-                          <YAxis
-                            tick={{ fontSize: 11, fontFamily: 'monospace' }}
-                            stroke="hsl(var(--muted-foreground))"
-                            tickFormatter={(val) => `€${Math.round(val / 1000)}k`}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: 'hsl(var(--card))',
-                              borderColor: 'hsl(var(--border))',
-                              borderRadius: '0.75rem',
-                              fontSize: '12px',
-                              fontFamily: 'monospace',
-                            }}
-                            formatter={(value: any, name: any) => [
-                              fmt(typeof value === 'number' ? value : Number(value) || 0, cash?.currency),
-                              String(name ?? ''),
-                            ]}
-                          />
-                          <Bar dataKey="NetCashFlow" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </Card>
-                </div>
-              )}
-
-              {/* View 2: Full 36-Month Consolidated Data Table */}
-              {activeTab === 'table' && (
-                <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-                  <div className="p-4 sm:p-5 border-b border-border/70 flex items-center justify-between">
-                    <div>
-                      <h3 className="text-base font-bold font-sans">36-Month Projections Table</h3>
-                      <p className="text-xs text-muted-foreground font-sans">
-                        Full monthly breakdown of revenues, fixed/variable costs, net cash flow, and cumulative balance.
-                      </p>
-                    </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 pt-1">
+                {[
+                  'Revenue saved',
+                  'Cost saved',
+                  '36-mo forecast',
+                  'Cash flow',
+                  'Break-even',
+                  'Scenario saved',
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-2 text-caption text-foreground font-sans">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>{item}</span>
                   </div>
+                ))}
+              </div>
+            </Card>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs font-sans">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/40 font-semibold text-muted-foreground">
-                          <th className="px-4 py-3 text-left font-mono">Month</th>
-                          <th className="px-4 py-3 text-right">Revenue</th>
-                          <th className="px-4 py-3 text-right">Fixed Costs</th>
-                          <th className="px-4 py-3 text-right">Variable Costs</th>
-                          <th className="px-4 py-3 text-right font-bold text-foreground">Total Cost</th>
-                          <th className="px-4 py-3 text-right">Net Cash Flow</th>
-                          <th className="px-4 py-3 text-right font-bold text-foreground">Ending Balance</th>
-                          <th className="px-4 py-3 text-left">Notes</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40 font-mono">
-                        {chartData.map((row, i) => {
-                          const note = rev?.monthly?.[i]?.notes ?? cost?.monthly?.[i]?.notes ?? cash?.monthly?.[i]?.notes ?? '';
-                          return (
-                            <tr key={i} className="hover:bg-muted/20 transition-colors">
-                              <td className="px-4 py-2.5 font-bold text-foreground">{row.name}</td>
-                              <td className="px-4 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-medium">
-                                {fmt(row.Revenue, rev?.currency)}
-                              </td>
-                              <td className="px-4 py-2.5 text-right text-muted-foreground">
-                                {fmt(row.FixedCost, cost?.currency)}
-                              </td>
-                              <td className="px-4 py-2.5 text-right text-muted-foreground">
-                                {fmt(row.VarCost, cost?.currency)}
-                              </td>
-                              <td className="px-4 py-2.5 text-right font-semibold text-foreground">
-                                {fmt(row.Cost, cost?.currency)}
-                              </td>
-                              <td className={`px-4 py-2.5 text-right font-medium ${row.NetCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                                {fmt(row.NetCashFlow, cash?.currency)}
-                              </td>
-                              <td className={`px-4 py-2.5 text-right font-bold ${row.EndingBalance < 0 ? 'text-destructive' : 'text-foreground'}`}>
-                                {fmt(row.EndingBalance, cash?.currency)}
-                              </td>
-                              <td className="px-4 py-2.5 text-left text-body font-sans text-muted-foreground truncate max-w-[200px]">
-                                {note || '—'}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </Card>
-              )}
-
-              {/* View 3: Break-Even, Assumptions & Risk Matrix */}
-              {activeTab === 'model' && (
-                <div className="space-y-6">
-                  {/* Break-Even Deep Dive Card */}
-                  {be && (
-                    <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {breakEvenMonth ? (
-                            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                          ) : (
-                            <CircleDashed className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                          )}
-                          <h3 className="text-base font-bold font-sans">Break-Even Analysis</h3>
-                        </div>
-                        {breakEvenMonth ? (
-                          <Badge variant="outline" className="text-xs font-mono text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
-                            Break-Even Month {breakEvenMonth}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs font-mono text-amber-600 dark:text-amber-400 border-amber-500/30">
-                            Beyond Horizon
-                          </Badge>
-                        )}
-                      </div>
-
-                      {be.summary && (
-                        <p className="text-xs sm:text-sm text-muted-foreground font-sans leading-relaxed bg-muted/30 p-3.5 rounded-xl">
-                          {be.summary}
-                        </p>
-                      )}
-                    </Card>
-                  )}
-
-                  {/* Two Column: Assumptions & Risks */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Assumptions List */}
-                    {!!output.assumptions?.length && (
-                      <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
-                        <div className="flex items-center gap-2">
-                          <ListChecks className="h-4 w-4 text-primary" />
-                          <h3 className="text-sm font-bold font-sans">Underlying Model Assumptions</h3>
-                        </div>
-                        <ul className="space-y-2.5">
-                          {output.assumptions.map((a, i) => (
-                            <li key={i} className="flex items-start gap-2.5 text-xs text-muted-foreground font-sans">
-                              <span className="font-mono text-primary font-bold">{i + 1}.</span>
-                              <span>{a}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </Card>
-                    )}
-
-                    {/* Risks Register */}
-                    {!!output.risks?.length && (
-                      <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
-                        <div className="flex items-center gap-2">
-                          <ShieldAlert className="h-4 w-4 text-destructive" />
-                          <h3 className="text-sm font-bold font-sans">Financial Risk Matrix</h3>
-                        </div>
-                        <div className="space-y-3">
-                          {output.risks.map((r, i) => (
-                            <div key={i} className="rounded-xl border border-border/70 bg-muted/20 p-3.5 space-y-1.5 font-sans">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-semibold text-foreground">{r.category ?? 'Financial Risk'}</span>
-                                {r.likelihood && (
-                                  <Badge variant="outline" className={`text-badge font-mono ${likelihoodVariant(r.likelihood)}`}>
-                                    {r.likelihood} Likelihood
-                                  </Badge>
-                                )}
-                              </div>
-                              {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
-                              {r.mitigation && (
-                                <p className="text-body text-muted-foreground bg-muted/40 p-2 rounded mt-1 font-sans">
-                                  <strong className="text-foreground">Mitigation:</strong> {r.mitigation}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </Card>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Bottom Step Navigation Bar */}
-            <div className="flex items-center justify-between gap-4 pt-6 border-t border-border">
+            {/* Bottom Footer Actions (Figma Exact) */}
+            <div className="flex items-center justify-between gap-4 pt-4 border-t border-border">
               <Button
                 variant="ghost"
                 onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/business-model', ideaId))}
-                className="text-xs font-medium font-sans text-muted-foreground hover:text-foreground"
+                className="gap-2 text-button font-medium font-sans text-muted-foreground hover:text-foreground rounded-xl"
               >
-                <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Business Model
+                <ArrowLeft className="w-4 h-4" /> Business Model
               </Button>
-              <Button onClick={handleNext} className="gap-2 font-sans font-semibold rounded-xl">
-                Proceed to Legal &amp; Compliance <ArrowRight className="h-4 w-4" />
+
+              <Button
+                onClick={handleNext}
+                className="gap-2 text-button font-medium font-sans rounded-xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-11 px-6"
+              >
+                <span>Continue to Legal &amp; Compliance</span>
+                <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </div>

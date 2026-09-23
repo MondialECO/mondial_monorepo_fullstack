@@ -1,0 +1,80 @@
+graph TD
+    subgraph P2["Phase 2: Project Identity & Branding"]
+        direction TB
+        P2_Project["CreatorIdea.Project<br/>• Name, Tagline, Category, Sector<br/>• Problem, Solution, TargetUser<br/>• MarketGap, CreatorEdge<br/>• ClarityScore (0–100)"]
+        P2_BrandKit["BrandKits Collection (Canonical SSoT)<br/>• Strategy, 4 Direction candidates<br/>• 6 Logo concepts + 7 SVG variations<br/>• 5-role WCAG Color Palette<br/>• 4-role Typography pairings"]
+        P2_BrandingEcho["CreatorIdea.Project.Branding (Derived Echo)<br/>• brandingMethod ('ai_studio' | 'ai_logo' | 'm50_designer' | 'skipped')<br/>• logoAsset, colorPalette, typographyPairing"]
+        P2_BrandKit -.->|"Syncs 4 summary fields"| P2_BrandingEcho
+    end
+
+    subgraph P3_1["3.1 Market Intelligence"]
+        MKT_Session["MarketStudySessions Collection<br/>• TAM / SAM / SOM (EUR values & methodology)<br/>• Competitor Landscape (Direct, Indirect, Substitutes)<br/>• Target Customer Segments & Criteria<br/>• Market Tailwinds & Sizing Risks"]
+    end
+
+    subgraph P3_2["3.2 Business Model Canvas"]
+        BM_Session["BusinessModelSessions Collection<br/>• 9-Block Canvas (Value Props, Channels, etc.)<br/>• Pricing & Revenue Tiers<br/>• Unit Economics & Gross Margin Targets"]
+    end
+
+    subgraph P3_3["3.3 Financial Forecast"]
+        FC_Session["ForecastSessions Collection<br/>• Months 1–12 (AI narrative + cost projections)<br/>• Months 13–36 (Deterministic geometric projection)<br/>• 36-Month P&L, Cash Flow, Ending Balance<br/>• Recomputed Break-Even Month (Deterministic)"]
+    end
+
+    subgraph P3_4["3.4 Legal & Compliance Framework"]
+        LA_Doc["CreatorIdea.Phase3Data.LegalAssessment (Canonical SSoT)<br/>• Jurisdiction ('FR') & RulesVersion ('FR-2026.1')<br/>• RulesFingerprint & BusinessSnapshotHash<br/>• Applicable Statutory Requirements<br/>• Planning Readiness Percentage (0–100%)<br/>• Evidence Vault Links & Audit Trail"]
+    end
+
+    subgraph P3_5["3.5 Company Formation & Team"]
+        FG_Doc["CreatorIdea.Phase3Data.FormationGenerator<br/>• Recommended Legal Form (SAS | SAS-U | SARL)<br/>• Recommendation Factors & Structured Signals<br/>• Founding Skills (YouHave) & Gaps (YouNeed)<br/>• Matched Service Providers (MatchedSpIds)<br/>• Co-Founder Brief (CofounderDraft)"]
+    end
+
+    subgraph P3_6["3.6 Executive Business Plan"]
+        BP_Session["BusinessPlanSessions Collection<br/>• 12 Synthesized Standard Sections<br/>• Section 07 (Financials) from 3.3 Forecast<br/>• Section 08 (Ops/Team) from 3.5 Formation<br/>• Section 12 (Legal/Regulatory) from 3.4 Legal<br/>• Immutable Versioning & PDF Export Registration"]
+    end
+
+    subgraph P3_7["3.7 Investor Readiness & Completion Gate"]
+        IR_Score["CreatorIdea.Phase3Data.InvestorReadinessScore<br/>• ConceptClarity (20 pts)<br/>• MarketEvidence (20 pts)<br/>• FinancialModel (25 pts)<br/>• LegalReadiness (15 pts)<br/>• TeamCredibility (20 pts)<br/>• Total (0–100) & Letter Grade (A/B/C/D)<br/>• Explicit Remediation Deductions"]
+        P3_Done["Phase3.Status = 'completed'<br/>Server-Side Atomic Milestone Gate"]
+    end
+
+    subgraph HX_Gate["HumainX Profile Completeness Gate"]
+        HX_Profile["ProfessionalProfiles Collection (Canonical SSoT)<br/>• Skills[] (min 1 skill + proficiency level)<br/>• CurrentSituation (7 verified categories)<br/>• WeeklyAvailability (7 canonical bands)<br/>• Region (France territorial classification)<br/>• Preferences (Learning vs Delegation)"]
+    end
+
+    subgraph P4["Phase 4: Construction & Launch Preparation Engine"]
+        P4_Snap["4.1 Construction Snapshot"]
+        P4_Roadmap["4.2 Operational Roadmap"]
+        P4_Needs["4.3 Needs Analysis"]
+        P4_Skills["4.4 Skills & Training Plan"]
+        P4_Support["4.5 Aids, Grants & Support Plan"]
+        P4_Pricing["4.6 Pricing Strategy"]
+        P4_GTM["4.7 GTM & Launch Strategy"]
+    end
+
+    %% Lineage Flows
+    P2_Project -->|"Problem, Solution, TargetUser, Sector"| P3_1
+    P2_Project -->|"Problem, Solution, ValueProp"| P3_2
+    P3_1 -->|"MarketStudySessionId + Market Segments"| P3_2
+    P3_2 -->|"BusinessModelSessionId + Revenue Tiers + Unit Economics"| P3_3
+    P2_Project -->|"Sector, Solutions, Business Signals"| P3_4
+    P3_2 -.->|"BusinessProfile Signals (B2B, B2C, Online Payments)"| P3_4
+    P3_3 -.->|"Turnover & Funding Need signals"| P3_4
+    P2_Project -->|"Sector, Concept, CreatorEdge, RiskiestAssumption"| P3_5
+    P3_3 -->|"TAM, Growth %, OPEX, BreakEvenMonth"| P3_5
+    P3_4 -->|"FinTech badge detection"| P3_5
+    P2_Project -->|"Idea Core, Problem, Solution, Positioning"| P3_6
+    P2_BrandingEcho -->|"Branding identity & design tokens"| P3_6
+    P3_1 -->|"TAM/SAM/SOM & Competitor Landscape"| P3_6
+    P3_2 -->|"Canvas blocks, Pricing tiers, Channels"| P3_6
+    P3_3 -->|"36-Month P&L, Runway, Breakeven"| P3_6
+    P3_4 -->|"Section 12 Legal & Regulatory Framework"| P3_6
+    P3_5 -->|"Entity Structure, Skills & Gaps"| P3_6
+    P2_Project -->|"ClarityScore (max 20) + CreatorEdge (max 14)"| P3_7
+    P3_1 -->|"MarketStudy presence + TAM score (max 20)"| P3_7
+    P3_3 -->|"Forecast present + Breakeven + LTV/CAC (max 25)"| P3_7
+    P3_4 -->|"PlanningReadinessPct (max 15)"| P3_7
+    P3_5 -->|"SP matches / M50 designer engagement (max 6)"| P3_7
+    P3_6 -->|"BusinessPlan presence (+6)"| P3_7
+    IR_Score --> P3_Done
+    P3_Done -->|"Gated by Phase4ProfileGuard"| HX_Gate
+    HX_Gate -->|"phase3Complete && phase4Ready == true"| P4
+    P4_Snap --> P4_Roadmap --> P4_Needs --> P4_Skills --> P4_Support --> P4_Pricing --> P4_GTM
