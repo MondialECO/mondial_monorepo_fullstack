@@ -356,6 +356,10 @@ Following Figma Node `57157:9297` (`Financial Forecast · Creator Phase 3.3`), S
 10. **Zero-Mock & Complete Mathematical Reconciliation**:
     - All metrics, charts, and table rows are 100% dynamic, computed on the fly from live database session data and simulated operational drivers.
     - Zero static fallback data across all sections: starting budget is read directly from session state, TAM is dynamically parsed from Step 3.1, break-even and runway reflect true calculated values, and cumulative net cash flow matches across every visualization.
+11. **Dedicated Financial Forecast PDF Export (`ForecastPrintView.tsx`)**:
+    - Triggered via 'Download report' button in the Step 3.3 header bar and 'Export PDF' in the Creator Asset Library.
+    - Strictly contains 100% Step 3.3 financial forecast data with zero business plan contamination (all Executive Summary, Problem & Solution, Target Market, GTM, Operations, and Legal frameworks from other steps are cleanly excluded).
+    - Design mirrors the Step 3.3 screen layout with 100% pixel fidelity: Executive Verdict Hero Card, Three Summary Cards with vector SVGs (`RevenueAreaSvg`, `CostVsRevenueCrossingSvg`, `Cash36BarSvg`), 8-card operational assumptions grid, continuous 36-month consolidated table with year headers and subtotals, break-even & unit economics side-by-side cards, 4-tier risk assessment matrix, transparent brand logo, and print CSS page-break isolation.
 
 ---
 

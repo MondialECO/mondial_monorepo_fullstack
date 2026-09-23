@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { withIdeaContext } from '@/lib/creator-routes';
@@ -31,6 +31,7 @@ import { creatorAiApi } from '@/lib/api-creator-ai';
 import { exportBrandKitZip } from '@/lib/brand-kit-export';
 import MarketStudyPrintView from '@/components/creator/MarketStudyPrintView';
 import BusinessModelPrintView from '@/components/creator/BusinessModelPrintView';
+import ForecastPrintView from '@/components/creator/ForecastPrintView';
 import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import type {
   MarketStudyOutput,
@@ -261,6 +262,28 @@ export default function CreatorAssetLibraryPage() {
       setLoadingArtifactId(null);
     }
   };
+
+  // Logo derivation for PDF prints
+  const logoUrl = useMemo(() => {
+    if (!brandKit) return null;
+    const selectedKey = brandKit.logo?.selectedConceptKey;
+    const concepts = brandKit.logo?.concepts || [];
+    const approvedConcept = selectedKey ? concepts.find((c) => c.key === selectedKey) : concepts[0];
+    const variations = brandKit.logo?.variations || {};
+    return (
+      variations.primary?.svgUri ||
+      variations.primary?.pngUri ||
+      variations.horizontal?.svgUri ||
+      variations.horizontal?.pngUri ||
+      variations.transparent?.svgUri ||
+      variations.transparent?.pngUri ||
+      variations.badge_stamp?.svgUri ||
+      variations.badge_stamp?.pngUri ||
+      approvedConcept?.lockupAssetUri ||
+      approvedConcept?.markAssetUri ||
+      null
+    );
+  }, [brandKit]);
 
   // Build the 8 artifact models
   const isBrandKitReady = Boolean(brandKit && (brandKit.status === "complete" || (brandKit as any).isConfirmed || brandKit.logo?.selectedConceptKey));
@@ -715,14 +738,32 @@ export default function CreatorAssetLibraryPage() {
         />
       )}
 
-      {/* Lazy-Loaded Business Plan & Financial Forecast Print Overlay */}
-      {(activePlan || activeForecast) && (
+      {/* Lazy-Loaded Financial Forecast Print Overlay */}
+      {activeForecast && (
+        <ForecastPrintView
+          open={isPlanForecastOpen}
+          onClose={() => {
+            setIsPlanForecastOpen(false);
+            setActiveForecast(null);
+          }}
+          projectName={projectName}
+          logoUrl={logoUrl}
+          project={{
+            sector: projectMeta.sector,
+            geography: projectMeta.geography,
+            targetUser: projectMeta.targetUser,
+          }}
+          output={activeForecast}
+        />
+      )}
+
+      {/* Lazy-Loaded Business Plan Print Overlay */}
+      {activePlan && (
         <PlanForecastPrintView
           open={isPlanForecastOpen}
           onClose={() => {
             setIsPlanForecastOpen(false);
             setActivePlan(null);
-            setActiveForecast(null);
           }}
           projectName={projectName}
           project={{
@@ -731,7 +772,7 @@ export default function CreatorAssetLibraryPage() {
             targetUser: projectMeta.targetUser,
           }}
           plan={activePlan}
-          forecast={activeForecast}
+          forecast={null}
         />
       )}
     </Phase3SetupShell>
