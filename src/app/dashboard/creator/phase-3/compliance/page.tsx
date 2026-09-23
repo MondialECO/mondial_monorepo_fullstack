@@ -379,7 +379,7 @@ export default function ComplianceWorkspacePage() {
 
               <Button
                 onClick={handleSaveAndContinue}
-                className="rounded text-button font-medium h-auto py-2.5 px-6 bg-foreground text-background hover:bg-foreground/90 shadow-xs font-sans"
+                className="rounded text-button font-medium h-auto py-2.5 px-6 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs font-sans"
               >
                 Save and continue
               </Button>
