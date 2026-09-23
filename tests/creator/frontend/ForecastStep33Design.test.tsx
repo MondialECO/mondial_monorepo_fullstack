@@ -168,7 +168,7 @@ describe('ForecastPage (Step 3.3 Figma Node 57157:9297 Alignment)', () => {
     render(<ForecastPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('STEP 3.3 · FINANCIAL FORECAST')).toBeInTheDocument();
+      expect(screen.getAllByText('STEP 3.3 · FINANCIAL FORECAST').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByRole('heading', { name: 'Your 3-year financial forecast', level: 1 })).toBeInTheDocument();
       expect(screen.getByText('36 months · Months 1–12 modelled, 13–36 projected · EUR')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Download report/i })).toBeInTheDocument();

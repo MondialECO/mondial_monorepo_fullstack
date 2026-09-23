@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { withIdeaContext } from '@/lib/creator-routes';
 import axios from 'axios';
+import { useQuery } from '@tanstack/react-query';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import {
   creatorJourneyApi,
@@ -36,6 +37,17 @@ export default function Phase3CompletePage() {
     name: '',
   });
 
+  const [formation, setFormation] = useState<{
+    selectedType?: string;
+    founderEquity?: number;
+    plannedRole?: string;
+    skills?: { youHave?: string[]; youNeed?: string[] };
+  } | undefined>(undefined);
+  const [cross, setCross] = useState<{ youNeed: string[]; seedAsk: number | null }>({
+    youNeed: [],
+    seedAsk: null,
+  });
+
   const [computed, setComputed] = useState<ComputedJourneyStatus | null>(null);
   const [readiness, setReadiness] = useState<InvestorReadinessScore | null>(null);
   const [missing, setMissing] = useState<string | null>(null);
@@ -52,6 +64,47 @@ export default function Phase3CompletePage() {
   const forecastSession = useForecastSessionTimed(forecastSessionId);
   const bpOutput = (bpSession.data as { output?: BusinessPlanOutput } | undefined)?.output ?? null;
   const forecastOutput = (forecastSession.data as { output?: ForecastOutput } | undefined)?.output ?? null;
+
+  const { data: legalFramework } = useQuery({
+    queryKey: ['business-plan-section-12-complete', currentIdeaId],
+    queryFn: () => creatorJourneyApi.getBusinessPlanSection12(currentIdeaId),
+    staleTime: 60_000,
+  });
+
+  const forecastBasis = useMemo(() => {
+    if (!forecastOutput) return undefined;
+    const revMonths = forecastOutput.revenueForecast?.monthly ?? [];
+    const costMonths = forecastOutput.costForecast?.monthly ?? [];
+    const currency = forecastOutput.revenueForecast?.currency ?? 'EUR';
+
+    const calcYear = (startM: number, endM: number) => {
+      let rev = 0;
+      let opex = 0;
+      for (let m = startM; m <= endM; m++) {
+        const rm = revMonths.find((x) => x.month === m);
+        const cm = costMonths.find((x) => x.month === m);
+        if (rm) rev += rm.amount ?? 0;
+        if (cm) opex += (cm.fixedCosts ?? 0) + (cm.variableCosts ?? 0);
+      }
+      return { rev, opex, net: rev - opex };
+    };
+
+    const y1 = calcYear(1, 12);
+    const y2 = calcYear(13, 24);
+    const y3 = calcYear(25, 36);
+
+    return {
+      currency,
+      years: [
+        { year: 1, revenue: y1.rev, opex: y1.opex, netIncome: y1.net },
+        { year: 2, revenue: y2.rev, opex: y2.opex, netIncome: y2.net },
+        { year: 3, revenue: y3.rev, opex: y3.opex, netIncome: y3.net },
+      ],
+      summary: {
+        breakEvenMonth: forecastOutput.breakEvenAnalysis?.breakEvenMonth,
+      },
+    };
+  }, [forecastOutput]);
 
   const loadFreshness = async () => {
     try {
@@ -114,13 +167,38 @@ export default function Phase3CompletePage() {
             investorReadinessScore?: InvestorReadinessScore;
             businessPlanSessionId?: string;
             forecastSessionId?: string;
+            formationGenerator?: {
+              selectedType?: string;
+              founderEquity?: number;
+              plannedRole?: string;
+              youHave?: Array<{ label: string }>;
+              youNeed?: Array<{ label: string }>;
+            };
           } | undefined;
+          const p5 = journey.phase5Data as { pathB?: { seedFunding?: { totalAsk?: number } } } | undefined;
 
           if (p3?.investorReadinessScore) {
             setReadiness(p3.investorReadinessScore);
           }
           setBpSessionId(p3?.businessPlanSessionId ?? null);
           setForecastSessionId(p3?.forecastSessionId ?? null);
+
+          if (p3?.formationGenerator) {
+            setFormation({
+              selectedType: p3.formationGenerator.selectedType,
+              founderEquity: p3.formationGenerator.founderEquity,
+              plannedRole: p3.formationGenerator.plannedRole,
+              skills: {
+                youHave: (p3.formationGenerator.youHave ?? []).map((x) => x.label),
+                youNeed: (p3.formationGenerator.youNeed ?? []).map((x) => x.label),
+              },
+            });
+          }
+
+          setCross({
+            youNeed: (p3?.formationGenerator?.youNeed ?? []).map((n) => n.label),
+            seedAsk: p5?.pathB?.seedFunding?.totalAsk ?? null,
+          });
         }
         await loadFreshness();
       } finally {
@@ -163,10 +241,15 @@ export default function Phase3CompletePage() {
           problem: project.problem || '',
           solution: project.solution || '',
           targetUser: project.targetUser || '',
+          country: project.country,
+          category: project.category,
         }}
         plan={bpOutput}
         forecast={forecastOutput}
-        cross={{ youNeed: [], seedAsk: null }}
+        forecastBasis={forecastBasis}
+        formation={formation}
+        cross={cross}
+        legalFramework={legalFramework}
       />
 
       <div className="w-full min-w-0 max-w-none px-4 sm:px-6 py-6 sm:py-8">
