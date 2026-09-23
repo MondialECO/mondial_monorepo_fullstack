@@ -185,10 +185,10 @@ export default function ComplianceWorkspacePage() {
   const projectSummaryNarrative = useMemo(() => {
     return generateProjectSummary(
       overview?.detectedArchetypes,
-      overview?.assessment?.businessProfile,
+      (overview?.assessment as any)?.businessProfile,
       state?.project?.name
     );
-  }, [overview?.detectedArchetypes, overview?.assessment?.businessProfile, state?.project?.name]);
+  }, [overview?.detectedArchetypes, (overview?.assessment as any)?.businessProfile, state?.project?.name]);
 
   return (
     <Phase3SetupShell

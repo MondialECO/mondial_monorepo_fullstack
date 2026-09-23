@@ -692,12 +692,36 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   - *Legal Refresh Idempotency:* `PASS` — Consecutive refresh without changing inputs produces 0 duplicate requirements, 0 duplicate evidence links, 0 duplicate sources, 0 duplicate reconciliation records, and 0 duplicate audit events.
   - *Four-Surface Freshness Consistency:* `PASS` — Business classifier mutations (e.g. B2B $\to$ B2B+B2C) mark all 4 surfaces stale (`Phase3LegalCard`, `Legal & Compliance Workspace`, `Business Plan Section 12`, `Investor Readiness`). After refresh, all 4 surfaces return to current/synchronized state.
 
-### 5.5 Step 3.5 — Company Formation & Team (LIVE)
+### 5.5 Step 3.5 — Company Formation & Team (LIVE — 100% Figma Node 57156:8767 Aligned)
 - **Route:** `/dashboard/creator/phase-3/formation`
+- **Figma Reference:** 100% verified and aligned against approved Figma Node `57156:8767` ("Company Formation & Team · Creator Phase 3.5").
 - **Backing Entity & Controller:** Backed by `CreatorPhase3Controller` (`/api/creator/ai/formation-generator/start`, `PATCH /api/creator/formation/select-type`, `PATCH /api/creator/formation/skills`).
+- **Continuous Document Architecture (13 Canonical Sections):**
+  1. *Section 1: Quiet Intro:* DM Sans header (*"Let’s work out how your company could be set up."*).
+  2. *Section 2: Your Setup So Far:* French digital venture summary card and jurisdiction advisory context.
+  3. *Section 3: How Are You Planning to Start?:* 3 interactive selectable starting modes (*Just me*, *With co-founders*, *I’m not sure yet*) with reactive state updates.
+  4. *Section 4: A Structure to Consider:* Canonical recommendation card (*SASU*, *SAS*, or *SARL*) with "Worth considering" badge, "Why it may fit your plan" (3 checkmark signals), "Things to think about" (4 consideration lines), 4-cell Quick Facts strip (*OWNERS*, *MANAGEMENT*, *OWNERSHIP LATER*, *BEFORE REGISTRATION*), and an exploration selector for alternative structures.
+  5. *Section 5: Ownership:* Visual percentage breakdown bar (*YOU · 100%*) with inline slider/adjustment modal.
+  6. *Section 6: Leadership:* Legal representative card (*Planned role: President / Gérant*) with custom title selector.
+  7. *Section 7: Starting Capital Plan:* Large bold starting capital display (seeded from forecast OPEX baseline, e.g. *€5,000*) with *"Looks right"* confirmation and editable input toggle.
+  8. *Section 8: Who Do You Actually Need to Get Started?:* 3-tier capability grid:
+     - *YOU CAN HANDLE* (green indicator, chips from `youHave`)
+     - *YOU MAY NEED HELP WITH* (amber indicator, chips from `youNeed` / gaps)
+     - *NOT NEEDED YET* (muted indicator, growth-stage roles)
+  9. *Section 9: One Expanded Team Need:* High-priority launch gap deep-dive (*Backend development* · *Needed before launch*) highlighting an external specialist pathway with 3 actionable decision pills.
+  10. *Section 10: Professional Support You May Use:* External advisory cards for non-permanent expertise (*Chartered accountant* & *Legal professional*).
+  11. *Section 11: Day 1 vs Later:* 2-column comparative roadmap contrasting immediate Day 1 roster against later growth expansion.
+  12. *Section 12: Final Setup Summary:* Dual executive dossiers (*COMPANY* specifications and *TEAM* headcount counts) paired with a quiet statutory legal advice disclaimer.
+  13. *Section 13: Footer Navigation:* Ghost *"Legal Roadmap"* Back button (routes to Step 3.4 `/dashboard/creator/phase-3/compliance`) and primary blue *"Continue to Executive Business Plan"* button (routes to Step 3.6 `/dashboard/creator/phase-3/business-plan`).
+- **Full-Width Layout & Zero Hardcoded Data Guarantee:**
+  - *Full-Width Shell:* Rendered inside `Phase3SetupShell` configured with `fullWidth={true}` and `w-full min-w-0`, perfectly responsive from 1440px to 1920px without arbitrary max-width constraints.
+  - *Dynamic Domain Data:* 100% free of static/hardcoded venture mocks. Project name, country, business description, currency symbol, why-it-fits reasoning bullets, leadership roles, starting capital basis, team skill tags, priority launch gap, and Day 1 roster are dynamically bound from `journey.project`, `formation.recommendationFactors`, `forecastBasis`, and `journey.state.phase3.marketStudy`.
+- **Bi-Directional Persistence Contracts:**
+  - *Instant Entity Override:* Selecting an entity card calls `PATCH /api/creator/formation/select-type` with `{ selectedType: string }`, instantly persisting the selection to MongoDB and flagging `IsOverride: true` if divergent from engine recommendation.
+  - *Atomic Save-on-Continue:* Advancing via *"Continue to Executive Business Plan"* commits `{ skills: string[], cofounders: CofounderDraft[], setup: FormationSetupPayload }` to `PATCH /api/creator/formation/skills`, synchronizing ownership split, leadership role, starting capital, and team gaps directly to the creator session.
 - **Supported Legal Structures (Current Production Canon):**
   - `SAS` (Société par Actions Simplifiée) — Multi-founder archetype
-  - `SAS-U` (Société par Actions Simplifiée Unipersonnelle) — Solo-founder archetype
+  - `SAS-U` / `SASU` (Société par Actions Simplifiée Unipersonnelle) — Solo-founder archetype
   - `SARL` (Société à Responsabilité Limitée) — Commercial partnership archetype
 - **Formation Engine MVP Product Limitation:**
   > **Known Product Limitation:** Current France MVP formation recommendations are limited to the legal structures supported by the current recommendation engine (SAS, SAS-U, SARL). The engine does not yet represent every possible French business structure (e.g., EURL, Micro-entreprise / Auto-entrepreneur, Entreprise Individuelle).
@@ -784,8 +808,8 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
 - **Step 3.1 Market Study:** 100% verified against approved Figma design reference (Figma Node `57078:11039` / `57156:8209`) with responsive 1440px–1920px verification, proportional funnel, competitor matrix, and synchronized PDF export.
 - **Step 3.2 Business Model:** 100% verified against approved Figma design reference (Figma Node `57156:8456`) with responsive 1440px–1920px verification, 9-block Osterwalder canvas, calibrated unit economics strip, completion checklist, and synchronized PDF export.
 - **Step 3.3 Financial Forecast:** 100% verified against approved Figma design references (Figma Node `57157:9297` & `57157:9348`) with responsive 1440px–1920px verification, continuous 8-section command dashboard, exact 1:1 vector SVG summary cards (`RevenueAreaSvg`, `CostVsRevenueCrossingSvg`, `Cash36BarSvg`), live 36-month consolidated data table, zero static fallback data, and synchronized PDF export.
-- **Step 3.4 Legal & Compliance Intelligence:** 100% verified against approved Figma design reference (Figma Node `57156:9158`) with responsive full-width layout, canonical Phase 3 shell header, 6 structured sections (Header, Stage Selector segmented tabs, Stage Description & Count, Interactive Checklist with done state badges and 56px indented official public guidance accordions, Legal Disclaimers, and Save & continue with Back navigation), 100% globals.css token compliance, and 18 English statutory rules.
-- **Steps 3.5 through 3.7:** **No approved Figma design references exist yet in the repository** for Screens 3.5 (Company Formation & Team), 3.6 (Executive Business Plan), or 3.7 (Phase 3 Complete & Investor Readiness Audit). These screens conform strictly to technical schema contracts and typography canon, but await formal pixel-level Figma references.
+- **Step 3.5 Company Formation & Team:** 100% verified against approved Figma design reference (Figma Node `57156:8767`) with continuous 13-section single-scroll executive layout, interactive starting plan selector (Just me / With co-founders / I’m not sure yet), dynamic entity recommendation card (SASU / SAS / SARL) with 4-cell Quick Facts strip, visual 100% ownership breakdown bar, leadership role card, starting capital plan with inline validation, 3-column team capability distribution (You Can Handle / You May Need Help With / Not Needed Yet), priority launch need deep-dive (Backend development / external specialist pathway), professional support cards (Accountant & Legal), Day 1 vs Later team roadmap, dual summary dossiers (Company & Team), and 100% globals.css token compliance.
+- **Steps 3.6 through 3.7:** **No approved Figma design references exist yet in the repository** for Screens 3.6 (Executive Business Plan) or 3.7 (Phase 3 Complete & Investor Readiness Audit). These screens conform strictly to technical schema contracts and typography canon, but await formal pixel-level Figma references.
 
 ---
 

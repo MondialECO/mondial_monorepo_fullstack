@@ -1,42 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { withIdeaContext } from '@/lib/creator-routes';
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  CircleAlert,
-  CircleCheck,
-  Compass,
-  Cpu,
-  Info,
-  Layers,
-  Lightbulb,
-  Loader2,
-  Search,
-  ShieldAlert,
-  Sliders,
-  CheckCircle2,
-  Users,
-} from 'lucide-react';
+import { Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
+import { FormationFigmaFlow, type FormationSetupPayload } from '@/components/creator/formation/FormationFigmaFlow';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
-import { cn } from '@/lib/utils';
 import {
   creatorJourneyApi,
   type CofounderDraft,
   type FormationGenerator,
-  type FormationOption,
-  type FormationRecommendationFactor,
   type FormationTypeCode,
 } from '@/lib/api-creator-journey';
 
-// The fixed declarable skill set (mirrors the backend DeclarableSkills).
 const DECLARABLE_SKILLS = [
   'Tech/Engineering',
   'Finance',
@@ -50,37 +29,8 @@ const DECLARABLE_SKILLS = [
   'Marketing',
 ] as const;
 
-// SP-backed gap baseline (mirrors the backend GapBaseline) — every gap → a real specialist.
-const GAP_BASELINE: { skill: string; specialty: string; label: string; description: string }[] = [
-  {
-    skill: 'Tech/Engineering',
-    specialty: 'development',
-    label: 'Full-stack Developer',
-    description: 'Technical architecture, frontend/backend engineering, and API infrastructure.',
-  },
-  {
-    skill: 'Finance',
-    specialty: 'finance',
-    label: 'Financial Advisor',
-    description: 'Financial forecasting, unit economics validation, and tax optimization.',
-  },
-  {
-    skill: 'Legal',
-    specialty: 'legal',
-    label: 'Legal Specialist',
-    description: 'Corporate bylaws, shareholder agreements, and regulatory compliance.',
-  },
-  {
-    skill: 'Design',
-    specialty: 'branding',
-    label: 'Brand Designer',
-    description: 'Brand identity, UI/UX systems, and marketing visual assets.',
-  },
-];
-
 const EQUITY_RANGES = ['< 5%', '5–10%', '10–20%', '> 20%'];
 const LOCATIONS = ['remote', 'local', 'either'];
-const SKILLS_AUTOSAVE_DEBOUNCE_MS = 400;
 
 type PendingSkillsSave = {
   skills: string[];
@@ -99,25 +49,24 @@ export default function FormationPage() {
   } = useCreatorProgress();
   const currentIdeaId = queryIdeaId || activeIdeaId || null;
 
-  const [view, setView] = useState<'type' | 'skills'>('type');
   const [formation, setFormation] = useState<FormationGenerator | null>(null);
+  const [projectContext, setProjectContext] = useState<{
+    sector?: string;
+    concept?: string;
+    geography?: string;
+    country?: string;
+    userName?: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
-
-  // 3.5b state
-  const [declaredSkills, setDeclaredSkills] = useState<string[]>([]);
   const [continuing, setContinuing] = useState(false);
+  const [flushingSkills, setFlushingSkills] = useState(false);
+
   const [roleNeeded, setRoleNeeded] = useState('Technical co-founder');
   const [equityRange, setEquityRange] = useState(EQUITY_RANGES[1]);
   const [locationPreference, setLocationPreference] = useState(LOCATIONS[2]);
-  const [savingCf, setSavingCf] = useState(false);
-  const [cfSaved, setCfSaved] = useState(false);
-  const [flushingSkills, setFlushingSkills] = useState(false);
 
-  // Formation follows the Creator draft pattern: one debounce timer plus an
-  // explicit flush before navigation. The pending snapshot is latest-wins and
-  // the drain is serialized so PATCH responses can never land out of order.
   const declaredSkillsRef = useRef<string[]>([]);
   const pendingSkillsSaveRef = useRef<PendingSkillsSave | null>(null);
   const skillsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -163,21 +112,6 @@ export default function FormationPage() {
     return request;
   }, []);
 
-  const queueSkillsAutosave = useCallback(
-    (skills: string[]) => {
-      const revision = latestSkillsRevisionRef.current + 1;
-      latestSkillsRevisionRef.current = revision;
-      pendingSkillsSaveRef.current = { skills: [...skills], revision, ideaId: activeIdeaId };
-
-      if (skillsSaveTimerRef.current) clearTimeout(skillsSaveTimerRef.current);
-      skillsSaveTimerRef.current = setTimeout(() => {
-        skillsSaveTimerRef.current = null;
-        void drainSkillsQueue().catch(() => undefined);
-      }, SKILLS_AUTOSAVE_DEBOUNCE_MS);
-    },
-    [activeIdeaId, drainSkillsQueue],
-  );
-
   const flushSkills = useCallback(async () => {
     if (skillsSaveTimerRef.current) {
       clearTimeout(skillsSaveTimerRef.current);
@@ -217,6 +151,15 @@ export default function FormationPage() {
     (async () => {
       try {
         const { journey } = await creatorJourneyApi.get(activeIdeaId);
+        if (journey?.project) {
+          setProjectContext({
+            sector: journey.project.sector,
+            concept: journey.project.concept,
+            geography: journey.project.geography,
+            country: journey.project.geography,
+            userName: journey.project.name,
+          });
+        }
         const phase3 = journey.phase3Data as {
           forecastSessionId?: string | null;
           formationGenerator?: FormationGenerator;
@@ -238,7 +181,7 @@ export default function FormationPage() {
         } else {
           try {
             f = await creatorJourneyApi.generateFormation(activeIdeaId);
-          } catch (genErr) {
+          } catch {
             const { journey: freshJourney } = await creatorJourneyApi.get(activeIdeaId);
             const freshPhase3 = freshJourney.phase3Data as { formationGenerator?: FormationGenerator };
             if (freshPhase3?.formationGenerator?.recommendedType && (freshPhase3.formationGenerator.options?.length ?? 0) > 0) {
@@ -250,11 +193,10 @@ export default function FormationPage() {
         }
         if (!active) return;
         setFormation(f);
-        if (f.skillsDeclared) {
+        if (f.skillsDeclared || (f.youHave && f.youHave.length > 0)) {
           const hydratedSkills =
             f.youHave?.filter((s) => (DECLARABLE_SKILLS as readonly string[]).includes(s)) ?? [];
           declaredSkillsRef.current = hydratedSkills;
-          setDeclaredSkills(hydratedSkills);
         }
         if (f.cofounderDraft) {
           setRoleNeeded(f.cofounderDraft.roleNeeded ?? 'Technical co-founder');
@@ -284,103 +226,42 @@ export default function FormationPage() {
     }
   };
 
-  const toggleSkill = (skill: string) => {
-    if (skillsInteractionLockedRef.current) return;
-    const previous = declaredSkillsRef.current;
-    const next = previous.includes(skill)
-      ? previous.filter((item) => item !== skill)
-      : [...previous, skill];
-    declaredSkillsRef.current = next;
-    setDeclaredSkills(next);
-    setError(null);
-    queueSkillsAutosave(next);
-  };
-
-  // Client-side gap derivation
-  const gaps = GAP_BASELINE.filter((g) => !declaredSkills.includes(g.skill));
-  const selectedOption = formation?.options?.find((option) => option.code === formation.selectedType);
-  const recommendedOption = formation?.options?.find((option) => option.code === formation.recommendedType);
   const cofounderDraft = (): CofounderDraft => ({ roleNeeded, equityRange, locationPreference });
 
-  const isOverrideActive = Boolean(
-    formation?.selectedType &&
-      formation.recommendedType &&
-      formation.selectedType !== formation.recommendedType,
-  );
-
-  const saveCofounder = async () => {
-    if (skillsInteractionLockedRef.current) return;
-    skillsInteractionLockedRef.current = true;
-    setSavingCf(true);
-    setCfSaved(false);
-    setError(null);
-    try {
-      await flushSkills();
-      const f = await creatorJourneyApi.declareFormationSkills(
-        declaredSkillsRef.current,
-        cofounderDraft(),
-        activeIdeaId,
-      );
-      setFormation(f);
-      setCfSaved(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save preferences.");
-    } finally {
-      skillsInteractionLockedRef.current = false;
-      setSavingCf(false);
-    }
-  };
-
-  const handleContinue = async () => {
+  const handleContinue = async (config?: FormationSetupPayload) => {
     if (skillsInteractionLockedRef.current) return;
     skillsInteractionLockedRef.current = true;
     setContinuing(true);
     setError(null);
     try {
       await flushSkills();
+
+      const draft: CofounderDraft | undefined =
+        config?.mode === 'team'
+          ? {
+              roleNeeded: roleNeeded || 'Technical co-founder',
+              equityRange: `${100 - (config.founderEquity ?? 75)}%`,
+              locationPreference: locationPreference || 'either',
+            }
+          : undefined;
+
+      const skillsToSave =
+        declaredSkillsRef.current.length > 0
+          ? declaredSkillsRef.current
+          : (formation?.youHave?.filter((s) => (DECLARABLE_SKILLS as readonly string[]).includes(s)) ?? []);
+
       await creatorJourneyApi.declareFormationSkills(
-        declaredSkillsRef.current,
-        cofounderDraft(),
+        skillsToSave,
+        draft,
         currentIdeaId,
       );
       completeStep(3, 5);
       router.push(withIdeaContext('/dashboard/creator/phase-3/business-plan', currentIdeaId));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save your skills.");
+    } finally {
       setContinuing(false);
       skillsInteractionLockedRef.current = false;
-    }
-  };
-
-  const showCompanyType = async () => {
-    if (skillsInteractionLockedRef.current) return;
-    skillsInteractionLockedRef.current = true;
-    setFlushingSkills(true);
-    setError(null);
-    try {
-      await flushSkills();
-      setView('type');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save your skills.");
-    } finally {
-      skillsInteractionLockedRef.current = false;
-      setFlushingSkills(false);
-    }
-  };
-
-  const showSkills = async () => {
-    if (skillsInteractionLockedRef.current) return;
-    skillsInteractionLockedRef.current = true;
-    setFlushingSkills(true);
-    setError(null);
-    try {
-      await flushSkills();
-      setView('skills');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save your skills.");
-    } finally {
-      skillsInteractionLockedRef.current = false;
-      setFlushingSkills(false);
     }
   };
 
@@ -394,6 +275,7 @@ export default function FormationPage() {
       router.push(href);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save your skills.");
+    } finally {
       skillsInteractionLockedRef.current = false;
       setFlushingSkills(false);
     }
@@ -420,7 +302,7 @@ export default function FormationPage() {
 
   return (
     <Phase3SetupShell
-      compact
+      fullWidth
       stepEyebrow="STEP 3.5 · COMPANY FORMATION & TEAM"
       title="Company Formation & Team"
       description="A rule-backed company structure baseline grounded in your venture profile, with transparent reasoning and skills assessment."
@@ -451,434 +333,15 @@ export default function FormationPage() {
         </Card>
       )}
 
-      {formation && !loading && view === 'type' && (
-        <div className="space-y-6">
-          {/* Jurisdiction Context Banner */}
-          <div className="flex items-start gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-xs leading-relaxed text-foreground">
-            <Info className="size-4 shrink-0 text-primary mt-0.5" aria-hidden="true" />
-            <div>
-              <span className="font-semibold text-primary">Jurisdiction Notice (France Baseline):</span>{' '}
-              The options below illustrate standard French corporate structures (SAS, SAS-U, SARL). If you plan to incorporate in another jurisdiction (e.g. US Delaware, UK Ltd, Germany GmbH), treat this as an architectural guideline and consult a qualified legal advisor.
-            </div>
-          </div>
-
-          {/* Section 1: Discrete Recommendation Inputs & Reasoning */}
-          <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sliders className="size-4 text-primary" />
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground font-sans">
-                  Recommendation Engine Inputs &amp; Reasoning
-                </h3>
-              </div>
-              <span className="text-xs text-muted-foreground font-medium">
-                Suggestion:{' '}
-                <strong className="text-primary font-mono text-sm uppercase">
-                  {formation.recommendedType}
-                </strong>
-              </span>
-            </div>
-
-            <p className="text-xs text-muted-foreground leading-normal">
-              Our rule engine analyzed your live venture attributes from Idea Clarifier, Financial Forecast, and Team Setup. The recommendation is grounded on these discrete facts:
-            </p>
-
-            {/* Discrete Factor Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-              {(formation.recommendationFactors && formation.recommendationFactors.length > 0) ? (
-                formation.recommendationFactors.map((factor, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-col justify-between rounded-xl border border-border/60 bg-muted/30 p-3.5 space-y-1.5 transition-colors hover:border-primary/30"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-label font-semibold text-primary tracking-wide uppercase">
-                        {factor.category}
-                      </span>
-                      <span className="text-xs font-mono font-medium text-foreground bg-card px-2 py-0.5 rounded border border-border/50">
-                        {factor.signal}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-snug">
-                      {factor.implication}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-2 rounded-xl border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-                  {formation.recommendationReason}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 text-footnote text-muted-foreground/80 pt-1">
-              <Lightbulb className="size-3.5 shrink-0 text-amber-500" />
-              <span>
-                Changing upstream parameters (e.g. updating forecast TAM/Growth or adding co-founders) dynamically updates this baseline.
-              </span>
-            </div>
-          </Card>
-
-          {/* Override Alert Banner if active */}
-          {isOverrideActive && (
-            <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs leading-relaxed text-foreground">
-              <CircleAlert className="size-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-              <div>
-                <span className="font-semibold text-amber-700 dark:text-amber-300">
-                  Founder Override Active:
-                </span>{' '}
-                You selected <strong className="font-mono text-foreground">{formation.selectedType}</strong> instead of the automated recommendation (<strong className="font-mono text-muted-foreground">{formation.recommendedType}</strong>). This deliberate choice will be preserved across Phase 4 execution and Phase 6 legal formation.
-              </div>
-            </div>
-          )}
-
-          {/* Section 2: Structure Selection Cards */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground font-sans">
-                Select Entity Structure
-              </h3>
-              <span className="text-xs text-muted-foreground">Tap any option to choose or override</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {formation.options?.map((option) => {
-                const isRec = formation.recommendedType === option.code;
-                const isSel = formation.selectedType === option.code;
-                const isOptionOverride = isSel && !isRec;
-
-                return (
-                  <button
-                    key={option.code}
-                    type="button"
-                    onClick={() => selectType(option.code)}
-                    disabled={selecting}
-                    aria-pressed={isSel}
-                    className={cn(
-                      'group relative flex min-h-[220px] flex-col justify-between rounded-2xl border bg-card p-5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-70',
-                      isSel
-                        ? 'border-primary shadow-sm bg-primary/[0.02] ring-1 ring-primary/40'
-                        : isRec
-                        ? 'border-primary/40 hover:border-primary/70'
-                        : 'border-border/70 hover:border-primary/30',
-                    )}
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex w-full items-center justify-between gap-2">
-                        <span className="text-xl font-bold font-mono tracking-tight text-foreground">
-                          {option.code}
-                        </span>
-
-                        {isSel && (
-                          <span
-                            className={cn(
-                              'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-badge font-semibold border',
-                              isOptionOverride
-                                ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-                                : 'border-primary/20 bg-primary/10 text-primary',
-                            )}
-                          >
-                            <Check className="size-3" />
-                            {isOptionOverride ? 'Selected (Override)' : 'Selected'}
-                          </span>
-                        )}
-
-                        {!isSel && isRec && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-badge font-semibold text-primary">
-                            <CheckCircle2 className="size-3" />
-                            Suggested
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {option.description}
-                      </p>
-                    </div>
-
-                    <div className="space-y-1.5 pt-4 border-t border-border/50 text-xs">
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Min Capital:</span>
-                        <span className="font-mono font-medium text-foreground">{option.capital}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Filing Time:</span>
-                        <span className="font-mono font-medium text-foreground">{option.formationTime}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Est. Cost:</span>
-                        <span className="font-mono font-medium text-foreground">{option.estimatedCost}</span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <p className="text-footnote text-muted-foreground/70 italic pt-1">
-              * Indicative timelines and capital thresholds based on standard registry filings. No statutory state fees are charged at this stage.
-            </p>
-          </div>
-
-          {/* Navigation Controls */}
-          <div className="flex items-center justify-between pt-6 border-t border-border">
-            <Button
-              variant="outline"
-              onClick={() => void navigateAfterSkillsFlush(withIdeaContext('/dashboard/creator/phase-3/compliance', currentIdeaId))}
-              disabled={flushingSkills}
-              className="h-10 rounded-xl border-border px-4 text-sm font-medium text-muted-foreground shadow-none"
-            >
-              <ArrowLeft className="size-4 mr-2" /> Back to Compliance
-            </Button>
-            <Button
-              onClick={() => void showSkills()}
-              disabled={selecting || flushingSkills}
-              className="h-10 gap-2 rounded-xl px-5 text-sm font-semibold"
-            >
-              {(selecting || flushingSkills) && <Loader2 className="size-4 animate-spin" />}
-              Continue to Team &amp; Skills {!selecting && !flushingSkills && <ArrowRight className="size-4" />}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {formation && !loading && view === 'skills' && (
-        <div className="space-y-6">
-          {/* Section 1: Skills Assessment & Declarations */}
-          <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm space-y-6">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Users className="size-4 text-primary" />
-                <h3 className="text-base font-semibold text-foreground font-sans">
-                  Founder Capabilities &amp; Team Composition
-                </h3>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Declare the competencies you personally bring to the founding team. The system evaluates these against baseline venture milestones to highlight specialist gaps.
-              </p>
-            </div>
-
-            {/* Founder-Declared Skills Picker */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Founder-Declared Skills (Self-Reported)
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {declaredSkills.length} selected
-                </span>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {DECLARABLE_SKILLS.map((skill) => {
-                  const isSelected = declaredSkills.includes(skill);
-                  return (
-                    <button
-                      key={skill}
-                      type="button"
-                      onClick={() => toggleSkill(skill)}
-                      disabled={continuing || flushingSkills || savingCf}
-                      aria-pressed={isSelected}
-                      className={cn(
-                        'inline-flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-70',
-                        isSelected
-                          ? 'border-primary bg-primary font-semibold text-primary-foreground shadow-sm'
-                          : 'border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/40',
-                      )}
-                    >
-                      {isSelected && <Check className="size-3" aria-hidden="true" />}
-                      {skill}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Split Comparison: Declared vs Inferred Gaps */}
-            <div className="grid gap-6 border-t border-border pt-6 md:grid-cols-2">
-              {/* Left: Declared */}
-              <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
-                <div className="flex items-center gap-2 text-xs font-semibold text-foreground uppercase tracking-wider">
-                  <CircleCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>Your Declared Core Competencies</span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-snug">
-                  Skills you bring directly to venture execution:
-                </p>
-                {declaredSkills.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {declaredSkills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="inline-flex items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs italic text-muted-foreground pt-1">
-                    No skills selected yet. Tap any chips above to declare capabilities.
-                  </p>
-                )}
-              </div>
-
-              {/* Right: Derived Gaps */}
-              <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
-                <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
-                  <Compass className="size-4 text-amber-600 dark:text-amber-400" />
-                  <span>System-Derived Competence Gaps</span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-snug">
-                  Early-stage capabilities not covered in your self-declaration:
-                </p>
-
-                {gaps.length === 0 ? (
-                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-xs text-emerald-700 dark:text-emerald-300">
-                    Comprehensive coverage: All common early-stage foundational skills are declared.
-                  </div>
-                ) : (
-                  <div className="space-y-2 pt-1">
-                    {gaps.map((gap) => (
-                      <div
-                        key={gap.skill}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-card p-3 shadow-none transition-colors hover:border-primary/30"
-                      >
-                        <div>
-                          <div className="text-xs font-semibold text-foreground">{gap.label}</div>
-                          <div className="text-badge text-muted-foreground">{gap.skill}</div>
-                        </div>
-
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="h-7 shrink-0 gap-1.5 rounded-full border-border px-3 text-badge font-semibold text-primary shadow-none hover:border-primary"
-                        >
-                          <Link
-                            href={`/marketplace?category=${gap.specialty}`}
-                            aria-disabled={flushingSkills || continuing || savingCf}
-                            onClick={(event) => {
-                              event.preventDefault();
-                              void navigateAfterSkillsFlush(`/marketplace?category=${gap.specialty}`);
-                            }}
-                          >
-                            <Search className="size-3" />
-                            Find SP
-                          </Link>
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-
-          {/* Section 2: Technical Co-Founder Draft Preferences */}
-          <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-sm space-y-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Cpu className="size-4 text-primary" />
-                <h3 className="text-base font-semibold text-foreground font-sans">
-                  Co-Founder Matchmaking Preferences (Draft)
-                </h3>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                If you are looking to recruit a co-founder, save your target profile. Matchmaking activates at Level Up (Phase 6).
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-              <label className="space-y-1.5 text-xs font-medium text-foreground">
-                <span>Role Needed</span>
-                <input
-                  value={roleNeeded}
-                  onChange={(event) => {
-                    setRoleNeeded(event.target.value);
-                    setCfSaved(false);
-                  }}
-                  className="h-10 w-full rounded-xl border border-border bg-muted/30 px-3 text-xs outline-none transition-colors focus:border-primary focus:bg-card"
-                  placeholder="e.g. Technical Co-Founder / CTO"
-                />
-              </label>
-
-              <label className="space-y-1.5 text-xs font-medium text-foreground">
-                <span>Target Equity Allocation</span>
-                <select
-                  value={equityRange}
-                  onChange={(event) => {
-                    setEquityRange(event.target.value);
-                    setCfSaved(false);
-                  }}
-                  className="h-10 w-full rounded-xl border border-border bg-muted/30 px-3 text-xs font-mono outline-none transition-colors focus:border-primary focus:bg-card"
-                >
-                  {EQUITY_RANGES.map((range) => (
-                    <option key={range} value={range}>
-                      {range}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="space-y-1.5 text-xs font-medium text-foreground">
-                <span>Location Preference</span>
-                <select
-                  value={locationPreference}
-                  onChange={(event) => {
-                    setLocationPreference(event.target.value);
-                    setCfSaved(false);
-                  }}
-                  className="h-10 w-full rounded-xl border border-border bg-muted/30 px-3 text-xs capitalize outline-none transition-colors focus:border-primary focus:bg-card"
-                >
-                  {LOCATIONS.map((loc) => (
-                    <option key={loc} value={loc}>
-                      {loc}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={saveCofounder}
-                disabled={savingCf || continuing || flushingSkills}
-                className="h-9 gap-1.5 rounded-xl border-border px-4 text-xs font-semibold text-primary shadow-none"
-              >
-                {savingCf && <Loader2 className="size-3.5 animate-spin" />}
-                Save Co-Founder Preferences
-              </Button>
-              {cfSaved && (
-                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <Check className="size-3.5" /> Preferences saved — will queue at Level Up (Phase 6).
-                </span>
-              )}
-            </div>
-          </Card>
-
-          {/* Navigation Controls */}
-          <div className="flex items-center justify-between pt-6 border-t border-border">
-            <Button
-              variant="outline"
-              onClick={() => void showCompanyType()}
-              disabled={continuing || flushingSkills || savingCf}
-              className="h-10 rounded-xl border-border px-4 text-sm font-medium text-muted-foreground shadow-none"
-            >
-              <ArrowLeft className="size-4 mr-2" /> Structure Options
-            </Button>
-            <Button
-              onClick={handleContinue}
-              disabled={continuing || flushingSkills || savingCf}
-              className="h-10 gap-2 rounded-xl px-5 text-sm font-semibold"
-            >
-              {continuing && <Loader2 className="size-4 animate-spin" />}
-              Proceed to Executive Business Plan {!continuing && <ArrowRight className="size-4" />}
-            </Button>
-          </div>
-        </div>
+      {formation && !loading && (
+        <FormationFigmaFlow
+          formation={formation}
+          project={projectContext}
+          onSelectType={selectType}
+          onContinue={handleContinue}
+          onBack={() => void navigateAfterSkillsFlush(withIdeaContext('/dashboard/creator/phase-3/compliance', currentIdeaId))}
+          isSaving={continuing || flushingSkills || selecting}
+        />
       )}
     </Phase3SetupShell>
   );
