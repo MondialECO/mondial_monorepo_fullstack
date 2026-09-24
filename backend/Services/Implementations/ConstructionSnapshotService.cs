@@ -505,7 +505,7 @@ namespace WebApp.Services.Implementations
                 {
                     Key = "legal_compliance",
                     Category = ConstructionCategories.LegalAndAdministration,
-                    Title = "Regulatory & Legal Obligations",
+                    Title = "Legal Assessment & Compliance Framework",
                     Status = ConstructionItemStatus.Partial,
                     Priority = ConstructionItemPriority.High,
                     Reason = $"{context.Legal.HighPriorityPendingCount} high-priority compliance or licensing obligations require fulfillment prior to operational launch.",
@@ -520,12 +520,12 @@ namespace WebApp.Services.Implementations
                 {
                     Key = "legal_compliance",
                     Category = ConstructionCategories.LegalAndAdministration,
-                    Title = "Regulatory & Legal Obligations",
+                    Title = "Legal Assessment & Compliance Framework",
                     Status = ConstructionItemStatus.Ready,
                     Priority = ConstructionItemPriority.High,
-                    Reason = "Core corporate structure, statutory rules, and initial compliance items are addressed.",
+                    Reason = "Phase 3 legal and regulatory compliance assessment completed; obligations mapped for operational roadmap execution.",
                     Source = new List<string> { "Legal Assessment" },
-                    RecommendedNextStep = "Proceed with standard administrative registration schedule.",
+                    RecommendedNextStep = "Execute statutory filings and compliance tasks per operational roadmap schedule.",
                     Blocking = false
                 });
             }

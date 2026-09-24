@@ -702,6 +702,12 @@ function TaskRow({
     })
     .filter(Boolean);
 
+  const incompletePrereqs = resolvedDependencies.filter(
+    (dep) => dep.status !== 'Done' && dep.status !== 'Skipped'
+  );
+  const isBlockedByPrereq = incompletePrereqs.length > 0;
+  const downstreamCount = task.unblocks ? task.unblocks.length : 0;
+
   const handleSaveAdjustment = async () => {
     await onUpdateTask({
       taskId: task.id,
@@ -751,10 +757,23 @@ function TaskRow({
             {task.title}
           </span>
 
-          {/* Blocking Badge */}
-          {task.blocking && (
-            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">
-              Blocking
+          {/* Blocks N tasks Badge */}
+          {downstreamCount > 0 && (
+            <span
+              className="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+              title={`Blocks ${downstreamCount} downstream task(s): ${task.unblocks?.join(', ') ?? ''}`}
+            >
+              Blocks {downstreamCount} {downstreamCount === 1 ? 'task' : 'tasks'}
+            </span>
+          )}
+
+          {/* Blocked by prerequisite Badge */}
+          {isBlockedByPrereq && task.status !== 'Done' && (
+            <span
+              className="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20"
+              title={`Blocked by prerequisite: ${incompletePrereqs.map((p) => p.title).join(', ')}`}
+            >
+              Blocked by {incompletePrereqs.length} {incompletePrereqs.length === 1 ? 'prereq' : 'prereqs'}
             </span>
           )}
         </div>
@@ -765,11 +784,11 @@ function TaskRow({
           <TaskPriorityBadge priority={task.priority} />
 
           {/* Effort */}
-          {task.estimatedEffort && (
-            <span className="hidden sm:inline-block text-xs text-muted-foreground font-mono">
-              {task.estimatedEffort}
-            </span>
-          )}
+          <span className="hidden sm:inline-block text-xs text-muted-foreground font-mono">
+            {task.estimatedEffortHours
+              ? `~${task.estimatedEffortHours} hrs`
+              : `Effort: ${task.estimatedEffort || 'Medium'}`}
+          </span>
 
           {/* Status Chip */}
           <TaskStatusChip status={task.status} />
@@ -829,7 +848,9 @@ function TaskRow({
                 <div>
                   Effort:{' '}
                   <span className="font-mono font-medium text-foreground">
-                    {task.estimatedEffort || 'Medium'}
+                    {task.estimatedEffortHours
+                      ? `~${task.estimatedEffortHours} hrs (${task.estimatedEffort || 'Medium'})`
+                      : `Effort: ${task.estimatedEffort || 'Medium'}`}
                   </span>
                 </div>
                 {task.estimatedDuration && (
@@ -850,25 +871,36 @@ function TaskRow({
             <div>
               <div className="font-semibold text-foreground mb-1 flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-primary" />
-                <span>Dependencies</span>
+                <span>Prerequisites / Blocked by</span>
               </div>
               <div className="pl-5">
                 {resolvedDependencies.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {resolvedDependencies.map((dep, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-card border border-border text-[11px] text-foreground"
-                      >
-                        <span>{dep.title}</span>
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                          ({dep.status})
+                  <div className="space-y-1">
+                    {isBlockedByPrereq && (
+                      <div className="text-[11px] text-rose-500 font-medium pb-0.5">
+                        Blocked by {incompletePrereqs.length} prerequisite(s):
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {resolvedDependencies.map((dep, idx) => (
+                        <span
+                          key={idx}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] ${
+                            dep.status === 'Done'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                              : 'bg-card border-border text-foreground'
+                          }`}
+                        >
+                          <span>{dep.title}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">
+                            ({dep.status})
+                          </span>
                         </span>
-                      </span>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 ) : (
-                  <span className="text-muted-foreground italic">None (Ready now)</span>
+                  <span className="text-muted-foreground italic">None (Ready to start)</span>
                 )}
               </div>
             </div>
@@ -876,22 +908,27 @@ function TaskRow({
             <div>
               <div className="font-semibold text-foreground mb-1 flex items-center gap-1.5">
                 <ArrowRight className="w-3.5 h-3.5 text-primary" />
-                <span>Unblocks</span>
+                <span>Blocks Downstream Tasks</span>
               </div>
               <div className="pl-5">
                 {task.unblocks && task.unblocks.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {task.unblocks.map((unb, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-0.5 rounded-md bg-card border border-border text-[11px] text-muted-foreground"
-                      >
-                        {unb}
-                      </span>
-                    ))}
+                  <div className="space-y-1">
+                    <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium pb-0.5">
+                      Blocks {task.unblocks.length} task(s) until complete:
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {task.unblocks.map((unb, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 rounded-md bg-card border border-border text-[11px] text-muted-foreground"
+                        >
+                          {unb}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 ) : (
-                  <span className="text-muted-foreground italic">Final deliverable / None</span>
+                  <span className="text-muted-foreground italic">No downstream dependencies</span>
                 )}
               </div>
             </div>

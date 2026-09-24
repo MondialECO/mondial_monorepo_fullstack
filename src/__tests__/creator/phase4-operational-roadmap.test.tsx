@@ -193,7 +193,7 @@ describe('OperationalRoadmapView — Phase 4.2 Canon Visual Layout', () => {
     expect(screen.getByText('Your Availability')).toBeInTheDocument();
     expect(screen.getByText('4 hours / week')).toBeInTheDocument();
     expect(screen.getByText('Planned Now')).toBeInTheDocument();
-    expect(screen.getByText(/~2.5 hrs/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/~2.5 hrs/i).length).toBeGreaterThan(0);
     expect(screen.getByText('Plan Status')).toBeInTheDocument();
     expect(screen.getByText('Draft')).toBeInTheDocument();
     expect(screen.getByText(/Under 5 hours\/week permits at most 2 Now tasks/i)).toBeInTheDocument();
@@ -263,8 +263,8 @@ describe('OperationalRoadmapView — Phase 4.2 Canon Visual Layout', () => {
     expect(screen.getByText('Why This Is Here')).toBeInTheDocument();
     expect(screen.getAllByText('Software platform requires technical lead').length).toBeGreaterThan(0);
     expect(screen.getByText('Estimated Effort')).toBeInTheDocument();
-    expect(screen.getByText('Dependencies')).toBeInTheDocument();
-    expect(screen.getByText('Unblocks')).toBeInTheDocument();
+    expect(screen.getByText(/Prerequisites \/ Blocked by/i)).toBeInTheDocument();
+    expect(screen.getByText(/Blocks Downstream Tasks/i)).toBeInTheDocument();
     expect(screen.getAllByText('Finalize launch pricing tiers').length).toBeGreaterThan(0);
     expect(screen.getByText('Built from:')).toBeInTheDocument();
     expect(screen.getByText('Construction Snapshot')).toBeInTheDocument();

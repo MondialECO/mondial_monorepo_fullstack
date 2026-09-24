@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
+using WebApp.Models.DatabaseModels.Legal;
 using WebApp.Models.DatabaseModels.Phase4;
 using WebApp.Models.Phase4;
 using WebApp.Services.Interface;
@@ -64,6 +65,7 @@ namespace WebApp.Services.Implementations
             }
 
             PopulateUnblocks(roadmap.Tasks);
+            roadmap.Stages = RegroupStages(roadmap.Tasks);
             var (isStale, changedSources) = DetectStaleness(roadmap.SourceVersions, context);
 
             return BuildResponse(roadmap, isStale, changedSources, context, journey.IdeaVersion);
@@ -173,6 +175,9 @@ namespace WebApp.Services.Implementations
 
             // Recalculate Next Best Action dynamically
             roadmap.NextBestAction = _scheduler.SelectNextBestAction(roadmap.Tasks);
+
+            // Populate downstream unblocks before grouping
+            PopulateUnblocks(roadmap.Tasks);
 
             // Re-group into stages for response
             roadmap.Stages = RegroupStages(roadmap.Tasks);
@@ -380,7 +385,22 @@ namespace WebApp.Services.Implementations
 
                 foreach (var candidate in candidates)
                 {
-                    if (existingByKey.TryGetValue(candidate.Key, out var existingTask))
+                    RoadmapTask? existingTask = null;
+                    if (!existingByKey.TryGetValue(candidate.Key, out existingTask))
+                    {
+                        // Match legacy skill keys: skill-gap.financial-advisor <-> skill_financial advisor
+                        if (candidate.Key.StartsWith("skill-gap."))
+                        {
+                            var rawSlug = candidate.Key.Substring("skill-gap.".Length);
+                            var rawSpace = rawSlug.Replace("-", " ");
+                            if (!existingByKey.TryGetValue($"skill_{rawSpace}", out existingTask))
+                            {
+                                existingByKey.TryGetValue($"skill_{rawSlug}", out existingTask);
+                            }
+                        }
+                    }
+
+                    if (existingTask != null)
                     {
                         // Preserve founder modifications
                         candidate.Id = existingTask.Id;
@@ -388,6 +408,7 @@ namespace WebApp.Services.Implementations
                         candidate.FounderEdited = existingTask.FounderEdited;
                         candidate.FounderNotes = existingTask.FounderNotes;
                         candidate.UpdatedAt = existingTask.UpdatedAt;
+                        candidate.TargetWindow = existingTask.TargetWindow ?? candidate.TargetWindow;
                         if (existingTask.Dependencies != null && existingTask.Dependencies.Count > 0)
                         {
                             foreach (var dep in existingTask.Dependencies)
@@ -408,13 +429,16 @@ namespace WebApp.Services.Implementations
             // 4. Schedule and order tasks
             var scheduledTasks = _scheduler.ScheduleTasks(candidates, capacity, context);
 
-            // 4. Group by stage
+            // 5. Populate downstream unblocks before stage grouping
+            PopulateUnblocks(scheduledTasks);
+
+            // 6. Group by stage
             var stageGroups = RegroupStages(scheduledTasks);
 
-            // 5. Select Next Best Action
+            // 7. Select Next Best Action
             var nextBestAction = _scheduler.SelectNextBestAction(scheduledTasks);
 
-            // 6. Synthesize Roadmap Summary
+            // 8. Synthesize Roadmap Summary
             string summary = GenerateRoadmapSummary(scheduledTasks, capacity, nextBestAction);
 
             return new OperationalRoadmap
@@ -468,25 +492,60 @@ namespace WebApp.Services.Implementations
             {
                 foreach (var item in snapshot.MissingItems)
                 {
-                    var taskKey = item.Key;
-                    if (string.IsNullOrEmpty(taskKey)) taskKey = $"missing.{Slugify(item.Title)}";
+                    bool isSkillItem = item.Category == ConstructionCategories.Skills || (!string.IsNullOrEmpty(item.Key) && item.Key.StartsWith("skill_"));
+                    string taskKey;
+                    string taskTitle;
+                    string taskCategory;
+                    string expectedResult;
+                    string description = item.Reason;
+
+                    if (isSkillItem)
+                    {
+                        var rawSkill = item.Title.StartsWith("Capability: ", StringComparison.OrdinalIgnoreCase)
+                            ? item.Title.Substring("Capability: ".Length).Trim()
+                            : (item.Title.StartsWith("Structure Capability: ", StringComparison.OrdinalIgnoreCase)
+                                ? item.Title.Substring("Structure Capability: ".Length).Trim()
+                                : (!string.IsNullOrEmpty(item.Key) && item.Key.StartsWith("skill_") ? item.Key.Substring(6).Trim() : item.Title));
+                        var formattedSkill = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(rawSkill.Replace("-", " "));
+                        taskKey = $"skill-gap.{Slugify(rawSkill)}";
+                        taskTitle = $"Engage {formattedSkill} Capability";
+                        taskCategory = RoadmapCategories.Skills;
+                        expectedResult = $"Qualified {formattedSkill} contributor, advisor, or service provider contracted.";
+                    }
+                    else if (item.Key == "legal_service")
+                    {
+                        taskKey = "legal_service";
+                        taskTitle = "Structure Legal & Statutory Filing Service";
+                        taskCategory = RoadmapCategories.Services;
+                        description = "Retain chartered legal or corporate formalization service provider to execute Phase 5 statutory company creation filings and bylaws certification.";
+                        expectedResult = "Chartered legal service provider or formalization partner engaged for INPI registration execution.";
+                    }
+                    else
+                    {
+                        taskKey = item.Key;
+                        if (string.IsNullOrEmpty(taskKey)) taskKey = $"missing.{Slugify(item.Title)}";
+                        taskTitle = $"Structure {item.Title}";
+                        taskCategory = MapCategory(item.Category);
+                        expectedResult = $"Structured capability and asset readiness for {item.Title}.";
+                    }
+
                     // Deduplicate if already created under critical
                     if (candidates.Any(c => c.Key == taskKey)) continue;
 
                     candidates.Add(new RoadmapTask
                     {
                         Key = taskKey,
-                        Title = $"Structure {item.Title}",
-                        Description = item.Reason,
-                        Category = MapCategory(item.Category),
+                        Title = taskTitle,
+                        Description = description,
+                        Category = taskCategory,
                         Priority = item.Priority == ConstructionItemPriority.High ? RoadmapTaskPriority.High : RoadmapTaskPriority.Medium,
                         Blocking = item.Blocking,
                         Why = item.Reason,
-                        ExpectedResult = $"Structured capability and asset readiness for {item.Title}.",
+                        ExpectedResult = expectedResult,
                         EstimatedEffort = RoadmapTaskEffort.Medium,
                         EstimatedEffortHours = 3.5,
                         Source = new List<string>(item.Source) { "Construction Snapshot" },
-                        SourceReference = new List<string>(item.SourceReference) { item.Key },
+                        SourceReference = new List<string>(item.SourceReference) { item.Key, taskKey }.Distinct().ToList(),
                         RelatedSnapshotItemKey = item.Key,
                         EarliestStart = ResolveSnapshotItemEarliestStage(item, isCritical: false)
                     });
@@ -528,9 +587,9 @@ namespace WebApp.Services.Implementations
             {
                 foreach (var legalItem in legalItems)
                 {
-                    if (legalItem.Status == "completed" || legalItem.Status == "not_applicable") continue;
+                    if (LegalItemStatuses.IsCompleted(legalItem.Status) || legalItem.Status == "not_applicable") continue;
 
-                    var rawId = legalItem.Id ?? legalItem.Title ?? "item";
+                    var rawId = !string.IsNullOrEmpty(legalItem.Id) ? legalItem.Id : (!string.IsNullOrEmpty(legalItem.Title) ? legalItem.Title : "item");
                     var taskKey = rawId.StartsWith("legal.") ? rawId : $"legal.{Slugify(rawId)}";
                     if (candidates.Any(c => c.Key == taskKey)) continue;
 
@@ -550,15 +609,15 @@ namespace WebApp.Services.Implementations
                     candidates.Add(new RoadmapTask
                     {
                         Key = taskKey,
-                        Title = legalItem.Title ?? rawId,
+                        Title = !string.IsNullOrEmpty(legalItem.Title) ? legalItem.Title : (!string.IsNullOrEmpty(legalItem.Label) ? legalItem.Label : rawId),
                         Description = isDpae
                             ? "Mandatory pre-hiring social declaration (DPAE) to URSSAF before onboarding employees. Timing is unresolved until specific employee hiring dates are planned."
-                            : (legalItem.WhyItApplies ?? string.Empty),
+                            : (!string.IsNullOrEmpty(legalItem.WhyItApplies) ? legalItem.WhyItApplies : $"Legal compliance requirement: {(!string.IsNullOrEmpty(legalItem.Label) ? legalItem.Label : rawId)}"),
                         Category = RoadmapCategories.LegalAndAdministration,
                         Priority = legalItem.Priority?.ToLowerInvariant() == "critical" ? RoadmapTaskPriority.Critical : RoadmapTaskPriority.High,
                         Blocking = isBlocking,
                         Why = whyText,
-                        ExpectedResult = $"Statutory compliance and administrative clearance for {legalItem.Title}.",
+                        ExpectedResult = $"Statutory compliance and administrative clearance for {(!string.IsNullOrEmpty(legalItem.Title) ? legalItem.Title : (!string.IsNullOrEmpty(legalItem.Label) ? legalItem.Label : rawId))}.",
                         EstimatedEffort = legalItem.RequiresEvidence ? RoadmapTaskEffort.Medium : RoadmapTaskEffort.Small,
                         EstimatedEffortHours = legalItem.RequiresEvidence ? 3.5 : 1.5,
                         RequiresExternalAction = isExternal,
@@ -572,28 +631,35 @@ namespace WebApp.Services.Implementations
             }
 
             // 5. Map Company Formation Prerequisite Tasks (Phase 4 Planning linked to Phase 5 Registration Guide)
-            if (context.Formation != null && !string.IsNullOrEmpty(context.Formation.SelectedType))
+            if (context.Formation != null)
             {
-                var formKey = "formation.confirm-structure";
-                if (!candidates.Any(c => c.Key == formKey))
+                var structureType = !string.IsNullOrEmpty(context.Formation.SelectedType)
+                    ? context.Formation.SelectedType
+                    : context.Formation.RecommendedType;
+
+                if (!string.IsNullOrEmpty(structureType))
                 {
-                    candidates.Add(new RoadmapTask
+                    var formKey = "formation.confirm-structure";
+                    if (!candidates.Any(c => c.Key == formKey))
                     {
-                        Key = formKey,
-                        Title = $"Confirm {context.Formation.SelectedType} Entity Formation Plan",
-                        Description = $"Review and validate the chosen legal structure ({context.Formation.SelectedType}), initial capital contributions, and founder governance ahead of Phase 5 formal company registration.",
-                        Category = RoadmapCategories.Formation,
-                        Priority = RoadmapTaskPriority.High,
-                        Blocking = true,
-                        Why = "Entity structure planning establishes capital allocation and governance rules before filing on INPI Guichet Unique.",
-                        ExpectedResult = $"Documented {context.Formation.SelectedType} incorporation plan with founder consensus ready for Phase 5 registration guide execution.",
-                        EstimatedEffort = RoadmapTaskEffort.Medium,
-                        EstimatedEffortHours = 3.5,
-                        RequiresExternalAction = false,
-                        EstimatedDuration = "2–5 business days",
-                        Source = new List<string> { "Formation & Team" },
-                        EarliestStart = RoadmapStages.Now
-                    });
+                        candidates.Add(new RoadmapTask
+                        {
+                            Key = formKey,
+                            Title = $"Confirm {structureType} Entity Formation Plan",
+                            Description = $"Review and validate the chosen legal structure ({structureType}), initial capital contributions, and founder governance ahead of Phase 5 formal company registration.",
+                            Category = RoadmapCategories.Formation,
+                            Priority = RoadmapTaskPriority.High,
+                            Blocking = true,
+                            Why = "Entity structure planning establishes capital allocation and governance rules before filing on INPI Guichet Unique.",
+                            ExpectedResult = $"Documented {structureType} incorporation plan with founder consensus ready for Phase 5 registration guide execution.",
+                            EstimatedEffort = RoadmapTaskEffort.Medium,
+                            EstimatedEffortHours = 3.5,
+                            RequiresExternalAction = false,
+                            EstimatedDuration = "2–5 business days",
+                            Source = new List<string> { "Formation & Team" },
+                            EarliestStart = RoadmapStages.Now
+                        });
+                    }
                 }
 
                 // Map Skill Gaps from Formation assessment
@@ -603,7 +669,25 @@ namespace WebApp.Services.Implementations
                     {
                         var skillLabel = !string.IsNullOrWhiteSpace(gap.Label) ? gap.Label : (gap.SpSpecialty ?? "Specialist");
                         var skillKey = $"skill-gap.{Slugify(skillLabel)}";
-                        if (candidates.Any(c => c.Key == skillKey)) continue;
+
+                        // Check if skill is already satisfied in ReadyItems (e.g. founder already possesses this skill)
+                        bool isSkillReady = context.ConstructionSnapshot.ReadyItems != null &&
+                            context.ConstructionSnapshot.ReadyItems.Any(r =>
+                                Slugify(r.Key) == Slugify($"skill_{skillLabel}") ||
+                                Slugify(r.Key) == Slugify($"skill-gap.{skillLabel}") ||
+                                (r.Category == ConstructionCategories.Skills && Slugify(r.Title).Contains(Slugify(skillLabel))));
+
+                        if (isSkillReady) continue;
+
+                        if (candidates.Any(c => c.Key == skillKey))
+                        {
+                            var existingTask = candidates.First(c => c.Key == skillKey);
+                            if (!existingTask.Source.Contains("Formation & Team"))
+                            {
+                                existingTask.Source.Add("Formation & Team");
+                            }
+                            continue;
+                        }
 
                         candidates.Add(new RoadmapTask
                         {
@@ -638,7 +722,7 @@ namespace WebApp.Services.Implementations
             var confirmedCompletedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             if (context.LegalAssessment?.Items != null)
             {
-                foreach (var item in context.LegalAssessment.Items.Where(i => i.Status == "completed"))
+                foreach (var item in context.LegalAssessment.Items.Where(i => LegalItemStatuses.IsCompleted(i.Status)))
                 {
                     if (!string.IsNullOrEmpty(item.Id))
                     {
@@ -650,7 +734,7 @@ namespace WebApp.Services.Implementations
             }
             if (context.LegalChecklist?.Items != null)
             {
-                foreach (var item in context.LegalChecklist.Items.Where(i => i.Status == "completed"))
+                foreach (var item in context.LegalChecklist.Items.Where(i => LegalItemStatuses.IsCompleted(i.Status)))
                 {
                     if (!string.IsNullOrEmpty(item.Id))
                     {
@@ -664,8 +748,35 @@ namespace WebApp.Services.Implementations
             {
                 foreach (var item in context.ConstructionSnapshot.ReadyItems)
                 {
-                    if (!string.IsNullOrEmpty(item.Key))
+                    if (string.IsNullOrEmpty(item.Key)) continue;
+
+                    var keyLower = item.Key.ToLowerInvariant();
+                    // A ready plan, snapshot document, or strategic readiness assessment must NOT imply completion of:
+                    // - Formal legal filings, registrations, bylaws, or administrative submissions (FR-CORP-*, FR-REG-*, FR-SOC-*, FR-TAX-*, FR-WEB-*, FR-CONS-*, FR-INS-*, registration, etc.)
+                    // - Actual hiring, employee onboarding, or DPAE declarations
+                    // - Payment gateway integrations or commercial contracts execution
+                    bool isExecutionOrFiling = keyLower.StartsWith("legal.") ||
+                                               keyLower.StartsWith("fr-") ||
+                                               keyLower.Contains("corp") ||
+                                               keyLower.Contains("registration") ||
+                                               keyLower.Contains("deposit") ||
+                                               keyLower.Contains("statut") ||
+                                               keyLower.Contains("jal") ||
+                                               keyLower.Contains("rbe") ||
+                                               keyLower.Contains("dpae") ||
+                                               keyLower.Contains("hiring") ||
+                                               keyLower.Contains("hire") ||
+                                               keyLower.Contains("payment") ||
+                                               keyLower.Contains("tax") ||
+                                               keyLower.Contains("insurance") ||
+                                               keyLower.Contains("licence") ||
+                                               keyLower.Contains("license") ||
+                                               item.Category == ConstructionCategories.LegalAndAdministration;
+
+                    if (!isExecutionOrFiling)
+                    {
                         confirmedCompletedKeys.Add(item.Key);
+                    }
                 }
             }
 
@@ -708,6 +819,20 @@ namespace WebApp.Services.Implementations
                             legalTask.Dependencies.Add(formationTask.Key);
                         }
                     }
+                }
+
+                // Statutory filing service depends on formation structure confirmation
+                var legalService = candidates.FirstOrDefault(c => c.Key == "legal_service");
+                if (legalService != null && !legalService.Dependencies.Contains(formationTask.Key))
+                {
+                    legalService.Dependencies.Add(formationTask.Key);
+                }
+
+                // Accounting service depends on formation structure confirmation
+                var accountingService = candidates.FirstOrDefault(c => c.Key == "accounting_service");
+                if (accountingService != null && !accountingService.Dependencies.Contains(formationTask.Key))
+                {
+                    accountingService.Dependencies.Add(formationTask.Key);
                 }
             }
 
