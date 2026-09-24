@@ -1064,6 +1064,15 @@ CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
    - AI is strictly advisory, explanatory, and presentational.
 5. **No Premature Global Readiness %:** Global Construction Readiness is owned exclusively by Stage 4.9. Stages 4.1–4.7 track only their own completion status.
 6. **Retirement of Legacy Phase 4:** The legacy `/dashboard/creator/offer-pricing` route, `CreatorPhase4Controller`, and legacy components (`Phase4Pricing`, `Phase4Resource`, `Phase4Gtm`, `Phase4Complete`) are completely retired.
+7. **Phase 3 → Phase 4 Access Gate (`Phase4ProfileGuard`):**
+   - **Phase 3 Completion Authority:** `state.journeyState.phase3.status === 'completed'` via `useCreatorProgress()`.
+   - **Profile Readiness Authority:** `creatorProfileApi.getCompleteness()` (`GET /api/profile/me/completeness`).
+   - **Important Invariants:**
+     - Phase 3 completion and HumainX profile readiness are strictly separate checks.
+     - `Phase4ProfileGuard` no longer depends on deprecated `GET /api/creator/offer/readiness` (`getPhase4Readiness`).
+     - Phase 3 completed users proceed directly to normal Phase 4 profile-readiness evaluation.
+     - Phase 3 incomplete users retain the existing blocked screen ("Phase 3 Must Be Completed First").
+     - UI layout, typography, cards, and CTA buttons remain unchanged.
 
 ### 6.1 Stage 4.1 — Construction Snapshot (`ConstructionSnapshotView.tsx`)
 - **Route:** `/dashboard/creator/phase-4`
