@@ -38,6 +38,8 @@ namespace WebApp.Tests.Unit
         {
             var userStoreMock = new Mock<IUserStore<ApplicationUser>>();
             _userManagerMock = new Mock<UserManager<ApplicationUser>>(userStoreMock.Object, null, null, null, null, null, null, null, null);
+            _userManagerMock.Setup(u => u.FindByIdAsync(It.IsAny<string>()))
+                .ReturnsAsync(new ApplicationUser { Onboarding = new OnboardingState { Phase = 1 } });
 
             _service = new CreatorDashboardService(
                 _journeysMock.Object,
@@ -86,6 +88,7 @@ namespace WebApp.Tests.Unit
 
             var computed = new ComputedJourneyStatus
             {
+                Phase1 = new ComputedPhaseStatus { Status = "completed" },
                 Phase2 = new ComputedPhaseStatus { Status = "in_progress", CurrentStep = 1 }
             };
             _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
@@ -175,6 +178,7 @@ namespace WebApp.Tests.Unit
 
             var computed = new ComputedJourneyStatus
             {
+                Phase1 = new ComputedPhaseStatus { Status = "completed" },
                 Phase2 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 4 },
                 Phase3 = new ComputedPhaseStatus { Status = "in_progress", CurrentStep = 2 }
             };
@@ -237,6 +241,7 @@ namespace WebApp.Tests.Unit
 
             var computed = new ComputedJourneyStatus
             {
+                Phase1 = new ComputedPhaseStatus { Status = "completed" },
                 Phase2 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 4 },
                 Phase3 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 7 },
                 Phase4 = new ComputedPhaseStatus { Status = "available", CurrentStep = 1 }
@@ -280,6 +285,7 @@ namespace WebApp.Tests.Unit
 
             var computed = new ComputedJourneyStatus
             {
+                Phase1 = new ComputedPhaseStatus { Status = "completed" },
                 Phase2 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 4 },
                 Phase3 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 7 },
                 Phase4 = new ComputedPhaseStatus { Status = "in_progress", CurrentStep = 3 }
@@ -415,6 +421,7 @@ namespace WebApp.Tests.Unit
 
             var computed = new ComputedJourneyStatus
             {
+                Phase1 = new ComputedPhaseStatus { Status = "completed" },
                 Phase2 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 4 },
                 Phase3 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 7 },
                 Phase4 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 7 },

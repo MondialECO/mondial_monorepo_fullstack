@@ -123,5 +123,23 @@ namespace WebApp.Controllers
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
+
+        // POST /api/creator/journey/clarifier/init — explicit Clarifier initialization (creates exactly 1 idea if none exists)
+        [HttpPost("journey/clarifier/init")]
+        public async Task<IActionResult> InitializeClarifierIdea()
+        {
+            try
+            {
+                var userId = GetUserId();
+                var idea = await _journeys.GetOrCreateClarifierIdeaAsync(userId);
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, idea.Id);
+                var phase1 = await IsPhase1CompleteAsync(userId);
+                var computedStatus = await _journeys.ComputePhaseStatusAsync(journey, phase1);
+                return Ok(ApiResponse.Ok("Clarifier idea initialized", new { ideaId = idea.Id, idea, journey, computedStatus }));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
     }
 }

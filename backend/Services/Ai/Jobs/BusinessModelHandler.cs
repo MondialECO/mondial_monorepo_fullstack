@@ -28,6 +28,7 @@ namespace WebApp.Services.Ai.Jobs
         private readonly IAiInsightWriter _insights;
         private readonly AiSettings _settings;
         private readonly ILogger<BusinessModelHandler> _logger;
+        private readonly IFinancialAssumptionsService? _assumptions;
 
         public BusinessModelHandler(
             IBusinessModelSessionStore sessions,
@@ -37,7 +38,8 @@ namespace WebApp.Services.Ai.Jobs
             BusinessIdeasRepository ideas,
             IAiInsightWriter insights,
             ILogger<BusinessModelHandler> logger,
-            IOptions<AiSettings>? aiSettings = null)
+            IOptions<AiSettings>? aiSettings = null,
+            IFinancialAssumptionsService? assumptions = null)
         {
             _sessions = sessions;
             _marketStudies = marketStudies;
@@ -47,6 +49,7 @@ namespace WebApp.Services.Ai.Jobs
             _insights = insights;
             _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger;
+            _assumptions = assumptions;
         }
 
         public AiJobType Type => AiJobType.BusinessModel;
@@ -154,6 +157,34 @@ namespace WebApp.Services.Ai.Jobs
             if (sessionId != null)
             {
                 await _sessions.AppendGeneratedVersionAsync(sessionId, contract, request.Id);
+
+                // Progressive Financial Assumptions: Step 3.2 refines and completes assumptions
+                if (_assumptions != null)
+                {
+                    var businessIdeaId = request.InputPayload != null
+                        && request.InputPayload.TryGetValue("businessIdeaId", out var bid) && bid.IsString
+                        ? bid.AsString
+                        : null;
+
+                    var marketStudySessionId = request.InputPayload != null
+                        && request.InputPayload.TryGetValue("marketStudySessionId", out var msid) && msid.IsString
+                        ? msid.AsString
+                        : null;
+
+                    if (!string.IsNullOrWhiteSpace(businessIdeaId))
+                    {
+                        var session = await _sessions.GetOwnedAsync(sessionId, request.OwnerUserId);
+                        var version = session?.CurrentVersion ?? 1;
+                        try
+                        {
+                            await _assumptions.UpdateFromBusinessModelAsync(businessIdeaId, request.OwnerUserId, contract, version, marketStudySessionId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to update progressive financial assumptions for idea {BusinessIdeaId} after Step 3.2 generation", businessIdeaId);
+                        }
+                    }
+                }
 
                 await _insights.WriteAsync(new AiInsight
                 {

@@ -1,7 +1,11 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import React from 'react';
-import { BrandStudioShell } from '@/components/creator/brand-kit/BrandStudioShell';
+import {
+  BrandStudioShell,
+  hasMeaningfulBrandData,
+  normalizeModalKey,
+} from '@/components/creator/brand-kit/BrandStudioShell';
 import { brandKitApi } from '@/lib/api-creator-brand-kit';
 import { BrandKit } from '@/types/creator/brand-kit';
 
@@ -16,7 +20,65 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
-const mockCompletedStrategyAndDirectionKit: BrandKit = {
+const mockFreshDraftKit: BrandKit = {
+  ideaId: 'idea_fresh',
+  userId: 'user_123',
+  status: 'draft',
+  currentStep: 1,
+  version: 1,
+  createdAt: '2026-09-24T00:00:00Z',
+  updatedAt: '2026-09-24T00:00:00Z',
+  strategy: {
+    businessName: 'NovaTech',
+    nameDisplayForm: 'NovaTech',
+    concept: { value: 'AI cloud automation', provenance: 'derived' },
+    targetAudience: { value: 'Engineers', provenance: 'derived' },
+    industry: { value: 'SaaS', provenance: 'derived' },
+    positioning: { value: 'Smart cloud ops', provenance: 'derived' },
+    personalityTraits: ['Precise', 'Resilient', 'Autonomous'],
+    symbolFeeling: '',
+    avoidList: [],
+    confirmedAt: null,
+  },
+  direction: {
+    candidates: [],
+    selectedDirectionKey: null,
+    selectedAt: null,
+    regenerateCount: 0,
+  },
+  logo: {
+    logoType: undefined,
+    concepts: [],
+    selectedConceptKey: null,
+    variations: {},
+    regenerateCount: 0,
+    approvedAt: null,
+  },
+  colors: {
+    roles: [
+      { roleName: 'Primary', hex: '#1A1A24', rgb: '26,26,36', usageNote: 'Primary brand role', isLocked: false, provenance: 'stated' },
+      { roleName: 'Secondary', hex: '#3C61DD', rgb: '60,97,221', usageNote: 'Secondary role', isLocked: false, provenance: 'derived' },
+      { roleName: 'Accent', hex: '#00D084', rgb: '0,208,132', usageNote: 'Accent role', isLocked: false, provenance: 'derived' },
+      { roleName: 'Background', hex: '#FFFFFF', rgb: '255,255,255', usageNote: 'Canvas background', isLocked: true, provenance: 'stated' },
+      { roleName: 'Text', hex: '#0F172A', rgb: '15,23,42', usageNote: 'High-contrast text', isLocked: false, provenance: 'derived' },
+    ],
+    confirmedAt: null,
+    regenerateCount: 0,
+  },
+  typography: {
+    roles: [
+      { roleName: 'Logo type', family: 'Cabinet Grotesk', weight: '800', size: '24px', lineHeight: '1.2', specimenText: 'NovaTech', isLocked: true, provenance: 'stated' },
+      { roleName: 'Heading', family: 'Clash Display', weight: '700', size: '32px', lineHeight: '1.2', specimenText: 'Heading sample', isLocked: false, provenance: 'derived' },
+      { roleName: 'Body', family: 'Inter', weight: '400', size: '16px', lineHeight: '1.5', specimenText: 'Body sample', isLocked: false, provenance: 'derived' },
+      { roleName: 'Button & label', family: 'Inter', weight: '600', size: '14px', lineHeight: '1.4', specimenText: 'Button sample', isLocked: false, provenance: 'derived' },
+    ],
+    confirmedAt: null,
+    regenerateCount: 0,
+  },
+  snapshots: [],
+};
+
+const mockExistingBrandKit: BrandKit = {
   ideaId: 'idea_123',
   userId: 'user_456',
   status: 'draft',
@@ -56,7 +118,7 @@ const mockCompletedStrategyAndDirectionKit: BrandKit = {
     regenerateCount: 0,
   },
   logo: {
-    logoType: undefined,
+    logoType: 'wordmark',
     concepts: [],
     selectedConceptKey: null,
     variations: {},
@@ -64,259 +126,222 @@ const mockCompletedStrategyAndDirectionKit: BrandKit = {
     approvedAt: null,
   },
   colors: {
-    roles: [],
+    roles: [
+      { roleName: 'Primary', hex: '#0052FF', rgb: '0, 82, 255', usageNote: 'Primary mark', isLocked: false, provenance: 'stated' },
+      { roleName: 'Secondary', hex: '#0F172A', rgb: '15, 23, 42', usageNote: 'Secondary tone', isLocked: false, provenance: 'stated' },
+      { roleName: 'Accent', hex: '#38BDF8', rgb: '56, 189, 248', usageNote: 'Accent highlight', isLocked: false, provenance: 'stated' },
+      { roleName: 'Background', hex: '#F8FAFC', rgb: '248, 250, 252', usageNote: 'Light surface', isLocked: false, provenance: 'stated' },
+      { roleName: 'Text', hex: '#09090B', rgb: '9, 9, 11', usageNote: 'Deep text', isLocked: false, provenance: 'stated' },
+    ],
+    confirmedAt: '2026-09-15T11:00:00Z',
     regenerateCount: 0,
   },
   typography: {
-    roles: [],
+    roles: [
+      { roleName: 'Logo type', family: 'Space Grotesk', weight: '700', size: '24px', lineHeight: '1.2', specimenText: 'CyberLock', isLocked: true, provenance: 'stated' },
+      { roleName: 'Heading', family: 'Space Grotesk', weight: '700', size: '32px', lineHeight: '1.2', specimenText: 'Heading sample', isLocked: false, provenance: 'derived' },
+      { roleName: 'Body', family: 'Plus Jakarta Sans', weight: '400', size: '16px', lineHeight: '1.5', specimenText: 'Body sample', isLocked: false, provenance: 'derived' },
+      { roleName: 'Button & label', family: 'Plus Jakarta Sans', weight: '600', size: '14px', lineHeight: '1.4', specimenText: 'Button sample', isLocked: false, provenance: 'derived' },
+    ],
+    confirmedAt: '2026-09-15T11:30:00Z',
     regenerateCount: 0,
   },
   snapshots: [],
 };
 
-describe('BrandStudioShell Component', () => {
+describe('hasMeaningfulBrandData and normalizeModalKey helpers', () => {
+  it('returns false for fresh draft kit where user has not confirmed strategy or steps', () => {
+    expect(hasMeaningfulBrandData(mockFreshDraftKit)).toBe(false);
+  });
+
+  it('returns true when strategy is confirmed', () => {
+    expect(hasMeaningfulBrandData(mockExistingBrandKit)).toBe(true);
+  });
+
+  it('returns true when kit status is complete', () => {
+    const completedKit: BrandKit = {
+      ...mockFreshDraftKit,
+      status: 'complete',
+    };
+    expect(hasMeaningfulBrandData(completedKit)).toBe(true);
+  });
+
+  it('normalizes modal step keys correctly', () => {
+    expect(normalizeModalKey('strategy')).toBe('strategy');
+    expect(normalizeModalKey('direction')).toBe('direction');
+    expect(normalizeModalKey('logo')).toBe('logo_type');
+    expect(normalizeModalKey('logo_type')).toBe('logo_type');
+    expect(normalizeModalKey('logo_creation')).toBe('logo_creation');
+    expect(normalizeModalKey('variations')).toBe('variations');
+    expect(normalizeModalKey('colors')).toBe('colors');
+    expect(normalizeModalKey('colour')).toBe('colors');
+    expect(normalizeModalKey('typography')).toBe('typography');
+    expect(normalizeModalKey('unknown')).toBeNull();
+    expect(normalizeModalKey(null)).toBeNull();
+  });
+});
+
+describe('BrandStudioShell Component Lifecycle & Routing Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('resumes at Logo Type when Strategy and Direction are complete and shows accumulated result cards', async () => {
-    vi.spyOn(brandKitApi, 'openStudio').mockResolvedValue(mockCompletedStrategyAndDirectionKit);
+  it('first-time entry: auto-opens the first modal (Strategy Review Modal) when no brand exists', async () => {
+    vi.spyOn(brandKitApi, 'openStudio').mockResolvedValue(mockFreshDraftKit);
 
     render(
       <BrandStudioShell
-        ideaId="idea_123"
-        initialKit={mockCompletedStrategyAndDirectionKit}
+        ideaId="idea_fresh"
+        initialKit={mockFreshDraftKit}
       />
     );
 
-    // Verify Progress bar segments
-    expect(screen.getAllByText('Strategy').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Direction').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Logo type').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Logo').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Colour').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Typography').length).toBeGreaterThan(0);
-
-    // Verify accumulated Result Cards on canvas
-    expect(screen.getByText('Autonomous AI defense system for cloud infrastructure.')).toBeInTheDocument();
-    expect(screen.getAllByText('Technical Precision').length).toBeGreaterThan(0);
-    expect(screen.getByText('Engineered authority with crisp mathematical balance.')).toBeInTheDocument();
-
-
-    // Verify resumed active step is Logo Type modal
-    expect(screen.getByText(/What kind of logo\?/i)).toBeInTheDocument();
-  });
-
-  it('locks subsequent steps and prevents opening locked steps', async () => {
-    render(
-      <BrandStudioShell
-        ideaId="idea_123"
-        initialKit={mockCompletedStrategyAndDirectionKit}
-      />
-    );
-
-    // Step 5 (Colour) should be locked
-    const colourButton = screen.getByRole('button', { name: /Colour/i });
-    expect(colourButton).toBeDisabled();
-
-    // Step 6 (Typography) should be locked
-    const typographyButton = screen.getByRole('button', { name: /Typography/i });
-    expect(typographyButton).toBeDisabled();
-  });
-
-  it('opens LogoCreationModal (3a) when Logo step is selected without a selected concept', async () => {
-    const kitWithLogoType: BrandKit = {
-      ...mockCompletedStrategyAndDirectionKit,
-      logo: {
-        ...mockCompletedStrategyAndDirectionKit.logo,
-        logoType: 'wordmark',
-        concepts: [],
-        selectedConceptKey: null,
-      },
-    };
-
-    render(
-      <BrandStudioShell
-        ideaId="idea_123"
-        initialKit={kitWithLogoType}
-      />
-    );
-
-    // Verify Logo Creation Modal renders as overlay
+    // Strategy Review Modal (Step 1) must be open
     await waitFor(() => {
-      expect(screen.getByText(/Choose your logo/i)).toBeInTheDocument();
+      expect(screen.getByText(/Confirm your brand strategy/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Confirm Brand Strategy/i })).toBeInTheDocument();
     });
   });
 
-  it('opens VariationSetModal (3b) when Logo step has a selected concept pending approval', async () => {
-    const kitWithSelectedConcept: BrandKit = {
-      ...mockCompletedStrategyAndDirectionKit,
-      logo: {
-        ...mockCompletedStrategyAndDirectionKit.logo,
-        logoType: 'wordmark',
-        selectedConceptKey: 'concept_2',
-        variations: {
-          primary: {
-            svgUri: '<svg><circle/></svg>',
-            usageNote: 'Primary mark',
-          },
-        },
-        approvedAt: null,
-      },
-    };
+  it('existing brand kit entry: opens the edit page (View Mode) directly without auto-opening any modal', async () => {
+    vi.spyOn(brandKitApi, 'openStudio').mockResolvedValue(mockExistingBrandKit);
 
     render(
       <BrandStudioShell
         ideaId="idea_123"
-        initialKit={kitWithSelectedConcept}
+        initialKit={mockExistingBrandKit}
       />
     );
 
-    // Verify Variation Set Modal resumes automatically
+    // No modal should be open initially
+    expect(screen.queryByText(/Confirm your brand strategy/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Pick a visual direction/i)).not.toBeInTheDocument();
+
+    // Edit page header and action buttons must be visible
+    expect(screen.getByRole('heading', { level: 1, name: /Brand Studio/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Download Brand/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('button', { name: /View Full Brand Kit/i }).length).toBeGreaterThanOrEqual(1);
+
+    // Strategy and Direction result cards must be rendered with Edit buttons
+    expect(screen.getAllByText('Autonomous AI defense system for cloud infrastructure.').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Technical Precision')).toBeInTheDocument();
+
+    // Verify Edit buttons exist for sections
+    expect(screen.getAllByRole('button', { name: /Edit/i }).length).toBeGreaterThanOrEqual(1);
+
+    // Logo, Variations edit buttons must be present
+    expect(screen.getByRole('button', { name: /Edit Logo Type/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Create Logo/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Generate Variations/i })).toBeInTheDocument();
+  });
+
+  it('clicking an Edit button on the edit page opens that specific modal in targeted edit mode', async () => {
+    render(
+      <BrandStudioShell
+        ideaId="idea_123"
+        initialKit={mockExistingBrandKit}
+      />
+    );
+
+    // Click the first Edit button (Strategy card Edit button)
+    const editButtons = screen.getAllByRole('button', { name: /^Edit$/i });
+    fireEvent.click(editButtons[0]);
+
+    // Strategy Review modal opens
     await waitFor(() => {
-      expect(screen.getByText(/Your logo, in every form/i)).toBeInTheDocument();
-      expect(screen.getByText(/Approve all seven/i)).toBeInTheDocument();
+      expect(screen.getByText(/Confirm your brand strategy/i)).toBeInTheDocument();
     });
   });
 
-  it('navigates to Brand Kit Hub when Typography confirm completes a draft kit for the first time', async () => {
-    const draftKitAtTypography: BrandKit = {
-      ...mockCompletedStrategyAndDirectionKit,
-      status: 'draft',
-      currentStep: 6,
-      logo: {
-        logoType: 'wordmark',
-        selectedConceptKey: 'concept_1',
-        variations: {
-          primary: { svgUri: '<svg></svg>', usageNote: 'Primary' },
-        },
-        approvedAt: '2026-09-15T11:00:00Z',
-        concepts: [],
-        regenerateCount: 0,
-      },
-      colors: {
-        roles: [
-          { roleName: 'Primary', hex: '#0052FF', rgb: '0, 82, 255', usageNote: 'Primary', isLocked: false, provenance: 'stated' },
-          { roleName: 'Secondary', hex: '#0F172A', rgb: '15, 23, 42', usageNote: 'Secondary', isLocked: false, provenance: 'stated' },
-          { roleName: 'Accent', hex: '#38BDF8', rgb: '56, 189, 248', usageNote: 'Accent', isLocked: false, provenance: 'stated' },
-          { roleName: 'Background', hex: '#F8FAFC', rgb: '248, 250, 252', usageNote: 'Background', isLocked: false, provenance: 'stated' },
-          { roleName: 'Text', hex: '#09090B', rgb: '9, 9, 11', usageNote: 'Text', isLocked: false, provenance: 'stated' },
-        ],
-        regenerateCount: 0,
-        confirmedAt: '2026-09-15T11:30:00Z',
-      },
-      typography: {
-        roles: [
-          { roleName: 'Logo type', family: 'Space Grotesk', weight: '700', size: '24px', lineHeight: '1.2', specimenText: 'CyberLock', isLocked: true, provenance: 'stated' },
-          { roleName: 'Heading', family: 'Space Grotesk', weight: '700', size: '32px', lineHeight: '1.2', specimenText: 'Heading sample', isLocked: false, provenance: 'derived' },
-          { roleName: 'Body', family: 'Plus Jakarta Sans', weight: '400', size: '16px', lineHeight: '1.5', specimenText: 'Body sample', isLocked: false, provenance: 'derived' },
-          { roleName: 'Button & label', family: 'Plus Jakarta Sans', weight: '600', size: '14px', lineHeight: '1.4', specimenText: 'Button sample', isLocked: false, provenance: 'derived' },
-        ],
-        regenerateCount: 0,
-        confirmedAt: null,
-      },
-    };
-
-    const completedKit: BrandKit = {
-      ...draftKitAtTypography,
-      status: 'complete',
-      currentStep: 6,
-      typography: {
-        ...draftKitAtTypography.typography!,
-        confirmedAt: '2026-09-16T12:00:00Z',
-      },
-    };
-
-    vi.spyOn(brandKitApi, 'patchTypography').mockResolvedValue(completedKit);
-    vi.spyOn(brandKitApi, 'advanceStep').mockResolvedValue(completedKit);
-
+  it('navigates to Brand Kit page when View Full Brand Kit is clicked', async () => {
     render(
       <BrandStudioShell
         ideaId="idea_123"
-        initialKit={draftKitAtTypography}
+        initialKit={mockExistingBrandKit}
       />
     );
 
-    // Click Typography step to open modal
-    const typographyButton = screen.getByRole('button', { name: /Typography/i });
-    fireEvent.click(typographyButton);
+    const viewFullKitBtn = screen.getAllByRole('button', { name: /View Full Brand Kit/i })[0];
+    fireEvent.click(viewFullKitBtn);
 
-    // Find and click Confirm Typography
+    expect(mockPush).toHaveBeenCalledWith('/dashboard/creator/phase-2/brand-kit?ideaId=idea_123');
+  });
+
+  it('sequential workflow (modal 1 tar por 1 ta asbe): confirming Strategy automatically opens Direction modal', async () => {
+    const updatedKitWithConfirmedStrategy: BrandKit = {
+      ...mockFreshDraftKit,
+      strategy: {
+        ...mockFreshDraftKit.strategy!,
+        confirmedAt: '2026-09-24T01:00:00Z',
+      },
+    };
+
+    vi.spyOn(brandKitApi, 'patchStrategy').mockResolvedValue(updatedKitWithConfirmedStrategy);
+
+    render(
+      <BrandStudioShell
+        ideaId="idea_fresh"
+        initialKit={mockFreshDraftKit}
+      />
+    );
+
+    // Initial modal (Strategy) is open
     await waitFor(() => {
-      expect(screen.getByText(/Confirm & Complete Brand Kit/i)).toBeInTheDocument();
+      expect(screen.getByText(/Confirm your brand strategy/i)).toBeInTheDocument();
     });
 
-    const confirmButton = screen.getByRole('button', { name: /Confirm & Complete Brand Kit/i });
-    fireEvent.click(confirmButton);
+    // User confirms Strategy
+    const confirmStrategyBtn = screen.getByRole('button', { name: /Confirm Brand Strategy/i });
+    fireEvent.click(confirmStrategyBtn);
 
+    // Modal 2 (Visual Direction) must automatically open!
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/dashboard/creator/phase-2/brand-kit?ideaId=idea_123');
+      expect(screen.getByText(/Pick a visual direction/i)).toBeInTheDocument();
     });
   });
 
-  it('does NOT navigate away when Typography is re-confirmed on an already completed kit', async () => {
-    const alreadyCompletedKit: BrandKit = {
-      ...mockCompletedStrategyAndDirectionKit,
-      status: 'complete',
-      currentStep: 6,
-      logo: {
-        logoType: 'wordmark',
-        selectedConceptKey: 'concept_1',
-        variations: {
-          primary: { svgUri: '<svg></svg>', usageNote: 'Primary' },
-        },
-        approvedAt: '2026-09-15T11:00:00Z',
-        concepts: [],
-        regenerateCount: 0,
-      },
-      colors: {
-        roles: [
-          { roleName: 'Primary', hex: '#0052FF', rgb: '0, 82, 255', usageNote: 'Primary', isLocked: false, provenance: 'stated' },
-          { roleName: 'Secondary', hex: '#0F172A', rgb: '15, 23, 42', usageNote: 'Secondary', isLocked: false, provenance: 'stated' },
-          { roleName: 'Accent', hex: '#38BDF8', rgb: '56, 189, 248', usageNote: 'Accent', isLocked: false, provenance: 'stated' },
-          { roleName: 'Background', hex: '#F8FAFC', rgb: '248, 250, 252', usageNote: 'Background', isLocked: false, provenance: 'stated' },
-          { roleName: 'Text', hex: '#09090B', rgb: '9, 9, 11', usageNote: 'Text', isLocked: false, provenance: 'stated' },
-        ],
-        regenerateCount: 0,
-        confirmedAt: '2026-09-15T11:30:00Z',
-      },
-      typography: {
-        roles: [
-          { roleName: 'Logo type', family: 'Space Grotesk', weight: '700', size: '24px', lineHeight: '1.2', specimenText: 'CyberLock', isLocked: true, provenance: 'stated' },
-          { roleName: 'Heading', family: 'Space Grotesk', weight: '700', size: '32px', lineHeight: '1.2', specimenText: 'Heading sample', isLocked: false, provenance: 'derived' },
-          { roleName: 'Body', family: 'Plus Jakarta Sans', weight: '400', size: '16px', lineHeight: '1.5', specimenText: 'Body sample', isLocked: false, provenance: 'derived' },
-          { roleName: 'Button & label', family: 'Plus Jakarta Sans', weight: '600', size: '14px', lineHeight: '1.4', specimenText: 'Button sample', isLocked: false, provenance: 'derived' },
-        ],
-        regenerateCount: 0,
-        confirmedAt: '2026-09-15T12:00:00Z',
+  it('edit mode from edit page (sudhu edit a gele edit page theke oi ta asbe): confirming edit closes modal and returns to edit page without auto-advancing', async () => {
+    const patchedStrategyKit: BrandKit = {
+      ...mockExistingBrandKit,
+      strategy: {
+        ...mockExistingBrandKit.strategy!,
+        confirmedAt: '2026-09-24T02:00:00Z',
       },
     };
 
-    vi.spyOn(brandKitApi, 'patchTypography').mockResolvedValue(alreadyCompletedKit);
-    vi.spyOn(brandKitApi, 'advanceStep').mockResolvedValue(alreadyCompletedKit);
+    vi.spyOn(brandKitApi, 'patchStrategy').mockResolvedValue(patchedStrategyKit);
 
     render(
       <BrandStudioShell
         ideaId="idea_123"
-        initialKit={alreadyCompletedKit}
+        initialKit={mockExistingBrandKit}
       />
     );
 
-    // Open Typography step
-    const typographyButton = screen.getByRole('button', { name: /Typography/i });
-    fireEvent.click(typographyButton);
+    // Edit page is rendered, no modal open
+    expect(screen.queryByText(/Confirm your brand strategy/i)).not.toBeInTheDocument();
 
+    // Click "Edit" on Strategy section
+    const editButtons = screen.getAllByRole('button', { name: /^Edit$/i });
+    fireEvent.click(editButtons[0]);
+
+    // Strategy modal opens
     await waitFor(() => {
-      expect(screen.getByText(/Confirm & Complete Brand Kit/i)).toBeInTheDocument();
+      expect(screen.getByText(/Confirm your brand strategy/i)).toBeInTheDocument();
     });
 
-    const confirmButton = screen.getByRole('button', { name: /Confirm & Complete Brand Kit/i });
-    fireEvent.click(confirmButton);
+    // Confirm the edited strategy
+    const confirmStrategyBtn = screen.getByRole('button', { name: /Confirm Brand Strategy/i });
+    fireEvent.click(confirmStrategyBtn);
 
+    // Modal must close back to edit page and NOT advance to Direction modal!
     await waitFor(() => {
-      // Should NOT have navigated
-      expect(mockPush).not.toHaveBeenCalled();
+      expect(screen.queryByText(/Confirm your brand strategy/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Pick a visual direction/i)).not.toBeInTheDocument();
     });
+
+    // Edit page is active
+    expect(screen.getByRole('heading', { level: 1, name: /Brand Studio/i })).toBeInTheDocument();
   });
 });
 

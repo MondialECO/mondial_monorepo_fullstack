@@ -8,10 +8,11 @@ import { Loader2 } from "lucide-react";
 function BrandStudioContent() {
   const searchParams = useSearchParams();
   const ideaId = searchParams.get("ideaId") || undefined;
+  const initialStep = searchParams.get("step") || undefined;
 
   return (
     <div className="w-full flex-1 flex flex-col h-full min-h-0 overflow-hidden">
-      <BrandStudioShell ideaId={ideaId} />
+      <BrandStudioShell ideaId={ideaId} initialStep={initialStep} />
     </div>
   );
 }

@@ -41,12 +41,27 @@ import {
   useBusinessModelSessionTimed,
   useAiCredits,
   useStartForecast,
+  useBudgetSuggestion,
+  useForecastAssumptions,
+  useRegenerateForecast,
 } from '@/hooks/queries/creator-ai';
+import { StartingBudgetModal } from '@/components/creator/forecast/StartingBudgetModal';
+import {
+  ForecastAssumptionsModal,
+  type ForecastDriverValues,
+} from '@/components/creator/forecast/ForecastAssumptionsModal';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 import { formatMoney } from '@/lib/format-money';
-import { hasAiOutput, type ForecastOutput, type BusinessPlanOutput, type MarketStudyOutput, type BusinessModelOutput } from '@/types/creator/ai';
+import {
+  hasAiOutput,
+  type ForecastOutput,
+  type ForecastInputs,
+  type BusinessPlanOutput,
+  type MarketStudyOutput,
+  type BusinessModelOutput,
+} from '@/types/creator/ai';
 import { withIdeaContext } from '@/lib/creator-routes';
 
 function inputWarnings(growth: number, churn: number) {
@@ -78,10 +93,10 @@ export default function ForecastPage() {
 
   // Live Simulation Parameters: initialized and hydrated dynamically from real session / step data
   const [inputs, setInputs] = useState(() => {
-    let initialBudget = 40000;
-    if (typeof window !== 'undefined') {
+    let initialBudget = 0;
+    if (typeof window !== 'undefined' && ideaId) {
       try {
-        const stored = localStorage.getItem(`mondial_forecast_budget_${ideaId || 'active'}`);
+        const stored = localStorage.getItem(`mondial_forecast_budget_${ideaId}`);
         if (stored && !isNaN(Number(stored)) && Number(stored) > 0) {
           initialBudget = Number(stored);
         }
@@ -89,20 +104,27 @@ export default function ForecastPage() {
     }
     return {
       budget: initialBudget,
-      launchSubs: 75,
-      growth: 15,
-      churn: 5,
-      arpu: 32,
-      varCost: 5,
-      opex: 8000,
-      tam: 900_000_000,
+      launchSubs: 0,
+      growth: 0,
+      churn: 0,
+      arpu: 0,
+      varCost: 0,
+      opex: 0,
+      tam: 0,
     };
   });
 
   const [savedBaselineInputs, setSavedBaselineInputs] = useState<typeof inputs | null>(null);
   const [startError, setStartError] = useState<AiError | null>(null);
+  const [showStartingBudgetModal, setShowStartingBudgetModal] = useState<boolean>(false);
+  const [showAssumptionsModal, setShowAssumptionsModal] = useState<boolean>(false);
+  const hasAutoOpenedBudgetModalRef = useRef<boolean>(false);
 
   const startForecast = useStartForecast();
+  const regenerateForecast = useRegenerateForecast();
+  const budgetSuggestionQuery = useBudgetSuggestion(ideaId, !forecastSessionId && !!ideaId);
+  const assumptionsQuery = useForecastAssumptions(ideaId, !!ideaId);
+  const progressiveAssumptions = assumptionsQuery.data ?? null;
   const credits = useAiCredits();
   const isCostLoading = credits.isLoading;
   const forecastCost = credits.data?.costs?.Forecast ?? 32;
@@ -126,9 +148,7 @@ export default function ForecastPage() {
   const businessModelSession = useBusinessModelSessionTimed(businessModelSessionId);
   const bmOutput = (businessModelSession.data as { output?: BusinessModelOutput } | undefined)?.output ?? null;
 
-  const sessionInputs = (session.data as {
-    inputs?: { arpu?: number | null; opex?: number | null; monthlyGrowthPct?: number | null; tam?: number | null; monthlyChurnPct?: number | null } | null;
-  } | undefined)?.inputs ?? null;
+  const sessionInputs = (session.data as { inputs?: ForecastInputs | null } | undefined)?.inputs ?? null;
 
   useEffect(() => {
     let active = true;
@@ -148,10 +168,12 @@ export default function ForecastPage() {
         const projectBudget = (journey.project as { startingBudget?: number; budget?: number } | undefined)?.startingBudget ?? (journey.project as { startingBudget?: number; budget?: number } | undefined)?.budget ?? p3?.startingBudget ?? null;
 
         if (!active) return;
-        setForecastSessionId(p3?.forecastSessionId ?? null);
+        const initialSessionId = p3?.forecastSessionId ?? null;
+        setForecastSessionId(initialSessionId);
         setBusinessPlanSessionId(p3?.businessPlanSessionId ?? null);
         setMarketStudySessionId(p3?.marketStudySessionId ?? null);
         setBusinessModelSessionId(p3?.businessModelSessionId ?? null);
+
         setProject({
           name: journey.project?.name ?? '',
           problem: journey.project?.problem ?? '',
@@ -201,54 +223,94 @@ export default function ForecastPage() {
   const hydratedRef = useRef<string | null>(null);
   useEffect(() => {
     let storedBudget: number | null = null;
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && ideaId) {
       try {
-        const stored = localStorage.getItem(`mondial_forecast_budget_${ideaId || 'active'}`);
-        if (stored && !isNaN(Number(stored)) && Number(stored) > 0) {
+        const stored = localStorage.getItem(`mondial_forecast_budget_${ideaId}`);
+        if (stored != null && stored !== '' && !isNaN(Number(stored))) {
           storedBudget = Number(stored);
         }
       } catch {}
     }
-    const resolvedBudget = storedBudget ?? cross.seedAsk ?? 40000;
+    const resolvedBudget = (storedBudget != null ? storedBudget : (cross.seedAsk != null ? cross.seedAsk : null));
 
-    if (sessionInputs && hydratedRef.current !== `session-${forecastSessionId}`) {
-      hydratedRef.current = `session-${forecastSessionId}`;
-      const realData = {
-        budget: resolvedBudget,
-        launchSubs: 75,
-        growth: sessionInputs.monthlyGrowthPct ?? 15,
-        churn: sessionInputs.monthlyChurnPct ?? 5,
-        arpu: sessionInputs.arpu ?? 32,
-        varCost: 5,
-        opex: sessionInputs.opex ?? 8000,
-        tam: sessionInputs.tam ?? marketStudyTam ?? 900_000_000,
-      };
-      setInputs(realData);
-      setSavedBaselineInputs(realData);
-    } else if (!sessionInputs && (bmOutput || marketStudyTam || cross.seedAsk) && !hydratedRef.current) {
+    const sourceInputs = sessionInputs || progressiveAssumptions;
+    if (sourceInputs) {
+      const isInitialHydration = hydratedRef.current !== `session-${forecastSessionId || 'progressive'}`;
+      if (isInitialHydration || (sourceInputs.startingBudget == null && resolvedBudget != null)) {
+        hydratedRef.current = `session-${forecastSessionId || 'progressive'}`;
+        const realData = {
+          // Precedence: ForecastSession.Inputs persisted value > current explicit unsaved form state > scoped temporary cache
+          budget: sourceInputs.startingBudget != null ? sourceInputs.startingBudget : (resolvedBudget != null ? resolvedBudget : 0),
+          launchSubs: sourceInputs.launchSubscribers != null ? sourceInputs.launchSubscribers : 0,
+          growth: sourceInputs.monthlyGrowthPct != null ? sourceInputs.monthlyGrowthPct : 0,
+          churn: sourceInputs.monthlyChurnPct != null ? sourceInputs.monthlyChurnPct : 0,
+          arpu: sourceInputs.arpu != null ? sourceInputs.arpu : 0,
+          varCost: sourceInputs.variableCost != null ? sourceInputs.variableCost : 0,
+          opex: sourceInputs.opex != null ? sourceInputs.opex : 0,
+          tam: sourceInputs.tam != null ? sourceInputs.tam : (marketStudyTam != null ? marketStudyTam : 0),
+        };
+        setInputs(realData);
+        setSavedBaselineInputs(realData);
+      }
+    } else if (!sourceInputs && (bmOutput || marketStudyTam || cross.seedAsk != null) && !hydratedRef.current) {
       hydratedRef.current = 'linked-defaults';
-      const step32Arpu = bmOutput?.unitEconomics?.arpu?.amount ?? (bmOutput?.revenueTiers?.[0]?.pricing ? Number(bmOutput.revenueTiers[0].pricing.replace(/[^0-9.]/g, '')) || null : null);
-      const step31Tam = marketStudyTam ?? 900_000_000;
+      const step32Arpu = bmOutput?.unitEconomics?.arpu?.amount != null
+        ? bmOutput.unitEconomics.arpu.amount
+        : (bmOutput?.revenueTiers?.[0]?.pricing ? Number(bmOutput.revenueTiers[0].pricing.replace(/[^0-9.]/g, '')) || null : null);
+      const step31Tam = marketStudyTam != null ? marketStudyTam : 0;
       setInputs((prev) => ({
         ...prev,
-        budget: resolvedBudget,
-        arpu: step32Arpu ?? prev.arpu,
+        budget: resolvedBudget != null ? resolvedBudget : prev.budget,
+        arpu: step32Arpu != null ? step32Arpu : prev.arpu,
         tam: step31Tam,
       }));
       setSavedBaselineInputs((prev) => ({
-        budget: resolvedBudget,
-        launchSubs: prev?.launchSubs ?? 75,
-        growth: prev?.growth ?? 15,
-        churn: prev?.churn ?? 5,
-        varCost: prev?.varCost ?? 5,
-        opex: prev?.opex ?? 8000,
-        arpu: step32Arpu ?? prev?.arpu ?? 32,
+        budget: resolvedBudget != null ? resolvedBudget : (prev?.budget ?? 0),
+        launchSubs: prev?.launchSubs ?? 0,
+        growth: prev?.growth ?? 0,
+        churn: prev?.churn ?? 0,
+        varCost: prev?.varCost ?? 0,
+        opex: prev?.opex ?? 0,
+        arpu: step32Arpu != null ? step32Arpu : (prev?.arpu ?? 0),
         tam: step31Tam,
       }));
     }
-  }, [sessionInputs, forecastSessionId, bmOutput, marketStudyTam, cross.seedAsk, ideaId]);
+  }, [sessionInputs, progressiveAssumptions, forecastSessionId, bmOutput, marketStudyTam, cross.seedAsk, ideaId]);
 
   const output = (session.data as { output?: ForecastOutput } | undefined)?.output;
+
+  // Requirement 1: Completed Forecast Detection.
+  // Requires:
+  // - session is not failed/incomplete
+  // - valid forecast output exists and is usable by the Results UI (monthly revenue and cost arrays)
+  // If session has Inputs but 0 valid completed output, Step 3.3 must remain in first-generation mode.
+  const hasCompletedForecast = useMemo(() => {
+    const sDoc = session.data as { status?: string; currentVersion?: number; versions?: Array<{ version: number; content?: unknown }> } | undefined;
+    if (sDoc?.status && sDoc.status.toLowerCase() !== 'completed') {
+      return false;
+    }
+
+    const hasUsableOutput = Boolean(
+      output &&
+      Array.isArray(output.revenueForecast?.monthly) &&
+      output.revenueForecast.monthly.length > 0 &&
+      Array.isArray(output.costForecast?.monthly) &&
+      output.costForecast.monthly.length > 0
+    );
+
+    if (!hasUsableOutput) {
+      return false;
+    }
+
+    return true;
+  }, [output, session.data]);
+
+  useEffect(() => {
+    if (!loadingJourney && !hasCompletedForecast && !hasAutoOpenedBudgetModalRef.current) {
+      hasAutoOpenedBudgetModalRef.current = true;
+      setShowStartingBudgetModal(true);
+    }
+  }, [loadingJourney, hasCompletedForecast]);
 
   const fcError = (session.data as { error?: string | null } | undefined)?.error ?? null;
   const terminalFailed = !!forecastSessionId && session.phase === 'terminal' && !output;
@@ -270,39 +332,38 @@ export default function ForecastPage() {
     );
   }, [inputs, savedBaselineInputs]);
 
-  // Deterministic 36-Month Dynamic Projection Model matching Figma Node 57157:9297
-  // When authoritative AI output is available and user has not tweaked live inputs, adopt AI monthly data
+  // Pure presenter for the authoritative backend FinancialForecastEngine output.
+  // CLIENT-SIDE FORECAST ENGINE = 0.
   const projectionData = useMemo(() => {
-    const netGrowthRate = (inputs.growth - inputs.churn) / 100;
+    const revList = output?.revenueForecast?.monthly ?? [];
+    const costList = output?.costForecast?.monthly ?? [];
+    const cashList = output?.cashFlowProjection?.monthly ?? [];
+
     const rows: ForecastRowCalculated[] = [];
-    let currentSubs = inputs.launchSubs;
     let cumulativeNet = 0;
 
-    const hasAiMonthly = !assumptionsChanged && (output?.revenueForecast?.monthly?.length ?? 0) > 0;
+    for (let i = 0; i < revList.length; i++) {
+      const m = revList[i].month || (i + 1);
+      const revItem = revList[i];
+      const costItem = costList[i] || { fixedCosts: 0, variableCosts: 0, notes: '' };
+      const cashItem = cashList[i] || { netCashFlow: 0, endingBalance: 0, notes: '' };
 
-    for (let m = 1; m <= 36; m++) {
-      if (m > 1) {
-        currentSubs = Math.round(inputs.launchSubs * Math.pow(1 + netGrowthRate, m - 1));
-      }
-
-      const aiRev = hasAiMonthly ? output?.revenueForecast?.monthly?.find((r) => r.month === m) : undefined;
-      const aiCost = hasAiMonthly ? output?.costForecast?.monthly?.find((c) => c.month === m) : undefined;
-      const aiCash = hasAiMonthly ? output?.cashFlowProjection?.monthly?.find((cf) => cf.month === m) : undefined;
-
-      const revenue = aiRev != null ? aiRev.amount : currentSubs * inputs.arpu;
-      const fixedCost = aiCost != null ? aiCost.fixedCosts : inputs.opex;
-      const variableCost = aiCost != null ? aiCost.variableCosts : currentSubs * inputs.varCost;
+      const revenue = revItem.amount ?? 0;
+      const fixedCost = costItem.fixedCosts ?? 0;
+      const variableCost = costItem.variableCosts ?? 0;
       const totalCost = fixedCost + variableCost;
-      const netCashFlow = aiCash?.netCashFlow != null ? aiCash.netCashFlow : revenue - totalCost;
+      const netCashFlow = cashItem.netCashFlow ?? (revenue - totalCost);
       cumulativeNet += netCashFlow;
       const cumulative = cumulativeNet;
       const cashOnHand = inputs.budget + cumulative;
-      const note = aiRev?.notes || aiCost?.notes || aiCash?.notes || `+${inputs.growth}% new, −${inputs.churn}% churn`;
+      const note = revItem.notes || costItem.notes || cashItem.notes || `Month ${m}`;
+
+      const subs = (revItem as any).subscribers ?? (inputs.arpu > 0 ? Math.round(revenue / inputs.arpu) : (inputs.launchSubs || 0));
 
       rows.push({
         month: m,
         name: `M${m}`,
-        subscribers: currentSubs,
+        subscribers: subs,
         revenue,
         fixedCost,
         variableCost,
@@ -314,21 +375,14 @@ export default function ForecastPage() {
       });
     }
 
-    // Milestones
+    // Milestones strictly driven by backend breakEvenAnalysis & cash balances
     let budgetRunsOutMonth: number | null = null;
-    for (const r of rows) {
-      if (r.cashOnHand < 0) {
-        budgetRunsOutMonth = r.month;
-        break;
-      }
-    }
-
-    let minCumulativeLoss = Infinity;
+    let minCashOnHand = rows.length > 0 ? rows[0].cashOnHand : 0;
     let lowestCashMonth = 1;
-    let minCashOnHand = Infinity;
+
     for (const r of rows) {
-      if (r.cumulative < minCumulativeLoss) {
-        minCumulativeLoss = r.cumulative;
+      if (r.cashOnHand < 0 && budgetRunsOutMonth === null) {
+        budgetRunsOutMonth = r.month;
       }
       if (r.cashOnHand < minCashOnHand) {
         minCashOnHand = r.cashOnHand;
@@ -336,27 +390,10 @@ export default function ForecastPage() {
       }
     }
 
-    let calculatedBreakEvenMonth: number | null = null;
-    let breakEvenSubs = 0;
-    let breakEvenRevenue = 0;
-    for (const r of rows) {
-      if (r.revenue >= r.totalCost) {
-        calculatedBreakEvenMonth = r.month;
-        breakEvenSubs = r.subscribers;
-        breakEvenRevenue = r.revenue;
-        break;
-      }
-    }
-
-    const breakEvenMonth = (!assumptionsChanged && output?.breakEvenAnalysis?.breakEvenMonth)
-      ? output.breakEvenAnalysis.breakEvenMonth
-      : (calculatedBreakEvenMonth ?? 16);
-
-    const beRow = rows.find((r) => r.month === breakEvenMonth) ?? (calculatedBreakEvenMonth ? rows[calculatedBreakEvenMonth - 1] : undefined);
-    const contributionPerSubLocal = inputs.arpu - inputs.varCost;
-    const dynamicSubsNeeded = contributionPerSubLocal > 0 ? Math.ceil(inputs.opex / contributionPerSubLocal) : 0;
-    const finalBreakEvenSubs = beRow?.subscribers ?? (breakEvenSubs || dynamicSubsNeeded);
-    const finalBreakEvenRevenue = beRow?.revenue ?? (breakEvenRevenue || (finalBreakEvenSubs * inputs.arpu));
+    const breakEvenMonth = output?.breakEvenAnalysis?.breakEvenMonth ?? null;
+    const beRow = breakEvenMonth ? rows.find((r) => r.month === breakEvenMonth) : undefined;
+    const breakEvenSubs = beRow?.subscribers ?? 0;
+    const breakEvenRevenue = beRow?.revenue ?? 0;
 
     let cashPositiveMonth: number | null = null;
     if (budgetRunsOutMonth) {
@@ -370,7 +407,7 @@ export default function ForecastPage() {
 
     let lossRecoveryMonth: number | null = null;
     for (const r of rows) {
-      if (r.month >= (breakEvenMonth ?? 1) && r.cumulative >= 0) {
+      if (breakEvenMonth && r.month >= breakEvenMonth && r.cumulative >= 0) {
         lossRecoveryMonth = r.month;
         break;
       }
@@ -379,19 +416,19 @@ export default function ForecastPage() {
     // Tag milestones on rows
     rows.forEach((r) => {
       if (r.month === 1) {
-        r.notes = `Launch · ${r.subscribers} subs × €${inputs.arpu}`;
+        r.notes = r.notes || `Launch · ${r.subscribers} units`;
       } else if (r.month === budgetRunsOutMonth) {
         r.isMilestone = true;
         r.milestoneTag = 'Budget runs out';
         r.notes = 'Budget runs out';
-      } else if (r.month === lowestCashMonth) {
+      } else if (r.month === lowestCashMonth && minCashOnHand < 0) {
         r.isMilestone = true;
         r.milestoneTag = 'Lowest cash point';
         r.notes = 'Lowest cash point';
       } else if (r.month === breakEvenMonth) {
         r.isMilestone = true;
-        r.milestoneTag = `Break-even · ${r.subscribers} subs`;
-        r.notes = `Break-even · ${r.subscribers} subs`;
+        r.milestoneTag = `Break-even · ${r.subscribers} units`;
+        r.notes = `Break-even · ${r.subscribers} units`;
       } else if (r.month === cashPositiveMonth) {
         r.isMilestone = true;
         r.milestoneTag = 'Cash positive again';
@@ -413,8 +450,8 @@ export default function ForecastPage() {
       variableCost: slice.reduce((acc, r) => acc + r.variableCost, 0),
       totalCost: slice.reduce((acc, r) => acc + r.totalCost, 0),
       netCashFlow: slice.reduce((acc, r) => acc + r.netCashFlow, 0),
-      cumulative: slice[slice.length - 1].cumulative,
-      cashOnHand: slice[slice.length - 1].cashOnHand,
+      cumulative: slice.length > 0 ? slice[slice.length - 1].cumulative : 0,
+      cashOnHand: slice.length > 0 ? slice[slice.length - 1].cashOnHand : 0,
     });
 
     const y1Total = subtotal(y1Rows);
@@ -431,9 +468,9 @@ export default function ForecastPage() {
       y1Total,
       y2Total,
       y3Total,
-      breakEvenMonth: breakEvenMonth ?? calculatedBreakEvenMonth ?? 16,
-      breakEvenSubs: finalBreakEvenSubs,
-      breakEvenRevenue: finalBreakEvenRevenue,
+      breakEvenMonth: breakEvenMonth ?? 16,
+      breakEvenSubs,
+      breakEvenRevenue,
       budgetRunsOutMonth: budgetRunsOutMonth ?? null,
       lowestCashMonth: lowestCashMonth || 1,
       lowestCashStat: minCashOnHand !== Infinity ? minCashOnHand : inputs.budget,
@@ -444,7 +481,7 @@ export default function ForecastPage() {
       year2Revenue: y2Total.revenue,
       year3Revenue: y3Total.revenue,
     };
-  }, [inputs, output, assumptionsChanged]);
+  }, [output, inputs.budget, inputs.arpu, inputs.launchSubs]);
 
   // Unit Economics & Break-Even calculations grounded in Step 3.2 Business Model Output
   const bmCac = bmOutput?.unitEconomics?.cac?.amount;
@@ -455,7 +492,7 @@ export default function ForecastPage() {
   const contributionPerSub = inputs.arpu - inputs.varCost;
   const subsNeeded = contributionPerSub > 0 ? Math.ceil(inputs.opex / contributionPerSub) : 0;
   const grossMarginPct = inputs.arpu > 0 ? Math.round((contributionPerSub / inputs.arpu) * 100) : 0;
-  const cac = bmCac ?? (inputs.launchSubs > 0 ? Math.round((inputs.opex * 0.4) / inputs.launchSubs) : 63);
+  const cac = bmCac ?? (inputs.launchSubs > 0 ? Math.round((inputs.opex * 0.4) / inputs.launchSubs) : 0);
   const ltv = bmLtv ?? (inputs.churn > 0 && contributionPerSub > 0 ? Math.round(contributionPerSub / (inputs.churn / 100)) : 0);
   const ltvCacRatio = bmLtvCac ? Number(bmLtvCac).toFixed(1) : (cac > 0 ? (ltv / cac).toFixed(1) : '—');
   const paybackMonths = bmPayback ? Number(bmPayback).toFixed(1) : (contributionPerSub > 0 ? (cac / contributionPerSub).toFixed(1) : '—');
@@ -463,24 +500,109 @@ export default function ForecastPage() {
 
   const warnings = inputWarnings(inputs.growth, inputs.churn);
 
-  const handleGenerate = async () => {
+  const handleStartFromBudget = async (
+    finalBudget: number,
+    provenance: 'ai_suggested' | 'founder_confirmed'
+  ) => {
+    if (!ideaId) {
+      setStartError({ message: 'ideaId is required', code: 'idea_required' } as any);
+      return;
+    }
     setStartError(null);
     try {
+      setInputs((prev) => ({ ...prev, budget: finalBudget }));
+      if (typeof window !== 'undefined' && ideaId) {
+        try {
+          localStorage.setItem(`mondial_forecast_budget_${ideaId}`, finalBudget.toString());
+        } catch {}
+      }
       const res = await startForecast.mutateAsync({
         businessPlanSessionId: businessPlanSessionId || undefined,
-        businessIdeaId: (ideaId as string) || undefined,
+        businessIdeaId: ideaId,
+        startingBudget: finalBudget,
+        launchSubscribers: inputs.launchSubs,
+        variableCost: inputs.varCost,
         arpu: inputs.arpu,
         opex: inputs.opex,
         monthlyGrowthPct: inputs.growth,
         tam: inputs.tam,
         monthlyChurnPct: inputs.churn,
+        provenance: {
+          startingBudget: provenance,
+        },
       });
       await creatorJourneyApi.setPhase3Session('forecast', res.sessionId);
       setForecastSessionId(res.sessionId);
-      setSavedBaselineInputs({ ...inputs });
+      setSavedBaselineInputs({ ...inputs, budget: finalBudget });
+      setShowStartingBudgetModal(false);
     } catch (e) {
       setStartError(toAiError(e, 'Could not start the forecast simulation.'));
     }
+  };
+
+  const handleRecalculateAndRegenerate = async (
+    newValues: ForecastDriverValues,
+    newProvenance: Record<string, string>
+  ) => {
+    if (!ideaId) {
+      setStartError({ message: 'ideaId is required', code: 'idea_required' } as any);
+      return;
+    }
+    if (!forecastSessionId) {
+      await handleStartFromBudget(newValues.startingBudget, (newProvenance.startingBudget as any) || 'founder_confirmed');
+      setShowAssumptionsModal(false);
+      return;
+    }
+    setStartError(null);
+    try {
+      const updatedInputs = {
+        budget: newValues.startingBudget,
+        launchSubs: newValues.launchSubscribers,
+        growth: newValues.monthlyGrowthPct,
+        churn: newValues.monthlyChurnPct,
+        arpu: newValues.arpu,
+        varCost: newValues.variableCost,
+        opex: newValues.opex,
+        tam: newValues.tam,
+      };
+      setInputs(updatedInputs);
+      if (typeof window !== 'undefined' && ideaId) {
+        try {
+          localStorage.setItem(`mondial_forecast_budget_${ideaId}`, newValues.startingBudget.toString());
+        } catch {}
+      }
+      await regenerateForecast.mutateAsync({
+        sessionId: forecastSessionId,
+        payload: {
+          businessIdeaId: ideaId,
+          startingBudget: newValues.startingBudget,
+          launchSubscribers: newValues.launchSubscribers,
+          variableCost: newValues.variableCost,
+          arpu: newValues.arpu,
+          opex: newValues.opex,
+          monthlyGrowthPct: newValues.monthlyGrowthPct,
+          tam: newValues.tam,
+          monthlyChurnPct: newValues.monthlyChurnPct,
+          provenance: newProvenance,
+        },
+      });
+      setSavedBaselineInputs(updatedInputs);
+      setShowAssumptionsModal(false);
+    } catch (e) {
+      setStartError(toAiError(e, 'Could not recalculate forecast projections.'));
+    }
+  };
+
+  const handleOpenRegenerateOrAssumptions = () => {
+    if (forecastSessionId || output) {
+      setShowAssumptionsModal(true);
+    } else {
+      setShowStartingBudgetModal(true);
+    }
+  };
+
+  const handleGenerate = async () => {
+    handleOpenRegenerateOrAssumptions();
   };
 
   const handleNext = () => {
@@ -490,6 +612,38 @@ export default function ForecastPage() {
 
   return (
     <>
+      <StartingBudgetModal
+        open={showStartingBudgetModal}
+        onClose={() => setShowStartingBudgetModal(false)}
+        suggestedBudget={budgetSuggestionQuery.data?.suggestedBudget ?? cross.seedAsk ?? (inputs.budget > 0 ? inputs.budget : undefined)}
+        rationale={budgetSuggestionQuery.data?.rationale}
+        runwayMonths={budgetSuggestionQuery.data?.runwayMonths ?? 6}
+        isLoadingSuggestion={budgetSuggestionQuery.isLoading}
+        isGenerating={startForecast.isPending}
+        onGenerate={handleStartFromBudget}
+      />
+
+      <ForecastAssumptionsModal
+        open={showAssumptionsModal}
+        onClose={() => setShowAssumptionsModal(false)}
+        businessModelType={sessionInputs?.businessModelType ?? progressiveAssumptions?.businessModelType ?? undefined}
+        initialRationales={sessionInputs?.rationales ?? progressiveAssumptions?.rationales ?? {}}
+        initialValues={{
+          startingBudget: sessionInputs?.startingBudget ?? progressiveAssumptions?.startingBudget ?? inputs.budget,
+          launchSubscribers: sessionInputs?.launchSubscribers ?? progressiveAssumptions?.launchSubscribers ?? inputs.launchSubs,
+          monthlyGrowthPct: sessionInputs?.monthlyGrowthPct ?? progressiveAssumptions?.monthlyGrowthPct ?? inputs.growth,
+          monthlyChurnPct: sessionInputs?.monthlyChurnPct ?? progressiveAssumptions?.monthlyChurnPct ?? inputs.churn,
+          arpu: sessionInputs?.arpu ?? progressiveAssumptions?.arpu ?? inputs.arpu,
+          variableCost: sessionInputs?.variableCost ?? progressiveAssumptions?.variableCost ?? inputs.varCost,
+          opex: sessionInputs?.opex ?? progressiveAssumptions?.opex ?? inputs.opex,
+          tam: sessionInputs?.tam ?? progressiveAssumptions?.tam ?? inputs.tam,
+        }}
+        initialProvenance={sessionInputs?.provenance ?? progressiveAssumptions?.provenance ?? {}}
+        isRegenerating={regenerateForecast.isPending}
+        creditCost={forecastCost}
+        onConfirm={handleRecalculateAndRegenerate}
+      />
+
       <ForecastPrintView
         open={showExport}
         onClose={() => setShowExport(false)}
@@ -509,7 +663,7 @@ export default function ForecastPage() {
         title="Financial Projections & Simulations"
         description="Unified 36-month financial model. Adjust key assumptions and re-simulate, or explore detailed projections and break-even trajectories."
       >
-        {loadingJourney && (
+        {(loadingJourney || !ideaId) && (
           <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center font-sans">
             <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading financial workspace…
           </div>
@@ -592,10 +746,10 @@ export default function ForecastPage() {
                       variant="outline"
                       size="sm"
                       onClick={handleGenerate}
-                      disabled={startForecast.isPending || insufficientCredits || isCostLoading}
+                      disabled={startForecast.isPending || regenerateForecast.isPending || insufficientCredits || isCostLoading}
                       className="gap-2 text-button font-medium rounded-xl h-9 border-border bg-card hover:bg-muted"
                     >
-                      {startForecast.isPending ? (
+                      {startForecast.isPending || regenerateForecast.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <RotateCw className="h-4 w-4" />
@@ -625,7 +779,7 @@ export default function ForecastPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleGenerate}
-                  disabled={startForecast.isPending}
+                  disabled={startForecast.isPending || regenerateForecast.isPending}
                   className="shrink-0 h-7 text-caption font-medium border-amber-500/40 hover:bg-amber-500/20"
                 >
                   Regenerate now
@@ -879,8 +1033,8 @@ export default function ForecastPage() {
                         const val = Number(e.target.value) || 0;
                         setInputs((s) => ({ ...s, budget: val }));
                         try {
-                          if (typeof window !== 'undefined') {
-                            localStorage.setItem(`mondial_forecast_budget_${ideaId || 'active'}`, String(val));
+                          if (typeof window !== 'undefined' && ideaId) {
+                            localStorage.setItem(`mondial_forecast_budget_${ideaId}`, String(val));
                           }
                         } catch {}
                       }}
@@ -895,7 +1049,9 @@ export default function ForecastPage() {
                         onClick={() => {
                           setInputs((s) => ({ ...s, budget: cross.seedAsk! }));
                           try {
-                            localStorage.setItem(`mondial_forecast_budget_${ideaId || 'active'}`, String(cross.seedAsk));
+                            if (typeof window !== 'undefined' && ideaId) {
+                              localStorage.setItem(`mondial_forecast_budget_${ideaId}`, String(cross.seedAsk));
+                            }
                           } catch {}
                         }}
                         className="text-primary hover:underline font-semibold"

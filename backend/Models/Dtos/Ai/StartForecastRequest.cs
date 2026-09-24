@@ -17,6 +17,9 @@ namespace WebApp.Models.Dtos.Ai
         public string? BusinessIdeaId { get; set; }
 
         // ---- Standalone forecast inputs ----
+        public double? StartingBudget { get; set; }
+        public double? LaunchSubscribers { get; set; }
+        public double? VariableCost { get; set; }
         public double? Arpu { get; set; }
         public double? Opex { get; set; }
         public double? MonthlyGrowthPct { get; set; }
@@ -24,5 +27,8 @@ namespace WebApp.Models.Dtos.Ai
 
         /// <summary>Monthly churn as a percent (e.g. 3 = 3%/month). Drives LTV/CAC.</summary>
         public double? MonthlyChurnPct { get; set; }
+
+        /// <summary>Provenance dictionary tracking source of each assumption.</summary>
+        public Dictionary<string, string>? Provenance { get; set; }
     }
 }

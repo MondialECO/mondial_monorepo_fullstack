@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-22 (Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-24 (Step 3.3 Project-Context Safety Hardening & Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -642,6 +642,18 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   - Break-even calculations, unit economics fallback derivation, and risk severity dynamically reflect live values.
   - Net cumulative cash flow mathematically reconciled across all summary cards and table rows.
 - **Credit Cost:** **32 credits** (`AiJobType.Forecast`).
+- **Project-Context Safety & Zero Silent Fallbacks (LIVE & CERTIFIED):**
+  - **Zero First-Idea Fallback:** All legacy fallbacks to the user's first idea (`ListByUserAsync(owner) -> allIdeas.FirstOrDefault()?.Id`) have been completely excised from `ForecastController`.
+  - **Strict Endpoint Scoping:** All forecast endpoints (`GET /api/ai/forecast/session`, `POST /api/ai/forecast`, `POST /api/ai/forecast/regenerate`, `GET /api/ai/forecast/assumptions`, `PUT /api/ai/forecast/assumptions`, `GET /api/ai/forecast/budget-suggestion`) require a non-empty `ideaId`. Missing or whitespace `ideaId` strictly returns HTTP 400 Bad Request (`"ideaId is required"`). Foreign or unowned `ideaId` strictly returns HTTP 404 (ownership violation).
+  - **Frontend Query & Mutation Gating:** Step 3.3 page and React Query hooks (`useForecastAssumptions`, `useBudgetSuggestion`) enforce `enabled: !!ideaId`. Mutations validate `ideaId` before request dispatch. The UI remains in an explicit context-resolution loading state until `ideaId` resolves, preventing unanchored queries.
+  - **LocalStorage Scoping & Precedence:** Unscoped `'active'` key fallbacks (`mondial_forecast_budget_${ideaId || 'active'}`) are eliminated. Local storage key is strictly `mondial_forecast_budget_${ideaId}` only when a valid `ideaId` exists.
+  - **Canonical Assumptions SSoT Precedence:** `ForecastSession.Inputs` is the sole canonical source of truth for financial assumptions. Authority order: `ForecastSession.Inputs` persisted server value > current explicit unsaved form state > scoped temporary cache. Client storage NEVER overrides persisted server values.
+  - **Account & Project Switch Safety:** Switching accounts (User A logout -> User B login) or projects (Idea A -> Idea B) isolates cache and state. React Query keys are idea-scoped (`["creator-ai", "forecast", ..., ideaId]`).
+  - **Monotonic Version Guarding:** `FinancialAssumptionsService` enforces strict monotonic version checks independently for `MarketStudyVersion` and `BusinessModelVersion`:
+    - `incomingVersion < storedVersion`: rejected / ignored as stale.
+    - `incomingVersion == storedVersion`: idempotent no-op.
+    - `incomingVersion > storedVersion`: accepts upstream update.
+    - Founder-edited assumptions (`IsFounderLocked`) are permanently locked and survive any upstream version changes.
 
 ### 5.4 Step 3.4 — Legal & Compliance Intelligence (LIVE — 100% Figma Node 57156:9158 Aligned)
 - **Route:** `/dashboard/creator/phase-3/compliance`
@@ -1191,6 +1203,17 @@ RC1 Freeze
 - **Authority Preservation:** Removed all client-side domain recalculations; dashboard state directly reflects `BrandKit`, `CreatorLegalAssessment`, `Phase4CompletionResolver`, `IFounderCapacityResolver`, `PricingPolicyEngine`, and `ProfessionalProfileRecord.QuickStart`.
 - **Legacy Artifact Elimination:** Removed hardcoded "SaaS" badge, global "Idea Readiness" score, premature Day-1 "Interested Buyers (0)" KPI, static EBITDA "—" KPI, "Generate Pitch Deck" misnomer, and client-side `advancePhase(5)` bypass.
 - **Strict Scope Boundaries:** Confirmed zero cards, routes, or progress items for Phase 4.8 (Launch Assets) or Phase 4.9 (Construction Readiness).
+
+**2026-09-24 — Step 3.3 Financial Forecast: Project-Context Safety Hardening.**
+- **Zero First-Idea Fallback (§5.3):** Completely removed `ListByUserAsync(owner) → allIdeas.FirstOrDefault()?.Id` fallback from `ForecastController`. All forecast endpoints now strictly require a non-empty `ideaId` parameter and return HTTP 400 on missing/whitespace input.
+- **Strict Endpoint Scoping (§5.3):** Verified and enforced across all 6 forecast endpoints: `GET /assumptions`, `PUT /assumptions`, `POST /start`, `POST /regenerate`, `GET /session`, `GET /budget-suggestion`. Foreign/unowned `ideaId` returns HTTP 404.
+- **Frontend Query & Mutation Gating (§5.3):** React Query hooks (`useForecastAssumptions`, `useBudgetSuggestion`) enforce `enabled: !!ideaId`. Mutations reject before dispatch when `ideaId` is absent. Page remains in context-resolution loading state until resolved.
+- **LocalStorage Scoping (§5.3):** Removed all 6 occurrences of `ideaId || 'active'` fallback in `forecast/page.tsx`. Keys strictly scoped to `mondial_forecast_budget_${ideaId}` only when `ideaId` is truthy.
+- **Canonical SSoT Precedence (§5.3):** `ForecastSession.Inputs` > unsaved form state > scoped cache. Client storage never overrides persisted server values.
+- **Monotonic Version Guard (§5.3):** `FinancialAssumptionsService` enforces `incoming < stored → stale reject`, `incoming == stored → idempotent no-op`, `incoming > stored → accept update`, independently for `MarketStudyVersion` and `BusinessModelVersion`. Founder-locked fields survive all upstream updates.
+- **New Backend Tests:** `ForecastProjectContextSafetyTests` (9 tests: 400 on missing ideaId, 404 on foreign idea, multi-project isolation, monotonic version semantics, founder lock preservation).
+- **New Frontend Tests:** `ForecastProjectContextSafety.test.tsx` (5 tests: query gating, mutation gating, zero `'active'` localStorage keys, server precedence).
+- **Regression:** All existing Step 3.3 tests remain green. Backend build: 0 errors. Frontend TypeScript: 0 errors. Next.js build: 187/187 routes. Forecast math and Figma Results UI unchanged.
 
 ---
 

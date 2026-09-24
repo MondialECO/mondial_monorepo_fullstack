@@ -119,6 +119,26 @@ describe('ForecastPage (Step 3.3 Figma Node 57157:9297 Alignment)', () => {
       isPending: false,
     } as any);
 
+    vi.spyOn(creatorAiQueries, 'useRegenerateForecast').mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as any);
+
+    vi.spyOn(creatorAiQueries, 'useForecastAssumptions').mockReturnValue({
+      data: null,
+      isLoading: false,
+    } as any);
+
+    vi.spyOn(creatorAiQueries, 'useBudgetSuggestion').mockReturnValue({
+      data: {
+        suggestedBudget: 50000,
+        rationale: 'AI suggested launch budget based on unit economics.',
+        runwayMonths: 6,
+        provenance: 'ai_suggested',
+      },
+      isLoading: false,
+    } as any);
+
     vi.spyOn(creatorAiQueries, 'useForecastSessionTimed').mockReturnValue({
       phase: 'terminal',
       data: {
@@ -126,6 +146,8 @@ describe('ForecastPage (Step 3.3 Figma Node 57157:9297 Alignment)', () => {
         status: 'completed',
         output: mockForecastOutput,
         inputs: {
+          startingBudget: 40000,
+          launchSubscribers: 75,
           arpu: 32,
           opex: 8000,
           monthlyGrowthPct: 15,
@@ -258,6 +280,23 @@ describe('ForecastPage (Step 3.3 Figma Node 57157:9297 Alignment)', () => {
         phase5Data: { pathB: { seedFunding: { totalAsk: 65000 } } },
       },
     });
+
+    vi.spyOn(creatorAiQueries, 'useForecastSessionTimed').mockReturnValue({
+      phase: 'terminal',
+      data: {
+        sessionId: 'session-fc-123',
+        status: 'Completed',
+        output: mockForecastOutput,
+        inputs: {
+          launchSubscribers: 75,
+          arpu: 32,
+          opex: 8000,
+          monthlyGrowthPct: 15,
+          tam: 900_000_000,
+          monthlyChurnPct: 5,
+        },
+      },
+    } as any);
 
     render(<ForecastPage />);
 

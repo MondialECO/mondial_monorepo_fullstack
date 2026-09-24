@@ -41,6 +41,9 @@ namespace WebApp.Controllers
         private readonly IAuditLogger _audit;
         private readonly AiSettings _settings;
         private readonly ILogger<ForecastController> _logger;
+        private readonly IBusinessModelSessionStore? _businessModels;
+        private readonly IMarketStudySessionStore? _marketStudies;
+        private readonly IFinancialAssumptionsService? _assumptionsService;
 
         private static readonly JsonSerializerOptions CamelCase = new()
         {
@@ -55,7 +58,10 @@ namespace WebApp.Controllers
             IAiCreditService creditService,
             IAuditLogger audit,
             IOptions<AiSettings> settings,
-            ILogger<ForecastController> logger)
+            ILogger<ForecastController> logger,
+            IBusinessModelSessionStore? businessModels = null,
+            IMarketStudySessionStore? marketStudies = null,
+            IFinancialAssumptionsService? assumptionsService = null)
         {
             _sessions = sessions;
             _businessPlans = businessPlans;
@@ -65,11 +71,206 @@ namespace WebApp.Controllers
             _audit = audit;
             _settings = settings.Value;
             _logger = logger;
+            _businessModels = businessModels;
+            _marketStudies = marketStudies;
+            _assumptionsService = assumptionsService;
         }
 
         private string CurrentUserId =>
             User.FindFirst(ClaimTypes.NameIdentifier)?.Value
             ?? throw new UnauthorizedAccessException();
+
+        /// <summary>
+        /// AI-suggested Starting Budget based on the creator's real project context
+        /// (Step 3.2 Business Model Canvas OPEX/unit economics, Step 3.1 TAM, idea parameters).
+        /// Returns founder-confirmed/edited value if already persisted.
+        /// </summary>
+        [HttpGet("budget-suggestion")]
+        public async Task<IActionResult> GetBudgetSuggestion([FromQuery] string? ideaId = null)
+        {
+            var owner = CurrentUserId;
+            if (string.IsNullOrWhiteSpace(ideaId))
+                return BadRequest(ApiResponse.Error("ideaId is required", HttpContext.TraceIdentifier));
+
+            var idea = await _creatorIdeas.GetOwnedAsync(ideaId, owner);
+            if (idea == null)
+                return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+
+            // 1. Progressive Assumptions: Check if prepared session inputs already exist
+            if (_assumptionsService != null)
+            {
+                var session = await _assumptionsService.GetOrCreateForecastSessionAsync(idea.Id, owner);
+                if (session.Inputs?.StartingBudget.HasValue == true)
+                {
+                    var prov = session.Inputs.Provenance != null && session.Inputs.Provenance.TryGetValue("startingBudget", out var p)
+                        ? p
+                        : (session.Inputs.StartingBudgetProvenance ?? "ai_suggested");
+
+                    var rationale = session.Inputs.StartingBudgetRationale
+                        ?? (session.Inputs.Rationales != null && session.Inputs.Rationales.TryGetValue("startingBudget", out var r) ? r : null)
+                        ?? "Tailored launch runway grounded in your business model.";
+
+                    return Ok(ApiResponse.Ok("Budget suggestion", new
+                    {
+                        suggestedBudget = session.Inputs.StartingBudget.Value,
+                        rationale,
+                        runwayMonths = 6,
+                        provenance = prov
+                    }));
+                }
+            }
+
+            // 2. Check if user already confirmed or stored a starting budget
+            var latestSession = (await _sessions.ListByOwnerAsync(owner, 0, 5))
+                .FirstOrDefault(s => s.BusinessIdeaId == idea.Id);
+
+            if (latestSession?.Inputs?.StartingBudget.HasValue == true)
+            {
+                var prov = latestSession.Inputs.Provenance != null && latestSession.Inputs.Provenance.TryGetValue("startingBudget", out var p)
+                    ? p
+                    : "founder_confirmed";
+
+                return Ok(ApiResponse.Ok("Budget suggestion", new
+                {
+                    suggestedBudget = latestSession.Inputs.StartingBudget.Value,
+                    rationale = "Pre-filled from your existing saved forecast assumptions.",
+                    runwayMonths = 6,
+                    provenance = prov
+                }));
+            }
+
+            // 3. Fallback: Derive AI-grounded suggestion from Step 3.2 (Business Model) and Step 3.1 (Market Study)
+            BusinessModelSession? bm = null;
+            if (!string.IsNullOrWhiteSpace(idea.Phase3Data?.BusinessModelSessionId) && _businessModels != null)
+            {
+                bm = await _businessModels.GetOwnedAsync(idea.Phase3Data.BusinessModelSessionId, owner);
+            }
+
+            var projectName = idea.Project?.Name ?? "your venture";
+            double opex = 8000;
+            double cac = 150;
+            int runwayMonths = 6;
+
+            var bmContent = bm?.Versions?.FirstOrDefault(v => v.Version == bm.CurrentVersion)?.Content;
+            if (bmContent != null)
+            {
+                if (bmContent.Contains("unitEconomics") && bmContent["unitEconomics"].IsBsonDocument)
+                {
+                    var ue = bmContent["unitEconomics"].AsBsonDocument;
+                    if (ue.Contains("cac") && ue["cac"].IsBsonDocument && ue["cac"].AsBsonDocument.Contains("amount"))
+                    {
+                        var amt = ue["cac"].AsBsonDocument["amount"].ToDouble();
+                        if (amt > 0) cac = amt;
+                    }
+                }
+                if (bmContent.Contains("canvas") && bmContent["canvas"].IsBsonDocument)
+                {
+                    var canvas = bmContent["canvas"].AsBsonDocument;
+                    if (canvas.Contains("costStructure"))
+                    {
+                        var csStr = canvas["costStructure"].ToJson().ToLowerInvariant();
+                        if (csStr.Contains("enterprise") || csStr.Contains("hardware") || csStr.Contains("inventory"))
+                            opex = 12000;
+                        else if (csStr.Contains("lean") || csStr.Contains("digital") || csStr.Contains("micro"))
+                            opex = 5000;
+                    }
+                }
+            }
+
+            double calculated = Math.Round((opex * runwayMonths + (75 * cac)) / 1000.0) * 1000.0;
+            double finalSuggested = Math.Clamp(calculated, 15000, 150000);
+
+            var industrySector = !string.IsNullOrWhiteSpace(idea.Project?.Sector) ? idea.Project.Sector : (idea.Project?.Category ?? "business");
+            string rationaleFallback = $"Based on your {industrySector} model for {projectName} with projected operating costs of ~€{opex:N0}/mo and customer acquisition allowance, a {runwayMonths}-month starting runway of €{finalSuggested:N0} provides sufficient capital to launch and achieve initial traction.";
+
+            return Ok(ApiResponse.Ok("Budget suggestion", new
+            {
+                suggestedBudget = finalSuggested,
+                rationale = rationaleFallback,
+                runwayMonths,
+                provenance = "ai_suggested"
+            }));
+        }
+
+        /// <summary>
+        /// Get the canonical forecast session for a given idea.
+        /// </summary>
+        [HttpGet("session")]
+        public async Task<IActionResult> GetSessionByIdea([FromQuery] string? ideaId = null)
+        {
+            var owner = CurrentUserId;
+            if (string.IsNullOrWhiteSpace(ideaId))
+                return BadRequest(ApiResponse.Error("ideaId is required", HttpContext.TraceIdentifier));
+
+            var idea = await _creatorIdeas.GetOwnedAsync(ideaId, owner);
+            if (idea == null)
+                return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+
+            if (_assumptionsService == null)
+                return StatusCode(500, ApiResponse.Error("Assumptions service unavailable.", HttpContext.TraceIdentifier));
+
+            var session = await _assumptionsService.GetOrCreateForecastSessionAsync(ideaId, owner);
+            return Ok(ApiResponse.Ok("OK", ToDto(session, includeVersionContent: true)));
+        }
+
+        /// <summary>
+        /// Get prepared progressive financial assumptions for an idea.
+        /// </summary>
+        [HttpGet("assumptions")]
+        public async Task<IActionResult> GetAssumptions([FromQuery] string? ideaId = null)
+        {
+            var owner = CurrentUserId;
+            if (string.IsNullOrWhiteSpace(ideaId))
+                return BadRequest(ApiResponse.Error("ideaId is required", HttpContext.TraceIdentifier));
+
+            var idea = await _creatorIdeas.GetOwnedAsync(ideaId, owner);
+            if (idea == null)
+                return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+
+            if (_assumptionsService == null)
+                return StatusCode(500, ApiResponse.Error("Assumptions service unavailable.", HttpContext.TraceIdentifier));
+
+            var session = await _assumptionsService.GetOrCreateForecastSessionAsync(ideaId, owner);
+            var isCompleted = session.HasValidCompletedForecast();
+            if (session.Inputs != null)
+            {
+                session.Inputs.HasCompletedForecast = isCompleted;
+            }
+
+            return Ok(ApiResponse.Ok("OK", new
+            {
+                sessionId = session.Id,
+                status = session.Status,
+                hasCompletedForecast = isCompleted,
+                inputs = session.Inputs
+            }));
+        }
+
+        /// <summary>
+        /// Update founder assumptions on the idea's forecast session.
+        /// </summary>
+        [HttpPut("assumptions")]
+        public async Task<IActionResult> UpdateAssumptions([FromBody] UpdateFinancialAssumptionsDto request, [FromQuery] string? ideaId = null)
+        {
+            var owner = CurrentUserId;
+            var effectiveIdeaId = !string.IsNullOrWhiteSpace(ideaId) ? ideaId : request?.BusinessIdeaId;
+            if (string.IsNullOrWhiteSpace(effectiveIdeaId))
+                return BadRequest(ApiResponse.Error("ideaId is required", HttpContext.TraceIdentifier));
+
+            var idea = await _creatorIdeas.GetOwnedAsync(effectiveIdeaId, owner);
+            if (idea == null)
+                return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+
+            if (_assumptionsService == null)
+                return StatusCode(500, ApiResponse.Error("Assumptions service unavailable.", HttpContext.TraceIdentifier));
+
+            var session = await _assumptionsService.UpdateFounderAssumptionsAsync(effectiveIdeaId, owner, request!);
+            return Ok(ApiResponse.Ok("Assumptions updated", new
+            {
+                sessionId = session.Id,
+                inputs = session.Inputs
+            }));
+        }
 
         [HttpPost]
         public async Task<IActionResult> Start([FromBody] StartForecastRequest request)
@@ -101,8 +302,7 @@ namespace WebApp.Controllers
             }
             else if (string.IsNullOrWhiteSpace(request.BusinessIdeaId))
             {
-                return UnprocessableEntity(ApiResponse.Error("idea_or_plan_required", HttpContext.TraceIdentifier,
-                    new { message = "Provide a business idea or business plan to start the forecast." }));
+                return BadRequest(ApiResponse.Error("ideaId is required", HttpContext.TraceIdentifier));
             }
 
             // Churn is required-in-flow (drives the readiness LTV/CAC), nullable-at-storage
@@ -132,6 +332,26 @@ namespace WebApp.Controllers
                 : $"{owner}:forecast:idea:{businessIdeaId ?? "standalone"}";
 
 
+            // Canonical TAM anchoring from Step 3.1 Market Study (Single Source of Truth)
+            double? canonicalTam = request.Tam;
+            if (!string.IsNullOrWhiteSpace(businessIdeaId) && _marketStudies != null)
+            {
+                var ideaDoc = await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner);
+                if (!string.IsNullOrWhiteSpace(ideaDoc?.Phase3Data?.MarketStudySessionId))
+                {
+                    var ms = await _marketStudies.GetOwnedAsync(ideaDoc.Phase3Data.MarketStudySessionId, owner);
+                    var msContent = ms?.Versions.FirstOrDefault(v => v.Version == ms.CurrentVersion)?.Content;
+                    if (msContent != null && msContent.Contains("marketSizing") && msContent["marketSizing"].IsBsonDocument)
+                    {
+                        var sizing = msContent["marketSizing"].AsBsonDocument;
+                        if (sizing.Contains("tam") && sizing["tam"].IsBsonDocument && sizing["tam"].AsBsonDocument.Contains("value"))
+                        {
+                            canonicalTam = sizing["tam"].AsBsonDocument["value"].ToDouble();
+                        }
+                    }
+                }
+            }
+
             // Create the session first so it owns the lifecycle (source of truth).
             var session = new ForecastSession
             {
@@ -139,11 +359,16 @@ namespace WebApp.Controllers
                 BusinessPlanSessionId = planSessionId,
                 Inputs = new ForecastInputs
                 {
+                    StartingBudget = request.StartingBudget,
+                    LaunchSubscribers = request.LaunchSubscribers,
+                    VariableCost = request.VariableCost,
                     Arpu = request.Arpu,
                     Opex = request.Opex,
                     MonthlyGrowthPct = request.MonthlyGrowthPct,
-                    Tam = request.Tam,
+                    Tam = canonicalTam ?? request.Tam,
                     MonthlyChurnPct = request.MonthlyChurnPct,
+                    Provenance = request.Provenance,
+                    UpdatedAt = DateTime.UtcNow
                 },
                 BusinessIdeaId = businessIdeaId,
                 Status = "Pending",
@@ -199,9 +424,29 @@ namespace WebApp.Controllers
             return Ok(ApiResponse.Ok("OK", sessions.Select(s => ToDto(s, includeVersionContent: false))));
         }
 
+        /// <summary>Run the AI generation again by idea context.</summary>
+        [HttpPost("regenerate")]
+        public async Task<IActionResult> RegenerateByIdea([FromQuery] string? ideaId = null, [FromBody] StartForecastRequest? request = null)
+        {
+            var owner = CurrentUserId;
+            var effectiveIdeaId = !string.IsNullOrWhiteSpace(ideaId) ? ideaId : request?.BusinessIdeaId;
+            if (string.IsNullOrWhiteSpace(effectiveIdeaId))
+                return BadRequest(ApiResponse.Error("ideaId is required", HttpContext.TraceIdentifier));
+
+            var idea = await _creatorIdeas.GetOwnedAsync(effectiveIdeaId, owner);
+            if (idea == null)
+                return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+
+            if (_assumptionsService == null)
+                return StatusCode(500, ApiResponse.Error("Assumptions service unavailable.", HttpContext.TraceIdentifier));
+
+            var session = await _assumptionsService.GetOrCreateForecastSessionAsync(effectiveIdeaId, owner);
+            return await Regenerate(session.Id, request, effectiveIdeaId);
+        }
+
         /// <summary>Run the AI generation again, preserving prior versions.</summary>
         [HttpPost("{sessionId}/regenerate")]
-        public async Task<IActionResult> Regenerate(string sessionId)
+        public async Task<IActionResult> Regenerate(string sessionId, [FromBody] StartForecastRequest? request = null, [FromQuery] string? ideaId = null)
         {
             var owner = CurrentUserId;
 
@@ -209,12 +454,46 @@ namespace WebApp.Controllers
                 return StatusCode(503, ApiResponse.Error("AI features are currently disabled.", HttpContext.TraceIdentifier));
             if (!_settings.Features.Forecast)
                 return StatusCode(503, ApiResponse.Error("The Forecast generator is currently disabled.", HttpContext.TraceIdentifier));
+
+            var effectiveIdeaId = !string.IsNullOrWhiteSpace(ideaId) ? ideaId : request?.BusinessIdeaId;
+            if (!string.IsNullOrWhiteSpace(effectiveIdeaId))
+            {
+                var idea = await _creatorIdeas.GetOwnedAsync(effectiveIdeaId, owner);
+                if (idea == null)
+                    return NotFound(ApiResponse.Error("Idea not found.", HttpContext.TraceIdentifier));
+            }
+
             if (!ObjectId.TryParse(sessionId, out _))
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
 
             var session = await _sessions.GetOwnedAsync(sessionId, owner);
             if (session is null)
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
+
+            if (request is not null)
+            {
+                var newInputs = new ForecastInputs
+                {
+                    StartingBudget = request.StartingBudget ?? session.Inputs?.StartingBudget,
+                    LaunchSubscribers = request.LaunchSubscribers ?? session.Inputs?.LaunchSubscribers,
+                    VariableCost = request.VariableCost ?? session.Inputs?.VariableCost,
+                    Arpu = request.Arpu ?? session.Inputs?.Arpu,
+                    Opex = request.Opex ?? session.Inputs?.Opex,
+                    MonthlyGrowthPct = request.MonthlyGrowthPct ?? session.Inputs?.MonthlyGrowthPct,
+                    Tam = session.Inputs?.Tam ?? request.Tam, // Canonical TAM from Step 3.1 preserved
+                    MonthlyChurnPct = request.MonthlyChurnPct ?? session.Inputs?.MonthlyChurnPct,
+                    Provenance = request.Provenance ?? session.Inputs?.Provenance ?? new Dictionary<string, string>(),
+                    BusinessModelType = session.Inputs?.BusinessModelType,
+                    StartingBudgetRationale = session.Inputs?.StartingBudgetRationale,
+                    MarketStudyVersion = session.Inputs?.MarketStudyVersion,
+                    BusinessModelVersion = session.Inputs?.BusinessModelVersion,
+                    Rationales = session.Inputs?.Rationales,
+                    NeedsFounderInput = session.Inputs?.NeedsFounderInput,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                session.Inputs = newInputs;
+                await _sessions.UpdateInputsAsync(session.Id, newInputs);
+            }
 
             // Atomically acquire in-flight lock BEFORE debiting
             var (acquired, activeSession) = await _sessions.TryAcquireRegenerateLockAsync(sessionId, owner);
@@ -305,11 +584,17 @@ namespace WebApp.Controllers
             // Standalone forecast inputs → the handler computes from these.
             if (session.Inputs is not null)
             {
+                if (session.Inputs.StartingBudget.HasValue) input["startingBudget"] = session.Inputs.StartingBudget.Value;
+                if (session.Inputs.LaunchSubscribers.HasValue) input["launchSubscribers"] = session.Inputs.LaunchSubscribers.Value;
+                if (session.Inputs.VariableCost.HasValue) input["variableCost"] = session.Inputs.VariableCost.Value;
                 if (session.Inputs.Arpu.HasValue) input["arpu"] = session.Inputs.Arpu.Value;
                 if (session.Inputs.Opex.HasValue) input["opex"] = session.Inputs.Opex.Value;
                 if (session.Inputs.MonthlyGrowthPct.HasValue) input["monthlyGrowthPct"] = session.Inputs.MonthlyGrowthPct.Value;
                 if (session.Inputs.Tam.HasValue) input["tam"] = session.Inputs.Tam.Value;
                 if (session.Inputs.MonthlyChurnPct.HasValue) input["monthlyChurnPct"] = session.Inputs.MonthlyChurnPct.Value;
+                if (!string.IsNullOrWhiteSpace(session.Inputs.BusinessModelType)) input["businessModelType"] = session.Inputs.BusinessModelType;
+                if (session.Inputs.AverageOrderValue.HasValue) input["averageOrderValue"] = session.Inputs.AverageOrderValue.Value;
+                if (session.Inputs.TakeRatePct.HasValue) input["takeRatePct"] = session.Inputs.TakeRatePct.Value;
             }
 
             try

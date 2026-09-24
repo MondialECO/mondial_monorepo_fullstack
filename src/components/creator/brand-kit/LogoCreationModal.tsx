@@ -51,8 +51,8 @@ export function LogoCreationModal({
   const [isLoadingInitial, setIsLoadingInitial] = useState<boolean>(false);
   const [isBatchRegenerating, setIsBatchRegenerating] = useState<boolean>(false);
   const [batchRegenerateCount, setBatchRegenerateCount] = useState<number>(0);
-  const [batchRedrawCost, setBatchRedrawCost] = useState<number | null>(null);
-  const [isCostLoading, setIsCostLoading] = useState<boolean>(true);
+  const [batchRedrawCost, setBatchRedrawCost] = useState<number>(4);
+  const [isCostLoading, setIsCostLoading] = useState<boolean>(false);
   const [isCostError, setIsCostError] = useState<boolean>(false);
   const [globalError, setGlobalError] = useState<{
     type: "credits" | "cap" | "network";
@@ -61,25 +61,16 @@ export function LogoCreationModal({
 
   useEffect(() => {
     let mounted = true;
-    setIsCostLoading(true);
-    setIsCostError(false);
     creatorAiApi
       .getCredits()
       .then((res) => {
         if (!mounted) return;
         if (res?.costs?.LogoParameterSelection != null) {
           setBatchRedrawCost(res.costs.LogoParameterSelection);
-        } else {
-          setIsCostError(true);
         }
       })
       .catch(() => {
-        if (!mounted) return;
-        setIsCostError(true);
-      })
-      .finally(() => {
-        if (!mounted) return;
-        setIsCostLoading(false);
+        // Fallback to default 4 credits
       });
     return () => {
       mounted = false;
@@ -217,9 +208,20 @@ export function LogoCreationModal({
           message: "Maximum batch regeneration limit (3/3) reached.",
         });
       } else {
+        const isOverloaded =
+          msg.toLowerCase().includes("overloaded") ||
+          msg.toLowerCase().includes("rate limit") ||
+          msg.toLowerCase().includes("intermittent") ||
+          msg.toLowerCase().includes("timed out") ||
+          msg.toLowerCase().includes("timeout") ||
+          msg.toLowerCase().includes("unavailable") ||
+          status === 500;
+
         setGlobalError({
           type: "network",
-          message: `Logo concept generation did not finish. Your ${batchRedrawCost} credits have been automatically refunded to your balance.`,
+          message: isOverloaded
+            ? `The AI model is temporarily experiencing high traffic/timeout. Your ${batchRedrawCost} credits were safely refunded. Please click "Generate 6 Concepts" again.`
+            : `Logo concept generation did not finish (${msg}). Your ${batchRedrawCost} credits have been automatically refunded to your balance. Please try again.`,
         });
       }
     } finally {
@@ -282,11 +284,19 @@ export function LogoCreationModal({
             },
           }));
         } else {
+          const isOverloaded =
+            msg.toLowerCase().includes("overloaded") ||
+            msg.toLowerCase().includes("timeout") ||
+            msg.toLowerCase().includes("timed out") ||
+            status === 500;
+
           setTileErrors((prev) => ({
             ...prev,
             [conceptKey]: {
               type: "network",
-              message: msg,
+              message: isOverloaded
+                ? "AI model temporarily busy. 2 credits refunded. Please retry."
+                : msg,
             },
           }));
         }

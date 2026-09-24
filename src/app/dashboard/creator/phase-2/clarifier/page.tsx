@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Loader2, ArrowRight, X, Check, Copy, Send, FileText, Pencil } from "lucide-react";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
@@ -59,8 +59,43 @@ function ringBand(answered: number, total: number): { label: string; color: stri
 
 export default function AIClarifierPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlIdeaId = searchParams.get("ideaId");
   const { state, setState, refetch } = useCreatorProgress();
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const initInFlightRef = useRef(false);
+
+  const effectiveIdeaId = urlIdeaId || state.activeIdeaId;
+
+  // Explicit Clarifier Initialization (Section 5)
+  useEffect(() => {
+    if (urlIdeaId) {
+      if (state.activeIdeaId !== urlIdeaId) {
+        refetch(urlIdeaId);
+      }
+      return;
+    }
+
+    if (state.activeIdeaId) {
+      router.replace(`/dashboard/creator/phase-2/clarifier?ideaId=${state.activeIdeaId}`);
+      return;
+    }
+
+    // No ideaId in query and no activeIdeaId in state -> brand-new creator entering Clarifier
+    if (initInFlightRef.current) return;
+    initInFlightRef.current = true;
+
+    creatorJourneyApi.initializeClarifierIdea()
+      .then((data) => {
+        if (data.ideaId) {
+          router.replace(`/dashboard/creator/phase-2/clarifier?ideaId=${data.ideaId}`);
+          refetch(data.ideaId);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to initialize clarifier idea:", err);
+      });
+  }, [urlIdeaId, state.activeIdeaId, refetch, router]);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -228,7 +263,7 @@ export default function AIClarifierPage() {
     // 2. Real AI turn — backend persists the transcript and returns the next question.
     setIsTyping(true);
     try {
-      const res = await creatorJourneyApi.chatMessage(userText, state.activeIdeaId);
+      const res = await creatorJourneyApi.chatMessage(userText, effectiveIdeaId);
       const lastAi = [...res.messages].reverse().find((m) => m.sender === "ai");
       const aiText = lastAi?.text ?? "Thanks — let's continue.";
       const aiMsgId = (Date.now() + 1).toString();
@@ -327,14 +362,14 @@ export default function AIClarifierPage() {
       // Start the C-2 AI clarifier (1 credit), poll it, then map onto the project.
       const { sessionId } = await creatorAiApi.startClarifier({
         rawIdea,
-        businessIdeaId: state.activeIdeaId ?? undefined,
+        businessIdeaId: effectiveIdeaId ?? undefined,
       });
       const session = await pollClarifier(sessionId);
       if (!session) throw new Error("This is taking longer than expected. Please try again.");
 
       // finalize-clarifier is tolerant of a partial/failed output (falls back to a
       // 50 clarity score + editable summary), so we map on any terminal status.
-      const result = await creatorJourneyApi.finalizeClarifier(sessionId, state.activeIdeaId);
+      const result = await creatorJourneyApi.finalizeClarifier(sessionId, effectiveIdeaId);
 
       // Two distinct failure kinds — show an honest, specific message and allow retry.
       // Do NOT navigate or spread empty fields into state on either failure.

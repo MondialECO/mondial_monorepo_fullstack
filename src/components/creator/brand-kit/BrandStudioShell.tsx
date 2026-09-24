@@ -37,6 +37,7 @@ import {
 export interface BrandStudioShellProps {
   ideaId?: string;
   initialKit?: BrandKit | null;
+  initialStep?: string | null;
 }
 
 type StudioModalKey =
@@ -48,30 +49,49 @@ type StudioModalKey =
   | "colors"
   | "typography";
 
+export function normalizeModalKey(step?: string | null): StudioModalKey | null {
+  if (!step) return null;
+  const s = step.toLowerCase().trim();
+  if (s === "strategy") return "strategy";
+  if (s === "direction") return "direction";
+  if (s === "logo_type" || s === "logotype" || s === "logo") return "logo_type";
+  if (s === "logo_creation") return "logo_creation";
+  if (s === "variations") return "variations";
+  if (s === "colors" || s === "colour" || s === "color") return "colors";
+  if (s === "typography") return "typography";
+  return null;
+}
+
 /**
  * Evaluates whether meaningful persisted brand data exists in the BrandKit.
- * Distinguishes a truly empty brand from partially or fully completed brands.
+ * Distinguishes an unconfigured brand from an existing/in-progress/completed brand.
+ *
+ * Rules:
+ * - If brand kit is complete or progressed beyond Step 1 -> already exists.
+ * - If Strategy has been explicitly confirmed (confirmedAt != null) -> already exists.
+ * - If Direction has been selected or confirmed -> already exists.
+ * - If Logo has been approved, concept selected, or variations exist -> already exists.
+ * - If Colors or Typography confirmed -> already exists.
+ *
+ * If none of these exist, it is a brand-new unconfirmed brand session -> first modal opens!
  */
 export function hasMeaningfulBrandData(kit: BrandKit | null | undefined): boolean {
   if (!kit) return false;
 
-  // 1. Strategy: Confirmed or any concrete pillar value populated
-  const hasStrategy = Boolean(
-    kit.strategy?.confirmedAt ||
-    kit.strategy?.concept?.value?.trim() ||
-    kit.strategy?.targetAudience?.value?.trim() ||
-    kit.strategy?.industry?.value?.trim() ||
-    kit.strategy?.positioning?.value?.trim() ||
-    (kit.strategy?.personalityTraits && kit.strategy.personalityTraits.length > 0)
-  );
+  // Complete kits already exist
+  if (kit.status === "complete") {
+    return true;
+  }
+
+  // 1. Strategy: Explicitly confirmed by user
+  const hasStrategy = Boolean(kit.strategy?.confirmedAt);
 
   // 2. Direction: Confirmed or selected direction key
   const hasDirection = Boolean(
-    kit.direction?.selectedAt ||
-    kit.direction?.selectedDirectionKey
+    kit.direction?.selectedAt || kit.direction?.selectedDirectionKey
   );
 
-  // 3. Logo: Approved, concept selected, logoType chosen, or variations exist
+  // 3. Logo: Approved, concept selected, logoType configured, or variations exist
   const hasLogo = Boolean(
     kit.logo?.approvedAt ||
     kit.logo?.selectedConceptKey ||
@@ -79,21 +99,25 @@ export function hasMeaningfulBrandData(kit: BrandKit | null | undefined): boolea
     (kit.logo?.variations && Object.keys(kit.logo.variations).length > 0)
   );
 
-  // 4. Colors: Confirmed or color roles populated
-  const hasColors = Boolean(
-    kit.colors?.confirmedAt ||
-    (kit.colors?.roles &&
-      kit.colors.roles.length > 0 &&
-      kit.colors.roles.some((r) => r.hex && r.hex.trim()))
-  );
+  // 4. Colors: Explicitly confirmed by user
+  const hasColors = Boolean(kit.colors?.confirmedAt);
 
-  // 5. Typography: Confirmed or typography roles populated
-  const hasTypography = Boolean(
-    kit.typography?.confirmedAt ||
-    (kit.typography?.roles && kit.typography.roles.length > 0)
-  );
+  // 5. Typography: Explicitly confirmed by user
+  const hasTypography = Boolean(kit.typography?.confirmedAt);
 
-  return hasStrategy || hasDirection || hasLogo || hasColors || hasTypography;
+  // Brand studio already exists if all 5 pillars are confirmed or if status is complete
+  return hasStrategy && hasDirection && hasLogo && hasColors && hasTypography;
+}
+
+export function getFirstIncompleteModalKey(kit: BrandKit | null | undefined): StudioModalKey {
+  if (!kit || !kit.strategy?.confirmedAt) return "strategy";
+  if (!kit.direction?.selectedAt && !kit.direction?.selectedDirectionKey) return "direction";
+  if (!kit.logo?.logoType) return "logo_type";
+  if (!kit.logo?.approvedAt && !kit.logo?.selectedConceptKey) return "logo_creation";
+  if (!kit.logo?.variations || Object.keys(kit.logo.variations).length === 0) return "variations";
+  if (!kit.colors?.confirmedAt) return "colors";
+  if (!kit.typography?.confirmedAt) return "typography";
+  return "strategy";
 }
 
 function formatLogoType(type?: string): string {
@@ -169,12 +193,26 @@ function IncompleteSectionCard({
 export function BrandStudioShell({
   ideaId,
   initialKit,
+  initialStep,
 }: BrandStudioShellProps) {
   const router = useRouter();
   const [kit, setKit] = useState<BrandKit | null>(initialKit ?? null);
-  const [activeModal, setActiveModal] = useState<StudioModalKey | null>(null);
-  const [isSequentialFlow, setIsSequentialFlow] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [activeModal, setActiveModal] = useState<StudioModalKey | null>(() => {
+    const stepModal = normalizeModalKey(initialStep);
+    if (stepModal) return stepModal;
+    if (initialKit) {
+      return hasMeaningfulBrandData(initialKit) ? null : getFirstIncompleteModalKey(initialKit);
+    }
+    return null;
+  });
+  const [isSequentialFlow, setIsSequentialFlow] = useState<boolean>(() => {
+    if (initialStep) return false;
+    if (initialKit) {
+      return !hasMeaningfulBrandData(initialKit);
+    }
+    return false;
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(!initialKit);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -218,17 +256,23 @@ export function BrandStudioShell({
         setKit(currentKit ?? null);
 
         // Branching logic:
-        const hasData = hasMeaningfulBrandData(currentKit);
-        if (!hasData) {
-          // Case A — No Brand Data Exists:
-          // Auto-open StrategyReviewModal and activate sequential creation workflow
-          setIsSequentialFlow(true);
-          setActiveModal("strategy");
-        } else {
-          // Case B — Existing Brand Data Exists:
-          // Open Brand Studio View Mode directly with zero auto-modals
+        const stepModal = normalizeModalKey(initialStep);
+        if (stepModal) {
           setIsSequentialFlow(false);
-          setActiveModal(null);
+          setActiveModal(stepModal);
+        } else {
+          const hasData = hasMeaningfulBrandData(currentKit);
+          if (!hasData) {
+            // Case A — Brand Studio does not already exist:
+            // Auto-open first incomplete modal (StrategyReviewModal for new kit) and activate sequential creation workflow
+            setIsSequentialFlow(true);
+            setActiveModal(getFirstIncompleteModalKey(currentKit));
+          } else {
+            // Case B — Brand Studio already exists:
+            // Open Brand Studio View Mode (edit page) directly with zero auto-modals
+            setIsSequentialFlow(false);
+            setActiveModal(null);
+          }
         }
       } catch (err: any) {
         if (!isMounted) return;
@@ -249,13 +293,24 @@ export function BrandStudioShell({
     return () => {
       isMounted = false;
     };
-  }, [ideaId, initialKit]);
+  }, [ideaId, initialKit, initialStep]);
 
-  // 4. On-Demand Modal Openers
-  const handleOpenModal = useCallback((modalKey: StudioModalKey) => {
+  // 4. Modal Openers:
+  // - handleEditModal: Clicked from an "Edit" button on the edit page.
+  //   Opens ONLY that specific modal. When completed or closed, returns directly to the edit page.
+  const handleEditModal = useCallback((modalKey: StudioModalKey) => {
     setIsSequentialFlow(false);
     setActiveModal(modalKey);
   }, []);
+
+  // - handleCreateModal: Clicked from an incomplete section or setup launcher.
+  //   Activates the sequential creation workflow so modals advance one after another.
+  const handleCreateModal = useCallback((modalKey: StudioModalKey) => {
+    setIsSequentialFlow(true);
+    setActiveModal(modalKey);
+  }, []);
+
+  const handleOpenModal = handleEditModal;
 
   // 5. Unified Modal Step Transition Handler
   const handleStepTransition = useCallback(
@@ -336,10 +391,10 @@ export function BrandStudioShell({
   const isLogoApproved = Boolean(kit?.logo?.approvedAt);
   const isLogoConceptSelected = Boolean(kit?.logo?.selectedConceptKey);
   const isColorsComplete = Boolean(
-    kit?.colors?.confirmedAt || (kit?.colors?.roles && kit.colors.roles.length === 5)
+    kit?.status === "complete" || kit?.colors?.confirmedAt
   );
   const isTypographyComplete = Boolean(
-    kit?.typography?.confirmedAt || (kit?.typography?.roles && kit.typography.roles.length > 0)
+    kit?.status === "complete" || kit?.typography?.confirmedAt
   );
 
   const variationCount = kit?.logo?.variations ? Object.keys(kit.logo.variations).length : 0;
@@ -512,7 +567,7 @@ export function BrandStudioShell({
             {isStrategyComplete && kit?.strategy ? (
               <StrategyResultCard
                 strategy={kit.strategy}
-                onEdit={() => handleOpenModal("strategy")}
+                onEdit={() => handleEditModal("strategy")}
               />
             ) : (
               <IncompleteSectionCard
@@ -521,7 +576,7 @@ export function BrandStudioShell({
                 description="Define your core concept, target audience, industry, positioning, and personality traits."
                 actionLabel="Create Strategy"
                 icon={Sparkles}
-                onAction={() => handleOpenModal("strategy")}
+                onAction={() => handleCreateModal("strategy")}
               />
             )}
 
@@ -529,7 +584,7 @@ export function BrandStudioShell({
             {isDirectionComplete && kit?.direction ? (
               <DirectionResultCard
                 direction={kit.direction}
-                onEdit={() => handleOpenModal("direction")}
+                onEdit={() => handleEditModal("direction")}
               />
             ) : (
               <IncompleteSectionCard
@@ -538,7 +593,7 @@ export function BrandStudioShell({
                 description="Explore curated aesthetic directions, moodboards, and harmonized color & typography pairings."
                 actionLabel="Create Visual Direction"
                 icon={Palette}
-                onAction={() => handleOpenModal("direction")}
+                onAction={() => handleCreateModal("direction")}
               />
             )}
 
@@ -582,7 +637,11 @@ export function BrandStudioShell({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => handleOpenModal("logo_type")}
+                    onClick={() =>
+                      isLogoTypeComplete
+                        ? handleEditModal("logo_type")
+                        : handleCreateModal("logo_type")
+                    }
                     className="gap-1.5 text-xs font-semibold cursor-pointer"
                   >
                     <Edit3 className="size-3" />
@@ -594,7 +653,11 @@ export function BrandStudioShell({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => handleOpenModal("logo_creation")}
+                    onClick={() =>
+                      isLogoConceptSelected || isLogoApproved
+                        ? handleEditModal("logo_creation")
+                        : handleCreateModal("logo_creation")
+                    }
                     className="gap-1.5 text-xs font-semibold cursor-pointer"
                   >
                     <Edit3 className="size-3" />
@@ -712,7 +775,11 @@ export function BrandStudioShell({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => handleOpenModal("variations")}
+                  onClick={() =>
+                    variationCount > 0
+                      ? handleEditModal("variations")
+                      : handleCreateModal("variations")
+                  }
                   className="gap-1.5 text-xs font-semibold self-start sm:self-auto cursor-pointer"
                 >
                   <Edit3 className="size-3" />
@@ -774,7 +841,7 @@ export function BrandStudioShell({
             {isColorsComplete && kit?.colors ? (
               <ColorsResultCard
                 kit={kit}
-                onEdit={() => handleOpenModal("colors")}
+                onEdit={() => handleEditModal("colors")}
               />
             ) : (
               <IncompleteSectionCard
@@ -783,7 +850,7 @@ export function BrandStudioShell({
                 description="5 harmonized brand roles (Primary, Secondary, Accent, Background, Text) with WCAG contrast verification."
                 actionLabel="Create Color System"
                 icon={Palette}
-                onAction={() => handleOpenModal("colors")}
+                onAction={() => handleCreateModal("colors")}
               />
             )}
 
@@ -791,7 +858,7 @@ export function BrandStudioShell({
             {isTypographyComplete && kit?.typography ? (
               <TypographyResultCard
                 kit={kit}
-                onEdit={() => handleOpenModal("typography")}
+                onEdit={() => handleEditModal("typography")}
               />
             ) : (
               <IncompleteSectionCard
@@ -800,7 +867,7 @@ export function BrandStudioShell({
                 description="Display & Text typefaces, licensing verification, and typographic role specimens."
                 actionLabel="Create Typography"
                 icon={Type}
-                onAction={() => handleOpenModal("typography")}
+                onAction={() => handleCreateModal("typography")}
               />
             )}
 

@@ -12,6 +12,8 @@ import {
   UserRole,
 } from '@/lib/roles';
 import { readOnboardingPhase } from '@/lib/auth-contract';
+import { clearAppQueryCache } from './ReactQueryProvider';
+import { resetCreatorWorkspace } from '@/lib/api-creator-journey';
 
 export type User = {
   id: string;
@@ -132,6 +134,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (isCancelled) return;
 
         console.log('Token validation failed, clearing auth:', error instanceof Error ? error.message : String(error));
+        clearAppQueryCache();
+        resetCreatorWorkspace();
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setToken(null);
@@ -203,6 +207,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Storage access safety fallback
     }
+    clearAppQueryCache();
+    resetCreatorWorkspace();
     setUser(null);
     setToken(null);
     setIsBackendVerified(false);

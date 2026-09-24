@@ -60,6 +60,9 @@ namespace WebApp.Services.Ai.Jobs
             double? Num(string key) =>
                 input != null && input.TryGetValue(key, out var v) && v.IsNumeric ? v.ToDouble() : (double?)null;
 
+            var startingBudget = Num("startingBudget");
+            var launchSubs = Num("launchSubscribers");
+            var varCost = Num("variableCost");
             var arpu = Num("arpu");
             var opex = Num("opex");
             var growth = Num("monthlyGrowthPct");
@@ -126,6 +129,9 @@ namespace WebApp.Services.Ai.Jobs
                 contextLines.Add("BUSINESS PLAN (supporting source):\n" + planContent.ToJson());
 
             var inputLines = new List<string>();
+            if (startingBudget.HasValue) inputLines.Add($"Starting Budget / Cash Reserve (€): {startingBudget.Value}");
+            if (launchSubs.HasValue) inputLines.Add($"Initial Subscribers / Customers at Launch (Month 1): {launchSubs.Value}");
+            if (varCost.HasValue) inputLines.Add($"Variable Cost per subscriber/unit (€): {varCost.Value}");
             if (arpu.HasValue) inputLines.Add($"ARPU (€/month): {arpu.Value}");
             if (opex.HasValue) inputLines.Add($"OPEX (€/month): {opex.Value}");
             if (growth.HasValue) inputLines.Add($"Monthly growth rate (%): {growth.Value}");
@@ -142,11 +148,13 @@ namespace WebApp.Services.Ai.Jobs
 
             var userContext = string.Join("\n\n", contextLines);
 
-            const string task =
+            var task =
                 "Produce a compact 12-month financial forecast grounded in the BUSINESS MODEL and BUSINESS PLAN above " +
-                "and refined by the FORECAST PARAMETERS (ARPU, OPEX, monthly growth, TAM, monthly churn), " +
+                "and refined by the FORECAST PARAMETERS (Starting Budget, launch subscribers, variable cost, ARPU, OPEX, monthly growth, TAM, monthly churn), " +
                 "following the output contract exactly: 12 consecutive monthly periods, " +
-                "numeric monthly arrays, no funding ask. Keep summaries, notes, and narrative concise. State driving assumptions. " +
+                "numeric monthly arrays, no funding ask. " +
+                (startingBudget.HasValue ? $"In cashFlowProjection, Month 1 endingBalance MUST equal the Starting Budget (€{startingBudget.Value}) plus Month 1 netCashFlow, and subsequent months accumulate netCashFlow. " : "") +
+                "Keep summaries, notes, and narrative concise. State driving assumptions. " +
                 "Return only the JSON object.";
 
             var maxTokens = _settings.OutputTokenLimits.TryGetValue("Forecast", out var limit) && limit > 0
@@ -186,10 +194,10 @@ namespace WebApp.Services.Ai.Jobs
                 return new AiHandlerResult(OutputPayload: null);
             }
 
-            // Extend the AI's 12 months to a 36-month horizon by deterministic projection
-            // from the user's own inputs (growth rate + opex). The AI call envelope is
-            // unchanged — this is pure post-processing on the parsed contract.
-            ExtendToThirtySixMonths(contract, request.InputPayload);
+            // Enforce deterministic 36-month financial forecast calculations via FinancialForecastEngine.
+            // Anchors to the founder's effective inputs and business archetype semantics.
+            var forecastInputs = ExtractForecastInputs(request.InputPayload, contract);
+            contract = FinancialForecastEngine.BuildForecastContract(forecastInputs, contract);
 
             if (sessionId != null)
             {
@@ -213,6 +221,52 @@ namespace WebApp.Services.Ai.Jobs
             }
 
             return new AiHandlerResult(OutputPayload: contract);
+        }
+
+        private static ForecastInputs ExtractForecastInputs(BsonDocument? input, BsonDocument? contract)
+        {
+            var fi = new ForecastInputs();
+            if (input != null)
+            {
+                double? Num(string key) =>
+                    input.TryGetValue(key, out var v) && v.IsNumeric ? v.ToDouble() : (double?)null;
+
+                fi.StartingBudget = Num("startingBudget");
+                fi.LaunchSubscribers = Num("launchSubscribers");
+                fi.VariableCost = Num("variableCost");
+                fi.Arpu = Num("arpu");
+                fi.Opex = Num("opex");
+                fi.MonthlyGrowthPct = Num("monthlyGrowthPct");
+                fi.MonthlyChurnPct = Num("monthlyChurnPct");
+                fi.Tam = Num("tam");
+
+                if (input.TryGetValue("businessModelType", out var bmt) && bmt.IsString)
+                {
+                    fi.BusinessModelType = bmt.AsString;
+                }
+            }
+
+            if (!fi.Arpu.HasValue && !fi.LaunchSubscribers.HasValue && contract != null)
+            {
+                var revM = MonthlyArray(contract, "revenueForecast");
+                var costM = MonthlyArray(contract, "costForecast");
+                var cashM = MonthlyArray(contract, "cashFlowProjection");
+                if (revM != null && revM.Count > 0)
+                {
+                    double m1Rev = Num(revM[0].AsBsonDocument, "amount");
+                    double m1Vc = costM != null && costM.Count > 0 ? Num(costM[0].AsBsonDocument, "variableCosts") : 0;
+                    double m1Fc = costM != null && costM.Count > 0 ? Num(costM[0].AsBsonDocument, "fixedCosts") : 0;
+                    double m1Eb = cashM != null && cashM.Count > 0 ? Num(cashM[0].AsBsonDocument, "endingBalance") : 0;
+
+                    fi.LaunchSubscribers = m1Rev > 0 ? 100 : 0;
+                    fi.Arpu = m1Rev > 0 ? (m1Rev / 100.0) : 0;
+                    fi.VariableCost = m1Rev > 0 ? (m1Vc / 100.0) : 0;
+                    if (!fi.Opex.HasValue && m1Fc > 0) fi.Opex = m1Fc;
+                    if (!fi.StartingBudget.HasValue && m1Eb > 0) fi.StartingBudget = m1Eb;
+                }
+            }
+
+            return fi;
         }
 
         private const int TargetHorizonMonths = 36;
@@ -242,6 +296,25 @@ namespace WebApp.Services.Ai.Jobs
             double g = InputDouble(input, "monthlyGrowthPct") / 100.0;
             double f = Math.Max(0, 1 + g);
             double opex = InputDouble(input, "opex");
+            double startingBudget = InputDouble(input, "startingBudget");
+
+            // Ensure Month 1..n endingBalance incorporates the Starting Budget
+            if (cashMonthly != null && cashMonthly.Count > 0 && startingBudget > 0)
+            {
+                var firstM = cashMonthly[0].AsBsonDocument;
+                double m1Ncf = Num(firstM, "netCashFlow");
+                double m1Eb = Num(firstM, "endingBalance");
+                if (Math.Abs(m1Eb - (startingBudget + m1Ncf)) > 1.0 && Math.Abs(m1Eb - m1Ncf) < 1.0)
+                {
+                    double runningCash = startingBudget;
+                    for (int i = 0; i < cashMonthly.Count; i++)
+                    {
+                        var row = cashMonthly[i].AsBsonDocument;
+                        runningCash += Num(row, "netCashFlow");
+                        row["endingBalance"] = runningCash;
+                    }
+                }
+            }
 
             double rev12 = Num(revMonthly![n - 1].AsBsonDocument, "amount");
             double fc12 = 0, vc12 = 0, eb12 = 0;

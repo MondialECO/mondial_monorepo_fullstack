@@ -492,18 +492,25 @@ export interface BusinessPlanSession {
 // ---------- C-4 Financial Forecast ----------
 
 export interface StartForecastRequest {
-  // Forecast requires a completed business plan (enforced at ForecastController.Start,
-  // 422 business_plan_required / not_found / not_complete). The businessPlanSessionId
-  // is required-in-flow and serves as the authoritative context; it is nullable at
-  // the storage layer ([BsonIgnoreIfNull]) for backwards compatibility with older sessions.
   businessPlanSessionId?: string;
   businessIdeaId?: string;
+  startingBudget?: number;
+  launchSubscribers?: number;
+  variableCost?: number;
   arpu?: number;
   opex?: number;
   monthlyGrowthPct?: number;
   tam?: number;
   // Monthly churn as a percent (e.g. 3 = 3%/month). Drives the readiness LTV/CAC.
   monthlyChurnPct?: number;
+  provenance?: Record<string, string>;
+}
+
+export interface BudgetSuggestionDto {
+  suggestedBudget: number;
+  rationale: string;
+  runwayMonths: number;
+  provenance: string;
 }
 
 export interface ForecastRevenueMonth {
@@ -563,6 +570,46 @@ export interface ForecastOutput {
   advisoryNotice?: string;
 }
 
+export interface ForecastInputs {
+  startingBudget?: number | null;
+  startingBudgetRationale?: string | null;
+  startingBudgetProvenance?: string | null;
+  launchSubscribers?: number | null;
+  variableCost?: number | null;
+  arpu?: number | null;
+  opex?: number | null;
+  monthlyGrowthPct?: number | null;
+  tam?: number | null;
+  monthlyChurnPct?: number | null;
+  businessModelType?: string | null;
+  marketStudyVersion?: number | null;
+  businessModelVersion?: number | null;
+  provenance?: Record<string, string> | null;
+  rationales?: Record<string, string> | null;
+  needsFounderInput?: Record<string, boolean> | null;
+  activeDrivers?: Record<string, boolean> | null;
+  averageOrderValue?: number | null;
+  takeRatePct?: number | null;
+  hasCompletedForecast?: boolean | null;
+  updatedAt?: string | null;
+}
+
+export interface UpdateFinancialAssumptionsDto {
+  businessIdeaId?: string | null;
+  startingBudget?: number | null;
+  launchSubscribers?: number | null;
+  variableCost?: number | null;
+  arpu?: number | null;
+  opex?: number | null;
+  monthlyGrowthPct?: number | null;
+  monthlyChurnPct?: number | null;
+  averageOrderValue?: number | null;
+  takeRatePct?: number | null;
+  businessModelType?: string | null;
+  activeDrivers?: Record<string, boolean> | null;
+  confirmAll?: boolean;
+}
+
 export interface ForecastSession {
   sessionId: string;
   status: AiSessionStatus;
@@ -572,15 +619,7 @@ export interface ForecastSession {
   schemaVersion: number;
   output?: ForecastOutput | null;
   error?: string | null;
-  // The five stored generation inputs (camelCase, matching the start payload). Absent on
-  // legacy sessions created before the API exposed them → the form falls back to defaults.
-  inputs?: {
-    arpu?: number | null;
-    opex?: number | null;
-    monthlyGrowthPct?: number | null;
-    tam?: number | null;
-    monthlyChurnPct?: number | null;
-  } | null;
+  inputs?: ForecastInputs | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -160,6 +160,23 @@ namespace WebApp.Services.Implementations
             string Route(string path) =>
                 string.IsNullOrEmpty(ideaId) ? path : $"{path}?ideaId={ideaId}";
 
+            // 0. Phase 1 Check: Profile Onboarding & Verification
+            if (computed.Phase1.Status != "completed")
+            {
+                return new DashboardNextActionDto
+                {
+                    Type = "phase_1_verification",
+                    Phase = 1,
+                    Stage = "1.1",
+                    Title = "Complete Your Verification",
+                    Description = "Verify your identity and complete profile onboarding to unlock your creator journey.",
+                    Reason = "Identity verification is required before initiating project discovery.",
+                    Href = "/dashboard/creator/phase-1",
+                    Priority = "critical",
+                    ButtonLabel = "Complete Your Verification"
+                };
+            }
+
             // 1. Phase 2
             if (computed.Phase2.Status != "completed")
             {
@@ -171,12 +188,12 @@ namespace WebApp.Services.Implementations
                         Type = "phase_2_clarifier",
                         Phase = 2,
                         Stage = "2.1",
-                        Title = "Clarify Your Concept",
+                        Title = string.IsNullOrEmpty(ideaId) ? "Start Concept Clarifier" : "Clarify Your Concept",
                         Description = "Define your core problem, solution, target audience, and differentiation with the AI Clarifier.",
                         Reason = "A sharp, validated problem statement is required before branding and financial modelling.",
                         Href = Route("/dashboard/creator/phase-2/clarifier"),
                         Priority = "high",
-                        ButtonLabel = "Continue Clarifier"
+                        ButtonLabel = string.IsNullOrEmpty(ideaId) ? "Start Clarifier" : "Continue Clarifier"
                     };
                 }
                 if (step == 7)

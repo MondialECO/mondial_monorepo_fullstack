@@ -108,11 +108,15 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `PATCH /api/ai/business-plan/{sessionId}/section`: Manual per-section text edit (shared splice path).
   - `PUT /api/ai/business-plan/{sessionId}`: Full content update on the current version.
 - **`ForecastController`** (`/api/ai/forecast`):
-  - `POST /api/ai/forecast`: Start AI forecast generation (Step 3.4, requires completed business plan; debits 32 credits).
+  - `POST /api/ai/forecast`: Start AI forecast generation (Step 3.3, requires completed business model; debits 32 credits; requires non-empty `ideaId`).
   - `GET /api/ai/forecast/{sessionId}`: Read a single forecast session with version content.
   - `GET /api/ai/forecast`: List all forecast sessions for the authenticated user.
-  - `POST /api/ai/forecast/{sessionId}/regenerate`: Regenerate forecast (new version, append-only).
+  - `GET /api/ai/forecast/session`: Resolve the active forecast session for a given `ideaId` (required, HTTP 400 if missing, HTTP 404 if unowned).
+  - `POST /api/ai/forecast/{sessionId}/regenerate`: Regenerate forecast (new version, append-only; requires non-empty `ideaId`).
   - `PUT /api/ai/forecast/{sessionId}`: Full content update on the current version.
+  - `GET /api/ai/forecast/assumptions`: Read current financial assumptions for a given `ideaId` (required, HTTP 400 if missing).
+  - `PUT /api/ai/forecast/assumptions`: Update financial assumptions with monotonic version guards and founder-lock preservation (requires non-empty `ideaId`).
+  - `GET /api/ai/forecast/budget-suggestion`: Suggest starting budget derived from upstream data for a given `ideaId` (required, HTTP 400 if missing).
 - **`CreatorPhase3Controller`** (`/api/creator`):
   - `POST /api/creator/ai/legal-checklist/generate`: Generate deterministic sector-specific legal checklist (3.3).
   - `PATCH /api/creator/legal-checklist/item/{itemId}`: Toggle checklist item completion status.

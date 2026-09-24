@@ -335,6 +335,10 @@ export function useCreatorProgressState() {
           workspaceIdeaIdRef.current = workspaceIdeaId;
           setCreatorWorkspaceIdea(workspaceIdeaId);
           if (typeof window !== 'undefined') sessionStorage.setItem('creator_workspace_idea_id', workspaceIdeaId);
+        } else {
+          workspaceIdeaIdRef.current = null;
+          setCreatorWorkspaceIdea(null);
+          if (typeof window !== 'undefined') sessionStorage.removeItem('creator_workspace_idea_id');
         }
         setState(reconcile(INITIAL_STATE, { ...journey, activeIdeaId: workspaceIdeaId ?? null }, computedStatus));
         setError(null);

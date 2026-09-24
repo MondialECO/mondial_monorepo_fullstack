@@ -8,6 +8,40 @@ export interface ApiResponse<T> {
   traceId?: string;
 }
 
+/**
+ * Optimistic Concurrency Conflict (409) Auto-Retry Helper.
+ * When a request encounters an outdated expectedVersion mismatch,
+ * fetches the freshest kit from the DB and retries the mutation once.
+ */
+async function withConcurrencyRetry<T>(
+  ideaId: string | undefined,
+  providedVersion: number | undefined,
+  requestFn: (ver?: number) => Promise<T>
+): Promise<T> {
+  try {
+    return await requestFn(providedVersion);
+  } catch (err: any) {
+    if (err?.response?.status === 409) {
+      console.warn(
+        `[BrandKitApi] 409 Conflict with expectedVersion=${providedVersion}. Auto-syncing latest brand kit version...`
+      );
+      try {
+        const freshRes = await api.get<ApiResponse<BrandKit>>(
+          "/creator/journey/phase2/brand-kit",
+          { params: ideaId ? { ideaId } : {} }
+        );
+        const freshKit = freshRes.data?.data;
+        if (freshKit && typeof freshKit.version === "number") {
+          return await requestFn(freshKit.version);
+        }
+      } catch (retryErr) {
+        console.error("[BrandKitApi] Concurrency conflict auto-retry failed:", retryErr);
+      }
+    }
+    throw err;
+  }
+}
+
 export const brandKitApi = {
   /**
    * Fetch complete BrandKit record for the active or queried idea.
@@ -57,16 +91,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.post<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/logo/generate-concepts",
-      null,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.post<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/logo/generate-concepts",
+        null,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -77,18 +113,20 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.post<ApiResponse<BrandKit>>(
-      `/creator/journey/phase2/brand-kit/logo/regenerate-concept/${encodeURIComponent(
-        conceptKey
-      )}`,
-      null,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.post<ApiResponse<BrandKit>>(
+        `/creator/journey/phase2/brand-kit/logo/regenerate-concept/${encodeURIComponent(
+          conceptKey
+        )}`,
+        null,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -109,16 +147,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.patch<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/logo",
-      payload,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.patch<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/logo",
+        payload,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -142,16 +182,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.patch<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/strategy",
-      payload,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.patch<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/strategy",
+        payload,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -161,16 +203,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.post<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/logo/derive-variations",
-      null,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.post<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/logo/derive-variations",
+        null,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -180,16 +224,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.post<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/direction/generate",
-      null,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.post<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/direction/generate",
+        null,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -209,16 +255,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.patch<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/direction",
-      payload,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.patch<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/direction",
+        payload,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -228,16 +276,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.post<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/colors/generate",
-      null,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.post<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/colors/generate",
+        null,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -247,16 +297,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.post<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/colors/regenerate",
-      null,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.post<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/colors/regenerate",
+        null,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -279,16 +331,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.patch<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/colors",
-      payload,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.patch<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/colors",
+        payload,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -298,16 +352,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.post<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/typography/generate",
-      null,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.post<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/typography/generate",
+        null,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -317,16 +373,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.post<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/typography/regenerate",
-      null,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.post<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/typography/regenerate",
+        null,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -363,16 +421,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.patch<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/typography",
-      payload,
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.patch<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/typography",
+        payload,
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -383,16 +443,18 @@ export const brandKitApi = {
     ideaId?: string,
     expectedVersion?: number
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
-    if (expectedVersion !== undefined) params.expectedVersion = expectedVersion;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.post<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/advance",
-      { targetStep },
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.post<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/advance",
+        { targetStep },
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 
   /**
@@ -422,20 +484,19 @@ export const brandKitApi = {
     expectedVersion?: number,
     ideaId?: string
   ): Promise<BrandKit> {
-    const params: Record<string, string | number> = {};
-    if (ideaId) params.ideaId = ideaId;
+    return withConcurrencyRetry(ideaId, expectedVersion, async (ver) => {
+      const params: Record<string, string | number> = {};
+      if (ideaId) params.ideaId = ideaId;
+      if (ver !== undefined) params.expectedVersion = ver;
 
-    const res = await api.post<ApiResponse<BrandKit>>(
-      "/creator/journey/phase2/brand-kit/snapshot/restore",
-      { snapshotIndex, expectedVersion },
-      { params }
-    );
-    return res.data.data!;
+      const res = await api.post<ApiResponse<BrandKit>>(
+        "/creator/journey/phase2/brand-kit/snapshot/restore",
+        { snapshotIndex, expectedVersion: ver },
+        { params }
+      );
+      return res.data.data!;
+    });
   },
 };
 
 export const apiCreatorBrandKit = brandKitApi;
-
-
-
-

@@ -135,6 +135,9 @@ namespace WebApp.Models.DatabaseModels.Ai
     /// <summary>Standalone forecast inputs the engine computes from (no plan required).</summary>
     public sealed class ForecastInputs
     {
+        public double? StartingBudget { get; set; }
+        public double? LaunchSubscribers { get; set; }
+        public double? VariableCost { get; set; }
         public double? Arpu { get; set; }
         public double? Opex { get; set; }
         public double? MonthlyGrowthPct { get; set; }
@@ -148,5 +151,87 @@ namespace WebApp.Models.DatabaseModels.Ai
         /// prior constant. See <see cref="WebApp.Services.Implementations.CreatorScoring.LtvCacHealthy"/>.
         /// </summary>
         public double? MonthlyChurnPct { get; set; }
+
+        /// <summary>
+        /// Field-level provenance dictionary: maps input keys (e.g. "startingBudget", "arpu")
+        /// to "ai_suggested", "founder_confirmed", or "founder_edited".
+        /// </summary>
+        public Dictionary<string, string>? Provenance { get; set; }
+
+        /// <summary>
+        /// "saas" | "ecommerce" | "service" | "marketplace"
+        /// </summary>
+        public string? BusinessModelType { get; set; }
+
+        /// <summary>E-commerce AOV or Marketplace Average Transaction Value.</summary>
+        public double? AverageOrderValue { get; set; }
+
+        /// <summary>Marketplace Take Rate as a percentage (e.g. 15 for 15%).</summary>
+        public double? TakeRatePct { get; set; }
+
+        public string? StartingBudgetRationale { get; set; }
+
+        public string? StartingBudgetProvenance { get; set; }
+
+        public int? MarketStudyVersion { get; set; }
+
+        public int? BusinessModelVersion { get; set; }
+
+        /// <summary>Field-level AI rationale explaining how each assumption was derived.</summary>
+        public Dictionary<string, string>? Rationales { get; set; }
+
+        /// <summary>Flags for assumptions that require founder input/confirmation.</summary>
+        public Dictionary<string, bool>? NeedsFounderInput { get; set; }
+
+        /// <summary>
+        /// Explicit driver applicability mapping (e.g. "monthlyChurnPct" => false for ecommerce).
+        /// Inactive drivers are excluded from calculations and hidden/disabled in UI.
+        /// </summary>
+        [BsonIgnoreIfNull]
+        public Dictionary<string, bool>? ActiveDrivers { get; set; }
+
+        /// <summary>True when the session has at least one valid, completed version with usable output.</summary>
+        [BsonIgnoreIfNull]
+        public bool? HasCompletedForecast { get; set; }
+
+        public DateTime? UpdatedAt { get; set; }
+    }
+
+    public static class ForecastSessionExtensions
+    {
+        /// <summary>
+        /// Evaluates whether a session has a strictly completed forecast with usable output.
+        /// Requires:
+        /// 1. Status == "Completed"
+        /// 2. Latest/current completed version exists
+        /// 3. Output exists and contains monthly revenueForecast and costForecast usable by Results UI.
+        /// </summary>
+        public static bool HasValidCompletedForecast(this ForecastSession? session)
+        {
+            if (session == null) return false;
+            if (session.Status != "Completed") return false;
+            if (session.Versions == null || session.Versions.Count == 0) return false;
+
+            var current = session.CurrentVersion > 0
+                ? session.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion)
+                : session.Versions.OrderByDescending(v => v.Version).FirstOrDefault();
+
+            if (current == null) return false;
+            var content = current.Content ?? current.GeneratedContent;
+            if (content == null) return false;
+
+            if (!content.Contains("revenueForecast") || !content["revenueForecast"].IsBsonDocument) return false;
+            var rev = content["revenueForecast"].AsBsonDocument;
+            if (!rev.Contains("monthly") || !rev["monthly"].IsBsonArray) return false;
+            if (rev["monthly"].AsBsonArray.Count == 0) return false;
+
+            if (!content.Contains("costForecast") || !content["costForecast"].IsBsonDocument) return false;
+            var cost = content["costForecast"].AsBsonDocument;
+            if (!cost.Contains("monthly") || !cost["monthly"].IsBsonArray) return false;
+            if (cost["monthly"].AsBsonArray.Count == 0) return false;
+
+            return true;
+        }
     }
 }
+
