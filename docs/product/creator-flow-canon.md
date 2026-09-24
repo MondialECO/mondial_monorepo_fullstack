@@ -1448,8 +1448,40 @@ RC1 Freeze
 - **Client Cache & Concurrency Resolution (§6.1):** Implemented `resolveExpectedVersion(ideaId)` in `src/lib/api-creator-phase4.ts` pulling cached or authoritative `journey.ideaVersion`. Captured response versions on all GET and POST requests.
 - **HTTP 409 Conflict Recovery (§6.1):** Implemented non-destructive reload (`loadSnapshot()` + `refetch(ideaId)`) on 409 conflict, surfacing an inline conflict recovery banner with "Reload & Retry" preserving user state.
 - **Compact Page-Level Header Added (§6.1):** Added compact page-level header inside the existing content area matching typography canon: Eyebrow `"PHASE 4 · STEP 4.1"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase`), Title `"Construction Snapshot"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`), and Subtitle `"See what’s ready, what needs attention, and where to go next."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`). Corrected older statements claiming 4.1 has no page header.
-- **Navigation & Gating (§6.1):** Primary forward CTA `"Continue to Operational Roadmap →"` seamlessly navigates to Step 4.2 `/dashboard/creator/phase-4/roadmap?ideaId={ideaId}` preserving active project context.
-- **Verification:** Backend unit tests 14/14 PASS; Frontend Vitest 142/142 PASS across 12 files; TypeScript 0 errors; Live authenticated browser verification (Generate 200 $\to$ GET 200 $\to$ Refresh 200 $\to$ Stale 409 Conflict $\to$ Mismatched params 400). Status: PASS / LIVE.
+**2026-09-25 — Creator Phase 4.2 Operational Roadmap: Exact Figma 57221-10450 Alignment, Planning Context, Pacing Engine, Concurrency Contract & Activation Delivery.**
+- **Figma Reference & Layout (§6.2):** 100% verified against approved Figma Node `57221:10450` ("Operational Roadmap · Creator Phase 4.2").
+- **Canonical Route:** `/dashboard/creator/phase-4/roadmap`
+- **Compact Page-Level Header (§6.2):** Added compact page-level header matching typography canon: Eyebrow `"PHASE 4 · STEP 4.2"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase`), Title `"Operational Roadmap"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`), Subtitle `"Turn your project requirements into a practical plan that fits your availability."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`).
+- **5 Canonical Sections Implemented:**
+  1. *Update Notice:* Rendered only when `updateAvailable === true`. Provides "Review Changes" modal showing changed sources without destroying user adjustments, "Keep Current Plan" via `POST /api/creator/phase4/roadmap/keep-current`, and "Refresh Roadmap" via `POST /api/creator/phase4/roadmap/refresh`.
+  2. *Planning Context (4 Context Tiles):*
+     - Your Availability: Real weekly hours (e.g. `"4 hours / week"`), capacity tier, and working "Adjust Availability" modal with 5 presets writing to `POST /api/creator/phase4/roadmap/availability`.
+     - Planned Now: Real Now stage task count, known effort hours (e.g. `"~2.5 hrs known effort"`), and unestimated tasks counter without treating missing effort as 0.
+     - Capacity Guardrail: Central rule-engine calculation enforcing pacing constraints (`<5 hrs/week` max 2 Now tasks, `5-10 hrs/week` max 3 Now tasks, `10-20 hrs/week` max 5 Now tasks, `20-30 hrs/week` max 7 Now tasks, `30+ hrs/week` max 9 Now tasks).
+     - Plan Status: Persisted `Draft`, `Active`, or `Completed` state.
+  3. *Start Here (Next Best Action):*
+     - Selected dynamically from topological dependency DAG and highest urgency/criticality.
+     - Displays Title, Purpose / Why Now, Priority badge, Estimated Effort, and Prerequisites.
+     - "View Task Details" CTA smoothly scrolls to and auto-expands the specific task in the roadmap list.
+     - Direct "Start This Action" / "Mark Done" status mutations.
+  4. *Roadmap Groups (in exact canonical order):*
+     - `Now` (Immediate focus — capacity bounded)
+     - `Next 30 Days` (Near-term foundation and preparation)
+     - `Days 30–60` (Month 2 build & operational milestones)
+     - `Days 60–90` (Month 3 validation & pre-launch readiness)
+     - `Before Launch` (Mandatory pre-launch gates & formation filings)
+     - `After Launch` (Ongoing operations, compliance & reporting)
+     - Accessible expandable details on every task: Expected Result, Why This Is Here, Estimated Effort vs duration, Dependencies with prerequisite status chips, Unblocks Downstream, Built From / Provenance source chips, and inline Task Adjustment Form (Status, Target Window, Founder Notes) persisting to `POST /api/creator/phase4/roadmap/task`.
+  5. *Activation Footer:*
+     - "Back to Construction Snapshot" returns to Step 4.1 (`/dashboard/creator/phase-4?ideaId={ideaId}`).
+     - "Activate Roadmap & Continue" persists activation to `POST /api/creator/phase4/roadmap/activate`, bumps version, and navigates to Step 4.3 Needs & Requirements (`/dashboard/creator/phase-4/needs?ideaId={ideaId}`).
+     - On revisit of an active plan, button displays "Continue to Needs & Requirements".
+- **Optimistic Concurrency Contract & Security:**
+  - Mandatory `expectedVersion` and `ideaId` validation on all endpoints (`generate`, `refresh`, `task`, `activate`, `availability`, `keep-current`).
+  - Query and body agreement check on backend.
+  - `X-Creator-Idea-Version` response header publishing and client-side version synchronisation in `src/lib/api-creator-roadmap.ts`.
+  - Non-destructive 409 conflict recovery with automated state reload and user retry banner.
+- **Verification:** Backend .NET unit tests: 16/16 PASS (`CreatorPhase4RoadmapTests.cs`), full suite 160/160 PASS; Frontend Vitest: 9/9 Phase 4.2 PASS (`phase4-operational-roadmap.test.tsx`), full suite 146/146 PASS; TypeScript: 0 errors (`npx tsc --noEmit`). Status: PASS / LIVE.
 
 ---
 

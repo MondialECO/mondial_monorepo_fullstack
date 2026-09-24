@@ -9,5 +9,8 @@ namespace WebApp.Services.Interface
         Task<OperationalRoadmapResponse> GenerateRoadmapAsync(string userId, string? ideaId = null);
         Task<OperationalRoadmapResponse> RefreshRoadmapAsync(string userId, string? ideaId = null);
         Task<OperationalRoadmapResponse> UpdateTaskStateAsync(string userId, UpdateRoadmapTaskRequest request);
+        Task<OperationalRoadmapResponse> ActivateRoadmapAsync(string userId, string? ideaId = null);
+        Task<OperationalRoadmapResponse> UpdateAvailabilityAsync(string userId, UpdateAvailabilityRequest request);
+        Task<OperationalRoadmapResponse> KeepCurrentRoadmapAsync(string userId, string? ideaId = null);
     }
 }

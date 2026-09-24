@@ -421,6 +421,117 @@ namespace WebApp.Tests.Unit
             p3JsonAfter.Should().Be(p3JsonBefore);
             snapshotJsonAfter.Should().Be(snapshotJsonBefore);
         }
+
+        [Fact]
+        public async Task ActivateRoadmap_MarksPlanActive_And_ReturnsResponse()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.ActivateRoadmapAsync("user-1", "idea-1");
+
+            res.Should().NotBeNull();
+            res.Roadmap.Should().NotBeNull();
+            res.Roadmap!.Status.Should().Be("Active");
+            res.PlanStatus.Should().Be("Active");
+            _journeysMock.Verify(j => j.SetPhase4RoadmapAsync("user-1", It.Is<OperationalRoadmap>(r => r.Status == "Active"), "idea-1"), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateAvailability_Persists_And_Updates_CapacityTier_And_Message()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.UpdateAvailabilityAsync("user-1", new UpdateAvailabilityRequest
+            {
+                IdeaId = "idea-1",
+                WeeklyAvailability = "<5 hours/week"
+            });
+
+            res.Should().NotBeNull();
+            res.WeeklyAvailability.Should().Be("<5 hours/week");
+            res.CapacityTier.Should().Be(CapacityTier.VeryLight.ToString());
+            res.MaxNowTasks.Should().Be(2);
+            res.CapacityMessage.Should().Contain("Under 5 hours/week permits at most 2 Now tasks");
+        }
+
+        [Fact]
+        public async Task Capacity_Under_5_Hours_Permits_At_Most_2_Now_Tasks()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            SetupValidPrerequisites(journey);
+
+            var profileVeryLight = new ProfessionalProfileRecord
+            {
+                UserId = "user-1",
+                VentureContext = new ProfileVentureContext { WeeklyAvailability = "<5 hours/week" }
+            };
+            _profStoreMock.Setup(p => p.GetByUserIdAsync("user-1", It.IsAny<CancellationToken>())).ReturnsAsync(profileVeryLight);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var nowTasks = res.Roadmap!.Tasks.Where(t => t.Stage == RoadmapStages.Now).ToList();
+            nowTasks.Count.Should().BeLessOrEqualTo(2);
+            res.MaxNowTasks.Should().Be(2);
+        }
+
+        [Fact]
+        public async Task KeepCurrentRoadmap_Clears_Staleness_Without_Mutating_Tasks()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            var existingRoadmap = new OperationalRoadmap
+            {
+                Status = "Active",
+                RoadmapSummary = "Founder Custom Summary",
+                Tasks = new List<RoadmapTask>
+                {
+                    new() { Key = "tech.custom", Title = "Custom Task", Stage = RoadmapStages.Now, Status = RoadmapTaskStatus.InProgress }
+                }
+            };
+            journey.Phase4Data.Roadmap = existingRoadmap;
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.KeepCurrentRoadmapAsync("user-1", "idea-1");
+
+            res.Should().NotBeNull();
+            res.UpdateAvailable.Should().BeFalse();
+            res.Roadmap!.RoadmapSummary.Should().Be("Founder Custom Summary");
+            res.Roadmap.Tasks.First().Key.Should().Be("tech.custom");
+        }
+
+        [Fact]
+        public async Task Unblocks_Are_Populated_For_Prerequisite_Tasks()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            // formation.confirm-structure is prerequisite for legal tasks
+            var formationTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key == "formation.confirm-structure");
+            formationTask.Should().NotBeNull();
+            formationTask!.Unblocks.Should().NotBeEmpty();
+        }
+
+        [Fact]
+        public async Task Effort_Estimates_And_Known_Hours_Calculation()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            res.Should().NotBeNull();
+            res.KnownEffortHours.Should().BeGreaterThan(0);
+            res.TotalTasksCount.Should().Be(res.Roadmap!.Tasks.Count);
+        }
     }
 }
 

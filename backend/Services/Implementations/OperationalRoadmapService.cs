@@ -45,20 +45,28 @@ namespace WebApp.Services.Implementations
             var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
             var roadmap = journey.Phase4Data?.Roadmap;
 
+            var context = await BuildContextAsync(userId, journey, ideaId);
+
             if (roadmap == null)
             {
+                var capacityTier = _scheduler.ResolveCapacityTier(context.WeeklyAvailability);
                 return new OperationalRoadmapResponse
                 {
                     Roadmap = null,
                     UpdateAvailable = false,
-                    ChangedSources = new List<string>()
+                    ChangedSources = new List<string>(),
+                    WeeklyAvailability = context.WeeklyAvailability,
+                    CapacityTier = capacityTier.ToString(),
+                    MaxNowTasks = GetMaxNowTasks(capacityTier),
+                    CapacityMessage = GetCapacityMessage(capacityTier),
+                    IdeaVersion = journey.IdeaVersion
                 };
             }
 
-            var context = await BuildContextAsync(userId, journey, ideaId);
+            PopulateUnblocks(roadmap.Tasks);
             var (isStale, changedSources) = DetectStaleness(roadmap.SourceVersions, context);
 
-            return BuildResponse(roadmap, isStale, changedSources);
+            return BuildResponse(roadmap, isStale, changedSources, context, journey.IdeaVersion);
         }
 
         public async Task<OperationalRoadmapResponse> GenerateRoadmapAsync(string userId, string? ideaId = null)
@@ -70,8 +78,9 @@ namespace WebApp.Services.Implementations
             if (existingRoadmap != null)
             {
                 var ctx = await BuildContextAsync(userId, journey, ideaId);
+                PopulateUnblocks(existingRoadmap.Tasks);
                 var (isStale, changed) = DetectStaleness(existingRoadmap.SourceVersions, ctx);
-                return BuildResponse(existingRoadmap, isStale, changed);
+                return BuildResponse(existingRoadmap, isStale, changed, ctx, journey.IdeaVersion);
             }
 
             // Enforce domain gates
@@ -80,9 +89,10 @@ namespace WebApp.Services.Implementations
             var context = await BuildContextAsync(userId, journey, ideaId);
             var newRoadmap = BuildRoadmapInternal(context, existingRoadmap: null);
 
-            await _journeys.SetPhase4RoadmapAsync(userId, newRoadmap, ideaId);
+            var savedJourney = await _journeys.SetPhase4RoadmapAsync(userId, newRoadmap, ideaId);
 
-            return BuildResponse(newRoadmap, updateAvailable: false, changedSources: new List<string>());
+            PopulateUnblocks(newRoadmap.Tasks);
+            return BuildResponse(newRoadmap, updateAvailable: false, changedSources: new List<string>(), context, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
         }
 
         public async Task<OperationalRoadmapResponse> RefreshRoadmapAsync(string userId, string? ideaId = null)
@@ -95,9 +105,10 @@ namespace WebApp.Services.Implementations
             var context = await BuildContextAsync(userId, journey, ideaId);
             var refreshedRoadmap = BuildRoadmapInternal(context, existingRoadmap);
 
-            await _journeys.SetPhase4RoadmapAsync(userId, refreshedRoadmap, ideaId);
+            var savedJourney = await _journeys.SetPhase4RoadmapAsync(userId, refreshedRoadmap, ideaId);
 
-            return BuildResponse(refreshedRoadmap, updateAvailable: false, changedSources: new List<string>());
+            PopulateUnblocks(refreshedRoadmap.Tasks);
+            return BuildResponse(refreshedRoadmap, updateAvailable: false, changedSources: new List<string>(), context, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
         }
 
         public async Task<OperationalRoadmapResponse> UpdateTaskStateAsync(string userId, UpdateRoadmapTaskRequest request)
@@ -136,6 +147,27 @@ namespace WebApp.Services.Implementations
                 task.UpdatedAt = DateTime.UtcNow;
             }
 
+            if (!string.IsNullOrWhiteSpace(request.TargetWindow))
+            {
+                task.TargetWindow = request.TargetWindow;
+                task.FounderEdited = true;
+                task.UpdatedAt = DateTime.UtcNow;
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.EstimatedEffort))
+            {
+                task.EstimatedEffort = request.EstimatedEffort;
+                task.FounderEdited = true;
+                task.UpdatedAt = DateTime.UtcNow;
+            }
+
+            if (request.EstimatedEffortHours.HasValue)
+            {
+                task.EstimatedEffortHours = request.EstimatedEffortHours.Value;
+                task.FounderEdited = true;
+                task.UpdatedAt = DateTime.UtcNow;
+            }
+
             roadmap.FounderEdited = true;
             roadmap.UpdatedAt = DateTime.UtcNow;
 
@@ -145,12 +177,98 @@ namespace WebApp.Services.Implementations
             // Re-group into stages for response
             roadmap.Stages = RegroupStages(roadmap.Tasks);
 
-            await _journeys.SetPhase4RoadmapAsync(userId, roadmap, request.IdeaId);
+            var savedJourney = await _journeys.SetPhase4RoadmapAsync(userId, roadmap, request.IdeaId);
 
             var context = await BuildContextAsync(userId, journey, request.IdeaId);
+            PopulateUnblocks(roadmap.Tasks);
             var (isStale, changedSources) = DetectStaleness(roadmap.SourceVersions, context);
 
-            return BuildResponse(roadmap, isStale, changedSources);
+            return BuildResponse(roadmap, isStale, changedSources, context, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
+        }
+
+        public async Task<OperationalRoadmapResponse> ActivateRoadmapAsync(string userId, string? ideaId = null)
+        {
+            var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+            var roadmap = journey.Phase4Data?.Roadmap;
+
+            await ValidatePrerequisitesAsync(userId, journey, ideaId);
+            var context = await BuildContextAsync(userId, journey, ideaId);
+
+            if (roadmap == null)
+            {
+                roadmap = BuildRoadmapInternal(context, existingRoadmap: null);
+            }
+
+            roadmap.Status = "Active";
+            roadmap.UpdatedAt = DateTime.UtcNow;
+
+            var savedJourney = await _journeys.SetPhase4RoadmapAsync(userId, roadmap, ideaId);
+
+            PopulateUnblocks(roadmap.Tasks);
+            return BuildResponse(roadmap, updateAvailable: false, changedSources: new List<string>(), context, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
+        }
+
+        public async Task<OperationalRoadmapResponse> UpdateAvailabilityAsync(string userId, UpdateAvailabilityRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.WeeklyAvailability))
+            {
+                throw new ArgumentException("WeeklyAvailability is required.");
+            }
+
+            // 1. Update Professional Profile
+            if (_professionalStore != null)
+            {
+                var prof = await _professionalStore.GetByUserIdAsync(userId, CancellationToken.None);
+                if (prof != null)
+                {
+                    prof.VentureContext ??= new ProfileVentureContext();
+                    prof.VentureContext.WeeklyAvailability = request.WeeklyAvailability.Trim();
+                    prof.UpdatedAt = DateTime.UtcNow;
+                    await _professionalStore.UpsertAsync(prof, cancellationToken: CancellationToken.None);
+                }
+            }
+
+            var journey = await _journeys.GetOrCreateComposedAsync(userId, request.IdeaId);
+            var existingRoadmap = journey.Phase4Data?.Roadmap;
+
+            var context = await BuildContextAsync(userId, journey, request.IdeaId);
+            context.WeeklyAvailability = request.WeeklyAvailability.Trim();
+
+            if (existingRoadmap != null)
+            {
+                // Re-sequence with new capacity tier while preserving existing tasks and edits
+                var refreshedRoadmap = BuildRoadmapInternal(context, existingRoadmap);
+                var savedJourney = await _journeys.SetPhase4RoadmapAsync(userId, refreshedRoadmap, request.IdeaId);
+                PopulateUnblocks(refreshedRoadmap.Tasks);
+                return BuildResponse(refreshedRoadmap, updateAvailable: false, changedSources: new List<string>(), context, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
+            }
+            else
+            {
+                var newRoadmap = BuildRoadmapInternal(context, existingRoadmap: null);
+                var savedJourney = await _journeys.SetPhase4RoadmapAsync(userId, newRoadmap, request.IdeaId);
+                PopulateUnblocks(newRoadmap.Tasks);
+                return BuildResponse(newRoadmap, updateAvailable: false, changedSources: new List<string>(), context, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
+            }
+        }
+
+        public async Task<OperationalRoadmapResponse> KeepCurrentRoadmapAsync(string userId, string? ideaId = null)
+        {
+            var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+            var roadmap = journey.Phase4Data?.Roadmap;
+
+            if (roadmap == null)
+            {
+                throw new InvalidOperationException("Roadmap has not been generated yet.");
+            }
+
+            var context = await BuildContextAsync(userId, journey, ideaId);
+            roadmap.SourceVersions = context.CurrentSourceVersions;
+            roadmap.UpdatedAt = DateTime.UtcNow;
+
+            var savedJourney = await _journeys.SetPhase4RoadmapAsync(userId, roadmap, ideaId);
+
+            PopulateUnblocks(roadmap.Tasks);
+            return BuildResponse(roadmap, updateAvailable: false, changedSources: new List<string>(), context, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
         }
 
         private async Task ValidatePrerequisitesAsync(string userId, CreatorJourney journey, string? ideaId)
@@ -320,7 +438,9 @@ namespace WebApp.Services.Implementations
                         Priority = RoadmapTaskPriority.Critical,
                         Blocking = item.Blocking,
                         Why = item.Reason,
+                        ExpectedResult = $"Concrete resolution and verified implementation of {item.Title}.",
                         EstimatedEffort = RoadmapTaskEffort.Large,
+                        EstimatedEffortHours = 6.0,
                         Source = new List<string>(item.Source) { "Construction Snapshot" },
                         SourceReference = new List<string>(item.SourceReference) { item.Key },
                         RelatedSnapshotItemKey = item.Key,
@@ -348,7 +468,9 @@ namespace WebApp.Services.Implementations
                         Priority = item.Priority == ConstructionItemPriority.High ? RoadmapTaskPriority.High : RoadmapTaskPriority.Medium,
                         Blocking = item.Blocking,
                         Why = item.Reason,
+                        ExpectedResult = $"Structured capability and asset readiness for {item.Title}.",
                         EstimatedEffort = RoadmapTaskEffort.Medium,
+                        EstimatedEffortHours = 3.5,
                         Source = new List<string>(item.Source) { "Construction Snapshot" },
                         SourceReference = new List<string>(item.SourceReference) { item.Key },
                         RelatedSnapshotItemKey = item.Key,
@@ -375,7 +497,9 @@ namespace WebApp.Services.Implementations
                         Priority = item.Status == ConstructionItemStatus.NeedsReview ? RoadmapTaskPriority.High : RoadmapTaskPriority.Medium,
                         Blocking = false,
                         Why = item.Reason,
+                        ExpectedResult = $"Reviewed, updated, and approved status for {item.Title}.",
                         EstimatedEffort = RoadmapTaskEffort.Small,
+                        EstimatedEffortHours = 1.5,
                         Source = new List<string>(item.Source) { "Construction Snapshot" },
                         SourceReference = new List<string>(item.SourceReference) { item.Key },
                         RelatedSnapshotItemKey = item.Key,
@@ -397,6 +521,7 @@ namespace WebApp.Services.Implementations
 
                     string stage = MapLegalStage(legalItem.Stage);
                     bool isBlocking = legalItem.Priority?.ToLowerInvariant() == "critical" || legalItem.Stage == "company_creation";
+                    bool isExternal = legalItem.Stage == "company_creation" || legalItem.RequiresEvidence;
 
                     candidates.Add(new RoadmapTask
                     {
@@ -407,7 +532,11 @@ namespace WebApp.Services.Implementations
                         Priority = legalItem.Priority?.ToLowerInvariant() == "critical" ? RoadmapTaskPriority.Critical : RoadmapTaskPriority.High,
                         Blocking = isBlocking,
                         Why = $"Statutory requirement ({legalItem.Category}): {legalItem.WhyItApplies}",
+                        ExpectedResult = $"Statutory compliance and administrative clearance for {legalItem.Title}.",
                         EstimatedEffort = legalItem.RequiresEvidence ? RoadmapTaskEffort.Medium : RoadmapTaskEffort.Small,
+                        EstimatedEffortHours = legalItem.RequiresEvidence ? 3.5 : 1.5,
+                        RequiresExternalAction = isExternal,
+                        EstimatedDuration = isExternal ? "3–7 business days" : string.Empty,
                         Source = new List<string> { "Legal Assessment" },
                         SourceReference = new List<string> { legalItem.Id },
                         EarliestStart = stage
@@ -430,7 +559,11 @@ namespace WebApp.Services.Implementations
                         Priority = RoadmapTaskPriority.High,
                         Blocking = true,
                         Why = "Entity structure defines capital allocation, founder liability, and administrative obligations.",
+                        ExpectedResult = $"Executed founder agreement and confirmed filing documents for {context.Formation.SelectedType}.",
                         EstimatedEffort = RoadmapTaskEffort.Medium,
+                        EstimatedEffortHours = 3.5,
+                        RequiresExternalAction = true,
+                        EstimatedDuration = "2–5 business days",
                         Source = new List<string> { "Formation & Team" },
                         EarliestStart = RoadmapStages.Now
                     });
@@ -473,6 +606,54 @@ namespace WebApp.Services.Implementations
                     }
                 }
             }
+        }
+
+        private static void PopulateUnblocks(List<RoadmapTask> tasks)
+        {
+            if (tasks == null || tasks.Count == 0) return;
+
+            foreach (var task in tasks)
+            {
+                task.Unblocks = tasks
+                    .Where(other => other.Dependencies != null && (other.Dependencies.Contains(task.Key) || (!string.IsNullOrEmpty(task.Id) && other.Dependencies.Contains(task.Id))))
+                    .Select(other => other.Title)
+                    .Distinct()
+                    .ToList();
+            }
+        }
+
+        private static int GetMaxNowTasks(CapacityTier tier) => tier switch
+        {
+            CapacityTier.VeryLight => 2,
+            CapacityTier.Light => 3,
+            CapacityTier.Standard => 5,
+            CapacityTier.Accelerated => 7,
+            CapacityTier.Intensive => 9,
+            _ => 3
+        };
+
+        private static string GetCapacityMessage(CapacityTier tier) => tier switch
+        {
+            CapacityTier.VeryLight => "Under 5 hours/week permits at most 2 Now tasks to prevent founder burnout.",
+            CapacityTier.Light => "5–10 hours/week permits at most 3 Now tasks.",
+            CapacityTier.Standard => "10–20 hours/week permits up to 5 Now tasks (Standard pacing).",
+            CapacityTier.Accelerated => "20–30 hours/week permits up to 7 Now tasks (Accelerated pacing).",
+            CapacityTier.Intensive => "Full-time availability (30+ hours/week) permits up to 9 Now tasks.",
+            _ => "Capacity paced for your current availability."
+        };
+
+        private static double? ResolveDefaultEffortHours(RoadmapTask task)
+        {
+            if (task.EstimatedEffortHours.HasValue) return task.EstimatedEffortHours.Value;
+            return task.EstimatedEffort switch
+            {
+                RoadmapTaskEffort.VerySmall => 0.5,
+                RoadmapTaskEffort.Small => 1.5,
+                RoadmapTaskEffort.Medium => 3.5,
+                RoadmapTaskEffort.Large => 6.0,
+                RoadmapTaskEffort.VeryLarge => 12.0,
+                _ => null
+            };
         }
 
         private static List<RoadmapStageGroup> RegroupStages(List<RoadmapTask> tasks)
@@ -551,20 +732,52 @@ namespace WebApp.Services.Implementations
         private static OperationalRoadmapResponse BuildResponse(
             OperationalRoadmap roadmap,
             bool updateAvailable,
-            List<string> changedSources)
+            List<string> changedSources,
+            RoadmapContext? context = null,
+            long ideaVersion = 0)
         {
+            int total = roadmap.Tasks.Count;
             int active = roadmap.Tasks.Count(t => t.Status != RoadmapTaskStatus.Done && t.Status != RoadmapTaskStatus.Skipped);
             int critical = roadmap.Tasks.Count(t => t.Priority == RoadmapTaskPriority.Critical && t.Status != RoadmapTaskStatus.Done);
             int completed = roadmap.Tasks.Count(t => t.Status == RoadmapTaskStatus.Done);
+
+            var availability = context?.WeeklyAvailability ?? "10–20 hours/week";
+            var capacityTier = context != null ? (new RoadmapScheduler()).ResolveCapacityTier(availability) : CapacityTier.Standard;
+
+            var nowTasks = roadmap.Tasks.Where(t => t.Stage == RoadmapStages.Now).ToList();
+            double knownHours = 0;
+            int unestimatedCount = 0;
+
+            foreach (var t in nowTasks)
+            {
+                var h = ResolveDefaultEffortHours(t);
+                if (h.HasValue)
+                {
+                    knownHours += h.Value;
+                }
+                else
+                {
+                    unestimatedCount++;
+                }
+            }
 
             return new OperationalRoadmapResponse
             {
                 Roadmap = roadmap,
                 UpdateAvailable = updateAvailable,
                 ChangedSources = changedSources,
+                TotalTasksCount = total,
                 ActiveTasksCount = active,
                 CriticalTasksCount = critical,
-                CompletedTasksCount = completed
+                CompletedTasksCount = completed,
+                IdeaVersion = ideaVersion,
+                WeeklyAvailability = availability,
+                CapacityTier = capacityTier.ToString(),
+                CapacityMessage = GetCapacityMessage(capacityTier),
+                MaxNowTasks = GetMaxNowTasks(capacityTier),
+                KnownEffortHours = knownHours > 0 ? Math.Round(knownHours, 1) : null,
+                UnestimatedTasksCount = unestimatedCount,
+                PlanStatus = roadmap.Status ?? "Active"
             };
         }
 
