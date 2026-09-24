@@ -341,7 +341,7 @@ export interface BusinessPlanOutput {
   legalFramework?: LegalRegulatoryFramework;
   // Per-section provenance, keyed by C-3 field name (e.g. "executiveSummary").
   // Stamped server-side by the shared splice: "generated" (AI rewrite) | "edited" (manual).
-  _sectionMeta?: Record<string, { status?: 'generated' | 'edited'; lastEditedAt?: string }>;
+  _sectionMeta?: Record<string, { status?: 'generated' | 'edited' | 'reviewed'; lastEditedAt?: string }>;
 }
 
 export interface LegalFrameworkSubsection {

@@ -946,7 +946,16 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   - Full regeneration endpoint: `POST /api/ai/business-plan/{sessionId}/regenerate` wired to the top header toolbar button (*"Regenerate Business Plan"*), preserving exact button position, size, and styling.
   - **Generation & Regeneration Loading Canon:** Aligned with Step 3.1 & Step 3.2 canonical presentation (`RotateCw` spinner, indeterminate progress indicator, `role="status"`, `aria-live="polite"`).
   - **Zero-Blank Regeneration State:** Existing valid Business Plan remains completely visible while regeneration runs with the canonical loading card displayed above it; the new valid plan replaces the previous output only upon successful completion.
-  - **Footer Navigation:** Primary *"Continue to Investor Readiness"* navigation button remains dedicated to progressing to Step 3.7.
+  - **Footer Navigation & Review Status Persistence:** Primary *"Continue to Investor Readiness"* navigation button completes Step 3.6 and navigates to Step 3.7 (`/dashboard/creator/phase-3/complete`) with the same `ideaId`.
+  - **"Continue to Investor Readiness" Review Persistence Lifecycle:**
+    - Lifecycle: Draft sections $\to$ Reviewed $\to$ persisted (`PUT /api/ai/business-plan/{sessionId}`) $\to$ `completeStep(3, 6)` $\to$ navigate to Investor Readiness using same `ideaId`.
+    - **Rules:**
+      - *Only Draft $\to$ Reviewed:* Remaining Draft sections transition to Reviewed automatically before navigation.
+      - *Already Reviewed Preserved:* Sections already marked Reviewed maintain their status and timestamp without reset.
+      - *Content Untouched:* Business Plan section text, manual edits, AI outputs, and ordering remain completely untouched.
+      - *Awaited Persistence:* Persistence must complete successfully before step completion and navigation execute (failure prevents premature navigation and surfaces friendly error).
+      - *Existing Architecture Reused:* Employs existing canonical Business Plan persistence (`_sectionMeta` via `creatorAiApi.editBusinessPlan` / `PUT /api/ai/business-plan/{sessionId}`).
+      - *UI Unchanged:* Button label, position, layout, and visual styling remain 100% frozen.
 - **Credit Costs & Job Types:**
   - Full Business Plan Synthesis / Regeneration: **25 credits** (`AiJobType.BusinessPlan`).
   - Single Section Rewrite: **5 credits** (`AiJobType.BusinessPlanSectionRewrite`).

@@ -61,10 +61,25 @@ export interface BusinessPlanFigmaFlowProps {
   onExportPdf: () => void;
   onRegenerate?: () => void;
   isGenerating?: boolean;
-  onNext: () => void;
+  onNext: (currentReviewed?: Record<string, boolean>) => void | Promise<void>;
   onBack: () => void;
   effectiveIdeaId?: string | null;
 }
+
+export const CHAPTERS_META = [
+  { num: '01', title: 'Executive Summary', id: 'executive', rewritable: true, field: 'executiveSummary' },
+  { num: '02', title: 'Problem & Solution', id: 'problem-solution', rewritable: true, field: 'problemSolution' },
+  { num: '03', title: 'Market & Customers', id: 'target-market', rewritable: true, field: 'marketAnalysis' },
+  { num: '04', title: 'Business Model', id: 'business-model', rewritable: true, field: 'revenueModel' },
+  { num: '05', title: 'Competition & Positioning', id: 'competitive', rewritable: true, field: 'competitorAnalysis' },
+  { num: '06', title: 'Go-to-Market', id: 'gtm', rewritable: true, field: 'goToMarket' },
+  { num: '07', title: 'Financial Plan', id: 'financials', rewritable: false, field: 'financialPlan' },
+  { num: '08', title: 'Company & Team', id: 'team', rewritable: false, field: 'companyTeam' },
+  { num: '09', title: 'Funding Requirements', id: 'funding', rewritable: false, field: 'fundingRequirements' },
+  { num: '10', title: 'Operations & Milestones', id: 'operations', rewritable: false, field: 'operationsPlan' },
+  { num: '11', title: 'Risks & Next Steps', id: 'risks', rewritable: false, field: 'risks' },
+  { num: '12', title: 'Legal & Compliance', id: 'legal-framework', rewritable: false, field: 'legalFramework' },
+];
 
 export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
   project,
@@ -87,8 +102,36 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
 }) => {
   // Navigation active section scrollspy / selection
   const [activeChapter, setActiveChapter] = useState('01');
+
+  // Derive reviewed state from bpOutput._sectionMeta
+  const metaReviewed = useMemo(() => {
+    const res: Record<string, boolean> = {};
+    const meta = bpOutput?._sectionMeta;
+    if (meta) {
+      CHAPTERS_META.forEach((ch) => {
+        if (
+          meta[ch.num]?.status === 'reviewed' ||
+          meta[ch.id]?.status === 'reviewed' ||
+          (ch.field && meta[ch.field]?.status === 'reviewed')
+        ) {
+          res[ch.num] = true;
+        }
+      });
+    }
+    return res;
+  }, [bpOutput?._sectionMeta]);
+
   // Local reviewed state for all 12 chapters
-  const [reviewedChapters, setReviewedChapters] = useState<Record<string, boolean>>({});
+  const [reviewedChapters, setReviewedChapters] = useState<Record<string, boolean>>(metaReviewed);
+
+  React.useEffect(() => {
+    if (bpOutput?._sectionMeta) {
+      setReviewedChapters((prev) => ({
+        ...metaReviewed,
+        ...prev,
+      }));
+    }
+  }, [metaReviewed, bpOutput?._sectionMeta]);
   // Source chips expansion state
   const [sourceChipsExpanded, setSourceChipsExpanded] = useState(true);
 
@@ -203,20 +246,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
     return `${currencySymbol}${Math.round(val)}`;
   };
 
-  const chaptersMeta = [
-    { num: '01', title: 'Executive Summary', id: 'executive', rewritable: true },
-    { num: '02', title: 'Problem & Solution', id: 'problem-solution', rewritable: true },
-    { num: '03', title: 'Market & Customers', id: 'target-market', rewritable: true },
-    { num: '04', title: 'Business Model', id: 'business-model', rewritable: true },
-    { num: '05', title: 'Competition & Positioning', id: 'competitive', rewritable: true },
-    { num: '06', title: 'Go-to-Market', id: 'gtm', rewritable: true },
-    { num: '07', title: 'Financial Plan', id: 'financials', rewritable: false },
-    { num: '08', title: 'Company & Team', id: 'team', rewritable: false },
-    { num: '09', title: 'Funding Requirements', id: 'funding', rewritable: false },
-    { num: '10', title: 'Operations & Milestones', id: 'operations', rewritable: false },
-    { num: '11', title: 'Risks & Next Steps', id: 'risks', rewritable: false },
-    { num: '12', title: 'Legal & Compliance', id: 'legal-framework', rewritable: false },
-  ];
+  const chaptersMeta = CHAPTERS_META;
 
   // Derive dynamic strings
   const projectName = project.name?.trim() || 'Your Venture';
@@ -1613,7 +1643,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           </Button>
 
           <Button
-            onClick={onNext}
+            onClick={() => onNext(reviewedChapters)}
             className="gap-2 text-button font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs font-sans"
           >
             <span>Continue to Investor Readiness</span>

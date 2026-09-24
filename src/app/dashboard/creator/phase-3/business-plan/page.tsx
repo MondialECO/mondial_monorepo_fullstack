@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
-import { BusinessPlanFigmaFlow } from '@/components/creator/business-plan/BusinessPlanFigmaFlow';
+import { BusinessPlanFigmaFlow, CHAPTERS_META } from '@/components/creator/business-plan/BusinessPlanFigmaFlow';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import {
   useAiCredits,
@@ -310,7 +310,59 @@ export default function BusinessPlanPage() {
     session.retry();
   };
 
-  const handleNext = () => {
+  const handleNext = async (_currentReviewed?: Record<string, boolean>) => {
+    if (bpSessionId && bpOutput) {
+      try {
+        const meta: Record<string, { status?: 'generated' | 'edited' | 'reviewed'; lastEditedAt?: string }> = {
+          ...(bpOutput._sectionMeta ?? {}),
+        };
+        const now = new Date().toISOString();
+        let hasDraftSections = false;
+
+        CHAPTERS_META.forEach((ch) => {
+          const isAlreadyReviewed =
+            meta[ch.num]?.status === 'reviewed' ||
+            meta[ch.id]?.status === 'reviewed' ||
+            (ch.field && meta[ch.field]?.status === 'reviewed');
+
+          if (!isAlreadyReviewed) {
+            hasDraftSections = true;
+            const existingTime =
+              meta[ch.id]?.lastEditedAt ||
+              (ch.field ? meta[ch.field]?.lastEditedAt : undefined) ||
+              meta[ch.num]?.lastEditedAt ||
+              now;
+
+            meta[ch.num] = {
+              status: 'reviewed',
+              lastEditedAt: existingTime,
+            };
+            meta[ch.id] = {
+              status: 'reviewed',
+              lastEditedAt: existingTime,
+            };
+            if (ch.field) {
+              meta[ch.field] = {
+                status: 'reviewed',
+                lastEditedAt: existingTime,
+              };
+            }
+          }
+        });
+
+        if (hasDraftSections) {
+          const updatedPlan: BusinessPlanOutput = {
+            ...bpOutput,
+            _sectionMeta: meta,
+          };
+          await creatorAiApi.editBusinessPlan(bpSessionId, updatedPlan as Record<string, unknown>);
+        }
+      } catch (e) {
+        setStartError(toAiError(e, 'Failed to save reviewed sections.'));
+        return;
+      }
+    }
+
     completeStep(3, 6);
     router.push(withIdeaContext('/dashboard/creator/phase-3/complete', effectiveIdeaId));
   };
