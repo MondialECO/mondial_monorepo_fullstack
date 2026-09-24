@@ -142,7 +142,10 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `GET /api/creator/phase4/roadmap`: Read Phase 4.2 operational roadmap scheduling tasks across canonical stages.
   - `POST /api/creator/phase4/roadmap/generate`: Idempotently generate Phase 4.2 operational roadmap with cycle-safe DAG dependency resolution.
   - `POST /api/creator/phase4/roadmap/refresh`: Refresh operational roadmap preserving founder edits and notes.
-  - `PATCH /api/creator/phase4/roadmap/task`: Update founder state/status of a specific roadmap task.
+  - `POST /api/creator/phase4/roadmap/task`: Update founder state, target window, or notes for a specific roadmap task.
+  - `POST /api/creator/phase4/roadmap/activate`: Persist roadmap activation state and transition status to Active.
+  - `POST /api/creator/phase4/roadmap/availability`: Persist founder weekly availability adjustment and recalculate capacity tier.
+  - `POST /api/creator/phase4/roadmap/keep-current`: Dismiss upstream staleness notice and retain current operational plan.
   - `GET /api/creator/phase4/needs`: Read Phase 4.3 needs & requirements analysis with upstream freshness check.
   - `POST /api/creator/phase4/needs/generate`: Idempotently generate Phase 4.3 needs & requirements (enforcing Snapshot and Roadmap freshness gates).
   - `POST /api/creator/phase4/needs/refresh`: Refresh needs analysis against fresh upstream sources, preserving founder state.
