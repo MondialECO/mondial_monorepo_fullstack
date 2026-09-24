@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-24 (Step 3.3 Project-Context Safety Hardening & Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-24 (Step 3.3 Regeneration Loading Alignment & Project-Context Safety Hardening & Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -648,6 +648,14 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   ```
 
 #### 2. Exact Processing UX & Failure Behavior
+- **Shared Phase 3 Loading Canon:**
+  - Step 3.3 strictly follows the visual and interaction loading language established by Step 3.1 (Market Intelligence) and Step 3.2 (Business Model). No independent or custom loading system exists for Step 3.3.
+  - **Visual Presentation:** `Card` with `rounded-2xl border border-border bg-card p-10 md:p-12 text-center max-w-2xl mx-auto space-y-6 shadow-sm animate-pulse`, `role="status"`, and `aria-live="polite"`.
+  - **Spinner / Icon:** Centered circular badge `<div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary"><RotateCw className="w-6 h-6 animate-spin" /></div>`.
+  - **Progress Bar:** Continuous indeterminate bar `<div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden"><div className="h-full bg-primary rounded-full animate-indeterminate" /></div>`.
+  - **State Authority:** Real processing state (`startForecast.isPending || regenerateForecast.isPending || isSubmittingAssumptions || isSessionProcessing`). No fake timers or synthetic progress percentages ("This may take up to two minutes" is explanatory UI copy only).
+  - **Status Normalization:** `isSessionProcessing` case-insensitively recognizes all backend processing lifecycle states (`Pending`, `Processing`, `Generating`, `Running`, `Queued`). Terminal status check (`isTerminalStatus`) case-insensitively recognizes `Completed`, `Failed`, and `NeedsReview`.
+  - **Zero-Gap Mutation-to-Polling Bridge:** `useRegenerateForecast.onMutate` optimistically updates the session cache query (`forecastKeys.detail(sessionId)`) to `status: "Processing"`. This guarantees that `isGenerating` stays continuously `true` between POST dispatch, HTTP response arrival, and the first polling update, preventing any loading card flicker or disappearance.
 - **First-Time Generation Processing Screen:**
   - **Title:** `"Generating Your Financial Forecast…"`
   - **Body:** `"Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes."`
@@ -655,8 +663,9 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Regeneration Processing State:**
   - **Title:** `"Regenerating Financial Forecast…"`
   - **Body:** `"Recalculating projections with your updated assumptions. This may take up to two minutes."`
-  - **Non-Destructive Behavior:** The existing valid forecast remains fully visible and interactive behind non-blocking processing indicators.
-  - **Failure Handling:** If regeneration fails, the previous valid completed forecast is preserved intact; displays a dismissible warning alert banner with `[Try Again]` and `[Adjust Assumptions]` actions without wiping or corrupting the displayed results.
+  - **Non-Destructive Preservation:** The existing valid forecast output (`latestValidVersion`) remains fully visible and intact below the top processing card throughout regeneration. The header `Adjust Assumptions` button is disabled with an inline spinner (`RotateCw animate-spin`) to prevent duplicate requests.
+  - **Terminal Completion:** On `Completed` status, the loading card unmounts and the new valid version replaces the previous forecast atomically without page reload.
+  - **Failure Handling:** If regeneration fails (`Failed` or error), previous valid forecast remains completely intact and displayed; a non-destructive failure alert card renders with `[Adjust & Retry]` without wiping or corrupting the results.
 
 #### 3. Single Canonical Assumptions Authority & Dead Code Cleanup
 - **Single Canonical Form Schema:** `ForecastAssumptionsForm` is the single canonical assumptions form and validation schema across both the initial setup page and the in-results modal.
@@ -700,11 +709,18 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Credit Cost:** **32 credits** (`AiJobType.Forecast`).
 
 #### 7. Verification Status (PASS & FROZEN)
+- **Dedicated Loading Suite:** 8 / 8 passed (`ForecastLoadingExperienceAlignment.test.tsx`)
+- **Selected Forecast Regression Suites:** 19 / 19 passed (`ForecastLoadingExperienceAlignment`, `ForecastProjectContextSafety`, `ForecastPrintView`, `ForecastViewAndPrintTolerance`)
+- **Historical Extended Frontend Suite:** 39 / 39 passed (7 test suites)
 - **Backend Test Suite:** 94 / 94 passed (108 total, 14 integration skipped)
-- **Frontend Step 3.3 Test Suite:** 39 / 39 passed (7 test suites)
 - **TypeScript Compilation:** PASS (0 errors)
 - **Backend Solution Build:** PASS (0 errors)
 - **Frontend Production Build:** PASS (187 / 187 Next.js routes)
+- **Real-Browser Regeneration:** PASS
+- **Immediate Loading & Zero-Gap Bridge:** PASS
+- **Loading Remains After POST:** PASS
+- **Previous Forecast Preserved During Regeneration:** PASS
+- **New Forecast Atomically Replaces Old:** PASS
 - **Forecast Math Changed:** NO
 - **Figma Results UI Changed:** NO
 - **Duplicate Assumptions Schemas:** 0
@@ -1365,14 +1381,15 @@ RC1 Freeze
 - **Legacy Artifact Elimination:** Removed hardcoded "SaaS" badge, global "Idea Readiness" score, premature Day-1 "Interested Buyers (0)" KPI, static EBITDA "—" KPI, "Generate Pitch Deck" misnomer, and client-side `advancePhase(5)` bypass.
 - **Strict Scope Boundaries:** Confirmed zero cards, routes, or progress items for Phase 4.8 (Launch Assets) or Phase 4.9 (Construction Readiness).
 
-**2026-09-24 — Step 3.3 Financial Forecast: Canonical Architecture, Processing UX, Dead Code Cleanup & Final Verification Freeze.**
+**2026-09-24 — Step 3.3 Financial Forecast: Canonical Architecture, Processing UX, Loading Canon Alignment, Dead Code Cleanup & Final Verification Freeze.**
 - **Canonical Flow Reconciliation (§5.3):** Formalized first-generation flow (NO valid forecast $\to$ full Adjust Forecast Assumptions page $\to$ PUT assumptions $\to$ POST generate $\to$ processing state $\to$ Results) and regeneration flow (VALID forecast $\to$ Results directly $\to$ Adjust Assumptions modal $\to$ PUT assumptions $\to$ POST regenerate $\to$ non-destructive processing overlay $\to$ latest valid version replaces on success).
-- **Exact Processing UX (§5.3):** Standardized exact user-facing titles and descriptions for first generation (`"Generating Your Financial Forecast…"` / `"Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes."`) and regeneration (`"Regenerating Financial Forecast…"` / `"Recalculating projections with your updated assumptions. This may take up to two minutes."`).
-- **Failure State Protection (§5.3):** First generation failure preserves saved inputs with retry/edit CTAs; regeneration failure preserves previous valid forecast intact with dismissible banner and retry/edit CTAs.
+- **Exact Processing UX & Loading Canon Alignment (§5.3):** Standardized exact user-facing titles and descriptions for first generation (`"Generating Your Financial Forecast…"` / `"Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes."`) and regeneration (`"Regenerating Financial Forecast…"` / `"Recalculating projections with your updated assumptions. This may take up to two minutes."`). Reused Phase 3 canonical visual loading presentation (Step 3.1 & 3.2 pattern: `RotateCw animate-spin`, `rounded-full bg-primary/10`, centered `rounded-2xl Card`, `animate-pulse`, `animate-indeterminate` progress bar).
+- **Zero-Gap State Bridge (§5.3):** Implemented `useRegenerateForecast.onMutate` optimistic session cache update to `Processing`, bridging mutation dispatch $\to$ HTTP response $\to$ backend polling and eliminating any loading flicker or premature unmount.
+- **Non-Destructive Result Preservation (§5.3):** First generation failure preserves saved inputs with retry/edit CTAs; regeneration failure preserves previous valid forecast intact with dismissible banner and retry/edit CTAs. During regeneration, previous valid results remain mounted and visible below the processing card until atomically replaced by the new version.
 - **Dead Code & Parallel Schema Elimination (§5.3):** Excised `StartingBudgetModal.tsx`; starting budget natively integrated into `ForecastAssumptionsForm` (single canonical schema). Excised obsolete projection math methods (`ExtendToThirtySixMonths`, `RecomputeBreakEven`) and dead helpers from `ForecastHandler.cs`. Confirmed `FinancialForecastEngine` as the sole deterministic calculation authority.
 - **Driver Invariant Rule (§5.3):** Enforced that every active editable backend forecast driver across SaaS, E-commerce, Service, and Marketplace is exposed in the canonical form, with inactive drivers hidden/N-A.
 - **Safety Invariants (§5.3):** Mandatory ideaId scoping, zero first-idea fallback, zero `'active'` localStorage keys, monotonic version race protection, founder-lock preservation, non-destructive regeneration failure, and zero hardcoded tax defaults.
-- **Full Verification:** Backend 94/94 passed (108 total, 14 skipped), Frontend Step 3.3 39/39 passed (7 suites), TypeScript 0 errors, Next.js production build PASS, Backend build PASS. Status: PASS / FROZEN.
+- **Full Verification:** Dedicated Loading Suite: 8/8 passed, Selected Forecast Regression Suites: 19/19 passed, Historical Extended Suite: 39/39 passed, Backend 94/94 passed (108 total, 14 skipped), TypeScript 0 errors, Next.js production build PASS (187/187 routes), Backend build PASS. Status: PASS / FROZEN.
 
 ---
 

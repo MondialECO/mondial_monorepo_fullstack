@@ -18,8 +18,11 @@ export const TERMINAL_AI_STATUSES: AiSessionStatus[] = [
   "NeedsReview",
 ];
 
-export const isTerminalStatus = (s?: AiSessionStatus | null): boolean =>
-  !!s && TERMINAL_AI_STATUSES.includes(s);
+export const isTerminalStatus = (s?: AiSessionStatus | null | string): boolean => {
+  if (!s) return false;
+  const lower = s.toLowerCase();
+  return lower === "completed" || lower === "failed" || lower === "needsreview";
+};
 
 export const hasAiOutput = (s?: AiSessionStatus | null): boolean =>
   s === "Completed" || s === "NeedsReview";

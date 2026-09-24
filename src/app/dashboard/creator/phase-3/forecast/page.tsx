@@ -331,15 +331,23 @@ export default function ForecastPage() {
 
   const output = activeOutput;
 
+  const statusLower = session.data?.status?.toLowerCase();
+  const isStatusProcessing =
+    statusLower === 'pending' ||
+    statusLower === 'processing' ||
+    statusLower === 'generating' ||
+    statusLower === 'running' ||
+    statusLower === 'queued';
+
   const isSessionProcessing = Boolean(
     forecastSessionId && (
       session.phase === 'polling' ||
-      session.data?.status === 'Pending' ||
-      session.data?.status === 'Processing'
+      isStatusProcessing
     )
   );
 
   const isGenerating = Boolean(
+    isSubmittingAssumptions ||
     startForecast.isPending ||
     regenerateForecast.isPending ||
     isSessionProcessing
@@ -354,8 +362,8 @@ export default function ForecastPage() {
 
   const isRegenFailed = hasValidCompletedForecast && (
     (session.data?.status === 'Failed' && !isGenerating) ||
-    (session.phase === 'terminal' && session.data?.status === 'Failed') ||
-    regenerateForecast.isError
+    (session.phase === 'terminal' && session.data?.status === 'Failed' && !isGenerating) ||
+    (regenerateForecast.isError && !isGenerating)
   );
   const failedIsProviderBilling = /openrouter error \(402\)/i.test(fcError ?? '');
   const failedIsCredits = !failedIsProviderBilling && /402|credit|insufficient|payment/i.test(fcError ?? '');
@@ -750,6 +758,8 @@ export default function ForecastPage() {
 
     // Step 2: POST regenerate
     try {
+      setShowAssumptionsModal(false);
+
       if (forecastSessionId) {
         await regenerateForecast.mutateAsync({
           sessionId: forecastSessionId,
@@ -791,8 +801,6 @@ export default function ForecastPage() {
         await creatorJourneyApi.setPhase3Session('forecast', res.sessionId);
         setForecastSessionId(res.sessionId);
       }
-
-      setShowAssumptionsModal(false);
     } catch (postError: any) {
       if (isConflict(postError)) {
         setShowAssumptionsModal(false);
@@ -915,21 +923,20 @@ export default function ForecastPage() {
             {/* A1. First-Time Generating State */}
             {isGenerating && (
               <div className="space-y-6 max-w-2xl mx-auto py-12" role="status" aria-live="polite">
-                <Card className="rounded-2xl border border-border bg-card p-8 text-center space-y-4 shadow-sm">
-                  <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
-                    <Loader2 className="h-6 w-6 animate-spin" />
+                <Card className="rounded-2xl border border-border bg-card p-10 md:p-12 text-center max-w-2xl mx-auto space-y-6 shadow-sm animate-pulse">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <RotateCw className="w-6 h-6 animate-spin" />
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="font-heading font-bold text-base text-foreground">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-foreground font-sans">
                       Generating Your Financial Forecast…
                     </h3>
-                    <p className="text-caption text-muted-foreground">
-                      Building your 36-month projections from the assumptions you confirmed.
-                      This may take up to two minutes.
+                    <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto font-sans leading-relaxed">
+                      Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes.
                     </p>
                   </div>
-                  <div className="h-2 w-48 mx-auto bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary animate-pulse w-2/3" />
+                  <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">
+                    <div className="h-full bg-primary rounded-full animate-indeterminate" />
                   </div>
                 </Card>
               </div>
@@ -1001,24 +1008,20 @@ export default function ForecastPage() {
           <div className="space-y-6">
             {/* Top Regeneration Processing Notice (Preserves Results Below) */}
             {isGenerating && (
-              <Card className="rounded-2xl border border-primary/30 bg-primary/5 p-5 shadow-sm space-y-3" role="status" aria-live="polite">
-                <div className="flex items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    </div>
-                    <div className="space-y-0.5">
-                      <h3 className="font-heading font-bold text-sm text-foreground">
-                        Regenerating Financial Forecast…
-                      </h3>
-                      <p className="text-caption text-muted-foreground">
-                        Recalculating projections with your updated assumptions. This may take up to two minutes.
-                      </p>
-                    </div>
-                  </div>
+              <Card className="rounded-2xl border border-border bg-card p-10 md:p-12 text-center max-w-2xl mx-auto space-y-6 shadow-sm animate-pulse" role="status" aria-live="polite">
+                <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <RotateCw className="w-6 h-6 animate-spin" />
                 </div>
-                <div className="h-1.5 w-full bg-primary/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-primary animate-pulse w-1/2" />
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-foreground font-sans">
+                    Regenerating Financial Forecast…
+                  </h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto font-sans leading-relaxed">
+                    Recalculating projections with your updated assumptions. This may take up to two minutes.
+                  </p>
+                </div>
+                <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">
+                  <div className="h-full bg-primary rounded-full animate-indeterminate" />
                 </div>
               </Card>
             )}
@@ -1060,7 +1063,7 @@ export default function ForecastPage() {
                       className="gap-2 text-button font-medium rounded-xl h-9 border-border bg-card hover:bg-muted"
                     >
                       {isGenerating ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <RotateCw className="h-4 w-4 animate-spin" />
                       ) : (
                         <Sliders className="h-4 w-4 text-primary" />
                       )}

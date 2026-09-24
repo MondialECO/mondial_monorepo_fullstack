@@ -491,10 +491,23 @@ export const useRegenerateForecast = () => {
       sessionId: string;
       payload?: StartForecastRequest;
     }) => creatorAiApi.regenerateForecast(sessionId, payload),
+    onMutate: async (variables) => {
+      qc.setQueryData(forecastKeys.detail(variables.sessionId), (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          status: "Processing",
+        };
+      });
+    },
     onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ["creator-ai", "forecast", variables.sessionId] });
-      qc.invalidateQueries({ queryKey: ["creator-ai", "forecast", "list"] });
+      qc.invalidateQueries({ queryKey: forecastKeys.detail(variables.sessionId) });
+      qc.invalidateQueries({ queryKey: forecastKeys.list() });
+      qc.invalidateQueries({ queryKey: ["creator-ai", "forecast"] });
       qc.invalidateQueries({ queryKey: creditKeys.balance });
+    },
+    onError: (_err, variables) => {
+      qc.invalidateQueries({ queryKey: forecastKeys.detail(variables.sessionId) });
     },
   });
 };
