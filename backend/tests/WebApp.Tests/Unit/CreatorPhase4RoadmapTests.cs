@@ -534,7 +534,7 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
-        public async Task All_Six_Stages_Are_Populated_From_LegalAssessment_FormationGaps_And_Snapshot()
+        public async Task Rich_Fixture_With_All_Artifacts_Populates_All_Six_Stages()
         {
             var journey = BuildCompleteJourneyWithSnapshot();
             journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
@@ -562,29 +562,111 @@ namespace WebApp.Tests.Unit
             res.Should().NotBeNull();
             var tasks = res.Roadmap!.Tasks;
 
-            // 1. All 6 stages have scheduled tasks
-            var nowTasks = tasks.Where(t => t.Stage == RoadmapStages.Now).ToList();
-            var next30Tasks = tasks.Where(t => t.Stage == RoadmapStages.Next30Days).ToList();
+            // All 6 stages have scheduled tasks in this complete rich fixture
+            tasks.Where(t => t.Stage == RoadmapStages.Now).Should().NotBeEmpty();
+            tasks.Where(t => t.Stage == RoadmapStages.Next30Days).Should().NotBeEmpty();
+            tasks.Where(t => t.Stage == RoadmapStages.Days30To60).Should().NotBeEmpty();
+            tasks.Where(t => t.Stage == RoadmapStages.Days60To90).Should().NotBeEmpty();
+            tasks.Where(t => t.Stage == RoadmapStages.BeforeLaunch).Should().NotBeEmpty();
+            tasks.Where(t => t.Stage == RoadmapStages.PostLaunch).Should().NotBeEmpty();
+
+            res.Roadmap.Stages.Select(s => s.Stage).Should().BeEquivalentTo(RoadmapStages.AllStages);
+        }
+
+        [Fact]
+        public async Task Initial_RBE_Declaration_Is_Linked_To_Company_Registration_In_Next_30_Days()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-004", Title = "Business Registration via INPI Guichet Unique", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Statutory registration." },
+                    new() { Id = "FR-CORP-005", Title = "Declaration of Beneficial Ownership (RBE)", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "AML beneficial owner disclosure." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var rbeTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-005"));
+            var regTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-004"));
+
+            rbeTask.Should().NotBeNull();
+            regTask.Should().NotBeNull();
+
+            // RBE is scheduled in NEXT_30_DAYS (company creation window), NOT POST_LAUNCH
+            rbeTask!.Stage.Should().Be(RoadmapStages.Next30Days);
+            // RBE depends on INPI Guichet Unique registration
+            rbeTask.Dependencies.Should().Contain(regTask!.Key);
+        }
+
+        [Fact]
+        public async Task Solo_Founder_B2B_Excludes_Inapplicable_Legal_Rules_And_Retains_Legitimate_Empty_Groups()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            // Snapshot has only tech execution and B2B terms; no missing pricing, no employees, no B2C, not regulated, no skill gaps
+            journey.Phase4Data!.ConstructionSnapshot!.MissingItems = new List<ConstructionSnapshotItem>();
+            journey.Phase3Data!.FormationGenerator!.YouNeed = new List<CreatorSkillGap>();
+            journey.Phase3Data.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-004", Title = "INPI Registration", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Mandatory registration." },
+                    new() { Id = "FR-CONS-002", Title = "B2B Commercial Terms of Sale", Category = "commercial_contracts", Stage = "before_sale", Priority = "recommended", WhyItApplies = "B2B contracts." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var tasks = res.Roadmap!.Tasks;
+
+            // Inapplicable rules are NOT generated
+            tasks.Should().NotContain(t => t.Key.Contains("fr-soc-002")); // No DPAE (solo founder, no employees)
+            tasks.Should().NotContain(t => t.Key.Contains("fr-reg-001")); // Not regulated
+            tasks.Should().NotContain(t => t.Key.Contains("fr-cons-001")); // No B2C CGV
+            tasks.Should().NotContain(t => t.Key.Contains("fr-cons-003")); // No 3-click cancellation
+
+            // Applicable B2B terms IS generated
+            tasks.Should().Contain(t => t.Key.Contains("fr-cons-002"));
+
+            // Honest empty state: Days 30-60, Days 60-90, and Post-Launch have 0 tasks for this minimal venture
             var days30To60Tasks = tasks.Where(t => t.Stage == RoadmapStages.Days30To60).ToList();
             var days60To90Tasks = tasks.Where(t => t.Stage == RoadmapStages.Days60To90).ToList();
-            var beforeLaunchTasks = tasks.Where(t => t.Stage == RoadmapStages.BeforeLaunch).ToList();
             var postLaunchTasks = tasks.Where(t => t.Stage == RoadmapStages.PostLaunch).ToList();
+            days30To60Tasks.Should().BeEmpty();
+            days60To90Tasks.Should().BeEmpty();
+            postLaunchTasks.Should().BeEmpty();
 
-            nowTasks.Should().NotBeEmpty();
-            next30Tasks.Should().NotBeEmpty();
-            days30To60Tasks.Should().NotBeEmpty();
-            days60To90Tasks.Should().NotBeEmpty();
-            beforeLaunchTasks.Should().NotBeEmpty();
-            postLaunchTasks.Should().NotBeEmpty();
+            // Total tasks correctly reflects active items
+            res.TotalTasksCount.Should().Be(tasks.Count);
+        }
 
-            // 2. Specific domain mappings verified
-            days30To60Tasks.Should().Contain(t => t.Key.Contains("fr-ip-001") || t.Key.Contains("skill-gap"));
-            days60To90Tasks.Should().Contain(t => t.Key.Contains("fr-priv-001") || t.Key.Contains("gtm"));
-            beforeLaunchTasks.Should().Contain(t => t.Key.Contains("fr-web-001") || t.Key.Contains("launch"));
-            postLaunchTasks.Should().Contain(t => t.Key.Contains("fr-soc-001") || t.Key.Contains("operations"));
+        [Fact]
+        public async Task Completed_Legal_Items_Are_Excluded_From_Roadmap_Candidates()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Status = "completed", WhyItApplies = "Already completed." },
+                    new() { Id = "FR-CORP-004", Title = "INPI Registration", Category = "corporate", Stage = "company_creation", Status = "not_started", Priority = "critical", WhyItApplies = "Pending registration." }
+                }
+            };
+            SetupValidPrerequisites(journey);
 
-            // 3. Stage groups contain all 6 stages
-            res.Roadmap.Stages.Select(s => s.Stage).Should().BeEquivalentTo(RoadmapStages.AllStages);
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            res.Roadmap!.Tasks.Should().NotContain(t => t.Key.Contains("fr-corp-001"));
+            res.Roadmap.Tasks.Should().Contain(t => t.Key.Contains("fr-corp-004"));
         }
 
         [Fact]

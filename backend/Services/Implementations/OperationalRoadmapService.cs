@@ -546,7 +546,7 @@ namespace WebApp.Services.Implementations
                 }
             }
 
-            // 5. Map Company Formation Prerequisite Tasks
+            // 5. Map Company Formation Prerequisite Tasks (Phase 4 Planning linked to Phase 5 Registration Guide)
             if (context.Formation != null && !string.IsNullOrEmpty(context.Formation.SelectedType))
             {
                 var formKey = "formation.confirm-structure";
@@ -556,15 +556,15 @@ namespace WebApp.Services.Implementations
                     {
                         Key = formKey,
                         Title = $"Confirm {context.Formation.SelectedType} Entity Formation Plan",
-                        Description = $"Review and validate the chosen legal structure ({context.Formation.SelectedType}) with all founders.",
+                        Description = $"Review and validate the chosen legal structure ({context.Formation.SelectedType}), initial capital contributions, and founder governance ahead of Phase 5 formal company registration.",
                         Category = RoadmapCategories.Formation,
                         Priority = RoadmapTaskPriority.High,
                         Blocking = true,
-                        Why = "Entity structure defines capital allocation, founder liability, and administrative obligations.",
-                        ExpectedResult = $"Executed founder agreement and confirmed filing documents for {context.Formation.SelectedType}.",
+                        Why = "Entity structure planning establishes capital allocation and governance rules before filing on INPI Guichet Unique.",
+                        ExpectedResult = $"Documented {context.Formation.SelectedType} incorporation plan with founder consensus ready for Phase 5 registration guide execution.",
                         EstimatedEffort = RoadmapTaskEffort.Medium,
                         EstimatedEffortHours = 3.5,
-                        RequiresExternalAction = true,
+                        RequiresExternalAction = false,
                         EstimatedDuration = "2–5 business days",
                         Source = new List<string> { "Formation & Team" },
                         EarliestStart = RoadmapStages.Now
@@ -599,107 +599,17 @@ namespace WebApp.Services.Implementations
                 }
             }
 
-            // 6. Map Core GTM & Launch Validation Milestones
-            EnsureCoreMilestoneTasks(candidates, context);
-
-            // 7. Establish Logical DAG Dependencies across Tasks
+            // 6. Establish Logical DAG Dependencies across Tasks
             WireDependencies(candidates);
 
             return candidates;
-        }
-
-        private static void EnsureCoreMilestoneTasks(List<RoadmapTask> candidates, RoadmapContext context)
-        {
-            // Days 30-60: Pricing Tiers & Unit Economics
-            var pricingKey = "pricing.finalize-tiers";
-            if (!candidates.Any(c => c.Key.Contains("pricing") || c.Category == RoadmapCategories.Pricing))
-            {
-                candidates.Add(new RoadmapTask
-                {
-                    Key = pricingKey,
-                    Title = "Finalize Launch Pricing Tiers & Unit Economics",
-                    Description = "Structure customer pricing tiers, gross margins, and initial payment collection terms.",
-                    Category = RoadmapCategories.Pricing,
-                    Priority = RoadmapTaskPriority.High,
-                    Blocking = false,
-                    Why = "Validated pricing model ensures positive contribution margin prior to customer acquisition.",
-                    ExpectedResult = "Documented 3-tier pricing model with confirmed margin profile.",
-                    EstimatedEffort = RoadmapTaskEffort.Medium,
-                    EstimatedEffortHours = 3.5,
-                    Source = new List<string> { "Business Plan" },
-                    EarliestStart = RoadmapStages.Days30To60
-                });
-            }
-
-            // Days 60-90: Early Adopter Validation & Outreach
-            var gtmKey = "gtm.early-adopter-outreach";
-            if (!candidates.Any(c => c.Key.Contains("gtm") || c.Category == RoadmapCategories.GoToMarket))
-            {
-                candidates.Add(new RoadmapTask
-                {
-                    Key = gtmKey,
-                    Title = "Execute Early Adopter Customer Outreach",
-                    Description = "Initiate targeted founder outreach to validate initial value proposition with early prospect accounts.",
-                    Category = RoadmapCategories.GoToMarket,
-                    Priority = RoadmapTaskPriority.High,
-                    Blocking = false,
-                    Why = "Customer discovery feedback refines user onboarding before public launch.",
-                    ExpectedResult = "5+ prospect discovery interviews completed with feedback recorded.",
-                    EstimatedEffort = RoadmapTaskEffort.Medium,
-                    EstimatedEffortHours = 4.0,
-                    Source = new List<string> { "Business Plan" },
-                    EarliestStart = RoadmapStages.Days60To90
-                });
-            }
-
-            // Before Launch: Pre-Launch Readiness & User Acceptance QA
-            var launchKey = "launch.pre-launch-qa-checklist";
-            if (!candidates.Any(c => c.Key == launchKey))
-            {
-                candidates.Add(new RoadmapTask
-                {
-                    Key = launchKey,
-                    Title = "Execute Pre-Launch User Acceptance & Security QA",
-                    Description = "Verify full user journey, transaction processing, legal links, and error handling before public traffic.",
-                    Category = RoadmapCategories.Launch,
-                    Priority = RoadmapTaskPriority.Critical,
-                    Blocking = true,
-                    Why = "Ensures zero fatal friction points on day 1 of live customer onboarding.",
-                    ExpectedResult = "End-to-end user checkout and account creation verified in production environment.",
-                    EstimatedEffort = RoadmapTaskEffort.Medium,
-                    EstimatedEffortHours = 3.5,
-                    Source = new List<string> { "Construction Snapshot" },
-                    EarliestStart = RoadmapStages.BeforeLaunch
-                });
-            }
-
-            // Post Launch: 30-Day Cohort & Operations Review
-            var opsKey = "operations.post-launch-review";
-            if (!candidates.Any(c => c.Key == opsKey || c.Category == RoadmapCategories.Operations))
-            {
-                candidates.Add(new RoadmapTask
-                {
-                    Key = opsKey,
-                    Title = "Conduct 30-Day Cohort Retention & Growth Review",
-                    Description = "Track early customer retention, unit economics divergence, and customer support volume post-launch.",
-                    Category = RoadmapCategories.Operations,
-                    Priority = RoadmapTaskPriority.Medium,
-                    Blocking = false,
-                    Why = "Identifies early retention signals and operational bottlenecks after initial market entry.",
-                    ExpectedResult = "First 30-day cohort metrics documented with iterative backlog adjustments.",
-                    EstimatedEffort = RoadmapTaskEffort.Small,
-                    EstimatedEffortHours = 2.0,
-                    Source = new List<string> { "Business Plan" },
-                    EarliestStart = RoadmapStages.PostLaunch
-                });
-            }
         }
 
         private static void WireDependencies(List<RoadmapTask> candidates)
         {
             var taskByKey = candidates.ToDictionary(c => c.Key, c => c);
 
-            // Structure confirmation must precede company creation and downstream legal items
+            // Structure confirmation (Phase 4 planning) must precede company creation and downstream legal items (Phase 5 execution)
             if (taskByKey.TryGetValue("formation.confirm-structure", out var formationTask))
             {
                 foreach (var legalTask in candidates.Where(c => (c.Category == RoadmapCategories.LegalAndAdministration || c.Key.StartsWith("legal.")) && c.Key != "formation.confirm-structure"))
@@ -714,16 +624,50 @@ namespace WebApp.Services.Implementations
                 }
             }
 
-            // Company registration (FR-CORP-004) precedes insurance, payment gateway, and post-launch social security & RBE
-            var registrationTask = candidates.FirstOrDefault(c => c.Key.Contains("fr-corp-004") || c.Key.Contains("registration"));
-            if (registrationTask != null)
+            // Capital deposit (FR-CORP-001) & Statuts (FR-CORP-002) precede JAL (FR-CORP-003) and Registration (FR-CORP-004)
+            var corp1 = candidates.FirstOrDefault(c => c.Key.Contains("fr-corp-001"));
+            var corp2 = candidates.FirstOrDefault(c => c.Key.Contains("fr-corp-002"));
+            var corp3 = candidates.FirstOrDefault(c => c.Key.Contains("fr-corp-003"));
+            var corp4 = candidates.FirstOrDefault(c => c.Key.Contains("fr-corp-004") || c.Key.Contains("registration"));
+            var rbe = candidates.FirstOrDefault(c => c.Key.Contains("fr-corp-005") || c.Key.Contains("beneficial"));
+
+            if (corp1 != null && corp3 != null && !corp3.Dependencies.Contains(corp1.Key))
+                corp3.Dependencies.Add(corp1.Key);
+            if (corp2 != null && corp3 != null && !corp3.Dependencies.Contains(corp2.Key))
+                corp2.Dependencies.Add(corp2.Key);
+            if (corp3 != null && corp4 != null && !corp4.Dependencies.Contains(corp3.Key))
+                corp4.Dependencies.Add(corp3.Key);
+
+            // RBE declaration (FR-CORP-005) is tied directly to company registration (FR-CORP-004)
+            if (corp4 != null && rbe != null && !rbe.Dependencies.Contains(corp4.Key))
             {
-                foreach (var depTask in candidates.Where(c => c.Key.Contains("fr-ins-001") || c.Key.Contains("fr-pay-001") || c.Key.Contains("fr-soc-001") || c.Key.Contains("fr-corp-005")))
+                rbe.Dependencies.Add(corp4.Key);
+            }
+
+            // Company registration (FR-CORP-004) precedes insurance, payment gateway, and post-launch social security
+            if (corp4 != null)
+            {
+                foreach (var depTask in candidates.Where(c => c.Key.Contains("fr-ins-001") || c.Key.Contains("fr-pay-001") || c.Key.Contains("fr-soc-001")))
                 {
-                    if (!depTask.Dependencies.Contains(registrationTask.Key))
+                    if (!depTask.Dependencies.Contains(corp4.Key))
                     {
-                        depTask.Dependencies.Add(registrationTask.Key);
+                        depTask.Dependencies.Add(corp4.Key);
                     }
+                }
+            }
+
+            // DPAE (FR-SOC-002) is tied to employee hiring / skill gap engagement, not product launch
+            var dpaeTask = candidates.FirstOrDefault(c => c.Key.Contains("fr-soc-002") || c.Key.Contains("dpae"));
+            var teamOrSkillTask = candidates.FirstOrDefault(c => c.Category == RoadmapCategories.Skills || c.Category == RoadmapCategories.Team || c.Key.Contains("skill-gap"));
+            if (dpaeTask != null)
+            {
+                if (teamOrSkillTask != null && !dpaeTask.Dependencies.Contains(teamOrSkillTask.Key))
+                {
+                    dpaeTask.Dependencies.Add(teamOrSkillTask.Key);
+                }
+                else if (corp4 != null && !dpaeTask.Dependencies.Contains(corp4.Key))
+                {
+                    dpaeTask.Dependencies.Add(corp4.Key);
                 }
             }
 
@@ -762,14 +706,6 @@ namespace WebApp.Services.Implementations
                         lt.Dependencies.Add(techCritical.Key);
                     }
                 }
-            }
-
-            // Pre-launch QA precedes Post-launch review
-            var preLaunchQA = candidates.FirstOrDefault(c => c.Key.Contains("pre-launch-qa") || c.Key.Contains("launch.pre-launch-qa-checklist"));
-            var postLaunchReview = candidates.FirstOrDefault(c => c.Key.Contains("post-launch-review") || c.Key.Contains("operations.post-launch-review"));
-            if (preLaunchQA != null && postLaunchReview != null && !postLaunchReview.Dependencies.Contains(preLaunchQA.Key))
-            {
-                postLaunchReview.Dependencies.Add(preLaunchQA.Key);
             }
         }
 
@@ -995,16 +931,34 @@ namespace WebApp.Services.Implementations
         private static string MapLegalStage(string? ruleId, string? legalStage, string? category)
         {
             var id = (ruleId ?? string.Empty).ToUpperInvariant();
+            
+            // 1. Regulated sector checks must occur before company creation
             if (id.Contains("FR-REG-001")) return RoadmapStages.Now;
-            if (id.Contains("FR-CORP-001") || id.Contains("FR-CORP-002") || id.Contains("FR-CORP-003") || id.Contains("FR-CORP-004"))
+
+            // 2. Company formation & formal registration formalities (SAS, SARL, etc.)
+            // Initial RBE (FR-CORP-005) is filed concurrently with registration or within 15 days of Kbis receipt (Guichet Unique).
+            if (id.Contains("FR-CORP-001") || id.Contains("FR-CORP-002") || id.Contains("FR-CORP-003") || id.Contains("FR-CORP-004") || id.Contains("FR-CORP-005"))
                 return RoadmapStages.Next30Days;
+
+            // 3. Operational preparation: Trademark search & Professional indemnity insurance (RC Pro)
             if (id.Contains("FR-IP-001") || id.Contains("FR-INS-001"))
                 return RoadmapStages.Days30To60;
+
+            // 4. Pre-hiring DPAE declarations: tied to planned employee onboarding milestone
+            if (id.Contains("FR-SOC-002"))
+                return RoadmapStages.Days30To60;
+
+            // 5. Data protection & payment integrations
             if (id.Contains("FR-PRIV-001") || id.Contains("FR-PRIV-002") || id.Contains("FR-PRIV-003") || id.Contains("FR-PAY-001") || id.Contains("FR-MKT-001"))
                 return RoadmapStages.Days60To90;
-            if (id.Contains("FR-WEB-001") || id.Contains("FR-CONS-001") || id.Contains("FR-CONS-002") || id.Contains("FR-CONS-003") || id.Contains("FR-TAX-001") || id.Contains("FR-SOC-002"))
+
+            // 6. Mandatory gates before public launch / commercial sales
+            if (id.Contains("FR-WEB-001") || id.Contains("FR-CONS-001") || id.Contains("FR-CONS-002") || id.Contains("FR-CONS-003") || id.Contains("FR-TAX-001"))
                 return RoadmapStages.BeforeLaunch;
-            if (id.Contains("FR-SOC-001") || id.Contains("FR-CORP-005") || id.Contains("FR-CORP-006"))
+
+            // 7. Post-launch / ongoing recurring obligations
+            // Annual accounts approval and filing (FR-CORP-006) and recurring founder social regime affiliation (FR-SOC-001)
+            if (id.Contains("FR-SOC-001") || id.Contains("FR-CORP-006"))
                 return RoadmapStages.PostLaunch;
 
             // Fallback based on legalStage and category
