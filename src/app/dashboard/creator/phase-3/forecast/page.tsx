@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  TrendingUp,
   ArrowLeft,
   ArrowRight,
   Loader2,
@@ -45,19 +44,20 @@ import {
   useForecastAssumptions,
   useRegenerateForecast,
 } from '@/hooks/queries/creator-ai';
-import { StartingBudgetModal } from '@/components/creator/forecast/StartingBudgetModal';
 import {
+  ForecastAssumptionsForm,
   ForecastAssumptionsModal,
   type ForecastDriverValues,
 } from '@/components/creator/forecast/ForecastAssumptionsModal';
+import creatorAiApi from '@/lib/api-creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 import { formatMoney } from '@/lib/format-money';
 import {
-  hasAiOutput,
   type ForecastOutput,
   type ForecastInputs,
+  type UpdateFinancialAssumptionsDto,
   type BusinessPlanOutput,
   type MarketStudyOutput,
   type BusinessModelOutput,
@@ -116,9 +116,9 @@ export default function ForecastPage() {
 
   const [savedBaselineInputs, setSavedBaselineInputs] = useState<typeof inputs | null>(null);
   const [startError, setStartError] = useState<AiError | null>(null);
-  const [showStartingBudgetModal, setShowStartingBudgetModal] = useState<boolean>(false);
   const [showAssumptionsModal, setShowAssumptionsModal] = useState<boolean>(false);
-  const hasAutoOpenedBudgetModalRef = useRef<boolean>(false);
+  const [isSubmittingAssumptions, setIsSubmittingAssumptions] = useState<boolean>(false);
+  const [terminalDismissed, setTerminalDismissed] = useState<boolean>(false);
 
   const startForecast = useStartForecast();
   const regenerateForecast = useRegenerateForecast();
@@ -277,45 +277,97 @@ export default function ForecastPage() {
     }
   }, [sessionInputs, progressiveAssumptions, forecastSessionId, bmOutput, marketStudyTam, cross.seedAsk, ideaId]);
 
-  const output = (session.data as { output?: ForecastOutput } | undefined)?.output;
+  // Canonical resolver: checks root output or any valid completed version in versions history
+  const { activeOutput, latestValidVersion, hasValidCompletedForecast } = useMemo(() => {
+    const sDoc = session.data as {
+      status?: string;
+      output?: ForecastOutput;
+      hasValidCompletedForecast?: boolean;
+      latestValidVersion?: number;
+      currentVersion?: number;
+      versions?: Array<{ version: number; content?: ForecastOutput; generatedContent?: ForecastOutput }>;
+    } | undefined;
 
-  // Requirement 1: Completed Forecast Detection.
-  // Requires:
-  // - session is not failed/incomplete
-  // - valid forecast output exists and is usable by the Results UI (monthly revenue and cost arrays)
-  // If session has Inputs but 0 valid completed output, Step 3.3 must remain in first-generation mode.
-  const hasCompletedForecast = useMemo(() => {
-    const sDoc = session.data as { status?: string; currentVersion?: number; versions?: Array<{ version: number; content?: unknown }> } | undefined;
-    if (sDoc?.status && sDoc.status.toLowerCase() !== 'completed') {
-      return false;
+    const isValidOutput = (out?: ForecastOutput | null): out is ForecastOutput => {
+      return Boolean(
+        out &&
+        Array.isArray(out.revenueForecast?.monthly) &&
+        out.revenueForecast.monthly.length > 0 &&
+        Array.isArray(out.costForecast?.monthly) &&
+        out.costForecast.monthly.length > 0
+      );
+    };
+
+    // 1. If root output is valid and usable
+    if (isValidOutput(sDoc?.output)) {
+      return {
+        activeOutput: sDoc.output,
+        latestValidVersion: sDoc.latestValidVersion ?? sDoc.currentVersion ?? 1,
+        hasValidCompletedForecast: true,
+      };
     }
 
-    const hasUsableOutput = Boolean(
-      output &&
-      Array.isArray(output.revenueForecast?.monthly) &&
-      output.revenueForecast.monthly.length > 0 &&
-      Array.isArray(output.costForecast?.monthly) &&
-      output.costForecast.monthly.length > 0
-    );
-
-    if (!hasUsableOutput) {
-      return false;
+    // 2. Scan session.versions in descending order for the latest valid completed forecast version
+    if (Array.isArray(sDoc?.versions) && sDoc.versions.length > 0) {
+      const sorted = [...sDoc.versions].sort((a, b) => (b.version || 0) - (a.version || 0));
+      for (const v of sorted) {
+        const candidate = (v.content || v.generatedContent) as ForecastOutput | undefined;
+        if (isValidOutput(candidate)) {
+          return {
+            activeOutput: candidate,
+            latestValidVersion: v.version,
+            hasValidCompletedForecast: true,
+          };
+        }
+      }
     }
 
-    return true;
-  }, [output, session.data]);
+    return {
+      activeOutput: null,
+      latestValidVersion: null,
+      hasValidCompletedForecast: false,
+    };
+  }, [session.data]);
 
-  useEffect(() => {
-    if (!loadingJourney && !hasCompletedForecast && !hasAutoOpenedBudgetModalRef.current) {
-      hasAutoOpenedBudgetModalRef.current = true;
-      setShowStartingBudgetModal(true);
-    }
-  }, [loadingJourney, hasCompletedForecast]);
+  const output = activeOutput;
+
+  const isSessionProcessing = Boolean(
+    forecastSessionId && (
+      session.phase === 'polling' ||
+      session.data?.status === 'Pending' ||
+      session.data?.status === 'Processing'
+    )
+  );
+
+  const isGenerating = Boolean(
+    startForecast.isPending ||
+    regenerateForecast.isPending ||
+    isSessionProcessing
+  );
 
   const fcError = (session.data as { error?: string | null } | undefined)?.error ?? null;
-  const terminalFailed = !!forecastSessionId && session.phase === 'terminal' && !output;
+  const terminalFailed = !!forecastSessionId && (
+    (session.phase === 'terminal' && session.data?.status === 'Failed') ||
+    session.data?.status === 'Failed' ||
+    (session.phase === 'terminal' && !hasValidCompletedForecast && !isGenerating)
+  ) && !hasValidCompletedForecast;
+
+  const isRegenFailed = hasValidCompletedForecast && (
+    (session.data?.status === 'Failed' && !isGenerating) ||
+    (session.phase === 'terminal' && session.data?.status === 'Failed') ||
+    regenerateForecast.isError
+  );
   const failedIsProviderBilling = /openrouter error \(402\)/i.test(fcError ?? '');
   const failedIsCredits = !failedIsProviderBilling && /402|credit|insufficient|payment/i.test(fcError ?? '');
+
+  const isConflict = (e: any) => {
+    return Boolean(
+      e?.response?.status === 409 ||
+      e?.status === 409 ||
+      /409|already in progress/i.test(e?.message || '') ||
+      /409|already in progress/i.test(e?.response?.data?.error || '')
+    );
+  };
 
   // Detect live changes from canonical baseline
   const assumptionsChanged = useMemo(() => {
@@ -500,80 +552,227 @@ export default function ForecastPage() {
 
   const warnings = inputWarnings(inputs.growth, inputs.churn);
 
-  const handleStartFromBudget = async (
-    finalBudget: number,
-    provenance: 'ai_suggested' | 'founder_confirmed'
-  ) => {
-    if (!ideaId) {
-      setStartError({ message: 'ideaId is required', code: 'idea_required' } as any);
-      return;
-    }
-    setStartError(null);
-    try {
-      setInputs((prev) => ({ ...prev, budget: finalBudget }));
-      if (typeof window !== 'undefined' && ideaId) {
-        try {
-          localStorage.setItem(`mondial_forecast_budget_${ideaId}`, finalBudget.toString());
-        } catch {}
-      }
-      const res = await startForecast.mutateAsync({
-        businessPlanSessionId: businessPlanSessionId || undefined,
-        businessIdeaId: ideaId,
-        startingBudget: finalBudget,
-        launchSubscribers: inputs.launchSubs,
-        variableCost: inputs.varCost,
-        arpu: inputs.arpu,
-        opex: inputs.opex,
-        monthlyGrowthPct: inputs.growth,
-        tam: inputs.tam,
-        monthlyChurnPct: inputs.churn,
-        provenance: {
-          startingBudget: provenance,
-        },
-      });
-      await creatorJourneyApi.setPhase3Session('forecast', res.sessionId);
-      setForecastSessionId(res.sessionId);
-      setSavedBaselineInputs({ ...inputs, budget: finalBudget });
-      setShowStartingBudgetModal(false);
-    } catch (e) {
-      setStartError(toAiError(e, 'Could not start the forecast simulation.'));
-    }
-  };
+  const effectiveBusinessModelType =
+    sessionInputs?.businessModelType ??
+    progressiveAssumptions?.businessModelType ??
+    'saas';
 
-  const handleRecalculateAndRegenerate = async (
+  const canonicalInitialValues = useMemo<ForecastDriverValues>(() => {
+    let storedBudget: number | null = null;
+    if (typeof window !== 'undefined' && ideaId) {
+      try {
+        const stored = localStorage.getItem(`mondial_forecast_budget_${ideaId}`);
+        if (stored && !isNaN(Number(stored)) && Number(stored) > 0) {
+          storedBudget = Number(stored);
+        }
+      } catch {}
+    }
+    const resolvedBudget =
+      sessionInputs?.startingBudget ??
+      progressiveAssumptions?.startingBudget ??
+      budgetSuggestionQuery.data?.suggestedBudget ??
+      cross.seedAsk ??
+      storedBudget ??
+      (inputs.budget > 0 ? inputs.budget : 50000);
+
+    return {
+      startingBudget: resolvedBudget,
+      launchSubscribers: sessionInputs?.launchSubscribers ?? progressiveAssumptions?.launchSubscribers ?? (inputs.launchSubs > 0 ? inputs.launchSubs : 100),
+      monthlyGrowthPct: sessionInputs?.monthlyGrowthPct ?? progressiveAssumptions?.monthlyGrowthPct ?? (inputs.growth > 0 ? inputs.growth : 12),
+      monthlyChurnPct: sessionInputs?.monthlyChurnPct ?? progressiveAssumptions?.monthlyChurnPct ?? (inputs.churn > 0 ? inputs.churn : 3.5),
+      arpu: sessionInputs?.arpu ?? progressiveAssumptions?.arpu ?? (inputs.arpu > 0 ? inputs.arpu : 49),
+      variableCost: sessionInputs?.variableCost ?? progressiveAssumptions?.variableCost ?? (inputs.varCost > 0 ? inputs.varCost : 8),
+      opex: sessionInputs?.opex ?? progressiveAssumptions?.opex ?? (inputs.opex > 0 ? inputs.opex : 8000),
+      tam: sessionInputs?.tam ?? progressiveAssumptions?.tam ?? marketStudyTam ?? (inputs.tam > 0 ? inputs.tam : 500000000),
+      averageOrderValue: sessionInputs?.averageOrderValue ?? progressiveAssumptions?.averageOrderValue ?? undefined,
+      takeRatePct: sessionInputs?.takeRatePct ?? progressiveAssumptions?.takeRatePct ?? undefined,
+      taxRatePct: sessionInputs?.taxRatePct ?? progressiveAssumptions?.taxRatePct ?? undefined,
+    };
+  }, [sessionInputs, progressiveAssumptions, budgetSuggestionQuery.data, cross.seedAsk, inputs, marketStudyTam, ideaId]);
+
+  const canonicalInitialProvenance = useMemo<Record<string, string>>(() => {
+    return sessionInputs?.provenance ?? progressiveAssumptions?.provenance ?? {};
+  }, [sessionInputs, progressiveAssumptions]);
+
+  const canonicalInitialRationales = useMemo<Record<string, string>>(() => {
+    return sessionInputs?.rationales ?? progressiveAssumptions?.rationales ?? (budgetSuggestionQuery.data?.rationale ? { startingBudget: budgetSuggestionQuery.data.rationale } : {});
+  }, [sessionInputs, progressiveAssumptions, budgetSuggestionQuery.data]);
+
+  const handleFirstTimeGenerate = async (
     newValues: ForecastDriverValues,
-    newProvenance: Record<string, string>
+    newProvenance: Record<string, string>,
+    activeDrivers: Record<string, boolean>
   ) => {
     if (!ideaId) {
       setStartError({ message: 'ideaId is required', code: 'idea_required' } as any);
       return;
     }
-    if (!forecastSessionId) {
-      await handleStartFromBudget(newValues.startingBudget, (newProvenance.startingBudget as any) || 'founder_confirmed');
-      setShowAssumptionsModal(false);
-      return;
-    }
     setStartError(null);
+    setTerminalDismissed(false);
+    setIsSubmittingAssumptions(true);
+
+    // Step 1: PUT assumptions FIRST
     try {
+      const updatePayload: UpdateFinancialAssumptionsDto = {
+        businessIdeaId: ideaId,
+        startingBudget: newValues.startingBudget,
+        launchSubscribers: newValues.launchSubscribers,
+        monthlyGrowthPct: newValues.monthlyGrowthPct,
+        monthlyChurnPct: activeDrivers.monthlyChurnPct ? newValues.monthlyChurnPct : null,
+        arpu: newValues.arpu,
+        variableCost: newValues.variableCost,
+        opex: newValues.opex,
+        averageOrderValue: newValues.averageOrderValue,
+        takeRatePct: newValues.takeRatePct,
+        taxRatePct: newValues.taxRatePct,
+        businessModelType: effectiveBusinessModelType,
+        activeDrivers,
+        provenance: newProvenance,
+      };
+
+      await creatorAiApi.updateForecastAssumptions(updatePayload, ideaId);
+
       const updatedInputs = {
         budget: newValues.startingBudget,
         launchSubs: newValues.launchSubscribers,
         growth: newValues.monthlyGrowthPct,
-        churn: newValues.monthlyChurnPct,
+        churn: activeDrivers.monthlyChurnPct ? newValues.monthlyChurnPct : 0,
         arpu: newValues.arpu,
         varCost: newValues.variableCost,
         opex: newValues.opex,
         tam: newValues.tam,
       };
       setInputs(updatedInputs);
+      setSavedBaselineInputs(updatedInputs);
+
       if (typeof window !== 'undefined' && ideaId) {
         try {
           localStorage.setItem(`mondial_forecast_budget_${ideaId}`, newValues.startingBudget.toString());
         } catch {}
       }
-      await regenerateForecast.mutateAsync({
-        sessionId: forecastSessionId,
-        payload: {
+    } catch (saveError) {
+      setStartError(toAiError(saveError, 'Failed to save assumptions.'));
+      setIsSubmittingAssumptions(false);
+      return; // Do NOT call POST generate
+    }
+
+    // Step 2: POST generate forecast
+    try {
+      const res = await startForecast.mutateAsync({
+        businessPlanSessionId: businessPlanSessionId || undefined,
+        businessIdeaId: ideaId,
+        startingBudget: newValues.startingBudget,
+        launchSubscribers: newValues.launchSubscribers,
+        variableCost: newValues.variableCost,
+        arpu: newValues.arpu,
+        opex: newValues.opex,
+        monthlyGrowthPct: newValues.monthlyGrowthPct,
+        tam: newValues.tam,
+        monthlyChurnPct: activeDrivers.monthlyChurnPct ? newValues.monthlyChurnPct : undefined,
+        averageOrderValue: newValues.averageOrderValue,
+        takeRatePct: newValues.takeRatePct,
+        taxRatePct: newValues.taxRatePct,
+        businessModelType: effectiveBusinessModelType,
+        provenance: newProvenance,
+      });
+
+      await creatorJourneyApi.setPhase3Session('forecast', res.sessionId);
+      setForecastSessionId(res.sessionId);
+    } catch (postError: any) {
+      if (isConflict(postError)) {
+        if (postError?.response?.data?.sessionId) {
+          setForecastSessionId(postError.response.data.sessionId);
+        }
+        return;
+      }
+      setStartError(toAiError(postError, 'Could not start the forecast simulation.'));
+    } finally {
+      setIsSubmittingAssumptions(false);
+    }
+  };
+
+  const handleRecalculateAndRegenerate = async (
+    newValues: ForecastDriverValues,
+    newProvenance: Record<string, string>,
+    activeDrivers: Record<string, boolean>
+  ) => {
+    if (!ideaId) {
+      setStartError({ message: 'ideaId is required', code: 'idea_required' } as any);
+      return;
+    }
+    setStartError(null);
+    setIsSubmittingAssumptions(true);
+
+    // Step 1: PUT assumptions FIRST
+    try {
+      const updatePayload: UpdateFinancialAssumptionsDto = {
+        businessIdeaId: ideaId,
+        startingBudget: newValues.startingBudget,
+        launchSubscribers: newValues.launchSubscribers,
+        monthlyGrowthPct: newValues.monthlyGrowthPct,
+        monthlyChurnPct: activeDrivers.monthlyChurnPct ? newValues.monthlyChurnPct : null,
+        arpu: newValues.arpu,
+        variableCost: newValues.variableCost,
+        opex: newValues.opex,
+        averageOrderValue: newValues.averageOrderValue,
+        takeRatePct: newValues.takeRatePct,
+        taxRatePct: newValues.taxRatePct,
+        businessModelType: effectiveBusinessModelType,
+        activeDrivers,
+        provenance: newProvenance,
+      };
+
+      await creatorAiApi.updateForecastAssumptions(updatePayload, ideaId);
+
+      const updatedInputs = {
+        budget: newValues.startingBudget,
+        launchSubs: newValues.launchSubscribers,
+        growth: newValues.monthlyGrowthPct,
+        churn: activeDrivers.monthlyChurnPct ? newValues.monthlyChurnPct : 0,
+        arpu: newValues.arpu,
+        varCost: newValues.variableCost,
+        opex: newValues.opex,
+        tam: newValues.tam,
+      };
+      setInputs(updatedInputs);
+      setSavedBaselineInputs(updatedInputs);
+
+      if (typeof window !== 'undefined' && ideaId) {
+        try {
+          localStorage.setItem(`mondial_forecast_budget_${ideaId}`, newValues.startingBudget.toString());
+        } catch {}
+      }
+    } catch (saveError) {
+      setStartError(toAiError(saveError, 'Failed to save assumptions.'));
+      setIsSubmittingAssumptions(false);
+      return; // Do NOT call POST regenerate
+    }
+
+    // Step 2: POST regenerate
+    try {
+      if (forecastSessionId) {
+        await regenerateForecast.mutateAsync({
+          sessionId: forecastSessionId,
+          payload: {
+            businessIdeaId: ideaId,
+            startingBudget: newValues.startingBudget,
+            launchSubscribers: newValues.launchSubscribers,
+            variableCost: newValues.variableCost,
+            arpu: newValues.arpu,
+            opex: newValues.opex,
+            monthlyGrowthPct: newValues.monthlyGrowthPct,
+            tam: newValues.tam,
+            monthlyChurnPct: activeDrivers.monthlyChurnPct ? newValues.monthlyChurnPct : undefined,
+            averageOrderValue: newValues.averageOrderValue,
+            takeRatePct: newValues.takeRatePct,
+            taxRatePct: newValues.taxRatePct,
+            businessModelType: effectiveBusinessModelType,
+            provenance: newProvenance,
+          },
+        });
+      } else {
+        const res = await startForecast.mutateAsync({
+          businessPlanSessionId: businessPlanSessionId || undefined,
           businessIdeaId: ideaId,
           startingBudget: newValues.startingBudget,
           launchSubscribers: newValues.launchSubscribers,
@@ -582,27 +781,85 @@ export default function ForecastPage() {
           opex: newValues.opex,
           monthlyGrowthPct: newValues.monthlyGrowthPct,
           tam: newValues.tam,
-          monthlyChurnPct: newValues.monthlyChurnPct,
+          monthlyChurnPct: activeDrivers.monthlyChurnPct ? newValues.monthlyChurnPct : undefined,
+          averageOrderValue: newValues.averageOrderValue,
+          takeRatePct: newValues.takeRatePct,
+          taxRatePct: newValues.taxRatePct,
+          businessModelType: effectiveBusinessModelType,
           provenance: newProvenance,
+        });
+        await creatorJourneyApi.setPhase3Session('forecast', res.sessionId);
+        setForecastSessionId(res.sessionId);
+      }
+
+      setShowAssumptionsModal(false);
+    } catch (postError: any) {
+      if (isConflict(postError)) {
+        setShowAssumptionsModal(false);
+        return;
+      }
+      setStartError(toAiError(postError, 'Could not recalculate forecast projections.'));
+    } finally {
+      setIsSubmittingAssumptions(false);
+    }
+  };
+
+  const handleFirstTimeRetry = async () => {
+    if (!ideaId) return;
+    setStartError(null);
+    setTerminalDismissed(false);
+    try {
+      const res = await startForecast.mutateAsync({
+        businessPlanSessionId: businessPlanSessionId || undefined,
+        businessIdeaId: ideaId,
+        startingBudget: inputs.budget,
+        launchSubscribers: inputs.launchSubs,
+        variableCost: inputs.varCost,
+        arpu: inputs.arpu,
+        opex: inputs.opex,
+        monthlyGrowthPct: inputs.growth,
+        tam: inputs.tam,
+        monthlyChurnPct: inputs.churn > 0 ? inputs.churn : undefined,
+        businessModelType: effectiveBusinessModelType,
+      });
+      await creatorJourneyApi.setPhase3Session('forecast', res.sessionId);
+      setForecastSessionId(res.sessionId);
+    } catch (e: any) {
+      if (isConflict(e)) {
+        if (e?.response?.data?.sessionId) {
+          setForecastSessionId(e.response.data.sessionId);
+        }
+        return;
+      }
+      setStartError(toAiError(e, 'Could not start the forecast simulation.'));
+    }
+  };
+
+  const handleRegenerateRetry = async () => {
+    if (!ideaId || !forecastSessionId) return;
+    setStartError(null);
+    try {
+      await regenerateForecast.mutateAsync({
+        sessionId: forecastSessionId,
+        payload: {
+          businessIdeaId: ideaId,
+          startingBudget: inputs.budget,
+          launchSubscribers: inputs.launchSubs,
+          variableCost: inputs.varCost,
+          arpu: inputs.arpu,
+          opex: inputs.opex,
+          monthlyGrowthPct: inputs.growth,
+          tam: inputs.tam,
+          monthlyChurnPct: inputs.churn > 0 ? inputs.churn : undefined,
+          businessModelType: effectiveBusinessModelType,
         },
       });
-      setSavedBaselineInputs(updatedInputs);
-      setShowAssumptionsModal(false);
-    } catch (e) {
+    } catch (e: any) {
+      if (isConflict(e)) {
+        return;
+      }
       setStartError(toAiError(e, 'Could not recalculate forecast projections.'));
     }
-  };
-
-  const handleOpenRegenerateOrAssumptions = () => {
-    if (forecastSessionId || output) {
-      setShowAssumptionsModal(true);
-    } else {
-      setShowStartingBudgetModal(true);
-    }
-  };
-
-  const handleGenerate = async () => {
-    handleOpenRegenerateOrAssumptions();
   };
 
   const handleNext = () => {
@@ -612,34 +869,15 @@ export default function ForecastPage() {
 
   return (
     <>
-      <StartingBudgetModal
-        open={showStartingBudgetModal}
-        onClose={() => setShowStartingBudgetModal(false)}
-        suggestedBudget={budgetSuggestionQuery.data?.suggestedBudget ?? cross.seedAsk ?? (inputs.budget > 0 ? inputs.budget : undefined)}
-        rationale={budgetSuggestionQuery.data?.rationale}
-        runwayMonths={budgetSuggestionQuery.data?.runwayMonths ?? 6}
-        isLoadingSuggestion={budgetSuggestionQuery.isLoading}
-        isGenerating={startForecast.isPending}
-        onGenerate={handleStartFromBudget}
-      />
-
       <ForecastAssumptionsModal
         open={showAssumptionsModal}
         onClose={() => setShowAssumptionsModal(false)}
-        businessModelType={sessionInputs?.businessModelType ?? progressiveAssumptions?.businessModelType ?? undefined}
-        initialRationales={sessionInputs?.rationales ?? progressiveAssumptions?.rationales ?? {}}
-        initialValues={{
-          startingBudget: sessionInputs?.startingBudget ?? progressiveAssumptions?.startingBudget ?? inputs.budget,
-          launchSubscribers: sessionInputs?.launchSubscribers ?? progressiveAssumptions?.launchSubscribers ?? inputs.launchSubs,
-          monthlyGrowthPct: sessionInputs?.monthlyGrowthPct ?? progressiveAssumptions?.monthlyGrowthPct ?? inputs.growth,
-          monthlyChurnPct: sessionInputs?.monthlyChurnPct ?? progressiveAssumptions?.monthlyChurnPct ?? inputs.churn,
-          arpu: sessionInputs?.arpu ?? progressiveAssumptions?.arpu ?? inputs.arpu,
-          variableCost: sessionInputs?.variableCost ?? progressiveAssumptions?.variableCost ?? inputs.varCost,
-          opex: sessionInputs?.opex ?? progressiveAssumptions?.opex ?? inputs.opex,
-          tam: sessionInputs?.tam ?? progressiveAssumptions?.tam ?? inputs.tam,
-        }}
-        initialProvenance={sessionInputs?.provenance ?? progressiveAssumptions?.provenance ?? {}}
-        isRegenerating={regenerateForecast.isPending}
+        businessModelType={effectiveBusinessModelType}
+        initialRationales={canonicalInitialRationales}
+        initialValues={canonicalInitialValues}
+        initialProvenance={canonicalInitialProvenance}
+        activeDrivers={sessionInputs?.activeDrivers ?? progressiveAssumptions?.activeDrivers ?? undefined}
+        isSubmitting={isSubmittingAssumptions || regenerateForecast.isPending}
         creditCost={forecastCost}
         onConfirm={handleRecalculateAndRegenerate}
       />
@@ -660,8 +898,8 @@ export default function ForecastPage() {
       <Phase3SetupShell
         fullWidth
         stepEyebrow="STEP 3.3 · FINANCIAL FORECAST"
-        title="Financial Projections & Simulations"
-        description="Unified 36-month financial model. Adjust key assumptions and re-simulate, or explore detailed projections and break-even trajectories."
+        title={hasValidCompletedForecast ? "Financial Projections & Simulations" : "Adjust Forecast Assumptions"}
+        description={hasValidCompletedForecast ? "Unified 36-month financial model. Adjust key assumptions and re-simulate, or explore detailed projections and break-even trajectories." : "Review the assumptions prepared from your Market Study and Business Model before generating your forecast."}
       >
         {(loadingJourney || !ideaId) && (
           <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center font-sans">
@@ -669,56 +907,122 @@ export default function ForecastPage() {
           </div>
         )}
 
-        {/* Polling / Generating / Regenerating State */}
-        {((forecastSessionId && session.phase === 'polling') || startForecast.isPending || regenerateForecast.isPending) && (
-          <div className="space-y-6 max-w-2xl mx-auto py-12">
-            <Card className="rounded-2xl border border-border bg-card p-8 text-center space-y-4 shadow-sm">
-              <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
-                <Loader2 className="h-6 w-6 animate-spin" />
+        {/* =========================================================================
+            SCENARIO A: NO VALID COMPLETED FORECAST
+            ========================================================================= */}
+        {!loadingJourney && !hasValidCompletedForecast && (
+          <>
+            {/* A1. First-Time Generating State */}
+            {isGenerating && (
+              <div className="space-y-6 max-w-2xl mx-auto py-12" role="status" aria-live="polite">
+                <Card className="rounded-2xl border border-border bg-card p-8 text-center space-y-4 shadow-sm">
+                  <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-heading font-bold text-base text-foreground">
+                      Generating Your Financial Forecast…
+                    </h3>
+                    <p className="text-caption text-muted-foreground">
+                      Building your 36-month projections from the assumptions you confirmed.
+                      This may take up to two minutes.
+                    </p>
+                  </div>
+                  <div className="h-2 w-48 mx-auto bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary animate-pulse w-2/3" />
+                  </div>
+                </Card>
               </div>
-              <div className="space-y-1">
-                <h3 className="font-heading font-bold text-base text-foreground">
-                  {regenerateForecast.isPending || (output && session.phase === 'polling')
-                    ? 'Regenerating Financial Forecast…'
-                    : 'Simulating 36-Month Projections…'}
-                </h3>
-                <p className="text-caption text-muted-foreground">
-                  {regenerateForecast.isPending || (output && session.phase === 'polling')
-                    ? 'Recalculating projections with your updated assumptions. This may take up to two minutes.'
-                    : 'Synthesizing multi-year unit economics, revenue compounding, cost dynamics, and cash flow milestones.'}
+            )}
+
+            {/* A2. First-Time Terminal Failure */}
+            {!isGenerating && terminalFailed && !terminalDismissed && (
+              <Card className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 space-y-4 max-w-xl mx-auto font-sans my-8" role="alert">
+                <div className="flex items-center gap-2 text-destructive font-bold text-body">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>We couldn’t generate your forecast.</span>
+                </div>
+                <p className="text-caption text-muted-foreground leading-relaxed">
+                  Your assumptions are still saved. You can review them and try again.
                 </p>
-              </div>
-              <div className="h-2 w-48 mx-auto bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary animate-pulse w-2/3" />
-              </div>
-            </Card>
-          </div>
+                <div className="flex items-center gap-3 pt-2">
+                  <Button
+                    size="sm"
+                    onClick={handleFirstTimeRetry}
+                    disabled={startForecast.isPending || isSubmittingAssumptions}
+                    className="gap-1.5 text-button font-semibold rounded-xl"
+                  >
+                    <RotateCw className="h-3.5 w-3.5" /> Try Again
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTerminalDismissed(true)}
+                    disabled={startForecast.isPending || isSubmittingAssumptions}
+                    className="gap-1.5 text-button font-medium rounded-xl"
+                  >
+                    <Sliders className="h-3.5 w-3.5" /> Adjust Assumptions
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+            {/* A3. Save / Start Error Banner (if not in terminal card) */}
+            {!isGenerating && (!terminalFailed || terminalDismissed) && startError && (
+              <Card className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4 my-4 max-w-4xl mx-auto font-sans" role="alert">
+                <div className="flex items-center gap-2 text-destructive font-semibold text-xs">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>{startError.message || 'An error occurred while saving assumptions.'}</span>
+                </div>
+              </Card>
+            )}
+
+            {/* A4. First-Time Primary Form */}
+            {!isGenerating && (!terminalFailed || terminalDismissed) && (
+              <ForecastAssumptionsForm
+                mode="page"
+                initialValues={canonicalInitialValues}
+                initialProvenance={canonicalInitialProvenance}
+                initialRationales={canonicalInitialRationales}
+                businessModelType={effectiveBusinessModelType}
+                activeDrivers={sessionInputs?.activeDrivers ?? progressiveAssumptions?.activeDrivers ?? undefined}
+                isSubmitting={isSubmittingAssumptions || startForecast.isPending}
+                creditCost={forecastCost}
+                onConfirm={handleFirstTimeGenerate}
+              />
+            )}
+          </>
         )}
 
-        {/* Terminal Failed or Timed Out */}
-        {forecastSessionId && terminalFailed && (
-          <Card className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 space-y-4 max-w-xl mx-auto font-sans my-8">
-            <div className="flex items-center gap-2 text-destructive font-bold text-body">
-              <AlertTriangle className="h-4 w-4" /> Forecast generation was interrupted
-            </div>
-            <p className="text-caption text-muted-foreground leading-relaxed">
-              {failedIsProviderBilling
-                ? 'AI synthesis is temporarily unavailable due to upstream provider billing. Your plan is safe.'
-                : failedIsCredits
-                ? 'You do not have enough credits to generate this forecast.'
-                : fcError || 'The forecast job did not complete successfully. You can retry with the same or modified inputs.'}
-            </p>
-            <div className="flex items-center gap-2 pt-2">
-              <Button size="sm" onClick={handleGenerate} disabled={startForecast.isPending} className="gap-1.5 text-button font-semibold rounded-xl">
-                <RotateCw className="h-3.5 w-3.5" /> Re-run Simulation
-              </Button>
-            </div>
-          </Card>
-        )}
-
-        {/* Continuous 8-Section Layout (Figma Node 57157:9297) */}
-        {!loadingJourney && !startForecast.isPending && !regenerateForecast.isPending && (session.phase !== 'polling' || !forecastSessionId) && (
+        {/* =========================================================================
+            SCENARIO B: VALID COMPLETED FORECAST EXISTS -> RENDER CONTINUOUS 8-SECTION RESULTS UI
+            ========================================================================= */}
+        {!loadingJourney && hasValidCompletedForecast && (
           <div className="space-y-6">
+            {/* Top Regeneration Processing Notice (Preserves Results Below) */}
+            {isGenerating && (
+              <Card className="rounded-2xl border border-primary/30 bg-primary/5 p-5 shadow-sm space-y-3" role="status" aria-live="polite">
+                <div className="flex items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <h3 className="font-heading font-bold text-sm text-foreground">
+                        Regenerating Financial Forecast…
+                      </h3>
+                      <p className="text-caption text-muted-foreground">
+                        Recalculating projections with your updated assumptions. This may take up to two minutes.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="h-1.5 w-full bg-primary/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-primary animate-pulse w-1/2" />
+                </div>
+              </Card>
+            )}
+
             {/* ======================================================
                 SECTION 1 — Header Bar & Actions (Figma Exact)
                 ====================================================== */}
@@ -751,16 +1055,16 @@ export default function ForecastPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleGenerate}
-                      disabled={startForecast.isPending || regenerateForecast.isPending || insufficientCredits || isCostLoading}
+                      onClick={() => setShowAssumptionsModal(true)}
+                      disabled={isGenerating || isSubmittingAssumptions || insufficientCredits || isCostLoading}
                       className="gap-2 text-button font-medium rounded-xl h-9 border-border bg-card hover:bg-muted"
                     >
-                      {startForecast.isPending || regenerateForecast.isPending ? (
+                      {isGenerating ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <RotateCw className="h-4 w-4" />
+                        <Sliders className="h-4 w-4 text-primary" />
                       )}
-                      <span>Regenerate</span>
+                      <span>Adjust Assumptions</span>
                     </Button>
                   </div>
                   <span className="text-badge text-muted-foreground font-sans pr-1">
@@ -773,6 +1077,40 @@ export default function ForecastPage() {
             {/* ======================================================
                 SECTION 2 — Verdict Strip (Conditional Alert)
                 ====================================================== */}
+            {isRegenFailed && !isGenerating && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-destructive/30 bg-destructive/5 text-destructive shadow-sm" role="alert">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2 font-semibold text-sm">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
+                    <span>We couldn’t regenerate your forecast.</span>
+                  </div>
+                  <p className="text-caption text-muted-foreground pl-6">
+                    Your previous forecast {latestValidVersion ? `(Version ${latestValidVersion})` : ''} is still available.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 pl-6 sm:pl-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRegenerateRetry}
+                    disabled={isGenerating || isSubmittingAssumptions}
+                    className="h-8 text-xs font-semibold border-destructive/30 hover:bg-destructive/10 text-destructive rounded-lg gap-1.5"
+                  >
+                    <RotateCw className="h-3.5 w-3.5" /> Try Again
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAssumptionsModal(true)}
+                    disabled={isGenerating || isSubmittingAssumptions}
+                    className="h-8 text-xs font-medium border-border hover:bg-muted text-foreground rounded-lg"
+                  >
+                    Adjust Assumptions
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {assumptionsChanged && (
               <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 shadow-sm">
                 <div className="flex items-center gap-2.5 text-caption font-sans">
@@ -784,7 +1122,7 @@ export default function ForecastPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleGenerate}
+                  onClick={() => setShowAssumptionsModal(true)}
                   disabled={startForecast.isPending || regenerateForecast.isPending}
                   className="shrink-0 h-7 text-caption font-medium border-amber-500/40 hover:bg-amber-500/20"
                 >

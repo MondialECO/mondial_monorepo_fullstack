@@ -503,6 +503,10 @@ export interface StartForecastRequest {
   tam?: number;
   // Monthly churn as a percent (e.g. 3 = 3%/month). Drives the readiness LTV/CAC.
   monthlyChurnPct?: number;
+  averageOrderValue?: number;
+  takeRatePct?: number;
+  taxRatePct?: number;
+  businessModelType?: string;
   provenance?: Record<string, string>;
 }
 
@@ -590,6 +594,7 @@ export interface ForecastInputs {
   activeDrivers?: Record<string, boolean> | null;
   averageOrderValue?: number | null;
   takeRatePct?: number | null;
+  taxRatePct?: number | null;
   hasCompletedForecast?: boolean | null;
   updatedAt?: string | null;
 }
@@ -605,9 +610,21 @@ export interface UpdateFinancialAssumptionsDto {
   monthlyChurnPct?: number | null;
   averageOrderValue?: number | null;
   takeRatePct?: number | null;
+  taxRatePct?: number | null;
   businessModelType?: string | null;
   activeDrivers?: Record<string, boolean> | null;
+  provenance?: Record<string, string> | null;
   confirmAll?: boolean;
+}
+
+export interface ForecastSessionVersion {
+  version: number;
+  isEdited?: boolean;
+  requestId?: string;
+  content?: ForecastOutput | null;
+  generatedContent?: ForecastOutput | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ForecastSession {
@@ -616,8 +633,11 @@ export interface ForecastSession {
   businessPlanSessionId: string;
   businessIdeaId?: string | null;
   currentVersion: number;
+  latestValidVersion?: number | null;
+  hasValidCompletedForecast?: boolean | null;
   schemaVersion: number;
   output?: ForecastOutput | null;
+  versions?: ForecastSessionVersion[];
   error?: string | null;
   inputs?: ForecastInputs | null;
   createdAt: string;

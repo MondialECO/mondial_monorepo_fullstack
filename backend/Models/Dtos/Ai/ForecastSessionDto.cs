@@ -24,6 +24,12 @@ namespace WebApp.Models.Dtos.Ai
         /// <summary>Active version number; 0 until the first run completes.</summary>
         public int CurrentVersion { get; set; }
 
+        /// <summary>The highest/latest valid completed version with usable output, if any.</summary>
+        public int? LatestValidVersion { get; set; }
+
+        /// <summary>True when at least one valid completed version exists in the session history.</summary>
+        public bool HasValidCompletedForecast { get; set; }
+
         public int SchemaVersion { get; set; }
 
         /// <summary>

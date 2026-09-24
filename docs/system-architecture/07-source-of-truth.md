@@ -88,10 +88,13 @@ This matrix establishes the definitive, canonical data authority for every major
    - `Phase4CompletionResolver` is the sole authority for determining Phase 4 completion.
    - Generic `Status != Draft` checks and ad-hoc flags are prohibited. All 7 stages (4.1 Construction Snapshot, 4.2 Operational Roadmap, 4.3 Needs & Requirements, 4.4 Skills & Training, 4.5 Aids, Grants & Support, 4.6 Pricing Strategy, 4.7 GTM Strategy) are resolved using domain-native criteria.
    - Phase 4.8 is not implemented; Phase 4.9 is reserved.
-11. **Forecast Financial Assumptions Single-Authority & Project-Context Safety Rule**:
+11. **Forecast Financial Assumptions Single-Authority & Calculation Authority Rule**:
    - `ForecastSession.Inputs` is the sole canonical source of truth for Step 3.3 financial assumptions. Authority precedence: persisted server value > current unsaved form state > scoped temporary client cache.
+   - `ForecastAssumptionsForm` is the single canonical assumptions form/schema. `StartingBudgetModal.tsx` is removed; starting budget is an integrated input.
+   - `FinancialForecastEngine` is the sole deterministic 36-month calculation authority. Zero client-side forecast engines; zero parallel math helpers in `ForecastHandler`.
    - All forecast endpoints require a non-empty `ideaId`. Missing or whitespace `ideaId` returns HTTP 400; foreign/unowned `ideaId` returns HTTP 404. Zero silent fallbacks to first-idea or `'active'` key.
    - Upstream assumption propagation (`MarketStudyVersion`, `BusinessModelVersion`) uses strict monotonic version guards: `incoming < stored` is rejected as stale, `incoming == stored` is an idempotent no-op, `incoming > stored` accepts the update. Founder-edited fields (`IsFounderLocked`) are permanently locked and survive all upstream version changes.
+   - The latest valid completed version resolver (`hasValidCompletedForecast`) governs displayed results; failed or in-progress regenerations preserve existing valid results non-destructively.
 
 ---
 
@@ -102,6 +105,10 @@ CREATOR PHASE 2–5 CLEAN BASELINE
 
 Phase 2 Brand authority:
 BrandKit (canonical visual identity authority; CreatorIdea.Project.Branding is derived projection only)
+
+Phase 3.3 Forecast authority:
+FinancialForecastEngine (sole deterministic calculation authority)
+ForecastSession.Inputs (sole financial assumptions authority)
 
 Phase 3.4 Legal authority:
 CreatorLegalAssessment (CreatorIdea.Phase3Data.LegalAssessment)
@@ -117,6 +124,7 @@ IFounderCapacityResolver (sole founder-capacity authority)
 
 Pricing authority:
 PricingPolicyEngine (canonical pricing-policy authority)
+
 
 Legacy legal business logic:
 0

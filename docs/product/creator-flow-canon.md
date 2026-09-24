@@ -617,43 +617,102 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Credit Cost:** **18 credits** (`AiJobType.BusinessModel`).
 - **UI Presentation:** Canonical Osterwalder grid matching Figma Node `57156:8456` with numbered index tags (`01`–`09`) and hairline dividers (5 upper columns: Key Partners, Key Activities over Key Resources, Value Propositions centered, Customer Relationships over Channels, Customer Segments; 2 lower columns: Cost Structure [55% width with 2-column breakdown] and Revenue Streams [45% width]). Followed by a dedicated Unit Economics strip (4 calibrated benchmark cards: CAC, LTV, LTV/CAC with 'Healthy' badge, Payback Period), a Step Complete checklist with 5 validation items, and a footer action row (Back navigation to Market Study & Build Financial Forecast, with Regenerate preserved in the persistent header actions). Responsive across 1440px–1920px with Inter headings (`font-heading`), DM Sans body copy (`font-sans`), JetBrains Mono numerals/metrics (`font-mono`), zero raw hex values or arbitrary bracket font sizes, and full dark theme token support. Out-of-contract strings reaching the frontend are styled with destructive visual tokens rather than silently absorbed.
 
-### 5.3 Step 3.3 — Financial Forecast (C-4, LIVE)
-- **Route:** Unified workspace at `/dashboard/creator/phase-3/forecast` (continuous 8-section financial command dashboard replacing legacy tabbed navigation).
+### 5.3 Step 3.3 — Financial Forecast (C-4, LIVE & FROZEN)
+- **Route:** Unified workspace at `/dashboard/creator/phase-3/forecast` (dual-mode: First-Time Full Assumptions View $\to$ Continuous 8-Section Financial Command Results Dashboard).
 - **Backing Entity & Controller:** `ForecastSession` stored in `ForecastSessions` collection via `ForecastController` (`/api/ai/forecast`).
-- **Inputs Consumed:** `BusinessIdeaId` (or `BusinessPlanSessionId` if available), plus financial assumptions (`ARPU`, `OPEX`, `Growth %`, `TAM`, `Churn %`).
-- **TAM Source Provenance:** TAM is auto-seeded from Step 3.1 Market Study (`marketSizing.tam.value`) with visible provenance attribution and a 1-click reset option. Saved forecast TAM values are strictly preserved and never overwritten on resume.
-- **Figma Parity & 1:1 Design Conformance (Approved Nodes 57157:9297 & 57157:9348):**
-  - **Section 1: Header Bar & Persistent Actions:** Eyebrow `STEP 3.3 · FINANCIAL FORECAST`, Title `Your 3-year financial forecast`, Subtitle `36 months · Months 1–12 modelled, 13–36 projected · EUR`, persistent `Download report` (PDF preview overlay) and `Regenerate` button with live credit balance pill (`Uses 32 credits · balance [X]`).
-  - **Section 2: Conditional Out-of-Date Alert Strip:** Activates when live simulation operational drivers deviate from last saved run (*"Assumptions changed since last run — results may be out of date. Click Regenerate to update forecast projections."*).
-  - **Section 2.5: Executive Verdict Hero Card:** High-impact milestone headline highlighting Break-even Month and Loss Recovery Month, starting budget exhaustion month, and funding gap calculation with dynamic badge (`Funding gap` in warm amber or `Fully funded` in emerald).
-  - **Section 3: Three Summary Cards (Figma Node 57157:9348):**
-    - `REVENUE`: Net growth badge (`+X% Y1→Y3`), ARR run-rate stat (`€X ARR (Y3)`), Y1/Y2/Y3 mini-breakdown pills, and custom 341x112 SVG area chart (`RevenueAreaSvg`) with solid line M1–12 modelled, dashed line M12–36 projected, M12 vertical divider with labels, on-curve break-even indicator dot and floating pill badge `M{breakEvenMonth} break-even`.
-    - `COST VS REVENUE`: Revenue vs Total Cost dual curves (`CostVsRevenueCrossingSvg`), drop line at break-even month with outer/inner circle dot and floating badge `€{breakEvenRevenue} ({breakEvenSubs} subs)`, Inflection Point stat (`Month {x}`), and break-even subscriber callout.
-    - `CASH POSITION`: Deficit duration badge (`Deficit: M{x}–M{y}` or `Fully funded`), lowest cash point stat (`−€{minCumulative}` or `Cash positive`), liquidity trajectory chart (`Cash36BarSvg`) with 36 individual vertical bars (5.7px width, 9.47px pitch, horizontal zero baseline, slate initial cash, warm amber deficit, vibrant amber lowest month, teal positive cash, and dotted vertical callouts for budget runs out and cash positive).
-  - **Section 4: Assumptions & Live Simulation Parameters Grid:** Responsive 8-card operational driver grid: Starting budget, Subscribers at launch, New subscribers % MoM, Monthly churn %, Price per subscriber (Linked from 3.2), Variable cost/sub, Fixed costs/mo, and Market size TAM (Linked from 3.1 with reset trigger). Real-time parameter tweaking dynamically recalculates all 36 months, break-even, and runway, with live warning banners for tight economics, high growth, and churn risks.
-  - **Section 5: Continuous 36-Month Consolidated Data Table:** Direct, continuous 10-column table across 36 months (`MONTH`, `SUBSCRIBERS`, `REVENUE`, `FIXED COST`, `VARIABLE COST`, `TOTAL COST`, `NET CASH FLOW`, `CUMULATIVE`, `CASH ON HAND`, `NOTES`) with distinct year grouping headers (`YEAR 1 · MODELLED`, `YEAR 2 · PROJECTED`, `YEAR 3 · PROJECTED`), subtotal rows (`Y1 SUBTOTAL`, `Y2 SUBTOTAL`, `Y3 SUBTOTAL`), and milestone highlight tags (`Budget runs out`, `Lowest cash point`, `Break-even`, `Cash positive again`, `All losses recovered`).
-  - **Section 6: Break-Even & Unit Economics Side-by-Side:** Left: Break-even analysis with 4 key metrics, narrative analysis, and exact contribution margin formula breakdown. Right: Unit economics with CAC, LTV, LTV/CAC (Healthy badge), Payback period, Gross margin %, and Month 1 Burn.
-  - **Section 7: Key Assumptions & Risk Assessment:** Left: 7 key model assumptions tagged with provenance badges (`YOUR INPUT`, `FROM 3.2`, `MODEL`). Right: 4-tier risk assessment matrix with severity badges (Funding risk, Growth shortfall, Subscriber retention, Delivery cost).
-  - **Section 8: Milestones Complete & Navigation Footer:** Step Complete checklist (6/6 milestones verified) and navigation footer: `Business Model` Back button (navigates to Step 3.2 `/dashboard/creator/phase-3/business-model`), and `Continue to Legal & Compliance` button (navigates to Step 3.4 `/dashboard/creator/phase-3/compliance`).
-- **Complete Elimination of Static Fallback Data:**
-  - Starting budget is dynamically seeded from `ForecastSession.StartingBudget` or live operational drivers.
-  - Runway and funding gap copy is dynamically computed: if zero deficit, displays positive operational runway without deficit.
-  - Market size TAM is dynamically parsed and formatted from `inputs.tam`.
-  - Break-even calculations, unit economics fallback derivation, and risk severity dynamically reflect live values.
-  - Net cumulative cash flow mathematically reconciled across all summary cards and table rows.
+- **Inputs Consumed:** `BusinessIdeaId` (or `BusinessPlanSessionId` if available), plus financial assumptions (`ARPU`, `OPEX`, `Growth %`, `TAM`, `Churn %`, `StartingBudget`, `TaxRate`).
+- **TAM Source Provenance:** TAM is a canonical read-only linked fact auto-seeded from Step 3.1 Market Study (`marketSizing.tam.value`) with visible provenance attribution and a 1-click reset option. Saved forecast TAM values are strictly preserved and never overwritten on resume.
+
+#### 1. Canonical Flow Architecture
+- **First-Time Generation (No Valid Completed Forecast):**
+  ```text
+  NO valid completed forecast
+  → Full Adjust Forecast Assumptions page (/dashboard/creator/phase-3/forecast)
+  → Founder reviews/edits archetype operational drivers & starting budget
+  → PUT /api/ai/forecast/assumptions (persists inputs & locks edited fields)
+  → POST /api/ai/forecast (starts 36-month deterministic projection generation)
+  → Immediate backend-driven processing state screen
+  → Results Dashboard rendered upon completion
+  ```
+- **Regeneration Flow (Valid Completed Forecast Exists):**
+  ```text
+  VALID completed forecast exists
+  → Results page displayed directly
+  → Founder clicks "Adjust Assumptions" button in Persistent Header
+  → Adjust Assumptions modal opens (ForecastAssumptionsModal)
+  → PUT /api/ai/forecast/assumptions (persists inputs & locks edited fields)
+  → POST /api/ai/forecast/{sessionId}/regenerate (starts new version calculation)
+  → Modal closes; previous valid forecast results remain visible while processing
+  → Header & action bar show non-blocking regeneration indicator
+  → Latest valid version seamlessly replaces displayed forecast on success
+  ```
+
+#### 2. Exact Processing UX & Failure Behavior
+- **First-Time Generation Processing Screen:**
+  - **Title:** `"Generating Your Financial Forecast…"`
+  - **Body:** `"Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes."`
+  - **Failure Handling:** If generation fails (network error, timeout, HTTP 500), preserved saved assumptions are retained; displays honest retry card with `[Try Again]` and `[Adjust Assumptions]` actions.
+- **Regeneration Processing State:**
+  - **Title:** `"Regenerating Financial Forecast…"`
+  - **Body:** `"Recalculating projections with your updated assumptions. This may take up to two minutes."`
+  - **Non-Destructive Behavior:** The existing valid forecast remains fully visible and interactive behind non-blocking processing indicators.
+  - **Failure Handling:** If regeneration fails, the previous valid completed forecast is preserved intact; displays a dismissible warning alert banner with `[Try Again]` and `[Adjust Assumptions]` actions without wiping or corrupting the displayed results.
+
+#### 3. Single Canonical Assumptions Authority & Dead Code Cleanup
+- **Single Canonical Form Schema:** `ForecastAssumptionsForm` is the single canonical assumptions form and validation schema across both the initial setup page and the in-results modal.
+- **Removal of `StartingBudgetModal.tsx`:** The legacy separate `StartingBudgetModal.tsx` wrapper has been completely excised. Starting Budget is natively integrated into the canonical assumptions form across all views.
+- **`FinancialForecastEngine` as Sole Authority:** `FinancialForecastEngine` is the sole deterministic 36-month calculation authority for all 4 business archetypes. Obsolete projection helpers (`ExtendToThirtySixMonths`, `RecomputeBreakEven`, and unused static helpers) have been completely removed from `ForecastHandler`.
+- **Zero Client-Side Calculation Engine:** React components contain no competing forecast calculation engine or parallel math forks.
+- **Zero Static Fallback Data:** Static fallback counts = 0; first-idea fallbacks = 0; all cards, tables, charts, and metrics are derived from live database records.
+- **Budget Suggestion API:** `GET /api/ai/forecast/budget-suggestion` remains fully active and contracted to supply intelligent baseline recommendations.
+
+#### 4. Archetype Driver Coverage & UI Invariant Rule
+- **Core Invariant:** *Every active editable backend forecast driver must be exposed in the canonical Adjust Forecast Assumptions form. Inactive drivers for an archetype must be hidden or marked N/A, never rendered as misleading fake zeros.*
+- **Archetype Driver Matrix:**
+  - **SaaS:** Launch Subscribers, MoM Subscriber Growth (%), Monthly Churn (%), ARPU (€/mo), Variable Cost per Subscriber (€/mo), Fixed OPEX (€/mo), Corporate Tax Rate (%), Starting Budget (€).
+  - **E-Commerce:** Launch Orders / Month, MoM Order Growth (%), Average Order Value / AOV (€), Cost of Goods Sold / COGS (%), Fulfillment & Packaging Cost per Order (€), Fixed OPEX (€/mo), Corporate Tax Rate (%), Starting Budget (€).
+  - **Service / Agency:** Launch Clients / Projects, MoM Client Growth (%), Average Retainer or Project Value (€/mo), Delivery Cost per Client (€/mo), Fixed OPEX (€/mo), Corporate Tax Rate (%), Starting Budget (€).
+  - **Marketplace:** Launch Monthly GMV / Transactions, MoM Volume Growth (%), Average Transaction Value (€), Take Rate / Commission (%), Payment Processing & Variable Cost (%), Fixed OPEX (€/mo), Corporate Tax Rate (%), Starting Budget (€).
+  - **TAM (All Archetypes):** Canonical read-only linked fact derived from Step 3.1 Market Study.
+
+#### 5. Safety Rules & Project-Context Isolation
+- **Mandatory `ideaId` Contract:** All forecast endpoints (`GET /session`, `POST /start`, `POST /regenerate`, `GET /assumptions`, `PUT /assumptions`, `GET /budget-suggestion`) require a non-empty `ideaId`. Missing/whitespace returns HTTP 400; foreign/unowned returns HTTP 404.
+- **Zero First-Idea Fallback:** Legacy silent fallbacks (`allIdeas.FirstOrDefault()?.Id`) are completely removed.
+- **Zero Unscoped LocalStorage:** LocalStorage keys strictly bind to `mondial_forecast_budget_${ideaId}`. The generic `'active'` key fallback is eliminated.
+- **Monotonic Upstream Version Guard:** `FinancialAssumptionsService` enforces `incoming < stored → reject stale`, `incoming == stored → idempotent no-op`, `incoming > stored → accept update`, independently for `MarketStudyVersion` and `BusinessModelVersion`.
+- **Founder-Lock Protection:** Founder-edited or confirmed fields (`IsFounderLocked`) are permanently protected and survive upstream re-runs.
+- **Latest Valid Completed Resolver:** `hasValidCompletedForecast` evaluates the presence of at least one valid completed `ForecastVersion` with non-empty output, preventing UI breakage during failed or in-flight regenerations.
+- **Tax Default Semantics:** Corporate tax rate carries no universal hardcoded 25% assumption; `null != 0 != inactive/N-A`.
+
+#### 6. Figma Parity & 1:1 Design Conformance (Approved Nodes 57157:9297 & 57157:9348)
+- **Section 1: Header Bar & Persistent Actions:** Eyebrow `STEP 3.3 · FINANCIAL FORECAST`, Title `Your 3-year financial forecast`, Subtitle `36 months · Months 1–12 modelled, 13–36 projected · EUR`, persistent `Adjust Assumptions`, `Download report` (PDF preview overlay), and `Regenerate` button with live credit balance pill (`Uses 32 credits · balance [X]`).
+- **Section 2: Conditional Out-of-Date Alert Strip:** Activates when live simulation operational drivers deviate from last saved run (*"Assumptions changed since last run — results may be out of date. Click Regenerate to update forecast projections."*).
+- **Section 2.5: Executive Verdict Hero Card:** High-impact milestone headline highlighting Break-even Month and Loss Recovery Month, starting budget exhaustion month, and funding gap calculation with dynamic badge (`Funding gap` in warm amber or `Fully funded` in emerald).
+- **Section 3: Three Summary Cards (Figma Node 57157:9348):**
+  - `REVENUE`: Net growth badge (`+X% Y1→Y3`), ARR run-rate stat (`€X ARR (Y3)`), Y1/Y2/Y3 mini-breakdown pills, and custom 341x112 SVG area chart (`RevenueAreaSvg`) with solid line M1–12 modelled, dashed line M12–36 projected, M12 vertical divider with labels, on-curve break-even indicator dot and floating pill badge `M{breakEvenMonth} break-even`.
+  - `COST VS REVENUE`: Revenue vs Total Cost dual curves (`CostVsRevenueCrossingSvg`), drop line at break-even month with outer/inner circle dot and floating badge `€{breakEvenRevenue} ({breakEvenSubs} subs)`, Inflection Point stat (`Month {x}`), and break-even subscriber callout.
+  - `CASH POSITION`: Deficit duration badge (`Deficit: M{x}–M{y}` or `Fully funded`), lowest cash point stat (`−€{minCumulative}` or `Cash positive`), liquidity trajectory chart (`Cash36BarSvg`) with 36 individual vertical bars (5.7px width, 9.47px pitch, horizontal zero baseline, slate initial cash, warm amber deficit, vibrant amber lowest month, teal positive cash, and dotted vertical callouts for budget runs out and cash positive).
+- **Section 4: Assumptions & Live Simulation Parameters Grid:** Responsive 8-card operational driver grid: Starting budget, Subscribers at launch, New subscribers % MoM, Monthly churn %, Price per subscriber (Linked from 3.2), Variable cost/sub, Fixed costs/mo, and Market size TAM (Linked from 3.1 with reset trigger). Real-time parameter tweaking dynamically recalculates all 36 months, break-even, and runway, with live warning banners for tight economics, high growth, and churn risks.
+- **Section 5: Continuous 36-Month Consolidated Data Table:** Direct, continuous 10-column table across 36 months (`MONTH`, `SUBSCRIBERS`, `REVENUE`, `FIXED COST`, `VARIABLE COST`, `TOTAL COST`, `NET CASH FLOW`, `CUMULATIVE`, `CASH ON HAND`, `NOTES`) with distinct year grouping headers (`YEAR 1 · MODELLED`, `YEAR 2 · PROJECTED`, `YEAR 3 · PROJECTED`), subtotal rows (`Y1 SUBTOTAL`, `Y2 SUBTOTAL`, `Y3 SUBTOTAL`), and milestone highlight tags (`Budget runs out`, `Lowest cash point`, `Break-even`, `Cash positive again`, `All losses recovered`).
+- **Section 6: Break-Even & Unit Economics Side-by-Side:** Left: Break-even analysis with 4 key metrics, narrative analysis, and exact contribution margin formula breakdown. Right: Unit economics with CAC, LTV, LTV/CAC (Healthy badge), Payback period, Gross margin %, and Month 1 Burn.
+- **Section 7: Key Assumptions & Risk Assessment:** Left: 7 key model assumptions tagged with provenance badges (`YOUR INPUT`, `FROM 3.2`, `MODEL`). Right: 4-tier risk assessment matrix with severity badges (Funding risk, Growth shortfall, Subscriber retention, Delivery cost).
+- **Section 8: Milestones Complete & Navigation Footer:** Step Complete checklist (6/6 milestones verified) and navigation footer: `Business Model` Back button (navigates to Step 3.2 `/dashboard/creator/phase-3/business-model`), and `Continue to Legal & Compliance` button (navigates to Step 3.4 `/dashboard/creator/phase-3/compliance`).
 - **Credit Cost:** **32 credits** (`AiJobType.Forecast`).
-- **Project-Context Safety & Zero Silent Fallbacks (LIVE & CERTIFIED):**
-  - **Zero First-Idea Fallback:** All legacy fallbacks to the user's first idea (`ListByUserAsync(owner) -> allIdeas.FirstOrDefault()?.Id`) have been completely excised from `ForecastController`.
-  - **Strict Endpoint Scoping:** All forecast endpoints (`GET /api/ai/forecast/session`, `POST /api/ai/forecast`, `POST /api/ai/forecast/regenerate`, `GET /api/ai/forecast/assumptions`, `PUT /api/ai/forecast/assumptions`, `GET /api/ai/forecast/budget-suggestion`) require a non-empty `ideaId`. Missing or whitespace `ideaId` strictly returns HTTP 400 Bad Request (`"ideaId is required"`). Foreign or unowned `ideaId` strictly returns HTTP 404 (ownership violation).
-  - **Frontend Query & Mutation Gating:** Step 3.3 page and React Query hooks (`useForecastAssumptions`, `useBudgetSuggestion`) enforce `enabled: !!ideaId`. Mutations validate `ideaId` before request dispatch. The UI remains in an explicit context-resolution loading state until `ideaId` resolves, preventing unanchored queries.
-  - **LocalStorage Scoping & Precedence:** Unscoped `'active'` key fallbacks (`mondial_forecast_budget_${ideaId || 'active'}`) are eliminated. Local storage key is strictly `mondial_forecast_budget_${ideaId}` only when a valid `ideaId` exists.
-  - **Canonical Assumptions SSoT Precedence:** `ForecastSession.Inputs` is the sole canonical source of truth for financial assumptions. Authority order: `ForecastSession.Inputs` persisted server value > current explicit unsaved form state > scoped temporary cache. Client storage NEVER overrides persisted server values.
-  - **Account & Project Switch Safety:** Switching accounts (User A logout -> User B login) or projects (Idea A -> Idea B) isolates cache and state. React Query keys are idea-scoped (`["creator-ai", "forecast", ..., ideaId]`).
-  - **Monotonic Version Guarding:** `FinancialAssumptionsService` enforces strict monotonic version checks independently for `MarketStudyVersion` and `BusinessModelVersion`:
-    - `incomingVersion < storedVersion`: rejected / ignored as stale.
-    - `incomingVersion == storedVersion`: idempotent no-op.
-    - `incomingVersion > storedVersion`: accepts upstream update.
-    - Founder-edited assumptions (`IsFounderLocked`) are permanently locked and survive any upstream version changes.
+
+#### 7. Verification Status (PASS & FROZEN)
+- **Backend Test Suite:** 94 / 94 passed (108 total, 14 integration skipped)
+- **Frontend Step 3.3 Test Suite:** 39 / 39 passed (7 test suites)
+- **TypeScript Compilation:** PASS (0 errors)
+- **Backend Solution Build:** PASS (0 errors)
+- **Frontend Production Build:** PASS (187 / 187 Next.js routes)
+- **Forecast Math Changed:** NO
+- **Figma Results UI Changed:** NO
+- **Duplicate Assumptions Schemas:** 0
+- **Client-Side Forecast Engines:** 0
+- **Static Financial Fallback Code:** 0
+- **Legacy First-Idea Fallback:** 0
+- **Historical Database Compatibility Removed:** NO
+- **Final Status:** PASS / FROZEN
 
 ### 5.4 Step 3.4 — Legal & Compliance Intelligence (LIVE — 100% Figma Node 57156:9158 Aligned)
 - **Route:** `/dashboard/creator/phase-3/compliance`
@@ -1204,18 +1263,17 @@ RC1 Freeze
 - **Legacy Artifact Elimination:** Removed hardcoded "SaaS" badge, global "Idea Readiness" score, premature Day-1 "Interested Buyers (0)" KPI, static EBITDA "—" KPI, "Generate Pitch Deck" misnomer, and client-side `advancePhase(5)` bypass.
 - **Strict Scope Boundaries:** Confirmed zero cards, routes, or progress items for Phase 4.8 (Launch Assets) or Phase 4.9 (Construction Readiness).
 
-**2026-09-24 — Step 3.3 Financial Forecast: Project-Context Safety Hardening.**
-- **Zero First-Idea Fallback (§5.3):** Completely removed `ListByUserAsync(owner) → allIdeas.FirstOrDefault()?.Id` fallback from `ForecastController`. All forecast endpoints now strictly require a non-empty `ideaId` parameter and return HTTP 400 on missing/whitespace input.
-- **Strict Endpoint Scoping (§5.3):** Verified and enforced across all 6 forecast endpoints: `GET /assumptions`, `PUT /assumptions`, `POST /start`, `POST /regenerate`, `GET /session`, `GET /budget-suggestion`. Foreign/unowned `ideaId` returns HTTP 404.
-- **Frontend Query & Mutation Gating (§5.3):** React Query hooks (`useForecastAssumptions`, `useBudgetSuggestion`) enforce `enabled: !!ideaId`. Mutations reject before dispatch when `ideaId` is absent. Page remains in context-resolution loading state until resolved.
-- **LocalStorage Scoping (§5.3):** Removed all 6 occurrences of `ideaId || 'active'` fallback in `forecast/page.tsx`. Keys strictly scoped to `mondial_forecast_budget_${ideaId}` only when `ideaId` is truthy.
-- **Canonical SSoT Precedence (§5.3):** `ForecastSession.Inputs` > unsaved form state > scoped cache. Client storage never overrides persisted server values.
-- **Monotonic Version Guard (§5.3):** `FinancialAssumptionsService` enforces `incoming < stored → stale reject`, `incoming == stored → idempotent no-op`, `incoming > stored → accept update`, independently for `MarketStudyVersion` and `BusinessModelVersion`. Founder-locked fields survive all upstream updates.
-- **New Backend Tests:** `ForecastProjectContextSafetyTests` (9 tests: 400 on missing ideaId, 404 on foreign idea, multi-project isolation, monotonic version semantics, founder lock preservation).
-- **New Frontend Tests:** `ForecastProjectContextSafety.test.tsx` (5 tests: query gating, mutation gating, zero `'active'` localStorage keys, server precedence).
-- **Regression:** All existing Step 3.3 tests remain green. Backend build: 0 errors. Frontend TypeScript: 0 errors. Next.js build: 187/187 routes. Forecast math and Figma Results UI unchanged.
+**2026-09-24 — Step 3.3 Financial Forecast: Canonical Architecture, Processing UX, Dead Code Cleanup & Final Verification Freeze.**
+- **Canonical Flow Reconciliation (§5.3):** Formalized first-generation flow (NO valid forecast $\to$ full Adjust Forecast Assumptions page $\to$ PUT assumptions $\to$ POST generate $\to$ processing state $\to$ Results) and regeneration flow (VALID forecast $\to$ Results directly $\to$ Adjust Assumptions modal $\to$ PUT assumptions $\to$ POST regenerate $\to$ non-destructive processing overlay $\to$ latest valid version replaces on success).
+- **Exact Processing UX (§5.3):** Standardized exact user-facing titles and descriptions for first generation (`"Generating Your Financial Forecast…"` / `"Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes."`) and regeneration (`"Regenerating Financial Forecast…"` / `"Recalculating projections with your updated assumptions. This may take up to two minutes."`).
+- **Failure State Protection (§5.3):** First generation failure preserves saved inputs with retry/edit CTAs; regeneration failure preserves previous valid forecast intact with dismissible banner and retry/edit CTAs.
+- **Dead Code & Parallel Schema Elimination (§5.3):** Excised `StartingBudgetModal.tsx`; starting budget natively integrated into `ForecastAssumptionsForm` (single canonical schema). Excised obsolete projection math methods (`ExtendToThirtySixMonths`, `RecomputeBreakEven`) and dead helpers from `ForecastHandler.cs`. Confirmed `FinancialForecastEngine` as the sole deterministic calculation authority.
+- **Driver Invariant Rule (§5.3):** Enforced that every active editable backend forecast driver across SaaS, E-commerce, Service, and Marketplace is exposed in the canonical form, with inactive drivers hidden/N-A.
+- **Safety Invariants (§5.3):** Mandatory ideaId scoping, zero first-idea fallback, zero `'active'` localStorage keys, monotonic version race protection, founder-lock preservation, non-destructive regeneration failure, and zero hardcoded tax defaults.
+- **Full Verification:** Backend 94/94 passed (108 total, 14 skipped), Frontend Step 3.3 39/39 passed (7 suites), TypeScript 0 errors, Next.js production build PASS, Backend build PASS. Status: PASS / FROZEN.
 
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
+
 

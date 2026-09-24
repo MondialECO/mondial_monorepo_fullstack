@@ -305,15 +305,24 @@ namespace WebApp.Controllers
                 return BadRequest(ApiResponse.Error("ideaId is required", HttpContext.TraceIdentifier));
             }
 
-            // Churn is required-in-flow (drives the readiness LTV/CAC), nullable-at-storage
-            // for older sessions. Bound: 0 < churn <= 50 (%/month) — above ~50%/month a
-            // subscription business is non-viable, so we reject rather than score it.
-            if (!request.MonthlyChurnPct.HasValue)
-                return UnprocessableEntity(ApiResponse.Error("churn_required", HttpContext.TraceIdentifier,
-                    new { message = "Enter your monthly churn rate before running the forecast." }));
-            if (request.MonthlyChurnPct.Value <= 0 || request.MonthlyChurnPct.Value > 50)
-                return UnprocessableEntity(ApiResponse.Error("churn_out_of_range", HttpContext.TraceIdentifier,
-                    new { message = "Monthly churn must be between 0 and 50%." }));
+            var isSubscriptionModel = !string.Equals(request.BusinessModelType, "ecommerce", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(request.BusinessModelType, "marketplace", StringComparison.OrdinalIgnoreCase);
+
+            if (isSubscriptionModel)
+            {
+                if (!request.MonthlyChurnPct.HasValue)
+                    return UnprocessableEntity(ApiResponse.Error("churn_required", HttpContext.TraceIdentifier,
+                        new { message = "Enter your monthly churn rate before running the forecast." }));
+                if (request.MonthlyChurnPct.Value <= 0 || request.MonthlyChurnPct.Value > 50)
+                    return UnprocessableEntity(ApiResponse.Error("churn_out_of_range", HttpContext.TraceIdentifier,
+                        new { message = "Monthly churn must be between 0 and 50%." }));
+            }
+            else
+            {
+                if (request.MonthlyChurnPct.HasValue && (request.MonthlyChurnPct.Value < 0 || request.MonthlyChurnPct.Value > 50))
+                    return UnprocessableEntity(ApiResponse.Error("churn_out_of_range", HttpContext.TraceIdentifier,
+                        new { message = "Monthly churn must be between 0 and 50%." }));
+            }
 
             var planSessionId = plan?.Id;
             // Multi-idea STEP 2: inherit the idea anchor from the plan (if present) or request value.
@@ -367,6 +376,10 @@ namespace WebApp.Controllers
                     MonthlyGrowthPct = request.MonthlyGrowthPct,
                     Tam = canonicalTam ?? request.Tam,
                     MonthlyChurnPct = request.MonthlyChurnPct,
+                    BusinessModelType = request.BusinessModelType,
+                    AverageOrderValue = request.AverageOrderValue,
+                    TakeRatePct = request.TakeRatePct,
+                    TaxRatePct = request.TaxRatePct,
                     Provenance = request.Provenance,
                     UpdatedAt = DateTime.UtcNow
                 },
@@ -483,12 +496,16 @@ namespace WebApp.Controllers
                     Tam = session.Inputs?.Tam ?? request.Tam, // Canonical TAM from Step 3.1 preserved
                     MonthlyChurnPct = request.MonthlyChurnPct ?? session.Inputs?.MonthlyChurnPct,
                     Provenance = request.Provenance ?? session.Inputs?.Provenance ?? new Dictionary<string, string>(),
-                    BusinessModelType = session.Inputs?.BusinessModelType,
+                    BusinessModelType = request.BusinessModelType ?? session.Inputs?.BusinessModelType,
+                    AverageOrderValue = request.AverageOrderValue ?? session.Inputs?.AverageOrderValue,
+                    TakeRatePct = request.TakeRatePct ?? session.Inputs?.TakeRatePct,
+                    TaxRatePct = request.TaxRatePct ?? session.Inputs?.TaxRatePct,
                     StartingBudgetRationale = session.Inputs?.StartingBudgetRationale,
                     MarketStudyVersion = session.Inputs?.MarketStudyVersion,
                     BusinessModelVersion = session.Inputs?.BusinessModelVersion,
                     Rationales = session.Inputs?.Rationales,
                     NeedsFounderInput = session.Inputs?.NeedsFounderInput,
+                    ActiveDrivers = session.Inputs?.ActiveDrivers,
                     UpdatedAt = DateTime.UtcNow
                 };
                 session.Inputs = newInputs;
@@ -595,6 +612,14 @@ namespace WebApp.Controllers
                 if (!string.IsNullOrWhiteSpace(session.Inputs.BusinessModelType)) input["businessModelType"] = session.Inputs.BusinessModelType;
                 if (session.Inputs.AverageOrderValue.HasValue) input["averageOrderValue"] = session.Inputs.AverageOrderValue.Value;
                 if (session.Inputs.TakeRatePct.HasValue) input["takeRatePct"] = session.Inputs.TakeRatePct.Value;
+                if (session.Inputs.TaxRatePct.HasValue) input["taxRatePct"] = session.Inputs.TaxRatePct.Value;
+                if (session.Inputs.ActiveDrivers != null)
+                {
+                    var adDoc = new BsonDocument();
+                    foreach (var (k, v) in session.Inputs.ActiveDrivers)
+                        adDoc[k] = v;
+                    input["activeDrivers"] = adDoc;
+                }
             }
 
             try
@@ -622,7 +647,9 @@ namespace WebApp.Controllers
 
         private static ForecastSessionDto ToDto(ForecastSession s, bool includeVersionContent)
         {
+            var latestValid = s.GetLatestValidCompletedVersion();
             var current = s.Versions.FirstOrDefault(v => v.Version == s.CurrentVersion);
+            var activeContent = current?.Content ?? latestValid?.Content;
 
             return new ForecastSessionDto
             {
@@ -631,9 +658,11 @@ namespace WebApp.Controllers
                 BusinessPlanSessionId = s.BusinessPlanSessionId,
                 BusinessIdeaId = s.BusinessIdeaId,
                 CurrentVersion = s.CurrentVersion,
+                LatestValidVersion = latestValid?.Version,
+                HasValidCompletedForecast = latestValid != null,
                 SchemaVersion = s.SchemaVersion,
-                Inputs = s.Inputs, // the five stored generation inputs, for form pre-fill
-                Output = current?.Content is null ? null : BsonTypeMapper.MapToDotNetValue(current.Content),
+                Inputs = s.Inputs, // the stored generation inputs, for form pre-fill
+                Output = activeContent is null ? null : BsonTypeMapper.MapToDotNetValue(activeContent),
                 Versions = s.Versions
                     .OrderBy(v => v.Version)
                     .Select(v => new ForecastVersionDto

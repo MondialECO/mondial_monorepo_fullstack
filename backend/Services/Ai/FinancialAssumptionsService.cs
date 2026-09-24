@@ -263,6 +263,7 @@ namespace WebApp.Services.Ai
                     case "monthlyChurnPct": inputs.MonthlyChurnPct = val; break;
                     case "averageOrderValue": inputs.AverageOrderValue = val; break;
                     case "takeRatePct": inputs.TakeRatePct = val; break;
+                    case "taxRatePct": inputs.TaxRatePct = val; break;
                 }
             }
 
@@ -284,6 +285,8 @@ namespace WebApp.Services.Ai
                 ApplyFounderField("averageOrderValue", request.AverageOrderValue.Value);
             if (request.TakeRatePct.HasValue)
                 ApplyFounderField("takeRatePct", request.TakeRatePct.Value);
+            if (request.TaxRatePct.HasValue)
+                ApplyFounderField("taxRatePct", request.TaxRatePct.Value);
 
             if (request.ActiveDrivers != null)
             {

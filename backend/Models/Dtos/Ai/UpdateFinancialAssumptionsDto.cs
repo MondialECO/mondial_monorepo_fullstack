@@ -13,6 +13,7 @@ namespace WebApp.Models.Dtos.Ai
         public double? MonthlyChurnPct { get; set; }
         public double? AverageOrderValue { get; set; }
         public double? TakeRatePct { get; set; }
+        public double? TaxRatePct { get; set; }
         public string? StartingBudgetProvenance { get; set; }
         public Dictionary<string, string>? Provenance { get; set; }
         public Dictionary<string, bool>? ActiveDrivers { get; set; }

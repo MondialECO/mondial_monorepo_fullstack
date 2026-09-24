@@ -123,6 +123,103 @@ public class ForecastSessionLifecycleTests
         };
 
         session.HasValidCompletedForecast().Should().BeTrue();
+        session.GetLatestValidCompletedVersion().Should().NotBeNull();
+        session.GetLatestValidCompletedVersion()!.Version.Should().Be(1);
+    }
+
+    [Fact]
+    public void CompletedForecastDetection_Version3CompletedAndVersion4Failed_ReturnsTrueAndResolvesVersion3()
+    {
+        var validRevMonthly = new BsonArray();
+        var validCostMonthly = new BsonArray();
+        for (int m = 1; m <= 12; m++)
+        {
+            validRevMonthly.Add(new BsonDocument { ["month"] = m, ["amount"] = m * 1000.0 });
+            validCostMonthly.Add(new BsonDocument { ["month"] = m, ["fixedCosts"] = 2000.0, ["variableCosts"] = 500.0 });
+        }
+
+        var validContent = new BsonDocument
+        {
+            ["revenueForecast"] = new BsonDocument { ["monthly"] = validRevMonthly },
+            ["costForecast"] = new BsonDocument { ["monthly"] = validCostMonthly }
+        };
+
+        var session = new ForecastSession
+        {
+            Id = "session-v3-completed-v4-failed",
+            Status = "Failed",
+            CurrentVersion = 4,
+            Inputs = new ForecastInputs { StartingBudget = 50000 },
+            Versions = new List<ForecastVersion>
+            {
+                new() { Version = 1, Content = validContent },
+                new() { Version = 2, Content = validContent },
+                new() { Version = 3, Content = validContent },
+                new() { Version = 4, Content = null, GeneratedContent = null } // Failed run
+            }
+        };
+
+        session.HasValidCompletedForecast().Should().BeTrue();
+        var latestValid = session.GetLatestValidCompletedVersion();
+        latestValid.Should().NotBeNull();
+        latestValid!.Version.Should().Be(3);
+    }
+
+    [Fact]
+    public void CompletedForecastDetection_Version3CompletedAndVersion4Processing_ReturnsTrueAndResolvesVersion3()
+    {
+        var validRevMonthly = new BsonArray();
+        var validCostMonthly = new BsonArray();
+        for (int m = 1; m <= 12; m++)
+        {
+            validRevMonthly.Add(new BsonDocument { ["month"] = m, ["amount"] = m * 1000.0 });
+            validCostMonthly.Add(new BsonDocument { ["month"] = m, ["fixedCosts"] = 2000.0, ["variableCosts"] = 500.0 });
+        }
+
+        var validContent = new BsonDocument
+        {
+            ["revenueForecast"] = new BsonDocument { ["monthly"] = validRevMonthly },
+            ["costForecast"] = new BsonDocument { ["monthly"] = validCostMonthly }
+        };
+
+        var session = new ForecastSession
+        {
+            Id = "session-v3-completed-v4-processing",
+            Status = "Processing",
+            CurrentVersion = 4,
+            Inputs = new ForecastInputs { StartingBudget = 50000 },
+            Versions = new List<ForecastVersion>
+            {
+                new() { Version = 1, Content = validContent },
+                new() { Version = 2, Content = validContent },
+                new() { Version = 3, Content = validContent },
+                new() { Version = 4, Content = null } // Currently in flight
+            }
+        };
+
+        session.HasValidCompletedForecast().Should().BeTrue();
+        var latestValid = session.GetLatestValidCompletedVersion();
+        latestValid.Should().NotBeNull();
+        latestValid!.Version.Should().Be(3);
+    }
+
+    [Fact]
+    public void CompletedForecastDetection_OnlyFailedVersion1_ReturnsFalseAndResolvesNull()
+    {
+        var session = new ForecastSession
+        {
+            Id = "session-v1-failed",
+            Status = "Failed",
+            CurrentVersion = 1,
+            Inputs = new ForecastInputs { StartingBudget = 50000 },
+            Versions = new List<ForecastVersion>
+            {
+                new() { Version = 1, Content = null, GeneratedContent = null }
+            }
+        };
+
+        session.HasValidCompletedForecast().Should().BeFalse();
+        session.GetLatestValidCompletedVersion().Should().BeNull();
     }
 
     #endregion
