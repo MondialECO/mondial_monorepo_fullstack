@@ -58,14 +58,15 @@ namespace WebApp.Services.Implementations
                 {
                     NeedsAnalysis = null,
                     UpdateAvailable = false,
-                    ChangedSources = new List<string>()
+                    ChangedSources = new List<string>(),
+                    IdeaVersion = journey.IdeaVersion
                 };
             }
 
             var context = await BuildContextAsync(userId, journey, ideaId);
             var (isStale, changedSources) = DetectStaleness(analysis.SourceVersions, context.CurrentSourceVersions);
 
-            return BuildResponse(analysis, isStale, changedSources);
+            return BuildResponse(analysis, isStale, changedSources, journey.IdeaVersion);
         }
 
         public async Task<NeedsAnalysisResponse> GenerateNeedsAnalysisAsync(string userId, string? ideaId = null)
@@ -78,7 +79,7 @@ namespace WebApp.Services.Implementations
             {
                 var ctx = await BuildContextAsync(userId, journey, ideaId);
                 var (isStale, changed) = DetectStaleness(existing.SourceVersions, ctx.CurrentSourceVersions);
-                return BuildResponse(existing, isStale, changed);
+                return BuildResponse(existing, isStale, changed, journey.IdeaVersion);
             }
 
             // Enforce domain gates (must have completed Phase 3, HumainX, and non-stale snapshot & roadmap)
@@ -88,9 +89,9 @@ namespace WebApp.Services.Implementations
             var newAnalysis = ExecuteDerivation(context, existingAnalysis: null);
 
             // Single source of truth: Persisted strictly on CreatorJourney
-            await _journeys.SetPhase4NeedsAnalysisAsync(userId, newAnalysis, ideaId);
+            var savedJourney = await _journeys.SetPhase4NeedsAnalysisAsync(userId, newAnalysis, ideaId);
 
-            return BuildResponse(newAnalysis, updateAvailable: false, changedSources: new List<string>());
+            return BuildResponse(newAnalysis, updateAvailable: false, changedSources: new List<string>(), savedJourney?.IdeaVersion ?? journey.IdeaVersion);
         }
 
         public async Task<NeedsAnalysisResponse> RefreshNeedsAnalysisAsync(string userId, string? ideaId = null)
@@ -104,10 +105,30 @@ namespace WebApp.Services.Implementations
             var refreshedAnalysis = ExecuteDerivation(context, existing);
 
             // Single source of truth: Persisted strictly on CreatorJourney
-            await _journeys.SetPhase4NeedsAnalysisAsync(userId, refreshedAnalysis, ideaId);
+            var savedJourney = await _journeys.SetPhase4NeedsAnalysisAsync(userId, refreshedAnalysis, ideaId);
 
-            return BuildResponse(refreshedAnalysis, updateAvailable: false, changedSources: new List<string>());
+            return BuildResponse(refreshedAnalysis, updateAvailable: false, changedSources: new List<string>(), savedJourney?.IdeaVersion ?? journey.IdeaVersion);
         }
+
+        public async Task<NeedsAnalysisResponse> KeepCurrentNeedsAsync(string userId, string? ideaId = null)
+        {
+            var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+            var analysis = journey.Phase4Data?.NeedsAnalysis;
+
+            if (analysis == null)
+            {
+                throw new InvalidOperationException("Needs analysis has not been generated yet.");
+            }
+
+            var context = await BuildContextAsync(userId, journey, ideaId);
+            analysis.SourceVersions = context.CurrentSourceVersions;
+            analysis.UpdatedAt = DateTime.UtcNow;
+
+            var savedJourney = await _journeys.SetPhase4NeedsAnalysisAsync(userId, analysis, ideaId);
+
+            return BuildResponse(analysis, updateAvailable: false, changedSources: new List<string>(), savedJourney?.IdeaVersion ?? journey.IdeaVersion);
+        }
+
 
         public async Task<NeedsAnalysisResponse> UpdateNeedStateAsync(string userId, string needKey, UpdateNeedStateRequest request)
         {
@@ -150,6 +171,10 @@ namespace WebApp.Services.Implementations
             {
                 targetNeed.CustomTiming = request.CustomTiming;
             }
+            if (!string.IsNullOrWhiteSpace(request?.FounderInformation))
+            {
+                targetNeed.FounderInformation = request.FounderInformation.Trim();
+            }
 
             targetNeed.FounderEdited = true;
             targetNeed.UpdatedAt = DateTime.UtcNow;
@@ -160,12 +185,12 @@ namespace WebApp.Services.Implementations
             RebalanceActiveAndCovered(analysis);
             UpdateMetricsAndSummary(analysis);
 
-            await _journeys.SetPhase4NeedsAnalysisAsync(userId, analysis, request?.IdeaId);
+            var savedJourney = await _journeys.SetPhase4NeedsAnalysisAsync(userId, analysis, request?.IdeaId);
 
             var context = await BuildContextAsync(userId, journey, request?.IdeaId);
             var (isStale, changed) = DetectStaleness(analysis.SourceVersions, context.CurrentSourceVersions);
 
-            return BuildResponse(analysis, isStale, changed);
+            return BuildResponse(analysis, isStale, changed, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
         }
 
         private async Task EnforceGateAsync(string userId, string? ideaId)
@@ -394,7 +419,19 @@ namespace WebApp.Services.Implementations
                             CapabilityRequired = reqTitle,
                             RelatedSnapshotItemKeys = new List<string> { item.Key },
                             Source = new List<string> { "Construction Snapshot", "HumainX Profile" },
-                            SourceReference = item.SourceReference ?? new List<string>()
+                            SourceReference = item.SourceReference ?? new List<string>(),
+
+                            WhatIsNeeded = item.Reason,
+                            WhyThisApplies = isCovered
+                                ? $"Covered by your declared profile capability or founding team."
+                                : $"Your construction snapshot identified that {reqTitle} capability is not fully covered by the founding team.",
+                            WhatYouAlreadyHave = isCovered
+                                ? (isTeamCovered ? "Team member assigned with relevant background." : $"Matched capability '{reqTitle}' in your founder profile.")
+                                : "No confirmed founding team member or verified profile capability for this discipline.",
+                            WhatIsStillMissing = isCovered
+                                ? "None identified; ready for execution."
+                                : $"Dedicated {reqTitle} talent, advisor, or service partner.",
+                            WhatWouldSatisfy = $"Documented qualification, verified founder experience, or engaged specialist covering {reqTitle}."
                         };
                         rawCandidates.Add(candidate);
                     }
@@ -446,7 +483,17 @@ namespace WebApp.Services.Implementations
                             FounderState = task.Status == RoadmapTaskStatus.Done ? NeedFounderState.ClaimedSatisfied : NeedFounderState.Unreviewed,
                             Blocking = task.Blocking && task.Status != RoadmapTaskStatus.Done,
                             RelatedRoadmapTaskKeys = new List<string> { task.Key },
-                            Source = new List<string> { "Operational Roadmap" }
+                            Source = new List<string> { "Operational Roadmap" },
+
+                            WhatIsNeeded = task.Description,
+                            WhyThisApplies = !string.IsNullOrWhiteSpace(task.Why) ? task.Why : $"Required by operational roadmap task in stage {task.Stage}.",
+                            WhatYouAlreadyHave = task.Status == RoadmapTaskStatus.Done
+                                ? "Task completed on operational roadmap."
+                                : $"Scheduled in roadmap stage: {task.Stage}.",
+                            WhatIsStillMissing = task.Status == RoadmapTaskStatus.Done
+                                ? "None; prerequisite deliverable completed."
+                                : $"Completion and verification of task '{task.Title}'.",
+                            WhatWouldSatisfy = $"Execution of '{task.Title}' with required deliverable recorded."
                         };
                         rawCandidates.Add(candidate);
                     }
@@ -472,7 +519,17 @@ namespace WebApp.Services.Implementations
                 SystemStatus = isAcctCovered ? NeedSystemStatus.Satisfied : NeedSystemStatus.Identified,
                 FounderState = isAcctCovered ? NeedFounderState.ClaimedSatisfied : NeedFounderState.Unreviewed,
                 Blocking = false,
-                Source = new List<string> { "Legal Assessment", "Formation & Team" }
+                Source = new List<string> { "Legal Assessment", "Formation & Team" },
+
+                WhatIsNeeded = "Statutory accounting oversight, corporate tax declaration, and financial compliance structure.",
+                WhyThisApplies = "French corporate law requires chartered accounting supervision for statutory financial statements and tax declarations.",
+                WhatYouAlreadyHave = isAcctCovered
+                    ? "Declared finance and accounting competency in founder profile."
+                    : "No certified accountant currently designated for corporate books.",
+                WhatIsStillMissing = isAcctCovered
+                    ? "Formal engagement letter or mandate."
+                    : "Engagement of an accredited expert-comptable or authorized corporate accountant.",
+                WhatWouldSatisfy = "Signed engagement letter with an accredited chartered accountant or authorized accounting firm."
             });
 
             // Corporate Share Capital Deposit (FR-CORP-001)
@@ -489,7 +546,13 @@ namespace WebApp.Services.Implementations
                 SystemStatus = NeedSystemStatus.Identified,
                 FounderState = NeedFounderState.Unreviewed,
                 Blocking = true,
-                Source = new List<string> { "Legal Assessment (FR-2026.1)" }
+                Source = new List<string> { "Legal Assessment (FR-2026.1)" },
+
+                WhatIsNeeded = "Escrow deposit of share capital (capital social) and official certificate of deposit.",
+                WhyThisApplies = "Mandatory statutory prerequisite under French Commercial Code to complete corporate registration on the RNE.",
+                WhatYouAlreadyHave = "Entity formation structure and capital distribution defined in Company Formation.",
+                WhatIsStillMissing = "Escrow account opening and official bank issuance of the capital deposit certificate.",
+                WhatWouldSatisfy = "Attestation de dépôt des fonds issued by an authorized bank, notary, or Caisse des Dépôts."
             });
 
             // INPI Trademark Filing (FR-IP-001)
@@ -506,7 +569,13 @@ namespace WebApp.Services.Implementations
                 SystemStatus = NeedSystemStatus.Identified,
                 FounderState = NeedFounderState.Unreviewed,
                 Blocking = false,
-                Source = new List<string> { "Legal Assessment (FR-IP-001)" }
+                Source = new List<string> { "Legal Assessment (FR-IP-001)" },
+
+                WhatIsNeeded = "National or EU trademark filing covering venture brand identity and distinctive classes.",
+                WhyThisApplies = "Secures statutory exclusive IP protection for the venture name and brand lockups across France and the EU.",
+                WhatYouAlreadyHave = "Brand identity guidelines and commercial trade name defined in venture materials.",
+                WhatIsStillMissing = "Prior art clearance search and official filing submission to INPI.",
+                WhatWouldSatisfy = "Official filing receipt (numéro de dépôt) and publication in the BOPI from INPI."
             });
 
             // 4. DERIVE FROM FINANCIAL FORECAST (Phase 3)
@@ -531,7 +600,17 @@ namespace WebApp.Services.Implementations
                 SystemStatus = NeedSystemStatus.Identified,
                 FounderState = NeedFounderState.Unreviewed,
                 Blocking = true,
-                Source = new List<string> { "Financial Forecast" }
+                Source = new List<string> { "Financial Forecast" },
+
+                WhatIsNeeded = launchBudget.HasValue && launchBudget.Value > 0
+                    ? $"Initial launch capital of approximately {launchBudget.Value:C0} to fund runway and operational setup."
+                    : "Initial launch capital to fund operational runway before self-sufficiency.",
+                WhyThisApplies = "Your financial forecast projects capital requirements needed before operational break-even.",
+                WhatYouAlreadyHave = launchBudget.HasValue
+                    ? "Detailed financial forecast model with operational expense breakdown."
+                    : "Preliminary financial model.",
+                WhatIsStillMissing = "Secured bank account balances, confirmed grant/loan agreements, or committed equity investment.",
+                WhatWouldSatisfy = "Evidence of committed capital, verified bank deposit, or signed funding agreement meeting the forecast reserve."
             });
 
             // 5. DERIVE FROM BUSINESS MODEL (Technology / Infrastructure)
@@ -550,7 +629,13 @@ namespace WebApp.Services.Implementations
                     SystemStatus = NeedSystemStatus.Identified,
                     FounderState = NeedFounderState.Unreviewed,
                     Blocking = false,
-                    Source = new List<string> { "Business Model" }
+                    Source = new List<string> { "Business Model" },
+
+                    WhatIsNeeded = "Compliant Payment Service Provider (PSP) integration with merchant account and webhook automation.",
+                    WhyThisApplies = "Your business model specifies online revenue streams requiring secure, compliant payment processing.",
+                    WhatYouAlreadyHave = "Revenue model and pricing tiers defined in business model.",
+                    WhatIsStillMissing = "Merchant account registration, KYC verification, and payment gateway technical integration.",
+                    WhatWouldSatisfy = "Active verified merchant account successfully processing test or live transactions."
                 });
             }
 
@@ -575,6 +660,7 @@ namespace WebApp.Services.Implementations
                         need.CustomBudget = existingNeed.CustomBudget;
                         need.CustomTiming = existingNeed.CustomTiming;
                         need.FounderEdited = existingNeed.FounderEdited;
+                        need.FounderInformation = existingNeed.FounderInformation;
 
                         // Authoritative check: do not reopen satisfied if founder confirmed it or system says satisfied
                         if (existingNeed.SystemStatus == NeedSystemStatus.Satisfied && need.SystemStatus != NeedSystemStatus.Satisfied)
@@ -698,7 +784,7 @@ namespace WebApp.Services.Implementations
             analysis.Summary = $"Your venture has {analysis.TotalActiveNeeds} active requirements identified across {analysis.CountsByCategory.Count} operational categories{criticalSnippet}. {analysis.SatisfiedCount} foundational capabilities are already covered.";
         }
 
-        private static NeedsAnalysisResponse BuildResponse(NeedsAnalysis analysis, bool updateAvailable, List<string> changedSources)
+        private static NeedsAnalysisResponse BuildResponse(NeedsAnalysis analysis, bool updateAvailable, List<string> changedSources, long ideaVersion = 0)
         {
             return new NeedsAnalysisResponse
             {
@@ -708,7 +794,8 @@ namespace WebApp.Services.Implementations
                 CriticalNeedCount = analysis.CriticalNeedCount,
                 HighPriorityCount = analysis.HighPriorityCount,
                 TotalActiveNeeds = analysis.TotalActiveNeeds,
-                SatisfiedCount = analysis.SatisfiedCount
+                SatisfiedCount = analysis.SatisfiedCount,
+                IdeaVersion = ideaVersion
             };
         }
 

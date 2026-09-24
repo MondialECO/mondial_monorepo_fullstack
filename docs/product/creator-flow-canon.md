@@ -1196,11 +1196,83 @@ CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
 
 ### 6.3 Stage 4.3 — Needs Analysis & Requirements (`NeedsAnalysisView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/needs`
-- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/needs`, `POST /api/creator/phase4/needs/generate`, `POST /api/creator/phase4/needs/refresh`, `PATCH /api/creator/phase4/needs/{needKey}`).
-- **Services:** `NeedsAnalysisService`.
-- **SystemStatus:** `Identified`, `NeedsReview`, `Satisfied`, `NotRequired`.
-- **FounderState:** `Unreviewed`, `Confirmed`, `InProgress`, `Deferred`, `ClaimedSatisfied`.
-- **Core Invariant:** Active Need ≠ Covered Need. `TrainingCandidate` is reserved exclusively for formal/mandatory training needs.
+- **Figma Reference & Layout:** 100% aligned with approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11163`, Requirements list `57221:11197`, Expanded requirement `57221:11282`).
+  - Max content width: `1120px` (`max-w-[1120px] mx-auto`).
+  - Section gaps: `24px` (`space-y-6`), Requirement card gaps: `12px` (`space-y-3`).
+  - Requirement cards: White/card background, subtle borders, `16px` corners (`rounded-2xl`), `20px` row padding (`p-5`).
+  - Category icon containers: `32px` with `8px` corners (`w-8 h-8 rounded-lg flex items-center justify-center shrink-0`).
+  - Expanded inset panels: `12px` corners (`rounded-xl p-5 bg-muted/20 border border-border/70`).
+  - Responsive across `1440px` and `1920px` desktop viewports down to narrow mobile (`375px`) with complete dark/light theme token compliance (`globals.css`).
+- **Controller & Services:**
+  - Controller: `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/needs`, `POST /api/creator/phase4/needs/generate`, `POST /api/creator/phase4/needs/refresh`, `POST /api/creator/phase4/needs/keep-current`, `PATCH /api/creator/phase4/needs/{needKey}`, `PUT /api/creator/phase4/needs/{needKey}/state`).
+  - Services: `NeedsAnalysisService`, `CreatorJourneyService`, `ICapabilityMatcher`, `IConstructionSnapshotService`, `IOperationalRoadmapService`.
+- **Page-Level Header (Canonical Structure):**
+  - Rendered at top of content container:
+    - *Eyebrow:* `"PHASE 4 · STEP 4.3"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase`)
+    - *Title:* `"Needs & Requirements"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`)
+    - *Supporting text:* `"Review what your project needs, what you already have, and what remains to be covered."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`)
+- **Update Available Notice:**
+  - Compact warm-tinted alert banner rendered conditionally when upstream project information changes (`updateAvailable === true`):
+    - Title: `"Update available:"` (fixes Figma typo `"Updat available"`).
+    - Copy: `"Changed project information may affect these needs. Updates detected in: {sources}."`
+    - Action 1: `"Review changes"` — opens accessible modal exposing upstream diff and explicit refresh action (`POST /api/creator/phase4/needs/refresh`).
+    - Action 2: `"Keep current version"` — persists source version acknowledgement to `POST /api/creator/phase4/needs/keep-current` so the banner clears permanently until future upstream edits occur.
+  - Re-generation and refresh strictly preserve all founder decisions, notes, and submitted capabilities by stable requirement key (`Key`).
+- **Compact Summary Surface (Single Horizontal Card):**
+  - Left: Total authoritative requirements count (e.g. `6 Requirements`).
+  - Compact badges: `● {count} Satisfied` (emerald), `● {count} Identified` (muted).
+  - Supporting copy: *"Confirming a need records your decision. It does not mean the need has been met."*
+  - Subtle vertical divider on desktop.
+  - Right: Awaiting review counter (e.g. `6 needs are awaiting your review` in warm amber, or `All needs reviewed` with green checkmark when 0).
+  - All metrics computed strictly from authoritative requirement items.
+- **Requirement Accordion List (Full-Width Compact Rows):**
+  - Desktop row anatomy:
+    - 32px Category Icon container (Sky blue for Skills/Team, Purple for Services, Amber for Legal & Admin, Green for Finance).
+    - Uppercase small category label (`SKILLS`, `SERVICES`, `LEGAL & ADMIN`, `FINANCE`).
+    - Requirement title (e.g. `"Capability: Financial Advisor Capability"`, `"Statutory Share Capital Deposit"`).
+    - Priority tag (`· Critical priority`, `· High priority`, `· Medium priority`).
+    - Fulfilment status badge (`● Identified`, `● Satisfied`).
+    - Decision badge (`Confirmed`, `Awaiting your review`, `Deferred`).
+    - Inline action buttons on awaiting-review rows: `"Confirm need"` (card background with border), `"Defer for now"` (subtle text).
+    - Dedicated accordion toggle chevron with accessible keyboard controls (`aria-expanded`, `aria-controls`).
+  - Long titles and badges wrap gracefully without overlapping or clipping across all viewports.
+- **Expanded Requirement Breakdown (5-Section Inset Panel):**
+  - Two desktop columns:
+    - Left column: `WHAT IS NEEDED`, `WHY THIS APPLIES`.
+    - Right column: `WHAT YOU ALREADY HAVE`, `WHAT IS STILL MISSING`.
+  - Full-width lower section with subtle hairline divider: `WHAT WOULD SATISFY THIS NEED`.
+  - All content is derived dynamically from real project facts and diagnostic models (Snapshot, Roadmap, Legal Assessment, Forecast, Business Model). No hardcoded sample claims.
+  - **Connected Work:** Lists linked operational roadmap tasks as compact bordered chips showing real task title, status, and navigation to the Roadmap task preserving `ideaId`.
+  - **Built From (Provenance):** Displays genuine source origin chips (e.g. `Construction Snapshot`, `HumainX Profile`, `Company Formation`, `Financial Forecast`) paired with working `View source ↗` navigation.
+  - **Founder Information Panel:**
+    - Header: `"Provide information about an existing capability, resource, or asset"`.
+    - Textarea with contextual placeholder.
+    - Actions: `"+ Add what I have"` (primary submit), `"Defer for now"`.
+    - Footnote copy: *"Founder-provided details will be assessed against this requirement's criteria. Adding details records your information; it does not automatically mark the need Satisfied."*
+    - Persisted via `PUT /api/creator/phase4/needs/{needKey}/state` with non-destructive reload preservation. Rejects blank submissions.
+- **Domain Semantics & Decision Independence:**
+  - **Decision ≠ Fulfilment:**
+    - `Confirm need` (`FounderState = Confirmed`) records acceptance/relevance by the founder. It does NOT mark the requirement `Satisfied`.
+    - `Defer for now` (`FounderState = Deferred`) records postponement.
+    - Adding founder information records evidence in `FounderInformation`. It does NOT auto-satisfy the need.
+    - `Satisfied` requires authoritative evaluation against the requirement's criteria.
+  - Legal assessments or formation plans do not prove statutory company registration is complete.
+  - Verified founder capabilities inform needs dynamically without redundant duplicates.
+- **API, Concurrency & State Ownership:**
+  - Persisted strictly to `CreatorIdea.Phase4Data.NeedsAnalysis` via `SetPhase4NeedsAnalysisAsync` with `WriteIdeaAsync`.
+  - Enforces `ideaId` validation, `expectedVersion` matching, `HttpContext.Items["CreatorIdeaVersion"]`, and `X-Creator-Idea-Version` response header.
+  - Returns authoritative `IdeaVersion` on all responses.
+  - HTTP 409 Conflict handling with non-destructive state reload and retry.
+- **Footer Navigation (4.2 $\to$ 4.3 $\to$ 4.4):**
+  - Thin top divider.
+  - Left: `"Back to Roadmap"` linking to `/dashboard/creator/phase-4/roadmap?ideaId={ideaId}`.
+  - Supporting copy: `"Your reviewed needs will help shape the next step."`
+  - Primary pill button: `"Continue to Skills & Training →"` linking to canonical Step 4.4 `/dashboard/creator/phase-4/skills?ideaId={ideaId}`.
+- **Verification & Acceptance Evidence:**
+  - *Frontend Unit Tests:* 11 / 11 tests pass in `src/__tests__/creator/phase4-needs-analysis.test.tsx` (summary counts, confirm inline action, defer inline action, 2-column analytical breakdown, founder information submission, update available banner, footer navigation).
+  - *Backend Service Tests:* 16 / 16 tests pass in `CreatorPhase4NeedsTests.cs` (including `Founder_Decision_And_Information_Do_Not_Automatically_Satisfy_Need` and `Keep_Current_Preserves_Version_And_Clears_Update_Available`).
+  - *TypeScript & Solution Build:* `npx tsc --noEmit` PASS (0 errors); `dotnet build backend/WebApp.csproj` PASS (0 errors).
+  - *Playwright Browser E2E Test (`verify_browser_needs.mjs`):* Live execution against running application verified real project data (6 requirements, 0 satisfied, 6 identified), update available banner detection, review modal display, keep current version POST (HTTP 200), confirm need PATCH (HTTP 200), expanded 2-column breakdown, founder information submission PATCH (HTTP 200), persistence across page reload, and responsive rendering at 1440px desktop, 1920px desktop, and 375px mobile viewports.
 
 ### 6.4 Stage 4.4 — Skills & Training Plan (`SkillsPlanView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/skills`
@@ -1538,8 +1610,28 @@ RC1 Freeze
   - Live Browser & API Verification: 10 persisted tasks across stages verified via Playwright E2E; DOM tree walker confirmed 0 literal "svg" text nodes.
   - User Acceptance: Formally confirmed by user ("The user has confirmed the current result works correctly").
 
+**2026-09-25 — Creator Phase 4.3 Needs & Requirements: Exact Figma 57221-11163 Alignment, Analytical Breakdown, Domain Semantics, Keep-Current Lifecycle & Concurrency Delivery.**
+- **Figma Reference & Layout (§6.3):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11163`, Requirements list `57221:11197`, Expanded requirement `57221:11282`). 1120px max content width, 24px section gaps, 12px requirement card gaps, 32px category icon containers with 8px corners, 12px expanded inset panels, responsive 1440px/1920px desktop and 375px mobile viewports with complete dark/light theme token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/needs`
+- **Compact Page-Level Header (§6.3):** Eyebrow `"PHASE 4 · STEP 4.3"`, Title `"Needs & Requirements"`, Subtitle `"Review what your project needs, what you already have, and what remains to be covered."`.
+- **Horizontal Summary Card:** Single card layout reporting total count, emerald `Satisfied` badge, muted `Identified` badge, authoritative copy (*"Confirming a need records your decision. It does not mean the need has been met."*), subtle vertical divider, and dynamic `Awaiting your review` status badge.
+- **Update Available Notice & Modal:** Warm-tinted alert banner with `"Review changes"` modal and `"Keep current version"` action wired to `POST /api/creator/phase4/needs/keep-current` to dismiss staleness across sessions. Re-generation and refresh strictly preserve founder decisions and notes by stable requirement keys.
+- **Full-Width Accordion Cards with Inline Actions:** Inline `"Confirm need"` and `"Defer for now"` actions on awaiting-review items; fulfillment badges (`Identified` / `Satisfied`) and decision badges (`Confirmed`, `Deferred`, `Awaiting your review`).
+- **5-Section Analytical Breakdown:** Two-column desktop grid for `WHAT IS NEEDED`, `WHY THIS APPLIES`, `WHAT YOU ALREADY HAVE`, `WHAT IS STILL MISSING`, and full-width `WHAT WOULD SATISFY THIS NEED`. Derived from real project data (Snapshot, Roadmap, Legal Assessment, Forecast, Business Model, HumainX profile).
+- **Connected Work & Provenance:** Connected operational roadmap tasks with deep links; provenance chips (`Construction Snapshot`, `Financial Forecast`, etc.) with functional `View source ↗` navigation.
+- **Founder Information Panel:** Allows recording existing assets, credentials, or resources (`founderInformation`) via `PUT /api/creator/phase4/needs/{needKey}/state` without auto-satisfying the requirement.
+- **Domain Semantics & Decision Independence:** Strict decoupling between decision (`Confirmed`/`Deferred`) and fulfillment (`Satisfied`). Confirmed decisions and founder notes are preserved across refreshes by stable requirement keys.
+- **Concurrency & Concurrency Recovery:** Scoped to `CreatorIdea` via `WriteIdeaAsync`, enforcing `expectedVersion` matching, `X-Creator-Idea-Version` response headers, and non-destructive HTTP 409 conflict recovery.
+- **Navigation Flow:** Step 4.2 Operational Roadmap $\to$ Step 4.3 Needs & Requirements $\to$ Step 4.4 Skills & Training Plan.
+- **Zero Static/Mock Data Guarantee:** All rendered requirements, counts, categories, and analytical breakdowns are 100% dynamically derived from active MongoDB database records with zero hardcoded sample cards or fake fallback lists.
+- **Verification Evidence:**
+  - Automated Unit Tests: 16/16 PASS (`CreatorPhase4NeedsTests.cs`); Frontend tests: 11/11 PASS (`phase4-needs-analysis.test.tsx`).
+  - Browser E2E & Visual Verification: Playwright script `verify_browser_needs.mjs` executed cleanly against live environment; generated screenshots for 1440px initial, 1440px expanded, 1920px desktop, 375px mobile, and review modal.
+  - TypeScript & Solution Build: `npx tsc --noEmit` 0 errors; `dotnet build backend/WebApp.csproj` 0 errors.
+
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
+
 
 

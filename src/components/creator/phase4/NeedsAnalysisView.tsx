@@ -8,9 +8,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   ArrowRight,
+  ArrowLeft,
   RefreshCw,
   Sparkles,
-  ChevronRight,
   ChevronDown,
   Shield,
   DollarSign,
@@ -21,10 +21,11 @@ import {
   Megaphone,
   Compass,
   Check,
-  Edit3,
-  BookOpen,
-  Info,
+  Plus,
   ExternalLink,
+  Tag,
+  Rocket,
+  Circle,
 } from 'lucide-react';
 import type {
   NeedsAnalysis,
@@ -49,33 +50,135 @@ interface NeedsAnalysisViewProps {
   highCount: number;
   satisfiedCount: number;
   isLoading: boolean;
+  isGenerating?: boolean;
+  error?: string | null;
   gateError?: { code: string; message: string } | null;
   onGenerate: () => Promise<void>;
   onRefresh: () => Promise<void>;
   onUpdateNeedState: (needKey: string, req: UpdateNeedStateRequest) => Promise<void>;
+  onKeepCurrent: () => Promise<void>;
+  onClearError?: () => void;
 }
 
-const TIMING_LABELS: Record<NeedTiming, string> = {
-  Now: 'Immediate / Now',
-  Next30Days: 'Next 30 Days',
-  Days30To60: '30–60 Days',
-  Days60To90: '60–90 Days',
-  BeforeLaunch: 'Before Launch',
-  PostLaunch: 'Post-Launch',
+interface CategoryConfig {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconBg: string;
+  iconColor: string;
+}
+
+const CATEGORY_MAP: Record<string, CategoryConfig> = {
+  Brand: {
+    label: 'BRAND',
+    icon: Megaphone,
+    iconBg: 'bg-purple-500/10 dark:bg-purple-900/20',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+  },
+  Marketing: {
+    label: 'BRAND',
+    icon: Megaphone,
+    iconBg: 'bg-purple-500/10 dark:bg-purple-900/20',
+    iconColor: 'text-purple-600 dark:text-purple-400',
+  },
+  Finance: {
+    label: 'FINANCE',
+    icon: DollarSign,
+    iconBg: 'bg-emerald-500/10 dark:bg-emerald-900/20',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  Market: {
+    label: 'MARKET',
+    icon: Compass,
+    iconBg: 'bg-pink-500/10 dark:bg-pink-900/20',
+    iconColor: 'text-pink-600 dark:text-pink-400',
+  },
+  Sales: {
+    label: 'MARKET',
+    icon: Compass,
+    iconBg: 'bg-pink-500/10 dark:bg-pink-900/20',
+    iconColor: 'text-pink-600 dark:text-pink-400',
+  },
+  'Legal & Administration': {
+    label: 'LEGAL & ADMIN',
+    icon: Scale,
+    iconBg: 'bg-amber-500/10 dark:bg-amber-900/20',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+  },
+  LegalAdmin: {
+    label: 'LEGAL & ADMIN',
+    icon: Scale,
+    iconBg: 'bg-amber-500/10 dark:bg-amber-900/20',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+  },
+  Skills: {
+    label: 'SKILLS',
+    icon: Users,
+    iconBg: 'bg-sky-500/10 dark:bg-sky-900/20',
+    iconColor: 'text-sky-600 dark:text-sky-400',
+  },
+  Team: {
+    label: 'SKILLS',
+    icon: Users,
+    iconBg: 'bg-sky-500/10 dark:bg-sky-900/20',
+    iconColor: 'text-sky-600 dark:text-sky-400',
+  },
+  Pricing: {
+    label: 'PRICING',
+    icon: Tag,
+    iconBg: 'bg-teal-500/10 dark:bg-teal-900/20',
+    iconColor: 'text-teal-600 dark:text-teal-400',
+  },
+  'Launch Assets': {
+    label: 'LAUNCH ASSETS',
+    icon: Rocket,
+    iconBg: 'bg-indigo-500/10 dark:bg-indigo-900/20',
+    iconColor: 'text-indigo-600 dark:text-indigo-400',
+  },
+  Operations: {
+    label: 'OPERATIONS',
+    icon: Layers,
+    iconBg: 'bg-blue-500/10 dark:bg-blue-900/20',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+  },
+  Technology: {
+    label: 'TECHNOLOGY',
+    icon: Cpu,
+    iconBg: 'bg-cyan-500/10 dark:bg-cyan-900/20',
+    iconColor: 'text-cyan-600 dark:text-cyan-400',
+  },
+  Services: {
+    label: 'SERVICES',
+    icon: Briefcase,
+    iconBg: 'bg-violet-500/10 dark:bg-violet-900/20',
+    iconColor: 'text-violet-600 dark:text-violet-400',
+  },
 };
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  Team: <Users className="w-4 h-4 text-sky-400" />,
-  Services: <Briefcase className="w-4 h-4 text-indigo-400" />,
-  Technology: <Cpu className="w-4 h-4 text-cyan-400" />,
-  Finance: <DollarSign className="w-4 h-4 text-emerald-400" />,
-  LegalAdmin: <Scale className="w-4 h-4 text-amber-400" />,
-  Marketing: <Megaphone className="w-4 h-4 text-purple-400" />,
-  Sales: <Compass className="w-4 h-4 text-pink-400" />,
-  Operations: <Layers className="w-4 h-4 text-blue-400" />,
-  Training: <BookOpen className="w-4 h-4 text-orange-400" />,
-  Infrastructure: <Cpu className="w-4 h-4 text-teal-400" />,
-};
+function getCategoryConfig(category: string): CategoryConfig {
+  return (
+    CATEGORY_MAP[category] || {
+      label: category.toUpperCase(),
+      icon: Layers,
+      iconBg: 'bg-muted',
+      iconColor: 'text-muted-foreground',
+    }
+  );
+}
+
+function getPriorityLabel(priority: NeedPriority | string): string {
+  switch (priority) {
+    case 'Critical':
+      return 'Critical priority';
+    case 'High':
+      return 'High priority';
+    case 'Medium':
+      return 'Medium priority';
+    case 'Low':
+      return 'Low priority';
+    default:
+      return `${priority} priority`;
+  }
+}
 
 export function NeedsAnalysisView({
   ideaId,
@@ -88,554 +191,726 @@ export function NeedsAnalysisView({
   highCount,
   satisfiedCount,
   isLoading,
+  isGenerating = false,
+  error,
   gateError,
   onGenerate,
   onRefresh,
   onUpdateNeedState,
+  onKeepCurrent,
+  onClearError,
 }: NeedsAnalysisViewProps) {
   const [staleDismissed, setStaleDismissed] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [showCovered, setShowCovered] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
   const [updatingNeedKey, setUpdatingNeedKey] = useState<string | null>(null);
 
-  const handleFounderStateChange = async (needKey: string, state: NeedFounderState) => {
+  // Combine ActiveNeeds and CoveredRequirements into one authoritative list
+  const allNeeds: CreatorNeed[] = React.useMemo(() => {
+    if (!analysis) return [];
+    const active = analysis.activeNeeds || [];
+    const covered = analysis.coveredRequirements || [];
+    return [...active, ...covered];
+  }, [analysis]);
+
+  // Expand the first need by default if none expanded
+  React.useEffect(() => {
+    if (allNeeds.length > 0 && expandedKeys.size === 0) {
+      setExpandedKeys(new Set([allNeeds[0].key]));
+    }
+  }, [allNeeds]);
+
+  const toggleExpand = (key: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const handleConfirmNeed = async (needKey: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     try {
       setUpdatingNeedKey(needKey);
-      await onUpdateNeedState(needKey, { founderState: state });
+      await onUpdateNeedState(needKey, { founderState: 'Confirmed' });
     } finally {
       setUpdatingNeedKey(null);
     }
   };
 
-  const handleNotesSave = async (needKey: string, notes: string) => {
+  const handleDeferNeed = async (needKey: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     try {
       setUpdatingNeedKey(needKey);
-      await onUpdateNeedState(needKey, { notes });
+      await onUpdateNeedState(needKey, { founderState: 'Deferred' });
     } finally {
       setUpdatingNeedKey(null);
     }
   };
 
-  // 1. Gate Error State (Structured prerequisite errors)
+  const handleSaveFounderInfo = async (needKey: string, infoText: string) => {
+    try {
+      setUpdatingNeedKey(needKey);
+      await onUpdateNeedState(needKey, { founderInformation: infoText.trim() });
+    } finally {
+      setUpdatingNeedKey(null);
+    }
+  };
+
+  // Compute metrics from actual authoritative list
+  const actualSatisfiedCount = allNeeds.filter(
+    (n) => n.systemStatus === 'Satisfied' || n.founderState === 'ClaimedSatisfied'
+  ).length;
+
+  const actualIdentifiedCount = allNeeds.filter(
+    (n) => n.systemStatus !== 'Satisfied' && n.founderState !== 'ClaimedSatisfied'
+  ).length;
+
+  const awaitingReviewCount = allNeeds.filter(
+    (n) => n.founderState === 'Unreviewed'
+  ).length;
+
+  // 1. Prerequisite / Gate Error State
   if (gateError) {
-    const isSnapshotStale = gateError.code === 'SNAPSHOT_REFRESH_REQUIRED';
-    const isRoadmapStale = gateError.code === 'ROADMAP_REFRESH_REQUIRED';
-
     return (
-      <div className="p-10 rounded-3xl bg-slate-900/60 border border-amber-500/30 text-center flex flex-col items-center justify-center min-h-[440px] max-w-2xl mx-auto shadow-2xl">
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-6">
-          <AlertTriangle className="w-8 h-8" />
+      <div className="p-6 sm:p-8 rounded-2xl bg-card border border-border shadow-sm space-y-4 max-w-2xl mx-auto my-8">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-foreground">
+              Phase 4 Requirements Check
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {gateError.message}
+            </p>
+          </div>
         </div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-300 mb-3 uppercase tracking-wider">
-          Prerequisite Refresh Required
-        </div>
-        <h2 className="text-2xl font-bold text-white mb-3">
-          {isSnapshotStale
-            ? 'Construction Snapshot Refresh Required'
-            : isRoadmapStale
-            ? 'Operational Roadmap Refresh Required'
-            : 'Prerequisites Not Completed'}
-        </h2>
-        <p className="text-slate-300 text-sm leading-relaxed mb-8 max-w-md">
-          {gateError.message}
-        </p>
-        <div className="flex items-center gap-4 flex-wrap justify-center">
-          {isSnapshotStale && (
-            <Link
-              href={`/dashboard/creator/phase-4/snapshot?ideaId=${encodeURIComponent(ideaId)}`}
-              className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-xl transition-all shadow-lg flex items-center gap-2"
-            >
-              <span>Refresh Snapshot</span>
-              <ExternalLink className="w-4 h-4" />
-            </Link>
-          )}
-          {isRoadmapStale && (
-            <Link
-              href={`/dashboard/creator/phase-4/roadmap?ideaId=${encodeURIComponent(ideaId)}`}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all shadow-lg flex items-center gap-2"
-            >
-              <span>Refresh Roadmap</span>
-              <ExternalLink className="w-4 h-4" />
-            </Link>
-          )}
+        <div className="pt-2 flex items-center gap-3">
+          <Link
+            href={`/dashboard/creator/phase-4/roadmap?ideaId=${encodeURIComponent(ideaId)}`}
+            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+          >
+            Go to Operational Roadmap
+          </Link>
+          <Link
+            href={`/dashboard/creator/phase-4/snapshot?ideaId=${encodeURIComponent(ideaId)}`}
+            className="px-4 py-2 rounded-xl bg-card border border-border text-foreground text-xs font-semibold hover:bg-muted transition-colors shadow-sm"
+          >
+            Review Snapshot
+          </Link>
         </div>
       </div>
     );
   }
 
-  // 2. Empty State
-  if (!analysis && !isLoading) {
+  // 2. Loading State
+  if (isLoading && !analysis) {
     return (
-      <div className="p-12 rounded-3xl bg-slate-900/40 border border-slate-800 text-center flex flex-col items-center justify-center min-h-[460px]">
-        <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6">
-          <Layers className="w-8 h-8" />
+      <div className="py-16 flex flex-col items-center justify-center space-y-4">
+        <RefreshCw className="w-7 h-7 text-primary animate-spin" />
+        <div className="text-sm font-medium text-muted-foreground">
+          Loading your needs & requirements analysis...
         </div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-semibold text-indigo-300 mb-3 uppercase tracking-wider">
-          Phase 4.3 · Needs Engine
+      </div>
+    );
+  }
+
+  // 3. Not Generated State
+  if (!analysis) {
+    return (
+      <div className="p-8 sm:p-12 rounded-2xl bg-card border border-border shadow-sm text-center max-w-xl mx-auto space-y-5 my-8">
+        <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+          <Sparkles className="w-6 h-6" />
         </div>
-        <h2 className="text-2xl font-bold text-white mb-3">
-          Your project needs have not been analyzed yet.
-        </h2>
-        <p className="text-slate-400 max-w-lg text-sm leading-relaxed mb-8">
-          MBC will cross-reference your Construction Snapshot, Operational Roadmap, Phase 3 specifications, and founder profile to define exactly what capabilities, services, and capital are required.
-        </p>
+        <div className="space-y-2">
+          <h3 className="text-lg font-bold text-foreground">
+            Analyze Needs & Requirements
+          </h3>
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            MBC will evaluate your project snapshot, operational roadmap, company formation, and founder profile to map exact capability, service, legal, and capital requirements.
+          </p>
+        </div>
         <button
           onClick={onGenerate}
-          className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-xl transition-all duration-200 shadow-lg shadow-indigo-950/40 hover:scale-[1.02] flex items-center gap-2"
+          disabled={isGenerating}
+          className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm font-semibold transition-all shadow-sm inline-flex items-center gap-2 disabled:opacity-50"
         >
-          <span>Generate Needs Analysis</span>
-          <ArrowRight className="w-4 h-4" />
+          {isGenerating ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>Analyzing requirements...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4" />
+              <span>Generate Needs Analysis</span>
+            </>
+          )}
         </button>
       </div>
     );
   }
 
-  // 3. Loading State
-  if (isLoading && !analysis) {
-    return (
-      <div className="p-16 rounded-3xl bg-slate-900/30 border border-slate-800/80 text-center flex flex-col items-center justify-center min-h-[460px]">
-        <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-6 animate-pulse">
-          <RefreshCw className="w-7 h-7 animate-spin" />
-        </div>
-        <h3 className="text-xl font-semibold text-white mb-2">Analyzing requirements & capabilities…</h3>
-        <p className="text-slate-400 text-sm max-w-md">
-          Cross-checking construction gaps with your founder profile to prevent false-positive needs.
-        </p>
-      </div>
-    );
-  }
-
-  if (!analysis) return null;
-
-  const activeNeeds = analysis.activeNeeds || [];
-  const coveredRequirements = analysis.coveredRequirements || [];
-
-  // Filter categories
-  const categories = ['ALL', ...Array.from(new Set(activeNeeds.map((n) => n.category)))];
-  const filteredActiveNeeds =
-    selectedCategory === 'ALL'
-      ? activeNeeds
-      : activeNeeds.filter((n) => n.category === selectedCategory);
-
   return (
-    <div className="space-y-8 animate-fadeIn">
-      {/* Navigation Breadcrumb */}
-      <div className="flex items-center justify-between text-xs text-slate-400 font-medium pb-2 border-b border-slate-800/60">
-        <div className="flex items-center gap-2">
-          <Link
-            href={`/dashboard/creator/phase-4/roadmap?ideaId=${encodeURIComponent(ideaId)}`}
-            className="hover:text-slate-200 transition"
-          >
-            Phase 4.2 · Roadmap
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-          <span className="text-indigo-400 font-semibold">Phase 4.3 · Needs & Requirements</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onRefresh}
-            disabled={isLoading}
-            className="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 text-xs font-medium border border-slate-700/60 flex items-center gap-1.5 transition"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Re-evaluate Needs</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Upstream Stale Warning Banner */}
-      {updateAvailable && !staleDismissed && (
-        <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+    <div className="space-y-6">
+      {/* Inline Error Notice */}
+      {error && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 flex items-start justify-between gap-3 text-xs leading-relaxed">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
             <div>
-              <div className="text-sm font-semibold text-amber-300">
-                Upstream Changes Detected
-              </div>
-              <p className="text-xs text-amber-200/80 mt-0.5 leading-relaxed">
-                Modifications in{' '}
-                <span className="font-semibold text-amber-200">
-                  {changedSources.length > 0 ? changedSources.join(', ') : 'Snapshot or Roadmap'}
-                </span>{' '}
-                may affect your required capabilities and resources.
-              </p>
+              <strong>Error:</strong> {error}
             </div>
           </div>
-          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+          {onClearError && (
             <button
-              onClick={() => setStaleDismissed(true)}
-              className="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition"
+              onClick={onClearError}
+              className="text-xs font-semibold hover:underline shrink-0"
             >
-              Keep Current
+              Dismiss
             </button>
-            <button
-              onClick={onRefresh}
-              disabled={isLoading}
-              className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold shadow transition flex items-center gap-1.5"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-              <span>Refresh Needs</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Hero Header & Summary */}
-      <div className="p-8 rounded-3xl bg-slate-900/50 border border-slate-800/90 relative overflow-hidden backdrop-blur-sm shadow-xl">
-        <div className="relative z-10 space-y-4">
-          <div className="flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-indigo-400">
-            <Sparkles className="w-4 h-4" />
-            <span>Phase 4.3 · Needs & Requirements Engine</span>
-          </div>
-
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-extrabold text-white tracking-tight">
-                {projectName || 'Project Requirements'}
-              </h1>
-              <p className="text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
-                {analysis.summary ||
-                  'Structured inventory of operational requirements derived from construction gaps and sequenced execution tasks.'}
-              </p>
-            </div>
-
-            {/* Metric Pills (No percentages) */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {criticalCount > 0 && (
-                <div className="px-3.5 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />
-                  <span className="text-xs font-bold text-rose-300">
-                    {criticalCount} Critical
-                  </span>
-                </div>
-              )}
-              {highCount > 0 && (
-                <div className="px-3.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
-                  <span className="text-xs font-bold text-amber-300">
-                    {highCount} High Priority
-                  </span>
-                </div>
-              )}
-              <div className="px-3.5 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center gap-2">
-                <span className="text-xs font-bold text-indigo-300">
-                  {totalActiveNeeds} Active Needs
-                </span>
-              </div>
-              <div className="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-2">
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-xs font-bold text-emerald-300">
-                  {satisfiedCount} Already Covered
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Category Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-slate-800/60">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
-              selectedCategory === cat
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-950/40'
-                : 'bg-slate-900/60 hover:bg-slate-800/80 text-slate-400 hover:text-slate-200 border border-slate-800'
-            }`}
-          >
-            {cat !== 'ALL' && CATEGORY_ICONS[cat]}
-            <span>{cat === 'ALL' ? 'All Requirements' : cat}</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                selectedCategory === cat ? 'bg-indigo-700 text-indigo-200' : 'bg-slate-800 text-slate-400'
-              }`}
-            >
-              {cat === 'ALL' ? activeNeeds.length : activeNeeds.filter((n) => n.category === cat).length}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* Active Needs Cards Grid */}
-      <div className="space-y-4">
-        {filteredActiveNeeds.length === 0 ? (
-          <div className="p-12 text-center rounded-2xl bg-slate-900/30 border border-slate-800 text-slate-400 text-sm">
-            No active requirements in this category.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredActiveNeeds.map((need) => (
-              <NeedCard
-                key={need.key}
-                need={need}
-                onUpdateFounderState={handleFounderStateChange}
-                onSaveNotes={handleNotesSave}
-                isUpdating={updatingNeedKey === need.key}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Collapsible "Already Covered" Section */}
-      {coveredRequirements.length > 0 && (
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/30 overflow-hidden">
-          <button
-            onClick={() => setShowCovered(!showCovered)}
-            className="w-full p-5 flex items-center justify-between hover:bg-slate-800/30 transition text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-sm font-bold text-white flex items-center gap-2">
-                  <span>Already Covered Capabilities</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/20">
-                    {coveredRequirements.length}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Requirements verified as satisfied by your profile, founding team, or Phase 3 progress.
-                </p>
-              </div>
-            </div>
-            <div className="text-slate-400">
-              {showCovered ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-            </div>
-          </button>
-
-          {showCovered && (
-            <div className="p-5 pt-0 border-t border-slate-800/60 grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-              {coveredRequirements.map((need) => (
-                <div
-                  key={need.key}
-                  className="p-4 rounded-xl bg-slate-900/40 border border-slate-800/60 flex items-start gap-3"
-                >
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <div>
-                    <div className="text-xs font-semibold text-slate-200">{need.title}</div>
-                    <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">{need.whyNeeded}</div>
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
-                        Satisfied
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        Source: {need.source.join(', ')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           )}
         </div>
       )}
 
-      {/* Phase 4.4 Boundary Gate */}
-      <div className="p-8 rounded-3xl bg-slate-900/40 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-        <div>
-          <div className="text-xs uppercase tracking-wider font-semibold text-slate-500">
-            Next Step in MBC Journey
+      {/* 1. Update Available Notice */}
+      {updateAvailable && changedSources.length > 0 && !staleDismissed && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-start sm:items-center gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5 sm:mt-0" />
+            <span className="text-xs leading-relaxed">
+              <strong className="font-semibold text-foreground">Update available:</strong> Changed project information may affect these needs. Updates detected in:{' '}
+              <span className="font-medium underline decoration-amber-500/50 underline-offset-2">
+                {changedSources.join(', ')}
+              </span>.
+            </span>
           </div>
-          <h3 className="text-lg font-semibold text-white mt-0.5">
-            Phase 4.4 · Skills & Execution Engine
-          </h3>
-          <p className="text-sm text-slate-400 mt-1 max-w-xl">
-            Decide whether to Learn, Delegate, or Verify each requirement. MBC will match specialized learning resources and verified Service Providers.
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              onClick={() => setShowReviewModal(true)}
+              className="px-3 py-1.5 rounded-lg bg-card border border-border hover:bg-muted text-foreground font-semibold text-xs transition-colors shadow-sm"
+            >
+              Review changes
+            </button>
+            <button
+              onClick={async () => {
+                setStaleDismissed(true);
+                await onKeepCurrent();
+              }}
+              className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors"
+            >
+              Keep current version
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Compact Horizontal Summary Surface */}
+      <div className="p-5 rounded-2xl bg-card border border-border/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Left Side: Total Count + Badges + Supporting Copy */}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="text-lg sm:text-xl font-bold text-foreground">
+              {allNeeds.length} {allNeeds.length === 1 ? 'Requirement' : 'Requirements'}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                {actualSatisfiedCount} Satisfied
+              </span>
+
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/80">
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+                {actualIdentifiedCount} Identified
+              </span>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Confirming a need records your decision. It does not mean the need has been met.
           </p>
         </div>
 
-        <Link
-          href={`/dashboard/creator/phase-4/skills?ideaId=${encodeURIComponent(ideaId)}`}
-          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-xl shadow-lg hover:shadow-emerald-900/30 flex items-center gap-2 shrink-0 transition-colors"
-        >
-          <span>Build My Skills Plan</span>
-          <ArrowRight className="w-4 h-4" />
-        </Link>
+        {/* Subtle Vertical Divider on Desktop */}
+        <div className="hidden md:block w-px self-stretch bg-border/80 my-0.5" />
+
+        {/* Right Side: Awaiting Review Count */}
+        <div className="shrink-0 flex items-center">
+          {awaitingReviewCount > 0 ? (
+            <div className="text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+              {awaitingReviewCount} {awaitingReviewCount === 1 ? 'need is' : 'needs are'} awaiting your review
+            </div>
+          ) : (
+            <div className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span>All needs reviewed</span>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* 3. Requirement Accordion List */}
+      <div className="space-y-3">
+        {allNeeds.length === 0 ? (
+          <div className="p-8 text-center text-xs text-muted-foreground italic rounded-2xl bg-card border border-border">
+            No requirements recorded for this project yet.
+          </div>
+        ) : (
+          allNeeds.map((need, index) => {
+            const isExpanded = expandedKeys.has(need.key);
+            const isUpdating = updatingNeedKey === need.key;
+            const categoryConfig = getCategoryConfig(need.category);
+            const CategoryIcon = categoryConfig.icon;
+            const priorityText = getPriorityLabel(need.priority);
+
+            const isSatisfied =
+              need.systemStatus === 'Satisfied' ||
+              need.founderState === 'ClaimedSatisfied';
+
+            return (
+              <div
+                key={need.key}
+                id={`need-${need.key}`}
+                className="rounded-2xl bg-card border border-border/80 shadow-sm transition-all overflow-hidden"
+              >
+                {/* Accordion Row Header */}
+                <div
+                  className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/30 transition-colors rounded-2xl"
+                >
+                  {/* Left: Accordion Toggle Button (Icon 32px, 8px corners + Category & Title) */}
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand(need.key)}
+                    aria-expanded={isExpanded}
+                    aria-controls={`detail-${need.key}`}
+                    className="flex items-center gap-3.5 min-w-0 text-left cursor-pointer group flex-1 focus:outline-none"
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${categoryConfig.iconBg} ${categoryConfig.iconColor} group-hover:scale-105 transition-transform`}
+                    >
+                      <CategoryIcon className="w-4 h-4" />
+                    </div>
+
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="text-[10px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        {categoryConfig.label}
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm sm:text-base font-semibold text-foreground tracking-tight leading-snug group-hover:text-primary transition-colors">
+                          {need.title}
+                        </h3>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          · {priorityText}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Right: Fulfilment Badge + Decision Badge + Inline Actions + Chevron Toggle */}
+                  <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap justify-between sm:justify-end shrink-0">
+                    {/* Fulfilment Status Badge */}
+                    {isSatisfied ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span>Satisfied</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/80">
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
+                        <span>Identified</span>
+                      </span>
+                    )}
+
+                    {/* Decision Badge */}
+                    {need.founderState === 'Confirmed' && (
+                      <span className="inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        {isExpanded ? 'Decision: Confirmed' : 'Confirmed'}
+                      </span>
+                    )}
+
+                    {need.founderState === 'Deferred' && (
+                      <span className="inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                        Deferred
+                      </span>
+                    )}
+
+                    {need.founderState === 'Unreviewed' && (
+                      <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        Awaiting your review
+                      </span>
+                    )}
+
+                    {/* Inline Action Buttons for Awaiting Review */}
+                    {need.founderState === 'Unreviewed' && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleConfirmNeed(need.key, e)}
+                          disabled={isUpdating}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-card border border-border hover:bg-muted text-foreground transition-all shadow-sm disabled:opacity-50"
+                        >
+                          Confirm need
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeferNeed(need.key, e)}
+                          disabled={isUpdating}
+                          className="px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                        >
+                          Defer for now
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Accordion Chevron Button */}
+                    <button
+                      type="button"
+                      onClick={() => toggleExpand(need.key)}
+                      aria-label={isExpanded ? `Collapse ${need.title}` : `Expand ${need.title}`}
+                      className="p-1 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+                    >
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          isExpanded ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded Inset Panel (12px corners, 2-column breakdown, connected work, built from, founder info) */}
+                {isExpanded && (
+                  <ExpandedNeedDetail
+                    ideaId={ideaId}
+                    need={need}
+                    isUpdating={isUpdating}
+                    onConfirm={() => handleConfirmNeed(need.key)}
+                    onDefer={() => handleDeferNeed(need.key)}
+                    onSaveInfo={(text) => handleSaveFounderInfo(need.key, text)}
+                  />
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* 4. Page Footer & Journey Navigation */}
+      <div className="pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Back Link */}
+        <Link
+          href={`/dashboard/creator/phase-4/roadmap?ideaId=${encodeURIComponent(ideaId)}`}
+          className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors self-start sm:self-center"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to Roadmap</span>
+        </Link>
+
+        {/* Right Action: Supporting Copy + Primary Pill Button */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto justify-end">
+          <span className="text-xs text-muted-foreground sm:text-right">
+            Your reviewed needs will help shape the next step.
+          </span>
+          <Link
+            href={`/dashboard/creator/phase-4/skills?ideaId=${encodeURIComponent(ideaId)}`}
+            className="w-full sm:w-auto px-7 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm font-semibold transition-all shadow-sm inline-flex items-center justify-center gap-2"
+          >
+            <span>Continue to Skills & Training</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      </div>
+
+      {/* Review Changes Modal */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in fade-in-50 zoom-in-95">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-base font-bold text-foreground">
+                Review Upstream Changes
+              </h3>
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="text-muted-foreground hover:text-foreground text-xs font-semibold"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-muted-foreground leading-relaxed">
+              <p>
+                The following upstream project records have been updated since this requirements analysis was generated:
+              </p>
+              <div className="p-3 rounded-xl bg-muted/40 border border-border space-y-1.5">
+                {changedSources.map((src, i) => (
+                  <div key={i} className="flex items-center gap-2 text-foreground font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span>{src}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px]">
+                Refreshing will recalculate requirement coverage against your latest snapshot, roadmap, and profile data while preserving all your confirmed decisions and submitted notes.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={async () => {
+                  setShowReviewModal(false);
+                  setStaleDismissed(true);
+                  await onKeepCurrent();
+                }}
+                className="px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Keep current version
+              </button>
+              <button
+                onClick={async () => {
+                  setShowReviewModal(false);
+                  await onRefresh();
+                }}
+                disabled={isGenerating}
+                className="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-lg transition-all shadow flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Refresh needs analysis</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function NeedCard({
-  need,
-  onUpdateFounderState,
-  onSaveNotes,
-  isUpdating,
-}: {
+// ---------------- SUBCOMPONENT: EXPANDED DETAIL PANEL ----------------
+interface ExpandedNeedDetailProps {
+  ideaId: string;
   need: CreatorNeed;
-  onUpdateFounderState: (needKey: string, state: NeedFounderState) => Promise<void>;
-  onSaveNotes: (needKey: string, notes: string) => Promise<void>;
   isUpdating: boolean;
-}) {
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
-  const [noteText, setNoteText] = useState(need.notes || '');
+  onConfirm: () => Promise<void>;
+  onDefer: () => Promise<void>;
+  onSaveInfo: (text: string) => Promise<void>;
+}
 
-  const priorityColors: Record<NeedPriority, string> = {
-    Critical: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
-    High: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
-    Medium: 'text-slate-300 bg-slate-800/80 border-slate-700/60',
-    Low: 'text-slate-400 bg-slate-800/40 border-slate-800',
+function ExpandedNeedDetail({
+  ideaId,
+  need,
+  isUpdating,
+  onConfirm,
+  onDefer,
+  onSaveInfo,
+}: ExpandedNeedDetailProps) {
+  const [infoText, setInfoText] = useState<string>(need.founderInformation || '');
+  const [isSavedNotice, setIsSavedNotice] = useState<boolean>(false);
+
+  const handleInfoSubmit = async () => {
+    if (!infoText.trim()) return;
+    await onSaveInfo(infoText);
+    setIsSavedNotice(true);
+    setTimeout(() => setIsSavedNotice(false), 3000);
   };
 
-  const handleNoteSubmit = async () => {
-    await onSaveNotes(need.key, noteText);
-    setIsEditingNotes(false);
+  // Resolve source link
+  const resolveSourceLink = (sources: string[]) => {
+    const s = sources.join(' ').toLowerCase();
+    if (s.includes('roadmap')) {
+      return `/dashboard/creator/phase-4/roadmap?ideaId=${encodeURIComponent(ideaId)}`;
+    }
+    if (s.includes('model')) {
+      return `/dashboard/creator/business-model?ideaId=${encodeURIComponent(ideaId)}`;
+    }
+    if (s.includes('forecast')) {
+      return `/dashboard/creator/forecast?ideaId=${encodeURIComponent(ideaId)}`;
+    }
+    return `/dashboard/creator/phase-4/snapshot?ideaId=${encodeURIComponent(ideaId)}`;
   };
 
   return (
     <div
-      className={`p-6 rounded-2xl border transition-all flex flex-col justify-between ${
-        need.blocking
-          ? 'bg-slate-900/60 border-rose-500/30 hover:border-rose-500/50'
-          : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
-      }`}
+      id={`detail-${need.key}`}
+      className="px-5 pb-5 pt-0 animate-in fade-in-50 duration-150"
     >
-      <div className="space-y-4">
-        {/* Header: Category, Priority, Blocking */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="p-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700/60">
-              {CATEGORY_ICONS[need.category] || <Layers className="w-3.5 h-3.5" />}
-            </span>
-            <span className="text-xs font-semibold text-slate-300">{need.category}</span>
-            <span className="text-slate-600">·</span>
-            <span className="text-xs text-slate-400">{need.requirementType}</span>
+      <div className="rounded-xl p-5 sm:p-6 bg-muted/20 border border-border/70 space-y-6">
+        {/* A. 2-Column Core Analytical Breakdown */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left Column: WHAT IS NEEDED & WHY THIS APPLIES */}
+          <div className="space-y-4">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                WHAT IS NEEDED
+              </div>
+              <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-1">
+                {need.whatIsNeeded || need.description}
+              </p>
+            </div>
+
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                WHY THIS APPLIES
+              </div>
+              <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-1">
+                {need.whyThisApplies || need.whyNeeded}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {need.blocking && (
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                Blocking
+          {/* Right Column: WHAT YOU ALREADY HAVE & WHAT IS STILL MISSING */}
+          <div className="space-y-4">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                WHAT YOU ALREADY HAVE
+              </div>
+              <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-1">
+                {need.whatYouAlreadyHave || 'Not assessed yet.'}
+              </p>
+            </div>
+
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                WHAT IS STILL MISSING
+              </div>
+              <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-1">
+                {need.whatIsStillMissing || 'Prerequisite capability or deliverable.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Full-Width Lower Section with Divider: WHAT WOULD SATISFY THIS NEED */}
+        <div className="pt-4 border-t border-border/70 space-y-1">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            WHAT WOULD SATISFY THIS NEED
+          </div>
+          <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-1">
+            {need.whatWouldSatisfy ||
+              "Suitable capability or documented evidence for the required deliverable, with sufficient verification showing that it is available to this project."}
+          </p>
+        </div>
+
+        {/* B. CONNECTED WORK (Roadmap Tasks) */}
+        <div className="space-y-2">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            CONNECTED WORK
+          </div>
+
+          {need.relatedRoadmapTaskKeys && need.relatedRoadmapTaskKeys.length > 0 ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              {need.relatedRoadmapTaskKeys.map((taskKey) => {
+                // Humanize task key title
+                const cleanTitle = taskKey
+                  .replace(/^(task\.|roadmap\.|tech\.|serv\.|legal\.)/, '')
+                  .replace(/-/g, ' ')
+                  .replace(/\b\w/g, (c) => c.toUpperCase());
+
+                return (
+                  <Link
+                    key={taskKey}
+                    href={`/dashboard/creator/phase-4/roadmap?ideaId=${encodeURIComponent(ideaId)}&taskId=${encodeURIComponent(taskKey)}`}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border/80 hover:bg-muted text-xs text-foreground font-medium transition-all shadow-sm"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span>{cleanTitle}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground italic">
+              No direct operational roadmap tasks linked to this requirement.
+            </div>
+          )}
+        </div>
+
+        {/* C. BUILT FROM Sources */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-border/70">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              BUILT FROM:
+            </span>
+            {need.source && need.source.length > 0 ? (
+              need.source.map((src, i) => (
+                <span
+                  key={i}
+                  className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-card border border-border/80 text-foreground"
+                >
+                  {src}
+                </span>
+              ))
+            ) : (
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-card border border-border/80 text-foreground">
+                Construction Snapshot
               </span>
             )}
-            <span
-              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                priorityColors[need.priority] || priorityColors.Medium
-              }`}
-            >
-              {need.priority}
-            </span>
-          </div>
-        </div>
-
-        {/* Title & Description */}
-        <div>
-          <h3 className="text-base font-bold text-white leading-snug">{need.title}</h3>
-          <p className="text-xs text-slate-400 mt-1 leading-relaxed">{need.description}</p>
-        </div>
-
-        {/* Why Needed Rationale */}
-        <div className="p-3 rounded-xl bg-slate-950/50 border border-slate-800/80 text-xs text-slate-300 leading-relaxed">
-          <span className="font-semibold text-indigo-400 mr-1.5">Why Needed:</span>
-          {need.whyNeeded}
-        </div>
-
-        {/* Metadata Badges: Timing & Budget */}
-        <div className="flex items-center gap-3 flex-wrap text-xs text-slate-400">
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-slate-500" />
-            <span className="font-medium text-slate-300">
-              {need.customTiming || TIMING_LABELS[need.timing] || need.timing}
-            </span>
           </div>
 
-          {need.estimatedBudget !== undefined && need.estimatedBudget !== null && (
-            <div className="flex items-center gap-1.5">
-              <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="font-semibold text-emerald-300">
-                €{need.estimatedBudget.toLocaleString()}
-              </span>
-              {need.budgetConfidence && (
-                <span className="text-[10px] text-slate-400 font-normal">
-                  ({need.budgetConfidence})
+          <Link
+            href={resolveSourceLink(need.source || [])}
+            className="text-xs font-semibold text-primary hover:text-primary/80 inline-flex items-center gap-1 transition-colors self-start sm:self-center"
+          >
+            <span>View source</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {/* D. FOUNDER INFORMATION PANEL */}
+        <div className="pt-4 border-t border-border/70 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="text-xs sm:text-sm font-semibold text-foreground">
+              Provide information about an existing capability, resource, or asset
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleInfoSubmit}
+                disabled={isUpdating || !infoText.trim()}
+                className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all shadow-sm inline-flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add what I have</span>
+              </button>
+
+              <button
+                onClick={onDefer}
+                disabled={isUpdating || need.founderState === 'Deferred'}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                <span>Defer for now</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <textarea
+              value={infoText}
+              onChange={(e) => setInfoText(e.target.value)}
+              placeholder="e.g. Contracted software agency, technical co-founder commitment, or technical portfolio..."
+              rows={3}
+              disabled={isUpdating}
+              className="w-full text-xs sm:text-sm p-3 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed resize-y disabled:opacity-50"
+            />
+
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className="text-[11px] text-muted-foreground leading-relaxed max-w-2xl">
+                Founder-provided details will be assessed against this requirement&apos;s criteria. Adding details records your information; it does not automatically mark the need Satisfied.
+              </p>
+
+              {isSavedNotice && (
+                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Information recorded</span>
                 </span>
               )}
             </div>
-          )}
-
-          {need.source && need.source.length > 0 && (
-            <div className="flex items-center gap-1 text-[11px] text-slate-400">
-              <span>Source:</span>
-              <span className="text-slate-300">{need.source.join(', ')}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Notes display */}
-        {need.notes && !isEditingNotes && (
-          <div className="text-xs text-slate-300 bg-slate-800/40 p-2.5 rounded-lg border border-slate-800 flex items-start justify-between gap-2">
-            <span>
-              <strong className="text-slate-400 mr-1">Founder Note:</strong>
-              {need.notes}
-            </span>
-            <button
-              onClick={() => setIsEditingNotes(true)}
-              className="text-slate-500 hover:text-slate-300 p-0.5"
-            >
-              <Edit3 className="w-3 h-3" />
-            </button>
           </div>
-        )}
-
-        {isEditingNotes && (
-          <div className="space-y-2">
-            <textarea
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Add personal execution notes or constraints..."
-              className="w-full text-xs p-2.5 rounded-lg bg-slate-950 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-              rows={2}
-            />
-            <div className="flex items-center gap-2 justify-end">
-              <button
-                onClick={() => setIsEditingNotes(false)}
-                className="px-2.5 py-1 text-xs text-slate-400 hover:text-slate-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleNoteSubmit}
-                disabled={isUpdating}
-                className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-md shadow"
-              >
-                Save Note
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Footer: Founder State Control */}
-      <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-slate-400 font-medium">Founder State:</span>
-          <select
-            value={need.founderState}
-            onChange={(e) => onUpdateFounderState(need.key, e.target.value as NeedFounderState)}
-            disabled={isUpdating}
-            className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 font-medium focus:outline-none focus:border-indigo-500 disabled:opacity-50 cursor-pointer"
-          >
-            <option value="Unreviewed">Unreviewed</option>
-            <option value="Confirmed">Confirmed</option>
-            <option value="InProgress">In Progress</option>
-            <option value="Deferred">Deferred</option>
-            <option value="ClaimedSatisfied">Claimed Satisfied</option>
-          </select>
         </div>
-
-        {!need.notes && !isEditingNotes && (
-          <button
-            onClick={() => setIsEditingNotes(true)}
-            className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1 transition"
-          >
-            <Edit3 className="w-3 h-3" />
-            <span>Add Note</span>
-          </button>
-        )}
       </div>
     </div>
   );

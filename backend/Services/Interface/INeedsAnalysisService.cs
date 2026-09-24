@@ -9,5 +9,7 @@ namespace WebApp.Services.Interface
         Task<NeedsAnalysisResponse> GenerateNeedsAnalysisAsync(string userId, string? ideaId = null);
         Task<NeedsAnalysisResponse> RefreshNeedsAnalysisAsync(string userId, string? ideaId = null);
         Task<NeedsAnalysisResponse> UpdateNeedStateAsync(string userId, string needKey, UpdateNeedStateRequest request);
+        Task<NeedsAnalysisResponse> KeepCurrentNeedsAsync(string userId, string? ideaId = null);
     }
 }
+

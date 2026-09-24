@@ -152,6 +152,13 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public decimal? CustomBudget { get; set; }
         public string? CustomTiming { get; set; }
 
+        public string? WhatIsNeeded { get; set; }
+        public string? WhyThisApplies { get; set; }
+        public string? WhatYouAlreadyHave { get; set; }
+        public string? WhatIsStillMissing { get; set; }
+        public string? WhatWouldSatisfy { get; set; }
+        public string? FounderInformation { get; set; }
+
         public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
     }
@@ -189,6 +196,7 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public int HighPriorityCount { get; set; }
         public int TotalActiveNeeds { get; set; }
         public int SatisfiedCount { get; set; }
+        public long IdeaVersion { get; set; }
     }
 
     public class UpdateNeedStateRequest
@@ -199,5 +207,8 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public string? Notes { get; set; }
         public decimal? CustomBudget { get; set; }
         public string? CustomTiming { get; set; }
+        public string? FounderInformation { get; set; }
+        public long? ExpectedVersion { get; set; }
     }
 }
+

@@ -1390,15 +1390,14 @@ namespace WebApp.Services.Implementations
         public async Task<CreatorJourney> SetPhase4NeedsAnalysisAsync(string userId, Models.DatabaseModels.Phase4.NeedsAnalysis needsAnalysis, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var p4 = j.Phase4Data ??= new CreatorPhase4Data();
             p4.NeedsAnalysis = needsAnalysis;
 
-            // Single source of truth: Persisted on CreatorJourney, NO dual write to CreatorIdea
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update
-                    .Set(x => x.Phase4Data.NeedsAnalysis, needsAnalysis)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase4Data.NeedsAnalysis, needsAnalysis));
+            j.IdeaVersion = idea.Version;
             return j;
         }
 
