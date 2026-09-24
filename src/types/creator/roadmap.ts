@@ -39,9 +39,12 @@ export interface RoadmapTask {
   status: RoadmapTaskStatus;
   blocking: boolean;
   why: string;
+  expectedResult?: string;
   estimatedEffort: RoadmapTaskEffort;
+  estimatedEffortHours?: number;
   estimatedDuration?: string;
   dependencies: string[];
+  unblocks?: string[];
   source: string[];
   sourceReference: string[];
   relatedSnapshotItemKey?: string;
@@ -76,18 +79,41 @@ export interface OperationalRoadmap {
 }
 
 export interface OperationalRoadmapResponse {
-  roadmap: OperationalRoadmap;
+  roadmap: OperationalRoadmap | null;
   updateAvailable: boolean;
   changedSources: string[];
-  totalTasks: number;
-  activeTasks: number;
-  criticalTasks: number;
-  completedTasks: number;
+  totalTasks?: number;
+  totalTasksCount?: number;
+  activeTasks?: number;
+  activeTasksCount?: number;
+  criticalTasks?: number;
+  criticalTasksCount?: number;
+  completedTasks?: number;
+  completedTasksCount?: number;
+  ideaVersion?: number;
+  weeklyAvailability?: string;
+  capacityTier?: string;
+  capacityMessage?: string;
+  maxNowTasks?: number;
+  knownEffortHours?: number | null;
+  unestimatedTasksCount?: number;
+  planStatus?: string;
 }
 
 export interface UpdateRoadmapTaskRequest {
   taskId: string;
+  ideaId?: string;
+  expectedVersion?: number;
   status?: RoadmapTaskStatus;
   notes?: string;
+  founderNotes?: string;
   targetWindow?: string;
+  estimatedEffort?: RoadmapTaskEffort | string;
+  estimatedEffortHours?: number;
+}
+
+export interface UpdateAvailabilityRequest {
+  weeklyAvailability: string;
+  ideaId?: string;
+  expectedVersion?: number;
 }

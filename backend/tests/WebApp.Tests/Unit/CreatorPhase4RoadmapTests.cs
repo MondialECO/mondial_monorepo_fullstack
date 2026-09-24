@@ -142,6 +142,13 @@ namespace WebApp.Tests.Unit
             {
                 Phase3 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 7 }
             });
+            _journeysMock.Setup(j => j.SetPhase4RoadmapAsync(userId, It.IsAny<OperationalRoadmap>(), ideaId))
+                .Callback<string, OperationalRoadmap, string?>((u, r, id) =>
+                {
+                    journey.Phase4Data ??= new CreatorPhase4Data();
+                    journey.Phase4Data.Roadmap = r;
+                })
+                .ReturnsAsync(journey);
 
             var profile = new ProfessionalProfileRecord
             {
@@ -341,6 +348,72 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
+        public async Task Refresh_Updates_Roadmap_With_Corrected_Mappings_While_Preserving_Completed_Statuses_And_Overrides()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            var existingRoadmap = new OperationalRoadmap
+            {
+                Status = "Active",
+                FounderEdited = true,
+                Tasks = new List<RoadmapTask>
+                {
+                    new()
+                    {
+                        Id = "task-form-1",
+                        Key = "formation.confirm-structure",
+                        Title = "Confirm SAS Structure",
+                        Status = RoadmapTaskStatus.Done,
+                        FounderEdited = true,
+                        FounderNotes = "Approved with co-founder"
+                    },
+                    new()
+                    {
+                        Id = "task-tech-1",
+                        Key = "tech.execution",
+                        Title = "Resolve technical execution capability",
+                        Status = RoadmapTaskStatus.InProgress,
+                        FounderEdited = true,
+                        FounderNotes = "Interviewing lead dev"
+                    }
+                }
+            };
+            journey.Phase4Data.Roadmap = existingRoadmap;
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-004", Title = "Business Registration via INPI Guichet Unique", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Statutory registration." },
+                    new() { Id = "FR-CORP-005", Title = "Declaration of Beneficial Ownership (RBE)", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "AML beneficial owner disclosure." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.RefreshRoadmapAsync("user-1", "idea-1");
+
+            // Preserved tasks keep their completed status and notes
+            var formTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key == "formation.confirm-structure");
+            formTask.Should().NotBeNull();
+            formTask!.Status.Should().Be(RoadmapTaskStatus.Done);
+            formTask.FounderNotes.Should().Be("Approved with co-founder");
+            formTask.Id.Should().Be("task-form-1");
+
+            var techTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key == "tech.execution");
+            techTask.Should().NotBeNull();
+            techTask!.Status.Should().Be(RoadmapTaskStatus.InProgress);
+            techTask.Id.Should().Be("task-tech-1");
+
+            // Newly mapped legal tasks are present with corrected semantics
+            var rbeTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-005"));
+            var regTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-004"));
+            rbeTask.Should().NotBeNull();
+            regTask.Should().NotBeNull();
+            rbeTask!.Stage.Should().Be(RoadmapStages.Next30Days);
+            regTask!.Dependencies.Should().Contain(rbeTask.Key);
+        }
+
+        [Fact]
         public async Task Next_Best_Action_Updates_When_Current_Marked_Done()
         {
             var journey = BuildCompleteJourneyWithSnapshot();
@@ -420,6 +493,805 @@ namespace WebApp.Tests.Unit
 
             p3JsonAfter.Should().Be(p3JsonBefore);
             snapshotJsonAfter.Should().Be(snapshotJsonBefore);
+        }
+
+        [Fact]
+        public async Task ActivateRoadmap_MarksPlanActive_And_ReturnsResponse()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.ActivateRoadmapAsync("user-1", "idea-1");
+
+            res.Should().NotBeNull();
+            res.Roadmap.Should().NotBeNull();
+            res.Roadmap!.Status.Should().Be("Active");
+            res.PlanStatus.Should().Be("Active");
+            _journeysMock.Verify(j => j.SetPhase4RoadmapAsync("user-1", It.Is<OperationalRoadmap>(r => r.Status == "Active"), "idea-1"), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateAvailability_Persists_And_Updates_CapacityTier_And_Message()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.UpdateAvailabilityAsync("user-1", new UpdateAvailabilityRequest
+            {
+                IdeaId = "idea-1",
+                WeeklyAvailability = "<5 hours/week"
+            });
+
+            res.Should().NotBeNull();
+            res.WeeklyAvailability.Should().Be("<5 hours/week");
+            res.CapacityTier.Should().Be(CapacityTier.VeryLight.ToString());
+            res.MaxNowTasks.Should().Be(2);
+            res.CapacityMessage.Should().Contain("Under 5 hours/week permits at most 2 Now tasks");
+        }
+
+        [Fact]
+        public async Task Capacity_Under_5_Hours_Permits_At_Most_2_Now_Tasks()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            SetupValidPrerequisites(journey);
+
+            var profileVeryLight = new ProfessionalProfileRecord
+            {
+                UserId = "user-1",
+                VentureContext = new ProfileVentureContext { WeeklyAvailability = "<5 hours/week" }
+            };
+            _profStoreMock.Setup(p => p.GetByUserIdAsync("user-1", It.IsAny<CancellationToken>())).ReturnsAsync(profileVeryLight);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var nowTasks = res.Roadmap!.Tasks.Where(t => t.Stage == RoadmapStages.Now).ToList();
+            nowTasks.Count.Should().BeLessOrEqualTo(2);
+            res.MaxNowTasks.Should().Be(2);
+        }
+
+        [Fact]
+        public async Task KeepCurrentRoadmap_Clears_Staleness_Without_Mutating_Tasks()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            var existingRoadmap = new OperationalRoadmap
+            {
+                Status = "Active",
+                RoadmapSummary = "Founder Custom Summary",
+                Tasks = new List<RoadmapTask>
+                {
+                    new() { Key = "tech.custom", Title = "Custom Task", Stage = RoadmapStages.Now, Status = RoadmapTaskStatus.InProgress }
+                }
+            };
+            journey.Phase4Data.Roadmap = existingRoadmap;
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.KeepCurrentRoadmapAsync("user-1", "idea-1");
+
+            res.Should().NotBeNull();
+            res.UpdateAvailable.Should().BeFalse();
+            res.Roadmap!.RoadmapSummary.Should().Be("Founder Custom Summary");
+            res.Roadmap.Tasks.First().Key.Should().Be("tech.custom");
+        }
+
+        [Fact]
+        public async Task Unblocks_Are_Populated_For_Prerequisite_Tasks()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            // formation.confirm-structure is prerequisite for legal tasks
+            var formationTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key == "formation.confirm-structure");
+            formationTask.Should().NotBeNull();
+            formationTask!.Unblocks.Should().NotBeEmpty();
+        }
+
+        [Fact]
+        public async Task Effort_Estimates_And_Known_Hours_Calculation()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            res.Should().NotBeNull();
+            res.KnownEffortHours.Should().BeGreaterThan(0);
+            res.TotalTasksCount.Should().Be(res.Roadmap!.Tasks.Count);
+        }
+
+        [Fact]
+        public async Task Rich_Fixture_With_All_Artifacts_Populates_All_Six_Stages()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-REG-001", Title = "Regulated Activity Check", Category = "regulated", Stage = "before_creation", Priority = "critical", WhyItApplies = "Regulated sector validation." },
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Priority = "critical", WhyItApplies = "Capital deposit required.", RequiresEvidence = true },
+                    new() { Id = "FR-IP-001", Title = "INPI Trademark Search", Category = "intellectual_property", Stage = "before_launch", Priority = "recommended", WhyItApplies = "Brand protection search." },
+                    new() { Id = "FR-PRIV-001", Title = "GDPR Privacy Policy", Category = "privacy", Stage = "before_launch", Priority = "critical", WhyItApplies = "Processes customer personal data." },
+                    new() { Id = "FR-WEB-001", Title = "Mentions Légales", Category = "consumer_protection", Stage = "before_launch", Priority = "critical", WhyItApplies = "LCEN mandatory notices." },
+                    new() { Id = "FR-SOC-001", Title = "URSSAF Affiliation", Category = "social", Stage = "ongoing", Priority = "critical", WhyItApplies = "Founder social protection." }
+                }
+            };
+            journey.Phase3Data.FormationGenerator!.YouNeed = new List<CreatorSkillGap>
+            {
+                new() { Label = "Lead Fullstack Engineer", SpSpecialty = "development" }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            res.Should().NotBeNull();
+            var tasks = res.Roadmap!.Tasks;
+
+            // All 6 stages have scheduled tasks in this complete rich fixture
+            tasks.Where(t => t.Stage == RoadmapStages.Now).Should().NotBeEmpty();
+            tasks.Where(t => t.Stage == RoadmapStages.Next30Days).Should().NotBeEmpty();
+            tasks.Where(t => t.Stage == RoadmapStages.Days30To60).Should().NotBeEmpty();
+            tasks.Where(t => t.Stage == RoadmapStages.Days60To90).Should().NotBeEmpty();
+            tasks.Where(t => t.Stage == RoadmapStages.BeforeLaunch).Should().NotBeEmpty();
+            tasks.Where(t => t.Stage == RoadmapStages.PostLaunch).Should().NotBeEmpty();
+
+            res.Roadmap.Stages.Select(s => s.Stage).Should().BeEquivalentTo(RoadmapStages.AllStages);
+        }
+
+        [Fact]
+        public async Task Initial_RBE_Preparation_Precedes_Company_Registration_Submission_In_Next_30_Days_Without_Cycles()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Priority = "critical", WhyItApplies = "Capital deposit." },
+                    new() { Id = "FR-CORP-002", Title = "Drafting Statuts", Category = "corporate", Stage = "before_creation", Priority = "critical", WhyItApplies = "Constitutional bylaws." },
+                    new() { Id = "FR-CORP-003", Title = "JAL Publication", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Gazette notice." },
+                    new() { Id = "FR-CORP-004", Title = "Business Registration via INPI Guichet Unique", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Statutory registration." },
+                    new() { Id = "FR-CORP-005", Title = "Declaration of Beneficial Ownership (RBE)", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "AML beneficial owner disclosure." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var rbeTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-005"));
+            var regTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-004"));
+            var statutsTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-002"));
+
+            rbeTask.Should().NotBeNull();
+            regTask.Should().NotBeNull();
+            statutsTask.Should().NotBeNull();
+
+            // RBE is scheduled in NEXT_30_DAYS (company creation window), NOT POST_LAUNCH
+            rbeTask!.Stage.Should().Be(RoadmapStages.Next30Days);
+            // RBE preparation depends on Statuts governance
+            rbeTask.Dependencies.Should().Contain(statutsTask!.Key);
+            // INPI Registration submission dossier requires RBE preparation
+            regTask!.Dependencies.Should().Contain(rbeTask.Key);
+            // No reverse circular dependency
+            rbeTask.Dependencies.Should().NotContain(regTask.Key);
+        }
+
+        [Fact]
+        public async Task DPAE_With_Unknown_Employee_Start_Date_Leaves_Timing_Unresolved_Without_Assuming_Month_2()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            // No planned skill gaps or specific hiring dates
+            journey.Phase3Data!.FormationGenerator!.YouNeed = new List<CreatorSkillGap>();
+            journey.Phase3Data.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-SOC-002", Title = "Pre-Hiring Declarations (DPAE)", Category = "social", Stage = "ongoing", Priority = "critical", WhyItApplies = "Planned payroll." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var dpaeTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key.Contains("fr-soc-002"));
+            dpaeTask.Should().NotBeNull();
+
+            // Timing is explicitly marked unresolved rather than assuming Month 2
+            dpaeTask!.TargetWindow.Should().Contain("Timing unresolved");
+            dpaeTask.Why.Should().Contain("Timing is unresolved until an explicit employee start date is established");
+            // Stage is NOT forced to DAYS_30_TO_60
+            dpaeTask.Stage.Should().NotBe(RoadmapStages.Days30To60);
+        }
+
+        [Fact]
+        public async Task DPAE_With_Skill_Gap_Leaves_Timing_Unresolved_Without_Assuming_Month_2()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.FormationGenerator!.YouNeed = new List<CreatorSkillGap>
+            {
+                new() { Label = "Lead Fullstack Engineer", SpSpecialty = "development" }
+            };
+            journey.Phase3Data.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-SOC-002", Title = "Pre-Hiring Declarations (DPAE)", Category = "social", Stage = "ongoing", Priority = "critical", WhyItApplies = "Planned payroll." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var dpaeTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key.Contains("fr-soc-002"));
+            dpaeTask.Should().NotBeNull();
+
+            // DPAE timing is explicitly unresolved because skill-gap alone does not provide an employment contract start date
+            dpaeTask!.TargetWindow.Should().Contain("Timing unresolved");
+            dpaeTask.Why.Should().Contain("Timing is unresolved until an explicit employee start date is established");
+            dpaeTask.Stage.Should().NotBe(RoadmapStages.Days30To60);
+        }
+
+        [Fact]
+        public async Task Missing_Prerequisite_For_Unknown_Reasons_Retains_Unresolved_Blocker_And_Prevents_Silent_Unlocking()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            // Snapshot has a task with an unmodeled/missing custom dependency
+            var criticalSnapshotItem = new ConstructionSnapshotItem
+            {
+                Key = "custom.blocked-module",
+                Title = "Custom Blocked Module",
+                Category = "Technology",
+                Status = "Missing",
+                Priority = "Critical",
+                Blocking = true,
+                Reason = "Requires unfulfilled hardware prototype",
+                Source = new List<string> { "Snapshot" }
+            };
+            journey.Phase4Data!.ConstructionSnapshot!.CriticalItems = new List<ConstructionSnapshotItem> { criticalSnapshotItem };
+            
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            // Manually simulate a candidate that had a dependency on a missing prerequisite not completed and not in candidates
+            var taskWithMissingPrereq = res.Roadmap!.Tasks.First(t => t.Key == "custom.blocked-module");
+            taskWithMissingPrereq.Dependencies.Add("unresolved.hardware-prototype");
+
+            // Rerun explicit resolution logic via refresh to verify the blocker is preserved and not silently deleted
+            var refreshed = await svc.RefreshRoadmapAsync("user-1", "idea-1");
+            var verifiedTask = refreshed.Roadmap!.Tasks.FirstOrDefault(t => t.Key == "custom.blocked-module");
+
+            verifiedTask.Should().NotBeNull();
+            verifiedTask!.Dependencies.Should().Contain("unresolved.hardware-prototype", "missing prerequisite must NOT be silently removed");
+            verifiedTask.Status.Should().Be(RoadmapTaskStatus.Blocked);
+            verifiedTask.Why.Should().Contain("[Blocked by unresolved prerequisite: unresolved.hardware-prototype]");
+
+            // NextBestAction must NOT select this blocked task
+            if (refreshed.Roadmap.NextBestAction != null)
+            {
+                refreshed.Roadmap.NextBestAction.TaskKey.Should().NotBe("custom.blocked-module");
+            }
+        }
+
+        [Fact]
+        public async Task Confirmed_Completed_Prerequisite_Satisfies_Dependency_While_Inapplicable_Is_Removed()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    // FR-CORP-001 completed, FR-REG-001 not applicable, FR-CORP-004 active
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Status = "completed", WhyItApplies = "Done." },
+                    new() { Id = "FR-REG-001", Title = "Regulated Sector Check", Category = "regulated", Stage = "before_creation", Status = "not_applicable", WhyItApplies = "Not regulated." },
+                    new() { Id = "FR-CORP-004", Title = "INPI Registration", Category = "corporate", Stage = "company_creation", Status = "not_started", Priority = "critical", WhyItApplies = "Pending filing." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var regTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-004"));
+            regTask.Should().NotBeNull();
+
+            // Completed FR-CORP-001 is satisfied and not in active dependencies
+            regTask!.Dependencies.Should().NotContain("legal.fr-corp-001");
+            regTask.Dependencies.Should().NotContain("legal.fr-reg-001");
+            
+            // Regulated check was not_applicable so not in candidates
+            res.Roadmap.Tasks.Should().NotContain(t => t.Key.Contains("fr-reg-001"));
+        }
+
+        [Fact]
+        public async Task Solo_Founder_B2B_Excludes_Inapplicable_Legal_Rules_And_Retains_Legitimate_Empty_Groups()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase4Data!.ConstructionSnapshot!.MissingItems = new List<ConstructionSnapshotItem>();
+            journey.Phase3Data!.FormationGenerator!.YouNeed = new List<CreatorSkillGap>();
+            journey.Phase3Data.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-004", Title = "INPI Registration", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Mandatory registration." },
+                    new() { Id = "FR-CONS-002", Title = "B2B Commercial Terms of Sale", Category = "commercial_contracts", Stage = "before_sale", Priority = "recommended", WhyItApplies = "B2B contracts." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var tasks = res.Roadmap!.Tasks;
+
+            // Inapplicable rules are NOT generated
+            tasks.Should().NotContain(t => t.Key.Contains("fr-soc-002")); // No DPAE
+            tasks.Should().NotContain(t => t.Key.Contains("fr-reg-001")); // Not regulated
+            tasks.Should().NotContain(t => t.Key.Contains("fr-cons-001")); // No B2C CGV
+            tasks.Should().NotContain(t => t.Key.Contains("fr-cons-003")); // No 3-click cancellation
+
+            // Applicable B2B terms IS generated
+            tasks.Should().Contain(t => t.Key.Contains("fr-cons-002"));
+
+            // Honest empty state: Days 30-60, Days 60-90, and Post-Launch have 0 tasks for this minimal venture
+            var days30To60Tasks = tasks.Where(t => t.Stage == RoadmapStages.Days30To60).ToList();
+            var days60To90Tasks = tasks.Where(t => t.Stage == RoadmapStages.Days60To90).ToList();
+            var postLaunchTasks = tasks.Where(t => t.Stage == RoadmapStages.PostLaunch).ToList();
+            days30To60Tasks.Should().BeEmpty();
+            days60To90Tasks.Should().BeEmpty();
+            postLaunchTasks.Should().BeEmpty();
+
+            res.TotalTasksCount.Should().Be(tasks.Count);
+        }
+
+        [Fact]
+        public async Task Completed_Legal_Items_Are_Excluded_From_Roadmap_Candidates()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Status = "completed", WhyItApplies = "Already completed." },
+                    new() { Id = "FR-CORP-004", Title = "INPI Registration", Category = "corporate", Stage = "company_creation", Status = "not_started", Priority = "critical", WhyItApplies = "Pending registration." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            res.Roadmap!.Tasks.Should().NotContain(t => t.Key.Contains("fr-corp-001"));
+            res.Roadmap.Tasks.Should().Contain(t => t.Key.Contains("fr-corp-004"));
+        }
+
+        [Fact]
+        public async Task Blocked_Tasks_Remain_Visible_In_Intended_Stage_With_Accurate_Dependencies()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Priority = "critical", WhyItApplies = "Capital deposit required." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var formationTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key == "formation.confirm-structure");
+            var legalTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-001"));
+
+            formationTask.Should().NotBeNull();
+            legalTask.Should().NotBeNull();
+
+            legalTask!.Dependencies.Should().Contain("formation.confirm-structure");
+            formationTask!.Unblocks.Should().Contain(legalTask.Title);
+            legalTask.Stage.Should().Be(RoadmapStages.Next30Days);
+        }
+
+        [Fact]
+        public async Task Verify_ReviewChanges_AcceptRefresh_And_Reload_Persistence()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow.AddMinutes(-10),
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-004", Title = "INPI Registration", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Statutory registration." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var initialRes = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+            initialRes.Roadmap.Should().NotBeNull();
+
+            // Set custom founder override
+            var regTask = initialRes.Roadmap!.Tasks.First(t => t.Key.Contains("fr-corp-004"));
+            await svc.UpdateTaskStateAsync("user-1", new UpdateRoadmapTaskRequest
+            {
+                IdeaId = "idea-1",
+                TaskId = regTask.Id,
+                Status = RoadmapTaskStatus.InProgress,
+                FounderNotes = "Filing prepared with accountant",
+                EstimatedEffortHours = 4.0
+            });
+
+            // Simulate LegalAssessment update in Phase 3
+            journey.Phase3Data.LegalAssessment.EvaluatedAt = DateTime.UtcNow.AddMinutes(5);
+            journey.Phase3Data.LegalAssessment.Items.Add(new CreatorLegalChecklistItem
+            {
+                Id = "FR-PRIV-001",
+                Title = "GDPR Privacy Policy",
+                Category = "privacy",
+                Stage = "before_launch",
+                Priority = "critical",
+                WhyItApplies = "Collects customer data."
+            });
+
+            // 1. GetRoadmapAsync detects staleness and triggers UpdateAvailable = true
+            var checkStaleRes = await svc.GetRoadmapAsync("user-1", "idea-1");
+            checkStaleRes.UpdateAvailable.Should().BeTrue();
+            checkStaleRes.ChangedSources.Should().Contain("Legal Assessment");
+
+            // 2. Accept update via RefreshRoadmapAsync
+            var refreshedRes = await svc.RefreshRoadmapAsync("user-1", "idea-1");
+            refreshedRes.UpdateAvailable.Should().BeFalse();
+
+            // Verify founder overrides persisted
+            var refreshedRegTask = refreshedRes.Roadmap!.Tasks.First(t => t.Key.Contains("fr-corp-004"));
+            refreshedRegTask.Status.Should().Be(RoadmapTaskStatus.InProgress);
+            refreshedRegTask.FounderNotes.Should().Be("Filing prepared with accountant");
+            refreshedRegTask.FounderEdited.Should().BeTrue();
+
+            // Verify newly added legal task is present in refreshed roadmap
+            refreshedRes.Roadmap.Tasks.Should().Contain(t => t.Key.Contains("fr-priv-001"));
+
+            // 3. Reload via GetRoadmapAsync to confirm persistence
+            var reloadedRes = await svc.GetRoadmapAsync("user-1", "idea-1");
+            reloadedRes.UpdateAvailable.Should().BeFalse();
+            var reloadedRegTask = reloadedRes.Roadmap!.Tasks.First(t => t.Key.Contains("fr-corp-004"));
+            reloadedRegTask.Status.Should().Be(RoadmapTaskStatus.InProgress);
+            reloadedRegTask.FounderNotes.Should().Be("Filing prepared with accountant");
+        }
+
+        [Fact]
+        public async Task Verify_Real_Journey_API_Task_Distribution_And_Key_Listings()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-REG-001", Title = "Regulated Activity Check", Category = "regulated", Stage = "before_creation", Priority = "critical", WhyItApplies = "Regulated activity." },
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Priority = "critical", WhyItApplies = "Capital deposit.", RequiresEvidence = true },
+                    new() { Id = "FR-CORP-002", Title = "Drafting Statuts", Category = "corporate", Stage = "before_creation", Priority = "critical", WhyItApplies = "Statuts bylaws.", RequiresEvidence = true },
+                    new() { Id = "FR-CORP-003", Title = "JAL Publication", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Legal gazette.", RequiresEvidence = true },
+                    new() { Id = "FR-CORP-004", Title = "INPI Registration", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Company registration.", RequiresEvidence = true },
+                    new() { Id = "FR-CORP-005", Title = "RBE Beneficial Ownership", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "AML RBE declaration." },
+                    new() { Id = "FR-IP-001", Title = "INPI Trademark Search", Category = "intellectual_property", Stage = "before_launch", Priority = "recommended", WhyItApplies = "Brand search.", RequiresEvidence = true },
+                    new() { Id = "FR-INS-001", Title = "RC Pro Insurance", Category = "insurance", Stage = "before_sale", Priority = "recommended", WhyItApplies = "Liability insurance.", RequiresEvidence = true },
+                    new() { Id = "FR-PRIV-001", Title = "GDPR Privacy Policy", Category = "privacy", Stage = "before_launch", Priority = "critical", WhyItApplies = "Data protection.", RequiresEvidence = true },
+                    new() { Id = "FR-PRIV-002", Title = "Cookie Consent CMP", Category = "privacy", Stage = "before_launch", Priority = "critical", WhyItApplies = "Cookie tracking." },
+                    new() { Id = "FR-PAY-001", Title = "Payment Gateway Integration", Category = "payments", Stage = "before_sale", Priority = "critical", WhyItApplies = "Online checkout." },
+                    new() { Id = "FR-WEB-001", Title = "Mentions Légales", Category = "consumer_protection", Stage = "before_launch", Priority = "critical", WhyItApplies = "LCEN legal disclosures." },
+                    new() { Id = "FR-CONS-001", Title = "Consumer CGV", Category = "consumer_protection", Stage = "before_sale", Priority = "critical", WhyItApplies = "B2C sales terms.", RequiresEvidence = true },
+                    new() { Id = "FR-TAX-001", Title = "Electronic Invoicing Setup", Category = "tax_compliance", Stage = "before_sale", Priority = "critical", WhyItApplies = "E-invoicing reform." },
+                    new() { Id = "FR-SOC-001", Title = "URSSAF Affiliation", Category = "social", Stage = "ongoing", Priority = "critical", WhyItApplies = "Founder social regime." },
+                    new() { Id = "FR-CORP-006", Title = "Annual Accounts Filing", Category = "corporate", Stage = "ongoing", Priority = "critical", WhyItApplies = "Annual accounts filing." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            res.Should().NotBeNull();
+            res.Roadmap.Should().NotBeNull();
+
+            // Extract real stage task lists
+            var stageMap = res.Roadmap!.Stages.ToDictionary(s => s.Stage, s => s.Tasks);
+
+            // Print and verify exact counts per stage directly from the task collections
+            int totalCalculatedFromStages = 0;
+            foreach (var stage in RoadmapStages.AllStages)
+            {
+                if (stageMap.TryGetValue(stage, out var stageTasks))
+                {
+                    totalCalculatedFromStages += stageTasks.Count;
+                    stageTasks.Count.Should().BeGreaterThan(0, $"stage {stage} has tasks in this full canonical fixture");
+                }
+            }
+
+            res.TotalTasksCount.Should().Be(totalCalculatedFromStages);
+            res.Roadmap.Tasks.Count.Should().Be(totalCalculatedFromStages);
+        }
+
+        [Fact]
+        public async Task ConstructionSnapshot_ReadyItems_Only_Satisfies_Exact_Proven_Asset_Not_Administrative_Filings_Or_Hires()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            
+            // Snapshot has ready planning assets (e.g. brand kit, business model canvas, and formation planning document)
+            journey.Phase4Data!.ConstructionSnapshot!.ReadyItems = new List<ConstructionSnapshotItem>
+            {
+                new()
+                {
+                    Key = "brand.foundation",
+                    Title = "Brand kit validated",
+                    Category = "Brand",
+                    Status = "Ready"
+                },
+                new()
+                {
+                    Key = "company_formation",
+                    Title = "Legal Structure Plan Prepared",
+                    Category = "Legal & Administration",
+                    Status = "Ready",
+                    Reason = "Founder selected SAS legal form in planning."
+                },
+                new()
+                {
+                    Key = "legal.fr-corp-004",
+                    Title = "Registration Document Draft",
+                    Category = "Legal & Administration",
+                    Status = "Ready",
+                    Reason = "Draft paperwork prepared."
+                }
+            };
+
+            // But formal legal items are NOT completed in legal assessment
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Status = "not_started", Priority = "critical", WhyItApplies = "Capital deposit required." },
+                    new() { Id = "FR-CORP-002", Title = "Drafting Statuts", Category = "corporate", Stage = "before_creation", Status = "not_started", Priority = "critical", WhyItApplies = "Constitutional bylaws." },
+                    new() { Id = "FR-CORP-003", Title = "JAL Publication", Category = "corporate", Stage = "company_creation", Status = "not_started", Priority = "critical", WhyItApplies = "Gazette notice." },
+                    new() { Id = "FR-CORP-004", Title = "INPI Registration", Category = "corporate", Stage = "company_creation", Status = "not_started", Priority = "critical", WhyItApplies = "Mandatory filing." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var regTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-004"));
+            regTask.Should().NotBeNull();
+
+            // A ready document in snapshot MUST NOT satisfy formal registration filing
+            // INPI registration must still depend on JAL, Capital Deposit, and Statuts
+            regTask!.Dependencies.Should().Contain(d => d.Contains("fr-corp-003"));
+            regTask.Dependencies.Should().Contain(d => d.Contains("fr-corp-001"));
+            regTask.Dependencies.Should().Contain(d => d.Contains("fr-corp-002"));
+
+            // INPI registration must NOT be marked Done or have its prerequisites bypassed
+            regTask.Status.Should().NotBe(RoadmapTaskStatus.Done);
+        }
+
+        [Fact]
+        public async Task Legacy_Done_Status_Checklist_Items_Are_Excluded_From_Roadmap()
+        {
+            // Legacy checklist items with status "done" should not appear as tasks
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = null; // Force fallback to LegalChecklist
+            journey.Phase3Data.LegalChecklist = new CreatorLegalChecklist
+            {
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "company-type", Label = "Company type selection", Title = "", Status = "done" },
+                    new() { Id = "ip-protection", Label = "IP protection", Title = "", Status = "done" },
+                    new() { Id = "bank-account", Label = "Business bank account", Title = "", Status = "pending" },
+                },
+                TotalCount = 3,
+                CompletedCount = 2
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            res.Should().NotBeNull();
+            var tasks = res.Roadmap!.Tasks;
+
+            // "done" items MUST be excluded
+            tasks.Should().NotContain(t => t.Key == "legal.company-type");
+            tasks.Should().NotContain(t => t.Key == "legal.ip-protection");
+
+            // "pending" item with empty Title should use Label as fallback
+            var bankTask = tasks.FirstOrDefault(t => t.Key == "legal.bank-account");
+            bankTask.Should().NotBeNull();
+            bankTask!.Title.Should().Be("Business bank account");
+        }
+
+        [Fact]
+        public async Task Legal_Tasks_With_Empty_Title_Use_Label_Fallback()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "gdpr", Label = "GDPR compliance", Title = "", Category = "privacy", Stage = "before_launch", Priority = "critical", WhyItApplies = "" },
+                    new() { Id = "trademark", Label = "", Title = "", Category = "ip", Stage = "before_launch", Priority = "recommended" },
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var gdprTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key == "legal.gdpr");
+            gdprTask.Should().NotBeNull();
+            gdprTask!.Title.Should().Be("GDPR compliance"); // Label fallback
+
+            var trademarkTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key == "legal.trademark");
+            trademarkTask.Should().NotBeNull();
+            trademarkTask!.Title.Should().Be("trademark"); // rawId fallback when both Title and Label are empty
+        }
+
+        [Fact]
+        public async Task Duplicate_Skill_Gaps_Merged_And_Ready_Skills_Excluded()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            
+            // Founder already has full-stack developer in ReadyItems
+            journey.Phase4Data!.ConstructionSnapshot.ReadyItems = new List<ConstructionSnapshotItem>
+            {
+                new()
+                {
+                    Key = "skill_full-stack developer",
+                    Title = "Full-stack Developer",
+                    Category = ConstructionCategories.Team,
+                    Status = ConstructionItemStatus.Ready
+                }
+            };
+
+            // MissingItems has financial advisor and legal statutory filing service
+            journey.Phase4Data.ConstructionSnapshot.MissingItems = new List<ConstructionSnapshotItem>
+            {
+                new()
+                {
+                    Key = "skill_financial advisor",
+                    Title = "Structure Capability: Financial Advisor",
+                    Category = ConstructionCategories.Team,
+                    Status = ConstructionItemStatus.Missing
+                },
+                new()
+                {
+                    Key = "legal_service",
+                    Title = "Legal & Statutory Filing Service",
+                    Category = ConstructionCategories.Services,
+                    Status = ConstructionItemStatus.Missing
+                },
+                new()
+                {
+                    Key = "accounting_service",
+                    Title = "Accounting & Financial Support",
+                    Category = ConstructionCategories.Services,
+                    Status = ConstructionItemStatus.Missing
+                }
+            };
+
+            // Formation also lists financial-advisor and full-stack-developer in YouNeed
+            journey.Phase3Data!.FormationGenerator = new CreatorFormationGenerator
+            {
+                RecommendedType = "SAS-U",
+                YouNeed = new List<CreatorSkillGap>
+                {
+                    new() { Label = "Financial Advisor", SpSpecialty = "finance" },
+                    new() { Label = "Full-stack Developer", SpSpecialty = "development" }
+                }
+            };
+
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var tasks = res.Roadmap!.Tasks;
+
+            // 1. Exactly one financial advisor task exists with canonical key
+            var finTasks = tasks.Where(t => t.Key.Contains("financial")).ToList();
+            finTasks.Should().HaveCount(1);
+            finTasks[0].Key.Should().Be("skill-gap.financial-advisor");
+            finTasks[0].Title.Should().Be("Engage Financial Advisor Capability");
+
+            // 2. Full-stack developer is NOT created because founder already possesses it in ReadyItems
+            tasks.Should().NotContain(t => t.Key.Contains("full-stack") || t.Key.Contains("developer"));
+
+            // 3. Legal statutory filing service is distinct from financial advisor
+            var legalService = tasks.FirstOrDefault(t => t.Key == "legal_service");
+            legalService.Should().NotBeNull();
+            legalService!.Title.Should().Be("Structure Legal & Statutory Filing Service");
+            legalService.Dependencies.Should().Contain("formation.confirm-structure");
+
+            // 4. Formation task unblocks both statutory filing and accounting service
+            var formationTask = tasks.FirstOrDefault(t => t.Key == "formation.confirm-structure");
+            formationTask.Should().NotBeNull();
+            formationTask!.Unblocks.Should().Contain("Structure Legal & Statutory Filing Service");
+            formationTask.Unblocks.Should().Contain("Structure Accounting & Financial Support");
+
+            // 5. Verify Stages also have populated Unblocks matching Tasks
+            var nowStage = res.Roadmap.Stages.FirstOrDefault(s => s.Stage == RoadmapStages.Now);
+            nowStage.Should().NotBeNull();
+            var stagedFormation = nowStage!.Tasks.FirstOrDefault(t => t.Key == "formation.confirm-structure");
+            stagedFormation.Should().NotBeNull();
+            stagedFormation!.Unblocks.Should().Contain("Structure Legal & Statutory Filing Service");
+        }
+
+        [Fact]
+        public async Task LegalCompliance_Assessment_Does_Not_Satisfy_Statutory_Execution_Prerequisites()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+
+            // ReadyItems has completed legal assessment framework
+            journey.Phase4Data!.ConstructionSnapshot.ReadyItems = new List<ConstructionSnapshotItem>
+            {
+                new()
+                {
+                    Key = "legal_compliance",
+                    Title = "Legal Assessment & Compliance Framework",
+                    Category = ConstructionCategories.LegalAndAdministration,
+                    Status = ConstructionItemStatus.Ready
+                }
+            };
+
+            // Legal assessment has pending statutory registration
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new()
+                    {
+                        Id = "fr-corp-004",
+                        Label = "Immatriculation au RCS (INPI)",
+                        Title = "Company Registration Filing",
+                        Category = "corporate",
+                        Stage = "next_30_days",
+                        Priority = "critical",
+                        Status = "pending"
+                    }
+                }
+            };
+
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var regTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-004"));
+            regTask.Should().NotBeNull();
+            regTask!.Status.Should().NotBe(RoadmapTaskStatus.Done);
+
+            // ReadyItems legal_compliance must NOT have marked statutory registration as done or satisfied
+            res.Roadmap.Tasks.Should().Contain(t => t.Key.Contains("fr-corp-004"));
         }
     }
 }

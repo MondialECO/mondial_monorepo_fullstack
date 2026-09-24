@@ -94,9 +94,12 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public string Status { get; set; } = RoadmapTaskStatus.NotStarted;
         public bool Blocking { get; set; }
         public string Why { get; set; } = string.Empty;
+        public string ExpectedResult { get; set; } = string.Empty;
         public string EstimatedEffort { get; set; } = RoadmapTaskEffort.Medium;
+        public double? EstimatedEffortHours { get; set; }
         public string EstimatedDuration { get; set; } = string.Empty;
         public List<string> Dependencies { get; set; } = new();
+        public List<string> Unblocks { get; set; } = new();
         public List<string> Source { get; set; } = new();
         public List<string> SourceReference { get; set; } = new();
         public string? RelatedSnapshotItemKey { get; set; }
@@ -149,13 +152,33 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public int ActiveTasksCount { get; set; }
         public int CriticalTasksCount { get; set; }
         public int CompletedTasksCount { get; set; }
+        public int TotalTasksCount { get; set; }
+        public long IdeaVersion { get; set; }
+        public string WeeklyAvailability { get; set; } = string.Empty;
+        public string CapacityTier { get; set; } = string.Empty;
+        public string CapacityMessage { get; set; } = string.Empty;
+        public int MaxNowTasks { get; set; }
+        public double? KnownEffortHours { get; set; }
+        public int UnestimatedTasksCount { get; set; }
+        public string PlanStatus { get; set; } = "Active";
     }
 
     public class UpdateRoadmapTaskRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
         public string TaskId { get; set; } = string.Empty;
         public string? Status { get; set; }
         public string? FounderNotes { get; set; }
+        public string? TargetWindow { get; set; }
+        public string? EstimatedEffort { get; set; }
+        public double? EstimatedEffortHours { get; set; }
+    }
+
+    public class UpdateAvailabilityRequest
+    {
+        public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
+        public string WeeklyAvailability { get; set; } = string.Empty;
     }
 }

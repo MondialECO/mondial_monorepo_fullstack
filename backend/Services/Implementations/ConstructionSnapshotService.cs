@@ -53,14 +53,15 @@ namespace WebApp.Services.Implementations
                 {
                     Snapshot = null!,
                     UpdateAvailable = false,
-                    ChangedSources = new List<string>()
+                    ChangedSources = new List<string>(),
+                    IdeaVersion = journey.IdeaVersion
                 };
             }
 
             var context = await BuildContextAsync(userId, journey);
             var (isStale, changedSources) = DetectStaleness(snapshot.SourceReferences, context.CurrentSourceVersions);
 
-            return BuildResponse(snapshot, isStale, changedSources);
+            return BuildResponse(snapshot, isStale, changedSources, journey.IdeaVersion);
         }
 
         public async Task<ConstructionSnapshotResponse> GenerateSnapshotAsync(string userId, string? ideaId)
@@ -75,7 +76,7 @@ namespace WebApp.Services.Implementations
             {
                 var context = await BuildContextAsync(userId, journey);
                 var (isStale, changedSources) = DetectStaleness(existing.SourceReferences, context.CurrentSourceVersions);
-                return BuildResponse(existing, isStale, changedSources);
+                return BuildResponse(existing, isStale, changedSources, journey.IdeaVersion);
             }
 
             return await ExecuteGenerationAsync(userId, ideaId, journey);
@@ -316,9 +317,9 @@ namespace WebApp.Services.Implementations
             };
 
             // Atomically persist snapshot and source references without touching Phase 3 or HumainX
-            await _journeys.SetPhase4ConstructionSnapshotAsync(userId, snapshot, context.CurrentSourceVersions, ideaId);
+            var savedJourney = await _journeys.SetPhase4ConstructionSnapshotAsync(userId, snapshot, context.CurrentSourceVersions, ideaId);
 
-            return BuildResponse(snapshot, updateAvailable: false, new List<string>());
+            return BuildResponse(snapshot, updateAvailable: false, new List<string>(), savedJourney?.IdeaVersion ?? 0);
         }
 
         private List<ConstructionSnapshotItem> RunDeterministicRules(ConstructionContext context, CreatorJourney journey)
@@ -504,7 +505,7 @@ namespace WebApp.Services.Implementations
                 {
                     Key = "legal_compliance",
                     Category = ConstructionCategories.LegalAndAdministration,
-                    Title = "Regulatory & Legal Obligations",
+                    Title = "Legal Assessment & Compliance Framework",
                     Status = ConstructionItemStatus.Partial,
                     Priority = ConstructionItemPriority.High,
                     Reason = $"{context.Legal.HighPriorityPendingCount} high-priority compliance or licensing obligations require fulfillment prior to operational launch.",
@@ -519,12 +520,12 @@ namespace WebApp.Services.Implementations
                 {
                     Key = "legal_compliance",
                     Category = ConstructionCategories.LegalAndAdministration,
-                    Title = "Regulatory & Legal Obligations",
+                    Title = "Legal Assessment & Compliance Framework",
                     Status = ConstructionItemStatus.Ready,
                     Priority = ConstructionItemPriority.High,
-                    Reason = "Core corporate structure, statutory rules, and initial compliance items are addressed.",
+                    Reason = "Phase 3 legal and regulatory compliance assessment completed; obligations mapped for operational roadmap execution.",
                     Source = new List<string> { "Legal Assessment" },
-                    RecommendedNextStep = "Proceed with standard administrative registration schedule.",
+                    RecommendedNextStep = "Execute statutory filings and compliance tasks per operational roadmap schedule.",
                     Blocking = false
                 });
             }
@@ -967,7 +968,7 @@ namespace WebApp.Services.Implementations
             return "Your project intelligence and capabilities are thoroughly aligned. All foundational construction items are ready.";
         }
 
-        private static ConstructionSnapshotResponse BuildResponse(ConstructionSnapshot snapshot, bool updateAvailable, List<string> changedSources)
+        private static ConstructionSnapshotResponse BuildResponse(ConstructionSnapshot snapshot, bool updateAvailable, List<string> changedSources, long ideaVersion = 0)
         {
             return new ConstructionSnapshotResponse
             {
@@ -979,7 +980,8 @@ namespace WebApp.Services.Implementations
                 PartialCount = snapshot.PartialItems?.Count ?? 0,
                 MissingCount = snapshot.MissingItems?.Count ?? 0,
                 CriticalCount = snapshot.CriticalItems?.Count ?? 0,
-                OptionalCount = snapshot.OptionalItems?.Count ?? 0
+                OptionalCount = snapshot.OptionalItems?.Count ?? 0,
+                IdeaVersion = ideaVersion
             };
         }
     }

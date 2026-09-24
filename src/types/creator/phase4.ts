@@ -87,4 +87,5 @@ export interface ConstructionSnapshotResponse {
   snapshot?: ConstructionSnapshot | null;
   updateAvailable: boolean;
   changedSources: string[];
+  ideaVersion?: number;
 }

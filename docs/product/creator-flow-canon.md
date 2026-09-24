@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-24 (Step 3.3 Regeneration Loading Alignment & Project-Context Safety Hardening & Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-25 (Creator Phase 4.2 Operational Roadmap Delivery: Exact Figma Alignment, Deduplication, Legal Isolation, Concurrency & Verification).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -1084,21 +1084,115 @@ CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
      - `Phase4ProfileGuard` no longer depends on deprecated `GET /api/creator/offer/readiness`.
      - UI layout, cards, styling, and copy remain completely frozen.
 
-### 6.1 Stage 4.1 — Construction Snapshot (`ConstructionSnapshotView.tsx`)
+### 6.1 Stage 4.1 — Construction Snapshot (`page.tsx` + `ConstructionSnapshotView.tsx`)
 - **Route:** `/dashboard/creator/phase-4`
-- **Controller:** `CreatorPhase4ConstructionController.GetSnapshot` (`GET /api/creator/phase4/snapshot`).
-- **Services:** `ConstructionSnapshotService`, `ProfileCompletenessResolver`.
-- **Taxonomy Categories:** `Critical Attention`, `Ready`, `Partially Ready`, `Missing`, `Optional`, `NeedsReview`.
-- **Operations:** Read-only `GET`, idempotent `generate`, explicit `refresh`.
-- **No Deceptive Percentages:** The snapshot reports raw category counts rather than misleading composite percentages.
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/construction-snapshot`, `POST /api/creator/phase4/construction-snapshot/generate`, `POST /api/creator/phase4/construction-snapshot/refresh`).
+- **Services:** `ConstructionSnapshotService`, `CreatorJourneyService`, `ProfileCompletenessResolver`, `CapabilityMatcher`.
+- **Page-Level Header (Canonical Structure):**
+  - Rendered inside the main content container (`w-full max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8`) above the status summary:
+    - *Eyebrow:* `"PHASE 4 · STEP 4.1"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase`)
+    - *Title:* `"Construction Snapshot"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`)
+    - *Supporting text:* `"See what’s ready, what needs attention, and where to go next."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`)
+- **Endpoints & Optimistic Concurrency Contract:**
+  - `GET /api/creator/phase4/construction-snapshot?ideaId={ideaId}`: Read-only retrieval of persisted snapshot, category items, and source staleness detection.
+  - `POST /api/creator/phase4/construction-snapshot/generate?ideaId={ideaId}&expectedVersion={version}`: Idempotent generation. Requires `expectedVersion` on initial write; returns existing snapshot without re-running if one already exists.
+  - `POST /api/creator/phase4/construction-snapshot/refresh?ideaId={ideaId}&expectedVersion={version}`: Explicit regeneration against latest project intelligence, financial forecast, legal assessment, and HumainX profile data. Requires valid `expectedVersion`.
+  - *Query & Body Contract:* `{ ideaId, expectedVersion }` submitted in both URL query params and request body; controller validates consistency and rejects conflicting parameters with HTTP 400 Bad Request.
+  - *Version Lineage & Response Headers:* Publishes `X-Creator-Idea-Version` response header and returns `data.ideaVersion` in payload.
+  - *HTTP 409 Conflict Recovery:* When concurrent writes occur in another tab, the client reloads the latest snapshot (`loadSnapshot()`) and project composite (`refetch()`) to restore state safely and offers a non-destructive retry.
+- **Taxonomy Categories (15 Canonical Categories):**
+  - `Business Foundation`, `Brand`, `Market`, `Business Model`, `Finance`, `Legal & Administration`, `Team`, `Skills`, `Services`, `Technology`, `Funding`, `Pricing`, `Go-to-Market`, `Launch Assets`, `Operations`.
+- **Item Statuses (5 Diagnostic Tiers):**
+  - `Ready` (green), `Partial` (amber), `Missing` (gray/slate), `Critical` (rose/red), `Optional` (blue/muted), `NeedsReview` (grouped within Partial with actionable notice).
+- **Core UI Structure:**
+  1. *Compact Page Header:* Eyebrow, Title, and descriptive subtitle.
+  2. *Component 1: Status Summary:* 5-column metric grid reporting exact counts (`Ready`, `Partially Ready`, `Needs Attention`, `Critical Blockers`, `Optional`).
+  3. *Critical Blockers Alert:* Surfaces critical blockers with anchor navigation when `criticalCount > 0`.
+  4. *Stale Snapshot Banner:* Appears when upstream sources change, with `"Refresh Snapshot"` and `"Keep Current"` controls.
+  5. *Component 2: Category Breakdown:* 15 collapsible category cards with requirement status badges, detail accordions, and external service provider recommendations.
+  6. *Footer Navigation:* Primary CTA `"Continue to Operational Roadmap →"` routing to Step 4.2 (`/dashboard/creator/phase-4/roadmap?ideaId={ideaId}`) preserving the active idea scope.
+- **No Deceptive Percentages:** The snapshot reports raw category counts rather than misleading composite percentages. All data is dynamically derived from live database records.
 
 ### 6.2 Stage 4.2 — Operational Roadmap (`OperationalRoadmapView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/roadmap`
-- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/roadmap`, `PATCH /api/creator/phase4/roadmap/task`).
-- **Services:** `OperationalRoadmapService`, `RoadmapScheduler`, `IFounderCapacityResolver`.
-- **6 Execution Horizons:** `NOW`, `NEXT_30_DAYS`, `DAYS_30_TO_60`, `DAYS_60_TO_90`, `BEFORE_LAUNCH`, `POST_LAUNCH`.
-- **Task Statuses:** `NotStarted`, `InProgress`, `Blocked`, `Done`, `Skipped`, `NeedsReview`.
-- **Capacity Constraint:** Constrained by founder weekly availability. Completed tasks are never resurrected on refresh.
+- **Figma Reference & Layout:** 100% aligned with approved Figma Node `57221:10450` ("Operational Roadmap · Creator Phase 4.2"). Responsive 1440px–1920px container (`w-full max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8`) with dark/light theme token compliance (`globals.css`).
+- **Backing Controller & Services:**
+  - Controller: `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/roadmap`, `POST /api/creator/phase4/roadmap/generate`, `POST /api/creator/phase4/roadmap/refresh`, `POST /api/creator/phase4/roadmap/task`, `POST /api/creator/phase4/roadmap/activate`, `POST /api/creator/phase4/roadmap/availability`, `POST /api/creator/phase4/roadmap/keep-current`).
+  - Services: `OperationalRoadmapService`, `RoadmapScheduler`, `IFounderCapacityResolver`.
+- **Page Header (Canonical Structure):**
+  - Rendered at top of content container:
+    - *Eyebrow:* `"PHASE 4 · STEP 4.2"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase`)
+    - *Title:* `"Operational Roadmap"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`)
+    - *Supporting text:* `"Turn your project requirements into a practical plan that fits your availability."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`)
+- **Planning Context (Three-Column Layout):**
+  - *Card 1: Your Availability:* Displays real weekly commitment (e.g. `"10–20 hours/week"`) and capacity tier (`Balanced (10–20 hrs)`). Includes interactive `"Adjust Availability"` modal offering 5 canonical presets (`<5 hrs`, `5–10 hrs`, `10–20 hrs`, `20–30 hrs`, `30+ hrs`) that persist via `POST /api/creator/phase4/roadmap/availability`.
+  - *Card 2: Planned Now:* Summarizes immediate workload for the Now stage: exact task count, known effort in hours (e.g. `"~3.5 hrs known effort"`), and count of unestimated tasks without assuming missing estimates are 0.
+  - *Card 3: Capacity Guardrail & Plan Status:*
+    - Central rule-engine pacing guardrail enforcing realistic task limits per availability tier:
+      - `<5 hrs/week`: Max 2 Now tasks
+      - `5–10 hrs/week`: Max 3 Now tasks
+      - `10–20 hrs/week`: Max 5 Now tasks
+      - `20–30 hrs/week`: Max 7 Now tasks
+      - `30+ hrs/week`: Max 9 Now tasks
+    - Live Plan Status badge: `Draft`, `Active`, or `Completed`.
+- **Next Best Action ("Start Here" Hero Card):**
+  - Dynamically selected from topological dependency DAG based on unblocked status and highest urgency/priority (e.g. `"Confirm SAS-U Entity Formation Plan"`).
+  - Displays Title, Purpose / Context ("Why Now"), Priority badge, Estimated Effort, and Upstream Prerequisites.
+  - Action controls:
+    - `"View Task Details"`: Smoothly scrolls to and auto-expands the specific task card in the roadmap.
+    - Status quick-actions: `"Start This Action"` / `"Mark Done"` mutating task state directly.
+- **Six Canonical Roadmap Groups (Execution Horizons):**
+  1. `Now` (Immediate focus — capacity bounded, zero unresolved blockers)
+  2. `Next 30 Days` (Near-term foundation, market validation, and business modeling)
+  3. `Days 30–60` (Month 2 build, commercial pricing packages, and statutory partner engagements)
+  4. `Days 60–90` (Month 3 go-to-market testing and pre-launch readiness)
+  5. `Before Launch` (Mandatory pre-launch administrative gates, statutory formation filings, and launch asset preparation)
+  6. `After Launch` (Post-launch operations, customer support, and recurring statutory declarations)
+- **Task Row Architecture & Dependency Separation:**
+  - *Title & Badges:*
+    - Priority badge: `Critical`, `High`, `Medium`, `Low`.
+    - Effort badge: Formatted as `~N hrs` (e.g. `~3.5 hrs`) when numerical estimates exist; cleanly falls back to `Effort: Medium` or `Effort: Small` when numerical estimates are unavailable.
+    - Status chip: `NotStarted`, `InProgress`, `Blocked`, `Done`, `Skipped`, `NeedsReview`.
+  - *Strict Separation of Dependency Impact from Task Status:*
+    - **`Blocks N tasks`** (amber badge): Rendered when other roadmap tasks depend on this task (`task.unblocks.length > 0`).
+    - **`Blocked by N prereqs`** (rose badge): Rendered when incomplete prerequisites prevent progress.
+  - *Expandable Detail Drawer:*
+    - *Expected Result:* Clear definition of done for the milestone.
+    - *Why It's Here:* Rationale derived from upstream diagnostic or statutory requirements.
+    - *Prerequisites / Blocked By:* Lists required prior tasks with individual status chips (`Done`, `InProgress`, `NotStarted`).
+    - *Blocks Downstream Tasks:* Lists specific downstream tasks unlocked upon completion.
+    - *Built From (Provenance):* Source origin badges (e.g. `Construction Snapshot`, `Formation & Team`, `Market Study`).
+    - *Inline Task Adjustment:* In-place editor for Task Status, Target Window, and Founder Notes, persisting via `POST /api/creator/phase4/roadmap/task`.
+- **Real Project Data Binding & Upstream Provenance:**
+  - 100% bound to real MongoDB project records with zero mock data: `ConstructionSnapshot` (Phase 4.1), `CreatorLegalAssessment` (Phase 3.4), `CreatorFormationGenerator` (Phase 3.5, with `SelectedType` or `RecommendedType` fallback), `ForecastSession` (Phase 3.3), `BusinessPlanSession` (Phase 3.6), and `ProfessionalProfileRecord.VentureContext`.
+- **Task Deduplication, Canonical Keys & Edit Preservation:**
+  - *Canonical Skill Gap Keys:* Capability gaps from both `ConstructionSnapshot.MissingItems` and `Formation.YouNeed` converge on single canonical keys formatted as `skill-gap.{slug}` (e.g. `skill-gap.financial-advisor` titled `"Engage Financial Advisor Capability"`).
+  - *Founder Skill Exclusions:* Skills already verified in founder's `ReadyItems` (e.g. `skill_full-stack developer`) are checked and excluded from generating redundant skill gap tasks.
+  - *Statutory Service Preservation:* `legal_service` (`"Structure Legal & Statutory Filing Service"`, category `Services`) is preserved as a distinct Month 2 statutory formalization partner task, dependent on `formation.confirm-structure`.
+  - *Founder State Preservation on Refresh:* In `ReconcileTasks`, legacy keys (`skill_{slug}`) are mapped to canonical keys (`skill-gap.{slug}`), preserving founder notes, custom target windows, and manual statuses across roadmap refreshes.
+- **Distinction Between Legal Assessment Readiness and Statutory Task Completion:**
+  - In Construction Snapshot, the legal assessment item is precisely titled **`"Legal Assessment & Compliance Framework"`**, denoting that the regulatory review in Phase 3 is completed.
+  - In `WireDependencies`, ready items from legal assessment or snapshot are strictly prevented from auto-completing corporate filing prerequisites (`FR-CORP-*`, company registration, statuts, JAL, RBE). Statutory filings remain blocked until real prerequisite milestones are achieved.
+- **Dependency Resolution, Event-Dependent Scheduling & Honest Empty States:**
+  - Explicit DAG dependency wiring: `formation.confirm-structure` unblocks statutory partners (`legal_service`, `accounting_service`); corporate statuts (`FR-CORP-002`) and capital deposit (`FR-CORP-001`) precede legal notice (`FR-CORP-003`) and formal INPI registration (`FR-CORP-004`).
+  - *Event-Dependent Scheduling:* Tasks triggered by external milestones rather than static dates state this clearly (e.g. `legal.fr-soc-002` DPAE social declaration: Target Window is `"Timing unresolved (≤ 8 days before employee start date)"` with earliest start `before_launch`).
+  - *Honest Empty States:* Stages with 0 tasks render an honest message ("No tasks scheduled for this horizon yet — tasks populate as prerequisites are met.") instead of false placeholders or phantom entries.
+- **Optimistic Concurrency Contract & HTTP 409 Recovery:**
+  - All roadmap mutations (`generate`, `refresh`, `task`, `activate`, `availability`, `keep-current`) require consistent `ideaId` and `expectedVersion` across URL query params and request body.
+  - Backend publishes `X-Creator-Idea-Version` response header and returns `data.ideaVersion`.
+  - On HTTP 409 Conflict, UI reloads latest state (`loadRoadmap()` + `refetch(ideaId)`) without destroying user inputs, displaying a non-destructive retry banner.
+- **Navigation Flow (4.1 $\to$ 4.2 $\to$ 4.3):**
+  - *Upstream:* Step 4.1 Construction Snapshot (`/dashboard/creator/phase-4?ideaId={ideaId}`).
+  - *Current:* Step 4.2 Operational Roadmap (`/dashboard/creator/phase-4/roadmap?ideaId={ideaId}`).
+  - *Downstream:* Step 4.3 Needs & Requirements (`/dashboard/creator/phase-4/needs?ideaId={ideaId}`).
+  - *Footer Actions:*
+    - `"Back to Construction Snapshot"` returns to Step 4.1.
+    - `"Activate Roadmap & Continue"` persists activation state via `POST /api/creator/phase4/roadmap/activate` and advances to Step 4.3. On revisit of an active plan, button displays `"Continue to Needs & Requirements"`.
+  - *Explicit Scope Boundary Note:* Stage 4.3 (Needs & Requirements) is pre-existing canonical architecture; it is not newly implemented in this Phase 4.2 delivery.
+- **Verification & Acceptance Records:**
+  - *Automated & Unit Testing:* 33/33 unit tests pass in `CreatorPhase4RoadmapTests.cs` (including `Duplicate_Skill_Gaps_Merged_And_Ready_Skills_Excluded` and `LegalCompliance_Assessment_Does_Not_Satisfy_Statutory_Execution_Prerequisites`).
+  - *Browser & DOM Verification:* Playwright live browser E2E test on affected project verified 10 persisted tasks across stages and confirmed 0 literal `"svg"` text nodes in DOM.
+  - *User Acceptance Record:* Formally verified and accepted by user ("The user has confirmed the current result works correctly").
 
 ### 6.3 Stage 4.3 — Needs Analysis & Requirements (`NeedsAnalysisView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/needs`
@@ -1421,8 +1515,28 @@ RC1 Freeze
 - **Non-Destructive Result Preservation (§5.3):** First generation failure preserves saved inputs with retry/edit CTAs; regeneration failure preserves previous valid forecast intact with dismissible banner and retry/edit CTAs. During regeneration, previous valid results remain mounted and visible below the processing card until atomically replaced by the new version.
 - **Dead Code & Parallel Schema Elimination (§5.3):** Excised `StartingBudgetModal.tsx`; starting budget natively integrated into `ForecastAssumptionsForm` (single canonical schema). Excised obsolete projection math methods (`ExtendToThirtySixMonths`, `RecomputeBreakEven`) and dead helpers from `ForecastHandler.cs`. Confirmed `FinancialForecastEngine` as the sole deterministic calculation authority.
 - **Driver Invariant Rule (§5.3):** Enforced that every active editable backend forecast driver across SaaS, E-commerce, Service, and Marketplace is exposed in the canonical form, with inactive drivers hidden/N-A.
-- **Safety Invariants (§5.3):** Mandatory ideaId scoping, zero first-idea fallback, zero `'active'` localStorage keys, monotonic version race protection, founder-lock preservation, non-destructive regeneration failure, and zero hardcoded tax defaults.
-- **Full Verification:** Dedicated Loading Suite: 8/8 passed, Selected Forecast Regression Suites: 19/19 passed, Historical Extended Suite: 39/39 passed, Backend 94/94 passed (108 total, 14 skipped), TypeScript 0 errors, Next.js production build PASS (187/187 routes), Backend build PASS. Status: PASS / FROZEN.
+**2026-09-25 — Creator Phase 4.1 Construction Snapshot: Runtime Architecture Fix, Page Header, Optimistic Concurrency & Navigation Delivery.**
+- **Runtime Concurrency Fix (§6.1):** Fixed HTTP 400 `"expectedVersion is required for Creator changes."` failure on `POST /api/creator/phase4/construction-snapshot/generate` and `refresh`. Synchronized `expectedVersion` across URL query params and request body with `CreatorJourneyService.WriteIdeaAsync`.
+- **Version Tracking & Response Headers (§6.1):** Added `IdeaVersion` to `ConstructionSnapshotResponse` DTO and `ExpectedVersion` to `GenerateSnapshotRequest`. Published `X-Creator-Idea-Version` response header from `CreatorPhase4ConstructionController` and synchronized `j.IdeaVersion = idea.Version` post-write.
+- **Client Cache & Concurrency Resolution (§6.1):** Implemented `resolveExpectedVersion(ideaId)` in `src/lib/api-creator-phase4.ts` pulling cached or authoritative `journey.ideaVersion`. Captured response versions on all GET and POST requests.
+- **HTTP 409 Conflict Recovery (§6.1):** Implemented non-destructive reload (`loadSnapshot()` + `refetch(ideaId)`) on 409 conflict, surfacing an inline conflict recovery banner with "Reload & Retry" preserving user state.
+- **Compact Page-Level Header Added (§6.1):** Added compact page-level header inside the existing content area matching typography canon: Eyebrow `"PHASE 4 · STEP 4.1"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase`), Title `"Construction Snapshot"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`), and Subtitle `"See what’s ready, what needs attention, and where to go next."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`). Corrected older statements claiming 4.1 has no page header.
+**2026-09-25 — Creator Phase 4.2 Operational Roadmap: Exact Figma 57221-10450 Alignment, Deduplication, Legal Isolation, Concurrency & Final Delivery.**
+- **Figma Reference & Layout (§6.2):** 100% verified against approved Figma Node `57221:10450` ("Operational Roadmap · Creator Phase 4.2").
+- **Canonical Route:** `/dashboard/creator/phase-4/roadmap`
+- **Compact Page-Level Header (§6.2):** Eyebrow `"PHASE 4 · STEP 4.2"`, Title `"Operational Roadmap"`, Subtitle `"Turn your project requirements into a practical plan that fits your availability."`.
+- **Three-Column Planning Context:** Your Availability (hours & interactive adjustment modal with 5 presets), Planned Now (task count & known effort hours), Capacity Guardrail & Plan Status (rule-engine pacing limits & live status badge).
+- **Start Here (Next Best Action):** Dynamically derived from unblocked tasks with highest priority via dependency DAG; includes direct status quick-actions and smooth auto-expansion.
+- **Six Roadmap Groups (Canonical Order):** `Now`, `Next 30 Days`, `Days 30–60`, `Days 60–90`, `Before Launch`, `After Launch`.
+- **Dependency Impact vs Status Separation:** Replaced generic blocking badges with distinct `"Blocks N tasks"` (amber) when downstream tasks depend on the item and `"Blocked by N prereqs"` (rose) when unresolved prerequisites remain; effort formatted as `~N hrs` with clean fallback to `Effort: Medium/Small`.
+- **Task Deduplication & Stable Canonical Keys:** Capability gaps from snapshot and formation assessment merged under stable canonical keys `skill-gap.{slug}` (e.g. `skill-gap.financial-advisor`); skills already verified in founder's `ReadyItems` (e.g. `skill_full-stack developer`) excluded from duplicate task generation; `legal_service` preserved as distinct chartered statutory filing partner.
+- **Legal Assessment Readiness vs Statutory Execution:** Snapshot item labeled `"Legal Assessment & Compliance Framework"`; `WireDependencies` prevents assessment review from satisfying corporate execution/filing prerequisites (`FR-CORP-*`, registration, statuts, JAL, RBE).
+- **Concurrency & 409 Recovery:** Mandatory `expectedVersion` and `ideaId` validation on all endpoints, response header publishing, and non-destructive 409 conflict reload banner.
+- **Navigation Flow:** 4.1 Construction Snapshot $\to$ 4.2 Operational Roadmap $\to$ 4.3 Needs & Requirements. Note: Stage 4.3 is pre-existing canon, not newly implemented.
+- **Verification & Acceptance:**
+  - Automated Unit Tests: 33/33 PASS (`CreatorPhase4RoadmapTests.cs`, including deduplication and legal isolation tests).
+  - Live Browser & API Verification: 10 persisted tasks across stages verified via Playwright E2E; DOM tree walker confirmed 0 literal "svg" text nodes.
+  - User Acceptance: Formally confirmed by user ("The user has confirmed the current result works correctly").
 
 ---
 

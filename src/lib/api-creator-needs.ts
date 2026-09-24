@@ -1,62 +1,47 @@
+import api from '@/lib/axios';
 import type {
   NeedsAnalysisResponse,
   UpdateNeedStateRequest,
 } from '@/types/creator/needs';
 
-function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+export interface ApiEnvelope<T> {
+  success?: boolean;
+  message?: string;
+  data: T;
+  traceId?: string | null;
 }
 
-export async function getNeedsAnalysis(ideaId: string): Promise<NeedsAnalysisResponse> {
-  const res = await fetch(`/api/creator/phase4/needs?ideaId=${encodeURIComponent(ideaId)}`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to fetch needs analysis (${res.status})`);
+const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
+  if (body && typeof body === 'object' && 'data' in (body as ApiEnvelope<T>)) {
+    return (body as ApiEnvelope<T>).data;
   }
+  return body as T;
+};
 
-  return res.json();
+export async function getNeedsAnalysis(ideaId: string): Promise<NeedsAnalysisResponse> {
+  const res = await api.get<ApiEnvelope<NeedsAnalysisResponse> | NeedsAnalysisResponse>(
+    '/creator/phase4/needs',
+    {
+      params: { ideaId },
+    }
+  );
+  return unwrap(res.data);
 }
 
 export async function generateNeedsAnalysis(ideaId: string): Promise<NeedsAnalysisResponse> {
-  const res = await fetch('/api/creator/phase4/needs/generate', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const err: any = new Error(data.message || `Failed to generate needs analysis (${res.status})`);
-    if (data.code) err.code = data.code;
-    throw err;
-  }
-
-  return res.json();
+  const res = await api.post<ApiEnvelope<NeedsAnalysisResponse> | NeedsAnalysisResponse>(
+    '/creator/phase4/needs/generate',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
 
 export async function refreshNeedsAnalysis(ideaId: string): Promise<NeedsAnalysisResponse> {
-  const res = await fetch('/api/creator/phase4/needs/refresh', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const err: any = new Error(data.message || `Failed to refresh needs analysis (${res.status})`);
-    if (data.code) err.code = data.code;
-    throw err;
-  }
-
-  return res.json();
+  const res = await api.post<ApiEnvelope<NeedsAnalysisResponse> | NeedsAnalysisResponse>(
+    '/creator/phase4/needs/refresh',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
 
 export async function updateNeedState(
@@ -64,16 +49,13 @@ export async function updateNeedState(
   needKey: string,
   req: UpdateNeedStateRequest
 ): Promise<NeedsAnalysisResponse> {
-  const res = await fetch(`/api/creator/phase4/needs/${encodeURIComponent(needKey)}?ideaId=${encodeURIComponent(ideaId)}`, {
-    method: 'PATCH',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ...req, ideaId }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to update need state (${res.status})`);
-  }
-
-  return res.json();
+  const res = await api.patch<ApiEnvelope<NeedsAnalysisResponse> | NeedsAnalysisResponse>(
+    `/creator/phase4/needs/${encodeURIComponent(needKey)}`,
+    { ...req, ideaId },
+    {
+      params: { ideaId },
+    }
+  );
+  return unwrap(res.data);
 }
+

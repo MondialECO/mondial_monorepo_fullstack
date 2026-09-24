@@ -133,7 +133,7 @@ namespace WebApp.Services.Implementations
                     {
                         if (stageLookup.TryGetValue(dep, out var depStage))
                         {
-                            earliestStage = MaxStage(earliestStage, GetNextStage(depStage));
+                            earliestStage = MaxStage(earliestStage, depStage);
                         }
                     }
                 }

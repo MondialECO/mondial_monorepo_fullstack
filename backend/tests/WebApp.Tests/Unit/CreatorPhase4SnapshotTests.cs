@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
+using WebApp.Controllers;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.DatabaseModels.Legal;
@@ -497,6 +498,334 @@ namespace WebApp.Tests.Unit
             journey.Phase3Data.LegalChecklist.Items.Count.Should().Be(preLegalItemsCount);
             profile.Skills.Count.Should().Be(preSkillCount);
             profile.VentureContext?.CurrentSituation.Should().Be(preSituation);
+        }
+    }
+
+    public class CreatorPhase4ConstructionControllerTests
+    {
+        private const string UserId = "user-test-123";
+        private readonly Mock<IConstructionSnapshotService> _snapshotMock = new();
+        private readonly Mock<IOperationalRoadmapService> _roadmapMock = new();
+        private readonly Mock<INeedsAnalysisService> _needsMock = new();
+        private readonly Mock<ISkillsResolutionService> _skillsMock = new();
+        private readonly Mock<ISupportPlanService> _supportMock = new();
+        private readonly Mock<IPricingStrategyService> _pricingMock = new();
+        private readonly Mock<IGtmStrategyService> _gtmMock = new();
+
+        private CreatorPhase4ConstructionController CreateController()
+        {
+            var controller = new CreatorPhase4ConstructionController(
+                _snapshotMock.Object,
+                _roadmapMock.Object,
+                _needsMock.Object,
+                _skillsMock.Object,
+                _supportMock.Object,
+                _pricingMock.Object,
+                _gtmMock.Object
+            );
+
+            controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
+            {
+                HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+                {
+                    User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                        new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, UserId) },
+                        "TestAuth"))
+                }
+            };
+
+            return controller;
+        }
+
+        [Fact]
+        public async Task GenerateSnapshot_With_Missing_IdeaId_Returns_BadRequest_400()
+        {
+            var controller = CreateController();
+
+            var result = await controller.GenerateSnapshot(new GenerateSnapshotRequest { IdeaId = null }, ideaId: null);
+
+            var badRequest = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.BadRequestObjectResult>().Subject;
+            badRequest.StatusCode.Should().Be(400);
+            var apiRes = badRequest.Value.Should().BeOfType<WebApp.Models.ApiResponse>().Subject;
+            apiRes.Message.Should().Be("ideaId is required for Creator changes.");
+        }
+
+        [Fact]
+        public async Task GenerateSnapshot_With_Valid_IdeaId_In_Body_Returns_Ok_200()
+        {
+            var controller = CreateController();
+            var expectedResponse = new ConstructionSnapshotResponse
+            {
+                Snapshot = new ConstructionSnapshot { Status = "Completed" },
+                ReadyCount = 5,
+                PartialCount = 5
+            };
+
+            _snapshotMock.Setup(s => s.GenerateSnapshotAsync(UserId, "idea-valid-1"))
+                .ReturnsAsync(expectedResponse);
+
+            var result = await controller.GenerateSnapshot(new GenerateSnapshotRequest { IdeaId = "idea-valid-1" }, ideaId: null);
+
+            var okResult = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>().Subject;
+            okResult.StatusCode.Should().Be(200);
+        }
+
+        [Fact]
+        public async Task GenerateSnapshot_With_Valid_IdeaId_In_Query_Returns_Ok_200()
+        {
+            var controller = CreateController();
+            var expectedResponse = new ConstructionSnapshotResponse
+            {
+                Snapshot = new ConstructionSnapshot { Status = "Completed" },
+                ReadyCount = 5
+            };
+
+            _snapshotMock.Setup(s => s.GenerateSnapshotAsync(UserId, "idea-query-1"))
+                .ReturnsAsync(expectedResponse);
+
+            var result = await controller.GenerateSnapshot(null, ideaId: "idea-query-1");
+
+            var okResult = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>().Subject;
+            okResult.StatusCode.Should().Be(200);
+        }
+
+        [Fact]
+        public async Task GenerateSnapshot_With_Conflicting_IdeaId_In_Query_And_Body_Returns_BadRequest_400()
+        {
+            var controller = CreateController();
+
+            var result = await controller.GenerateSnapshot(new GenerateSnapshotRequest { IdeaId = "idea-body-1" }, ideaId: "idea-query-2");
+
+            var badRequest = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.BadRequestObjectResult>().Subject;
+            badRequest.StatusCode.Should().Be(400);
+            var apiRes = badRequest.Value.Should().BeOfType<WebApp.Models.ApiResponse>().Subject;
+            apiRes.Message.Should().Contain("Conflicting ideaId");
+        }
+
+        [Fact]
+        public async Task RefreshSnapshot_With_Conflicting_IdeaId_Returns_BadRequest_400()
+        {
+            var controller = CreateController();
+
+            var result = await controller.RefreshSnapshot(new GenerateSnapshotRequest { IdeaId = "idea-body-1" }, ideaId: "idea-query-2");
+
+            var badRequest = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.BadRequestObjectResult>().Subject;
+            badRequest.StatusCode.Should().Be(400);
+            var apiRes = badRequest.Value.Should().BeOfType<WebApp.Models.ApiResponse>().Subject;
+            apiRes.Message.Should().Contain("Conflicting ideaId");
+        }
+
+        [Fact]
+        public async Task RefreshSnapshot_With_Missing_IdeaId_Returns_BadRequest_400()
+        {
+            var controller = CreateController();
+
+            var result = await controller.RefreshSnapshot(new GenerateSnapshotRequest { IdeaId = "" }, ideaId: null);
+
+            var badRequest = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.BadRequestObjectResult>().Subject;
+            badRequest.StatusCode.Should().Be(400);
+            var apiRes = badRequest.Value.Should().BeOfType<WebApp.Models.ApiResponse>().Subject;
+            apiRes.Message.Should().Be("ideaId is required for Creator changes.");
+        }
+
+        [Fact]
+        public async Task RefreshSnapshot_With_Valid_IdeaId_Returns_Ok_200()
+        {
+            var controller = CreateController();
+            var expectedResponse = new ConstructionSnapshotResponse
+            {
+                Snapshot = new ConstructionSnapshot { Status = "Completed" },
+                ReadyCount = 7
+            };
+
+            _snapshotMock.Setup(s => s.RefreshSnapshotAsync(UserId, "idea-refresh-1"))
+                .ReturnsAsync(expectedResponse);
+
+            var result = await controller.RefreshSnapshot(new GenerateSnapshotRequest { IdeaId = "idea-refresh-1" }, ideaId: "idea-refresh-1");
+
+            var okResult = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>().Subject;
+            okResult.StatusCode.Should().Be(200);
+        }
+
+        [Fact]
+        public async Task GetSnapshot_With_Valid_IdeaId_Returns_Ok_200()
+        {
+            var controller = CreateController();
+            var expectedResponse = new ConstructionSnapshotResponse
+            {
+                Snapshot = new ConstructionSnapshot 
+                { 
+                    Status = "Completed",
+                    Categories = new List<string> { "Brand", "Technology" }
+                },
+                ReadyCount = 10
+            };
+
+            _snapshotMock.Setup(s => s.GetSnapshotAsync(UserId, "idea-valid-get"))
+                .ReturnsAsync(expectedResponse);
+
+            var result = await controller.GetSnapshot(ideaId: "idea-valid-get");
+
+            var okResult = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>().Subject;
+            okResult.StatusCode.Should().Be(200);
+            var apiRes = okResult.Value.Should().BeOfType<WebApp.Models.ApiResponse>().Subject;
+            var data = apiRes.Data.Should().BeOfType<ConstructionSnapshotResponse>().Subject;
+            data.Snapshot.Should().NotBeNull();
+            data.Snapshot.Status.Should().Be("Completed");
+            data.ReadyCount.Should().Be(10);
+        }
+
+        [Fact]
+        public async Task GetSnapshot_With_Distinct_Projects_Returns_Respective_Snapshot_And_Preserves_Isolation()
+        {
+            var controller = CreateController();
+            var responseA = new ConstructionSnapshotResponse
+            {
+                Snapshot = new ConstructionSnapshot { Status = "Completed", OverallSummary = "Project A Summary" },
+                ReadyCount = 12
+            };
+            var responseB = new ConstructionSnapshotResponse
+            {
+                Snapshot = new ConstructionSnapshot { Status = "Completed", OverallSummary = "Project B Summary" },
+                ReadyCount = 4
+            };
+
+            _snapshotMock.Setup(s => s.GetSnapshotAsync(UserId, "idea-A"))
+                .ReturnsAsync(responseA);
+            _snapshotMock.Setup(s => s.GetSnapshotAsync(UserId, "idea-B"))
+                .ReturnsAsync(responseB);
+
+            var resultA = await controller.GetSnapshot(ideaId: "idea-A");
+            var resultB = await controller.GetSnapshot(ideaId: "idea-B");
+
+            var okA = resultA.Should().BeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>().Subject;
+            var okB = resultB.Should().BeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>().Subject;
+
+            var dataA = okA.Value.As<WebApp.Models.ApiResponse>().Data.As<ConstructionSnapshotResponse>();
+            var dataB = okB.Value.As<WebApp.Models.ApiResponse>().Data.As<ConstructionSnapshotResponse>();
+
+            dataA.Snapshot.OverallSummary.Should().Be("Project A Summary");
+            dataA.ReadyCount.Should().Be(12);
+
+            dataB.Snapshot.OverallSummary.Should().Be("Project B Summary");
+            dataB.ReadyCount.Should().Be(4);
+        }
+
+        [Fact]
+        public async Task GenerateSnapshot_With_Conflicting_ExpectedVersion_In_Query_And_Body_Returns_BadRequest_400()
+        {
+            var controller = CreateController();
+
+            var result = await controller.GenerateSnapshot(
+                new GenerateSnapshotRequest { IdeaId = "idea-1", ExpectedVersion = 2 },
+                ideaId: "idea-1",
+                expectedVersion: 3
+            );
+
+            var badRequest = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.BadRequestObjectResult>().Subject;
+            badRequest.StatusCode.Should().Be(400);
+            var apiRes = badRequest.Value.Should().BeOfType<WebApp.Models.ApiResponse>().Subject;
+            apiRes.Message.Should().Contain("Conflicting expectedVersion");
+        }
+
+        [Fact]
+        public async Task GenerateSnapshot_With_Valid_ExpectedVersion_Sets_CreatorIdeaVersion_In_HttpContext()
+        {
+            var controller = CreateController();
+            var expectedResponse = new ConstructionSnapshotResponse
+            {
+                Snapshot = new ConstructionSnapshot { Status = "Completed" },
+                ReadyCount = 5,
+                IdeaVersion = 3
+            };
+
+            _snapshotMock.Setup(s => s.GenerateSnapshotAsync(UserId, "idea-1"))
+                .ReturnsAsync(expectedResponse);
+
+            var result = await controller.GenerateSnapshot(
+                new GenerateSnapshotRequest { IdeaId = "idea-1", ExpectedVersion = 2 },
+                ideaId: "idea-1",
+                expectedVersion: 2
+            );
+
+            var okResult = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>().Subject;
+            okResult.StatusCode.Should().Be(200);
+            controller.HttpContext.Items["CreatorIdeaVersion"].Should().Be(2L);
+        }
+
+        [Fact]
+        public async Task GenerateSnapshot_With_Stale_Version_Returns_409_Conflict()
+        {
+            var controller = CreateController();
+
+            _snapshotMock.Setup(s => s.GenerateSnapshotAsync(UserId, "idea-stale"))
+                .ThrowsAsync(new CreatorJourneyException(409, "This idea was updated in another tab. Refresh to load the latest version before continuing."));
+
+            var result = await controller.GenerateSnapshot(new GenerateSnapshotRequest { IdeaId = "idea-stale", ExpectedVersion = 1 });
+
+            var statusResult = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.ObjectResult>().Subject;
+            statusResult.StatusCode.Should().Be(409);
+            var apiRes = statusResult.Value.Should().BeOfType<WebApp.Models.ApiResponse>().Subject;
+            apiRes.Message.Should().Contain("This idea was updated in another tab");
+        }
+
+        [Fact]
+        public async Task Two_Consecutive_Writes_Generate_Then_Refresh_Succeeds_With_Version_Progression()
+        {
+            var controller = CreateController();
+            var genResponse = new ConstructionSnapshotResponse
+            {
+                Snapshot = new ConstructionSnapshot { Status = "Completed" },
+                ReadyCount = 5,
+                IdeaVersion = 2
+            };
+            var refreshResponse = new ConstructionSnapshotResponse
+            {
+                Snapshot = new ConstructionSnapshot { Status = "Completed" },
+                ReadyCount = 6,
+                IdeaVersion = 3
+            };
+
+            _snapshotMock.Setup(s => s.GenerateSnapshotAsync(UserId, "idea-1"))
+                .ReturnsAsync(genResponse);
+            _snapshotMock.Setup(s => s.RefreshSnapshotAsync(UserId, "idea-1"))
+                .ReturnsAsync(refreshResponse);
+
+            // Step 1: Generate with expectedVersion=1
+            var genResult = await controller.GenerateSnapshot(
+                new GenerateSnapshotRequest { IdeaId = "idea-1", ExpectedVersion = 1 },
+                ideaId: "idea-1",
+                expectedVersion: 1
+            );
+            var genOk = genResult.Should().BeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>().Subject;
+            genOk.StatusCode.Should().Be(200);
+
+            // Step 2: Refresh with expectedVersion=2 (incremented version)
+            var refreshResult = await controller.RefreshSnapshot(
+                new GenerateSnapshotRequest { IdeaId = "idea-1", ExpectedVersion = 2 },
+                ideaId: "idea-1",
+                expectedVersion: 2
+            );
+            var refreshOk = refreshResult.Should().BeOfType<Microsoft.AspNetCore.Mvc.OkObjectResult>().Subject;
+            refreshOk.StatusCode.Should().Be(200);
+            var refreshData = refreshOk.Value.As<WebApp.Models.ApiResponse>().Data.As<ConstructionSnapshotResponse>();
+            refreshData.IdeaVersion.Should().Be(3);
+        }
+
+        [Fact]
+        public async Task GenerateSnapshot_With_CreatorJourneyException_Returns_Mapped_StatusCode()
+        {
+            var controller = CreateController();
+
+            _snapshotMock.Setup(s => s.GenerateSnapshotAsync(UserId, "idea-unowned"))
+                .ThrowsAsync(new CreatorJourneyException(404, "Idea not found."));
+
+            var result = await controller.GenerateSnapshot(new GenerateSnapshotRequest { IdeaId = "idea-unowned" });
+
+            var statusResult = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.ObjectResult>().Subject;
+            statusResult.StatusCode.Should().Be(404);
+            var apiRes = statusResult.Value.Should().BeOfType<WebApp.Models.ApiResponse>().Subject;
+            apiRes.Message.Should().Be("Idea not found.");
         }
     }
 }
