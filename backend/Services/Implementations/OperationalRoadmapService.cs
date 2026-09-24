@@ -337,7 +337,7 @@ namespace WebApp.Services.Implementations
                 BusinessPlanSessionId = p3.BusinessPlanSessionId,
                 BusinessPlanVersion = plan?.CurrentVersion ?? 1,
                 BusinessPlanUpdatedAt = plan?.UpdatedAt,
-                LegalChecklistCompletedCount = p3.LegalChecklist?.CompletedCount ?? 0,
+                LegalChecklistCompletedCount = p3.LegalAssessment?.Items?.Count(i => i.Status == "completed") ?? (p3.LegalChecklist?.CompletedCount ?? 0),
                 LegalAssessmentUpdatedAt = p3.LegalAssessment?.EvaluatedAt,
                 FormationVersion = p3.FormationGenerator != null ? 1 : 0,
                 FormationUpdatedAt = journey.UpdatedAt,
@@ -352,6 +352,7 @@ namespace WebApp.Services.Implementations
                 ConstructionSnapshot = snapshot,
                 CurrentSourceVersions = versions,
                 Forecast = forecast,
+                LegalAssessment = p3.LegalAssessment,
                 LegalChecklist = p3.LegalChecklist,
                 Formation = p3.FormationGenerator,
                 BusinessPlan = plan,
@@ -444,7 +445,7 @@ namespace WebApp.Services.Implementations
                         Source = new List<string>(item.Source) { "Construction Snapshot" },
                         SourceReference = new List<string>(item.SourceReference) { item.Key },
                         RelatedSnapshotItemKey = item.Key,
-                        EarliestStart = RoadmapStages.Now
+                        EarliestStart = ResolveSnapshotItemEarliestStage(item, isCritical: true)
                     });
                 }
             }
@@ -474,7 +475,7 @@ namespace WebApp.Services.Implementations
                         Source = new List<string>(item.Source) { "Construction Snapshot" },
                         SourceReference = new List<string>(item.SourceReference) { item.Key },
                         RelatedSnapshotItemKey = item.Key,
-                        EarliestStart = RoadmapStages.Next30Days
+                        EarliestStart = ResolveSnapshotItemEarliestStage(item, isCritical: false)
                     });
                 }
             }
@@ -503,31 +504,32 @@ namespace WebApp.Services.Implementations
                         Source = new List<string>(item.Source) { "Construction Snapshot" },
                         SourceReference = new List<string>(item.SourceReference) { item.Key },
                         RelatedSnapshotItemKey = item.Key,
-                        EarliestStart = RoadmapStages.Now
+                        EarliestStart = ResolveSnapshotItemEarliestStage(item, isCritical: false)
                     });
                 }
             }
 
-            // 4. Map Legal Checklist Requirements with strict Temporal Fidelity
-            if (context.LegalChecklist?.Items != null)
+            // 4. Map Legal Requirements (from LegalAssessment or fallback LegalChecklist)
+            var legalItems = context.LegalAssessment?.Items ?? context.LegalChecklist?.Items;
+            if (legalItems != null)
             {
-                foreach (var legalItem in context.LegalChecklist.Items)
+                foreach (var legalItem in legalItems)
                 {
                     if (legalItem.Status == "completed" || legalItem.Status == "not_applicable") continue;
 
-                    var rawId = legalItem.Id ?? legalItem.Title;
+                    var rawId = legalItem.Id ?? legalItem.Title ?? "item";
                     var taskKey = rawId.StartsWith("legal.") ? rawId : $"legal.{Slugify(rawId)}";
                     if (candidates.Any(c => c.Key == taskKey)) continue;
 
-                    string stage = MapLegalStage(legalItem.Stage);
+                    string stage = MapLegalStage(legalItem.Id, legalItem.Stage, legalItem.Category);
                     bool isBlocking = legalItem.Priority?.ToLowerInvariant() == "critical" || legalItem.Stage == "company_creation";
                     bool isExternal = legalItem.Stage == "company_creation" || legalItem.RequiresEvidence;
 
                     candidates.Add(new RoadmapTask
                     {
                         Key = taskKey,
-                        Title = legalItem.Title,
-                        Description = legalItem.WhyItApplies,
+                        Title = legalItem.Title ?? rawId,
+                        Description = legalItem.WhyItApplies ?? string.Empty,
                         Category = RoadmapCategories.LegalAndAdministration,
                         Priority = legalItem.Priority?.ToLowerInvariant() == "critical" ? RoadmapTaskPriority.Critical : RoadmapTaskPriority.High,
                         Blocking = isBlocking,
@@ -538,7 +540,7 @@ namespace WebApp.Services.Implementations
                         RequiresExternalAction = isExternal,
                         EstimatedDuration = isExternal ? "3–7 business days" : string.Empty,
                         Source = new List<string> { "Legal Assessment" },
-                        SourceReference = new List<string> { legalItem.Id },
+                        SourceReference = new List<string> { rawId },
                         EarliestStart = stage
                     });
                 }
@@ -568,31 +570,186 @@ namespace WebApp.Services.Implementations
                         EarliestStart = RoadmapStages.Now
                     });
                 }
+
+                // Map Skill Gaps from Formation assessment
+                if (context.Formation.YouNeed != null)
+                {
+                    foreach (var gap in context.Formation.YouNeed)
+                    {
+                        var skillLabel = !string.IsNullOrWhiteSpace(gap.Label) ? gap.Label : (gap.SpSpecialty ?? "Specialist");
+                        var skillKey = $"skill-gap.{Slugify(skillLabel)}";
+                        if (candidates.Any(c => c.Key == skillKey)) continue;
+
+                        candidates.Add(new RoadmapTask
+                        {
+                            Key = skillKey,
+                            Title = $"Engage {skillLabel} Capability",
+                            Description = $"Secure {skillLabel} expertise ({gap.SpSpecialty ?? "specialist"}) to support venture development and operational milestones.",
+                            Category = RoadmapCategories.Skills,
+                            Priority = RoadmapTaskPriority.High,
+                            Blocking = false,
+                            Why = $"Formation assessment identified a capability gap for {skillLabel}.",
+                            ExpectedResult = $"Qualified {skillLabel} contributor, advisor, or service provider contracted.",
+                            EstimatedEffort = RoadmapTaskEffort.Medium,
+                            EstimatedEffortHours = 3.5,
+                            Source = new List<string> { "Formation & Team" },
+                            EarliestStart = RoadmapStages.Days30To60
+                        });
+                    }
+                }
             }
 
-            // 6. Establish Logical DAG Dependencies across Tasks
+            // 6. Map Core GTM & Launch Validation Milestones
+            EnsureCoreMilestoneTasks(candidates, context);
+
+            // 7. Establish Logical DAG Dependencies across Tasks
             WireDependencies(candidates);
 
             return candidates;
+        }
+
+        private static void EnsureCoreMilestoneTasks(List<RoadmapTask> candidates, RoadmapContext context)
+        {
+            // Days 30-60: Pricing Tiers & Unit Economics
+            var pricingKey = "pricing.finalize-tiers";
+            if (!candidates.Any(c => c.Key.Contains("pricing") || c.Category == RoadmapCategories.Pricing))
+            {
+                candidates.Add(new RoadmapTask
+                {
+                    Key = pricingKey,
+                    Title = "Finalize Launch Pricing Tiers & Unit Economics",
+                    Description = "Structure customer pricing tiers, gross margins, and initial payment collection terms.",
+                    Category = RoadmapCategories.Pricing,
+                    Priority = RoadmapTaskPriority.High,
+                    Blocking = false,
+                    Why = "Validated pricing model ensures positive contribution margin prior to customer acquisition.",
+                    ExpectedResult = "Documented 3-tier pricing model with confirmed margin profile.",
+                    EstimatedEffort = RoadmapTaskEffort.Medium,
+                    EstimatedEffortHours = 3.5,
+                    Source = new List<string> { "Business Plan" },
+                    EarliestStart = RoadmapStages.Days30To60
+                });
+            }
+
+            // Days 60-90: Early Adopter Validation & Outreach
+            var gtmKey = "gtm.early-adopter-outreach";
+            if (!candidates.Any(c => c.Key.Contains("gtm") || c.Category == RoadmapCategories.GoToMarket))
+            {
+                candidates.Add(new RoadmapTask
+                {
+                    Key = gtmKey,
+                    Title = "Execute Early Adopter Customer Outreach",
+                    Description = "Initiate targeted founder outreach to validate initial value proposition with early prospect accounts.",
+                    Category = RoadmapCategories.GoToMarket,
+                    Priority = RoadmapTaskPriority.High,
+                    Blocking = false,
+                    Why = "Customer discovery feedback refines user onboarding before public launch.",
+                    ExpectedResult = "5+ prospect discovery interviews completed with feedback recorded.",
+                    EstimatedEffort = RoadmapTaskEffort.Medium,
+                    EstimatedEffortHours = 4.0,
+                    Source = new List<string> { "Business Plan" },
+                    EarliestStart = RoadmapStages.Days60To90
+                });
+            }
+
+            // Before Launch: Pre-Launch Readiness & User Acceptance QA
+            var launchKey = "launch.pre-launch-qa-checklist";
+            if (!candidates.Any(c => c.Key == launchKey))
+            {
+                candidates.Add(new RoadmapTask
+                {
+                    Key = launchKey,
+                    Title = "Execute Pre-Launch User Acceptance & Security QA",
+                    Description = "Verify full user journey, transaction processing, legal links, and error handling before public traffic.",
+                    Category = RoadmapCategories.Launch,
+                    Priority = RoadmapTaskPriority.Critical,
+                    Blocking = true,
+                    Why = "Ensures zero fatal friction points on day 1 of live customer onboarding.",
+                    ExpectedResult = "End-to-end user checkout and account creation verified in production environment.",
+                    EstimatedEffort = RoadmapTaskEffort.Medium,
+                    EstimatedEffortHours = 3.5,
+                    Source = new List<string> { "Construction Snapshot" },
+                    EarliestStart = RoadmapStages.BeforeLaunch
+                });
+            }
+
+            // Post Launch: 30-Day Cohort & Operations Review
+            var opsKey = "operations.post-launch-review";
+            if (!candidates.Any(c => c.Key == opsKey || c.Category == RoadmapCategories.Operations))
+            {
+                candidates.Add(new RoadmapTask
+                {
+                    Key = opsKey,
+                    Title = "Conduct 30-Day Cohort Retention & Growth Review",
+                    Description = "Track early customer retention, unit economics divergence, and customer support volume post-launch.",
+                    Category = RoadmapCategories.Operations,
+                    Priority = RoadmapTaskPriority.Medium,
+                    Blocking = false,
+                    Why = "Identifies early retention signals and operational bottlenecks after initial market entry.",
+                    ExpectedResult = "First 30-day cohort metrics documented with iterative backlog adjustments.",
+                    EstimatedEffort = RoadmapTaskEffort.Small,
+                    EstimatedEffortHours = 2.0,
+                    Source = new List<string> { "Business Plan" },
+                    EarliestStart = RoadmapStages.PostLaunch
+                });
+            }
         }
 
         private static void WireDependencies(List<RoadmapTask> candidates)
         {
             var taskByKey = candidates.ToDictionary(c => c.Key, c => c);
 
-            // Structure confirmation must precede company creation legal items
+            // Structure confirmation must precede company creation and downstream legal items
             if (taskByKey.TryGetValue("formation.confirm-structure", out var formationTask))
             {
-                foreach (var legalTask in candidates.Where(c => c.Key.StartsWith("legal.") && c.Key != "formation.confirm-structure"))
+                foreach (var legalTask in candidates.Where(c => (c.Category == RoadmapCategories.LegalAndAdministration || c.Key.StartsWith("legal.")) && c.Key != "formation.confirm-structure"))
                 {
-                    if (!legalTask.Dependencies.Contains(formationTask.Key))
+                    if (!legalTask.Key.Contains("fr-reg-001"))
                     {
-                        legalTask.Dependencies.Add(formationTask.Key);
+                        if (!legalTask.Dependencies.Contains(formationTask.Key))
+                        {
+                            legalTask.Dependencies.Add(formationTask.Key);
+                        }
                     }
                 }
             }
 
-            // Critical technology execution must precede showcase website launch
+            // Company registration (FR-CORP-004) precedes insurance, payment gateway, and post-launch social security & RBE
+            var registrationTask = candidates.FirstOrDefault(c => c.Key.Contains("fr-corp-004") || c.Key.Contains("registration"));
+            if (registrationTask != null)
+            {
+                foreach (var depTask in candidates.Where(c => c.Key.Contains("fr-ins-001") || c.Key.Contains("fr-pay-001") || c.Key.Contains("fr-soc-001") || c.Key.Contains("fr-corp-005")))
+                {
+                    if (!depTask.Dependencies.Contains(registrationTask.Key))
+                    {
+                        depTask.Dependencies.Add(registrationTask.Key);
+                    }
+                }
+            }
+
+            // Privacy Policy precedes Cookie Consent CMP & Mentions Légales
+            var privacyTask = candidates.FirstOrDefault(c => c.Key.Contains("fr-priv-001") || c.Key.Contains("privacy"));
+            var cookieTask = candidates.FirstOrDefault(c => c.Key.Contains("fr-priv-002") || c.Key.Contains("cookie"));
+            var webTask = candidates.FirstOrDefault(c => c.Key.Contains("fr-web-001") || c.Key.Contains("mentions-legales") || c.Key.Contains("website"));
+
+            if (privacyTask != null && cookieTask != null && !cookieTask.Dependencies.Contains(privacyTask.Key))
+            {
+                cookieTask.Dependencies.Add(privacyTask.Key);
+            }
+            if (privacyTask != null && webTask != null && !webTask.Dependencies.Contains(privacyTask.Key))
+            {
+                webTask.Dependencies.Add(privacyTask.Key);
+            }
+
+            // Pricing tiers precedes CGV & Pre-launch QA
+            var pricingTask = candidates.FirstOrDefault(c => c.Key.Contains("pricing"));
+            var cgvTask = candidates.FirstOrDefault(c => c.Key.Contains("fr-cons-001") || c.Key.Contains("terms"));
+            if (pricingTask != null && cgvTask != null && !cgvTask.Dependencies.Contains(pricingTask.Key))
+            {
+                cgvTask.Dependencies.Add(pricingTask.Key);
+            }
+
+            // Critical technology execution must precede pre-launch QA and launch tasks
             var techCritical = candidates.FirstOrDefault(c => c.Key.Contains("technical_execution") || c.Key.Contains("software"));
             var launchTasks = candidates.Where(c => c.Category == RoadmapCategories.Launch || c.Key.Contains("launch"));
 
@@ -605,6 +762,14 @@ namespace WebApp.Services.Implementations
                         lt.Dependencies.Add(techCritical.Key);
                     }
                 }
+            }
+
+            // Pre-launch QA precedes Post-launch review
+            var preLaunchQA = candidates.FirstOrDefault(c => c.Key.Contains("pre-launch-qa") || c.Key.Contains("launch.pre-launch-qa-checklist"));
+            var postLaunchReview = candidates.FirstOrDefault(c => c.Key.Contains("post-launch-review") || c.Key.Contains("operations.post-launch-review"));
+            if (preLaunchQA != null && postLaunchReview != null && !postLaunchReview.Dependencies.Contains(preLaunchQA.Key))
+            {
+                postLaunchReview.Dependencies.Add(preLaunchQA.Key);
             }
         }
 
@@ -801,22 +966,69 @@ namespace WebApp.Services.Implementations
             _ => RoadmapCategories.Business
         };
 
-        private static string MapLegalStage(string? legalStage)
+        private static string ResolveSnapshotItemEarliestStage(ConstructionSnapshotItem item, bool isCritical)
         {
-            if (string.IsNullOrWhiteSpace(legalStage)) return RoadmapStages.Now;
+            var cat = item.Category ?? string.Empty;
+            var key = (item.Key ?? string.Empty).ToLowerInvariant();
+
+            if (cat == ConstructionCategories.LaunchAssets || key.Contains("launch"))
+                return RoadmapStages.BeforeLaunch;
+
+            if (cat == ConstructionCategories.Operations || key.Contains("operation"))
+                return RoadmapStages.PostLaunch;
+
+            if (cat == ConstructionCategories.GoToMarket || key.Contains("gtm") || key.Contains("market-entry") || key.Contains("outreach"))
+                return RoadmapStages.Days60To90;
+
+            if (cat == ConstructionCategories.Pricing || cat == ConstructionCategories.Brand || cat == ConstructionCategories.Skills || cat == ConstructionCategories.Funding)
+                return RoadmapStages.Days30To60;
+
+            if (cat == ConstructionCategories.Technology || cat == ConstructionCategories.Services)
+                return isCritical ? RoadmapStages.Now : RoadmapStages.Days30To60;
+
+            if (cat == ConstructionCategories.BusinessFoundation || cat == ConstructionCategories.Market || cat == ConstructionCategories.Team)
+                return isCritical ? RoadmapStages.Now : RoadmapStages.Next30Days;
+
+            return isCritical ? RoadmapStages.Now : RoadmapStages.Next30Days;
+        }
+
+        private static string MapLegalStage(string? ruleId, string? legalStage, string? category)
+        {
+            var id = (ruleId ?? string.Empty).ToUpperInvariant();
+            if (id.Contains("FR-REG-001")) return RoadmapStages.Now;
+            if (id.Contains("FR-CORP-001") || id.Contains("FR-CORP-002") || id.Contains("FR-CORP-003") || id.Contains("FR-CORP-004"))
+                return RoadmapStages.Next30Days;
+            if (id.Contains("FR-IP-001") || id.Contains("FR-INS-001"))
+                return RoadmapStages.Days30To60;
+            if (id.Contains("FR-PRIV-001") || id.Contains("FR-PRIV-002") || id.Contains("FR-PRIV-003") || id.Contains("FR-PAY-001") || id.Contains("FR-MKT-001"))
+                return RoadmapStages.Days60To90;
+            if (id.Contains("FR-WEB-001") || id.Contains("FR-CONS-001") || id.Contains("FR-CONS-002") || id.Contains("FR-CONS-003") || id.Contains("FR-TAX-001") || id.Contains("FR-SOC-002"))
+                return RoadmapStages.BeforeLaunch;
+            if (id.Contains("FR-SOC-001") || id.Contains("FR-CORP-005") || id.Contains("FR-CORP-006"))
+                return RoadmapStages.PostLaunch;
+
+            // Fallback based on legalStage and category
+            if (string.IsNullOrWhiteSpace(legalStage)) return RoadmapStages.Days30To60;
             var s = legalStage.ToLowerInvariant();
+            var c = (category ?? string.Empty).ToLowerInvariant();
 
             if (s.Contains("before_creation") || s.Contains("before company"))
                 return RoadmapStages.Now;
             if (s.Contains("company_creation"))
                 return RoadmapStages.Next30Days;
-            if (s.Contains("before_launch") || s.Contains("before first sale"))
+            if (s.Contains("before_launch") || s.Contains("before_sale") || s.Contains("before first sale"))
+            {
+                if (c.Contains("intellectual") || c.Contains("insurance")) return RoadmapStages.Days30To60;
+                if (c.Contains("privacy") || c.Contains("payment") || c.Contains("market")) return RoadmapStages.Days60To90;
                 return RoadmapStages.BeforeLaunch;
-            if (s.Contains("ongoing"))
+            }
+            if (s.Contains("ongoing") || s.Contains("post"))
                 return RoadmapStages.PostLaunch;
 
             return RoadmapStages.Days30To60;
         }
+
+        private static string MapLegalStage(string? legalStage) => MapLegalStage(null, legalStage, null);
 
         private static string Slugify(string text)
         {

@@ -532,6 +532,91 @@ namespace WebApp.Tests.Unit
             res.KnownEffortHours.Should().BeGreaterThan(0);
             res.TotalTasksCount.Should().Be(res.Roadmap!.Tasks.Count);
         }
+
+        [Fact]
+        public async Task All_Six_Stages_Are_Populated_From_LegalAssessment_FormationGaps_And_Snapshot()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-REG-001", Title = "Regulated Activity Check", Category = "regulated", Stage = "before_creation", Priority = "critical", WhyItApplies = "Regulated sector validation." },
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Priority = "critical", WhyItApplies = "Capital deposit required.", RequiresEvidence = true },
+                    new() { Id = "FR-IP-001", Title = "INPI Trademark Search", Category = "intellectual_property", Stage = "before_launch", Priority = "recommended", WhyItApplies = "Brand protection search." },
+                    new() { Id = "FR-PRIV-001", Title = "GDPR Privacy Policy", Category = "privacy", Stage = "before_launch", Priority = "critical", WhyItApplies = "Processes customer personal data." },
+                    new() { Id = "FR-WEB-001", Title = "Mentions Légales", Category = "consumer_protection", Stage = "before_launch", Priority = "critical", WhyItApplies = "LCEN mandatory notices." },
+                    new() { Id = "FR-SOC-001", Title = "URSSAF Affiliation", Category = "social", Stage = "ongoing", Priority = "critical", WhyItApplies = "Founder social protection." }
+                }
+            };
+            journey.Phase3Data.FormationGenerator!.YouNeed = new List<CreatorSkillGap>
+            {
+                new() { Label = "Lead Fullstack Engineer", SpSpecialty = "development" }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            res.Should().NotBeNull();
+            var tasks = res.Roadmap!.Tasks;
+
+            // 1. All 6 stages have scheduled tasks
+            var nowTasks = tasks.Where(t => t.Stage == RoadmapStages.Now).ToList();
+            var next30Tasks = tasks.Where(t => t.Stage == RoadmapStages.Next30Days).ToList();
+            var days30To60Tasks = tasks.Where(t => t.Stage == RoadmapStages.Days30To60).ToList();
+            var days60To90Tasks = tasks.Where(t => t.Stage == RoadmapStages.Days60To90).ToList();
+            var beforeLaunchTasks = tasks.Where(t => t.Stage == RoadmapStages.BeforeLaunch).ToList();
+            var postLaunchTasks = tasks.Where(t => t.Stage == RoadmapStages.PostLaunch).ToList();
+
+            nowTasks.Should().NotBeEmpty();
+            next30Tasks.Should().NotBeEmpty();
+            days30To60Tasks.Should().NotBeEmpty();
+            days60To90Tasks.Should().NotBeEmpty();
+            beforeLaunchTasks.Should().NotBeEmpty();
+            postLaunchTasks.Should().NotBeEmpty();
+
+            // 2. Specific domain mappings verified
+            days30To60Tasks.Should().Contain(t => t.Key.Contains("fr-ip-001") || t.Key.Contains("skill-gap"));
+            days60To90Tasks.Should().Contain(t => t.Key.Contains("fr-priv-001") || t.Key.Contains("gtm"));
+            beforeLaunchTasks.Should().Contain(t => t.Key.Contains("fr-web-001") || t.Key.Contains("launch"));
+            postLaunchTasks.Should().Contain(t => t.Key.Contains("fr-soc-001") || t.Key.Contains("operations"));
+
+            // 3. Stage groups contain all 6 stages
+            res.Roadmap.Stages.Select(s => s.Stage).Should().BeEquivalentTo(RoadmapStages.AllStages);
+        }
+
+        [Fact]
+        public async Task Blocked_Tasks_Remain_Visible_In_Intended_Stage_With_Accurate_Dependencies()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Priority = "critical", WhyItApplies = "Capital deposit required." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var formationTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key == "formation.confirm-structure");
+            var legalTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-001"));
+
+            formationTask.Should().NotBeNull();
+            legalTask.Should().NotBeNull();
+
+            // Dependency is recorded
+            legalTask!.Dependencies.Should().Contain("formation.confirm-structure");
+            // Reverse unblock is recorded
+            formationTask!.Unblocks.Should().Contain(legalTask.Title);
+            // Blocked task is NOT hidden; it is present in NEXT_30_DAYS
+            legalTask.Stage.Should().Be(RoadmapStages.Next30Days);
+        }
     }
 }
 

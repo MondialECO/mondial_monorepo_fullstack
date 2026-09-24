@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using WebApp.Models;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
+using WebApp.Models.DatabaseModels.Legal;
 using WebApp.Models.DatabaseModels.Phase4;
 
 namespace WebApp.Models.Phase4
@@ -17,6 +18,7 @@ namespace WebApp.Models.Phase4
         
         // Contextual inputs
         public ForecastSession? Forecast { get; set; }
+        public CreatorLegalAssessment? LegalAssessment { get; set; }
         public CreatorLegalChecklist? LegalChecklist { get; set; }
         public CreatorFormationGenerator? Formation { get; set; }
         public BusinessPlanSession? BusinessPlan { get; set; }
