@@ -29,6 +29,18 @@ namespace WebApp.Services.Interface
         Task<CreatorIdea> ResolveIdeaAsync(string userId, string ideaId = null);
 
         /// <summary>
+        /// Pure read-only idea resolution. Returns existing owned idea or null if zero ideas exist.
+        /// NEVER creates ideas and NEVER mutates database state.
+        /// </summary>
+        Task<CreatorIdea?> TryResolveIdeaAsync(string userId, string ideaId = null);
+
+        /// <summary>
+        /// Explicit Clarifier entry initialization. Idempotent and race-safe.
+        /// Reuses existing active idea if present; otherwise creates exactly one CreatorIdea.
+        /// </summary>
+        Task<CreatorIdea> GetOrCreateClarifierIdeaAsync(string userId);
+
+        /// <summary>
         /// The derived-status engine. Pure function of the journey's artifacts plus the
         /// user's Phase-1 onboarding completion. Never persisted — call on every read.
         /// </summary>

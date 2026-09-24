@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using Microsoft.AspNetCore.Identity;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using WebApp.DbContext;
@@ -37,6 +39,8 @@ namespace WebApp.Services.Implementations
         private readonly IClarifierSessionStore _clarifiers;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILegalApplicabilityEngine? _legalEngine;
+        private readonly UserManager<ApplicationUser>? _userManager;
+        private static readonly ConcurrentDictionary<string, SemaphoreSlim> _creationLocks = new();
         private static readonly TimeSpan PathSwitchWindow = TimeSpan.FromDays(30);
 
         // Legacy Path-A value, retired in P1.10. Centralized here so the one-time
@@ -52,7 +56,8 @@ namespace WebApp.Services.Implementations
             IHttpContextAccessor httpContextAccessor = null,
             IMarketStudySessionStore marketStudies = null,
             IBusinessModelSessionStore businessModels = null,
-            ILegalApplicabilityEngine legalEngine = null)
+            ILegalApplicabilityEngine legalEngine = null,
+            UserManager<ApplicationUser> userManager = null)
         {
             _context = context;
             _businessPlans = businessPlans;
@@ -63,6 +68,7 @@ namespace WebApp.Services.Implementations
             _marketStudies = marketStudies;
             _businessModels = businessModels;
             _legalEngine = legalEngine;
+            _userManager = userManager;
         }
 
         // =================================================================
@@ -73,11 +79,54 @@ namespace WebApp.Services.Implementations
         // =================================================================
 
         /// <summary>
-        /// Resolve the caller's idea. An explicit id must be owned by the caller.
+        /// Pure read-only idea resolution. Returns existing owned idea or null if zero ideas exist.
+        /// NEVER creates ideas and NEVER mutates database state.
+        /// </summary>
+        public async Task<CreatorIdea?> TryResolveIdeaAsync(string userId, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            return await TryResolveIdeaAsync(j, ideaId);
+        }
+
+        /// <summary>
+        /// Pure read-only idea resolution on an already loaded journey.
+        /// NEVER creates ideas and NEVER mutates database state.
+        /// </summary>
+        public async Task<CreatorIdea?> TryResolveIdeaAsync(CreatorJourney j, string ideaId = null)
+        {
+            if (!string.IsNullOrEmpty(ideaId))
+            {
+                var owned = await _creatorIdeas.GetOwnedAsync(ideaId, j.UserId);
+                if (owned == null)
+                    throw new CreatorJourneyException(403, "Idea not found or access denied.");
+                if (!string.Equals(owned.UserId, j.UserId, StringComparison.Ordinal))
+                    throw new CreatorJourneyException(409, "You've switched to a different idea elsewhere — refresh this page and try again.");
+                return owned;
+            }
+
+            if (!string.IsNullOrEmpty(j.ActiveIdeaId))
+            {
+                var active = await _creatorIdeas.GetOwnedAsync(j.ActiveIdeaId, j.UserId);
+                if (active != null)
+                    return active;
+                // Stale pointer — fall through without mutating database on read.
+            }
+
+            var existing = await _creatorIdeas.ListByUserAsync(j.UserId);
+            if (existing.Count > 0)
+            {
+                var canonical = existing.FirstOrDefault(x => x.Status == "active" && !string.Equals(x.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase)) ?? existing[0];
+                return canonical;
+            }
+
+            // Zero ideas exist: pure read returns null. NEVER mint or write to DB.
+            return null;
+        }
+
+        /// <summary>
+        /// Resolve the caller's idea for mutations. An explicit id must be owned by the caller.
         /// ActiveIdeaId remains a navigation preference only.
-        /// No id → the active idea; a stale pointer repoints to the most recent idea;
-        /// no ideas at all → mint the first from the journey's inline blocks.
-        /// Persists any pointer change atomically and reflects it on the in-memory j.
+        /// If no ideas exist at mutation time, delegates to GetOrCreateClarifierIdeaAsync.
         /// </summary>
         private async Task<CreatorIdea> ResolveIdeaAsync(CreatorJourney j, string ideaId)
         {
@@ -96,31 +145,87 @@ namespace WebApp.Services.Implementations
                 var active = await _creatorIdeas.GetOwnedAsync(j.ActiveIdeaId, j.UserId);
                 if (active != null)
                     return active;
-                // Stale pointer — fall through to recovery.
             }
 
             var existing = await _creatorIdeas.ListByUserAsync(j.UserId);
             if (existing.Count > 0)
             {
-                await SetActiveIdeaPointerAsync(j, existing[0].Id);
-                return existing[0];
+                var canonical = existing.FirstOrDefault(x => x.Status == "active" && !string.Equals(x.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase)) ?? existing[0];
+                await SetActiveIdeaPointerAsync(j, canonical.Id);
+                return canonical;
             }
 
-            var idea = new CreatorIdea
+            return await GetOrCreateClarifierIdeaAsync(j.UserId);
+        }
+
+        /// <summary>
+        /// Explicit Clarifier entry initialization. Idempotent and race-safe.
+        /// Verifies Phase 1 completion, reuses existing active idea if present,
+        /// or atomically creates exactly one CreatorIdea and sets ActiveIdeaId.
+        /// </summary>
+        public async Task<CreatorIdea> GetOrCreateClarifierIdeaAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new UnauthorizedAccessException("User not authenticated.");
+
+            if (_userManager != null)
             {
-                UserId = j.UserId,
-                Status = "active",
-                Project = j.Project ?? new CreatorJourneyProject(),
-                Phase2Data = j.Phase2Data ?? new CreatorPhase2Data(),
-                Phase3Data = j.Phase3Data ?? new CreatorPhase3Data(),
-                Phase4Data = j.Phase4Data ?? new CreatorPhase4Data(),
-                Phase5Data = j.Phase5Data ?? new CreatorPhase5Data(),
-                SmartMatchmaking = j.Phase6Data?.SmartMatchmaking ?? new CreatorSmartMatchmaking(),
-                OutputSnapshots = j.OutputSnapshots ?? new CreatorOutputSnapshots(),
-            };
-            await _creatorIdeas.AddAsync(idea); // ObjectId id assigned on insert
-            await SetActiveIdeaPointerAsync(j, idea.Id);
-            return idea;
+                var user = await _userManager.FindByIdAsync(userId);
+                bool phase1Complete = (user?.Onboarding?.Phase ?? 0) >= 1;
+                if (!phase1Complete)
+                {
+                    throw new CreatorJourneyException(403, "Phase 1 onboarding must be completed before entering Phase 2.");
+                }
+            }
+
+            var sem = _creationLocks.GetOrAdd(userId, _ => new SemaphoreSlim(1, 1));
+            await sem.WaitAsync();
+            try
+            {
+                var j = await GetOrCreateAsync(userId);
+
+                // 1. If journey.ActiveIdeaId exists AND belongs to current user: reuse it
+                if (!string.IsNullOrEmpty(j.ActiveIdeaId))
+                {
+                    var active = await _creatorIdeas.GetOwnedAsync(j.ActiveIdeaId, userId);
+                    if (active != null)
+                        return active;
+                }
+
+                // 2. If ActiveIdeaId was missing or stale, resolve from existing user ideas
+                var existing = await _creatorIdeas.ListByUserAsync(userId);
+                if (existing.Count > 0)
+                {
+                    var canonical = existing.FirstOrDefault(x => x.Status == "active" && !string.Equals(x.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase)) ?? existing[0];
+                    await SetActiveIdeaPointerAsync(j, canonical.Id);
+                    return canonical;
+                }
+
+                // 3. Exactly zero ideas exist: create exactly ONE CreatorIdea
+                var idea = new CreatorIdea
+                {
+                    Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString(),
+                    UserId = userId,
+                    Status = "active",
+                    Project = j.Project ?? new CreatorJourneyProject(),
+                    Phase2Data = j.Phase2Data ?? new CreatorPhase2Data(),
+                    Phase3Data = j.Phase3Data ?? new CreatorPhase3Data(),
+                    Phase4Data = j.Phase4Data ?? new CreatorPhase4Data(),
+                    Phase5Data = j.Phase5Data ?? new CreatorPhase5Data(),
+                    SmartMatchmaking = j.Phase6Data?.SmartMatchmaking ?? new CreatorSmartMatchmaking(),
+                    OutputSnapshots = j.OutputSnapshots ?? new CreatorOutputSnapshots(),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    LastActiveAt = DateTime.UtcNow
+                };
+                await _creatorIdeas.AddAsync(idea);
+                await SetActiveIdeaPointerAsync(j, idea.Id);
+                return idea;
+            }
+            finally
+            {
+                sem.Release();
+            }
         }
 
         /// <summary>Atomic ActiveIdeaId repoint ($set only) + in-memory reflection.</summary>
@@ -242,7 +347,17 @@ namespace WebApp.Services.Implementations
         public async Task<CreatorJourney> GetOrCreateComposedAsync(string userId, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
-            var idea = await ResolveIdeaAsync(j, ideaId);
+            var idea = await TryResolveIdeaAsync(j, ideaId);
+            if (idea == null)
+            {
+                // Pure read: no idea exists for this user.
+                // Keep ActiveIdeaId null, return j unmodified without write.
+                if (string.IsNullOrEmpty(ideaId))
+                {
+                    j.ActiveIdeaId = null;
+                }
+                return j;
+            }
             return OverlayIdea(j, idea);
         }
 

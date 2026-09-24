@@ -293,6 +293,8 @@ namespace WebApp.Models.DatabaseModels
     {
         public double Total { get; set; }
         public string Label { get; set; } // Not Ready | Developing | Strong | Investor-Ready
+        public string Headline { get; set; }
+        public string Summary { get; set; }
         public CreatorReadinessBreakdown Breakdown { get; set; } = new();
         public List<CreatorReadinessDeduction> Deductions { get; set; } = new();
         public DateTime? EvaluatedAt { get; set; }
@@ -314,6 +316,9 @@ namespace WebApp.Models.DatabaseModels
         public string Dimension { get; set; } // ConceptClarity | MarketEvidence | FinancialModel | LegalReadiness | TeamCredibility
         public string Issue { get; set; }
         public double PointsLost { get; set; }
+        public string CurrentState { get; set; }
+        public string Recommendation { get; set; }
+        public string Subtext { get; set; }
         public string RemediationTitle { get; set; }
         public string RemediationRoute { get; set; }
     }

@@ -67,13 +67,13 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "AI parameter generation failed for brand '{BrandName}': {Message}", brandName, ex.Message);
-                throw new InvalidOperationException($"Logo concept parameter AI generation failed: {ex.Message}", ex);
+                _logger.LogWarning(ex, "AI parameter generation failed for brand '{BrandName}': {Message}. Falling back to deterministic parameter sets.", brandName, ex.Message);
             }
 
             if (rawParamSets == null || rawParamSets.Count < 6 || !ValidateSetDiversity(rawParamSets, avoidList, selectedLogoType))
             {
-                throw new InvalidOperationException("Logo concept parameter AI generation did not produce 6 valid diverse parameter sets.");
+                _logger.LogInformation("AI generated insufficient or invalid parameter sets. Using deterministic fallback parameter sets for brand '{BrandName}' (Family: {Family}).", brandName, selectedLogoType ?? "all");
+                rawParamSets = GenerateDeterministicParameterSets(brandName, strategy, direction, selectedCand, avoidList, selectedLogoType);
             }
 
             var palette = selectedCand?.ColorPalette ?? new List<string>();
@@ -262,19 +262,38 @@ namespace WebApp.Services.Creator.BrandKit.LogoEngine
 
             if (!string.IsNullOrWhiteSpace(selectedLogoType) && BrandLogoFamilyNames.All.Contains(selectedLogoType))
             {
+                var allowedParamsForFamily = selectedLogoType switch
+                {
+                    "wordmark" => "Layout in [single_line, stacked_two_line, tracked_wide, tight_bold], LetterCase in [uppercase, lowercase, titlecase], AccentElement in [none, terminal_dot, baseline_underline, overscore, split_dot], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono], LetterSpacing in [tight, normal, wide, ultra_wide]",
+                    "symbol_plus_name" => "BadgeShape in [circle, square, rounded_rect, shield, diamond, hexagon, cut_corner_rect], BadgeStyle in [solid_fill, outline_stroke, double_stroke, split_negative, duo_tone], InternalGlyph in [initial_letter, dual_initial, geometric_cut, diagonal_cross, concentric_ring, horizontal_bars], Arrangement in [side_by_side, stacked], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]",
+                    "monogram" => "MonogramType in [single_letter, two_letter_interlock, two_letter_adjacent, three_letter_pyramid], FrameStyle in [none, circle_ring, square_box, bracket_corners, solid_disc, chamfer_box], StrokeStyle in [heavy_block, stencil_split, monoline, duoline], Arrangement in [side_by_side, stacked], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]",
+                    "abstract" => "GeometryType in [intersecting_rings, nested_polygons, rotational_symmetry_3, rotational_symmetry_4, mobius_fold, isometric_cube, faceted_diamond, wave_frequencies], StrokeWeight in [thin_precision, medium, heavy_bold], Arrangement in [side_by_side, stacked], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]",
+                    "icon" => "MetaphorPrimitive in [shield_security, leaf_growth, node_network, cube_infrastructure, prism_focus, arch_gateway, globe_connected, spark_intelligence, pillar_foundation, wave_flow, energy_bolt], Construction in [monoline_stroke, silhouette_solid, split_halves, segmented_arcs, duo_tone], Arrangement in [side_by_side, stacked], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]",
+                    _ => "Primitive in [sliced_circle, quadrant_arc, offset_bars, chevron_fold, diagonal_slash, hairline_cross, concentric_arc], Orientation in [0_deg, 45_deg, 90_deg, 180_deg, 270_deg], WeightBalance in [monolithic_solid, contrast_duo, negative_aperture], Arrangement in [side_by_side, stacked], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]"
+                };
+
                 return $@"Select discrete parameters for 6 distinct logo concepts for the brand '{brandName}'.
 Brand Personality Traits: {traits}
 Selected Direction: {candidate?.Name} ({candidate?.DisplayTypeface} + {candidate?.TextTypeface})
 Avoided Elements: {avoids}
 Selected Mark Architecture: '{selectedLogoType}'
 
-You MUST choose parameters for 6 distinct concepts EXCLUSIVELY within the '{selectedLogoType}' family:
-1. 'wordmark': Layout in [single_line, stacked_two_line, tracked_wide, tight_bold], LetterCase in [uppercase, lowercase, titlecase], AccentElement in [none, terminal_dot, baseline_underline, overscore, split_dot], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono], LetterSpacing in [tight, normal, wide, ultra_wide]
-2. 'symbol_plus_name': BadgeShape in [circle, square, rounded_rect, shield, diamond, hexagon, cut_corner_rect], BadgeStyle in [solid_fill, outline_stroke, double_stroke, split_negative], InternalGlyph in [initial_letter, geometric_cut, diagonal_cross, concentric_ring, horizontal_bars]
-3. 'monogram': MonogramType in [single_letter, two_letter_interlock, two_letter_adjacent, three_letter_pyramid], FrameStyle in [none, circle_ring, square_box, bracket_corners, solid_disc], StrokeStyle in [heavy_block, stencil_split, monoline, duoline], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]
-4. 'abstract': GeometryType in [intersecting_rings, nested_polygons, rotational_symmetry_3, rotational_symmetry_4, mobius_fold, isometric_cube, faceted_diamond], StrokeWeight in [thin_precision, medium, heavy_bold], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]
-5. 'icon': MetaphorPrimitive in [shield_security, leaf_growth, node_network, cube_infrastructure, prism_focus, arch_gateway, spark_intelligence, pillar_foundation, wave_flow], Construction in [monoline_stroke, silhouette_solid, split_halves, segmented_arcs], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]
-6. 'minimal': Primitive in [sliced_circle, quadrant_arc, offset_bars, chevron_fold, diagonal_slash, hairline_cross], Orientation in [0_deg, 45_deg, 90_deg, 180_deg, 270_deg], WeightBalance in [monolithic_solid, contrast_duo, negative_aperture], FontCategory in [geometric_sans, humanist_sans, high_contrast_serif, slab_serif, mono]";
+You MUST choose parameters for 6 distinct concepts EXCLUSIVELY within the '{selectedLogoType}' family.
+Allowed parameters for '{selectedLogoType}':
+{allowedParamsForFamily}
+
+Format the output strictly as a JSON object:
+{{
+  ""concepts"": [
+    {{
+      ""family"": ""{selectedLogoType}"",
+      ""descriptor"": ""Concise descriptive line for this concept"",
+      ""parameters"": {{
+         // Only include keys specified in Allowed parameters above
+      }}
+    }}
+  ]
+}}";
             }
 
             return $@"Select discrete parameters for 6 distinct logo concepts for the brand '{brandName}'.

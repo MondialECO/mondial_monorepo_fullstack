@@ -45,7 +45,7 @@ export default function DashboardLayout({
               )}
 
               {/* Content (padding suppressed for full-bleed workspace design) */}
-              <main className={`flex-1 min-w-0 overflow-auto ${isServiceProvider ? "bg-[#F4F5F7] p-4 sm:p-6 lg:p-8" : `bg-background ${isUnpadded ? "" : "p-4 sm:p-6 lg:p-8 pb-16"}`}`}>
+              <main className={`flex-1 min-w-0 ${isServiceProvider ? "bg-[#F4F5F7] p-4 sm:p-6 lg:p-8 overflow-auto" : `bg-background ${isUnpadded ? "" : "p-4 sm:p-6 lg:p-8 pb-16"}`}`}>
                 {children}
               </main>
             </div>

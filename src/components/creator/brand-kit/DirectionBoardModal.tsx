@@ -381,9 +381,17 @@ export function DirectionBoardModal({
           message: "Maximum regeneration limit (3/3) reached.",
         });
       } else {
+        const isOverloaded =
+          msg.toLowerCase().includes("overloaded") ||
+          msg.toLowerCase().includes("rate limit") ||
+          msg.toLowerCase().includes("intermittent") ||
+          msg.toLowerCase().includes("unavailable");
+
         setError({
           type: "network",
-          message: `Visual Direction generation did not finish. Your ${directionCost} credits have been automatically refunded to your balance.`,
+          message: isOverloaded
+            ? `The AI model is temporarily experiencing high traffic/overload. Your ${directionCost ?? 7} credits were safely refunded. Please click Generate again.`
+            : `Visual Direction generation did not finish (${msg}). Your ${directionCost ?? 7} credits have been automatically refunded to your balance.`,
         });
       }
     } finally {

@@ -103,6 +103,7 @@ public static class AiServiceCollectionExtensions
         // ---- API surface services (Phase 6) ----
         services.AddScoped<Services.Ai.IAiUsageService, Services.Ai.AiUsageService>();
         services.AddScoped<Services.Ai.IAiCreditService, Services.Ai.AiCreditService>();
+        services.AddScoped<Services.Ai.IFinancialAssumptionsService, Services.Ai.FinancialAssumptionsService>();
 
         // ---- Operational: idempotent starter-credit backfill (Phase 7) ----
         services.AddScoped<Services.Ai.IAiCreditSeeder, Services.Ai.AiCreditSeeder>();

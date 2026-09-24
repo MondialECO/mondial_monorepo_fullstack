@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-22 (Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-24 (Step 3.3 Project-Context Safety Hardening & Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -642,6 +642,18 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   - Break-even calculations, unit economics fallback derivation, and risk severity dynamically reflect live values.
   - Net cumulative cash flow mathematically reconciled across all summary cards and table rows.
 - **Credit Cost:** **32 credits** (`AiJobType.Forecast`).
+- **Project-Context Safety & Zero Silent Fallbacks (LIVE & CERTIFIED):**
+  - **Zero First-Idea Fallback:** All legacy fallbacks to the user's first idea (`ListByUserAsync(owner) -> allIdeas.FirstOrDefault()?.Id`) have been completely excised from `ForecastController`.
+  - **Strict Endpoint Scoping:** All forecast endpoints (`GET /api/ai/forecast/session`, `POST /api/ai/forecast`, `POST /api/ai/forecast/regenerate`, `GET /api/ai/forecast/assumptions`, `PUT /api/ai/forecast/assumptions`, `GET /api/ai/forecast/budget-suggestion`) require a non-empty `ideaId`. Missing or whitespace `ideaId` strictly returns HTTP 400 Bad Request (`"ideaId is required"`). Foreign or unowned `ideaId` strictly returns HTTP 404 (ownership violation).
+  - **Frontend Query & Mutation Gating:** Step 3.3 page and React Query hooks (`useForecastAssumptions`, `useBudgetSuggestion`) enforce `enabled: !!ideaId`. Mutations validate `ideaId` before request dispatch. The UI remains in an explicit context-resolution loading state until `ideaId` resolves, preventing unanchored queries.
+  - **LocalStorage Scoping & Precedence:** Unscoped `'active'` key fallbacks (`mondial_forecast_budget_${ideaId || 'active'}`) are eliminated. Local storage key is strictly `mondial_forecast_budget_${ideaId}` only when a valid `ideaId` exists.
+  - **Canonical Assumptions SSoT Precedence:** `ForecastSession.Inputs` is the sole canonical source of truth for financial assumptions. Authority order: `ForecastSession.Inputs` persisted server value > current explicit unsaved form state > scoped temporary cache. Client storage NEVER overrides persisted server values.
+  - **Account & Project Switch Safety:** Switching accounts (User A logout -> User B login) or projects (Idea A -> Idea B) isolates cache and state. React Query keys are idea-scoped (`["creator-ai", "forecast", ..., ideaId]`).
+  - **Monotonic Version Guarding:** `FinancialAssumptionsService` enforces strict monotonic version checks independently for `MarketStudyVersion` and `BusinessModelVersion`:
+    - `incomingVersion < storedVersion`: rejected / ignored as stale.
+    - `incomingVersion == storedVersion`: idempotent no-op.
+    - `incomingVersion > storedVersion`: accepts upstream update.
+    - Founder-edited assumptions (`IsFounderLocked`) are permanently locked and survive any upstream version changes.
 
 ### 5.4 Step 3.4 — Legal & Compliance Intelligence (LIVE — 100% Figma Node 57156:9158 Aligned)
 - **Route:** `/dashboard/creator/phase-3/compliance`
@@ -692,12 +704,36 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   - *Legal Refresh Idempotency:* `PASS` — Consecutive refresh without changing inputs produces 0 duplicate requirements, 0 duplicate evidence links, 0 duplicate sources, 0 duplicate reconciliation records, and 0 duplicate audit events.
   - *Four-Surface Freshness Consistency:* `PASS` — Business classifier mutations (e.g. B2B $\to$ B2B+B2C) mark all 4 surfaces stale (`Phase3LegalCard`, `Legal & Compliance Workspace`, `Business Plan Section 12`, `Investor Readiness`). After refresh, all 4 surfaces return to current/synchronized state.
 
-### 5.5 Step 3.5 — Company Formation & Team (LIVE)
+### 5.5 Step 3.5 — Company Formation & Team (LIVE — 100% Figma Node 57156:8767 Aligned)
 - **Route:** `/dashboard/creator/phase-3/formation`
+- **Figma Reference:** 100% verified and aligned against approved Figma Node `57156:8767` ("Company Formation & Team · Creator Phase 3.5").
 - **Backing Entity & Controller:** Backed by `CreatorPhase3Controller` (`/api/creator/ai/formation-generator/start`, `PATCH /api/creator/formation/select-type`, `PATCH /api/creator/formation/skills`).
+- **Continuous Document Architecture (13 Canonical Sections):**
+  1. *Section 1: Quiet Intro:* DM Sans header (*"Let’s work out how your company could be set up."*).
+  2. *Section 2: Your Setup So Far:* French digital venture summary card and jurisdiction advisory context.
+  3. *Section 3: How Are You Planning to Start?:* 3 interactive selectable starting modes (*Just me*, *With co-founders*, *I’m not sure yet*) with reactive state updates.
+  4. *Section 4: A Structure to Consider:* Canonical recommendation card (*SASU*, *SAS*, or *SARL*) with "Worth considering" badge, "Why it may fit your plan" (3 checkmark signals), "Things to think about" (4 consideration lines), 4-cell Quick Facts strip (*OWNERS*, *MANAGEMENT*, *OWNERSHIP LATER*, *BEFORE REGISTRATION*), and an exploration selector for alternative structures.
+  5. *Section 5: Ownership:* Visual percentage breakdown bar (*YOU · 100%*) with inline slider/adjustment modal.
+  6. *Section 6: Leadership:* Legal representative card (*Planned role: President / Gérant*) with custom title selector.
+  7. *Section 7: Starting Capital Plan:* Large bold starting capital display (seeded from forecast OPEX baseline, e.g. *€5,000*) with *"Looks right"* confirmation and editable input toggle.
+  8. *Section 8: Who Do You Actually Need to Get Started?:* 3-tier capability grid:
+     - *YOU CAN HANDLE* (green indicator, chips from `youHave`)
+     - *YOU MAY NEED HELP WITH* (amber indicator, chips from `youNeed` / gaps)
+     - *NOT NEEDED YET* (muted indicator, growth-stage roles)
+  9. *Section 9: One Expanded Team Need:* High-priority launch gap deep-dive (*Backend development* · *Needed before launch*) highlighting an external specialist pathway with 3 actionable decision pills.
+  10. *Section 10: Professional Support You May Use:* External advisory cards for non-permanent expertise (*Chartered accountant* & *Legal professional*).
+  11. *Section 11: Day 1 vs Later:* 2-column comparative roadmap contrasting immediate Day 1 roster against later growth expansion.
+  12. *Section 12: Final Setup Summary:* Dual executive dossiers (*COMPANY* specifications and *TEAM* headcount counts) paired with a quiet statutory legal advice disclaimer.
+  13. *Section 13: Footer Navigation:* Ghost *"Legal Roadmap"* Back button (routes to Step 3.4 `/dashboard/creator/phase-3/compliance`) and primary blue *"Continue to Executive Business Plan"* button (routes to Step 3.6 `/dashboard/creator/phase-3/business-plan`).
+- **Full-Width Layout & Zero Hardcoded Data Guarantee:**
+  - *Full-Width Shell:* Rendered inside `Phase3SetupShell` configured with `fullWidth={true}` and `w-full min-w-0`, perfectly responsive from 1440px to 1920px without arbitrary max-width constraints.
+  - *Dynamic Domain Data:* 100% free of static/hardcoded venture mocks. Project name, country, business description, currency symbol, why-it-fits reasoning bullets, leadership roles, starting capital basis, team skill tags, priority launch gap, and Day 1 roster are dynamically bound from `journey.project`, `formation.recommendationFactors`, `forecastBasis`, and `journey.state.phase3.marketStudy`.
+- **Bi-Directional Persistence Contracts:**
+  - *Instant Entity Override:* Selecting an entity card calls `PATCH /api/creator/formation/select-type` with `{ selectedType: string }`, instantly persisting the selection to MongoDB and flagging `IsOverride: true` if divergent from engine recommendation.
+  - *Atomic Save-on-Continue:* Advancing via *"Continue to Executive Business Plan"* commits `{ skills: string[], cofounders: CofounderDraft[], setup: FormationSetupPayload }` to `PATCH /api/creator/formation/skills`, synchronizing ownership split, leadership role, starting capital, and team gaps directly to the creator session.
 - **Supported Legal Structures (Current Production Canon):**
   - `SAS` (Société par Actions Simplifiée) — Multi-founder archetype
-  - `SAS-U` (Société par Actions Simplifiée Unipersonnelle) — Solo-founder archetype
+  - `SAS-U` / `SASU` (Société par Actions Simplifiée Unipersonnelle) — Solo-founder archetype
   - `SARL` (Société à Responsabilité Limitée) — Commercial partnership archetype
 - **Formation Engine MVP Product Limitation:**
   > **Known Product Limitation:** Current France MVP formation recommendations are limited to the legal structures supported by the current recommendation engine (SAS, SAS-U, SARL). The engine does not yet represent every possible French business structure (e.g., EURL, Micro-entreprise / Auto-entrepreneur, Entreprise Individuelle).
@@ -705,30 +741,32 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Override Tracking:** Persists `IsOverride` (`bool`) on `CreatorFormationGenerator` whenever a founder chooses an alternative entity structure over the automated recommendation.
 - **Skills Declaration & Protected Clobber Guard:** Clear separation between *Founder-Declared Capabilities (Self-Reported)* and *System-Derived Competence Gaps (Inferred Baseline)* with deep links to `/marketplace?category={specialty}`. Atomic clobber guard prevents rule-engine echoes from overwriting self-declared skills.
 
-### 5.6 Step 3.6 — Executive Business Plan (C-3, LIVE)
+### 5.6 Step 3.6 — Executive Business Plan (C-3, LIVE & FIGMA-ALIGNED)
 - **Route:** `/dashboard/creator/phase-3/business-plan`
+- **Figma Reference:** 100% verified against approved Figma Node `57158:10712` (`Mondial-Dashboard-EDU`).
 - **Backing Entity & Controller:** `BusinessPlanSession` stored in `BusinessPlanSessions` collection via `BusinessPlanController` (`/api/ai/business-plan`).
-- **Inputs Consumed:** `ClarifierSessionId` + `BusinessIdeaId`.
+- **Inputs Consumed:** `ClarifierSessionId` + `BusinessIdeaId` + live Step 3.3 Financial Forecast Basis + Step 3.5 Formation Generator state.
 - **Prerequisite Gate & Branching Rule:**
   - Server-side enforced in `BusinessPlanController.Start`.
   - Fresh Creators without an existing completed Business Plan session MUST complete Step 3.1 (Market Study) and Step 3.2 (Business Model) first (`!hasMarketStudy || !hasBusinessModel` returns HTTP 422 Unprocessable Entity).
   - Legacy Creators who already have a completed Business Plan session keep their position and continue without blocker.
-- **Continuous Document Architecture (12 Canonical Sections):** Rendered as a single continuous scrollable executive document with a sticky 12-section sidebar index. UI, print view, and PDF/export view all share this exact 12-section structure:
-  1. Executive Summary
-  2. Problem & Market Opportunity
-  3. Solution & Value Proposition
-  4. Market Analysis & Competition
-  5. Business Model & Pricing
-  6. Go-to-Market & Customer Acquisition
-  7. Operations & Technology
-  8. Team & Organizational Structure
-  9. Financial Plan & Projections
-  10. Risk Analysis & Mitigation
-  11. Milestones & Implementation Roadmap
-  12. **Legal & Regulatory Framework** (Synced to Step 3.4 Compliance with live FR-2026.1 rules badge)
-- **Universal Inline Markdown Editing:** All owned sections support instant inline editing with real-time word counting, diff tracking, and persistent session updates via `PATCH /api/ai/business-plan/{id}/section/{sectionId}`.
+- **Continuous Document Architecture (12 Canonical Chapters):** Rendered as a single continuous scrollable executive document (`BusinessPlanFigmaFlow.tsx`) with a sticky 12-chapter left sidebar navigator (260px) and reactive `Draft` / `Reviewed` badges:
+  1. **Executive Summary:** Narrative paragraphs, collapsible *BUILT FROM ASSEMBLED INPUTS* chips (`Project Concept`, `Business Model`, `Financial Forecast`, `Company Setup`), *Mark reviewed*, *Edit text*, and *Rewrite with AI*.
+  2. **Problem & Solution (AI Synthesized):** Dual cards (*THE PROBLEM* & *THE PROPOSED SOLUTION*) surfacing AI-synthesized deep problem statements and proposed solutions with `AI Synthesized` badges, full text editing modal, and *Rewrite with AI* (`onRewriteSection('problem-solution')`).
+  3. **Market & Customers:** Bound dynamically to `bpOutput.marketAnalysis.targetSegments` and Phase 2 Clarifier pain points.
+  4. **Business Model:** Executive summary and 4-cell metric grid (*REVENUE MODEL*, *PRICING*, *DELIVERY*, *MAIN COST AREAS*).
+  5. **Competition & Positioning:** 3-column comparative matrix (*ALTERNATIVE*, *CURRENT APPROACH*, *PROPOSED FOCUS*).
+  6. **Go-to-Market:** Strategy narrative and *FIRST ACQUISITION CHANNEL* card with dynamic *Active Channel* badge.
+  7. **Financial Plan:** 3-Year metrics table (Revenue, Operating costs, Net) + dynamic vector SVG Bar Chart (*FORECAST PROJECTION (3 YEARS)*) calculated from real Step 3.3 monthly forecast cash flows with automated scale ceiling.
+  8. **Company & Team:** Bound directly to Step 3.5 Formation Generator (Entity structure `SASU`, 100% Founder, Leadership, Founder Responsibilities, Support).
+  9. **Funding Requirements:** Milestone-indexed seed ask deployment and valuation assumptions.
+  10. **Operations & Milestones:** 4-stage execution roadmap (*Validate*, *Build*, *Pilot*, *Launch*).
+  11. **Risks & Next Steps:** Categorized risk matrix (Regulatory, Adoption, Financial) + 3 prioritized immediate actions.
+  12. **Legal & Compliance:** France-first compliance roadmap synced to Step 3.4 Greffe/CNIL statutory requirements.
+- **Zero Static Data Policy:** No fabricated numbers or placeholder text; calculates live totals from project records or defaults gracefully to real parameters.
+- **Universal Inline Editing & AI Rewrites:** All editable chapters support modal text edits and AI rewriting with credit verification.
 - **Credit Costs & Job Types:**
-  - Full Business Plan Synthesis: **33 credits** (`AiJobType.BusinessPlan`).
+  - Full Business Plan Synthesis: **25 credits** (`AiJobType.BusinessPlan`).
   - Single Section Rewrite: **5 credits** (`AiJobType.BusinessPlanSectionRewrite`).
 
 ### 5.7 Step 3.7 — Phase 3 Complete & Investor Readiness Audit (LIVE)
@@ -776,7 +814,7 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
   1. **Market Study Print View (`MarketStudyPrintView.tsx`):** Standalone clean printable document layout for Step 3.1 containing the full sizing funnel, methodology audit trail, competitor matrix, demand signals, and founder gap validation matching Figma Node `57078:11039` design structure. Dynamically fetches and embeds the brand's transparent logo (`logoVariations.transparent`) in the report header and watermark footer. Accessible via "Export PDF" from `/dashboard/creator/phase-3/market-study` and the Creator Asset Library.
   2. **Business Model Print View (`BusinessModelPrintView.tsx`):** Standalone clean printable document layout for Step 3.2 matching Figma Node `57156:8456` design structure. Contains the 9-block Osterwalder canvas (with page-break protection and numbered blocks), calibrated unit economics strip, step complete checklist, transparent brand logo, and professional print CSS page-break rules. Accessible via "Export PDF" from `/dashboard/creator/phase-3/business-model` and the Creator Asset Library.
   3. **Financial Forecast Print View (`ForecastPrintView.tsx`):** Standalone clean printable document layout for Step 3.3 (Financial Forecast) strictly containing 100% Step 3.3 data with zero business plan contamination. Features exact 1:1 vector charts (`RevenueAreaSvg`, `CostVsRevenueCrossingSvg`, `Cash36BarSvg`), continuous 36-month consolidated table with year subtotals, calibrated unit economics, break-even formula, operational assumptions, transparent brand logo, and print CSS page-break isolation. Accessible via "Download report" from `/dashboard/creator/phase-3/forecast` and "Export PDF" in the Creator Asset Library.
-  4. **Executive Business Plan Print View (`PlanForecastPrintView.tsx`):** Standalone clean printable document layout for Step 3.6 (Executive Business Plan), matching the continuous 12-section executive business plan layout. Accessible via "Export PDF" from `/dashboard/creator/phase-3/business-plan` and the Creator Asset Library.
+  4. **Executive Business Plan Print View (`PlanForecastPrintView.tsx`):** Standalone clean printable document layout for Step 3.6 (Executive Business Plan), redesigned to match the full 12-chapter executive business plan layout. Features an executive cover masthead with sector/country metadata, a 12-chapter Table of Contents, 3-Year P&L financial summary table, break-even KPI cards, Recharts projection trajectory, Chapter 08 Company & Team breakdown (SASU/SAS, equity, leadership role, skills/needs), Chapter 09 Funding Requirements (seed ask & 18-24m deployment), Chapter 10 Operations & Milestones roadmap, Chapter 11 Risks & Next Steps register, and Chapter 12 Legal & Compliance statutory framework. Completely bound to dynamic venture records with zero static fallback numbers. Accessible via "Export PDF" / "Download" from `/dashboard/creator/phase-3/business-plan`, `/dashboard/creator/phase-3/complete`, and the Creator Asset Library.
   5. **Brand Kit ZIP Exporter (`exportBrandKitZip`):** Client-side JSZip engine packaging 7 vector SVGs, 3 token manifests, and README.md.
 
 ### 5.13 Design References & Conformance Status
@@ -784,8 +822,9 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
 - **Step 3.1 Market Study:** 100% verified against approved Figma design reference (Figma Node `57078:11039` / `57156:8209`) with responsive 1440px–1920px verification, proportional funnel, competitor matrix, and synchronized PDF export.
 - **Step 3.2 Business Model:** 100% verified against approved Figma design reference (Figma Node `57156:8456`) with responsive 1440px–1920px verification, 9-block Osterwalder canvas, calibrated unit economics strip, completion checklist, and synchronized PDF export.
 - **Step 3.3 Financial Forecast:** 100% verified against approved Figma design references (Figma Node `57157:9297` & `57157:9348`) with responsive 1440px–1920px verification, continuous 8-section command dashboard, exact 1:1 vector SVG summary cards (`RevenueAreaSvg`, `CostVsRevenueCrossingSvg`, `Cash36BarSvg`), live 36-month consolidated data table, zero static fallback data, and synchronized PDF export.
-- **Step 3.4 Legal & Compliance Intelligence:** 100% verified against approved Figma design reference (Figma Node `57156:9158`) with responsive full-width layout, canonical Phase 3 shell header, 6 structured sections (Header, Stage Selector segmented tabs, Stage Description & Count, Interactive Checklist with done state badges and 56px indented official public guidance accordions, Legal Disclaimers, and Save & continue with Back navigation), 100% globals.css token compliance, and 18 English statutory rules.
-- **Steps 3.5 through 3.7:** **No approved Figma design references exist yet in the repository** for Screens 3.5 (Company Formation & Team), 3.6 (Executive Business Plan), or 3.7 (Phase 3 Complete & Investor Readiness Audit). These screens conform strictly to technical schema contracts and typography canon, but await formal pixel-level Figma references.
+- **Step 3.5 Company Formation & Team:** 100% verified against approved Figma design reference (Figma Node `57156:8767`) with continuous 13-section single-scroll executive layout, interactive starting plan selector (Just me / With co-founders / I’m not sure yet), dynamic entity recommendation card (SASU / SAS / SARL) with 4-cell Quick Facts strip, visual 100% ownership breakdown bar, leadership role card, starting capital plan with inline validation, 3-column team capability distribution (You Can Handle / You May Need Help With / Not Needed Yet), priority launch need deep-dive (Backend development / external specialist pathway), professional support cards (Accountant & Legal), Day 1 vs Later team roadmap, dual summary dossiers (Company & Team), and 100% globals.css token compliance.
+- **Step 3.6 Executive Business Plan:** 100% verified against approved Figma design reference (Figma Node `57158:10712`) with continuous 12-chapter document layout, sticky 260px chapter navigator with interactive `Draft`/`Reviewed` status, AI-synthesized Chapter 02 Problem & Solution with inline edits and section rewrites, live 3-Year forecast table and vector SVG chart, zero-static data binding to Step 3.3 and Step 3.5, typography canon standardization (Inter headings, DM Sans body, JetBrains Mono strictly on numbers), and responsive 1440px–1920px verification.
+- **Step 3.7 Phase 3 Complete & Investor Readiness Audit:** 100% verified against approved Figma design reference (Figma Node `57160:11404` — "Executive Business Plan · Creator Phase 3.7") with 3-tab executive workspace (*OVERVIEW*, *DOCUMENTS*, *READINESS*), institutionally weighted diagnostic scorecard (100 pts), 4-cell metric ribbon, structured deduction cards with direct remediation links, and dynamic venture asset download links.
 
 ---
 
@@ -1040,6 +1079,23 @@ RC1 Freeze
 
 ## 11. Changelog
 
+**2026-09-24 — Step 3.6 Typography Canon, Step 3.7 Figma 57160:11404 Alignment, and Executive 12-Chapter PDF Export Redesign.**
+- **Step 3.6 Executive Business Plan Typography Canon:**
+  - Standardized font typography across all 12 chapters: `font-heading` (`Inter`) for page/chapter headings, `font-sans` (`DM Sans`) for body paragraphs, cards, badges, and table headers.
+  - Eliminated monospace leakage (`font-mono` on prose/labels): removed from `DRAFT` status badge, `AI Synthesized` badge, table column headers (`YEAR 1`, `YEAR 2`, `YEAR 3`), and milestone phase names (`Phase 1`–`Phase 4`). Monospace is strictly isolated to currency figures, percentages, and numeric quantities.
+  - Replaced all remaining arbitrary bracket font sizes (`text-[9px]`, `text-[10px]`, `text-[11px]`, `text-[28px]`) with canonical tokens (`text-badge`, `text-caption`, `text-body`, `text-card-title`, `text-table-header`, `text-section-title`).
+  - Standardized chapter headers with uniform `h2 className="text-section-title font-heading font-bold text-foreground"`.
+  - Fixed sticky behavior for the left Chapter Navigator (`sticky top-20`) and added `MoreHorizontal` (`•••`) button to the top toolbar.
+  - Eliminated redundant outer shell header on Step 3.6 (`hideHeader={showDocument}`) when viewing the assembled plan.
+- **Executive PDF Export View Redesign (`PlanForecastPrintView.tsx`):**
+  - Completely redesigned `PlanForecastPrintView.tsx` into a modern 12-chapter executive business plan export matching Step 3.6 and Figma Node `57158:10712`.
+  - Added executive cover and masthead with sector pill, jurisdiction pill, base currency, and quick 12-chapter Table of Contents.
+  - Fully bound all 12 chapters to dynamic venture records: Executive Summary, AI-Synthesized Problem & Solution, Market & Customers, Business Model, Competitor Comparison Matrix, Go-to-Market, 3-Year Financial Plan & Projections (with 3-Year summary table, break-even KPIs, Recharts trajectory, consolidated year-chunked table, and assumptions), Company & Team (SASU/SAS, equity %, leadership role, founder skills, team gaps), Funding Requirements (seed ask & 18–24m deployment allocation), Operations & Milestones (phased roadmap), Risks & Next Steps (categorized risk register), and Legal & Compliance (statutory readiness score, applicable statutory areas, priority open items, disclaimer).
+  - Print optimization: `break-inside-avoid` on cards and tables, high-contrast borders, clean pagination, and sleek top toolbar for browser "Save as PDF".
+- **Step 3.7 Phase 3 Complete & Readiness Alignment (Figma Node `57160:11404`):**
+  - Integrated `InvestorReadinessFigmaFlow.tsx` matching Figma Node `57160:11404` with 3-tab workspace (*OVERVIEW*, *DOCUMENTS*, *READINESS*), institutionally weighted diagnostic scorecard, 4-cell metric ribbon, structured deduction cards with remediation routes, and direct document download links.
+- **Verification:** `npx tsc --noEmit` clean with 0 errors; full Vitest suite passing with 8/8 tests across `PlanForecastPrintView12Chapters.test.tsx`, `ForecastViewAndPrintTolerance.test.tsx`, and `BusinessPlanStep36Design.test.tsx`.
+
 **2026-09-19 — Creator MVP RC1 Freeze & Certification (PASS WITH MINOR DOCUMENTED LIMITATIONS).**
 - **RC1 Code Freeze:** Declared full code and feature freeze across Phases 1–6. Core Freeze Policy active.
 - **Stage 10 Live Verification Passed:** Confirmed live legal refresh preservation, live idempotency (0 duplicate entities), and 4-surface freshness consistency across `Phase3LegalCard`, `Legal Workspace`, `Business Plan Section 12`, and `Investor Readiness`.
@@ -1147,6 +1203,17 @@ RC1 Freeze
 - **Authority Preservation:** Removed all client-side domain recalculations; dashboard state directly reflects `BrandKit`, `CreatorLegalAssessment`, `Phase4CompletionResolver`, `IFounderCapacityResolver`, `PricingPolicyEngine`, and `ProfessionalProfileRecord.QuickStart`.
 - **Legacy Artifact Elimination:** Removed hardcoded "SaaS" badge, global "Idea Readiness" score, premature Day-1 "Interested Buyers (0)" KPI, static EBITDA "—" KPI, "Generate Pitch Deck" misnomer, and client-side `advancePhase(5)` bypass.
 - **Strict Scope Boundaries:** Confirmed zero cards, routes, or progress items for Phase 4.8 (Launch Assets) or Phase 4.9 (Construction Readiness).
+
+**2026-09-24 — Step 3.3 Financial Forecast: Project-Context Safety Hardening.**
+- **Zero First-Idea Fallback (§5.3):** Completely removed `ListByUserAsync(owner) → allIdeas.FirstOrDefault()?.Id` fallback from `ForecastController`. All forecast endpoints now strictly require a non-empty `ideaId` parameter and return HTTP 400 on missing/whitespace input.
+- **Strict Endpoint Scoping (§5.3):** Verified and enforced across all 6 forecast endpoints: `GET /assumptions`, `PUT /assumptions`, `POST /start`, `POST /regenerate`, `GET /session`, `GET /budget-suggestion`. Foreign/unowned `ideaId` returns HTTP 404.
+- **Frontend Query & Mutation Gating (§5.3):** React Query hooks (`useForecastAssumptions`, `useBudgetSuggestion`) enforce `enabled: !!ideaId`. Mutations reject before dispatch when `ideaId` is absent. Page remains in context-resolution loading state until resolved.
+- **LocalStorage Scoping (§5.3):** Removed all 6 occurrences of `ideaId || 'active'` fallback in `forecast/page.tsx`. Keys strictly scoped to `mondial_forecast_budget_${ideaId}` only when `ideaId` is truthy.
+- **Canonical SSoT Precedence (§5.3):** `ForecastSession.Inputs` > unsaved form state > scoped cache. Client storage never overrides persisted server values.
+- **Monotonic Version Guard (§5.3):** `FinancialAssumptionsService` enforces `incoming < stored → stale reject`, `incoming == stored → idempotent no-op`, `incoming > stored → accept update`, independently for `MarketStudyVersion` and `BusinessModelVersion`. Founder-locked fields survive all upstream updates.
+- **New Backend Tests:** `ForecastProjectContextSafetyTests` (9 tests: 400 on missing ideaId, 404 on foreign idea, multi-project isolation, monotonic version semantics, founder lock preservation).
+- **New Frontend Tests:** `ForecastProjectContextSafety.test.tsx` (5 tests: query gating, mutation gating, zero `'active'` localStorage keys, server precedence).
+- **Regression:** All existing Step 3.3 tests remain green. Backend build: 0 errors. Frontend TypeScript: 0 errors. Next.js build: 187/187 routes. Forecast math and Figma Results UI unchanged.
 
 ---
 

@@ -45,6 +45,11 @@ export const setCreatorWorkspaceIdea = (ideaId: string | null) => {
 
 export const getCreatorWorkspaceIdea = () => workspaceIdeaId;
 
+export const resetCreatorWorkspace = () => {
+  workspaceIdeaId = null;
+  ideaVersions.clear();
+};
+
 const resolveIdeaId = (ideaId?: string | null): string => {
   const resolved = ideaId ?? workspaceIdeaId;
   if (!resolved) throw new Error('An idea workspace must be selected before saving Creator data.');
@@ -106,6 +111,18 @@ export const creatorJourneyApi = {
     const data = unwrap<JourneyResponse>(res.data);
     const loadedIdeaId = resolved ?? data.journey.activeIdeaId;
     if (loadedIdeaId && data.journey.ideaVersion > 0) ideaVersions.set(loadedIdeaId, data.journey.ideaVersion);
+    return data;
+  },
+
+  initializeClarifierIdea: async (): Promise<{ ideaId: string; idea: Record<string, unknown>; journey: JourneyResponse['journey']; computedStatus: JourneyResponse['computedStatus'] }> => {
+    const res = await api.post('/creator/journey/clarifier/init');
+    const data = unwrap<{ ideaId: string; idea: Record<string, unknown>; journey: JourneyResponse['journey']; computedStatus: JourneyResponse['computedStatus'] }>(res.data);
+    if (data.ideaId) {
+      setCreatorWorkspaceIdea(data.ideaId);
+      if (data.journey?.ideaVersion > 0) {
+        ideaVersions.set(data.ideaId, data.journey.ideaVersion);
+      }
+    }
     return data;
   },
 
@@ -517,6 +534,9 @@ export interface ReadinessDeduction {
   dimension: string;
   issue: string;
   pointsLost: number;
+  currentState?: string;
+  recommendation?: string;
+  subtext?: string;
   remediationTitle: string;
   remediationRoute: string;
 }
@@ -524,6 +544,8 @@ export interface ReadinessDeduction {
 export interface InvestorReadinessScore {
   total: number;
   label: string;
+  headline?: string;
+  summary?: string;
   breakdown: {
     conceptClarity: number;
     marketEvidence: number;

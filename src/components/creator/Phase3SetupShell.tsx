@@ -30,7 +30,7 @@ export function Phase3SetupShell({
   titleClassName,
 }: Phase3SetupShellProps) {
   return (
-    <div className="flex w-full max-w-full flex-col text-foreground overflow-x-clip">
+    <div className="flex w-full max-w-full flex-col text-foreground">
       <div
         className={cn(
           "w-full max-w-none flex-1 flex flex-col min-w-0",

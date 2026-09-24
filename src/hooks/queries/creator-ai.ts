@@ -12,9 +12,11 @@ import {
   isTerminalStatus,
   type AiCreditBalance,
   type AiSessionStatus,
+  type BudgetSuggestionDto,
   type BusinessModelSession,
   type BusinessPlanSession,
   type ClarifierSession,
+  type ForecastInputs,
   type ForecastSession,
   type MarketStudySession,
   type StartBusinessModelRequest,
@@ -22,6 +24,7 @@ import {
   type StartClarifierRequest,
   type StartForecastRequest,
   type StartMarketStudyRequest,
+  type UpdateFinancialAssumptionsDto,
 } from "@/types/creator/ai";
 
 // ===== ONE shared AI-session polling policy (audit R12) =====
@@ -431,6 +434,65 @@ export const useStartForecast = () => {
     mutationFn: (payload: StartForecastRequest) =>
       creatorAiApi.startForecast(payload),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creator-ai", "forecast", "list"] });
+      qc.invalidateQueries({ queryKey: creditKeys.balance });
+    },
+  });
+};
+
+export const useBudgetSuggestion = (ideaId?: string | null, enabled: boolean = true) =>
+  useQuery<BudgetSuggestionDto>({
+    queryKey: ["creator-ai", "forecast", "budget-suggestion", ideaId],
+    queryFn: () => {
+      if (!ideaId) throw new Error("ideaId is required");
+      return creatorAiApi.getBudgetSuggestion(ideaId);
+    },
+    enabled: !!ideaId && !!enabled,
+    staleTime: 60 * 1000,
+  });
+
+export const useForecastAssumptions = (ideaId?: string | null, enabled: boolean = true) =>
+  useQuery<ForecastInputs>({
+    queryKey: ["creator-ai", "forecast", "assumptions", ideaId],
+    queryFn: () => {
+      if (!ideaId) throw new Error("ideaId is required");
+      return creatorAiApi.getForecastAssumptions(ideaId);
+    },
+    enabled: !!ideaId && !!enabled,
+    staleTime: 30 * 1000,
+  });
+
+export const useUpdateForecastAssumptions = (ideaId?: string | null) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateFinancialAssumptionsDto) => {
+      const effectiveIdeaId = ideaId || payload.businessIdeaId;
+      if (!effectiveIdeaId) throw new Error("ideaId is required");
+      return creatorAiApi.updateForecastAssumptions(payload, effectiveIdeaId);
+    },
+    onSuccess: () => {
+      if (ideaId) {
+        qc.invalidateQueries({
+          queryKey: ["creator-ai", "forecast", "assumptions", ideaId],
+        });
+      }
+      qc.invalidateQueries({ queryKey: ["creator-ai", "forecast"] });
+    },
+  });
+};
+
+export const useRegenerateForecast = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      sessionId,
+      payload,
+    }: {
+      sessionId: string;
+      payload?: StartForecastRequest;
+    }) => creatorAiApi.regenerateForecast(sessionId, payload),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["creator-ai", "forecast", variables.sessionId] });
       qc.invalidateQueries({ queryKey: ["creator-ai", "forecast", "list"] });
       qc.invalidateQueries({ queryKey: creditKeys.balance });
     },

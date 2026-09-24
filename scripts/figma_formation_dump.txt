@@ -1,0 +1,391 @@
+[FRAME] "Company Formation & Team · Creator Phase 3.5" 1280x3322  fill:SOLID:#ffffff,SOLID:#f4f5f7,SOLID:#f4f5f7  pad:32/32/32/32 
+  [FRAME] "Container" 1216x3258     
+    [FRAME] "Container" 900x3258     
+      [FRAME] "SECTION 1 — QUIET INTRO:margin" 900x37    pad:12 
+        [FRAME] "SECTION 1 — QUIET INTRO" 900x25     
+          [TEXT] "Let’s work out how your company could be set up." 900x25  fill:SOLID:#64748b   "Let’s work out how your company could be set up." [font:DM Sans w:400 size:15px color:#64748b]
+      [FRAME] "Section - SECTION 2 — YOUR SETUP SO FAR:margin" 900x145    pad:24 
+        [FRAME] "Section - SECTION 2 — YOUR SETUP SO FAR" 900x121 r:8 fill:SOLID:#ffffff  pad:24/24/24/24 
+          [FRAME] "Heading 2" 852x24     
+            [TEXT] "Your setup so far" 852x24  fill:SOLID:#0f172a   "Your setup so far" [font:Inter w:400 size:18px color:#0f172a]
+          [FRAME] "Container" 852x43     
+            [TEXT] "Based on your project, you’re planning a digital business in France. We’ll help you think through the structure, ownership and people you may need to get started." 852x43  fill:SOLID:#64748b   "Based on your project, you’re planning a digital business in France. We’ll help you think through the structure, ownership and people you may\nneed to get started." [font:DM Sans w:400 size:13px color:#64748b]
+      [FRAME] "Section - SECTION 3 — HOW ARE YOU PLANNING TO START:margin" 900x232    pad:24 
+        [FRAME] "Section - SECTION 3 — HOW ARE YOU PLANNING TO START" 900x208 r:8 fill:SOLID:#ffffff  pad:24/24/24/24 
+          [FRAME] "Heading 2" 852x24     
+            [TEXT] "How are you planning to start?" 852x24  fill:SOLID:#0f172a   "How are you planning to start?" [font:Inter w:400 size:16px color:#0f172a]
+          [FRAME] "Container" 852x18     
+            [TEXT] "Choose what best matches your plan today. You can change this before formal company creation." 852x18  fill:SOLID:#64748b   "Choose what best matches your plan today. You can change this before formal company creation." [font:DM Sans w:400 size:12px color:#64748b]
+          [FRAME] "Container" 852x110    pad:16 
+            [FRAME] "Option 1: Selected" 273x94 r:8 fill:SOLID:#e8eeff  pad:16/16/34/16 
+              [FRAME] "Container" 241x18    pad:2.842170943040401e-14 
+                [TEXT] "Just me" 49x18  fill:SOLID:#0f172a   "Just me" [font:Inter w:400 size:13px color:#0f172a]
+                [FRAME] "Background" 16x16 r:12 fill:SOLID:#1a47c3   
+                  [FRAME] "Container" 7x6     
+                    [VECTOR] "Icon" 7x6  fill:SOLID:#ffffff   
+              [FRAME] "Container" 241x18     
+                [TEXT] "I’m starting the company on my own." 241x18  fill:SOLID:#64748b   "I’m starting the company on my own." [font:DM Sans w:400 size:12px color:#64748b]
+            [FRAME] "Option 2: Unselected" 273x94 r:8 fill:SOLID:#ffffff  pad:16/16/16/16 
+              [FRAME] "Container" 241x18    pad:8.526512829121202e-14 
+                [TEXT] "With co-founders" 108x18  fill:SOLID:#0f172a   "With co-founders" [font:Inter w:400 size:13px color:#0f172a]
+                [RECTANGLE] "Background" 16x16 r:12 fill:SOLID:#eaedff   
+              [FRAME] "Container" 241x36     
+                [TEXT] "One or more people will own the company with me." 241x36  fill:SOLID:#64748b   "One or more people will own the company\nwith me." [font:DM Sans w:400 size:12px color:#64748b]
+            [FRAME] "Option 3: Unselected" 273x94 r:8 fill:SOLID:#ffffff  pad:16/16/34/16 
+              [FRAME] "Container" 241x18     
+                [TEXT] "I’m not sure yet" 94x18  fill:SOLID:#0f172a   "I’m not sure yet" [font:Inter w:400 size:13px color:#0f172a]
+                [RECTANGLE] "Background" 16x16 r:12 fill:SOLID:#eaedff   
+              [FRAME] "Container" 241x18     
+                [TEXT] "Help me understand what changes." 241x18  fill:SOLID:#64748b   "Help me understand what changes." [font:DM Sans w:400 size:12px color:#64748b]
+      [FRAME] "Section - SECTION 4 — A STRUCTURE TO CONSIDER:margin" 900x540    pad:24 
+        [FRAME] "Section - SECTION 4 — A STRUCTURE TO CONSIDER" 900x516 r:8 fill:SOLID:#ffffff  pad:24/24/24/24 
+          [FRAME] "Heading 2" 852x24     
+            [TEXT] "Your company structure" 852x24  fill:SOLID:#0f172a   "Your company structure" [font:Inter w:400 size:16px color:#0f172a]
+          [FRAME] "Container" 852x18     
+            [TEXT] "MBC is not choosing a legal structure for you. We’re showing an option that matches what you’ve told us so far." 852x18  fill:SOLID:#64748b   "MBC is not choosing a legal structure for you. We’re showing an option that matches what you’ve told us so far." [font:DM Sans w:400 size:12px color:#64748b]
+          [FRAME] "Inner recommendation block" 852x366 r:8 fill:SOLID:#f9f9fa  pad:32/20/20/20 
+            [FRAME] "Container" 812x21     
+              [FRAME] "Container" 156x16     
+                [TEXT] "A STRUCTURE TO CONSIDER" 156x16  fill:SOLID:#64748b   "A STRUCTURE TO CONSIDER" [font:DM Sans w:400 size:11px color:#64748b]
+              [FRAME] "Background" 114x21 r:12 fill:SOLID:#e8eeff  pad:2/10/2/10 
+                [TEXT] "Worth considering" 94x17  fill:SOLID:#1a47c3   "Worth considering" [font:DM Sans w:400 size:11px color:#1a47c3]
+            [FRAME] "Heading 3" 812x32     
+              [TEXT] "SASU" 812x32  fill:SOLID:#0f172a   "SASU" [font:Inter w:400 size:24px color:#0f172a]
+            [FRAME] "Container" 812x18     
+              [TEXT] "A structure often considered by founders who start alone and want flexibility if the company grows later." 812x18  fill:SOLID:#64748b   "A structure often considered by founders who start alone and want flexibility if the company grows later." [font:DM Sans w:400 size:12px color:#64748b]
+            [FRAME] "Two columns" 812x142    pad:12/16 
+              [FRAME] "Container" 398x114    pad:24 
+                [FRAME] "Heading 4" 398x16     
+                  [TEXT] "WHY IT MAY FIT YOUR PLAN" 398x16  fill:SOLID:#0f172a   "WHY IT MAY FIT YOUR PLAN" [font:DM Sans w:400 size:11px color:#0f172a]
+                [FRAME] "List" 398x66     
+                  [FRAME] "Item" 398x18     
+                    [FRAME] "Container" 13x13     
+                      [VECTOR] "Icon" 13x13  fill:SOLID:#157a55   
+                    [FRAME] "Container" 115x18     
+                      [TEXT] "You’re starting alone." 115x18  fill:SOLID:#0f172a   "You’re starting alone." [font:DM Sans w:400 size:12px color:#0f172a]
+                  [FRAME] "Item" 398x18     
+                    [FRAME] "Container" 13x13     
+                      [VECTOR] "Icon" 13x13  fill:SOLID:#157a55   
+                    [FRAME] "Container" 247x18     
+                      [TEXT] "You’re building a company designed to grow." 247x18  fill:SOLID:#0f172a   "You’re building a company designed to grow." [font:DM Sans w:400 size:12px color:#0f172a]
+                  [FRAME] "Item" 398x18     
+                    [FRAME] "Container" 13x13     
+                      [VECTOR] "Icon" 13x13  fill:SOLID:#157a55   
+                    [FRAME] "Container" 291x18     
+                      [TEXT] "You may want to add investors or shareholders later." 291x18  fill:SOLID:#0f172a   "You may want to add investors or shareholders later." [font:DM Sans w:400 size:12px color:#0f172a]
+              [FRAME] "Container" 398x114     
+                [FRAME] "Heading 4" 398x16     
+                  [TEXT] "THINGS TO THINK ABOUT" 398x16  fill:SOLID:#0f172a   "THINGS TO THINK ABOUT" [font:DM Sans w:400 size:11px color:#0f172a]
+                [FRAME] "List" 398x90     
+                  [FRAME] "Item" 398x18     
+                    [RECTANGLE] "Horizontal Divider" 6x2 r:12 fill:SOLID:#64748b   
+                    [FRAME] "Container" 161x18     
+                      [TEXT] "How you plan to pay yourself" 161x18  fill:SOLID:#64748b   "How you plan to pay yourself" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Item" 398x18     
+                    [RECTANGLE] "Horizontal Divider" 6x2 r:12 fill:SOLID:#64748b   
+                    [FRAME] "Container" 112x18     
+                      [TEXT] "Social contributions" 112x18  fill:SOLID:#64748b   "Social contributions" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Item" 398x18     
+                    [RECTANGLE] "Horizontal Divider" 6x2 r:12 fill:SOLID:#64748b   
+                    [FRAME] "Container" 171x18     
+                      [TEXT] "Accounting and administration" 171x18  fill:SOLID:#64748b   "Accounting and administration" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Item" 398x18     
+                    [RECTANGLE] "Horizontal Divider" 6x2 r:12 fill:SOLID:#64748b   
+                    [FRAME] "Container" 230x18     
+                      [TEXT] "What happens if ownership changes later" 230x18  fill:SOLID:#64748b   "What happens if ownership changes later" [font:DM Sans w:400 size:12px color:#64748b]
+            [FRAME] "Quick Facts" 812x85 r:4 fill:SOLID:#eaedff  pad:20/12/12/12 
+              [FRAME] "Container" 188x53    pad:18 
+                [FRAME] "Container" 188x15     
+                  [TEXT] "OWNERS" 188x15  fill:SOLID:#64748b   "OWNERS" [font:DM Sans w:400 size:10px color:#64748b]
+                [FRAME] "Container" 188x18     
+                  [TEXT] "1 shareholder" 188x18  fill:SOLID:#0f172a   "1 shareholder" [font:DM Sans w:400 size:12px color:#0f172a]
+              [FRAME] "Container" 188x53    pad:18 
+                [FRAME] "Container" 188x15     
+                  [TEXT] "MANAGEMENT" 188x15  fill:SOLID:#64748b   "MANAGEMENT" [font:DM Sans w:400 size:10px color:#64748b]
+                [FRAME] "Container" 188x18     
+                  [TEXT] "Usually led by a President" 188x18  fill:SOLID:#0f172a   "Usually led by a President" [font:DM Sans w:400 size:12px color:#0f172a]
+              [FRAME] "Container" 188x53     
+                [FRAME] "Container" 188x15     
+                  [TEXT] "OWNERSHIP LATER" 188x15  fill:SOLID:#64748b   "OWNERSHIP LATER" [font:DM Sans w:400 size:10px color:#64748b]
+                [FRAME] "Container" 188x36     
+                  [TEXT] "Can change if new shareholders join" 188x36  fill:SOLID:#0f172a   "Can change if new shareholders\njoin" [font:DM Sans w:400 size:12px color:#0f172a]
+              [FRAME] "Container" 188x53     
+                [FRAME] "Container" 188x15     
+                  [TEXT] "BEFORE REGISTRATION" 188x15  fill:SOLID:#64748b   "BEFORE REGISTRATION" [font:DM Sans w:400 size:10px color:#64748b]
+                [FRAME] "Container" 188x36     
+                  [TEXT] "Professional advice may be useful" 188x36  fill:SOLID:#0f172a   "Professional advice may be\nuseful" [font:DM Sans w:400 size:12px color:#0f172a]
+          [FRAME] "Actions" 852x48    pad:16 
+            [FRAME] "Button" 136x32 r:4 fill:SOLID:#ffffff  pad:8/16/8/16 
+              [TEXT] "Explore this option" 104x16  fill:SOLID:#0f172a   "Explore this option" [font:DM Sans w:400 size:11px color:#0f172a]
+            [FRAME] "Button:margin" 138x18    pad:16 
+              [FRAME] "Button" 122x18     
+                [TEXT] "See another structure" 122x18  fill:SOLID:#1a47c3   "See another structure" [font:DM Sans w:400 size:12px color:#1a47c3]
+      [FRAME] "Section - SECTION 5 — OWNERSHIP:margin" 900x216    pad:24 
+        [FRAME] "Section - SECTION 5 — OWNERSHIP" 900x192 r:8 fill:SOLID:#ffffff  pad:24/24/26/24 
+          [FRAME] "Heading 2" 852x24     
+            [TEXT] "Who will own the company?" 852x24  fill:SOLID:#0f172a   "Who will own the company?" [font:Inter w:400 size:16px color:#0f172a]
+          [FRAME] "Paragraph" 852x34    pad:4/4 
+            [TEXT] "YOU" 26x18  fill:SOLID:#0f172a   "YOU" [font:DM Sans w:400 size:13px color:#0f172a]
+            [TEXT] "100%" 46x26  fill:SOLID:#1a47c3   "100%" [font:Inter w:400 size:18px color:#1a47c3]
+          [FRAME] "Background" 852x12 r:12 fill:SOLID:#eaedff   
+            [RECTANGLE] "Background" 852x12 r:12 fill:SOLID:#1a47c3   
+          [FRAME] "Container" 852x22    pad:4 
+            [TEXT] "Ownership means who legally owns shares in the company. It is different from who does the most day-to-day work." 852x18  fill:SOLID:#64748b   "Ownership means who legally owns shares in the company. It is different from who does the most day-to-day work." [font:DM Sans w:400 size:12px color:#64748b]
+          [FRAME] "Button" 97x18     
+            [TEXT] "Adjust ownership" 97x18  fill:SOLID:#1a47c3   "Adjust ownership" [font:DM Sans w:400 size:12px color:#1a47c3]
+      [FRAME] "Section - SECTION 6 — LEADERSHIP:margin" 900x176    pad:24 
+        [FRAME] "Section - SECTION 6 — LEADERSHIP" 900x152 r:8 fill:SOLID:#ffffff  pad:24/24/24/24 
+          [FRAME] "Heading 2" 852x24     
+            [TEXT] "Who will lead the company?" 852x24  fill:SOLID:#0f172a   "Who will lead the company?" [font:Inter w:400 size:16px color:#0f172a]
+          [FRAME] "Background" 852x64 r:8 fill:SOLID:#f9f9fa  pad:14/14/14/14 
+            [FRAME] "Container" 219x36     
+              [FRAME] "Background" 36x36 r:12 fill:SOLID:#1a47c3   
+                [TEXT] "Y" 9x18  fill:SOLID:#ffffff   "Y" [font:Inter w:400 size:13px color:#ffffff]
+              [FRAME] "Container" 171x24     
+                [FRAME] "Container" 171x24     
+                  [FRAME] "Container" 27x24     
+                    [TEXT] "You" 27x24  fill:SOLID:#0f172a   "You" [font:DM Sans w:400 size:16px color:#0f172a]
+                  [FRAME] "Background" 136x21 r:2 fill:SOLID:#e8eeff  pad:2/8/2/8 
+                    [TEXT] "Planned role: President" 120x17  fill:SOLID:#1a47c3   "Planned role: President" [font:Inter w:400 size:11px color:#1a47c3]
+            [FRAME] "Container" 383x36    pad:49.43000030517578 
+              [TEXT] "The company will need a legal representative. The exact role depends on the structure you eventually choose." 334x36  fill:SOLID:#64748b   "The company will need a legal representative. The exact role\ndepends on the structure you eventually choose." [font:DM Sans w:400 size:12px color:#64748b]
+            [FRAME] "Button" 43x18     
+              [TEXT] "Change" 43x18  fill:SOLID:#1a47c3   "Change" [font:DM Sans w:400 size:12px color:#1a47c3]
+      [FRAME] "Section - SECTION 7 — STARTING CAPITAL:margin" 900x212    pad:24 
+        [FRAME] "Section - SECTION 7 — STARTING CAPITAL" 900x188 r:8 fill:SOLID:#ffffff  pad:24/24/24/24 
+          [FRAME] "Heading 2" 852x24     
+            [TEXT] "Starting capital plan" 852x24  fill:SOLID:#0f172a   "Starting capital plan" [font:Inter w:400 size:16px color:#0f172a]
+          [FRAME] "Container" 852x18     
+            [TEXT] "This comes from your current company and financial plan." 852x18  fill:SOLID:#64748b   "This comes from your current company and financial plan." [font:DM Sans w:400 size:12px color:#64748b]
+          [FRAME] "Container" 852x54    pad:14 
+            [TEXT] "€5,000" 852x40  fill:SOLID:#0f172a   "€5,000" [font:Inter w:400 size:32px color:#0f172a]
+          [FRAME] "Container" 852x38    pad:10 
+            [FRAME] "Button" 105x28 r:4 fill:SOLID:#eaedff  pad:6/14/6/14 
+              [FRAME] "Container" 10x7     
+                [VECTOR] "Icon" 10x7  fill:SOLID:#157a55   
+              [FRAME] "Container" 61x16     
+                [TEXT] "Looks right" 61x16  fill:SOLID:#157a55   "Looks right" [font:DM Sans w:400 size:11px color:#157a55]
+            [FRAME] "Button:margin" 73x18    pad:8 
+              [FRAME] "Button" 65x18     
+                [TEXT] "Update this" 65x18  fill:SOLID:#64748b   "Update this" [font:DM Sans w:400 size:12px color:#64748b]
+      [FRAME] "Section - SECTION 8 — WHO DO YOU ACTUALLY NEED TO GET STARTED:margin" 900x359    pad:24 
+        [FRAME] "Section - SECTION 8 — WHO DO YOU ACTUALLY NEED TO GET STARTED" 900x335 r:8 fill:SOLID:#ffffff  pad:24/24/24/24 
+          [FRAME] "Heading 2" 852x24     
+            [TEXT] "Who do you actually need to get started?" 852x24  fill:SOLID:#0f172a   "Who do you actually need to get started?" [font:Inter w:400 size:16px color:#0f172a]
+          [FRAME] "Container" 852x18     
+            [TEXT] "You probably don’t need a full team on day one. MBC compared your project needs with the skills you already have." 852x18  fill:SOLID:#64748b   "You probably don’t need a full team on day one. MBC compared your project needs with the skills you already have." [font:DM Sans w:400 size:12px color:#64748b]
+          [FRAME] "Container" 852x241    pad:18 
+            [FRAME] "Group 1" 273x223 r:8 fill:SOLID:#f9f9fa  pad:16/16/16/16 
+              [FRAME] "Container" 241x146     
+                [FRAME] "Container" 241x16     
+                  [RECTANGLE] "Background" 6x6 r:12 fill:SOLID:#157a55   
+                  [FRAME] "Container" 96x16     
+                    [TEXT] "YOU CAN HANDLE" 96x16  fill:SOLID:#157a55   "YOU CAN HANDLE" [font:DM Sans w:400 size:11px color:#157a55]
+                [FRAME] "List" 241x118     
+                  [FRAME] "Item" 241x34 r:4 fill:SOLID:#ffffff  pad:8/8/8/8 
+                    [TEXT] "Product direction" 98x18  fill:SOLID:#0f172a   "Product direction" [font:DM Sans w:400 size:12px color:#0f172a]
+                  [FRAME] "Item" 241x34 r:4 fill:SOLID:#ffffff  pad:8/8/8/8 
+                    [TEXT] "Customer research" 107x18  fill:SOLID:#0f172a   "Customer research" [font:DM Sans w:400 size:12px color:#0f172a]
+                  [FRAME] "Item" 241x34 r:4 fill:SOLID:#ffffff  pad:8/8/8/8 
+                    [TEXT] "Basic marketing" 88x18  fill:SOLID:#0f172a   "Basic marketing" [font:DM Sans w:400 size:12px color:#0f172a]
+              [FRAME] "Margin" 241x45    pad:12 
+                [FRAME] "Container" 241x33     
+                  [TEXT] "Your current profile suggests you can cover these yourself." 241x33  fill:SOLID:#64748b   "Your current profile suggests you can cover\nthese yourself." [font:DM Sans w:400 size:11px color:#64748b]
+            [FRAME] "Group 2" 273x223 r:8 fill:SOLID:#f9f9fa  pad:16/16/16/16 
+              [FRAME] "Container" 241x146     
+                [FRAME] "Container" 241x16     
+                  [RECTANGLE] "Background" 6x6 r:12 fill:SOLID:#b14e00   
+                  [FRAME] "Container" 142x16     
+                    [TEXT] "YOU MAY NEED HELP WITH" 142x16  fill:SOLID:#b14e00   "YOU MAY NEED HELP WITH" [font:DM Sans w:400 size:11px color:#b14e00]
+                [FRAME] "List" 241x118     
+                  [FRAME] "Item" 241x34 r:4 fill:SOLID:#ffffff  pad:8/8/8/8 
+                    [TEXT] "Backend development" 125x18  fill:SOLID:#0f172a   "Backend development" [font:DM Sans w:400 size:12px color:#0f172a]
+                  [FRAME] "Item" 241x34 r:4 fill:SOLID:#ffffff  pad:8/8/8/8 
+                    [TEXT] "Accounting setup" 99x18  fill:SOLID:#0f172a   "Accounting setup" [font:DM Sans w:400 size:12px color:#0f172a]
+                  [FRAME] "Item" 241x34 r:4 fill:SOLID:#ffffff  pad:8/8/8/8 
+                    [TEXT] "Legal review" 68x18  fill:SOLID:#0f172a   "Legal review" [font:DM Sans w:400 size:12px color:#0f172a]
+              [FRAME] "Margin" 241x45    pad:12 
+                [FRAME] "Container" 241x33     
+                  [TEXT] "These capabilities may be important before launch or company setup." 241x33  fill:SOLID:#64748b   "These capabilities may be important before\nlaunch or company setup." [font:DM Sans w:400 size:11px color:#64748b]
+            [FRAME] "Group 3" 273x223 r:8 fill:SOLID:#f9f9fa  pad:16/16/16/16 
+              [FRAME] "Container" 241x146     
+                [FRAME] "Container" 241x16     
+                  [RECTANGLE] "Background" 6x6 r:12 fill:SOLID:#64748b   
+                  [FRAME] "Container" 92x16     
+                    [TEXT] "NOT NEEDED YET" 92x16  fill:SOLID:#64748b   "NOT NEEDED YET" [font:DM Sans w:400 size:11px color:#64748b]
+                [FRAME] "List" 241x118     
+                  [FRAME] "Item" 241x34 r:4 fill:SOLID:#ffffff  pad:8/8/8/8 
+                    [TEXT] "Full-time sales employee" 139x18  fill:SOLID:#0f172a   "Full-time sales employee" [font:DM Sans w:400 size:12px color:#0f172a]
+                  [FRAME] "Item" 241x34 r:4 fill:SOLID:#ffffff  pad:8/8/8/8 
+                    [TEXT] "Customer-support team" 138x18  fill:SOLID:#0f172a   "Customer-support team" [font:DM Sans w:400 size:12px color:#0f172a]
+                  [FRAME] "Item" 241x34 r:4 fill:SOLID:#ffffff  pad:8/8/8/8 
+                    [TEXT] "Operations manager" 114x18  fill:SOLID:#0f172a   "Operations manager" [font:DM Sans w:400 size:12px color:#0f172a]
+              [FRAME] "Margin" 241x45    pad:12 
+                [FRAME] "Container" 241x33     
+                  [TEXT] "These roles can probably wait until the business grows." 241x33  fill:SOLID:#64748b   "These roles can probably wait until the\nbusiness grows." [font:DM Sans w:400 size:11px color:#64748b]
+      [FRAME] "Section - SECTION 9 — ONE EXPANDED TEAM NEED:margin" 900x302    pad:24 
+        [FRAME] "Section - SECTION 9 — ONE EXPANDED TEAM NEED" 900x278 r:8 fill:SOLID:#ffffff  pad:24/24/24/24 
+          [FRAME] "Container" 852x15     
+            [TEXT] "TEAM NEED" 852x15  fill:SOLID:#64748b   "TEAM NEED" [font:DM Sans w:400 size:10px color:#64748b]
+          [FRAME] "Container" 852x26     
+            [FRAME] "Heading 3" 190x26     
+              [TEXT] "Backend development" 190x26  fill:SOLID:#0f172a   "Backend development" [font:Inter w:400 size:18px color:#0f172a]
+            [FRAME] "Background" 133x21 r:12 fill:SOLID:#fff5ed  pad:2/10/2/10 
+              [TEXT] "Needed before launch" 113x17  fill:SOLID:#b14e00   "Needed before launch" [font:DM Sans w:400 size:11px color:#b14e00]
+          [FRAME] "Container" 852x35    pad:3/12 
+            [TEXT] "Your project requires a working web platform, but your current profile does not show enough backend-development capability for this part." 852x20  fill:SOLID:#64748b   "Your project requires a working web platform, but your current profile does not show enough backend-development capability for this part." [font:DM Sans w:400 size:12px color:#64748b]
+          [FRAME] "Background" 852x96 r:8 fill:SOLID:#f9f9fa  pad:16/16/16/16 
+            [FRAME] "Container" 820x16     
+              [TEXT] "A practical starting option" 820x16  fill:SOLID:#64748b   "A practical starting option" [font:DM Sans w:400 size:11px color:#64748b]
+            [FRAME] "Container" 820x24     
+              [TEXT] "External specialist" 820x24  fill:SOLID:#0f172a   "External specialist" [font:Inter w:400 size:16px color:#0f172a]
+            [FRAME] "Container" 820x20    pad:2 
+              [TEXT] "You need this capability before launch, but a full-time employee may be unnecessary at the beginning." 820x18  fill:SOLID:#64748b   "You need this capability before launch, but a full-time employee may be unnecessary at the beginning." [font:DM Sans w:400 size:12px color:#64748b]
+          [FRAME] "Container" 852x42    pad:12 
+            [FRAME] "Background+Shadow" 83x30 r:4 fill:SOLID:#f9f9fa  pad:6/12/6/12 
+              [TEXT] "Learn later" 59x18  fill:SOLID:#64748b   "Learn later" [font:DM Sans w:400 size:12px color:#64748b]
+            [FRAME] "Background+Shadow" 206x30 r:4 fill:SOLID:#f9f9fa  pad:6/12/6/12 
+              [TEXT] "Consider a technical co-founder" 182x18  fill:SOLID:#64748b   "Consider a technical co-founder" [font:DM Sans w:400 size:12px color:#64748b]
+            [FRAME] "Background+Shadow" 190x30 r:4 fill:SOLID:#f9f9fa  pad:6/12/6/12 
+              [TEXT] "Hire when the business grows" 166x18  fill:SOLID:#64748b   "Hire when the business grows" [font:DM Sans w:400 size:12px color:#64748b]
+      [FRAME] "Section - SECTION 10 — PROFESSIONAL SUPPORT:margin" 900x252    pad:24 
+        [FRAME] "Section - SECTION 10 — PROFESSIONAL SUPPORT" 900x228 r:8 fill:SOLID:#ffffff  pad:24/24/24/24 
+          [FRAME] "Heading 2" 852x24     
+            [TEXT] "Professional support you may use" 852x24  fill:SOLID:#0f172a   "Professional support you may use" [font:Inter w:400 size:16px color:#0f172a]
+          [FRAME] "Container" 852x18     
+            [TEXT] "Some support is useful without becoming part of your permanent team." 852x18  fill:SOLID:#64748b   "Some support is useful without becoming part of your permanent team." [font:DM Sans w:400 size:12px color:#64748b]
+          [FRAME] "Container" 852x134    pad:14 
+            [FRAME] "Background" 852x54 r:4 fill:SOLID:#f9f9fa  pad:8/12/8/12 
+              [FRAME] "Container" 320x38     
+                [FRAME] "Container" 320x18     
+                  [TEXT] "Chartered accountant" 134x18  fill:SOLID:#0f172a   "Chartered accountant" [font:DM Sans w:400 size:13px color:#0f172a]
+                [FRAME] "Container" 320x18     
+                  [TEXT] "Useful around setup, accounting and financial obligations." 320x18  fill:SOLID:#64748b   "Useful around setup, accounting and financial obligations." [font:DM Sans w:400 size:12px color:#64748b]
+              [FRAME] "Background" 149x24 r:6 fill:SOLID:#f4f5f7  pad:4/10/4/10 
+                [TEXT] "Around company setup" 129x16  fill:SOLID:#64748b   "Around company setup" [font:DM Sans w:400 size:11px color:#64748b]
+            [FRAME] "Background" 852x54 r:4 fill:SOLID:#f9f9fa  pad:8/12/8/12 
+              [FRAME] "Container" 452x38     
+                [FRAME] "Container" 452x18     
+                  [TEXT] "Legal professional" 108x18  fill:SOLID:#0f172a   "Legal professional" [font:DM Sans w:400 size:13px color:#0f172a]
+                [FRAME] "Container" 452x18     
+                  [TEXT] "Useful before finalising company documents or unusual ownership arrangements." 452x18  fill:SOLID:#64748b   "Useful before finalising company documents or unusual ownership arrangements." [font:DM Sans w:400 size:12px color:#64748b]
+              [FRAME] "Background" 207x24 r:6 fill:SOLID:#f4f5f7  pad:4/10/4/10 
+                [TEXT] "Before final registration, if needed" 187x16  fill:SOLID:#64748b   "Before final registration, if needed" [font:DM Sans w:400 size:11px color:#64748b]
+      [FRAME] "Section - SECTION 11 — DAY 1 VS LATER:margin" 900x274    pad:24 
+        [FRAME] "Section - SECTION 11 — DAY 1 VS LATER" 900x250 r:8 fill:SOLID:#ffffff  pad:24/24/24/24 
+          [FRAME] "Heading 2" 852x24     
+            [TEXT] "Your starting team" 852x24  fill:SOLID:#0f172a   "Your starting team" [font:Inter w:400 size:16px color:#0f172a]
+          [FRAME] "Background" 852x162 r:8 fill:SOLID:#f9f9fa  pad:16/16/16/16 
+            [FRAME] "Background+Shadow" 398x130 r:4 fill:SOLID:#ffffff  pad:16/16/16/16 
+              [FRAME] "Heading 3" 366x16     
+                [RECTANGLE] "Background" 8x8 r:12 fill:SOLID:#1a47c3   
+                [TEXT] "DAY 1" 29x16  fill:SOLID:#0f172a   "DAY 1" [font:DM Sans w:400 size:11px color:#0f172a]
+              [FRAME] "List" 366x70     
+                [FRAME] "Item" 366x18     
+                  [FRAME] "Container" 11x11     
+                    [VECTOR] "Icon" 11x11  fill:SOLID:#1a47c3   
+                  [FRAME] "Container" 83x18     
+                    [TEXT] "You — Founder" 83x18  fill:SOLID:#0f172a   "You — Founder" [font:DM Sans w:400 size:12px color:#0f172a]
+                [FRAME] "Item" 366x18     
+                  [FRAME] "Container" 13x8     
+                    [VECTOR] "Icon" 13x8  fill:SOLID:#1a47c3   
+                  [FRAME] "Container" 104x18     
+                    [TEXT] "External developer" 104x18  fill:SOLID:#0f172a   "External developer" [font:DM Sans w:400 size:12px color:#0f172a]
+                [FRAME] "Item" 366x18     
+                  [FRAME] "Container" 13x13     
+                    [VECTOR] "Icon" 13x13  fill:SOLID:#1a47c3   
+                  [FRAME] "Container" 113x18     
+                    [TEXT] "Accountant support" 113x18  fill:SOLID:#0f172a   "Accountant support" [font:DM Sans w:400 size:12px color:#0f172a]
+            [FRAME] "Background+Shadow" 398x130 r:4 fill:SOLID:#ffffff  pad:16/16/16/16 
+              [FRAME] "Heading 3" 366x16     
+                [RECTANGLE] "Background" 8x8 r:12 fill:SOLID:#64748b   
+                [TEXT] "LATER" 34x16  fill:SOLID:#64748b   "LATER" [font:DM Sans w:400 size:11px color:#64748b]
+              [FRAME] "List" 366x70     
+                [FRAME] "Item" 366x18     
+                  [FRAME] "Container" 13x8     
+                    [VECTOR] "Icon" 13x8  fill:SOLID:#64748b   
+                  [FRAME] "Container" 77x18     
+                    [TEXT] "Sales support" 77x18  fill:SOLID:#64748b   "Sales support" [font:DM Sans w:400 size:12px color:#64748b]
+                [FRAME] "Item" 366x18     
+                  [FRAME] "Container" 13x12     
+                    [VECTOR] "Icon" 13x12  fill:SOLID:#64748b   
+                  [FRAME] "Container" 103x18     
+                    [TEXT] "Customer support" 103x18  fill:SOLID:#64748b   "Customer support" [font:DM Sans w:400 size:12px color:#64748b]
+                [FRAME] "Item" 366x18     
+                  [FRAME] "Container" 16x15     
+                    [VECTOR] "Icon" 16x15  fill:SOLID:#64748b   
+                  [FRAME] "Container" 63x18     
+                    [TEXT] "Operations" 63x18  fill:SOLID:#64748b   "Operations" [font:DM Sans w:400 size:12px color:#64748b]
+      [FRAME] "Section - SECTION 12 — FINAL SETUP SUMMARY:margin" 900x403    pad:24 
+        [FRAME] "Section - SECTION 12 — FINAL SETUP SUMMARY" 900x379 r:8 fill:SOLID:#ffffff  pad:24/24/24/24 
+          [RECTANGLE] "Section - SECTION 12 — FINAL SETUP SUMMARY:shadow" 900x379 r:8 fill:SOLID:#ffffff   
+          [FRAME] "Heading 2" 852x26     
+            [TEXT] "Your company setup plan" 852x26  fill:SOLID:#0f172a   "Your company setup plan" [font:Inter w:400 size:18px color:#0f172a]
+          [FRAME] "Container" 852x222     
+            [FRAME] "Sub A" 414x222 r:8 fill:SOLID:#f9f9fa  pad:16/16/16/16 
+              [FRAME] "Heading 3" 382x16     
+                [TEXT] "COMPANY" 382x16  fill:SOLID:#64748b   "COMPANY" [font:DM Sans w:400 size:11px color:#64748b]
+              [FRAME] "Container" 382x162     
+                [FRAME] "Background+Shadow" 382x26 r:2 fill:SOLID:#ffffff  pad:4/10/4/10 
+                  [FRAME] "Container" 44x18     
+                    [TEXT] "Starting" 44x18  fill:SOLID:#64748b   "Starting" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Container" 71x18     
+                    [TEXT] "Solo founder" 71x18  fill:SOLID:#0f172a   "Solo founder" [font:DM Sans w:400 size:12px color:#0f172a]
+                [FRAME] "Background+Shadow" 382x26 r:2 fill:SOLID:#ffffff  pad:4/10/4/10 
+                  [FRAME] "Container" 119x18     
+                    [TEXT] "Structure to consider" 119x18  fill:SOLID:#64748b   "Structure to consider" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Container" 30x18     
+                    [TEXT] "SASU" 30x18  fill:SOLID:#0f172a   "SASU" [font:DM Sans w:400 size:12px color:#0f172a]
+                [FRAME] "Background+Shadow" 382x26 r:2 fill:SOLID:#ffffff  pad:4/10/4/10 
+                  [FRAME] "Container" 60x18     
+                    [TEXT] "Ownership" 60x18  fill:SOLID:#64748b   "Ownership" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Container" 58x18     
+                    [TEXT] "Text" 58x18  fill:SOLID:#0f172a   "You · 100%" [font:DM Sans w:500 size:12px color:#0f172a]
+                [FRAME] "Background+Shadow" 382x26 r:2 fill:SOLID:#ffffff  pad:4/10/4/10 
+                  [FRAME] "Container" 83x18     
+                    [TEXT] "Planned leader" 83x18  fill:SOLID:#64748b   "Planned leader" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Container" 20x18     
+                    [TEXT] "You" 20x18  fill:SOLID:#0f172a   "You" [font:DM Sans w:400 size:12px color:#0f172a]
+                [FRAME] "Background+Shadow" 382x26 r:2 fill:SOLID:#ffffff  pad:4/10/4/10 
+                  [FRAME] "Container" 85x18     
+                    [TEXT] "Starting capital" 85x18  fill:SOLID:#64748b   "Starting capital" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Container" 41x18     
+                    [TEXT] "€5,000" 41x18  fill:SOLID:#0f172a   "€5,000" [font:Inter w:400 size:12px color:#0f172a]
+            [FRAME] "Sub B" 414x222 r:8 fill:SOLID:#f9f9fa  pad:16/16/50/16 
+              [FRAME] "Heading 3" 382x16     
+                [TEXT] "TEAM" 382x16  fill:SOLID:#64748b   "TEAM" [font:DM Sans w:400 size:11px color:#64748b]
+              [FRAME] "Container" 382x128     
+                [FRAME] "Background+Shadow" 382x26 r:2 fill:SOLID:#ffffff  pad:4/10/4/10 
+                  [FRAME] "Container" 84x18     
+                    [TEXT] "You can handle" 84x18  fill:SOLID:#64748b   "You can handle" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Container" 41x18     
+                    [TEXT] "Text" 41x18  fill:SOLID:#0f172a   "3 areas" [font:JetBrains Mono w:700 size:12px color:#0f172a]
+                [FRAME] "Background+Shadow" 382x26 r:2 fill:SOLID:#ffffff  pad:4/10/4/10 
+                  [FRAME] "Container" 102x18     
+                    [TEXT] "Help likely needed" 102x18  fill:SOLID:#64748b   "Help likely needed" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Container" 41x18     
+                    [TEXT] "Text" 41x18  fill:SOLID:#0f172a   "3 areas" [font:JetBrains Mono w:700 size:12px color:#0f172a]
+                [FRAME] "Background+Shadow" 382x26 r:2 fill:SOLID:#ffffff  pad:4/10/4/10 
+                  [FRAME] "Container" 109x18     
+                    [TEXT] "Needed on day one" 109x18  fill:SOLID:#64748b   "Needed on day one" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Container" 93x18     
+                    [TEXT] "Text" 93x18  fill:SOLID:#0f172a   "2 support needs" [font:JetBrains Mono w:700 size:12px color:#0f172a]
+                [FRAME] "Background+Shadow" 382x26 r:2 fill:SOLID:#ffffff  pad:4/10/4/10 
+                  [FRAME] "Container" 49x18     
+                    [TEXT] "Can wait" 49x18  fill:SOLID:#64748b   "Can wait" [font:DM Sans w:400 size:12px color:#64748b]
+                  [FRAME] "Container" 38x18     
+                    [TEXT] "Text" 38x18  fill:SOLID:#0f172a   "3 roles" [font:JetBrains Mono w:700 size:12px color:#0f172a]
+          [FRAME] "Container" 852x51    pad:11.25/0.75 
+            [TEXT] "This is a planning recommendation based on your current project. Final legal, tax and ownership decisions may require professional advice before company registration." 852x39  fill:SOLID:#64748b   "This is a planning recommendation based on your current project. Final legal, tax and ownership decisions may require professional advice before\ncompany registration." [font:DM Sans w:400 size:12px color:#64748b]
+      [FRAME] "Footer - SECTION 13 — FOOTER NAVIGATION:margin" 900x110    pad:48 
+        [FRAME] "Footer - SECTION 13 — FOOTER NAVIGATION" 900x62    pad:24 
+          [FRAME] "Button" 96x18     
+            [FRAME] "Container" 7x3     
+              [VECTOR] "Icon" 7x3  fill:SOLID:#64748b   
+            [FRAME] "Container" 85x18     
+              [TEXT] "Legal Roadmap" 85x18  fill:SOLID:#64748b   "Legal Roadmap" [font:DM Sans w:400 size:12px color:#64748b]
+          [FRAME] "Button" 254x38 r:12 fill:SOLID:#1a47c3  pad:10/20/10/20 
+            [FRAME] "Container" 201x18     
+              [TEXT] "Continue to Executive Business Plan" 201x18  fill:SOLID:#ffffff   "Continue to Executive Business Plan" [font:DM Sans w:400 size:12px color:#ffffff]
+            [FRAME] "Container" 7x3     
+              [VECTOR] "Icon" 7x3  fill:SOLID:#ffffff   

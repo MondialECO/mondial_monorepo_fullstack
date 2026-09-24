@@ -11,9 +11,11 @@ import api from "@/lib/axios";
 import { getCreatorWorkspaceIdea } from "@/lib/api-creator-journey";
 import type {
   AiCreditBalance,
+  BudgetSuggestionDto,
   BusinessModelSession,
   BusinessPlanSession,
   ClarifierSession,
+  ForecastInputs,
   ForecastSession,
   IdeaGenerationSession,
   MarketStudySession,
@@ -24,6 +26,7 @@ import type {
   StartIdeaGenerationRequest,
   StartMarketStudyRequest,
   StartSessionResult,
+  UpdateFinancialAssumptionsDto,
 } from "@/types/creator/ai";
 
 interface ApiEnvelope<T> {
@@ -169,6 +172,9 @@ export const creatorAiApi = {
   startForecast: async (
     payload: StartForecastRequest,
   ): Promise<StartSessionResult> => {
+    if (!payload.businessIdeaId && !payload.businessPlanSessionId) {
+      throw new Error("ideaId is required");
+    }
     const res = await api.post("/ai/forecast", payload);
     return unwrap<StartSessionResult>(res.data);
   },
@@ -176,6 +182,49 @@ export const creatorAiApi = {
   getForecast: async (sessionId: string): Promise<ForecastSession> => {
     const res = await api.get(`/ai/forecast/${sessionId}`);
     return unwrap<ForecastSession>(res.data);
+  },
+
+  getBudgetSuggestion: async (ideaId?: string): Promise<BudgetSuggestionDto> => {
+    if (!ideaId) throw new Error("ideaId is required");
+    const res = await api.get("/ai/forecast/budget-suggestion", {
+      params: { ideaId },
+    });
+    return unwrap<BudgetSuggestionDto>(res.data);
+  },
+
+  getForecastAssumptions: async (ideaId?: string): Promise<ForecastInputs> => {
+    if (!ideaId) throw new Error("ideaId is required");
+    const res = await api.get("/ai/forecast/assumptions", {
+      params: { ideaId },
+    });
+    const raw = unwrap<any>(res.data);
+    if (raw && raw.inputs) {
+      return {
+        ...raw.inputs,
+        hasCompletedForecast: raw.hasCompletedForecast ?? false,
+      };
+    }
+    return raw as ForecastInputs;
+  },
+
+  updateForecastAssumptions: async (
+    payload: UpdateFinancialAssumptionsDto,
+    ideaId?: string,
+  ): Promise<ForecastInputs> => {
+    const effectiveIdeaId = ideaId || payload.businessIdeaId;
+    if (!effectiveIdeaId) throw new Error("ideaId is required");
+    const res = await api.put("/ai/forecast/assumptions", payload, {
+      params: { ideaId: effectiveIdeaId },
+    });
+    return unwrap<ForecastInputs>(res.data);
+  },
+
+  regenerateForecast: async (
+    sessionId: string,
+    payload?: StartForecastRequest,
+  ): Promise<StartSessionResult> => {
+    const res = await api.post(`/ai/forecast/${sessionId}/regenerate`, payload ?? {});
+    return unwrap<StartSessionResult>(res.data);
   },
 
   listForecasts: async (

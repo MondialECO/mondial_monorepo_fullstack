@@ -28,6 +28,7 @@ namespace WebApp.Services.Ai.Jobs
         private readonly BusinessIdeasRepository _ideas;
         private readonly IMarketBenchmarkResolver _benchmarks;
         private readonly IAiInsightWriter _insights;
+        private readonly IFinancialAssumptionsService? _assumptions;
         private readonly AiSettings _settings;
         private readonly ILogger<MarketStudyHandler> _logger;
 
@@ -39,7 +40,8 @@ namespace WebApp.Services.Ai.Jobs
             IMarketBenchmarkResolver benchmarks,
             IAiInsightWriter insights,
             ILogger<MarketStudyHandler> logger,
-            IOptions<AiSettings>? aiSettings = null)
+            IOptions<AiSettings>? aiSettings = null,
+            IFinancialAssumptionsService? assumptions = null)
         {
             _sessions = sessions;
             _clarifiers = clarifiers;
@@ -47,6 +49,7 @@ namespace WebApp.Services.Ai.Jobs
             _ideas = ideas;
             _benchmarks = benchmarks;
             _insights = insights;
+            _assumptions = assumptions;
             _settings = aiSettings?.Value ?? new AiSettings();
             _logger = logger;
         }
@@ -163,6 +166,29 @@ namespace WebApp.Services.Ai.Jobs
                     SourceRequestId = request.Id,
                     CreatedAt = DateTime.UtcNow,
                 });
+
+                // Progressive Financial Assumptions: Step 3.1 creates market-based assumptions draft
+                if (_assumptions != null)
+                {
+                    var businessIdeaId = request.InputPayload != null
+                        && request.InputPayload.TryGetValue("businessIdeaId", out var bid) && bid.IsString
+                        ? bid.AsString
+                        : null;
+
+                    if (!string.IsNullOrWhiteSpace(businessIdeaId))
+                    {
+                        var session = await _sessions.GetOwnedAsync(sessionId, request.OwnerUserId);
+                        var version = session?.CurrentVersion ?? 1;
+                        try
+                        {
+                            await _assumptions.UpdateFromMarketStudyAsync(businessIdeaId, request.OwnerUserId, contract, version);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to update financial assumptions from Market Study for idea {IdeaId}", businessIdeaId);
+                        }
+                    }
+                }
             }
             else
             {

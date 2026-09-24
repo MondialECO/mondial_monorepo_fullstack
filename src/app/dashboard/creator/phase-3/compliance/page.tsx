@@ -185,10 +185,10 @@ export default function ComplianceWorkspacePage() {
   const projectSummaryNarrative = useMemo(() => {
     return generateProjectSummary(
       overview?.detectedArchetypes,
-      overview?.assessment?.businessProfile,
+      (overview?.assessment as any)?.businessProfile,
       state?.project?.name
     );
-  }, [overview?.detectedArchetypes, overview?.assessment?.businessProfile, state?.project?.name]);
+  }, [overview?.detectedArchetypes, (overview?.assessment as any)?.businessProfile, state?.project?.name]);
 
   return (
     <Phase3SetupShell
@@ -227,8 +227,30 @@ export default function ComplianceWorkspacePage() {
         </Card>
       )}
 
-      {/* 3. Empty State (No Assessment) */}
-      {!overviewLoading && !overviewError && (!overview?.hasAssessment || !assessment) && (
+      {/* 3. Generating State (When AI is synthesizing legal roadmap) */}
+      {!overviewLoading && !overviewError && evaluateMutation.isPending && (
+        <div className="space-y-6 max-w-2xl mx-auto py-12">
+          <Card className="rounded-2xl border border-border bg-card p-8 text-center space-y-4 shadow-sm">
+            <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-heading font-bold text-base text-foreground">
+                Generating Legal Roadmap…
+              </h3>
+              <p className="text-caption text-muted-foreground">
+                Classifying your business model, customer types, and revenue tiers to build your personalized statutory roadmap for France.
+              </p>
+            </div>
+            <div className="h-2 w-48 mx-auto bg-muted rounded-full overflow-hidden">
+              <div className="h-full bg-primary animate-pulse w-2/3" />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* 4. Empty State (No Assessment) */}
+      {!overviewLoading && !overviewError && !evaluateMutation.isPending && (!overview?.hasAssessment || !assessment) && (
         <Card className="p-10 border border-border rounded-2xl bg-card shadow-sm text-center space-y-4 max-w-xl mx-auto">
           <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
             <Scale className="size-6" />
@@ -245,23 +267,14 @@ export default function ComplianceWorkspacePage() {
             disabled={evaluateMutation.isPending}
             className="rounded-xl text-xs px-5 h-9 bg-primary hover:bg-primary/95 text-primary-foreground font-medium shadow-none gap-2"
           >
-            {evaluateMutation.isPending ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Analyzing Business Plan...
-              </>
-            ) : (
-              <>
-                Analyse My Business
-                <ArrowRight className="size-4" />
-              </>
-            )}
+            Analyse My Business
+            <ArrowRight className="size-4" />
           </Button>
         </Card>
       )}
 
-      {/* 4. Active Workspace Content: Full Screen Responsive Flow */}
-      {!overviewLoading && !overviewError && overview?.hasAssessment && assessment && (
+      {/* 5. Active Workspace Content: Full Screen Responsive Flow */}
+      {!overviewLoading && !overviewError && !evaluateMutation.isPending && overview?.hasAssessment && assessment && (
         <div className="w-full space-y-6 text-foreground">
           {/* SECTION 1: SHORT INTRODUCTION (Figma 57156:9158) */}
           <div className="pb-1">
@@ -379,7 +392,7 @@ export default function ComplianceWorkspacePage() {
 
               <Button
                 onClick={handleSaveAndContinue}
-                className="rounded text-button font-medium h-auto py-2.5 px-6 bg-foreground text-background hover:bg-foreground/90 shadow-xs font-sans"
+                className="rounded text-button font-medium h-auto py-2.5 px-6 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs font-sans"
               >
                 Save and continue
               </Button>

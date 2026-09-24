@@ -263,6 +263,18 @@ namespace WebApp.Services.Ai.Jobs
                 return new AiHandlerResult(OutputPayload: null);
             }
 
+            if (!contract.Contains("problemSolution"))
+            {
+                var exec = contract.TryGetValue("executiveSummary", out var exVal) && exVal.IsBsonDocument ? exVal.AsBsonDocument : null;
+                var ov = exec?.TryGetValue("overview", out var o) == true && o.IsString ? o.AsString : "";
+                var vp = exec?.TryGetValue("valueProposition", out var v) == true && v.IsString ? v.AsString : "";
+                contract["problemSolution"] = new BsonDocument
+                {
+                    ["problem"] = ov,
+                    ["solution"] = vp,
+                };
+            }
+
             if (sessionId != null)
             {
                 // Append-only: preserve all prior versions (locked C-3 decision #5).

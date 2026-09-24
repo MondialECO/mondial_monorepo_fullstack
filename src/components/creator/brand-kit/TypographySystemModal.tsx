@@ -96,6 +96,7 @@ export function TypographySystemModal({
   onClose,
   onSuccess,
 }: TypographySystemModalProps) {
+  const [currentKit, setCurrentKit] = useState<BrandKit>(kit);
   const [localTypography, setLocalTypography] = useState<BrandTypography>(() => {
     return kit.typography ?? {
       roles: [],
@@ -113,6 +114,10 @@ export function TypographySystemModal({
   const [typographyCost, setTypographyCost] = useState<number | null>(null);
   const [isCostLoading, setIsCostLoading] = useState<boolean>(true);
   const [isCostError, setIsCostError] = useState<boolean>(false);
+
+  useEffect(() => {
+    setCurrentKit(kit);
+  }, [kit]);
 
   useEffect(() => {
     let mounted = true;
@@ -143,15 +148,15 @@ export function TypographySystemModal({
 
   // Sync prop changes (No Auto-Generate)
   useEffect(() => {
-    if (kit.typography?.roles && kit.typography.roles.length > 0) {
-      setLocalTypography(kit.typography);
+    if (currentKit.typography?.roles && currentKit.typography.roles.length > 0) {
+      setLocalTypography(currentKit.typography);
     } else {
       setLocalTypography({
         roles: [],
-        regenerateCount: kit.typography?.regenerateCount ?? 0,
+        regenerateCount: currentKit.typography?.regenerateCount ?? 0,
       });
     }
-  }, [kit.typography]);
+  }, [currentKit.typography]);
 
   // Initial Generation Handler (Paid)
   const handleGenerateInitial = async () => {
@@ -160,7 +165,8 @@ export function TypographySystemModal({
       setErrorMessage(null);
       setInsufficientCredits(false);
 
-      const res = await apiCreatorBrandKit.generateTypography(ideaId, kit.version);
+      const res = await apiCreatorBrandKit.generateTypography(ideaId, currentKit.version);
+      setCurrentKit(res);
       if (res.typography) {
         setLocalTypography(res.typography);
       }
@@ -263,7 +269,7 @@ export function TypographySystemModal({
     });
 
     try {
-      await apiCreatorBrandKit.patchTypography(
+      const updatedKit = await apiCreatorBrandKit.patchTypography(
         {
           roles: updatedRoles.map((r) => ({
             roleName: r.roleName,
@@ -275,8 +281,11 @@ export function TypographySystemModal({
           families: updatedFamilies,
         },
         ideaId,
-        kit.version
+        currentKit.version
       );
+      if (updatedKit) {
+        setCurrentKit(updatedKit);
+      }
     } catch (err: any) {
       console.error("Failed to patch typography pairing:", err);
     }
@@ -299,7 +308,7 @@ export function TypographySystemModal({
     });
 
     try {
-      await apiCreatorBrandKit.patchTypography(
+      const updatedKit = await apiCreatorBrandKit.patchTypography(
         {
           roles: [
             {
@@ -309,8 +318,11 @@ export function TypographySystemModal({
           ],
         },
         ideaId,
-        kit.version
+        currentKit.version
       );
+      if (updatedKit) {
+        setCurrentKit(updatedKit);
+      }
     } catch (err: any) {
       console.error("Failed to update role typography:", err);
       setErrorMessage(err.message || "Failed to save typography adjustments.");
@@ -325,9 +337,12 @@ export function TypographySystemModal({
     setInsufficientCredits(false);
 
     try {
-      const res = await apiCreatorBrandKit.regenerateTypography(ideaId, kit.version);
-      if (res.typography) {
-        setLocalTypography(res.typography);
+      const res = await apiCreatorBrandKit.regenerateTypography(ideaId, currentKit.version);
+      if (res) {
+        setCurrentKit(res);
+        if (res.typography) {
+          setLocalTypography(res.typography);
+        }
       }
     } catch (err: any) {
       if (err?.response?.status === 402 || err?.status === 402) {
@@ -362,14 +377,16 @@ export function TypographySystemModal({
           confirmedAt: new Date().toISOString(),
         },
         ideaId,
-        kit.version
+        currentKit.version
       );
+      setCurrentKit(patchRes);
 
       const completedKit = await apiCreatorBrandKit.advanceStep(
         6,
         ideaId,
-        patchRes.version ?? kit.version
+        patchRes.version ?? currentKit.version
       );
+      setCurrentKit(completedKit);
 
       onSuccess(completedKit);
     } catch (err: any) {

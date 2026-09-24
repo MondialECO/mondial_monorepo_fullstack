@@ -1049,6 +1049,35 @@ namespace WebApp.Controllers
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
         }
 
+        // POST /api/creator/phase-3/readiness/compute
+        // Explicitly recomputes the investor-readiness score based on current modules,
+        // updates the stored score, and returns the fresh score.
+        [HttpPost("phase-3/readiness/compute")]
+        public async Task<IActionResult> RecomputeReadiness([FromQuery] string ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+                var p3 = journey.Phase3Data ?? new CreatorPhase3Data();
+
+                ForecastSession forecast = null;
+                if (!string.IsNullOrEmpty(p3.ForecastSessionId))
+                    forecast = await _forecasts.GetOwnedAsync(p3.ForecastSessionId, userId);
+
+                var score = ComputeReadiness(journey, forecast);
+                journey = await _journeys.SetInvestorReadinessAsync(userId, score, ideaId);
+
+                return Ok(ApiResponse.Ok("Readiness computed", new
+                {
+                    investorReadinessScore = score
+                }));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
         // PATCH /api/creator/masterplan/complete
         // Verifies all four modules, computes the investor-readiness score, stores it.
         // Status is NOT written — the derived engine flips Phase 3 to completed once
@@ -1167,6 +1196,22 @@ namespace WebApp.Controllers
             double total = Math.Round(conceptClarity + marketEvidence + financialModel + legalReadiness + teamCredibility, 1);
             string label = total < 50 ? "Not Ready" : total < 70 ? "Developing" : total < 85 ? "Strong" : "Investor-Ready";
 
+            string projectName = !string.IsNullOrWhiteSpace(p.Name) ? p.Name.Trim() : "your venture";
+
+            string headline = total >= 85
+                ? "Fully validated venture foundation, ready for institutional capital."
+                : total >= 70
+                ? "Strong institutional foundation, nearly investor-ready."
+                : total >= 50
+                ? "A clear starting point, with a few gaps to work through."
+                : "Foundational gaps identified, requiring further validation.";
+
+            string summary = total >= 85
+                ? $"Your venture intelligence for {projectName} demonstrates institutional rigor across customer evidence, unit economics, statutory compliance, and founder capabilities."
+                : total >= 70
+                ? $"Your concept for {projectName} and market evidence are well articulated. Addressing key financial sensitivity points and specialist coverage will finalize readiness."
+                : $"Your concept for {projectName} is taking shape. Stronger customer evidence, clearer financial assumptions, and a practical support plan will make it easier to explain your business.";
+
             // Build detailed component deductions for each dimension with screen remediation links
             var deductions = new List<CreatorReadinessDeduction>();
 
@@ -1179,57 +1224,32 @@ namespace WebApp.Controllers
                     Dimension = "ConceptClarity",
                     Issue = $"Idea clarity score ({p.ClarityScore}%) is below institutional threshold (100%).",
                     PointsLost = lost,
-                    RemediationTitle = "Refine Concept in Idea Clarifier",
+                    CurrentState = !string.IsNullOrWhiteSpace(p.Problem) && !string.IsNullOrWhiteSpace(p.Solution)
+                        ? "The problem and proposed solution are described."
+                        : "Venture problem definition or proposed solution requires refinement.",
+                    Recommendation = $"Clarify why your first customers would choose {projectName} over their current approach.",
+                    RemediationTitle = "Refine your concept",
                     RemediationRoute = "/dashboard/creator/phase-2/clarifier",
                 });
             }
 
             // 2. Market Evidence (Max 20)
-            if (!hasMarketStudy)
+            if (marketEvidence < 20)
             {
+                double marketLost = Math.Round(20 - marketEvidence, 1);
                 deductions.Add(new CreatorReadinessDeduction
                 {
                     Dimension = "MarketEvidence",
-                    Issue = "Step 3.1 Market Study and TAM/SAM/SOM analysis not completed.",
-                    PointsLost = 8,
-                    RemediationTitle = "Complete Market Intelligence",
+                    Issue = !hasMarketStudy
+                        ? "Step 3.1 Market Study and TAM/SAM/SOM analysis not completed."
+                        : "Customer validation evidence or market sizing is incomplete.",
+                    PointsLost = marketLost > 0 ? marketLost : 8,
+                    CurrentState = !string.IsNullOrWhiteSpace(p.TargetUser)
+                        ? $"An initial customer group ({p.TargetUser}) is identified."
+                        : "An initial customer group is identified.",
+                    Recommendation = "Add direct customer feedback and sources that support your market assumptions.",
+                    RemediationTitle = "Review your market study",
                     RemediationRoute = "/dashboard/creator/phase-3/market-study",
-                });
-            }
-            else if (tamScore < 8)
-            {
-                var lost = 8 - tamScore;
-                deductions.Add(new CreatorReadinessDeduction
-                {
-                    Dimension = "MarketEvidence",
-                    Issue = tam == null
-                        ? "No canonical TAM specified in market study."
-                        : $"TAM (${tam:N0}) is below $100M venture-scale threshold.",
-                    PointsLost = lost,
-                    RemediationTitle = "Update Market Sizing in Market Study",
-                    RemediationRoute = "/dashboard/creator/phase-3/market-study",
-                });
-            }
-            if (string.IsNullOrEmpty(p3.BusinessPlanSessionId))
-            {
-                deductions.Add(new CreatorReadinessDeduction
-                {
-                    Dimension = "MarketEvidence",
-                    Issue = "Business plan and competitor research not synthesized.",
-                    PointsLost = 6,
-                    RemediationTitle = "Generate Business Plan",
-                    RemediationRoute = "/dashboard/creator/phase-3/business-plan",
-                });
-            }
-            if (string.IsNullOrWhiteSpace(p.TargetUser))
-            {
-                deductions.Add(new CreatorReadinessDeduction
-                {
-                    Dimension = "MarketEvidence",
-                    Issue = "Target customer profile is not explicitly defined.",
-                    PointsLost = 6,
-                    RemediationTitle = "Define Target Audience in Clarifier",
-                    RemediationRoute = "/dashboard/creator/phase-2/clarifier",
                 });
             }
 
@@ -1248,27 +1268,22 @@ namespace WebApp.Controllers
             }
             catch { }
 
-            if (!reachedBreakEven)
+            if (financialModel < 25)
             {
+                double finLost = Math.Round(25 - financialModel, 1);
+                string finState = forecast?.Inputs?.Arpu != null
+                    ? $"Forecast modeled at €{forecast.Inputs.Arpu:N0}/unit with {forecast.Inputs.MonthlyGrowthPct ?? 0}% growth. Assumptions still to test."
+                    : "A forecast is available, with assumptions still to test.";
                 deductions.Add(new CreatorReadinessDeduction
                 {
                     Dimension = "FinancialModel",
-                    Issue = "Break-even horizon exceeds 24 months in forecast projection.",
-                    PointsLost = 8,
-                    RemediationTitle = "Optimize Growth & OPEX in Forecast",
-                    RemediationRoute = "/dashboard/creator/phase-3/forecast",
-                });
-            }
-
-            bool ltvHealthy = CreatorScoring.LtvCacHealthy(forecast?.Inputs?.Arpu, forecast?.Inputs?.MonthlyChurnPct);
-            if (!ltvHealthy)
-            {
-                deductions.Add(new CreatorReadinessDeduction
-                {
-                    Dimension = "FinancialModel",
-                    Issue = "LTV/CAC ratio is under 3.0x threshold (high churn or low ARPU).",
-                    PointsLost = 7,
-                    RemediationTitle = "Improve ARPU & Retention in Forecast",
+                    Issue = !reachedBreakEven
+                        ? "Break-even horizon exceeds 24 months in forecast projection."
+                        : "LTV/CAC ratio is under 3.0x threshold (high churn or low ARPU).",
+                    PointsLost = finLost > 0 ? finLost : 6,
+                    CurrentState = finState,
+                    Recommendation = "Explain the main revenue and cost assumptions, and check what happens if sales start more slowly.",
+                    RemediationTitle = "Review your financial forecast",
                     RemediationRoute = "/dashboard/creator/phase-3/forecast",
                 });
             }
@@ -1277,44 +1292,45 @@ namespace WebApp.Controllers
             if (legalReadiness < 15)
             {
                 var lost = Math.Round(15 - legalReadiness, 1);
-                string issue = p3.LegalAssessment != null
-                    ? $"Legal & compliance planning readiness is at {p3.LegalAssessment.PlanningReadinessPct}% (below 100%)."
-                    : p3.LegalChecklist != null && p3.LegalChecklist.TotalCount > 0
-                        ? $"{p3.LegalChecklist.TotalCount - p3.LegalChecklist.CompletedCount} legal & compliance checklist items remain unverified."
-                        : "Compliance checklist has not been generated or reviewed.";
-
+                string jurisdiction = p3.LegalAssessment?.Jurisdiction ?? "France";
+                string legalState = p3.LegalAssessment != null && p3.LegalAssessment.PlanningReadinessPct > 0
+                    ? $"A personalised legal roadmap for {jurisdiction} is available ({p3.LegalAssessment.PlanningReadinessPct}% verified)."
+                    : "A personalised legal roadmap is available.";
                 deductions.Add(new CreatorReadinessDeduction
                 {
                     Dimension = "LegalReadiness",
-                    Issue = issue,
+                    Issue = p3.LegalAssessment != null
+                        ? $"Legal & compliance planning readiness is at {p3.LegalAssessment.PlanningReadinessPct}% (below 100%)."
+                        : "Compliance checklist has not been fully verified.",
                     PointsLost = lost,
-                    RemediationTitle = "Complete Legal & Compliance Items",
+                    CurrentState = legalState,
+                    Recommendation = "Clarify which requirements apply to your activity and when you will handle them.",
+                    Subtext = "This assesses your planning, not whether your company is already registered.",
+                    RemediationTitle = "Review your legal roadmap",
                     RemediationRoute = "/dashboard/creator/phase-3/compliance",
                 });
             }
 
             // 5. Team Credibility (Max 20)
-            if (string.IsNullOrWhiteSpace(p.CreatorEdge))
+            if (teamCredibility < 20)
             {
+                var lost = Math.Round(20 - teamCredibility, 1);
+                string teamState = !string.IsNullOrWhiteSpace(p.CreatorEdge)
+                    ? $"Founder advantage noted ({p.CreatorEdge.Trim()})."
+                    : !string.IsNullOrWhiteSpace(p3.FormationGenerator?.SelectedType)
+                    ? $"Company structure selected as {p3.FormationGenerator.SelectedType}."
+                    : "The founder's responsibilities are outlined.";
                 deductions.Add(new CreatorReadinessDeduction
                 {
                     Dimension = "TeamCredibility",
-                    Issue = "Founder unfair advantage or founder edge is not documented.",
-                    PointsLost = 14,
-                    RemediationTitle = "Articulate Founder Edge in Clarifier",
-                    RemediationRoute = "/dashboard/creator/phase-2/clarifier",
-                });
-            }
-
-            bool hasSpEngagement = ((p3.FormationGenerator?.MatchedSpIds?.Count ?? 0) > 0) || p.Branding?.BrandingMethod == "m50_designer";
-            if (!hasSpEngagement)
-            {
-                deductions.Add(new CreatorReadinessDeduction
-                {
-                    Dimension = "TeamCredibility",
-                    Issue = "No specialized partners or design providers engaged for venture gaps.",
-                    PointsLost = 6,
-                    RemediationTitle = "Review Skills & Match Specialists",
+                    Issue = string.IsNullOrWhiteSpace(p.CreatorEdge)
+                        ? "Founder unfair advantage or founder edge is not documented."
+                        : "No specialized partners or design providers engaged for venture gaps.",
+                    PointsLost = lost,
+                    CurrentState = teamState,
+                    Recommendation = "Explain how you will cover the skills your launch needs, including any outside support.",
+                    Subtext = "You can plan these responsibilities as a solo founder.",
+                    RemediationTitle = "Review company setup & team",
                     RemediationRoute = "/dashboard/creator/phase-3/formation",
                 });
             }
@@ -1323,6 +1339,8 @@ namespace WebApp.Controllers
             {
                 Total = total,
                 Label = label,
+                Headline = headline,
+                Summary = summary,
                 Breakdown = new CreatorReadinessBreakdown
                 {
                     ConceptClarity = Math.Round(conceptClarity, 1),

@@ -36,6 +36,12 @@ namespace WebApp.Services.Repository.Ai
 
         /// <summary>Atomically acquires a regeneration lock on an existing forecast. Returns (false, existing) if already in flight.</summary>
         Task<(bool Acquired, ForecastSession? Session)> TryAcquireRegenerateLockAsync(string id, string ownerUserId);
+
+        /// <summary>Updates session inputs and timestamps when founder edits assumptions.</summary>
+        Task UpdateInputsAsync(string id, ForecastInputs inputs);
+
+        /// <summary>Finds the forecast session linked to a specific business idea.</summary>
+        Task<ForecastSession?> GetByIdeaAsync(string businessIdeaId, string ownerUserId);
     }
 
     /// <summary>
@@ -109,6 +115,12 @@ namespace WebApp.Services.Repository.Ai
                 .Skip(skip)
                 .Limit(limit)
                 .ToListAsync();
+
+        /// <summary>Finds the latest forecast session for a business idea.</summary>
+        public async Task<ForecastSession?> GetByIdeaAsync(string businessIdeaId, string ownerUserId)
+            => await _collection.Find(x => x.BusinessIdeaId == businessIdeaId && x.OwnerUserId == ownerUserId)
+                .SortByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
 
         /// <summary>Link the (latest) enqueued engine request to this session.</summary>
         public Task SetRequestIdAsync(string id, string requestId)
@@ -297,6 +309,15 @@ namespace WebApp.Services.Repository.Ai
 
             var existing = await GetOwnedAsync(id, ownerUserId);
             return (false, existing);
+        }
+
+        public async Task UpdateInputsAsync(string id, ForecastInputs inputs)
+        {
+            var update = Builders<ForecastSession>.Update
+                .Set(x => x.Inputs, inputs)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            await _collection.UpdateOneAsync(x => x.Id == id, update);
         }
     }
 }

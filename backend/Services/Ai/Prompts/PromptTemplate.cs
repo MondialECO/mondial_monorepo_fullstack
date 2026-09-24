@@ -112,6 +112,7 @@ namespace WebApp.Services.Ai.Prompts
                 "{\n" +
                 "  \"schemaVersion\": 1,\n" +
                 "  \"executiveSummary\": { \"overview\": string, \"valueProposition\": string, \"highlights\": [string] },\n" +
+                "  \"problemSolution\": { \"problem\": string, \"solution\": string },\n" +
                 "  \"marketAnalysis\": { \"overview\": string, \"targetSegments\": [string], \"marketSizeQualitative\": string, \"trends\": [string] },\n" +
                 "  \"competitorAnalysis\": { \"overview\": string, \"competitors\": [ { \"name\": string, \"positioning\": string, \"strengths\": [string], \"weaknesses\": [string], \"ourAdvantage\": string } ] },\n" +
                 "  \"revenueModel\": { \"summary\": string, \"revenueStreams\": [ { \"name\": string, \"description\": string } ], \"pricingStrategy\": string, \"keyMetrics\": [string] },\n" +

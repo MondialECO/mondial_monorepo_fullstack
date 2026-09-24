@@ -42,7 +42,6 @@ describe('ComplianceWorkspacePage (Figma Node 57156:9158 Alignment)', () => {
       userId: 'user-123',
       jurisdiction: 'FR',
       rulesVersion: 'FR-2026.1',
-      rulesFingerprint: 'hash-rules-123',
       assessmentVersion: 1,
       businessSnapshotHash: 'hash-biz-123',
       isPotentiallyOutdated: false,
@@ -95,6 +94,7 @@ describe('ComplianceWorkspacePage (Figma Node 57156:9158 Alignment)', () => {
             authority: 'Service-Public.fr',
             title: 'Dépôt du capital social',
             url: 'https://service-public.fr/capital',
+            sourceType: 'portal',
           },
         },
         {
@@ -112,6 +112,7 @@ describe('ComplianceWorkspacePage (Figma Node 57156:9158 Alignment)', () => {
             authority: 'INPI',
             title: 'Base Marques & Noms',
             url: 'https://inpi.fr',
+            sourceType: 'portal',
           },
         },
         {
@@ -129,6 +130,7 @@ describe('ComplianceWorkspacePage (Figma Node 57156:9158 Alignment)', () => {
             authority: 'INPI Guichet Unique',
             title: 'Formalités d’entreprises',
             url: 'https://formalites.entreprises.gouv.fr',
+            sourceType: 'portal',
           },
         },
         {
@@ -146,6 +148,7 @@ describe('ComplianceWorkspacePage (Figma Node 57156:9158 Alignment)', () => {
             authority: 'Service-Public.fr',
             title: 'Assurance professionnelle',
             url: 'https://service-public.fr/rc-pro',
+            sourceType: 'portal',
           },
         },
       ],
@@ -153,7 +156,7 @@ describe('ComplianceWorkspacePage (Figma Node 57156:9158 Alignment)', () => {
       evidenceLinks: [],
       evidenceAuditTrail: [],
       disclaimer: 'Planning guidance only.',
-    },
+    } as any,
     stageBreakdown: [],
     officialSources: [],
     evidenceLinks: [],
