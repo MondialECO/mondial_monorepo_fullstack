@@ -1213,9 +1213,14 @@ namespace WebApp.Services.Implementations
             formation.SelectedType = selectedType;
             formation.IsOverride = isOverride;
 
+            var entry = CreatorJourneyVersioning.Append(
+                (j.OutputSnapshots ??= new CreatorOutputSnapshots()).FormationVersions, 3, null,
+                formation.ToBsonDocument());
+
             var ideaUpdate = Builders<CreatorIdea>.Update
                 .Set(x => x.Phase3Data.FormationGenerator.SelectedType, selectedType)
-                .Set(x => x.Phase3Data.FormationGenerator.IsOverride, isOverride);
+                .Set(x => x.Phase3Data.FormationGenerator.IsOverride, isOverride)
+                .Push(x => x.OutputSnapshots.FormationVersions, entry);
 
             // Canonical: update company-type item in LegalAssessment if present (0 new writers to LegalChecklist)
             var assessmentItem = j.Phase3Data.LegalAssessment?.Items?.FirstOrDefault(i => i.Id == "company-type");
@@ -1240,7 +1245,9 @@ namespace WebApp.Services.Implementations
         // clobber guard: declaration always supersedes the ExtractStrengths echo).
         public async Task<CreatorJourney> DeclareFormationSkillsAsync(
             string userId, List<string> youHave, List<CreatorSkillGap> youNeed,
-            List<string> matchedSpIds, CreatorCofounderDraft cofounder, string ideaId = null)
+            List<string> matchedSpIds, CreatorCofounderDraft cofounder,
+            string startingMode = null, double? founderEquity = null, string plannedRole = null,
+            double? capitalAmount = null, bool? capitalConfirmed = null, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
             var idea = await ResolveIdeaAsync(j, ideaId);
@@ -1254,6 +1261,11 @@ namespace WebApp.Services.Implementations
             formation.MatchedSpIds = matchedSpIds;
             formation.SkillsDeclared = true;
             if (cofounder != null) formation.CofounderDraft = cofounder;
+            if (!string.IsNullOrWhiteSpace(startingMode)) formation.StartingMode = startingMode;
+            if (founderEquity.HasValue) formation.FounderEquity = founderEquity.Value;
+            if (!string.IsNullOrWhiteSpace(plannedRole)) formation.PlannedRole = plannedRole;
+            if (capitalAmount.HasValue) formation.CapitalAmount = capitalAmount.Value;
+            if (capitalConfirmed.HasValue) formation.CapitalConfirmed = capitalConfirmed.Value;
 
             var entry = CreatorJourneyVersioning.Append(
                 (j.OutputSnapshots ??= new CreatorOutputSnapshots()).FormationVersions, 3, null,
@@ -1265,8 +1277,20 @@ namespace WebApp.Services.Implementations
                 .Set(x => x.Phase3Data.FormationGenerator.MatchedSpIds, matchedSpIds)
                 .Set(x => x.Phase3Data.FormationGenerator.SkillsDeclared, true)
                 .Push(x => x.OutputSnapshots.FormationVersions, entry);
+
             if (cofounder != null)
                 ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.FormationGenerator.CofounderDraft, cofounder);
+            if (!string.IsNullOrWhiteSpace(startingMode))
+                ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.FormationGenerator.StartingMode, startingMode);
+            if (founderEquity.HasValue)
+                ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.FormationGenerator.FounderEquity, founderEquity.Value);
+            if (!string.IsNullOrWhiteSpace(plannedRole))
+                ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.FormationGenerator.PlannedRole, plannedRole);
+            if (capitalAmount.HasValue)
+                ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.FormationGenerator.CapitalAmount, capitalAmount.Value);
+            if (capitalConfirmed.HasValue)
+                ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.FormationGenerator.CapitalConfirmed, capitalConfirmed.Value);
+
             await WriteIdeaAsync(idea, ideaUpdate);
             return j;
         }

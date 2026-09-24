@@ -177,7 +177,7 @@ describe('FormationPage (Figma Node 57156:8767 Alignment)', () => {
     expect(screen.getByRole('button', { name: /Continue to Executive Business Plan/i })).toBeInTheDocument();
   });
 
-  it('updates starting mode and triggers selectType when switching to team mode', async () => {
+  it('updates starting mode without silently mutating legal type, and supports explicit selection', async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <FormationPage />
@@ -190,6 +190,20 @@ describe('FormationPage (Figma Node 57156:8767 Alignment)', () => {
 
     const withCofoundersBtn = screen.getByText('With co-founders').closest('button')!;
     fireEvent.click(withCofoundersBtn);
+
+    // Mode changes without triggering silent selectFormationType
+    expect(creatorJourneyApiModule.creatorJourneyApi.selectFormationType).not.toHaveBeenCalled();
+
+    // Clicking See another structure reveals structure options
+    const seeAnotherBtn = screen.getByRole('button', { name: 'See another structure' });
+    fireEvent.click(seeAnotherBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Multiple goals, flexible governance.')).toBeInTheDocument();
+    });
+
+    const sasCard = screen.getByText('Multiple goals, flexible governance.').closest('div')!;
+    fireEvent.click(sasCard);
 
     await waitFor(() => {
       expect(creatorJourneyApiModule.creatorJourneyApi.selectFormationType).toHaveBeenCalledWith(
@@ -223,6 +237,121 @@ describe('FormationPage (Figma Node 57156:8767 Alignment)', () => {
     await waitFor(() => {
       expect(mockCompleteStep).toHaveBeenCalledWith(3, 5);
       expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('/dashboard/creator/phase-3/business-plan'));
+    });
+  });
+
+  it('preserves omitted optional fields for legacy records on Continue (no auto-persisting suggested capital or default equity)', async () => {
+    const declareSpy = vi.spyOn(creatorJourneyApiModule.creatorJourneyApi, 'declareFormationSkills');
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <FormationPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Continue to Executive Business Plan/i })).toBeInTheDocument();
+    });
+
+    // Continue without interacting with capital, equity, or mode
+    const continueBtn = screen.getByRole('button', { name: /Continue to Executive Business Plan/i });
+    fireEvent.click(continueBtn);
+
+    await waitFor(() => {
+      expect(declareSpy).toHaveBeenCalledWith(
+        expect.any(Array),
+        undefined, // no cofounder draft for unselected/solo
+        undefined, // setupConfig is undefined because no fields were explicitly set or pre-persisted
+        'idea-123'
+      );
+    });
+  });
+
+  it('persists explicit user decisions: team mode sets canonical 70% equity default, and Looks right sets capitalConfirmed: true', async () => {
+    const declareSpy = vi.spyOn(creatorJourneyApiModule.creatorJourneyApi, 'declareFormationSkills');
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <FormationPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('With co-founders')).toBeInTheDocument();
+    });
+
+    // 1. Select team mode -> equity defaults to canonical 70%
+    const withCofoundersBtn = screen.getByText('With co-founders').closest('button')!;
+    fireEvent.click(withCofoundersBtn);
+
+    // Verify UI reflects 70%
+    expect(screen.getAllByText(/70%/).length).toBeGreaterThanOrEqual(1);
+
+    // 2. Click "Looks right" on capital
+    const looksRightBtn = screen.getByRole('button', { name: /Looks right/i });
+    fireEvent.click(looksRightBtn);
+
+    // 3. Click Continue
+    const continueBtn = screen.getByRole('button', { name: /Continue to Executive Business Plan/i });
+    fireEvent.click(continueBtn);
+
+    await waitFor(() => {
+      expect(declareSpy).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({
+          roleNeeded: 'Technical co-founder',
+          equityRange: '30%', // 100 - 70 = 30%
+        }),
+        expect.objectContaining({
+          startingMode: 'team',
+          founderEquity: 70,
+          capitalConfirmed: true,
+          capitalAmount: 5000,
+        }),
+        'idea-123'
+      );
+    });
+  });
+
+  it('persists explicitly updated capital amount and confirmed flag when saving custom capital', async () => {
+    const declareSpy = vi.spyOn(creatorJourneyApiModule.creatorJourneyApi, 'declareFormationSkills');
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <FormationPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Update this/i })).toBeInTheDocument();
+    });
+
+    // 1. Click "Update this"
+    const updateBtn = screen.getByRole('button', { name: /Update this/i });
+    fireEvent.click(updateBtn);
+
+    // 2. Edit capital input
+    const capitalInput = screen.getByRole('spinbutton');
+    fireEvent.change(capitalInput, { target: { value: '15000' } });
+
+    // 3. Click "Save"
+    const saveBtn = screen.getByRole('button', { name: 'Save' });
+    fireEvent.click(saveBtn);
+
+    // 4. Click Continue
+    const continueBtn = screen.getByRole('button', { name: /Continue to Executive Business Plan/i });
+    fireEvent.click(continueBtn);
+
+    await waitFor(() => {
+      expect(declareSpy).toHaveBeenCalledWith(
+        expect.any(Array),
+        undefined,
+        expect.objectContaining({
+          capitalConfirmed: true,
+          capitalAmount: 15000,
+        }),
+        'idea-123'
+      );
     });
   });
 });

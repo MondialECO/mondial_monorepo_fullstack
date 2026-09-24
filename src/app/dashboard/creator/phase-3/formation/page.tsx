@@ -150,7 +150,7 @@ export default function FormationPage() {
     let active = true;
     (async () => {
       try {
-        const { journey } = await creatorJourneyApi.get(activeIdeaId);
+        const { journey } = await creatorJourneyApi.get(currentIdeaId);
         if (journey?.project) {
           setProjectContext({
             sector: journey.project.sector,
@@ -180,14 +180,14 @@ export default function FormationPage() {
           f = existing;
         } else {
           try {
-            f = await creatorJourneyApi.generateFormation(activeIdeaId);
+            f = await creatorJourneyApi.generateFormation(currentIdeaId);
           } catch {
-            const { journey: freshJourney } = await creatorJourneyApi.get(activeIdeaId);
+            const { journey: freshJourney } = await creatorJourneyApi.get(currentIdeaId);
             const freshPhase3 = freshJourney.phase3Data as { formationGenerator?: FormationGenerator };
             if (freshPhase3?.formationGenerator?.recommendedType && (freshPhase3.formationGenerator.options?.length ?? 0) > 0) {
               f = freshPhase3.formationGenerator;
             } else {
-              f = await creatorJourneyApi.generateFormation(activeIdeaId);
+              f = await creatorJourneyApi.generateFormation(currentIdeaId);
             }
           }
         }
@@ -212,12 +212,12 @@ export default function FormationPage() {
     return () => {
       active = false;
     };
-  }, [activeIdeaId, progressLoading]);
+  }, [currentIdeaId, progressLoading]);
 
   const selectType = async (type: FormationTypeCode) => {
     setSelecting(true);
     try {
-      const { formation: f } = await creatorJourneyApi.selectFormationType(type, activeIdeaId);
+      const { formation: f } = await creatorJourneyApi.selectFormationType(type, currentIdeaId);
       setFormation(f);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't select type.");
@@ -225,8 +225,6 @@ export default function FormationPage() {
       setSelecting(false);
     }
   };
-
-  const cofounderDraft = (): CofounderDraft => ({ roleNeeded, equityRange, locationPreference });
 
   const handleContinue = async (config?: FormationSetupPayload) => {
     if (skillsInteractionLockedRef.current) return;
@@ -236,11 +234,12 @@ export default function FormationPage() {
     try {
       await flushSkills();
 
+      const activeMode = config?.mode ?? formation?.startingMode;
       const draft: CofounderDraft | undefined =
-        config?.mode === 'team'
+        activeMode === 'team'
           ? {
               roleNeeded: roleNeeded || 'Technical co-founder',
-              equityRange: `${100 - (config.founderEquity ?? 75)}%`,
+              equityRange: `${100 - (config?.founderEquity ?? formation?.founderEquity ?? 70)}%`,
               locationPreference: locationPreference || 'either',
             }
           : undefined;
@@ -250,9 +249,28 @@ export default function FormationPage() {
           ? declaredSkillsRef.current
           : (formation?.youHave?.filter((s) => (DECLARABLE_SKILLS as readonly string[]).includes(s)) ?? []);
 
+      const hasExplicitConfig =
+        config &&
+        (config.mode !== undefined ||
+          config.founderEquity !== undefined ||
+          config.plannedRole !== undefined ||
+          config.capitalAmount !== undefined ||
+          config.capitalConfirmed !== undefined);
+
+      const setupConfig = hasExplicitConfig
+        ? {
+            startingMode: config.mode,
+            founderEquity: config.founderEquity,
+            plannedRole: config.plannedRole,
+            capitalAmount: config.capitalAmount,
+            capitalConfirmed: config.capitalConfirmed,
+          }
+        : undefined;
+
       await creatorJourneyApi.declareFormationSkills(
         skillsToSave,
         draft,
+        setupConfig,
         currentIdeaId,
       );
       completeStep(3, 5);

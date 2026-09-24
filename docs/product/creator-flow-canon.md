@@ -807,18 +807,86 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   - Frontend build: 187 routes compiled cleanly.
   - UI visual changes: 0.
 
-### 5.5 Step 3.5 — Company Formation & Team (LIVE — 100% Figma Node 57156:8767 Aligned)
+### 5.5 Step 3.5 — Company Formation & Team (CREATOR PHASE 3.5 — FINAL PASS — FROZEN — CLOSED)
 - **Route:** `/dashboard/creator/phase-3/formation`
 - **Figma Reference:** 100% verified and aligned against approved Figma Node `57156:8767` ("Company Formation & Team · Creator Phase 3.5").
-- **Backing Entity & Controller:** Backed by `CreatorPhase3Controller` (`/api/creator/ai/formation-generator/start`, `PATCH /api/creator/formation/select-type`, `PATCH /api/creator/formation/skills`).
+- **Status:** **FINAL PASS — FROZEN — CLOSED**. UI, Figma structure, tokens, layout, copy, semantics, and API contracts are frozen.
+- **Purpose:** Turn the Creator's validated business/legal planning context into a company-formation and initial-team setup plan. Handles: starting configuration, legal structure recommendation, explicit legal structure selection, founder ownership planning, planned leadership role, starting-capital planning, capability/team-gap assessment, formation snapshot/version history, Step 3.4 legal-assessment reconciliation after explicit structure choice, and handoff to Step 3.6.
+- **Step 3.4 ↔ Step 3.5 Boundary:**
+  - *Step 3.4 (Legal & Compliance):* WHAT legal/compliance obligations apply. Canonical source: `CreatorIdea.Phase3Data.LegalAssessment`.
+  - *Step 3.5 (Company Formation & Team):* HOW the company formation and founder/team setup are planned.
+  - Step 3.5 consumes Step 3.4. It does **NOT** create a second `LegalApplicabilityEngine`.
+- **Canonical Step 3.5 SSoT:**
+  - Canonical source: `CreatorIdea.Phase3Data.FormationGenerator` (mirrored/composed into journey state where required by current architecture).
+  - Snapshot history: `CreatorIdea.OutputSnapshots.FormationVersions`.
+  - `FormationGenerator` = Step 3.5 single source of truth. Zero parallel formation or versioning stores.
+- **Canonical Formation Writers:**
+  1. `SetFormationAsync` (generation initialization)
+  2. `SelectFormationTypeAsync` (explicit legal structure selection)
+  3. `DeclareFormationSkillsAsync` (skills, cofounder draft, and setup configuration persistence)
+  - All 3 write through existing formation architecture and append timestamped version snapshots to `CreatorIdea.OutputSnapshots.FormationVersions`. Zero second versioning systems.
+- **Starting Mode Semantics:**
+  - Canonical values: `solo` ("Just me"), `team` ("With co-founders"), `undecided` ("I’m not sure yet").
+  - *Critical Semantic Rule:* `StartingMode` DOES NOT confirm legal structure. Founder mode selection must **NOT** silently set `SelectedType`.
+- **RecommendedType vs SelectedType:**
+  - `RecommendedType`: System/backend recommendation only (advisory).
+  - `SelectedType`: Explicit founder-confirmed legal structure only.
+  - Zero `RecommendedType` $\to$ `SelectedType` silent copy. Explicit selection occurs strictly through `SelectFormationTypeAsync`.
+- **Canonical Legal-Form Codes:**
+  - Persisted canonical codes: `SAS`, `SARL`, `SAS-U`.
+  - Display formatting may show `SAS-U` $\to$ `SASU`, but persisted canonical value remains `SAS-U`. Zero alternative persisted aliases.
+- **Setup Configuration Persistence:**
+  - `CreatorFormationGenerator` canonically supports: `StartingMode`, `FounderEquity`, `PlannedRole`, `CapitalAmount`, `CapitalConfirmed`.
+  - Persists through `DeclareFormationSkillsAsync` without schema pollution or parallel endpoints.
+- **Partial Update & Non-Destructive Semantics:**
+  - Optional setup fields use non-destructive partial updates. Omitted values **MUST NOT** overwrite existing canonical values.
+  - Omitted `FounderEquity` $\to$ preserve existing persisted `FounderEquity`.
+  - Omitted `PlannedRole` $\to$ preserve existing persisted `PlannedRole`.
+  - Omitted `CapitalAmount` $\to$ preserve existing persisted `CapitalAmount`.
+  - Omitted `CapitalConfirmed` $\to$ preserve existing persisted `CapitalConfirmed`.
+  - Zero omitted properties become `0`, `false`, `null`, empty, or default.
+- **Unconfirmed Default Protection:**
+  - Missing `CapitalConfirmed` $\neq$ `true`. Missing/null legacy value $\to$ unconfirmed (`false` display state, omitted on continue unless explicitly confirmed).
+  - Suggested capital: displayed from forecast planning context (e.g. OpEx baseline) as a reference suggestion, but is **NOT** automatically canonical founder-confirmed capital.
+  - Missing `FounderEquity`: UI planning display fallback (`100%` solo, `70%` team) is **NOT** automatically persisted merely by page load or Continue.
+  - Zero migration-by-page-load.
+- **Team Mode Equity Default:**
+  - Canonical presentation/default behavior: Team mode: `70%` founder / `30%` team.
+  - Conflicting `75%` fallback eliminated across all layers.
+  - Display suggestion $\neq$ confirmed canonical ownership until explicitly confirmed/persisted.
+- **Capital Semantics:**
+  - Starting capital in Step 3.5 is a *planning capital baseline*.
+  - Financial Forecast OpEx may be used as planning/reference context. It **MUST NOT** be described as statutory share capital.
+  - Founder-confirmed/edited value persists to `FormationGenerator.CapitalAmount`.
+  - Confirmation status persists to `FormationGenerator.CapitalConfirmed`.
+- **Validations (Authoritative Backend Enforced):**
+  - `FounderEquity`: `0 <= FounderEquity <= 100` (400 Bad Request on out-of-range).
+  - `StartingMode`: Must be one of `solo`, `team`, `undecided` (400 Bad Request on arbitrary values).
+  - `PlannedRole`: Must be one of `President`, `CEO`, `Chief Executive Officer`, `Managing Director (Gérant)`, `Managing Director`. Planning data only.
+  - `CapitalAmount`: Must be non-negative (`CapitalAmount >= 0`).
+- **Project Isolation:**
+  - All Step 3.5 APIs use explicit `ideaId` $\to$ `ResolveIdeaAsync` $\to$ ownership verification.
+  - Zero `FirstOrDefault`, zero first-idea, zero cross-project mutation. Multi-project isolation: **PASS**.
+- **Step 3.4 Reconciliation:**
+  - Only explicit legal structure selection (`SelectFormationTypeAsync`) reconciles company-form-dependent Step 3.4 legal obligations (`FR-CORP-001`, `FR-CORP-002`, `FR-CORP-003`, `FR-CORP-005`).
+  - `StartingMode` alone does **NOT** resolve legal-form `NeedsInformation`.
+  - `SelectFormationTypeAsync` preserves founder evidence/notes, uses stable rule IDs, recomputes readiness via `LegalApplicabilityEngine`, and does not create duplicate `LegalAssessment` instances.
+- **Step 3.6 Handoff:**
+  - Continue flow: flush pending formation changes $\to$ persist canonical formation state $\to$ `completeStep(3,5)` $\to$ navigate to `/dashboard/creator/phase-3/business-plan?ideaId=<same ideaId>`. Zero hidden `SelectedType` mutation.
+- **UI Freeze Record:**
+  - Visual diff: 0. Copy changes: 0. Layout changes: 0. Responsive changes: 0. Figma structure changes: 0.
+- **Final Verification Record:**
+  - Broad Step 3.5 regression: Backend unit tests 422/422 PASS; Frontend suite 1209/1215 PASS (0 Step 3.5 failures); TypeScript PASS; Backend build PASS; Frontend production build PASS (187 routes).
+  - Final semantic fix verification: Focused backend tests 8/8 PASS; Focused frontend tests 6/6 PASS; TypeScript PASS; UI visual diff 0.
+  - Full integration suite: **NOT COMPLETED — INFRASTRUCTURE LIMITATION** (MongoDB Atlas free-tier 500/500 collection limit). Verified non-product issue.
 - **Continuous Document Architecture (13 Canonical Sections):**
   1. *Section 1: Quiet Intro:* DM Sans header (*"Let’s work out how your company could be set up."*).
   2. *Section 2: Your Setup So Far:* French digital venture summary card and jurisdiction advisory context.
   3. *Section 3: How Are You Planning to Start?:* 3 interactive selectable starting modes (*Just me*, *With co-founders*, *I’m not sure yet*) with reactive state updates.
   4. *Section 4: A Structure to Consider:* Canonical recommendation card (*SASU*, *SAS*, or *SARL*) with "Worth considering" badge, "Why it may fit your plan" (3 checkmark signals), "Things to think about" (4 consideration lines), 4-cell Quick Facts strip (*OWNERS*, *MANAGEMENT*, *OWNERSHIP LATER*, *BEFORE REGISTRATION*), and an exploration selector for alternative structures.
-  5. *Section 5: Ownership:* Visual percentage breakdown bar (*YOU · 100%*) with inline slider/adjustment modal.
+  5. *Section 5: Ownership:* Visual percentage breakdown bar with inline slider/adjustment control (`100%` solo, `70%` team presentation default).
   6. *Section 6: Leadership:* Legal representative card (*Planned role: President / Gérant*) with custom title selector.
-  7. *Section 7: Starting Capital Plan:* Large bold starting capital display (seeded from forecast OPEX baseline, e.g. *€5,000*) with *"Looks right"* confirmation and editable input toggle.
+  7. *Section 7: Starting Capital Plan:* Large bold starting capital display (seeded from forecast OPEX baseline, e.g. *€5,000*) with *"Looks right"* confirmation and editable input toggle. Missing confirmation does not default to true.
   8. *Section 8: Who Do You Actually Need to Get Started?:* 3-tier capability grid:
      - *YOU CAN HANDLE* (green indicator, chips from `youHave`)
      - *YOU MAY NEED HELP WITH* (amber indicator, chips from `youNeed` / gaps)
@@ -831,18 +899,8 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Full-Width Layout & Zero Hardcoded Data Guarantee:**
   - *Full-Width Shell:* Rendered inside `Phase3SetupShell` configured with `fullWidth={true}` and `w-full min-w-0`, perfectly responsive from 1440px to 1920px without arbitrary max-width constraints.
   - *Dynamic Domain Data:* 100% free of static/hardcoded venture mocks. Project name, country, business description, currency symbol, why-it-fits reasoning bullets, leadership roles, starting capital basis, team skill tags, priority launch gap, and Day 1 roster are dynamically bound from `journey.project`, `formation.recommendationFactors`, `forecastBasis`, and `journey.state.phase3.marketStudy`.
-- **Bi-Directional Persistence Contracts:**
-  - *Instant Entity Override:* Selecting an entity card calls `PATCH /api/creator/formation/select-type` with `{ selectedType: string }`, instantly persisting the selection to MongoDB and flagging `IsOverride: true` if divergent from engine recommendation.
-  - *Atomic Save-on-Continue:* Advancing via *"Continue to Executive Business Plan"* commits `{ skills: string[], cofounders: CofounderDraft[], setup: FormationSetupPayload }` to `PATCH /api/creator/formation/skills`, synchronizing ownership split, leadership role, starting capital, and team gaps directly to the creator session.
-- **Supported Legal Structures (Current Production Canon):**
-  - `SAS` (Société par Actions Simplifiée) — Multi-founder archetype
-  - `SAS-U` / `SASU` (Société par Actions Simplifiée Unipersonnelle) — Solo-founder archetype
-  - `SARL` (Société à Responsabilité Limitée) — Commercial partnership archetype
 - **Formation Engine MVP Product Limitation:**
   > **Known Product Limitation:** Current France MVP formation recommendations are limited to the legal structures supported by the current recommendation engine (SAS, SAS-U, SARL). The engine does not yet represent every possible French business structure (e.g., EURL, Micro-entreprise / Auto-entrepreneur, Entreprise Individuelle).
-- **Discrete Recommendation Reasoning:** Exposes `RecommendationFactors` (`Category`, `Signal`, `Implication`) breaking down the exact signals driving the recommendation (Sector/FinTech, TAM & Growth from forecast, Funding model, Founding team structure).
-- **Override Tracking:** Persists `IsOverride` (`bool`) on `CreatorFormationGenerator` whenever a founder chooses an alternative entity structure over the automated recommendation.
-- **Skills Declaration & Protected Clobber Guard:** Clear separation between *Founder-Declared Capabilities (Self-Reported)* and *System-Derived Competence Gaps (Inferred Baseline)* with deep links to `/marketplace?category={specialty}`. Atomic clobber guard prevents rule-engine echoes from overwriting self-declared skills.
 
 ### 5.6 Step 3.6 — Executive Business Plan (C-3, LIVE & FIGMA-ALIGNED)
 - **Route:** `/dashboard/creator/phase-3/business-plan`

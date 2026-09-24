@@ -19,10 +19,11 @@ export interface FormationProjectContext {
 }
 
 export interface FormationSetupPayload {
-  mode: 'solo' | 'team' | 'undecided';
-  founderEquity: number;
-  plannedRole: string;
-  capitalAmount: number;
+  mode?: 'solo' | 'team' | 'undecided';
+  founderEquity?: number;
+  plannedRole?: string;
+  capitalAmount?: number;
+  capitalConfirmed?: boolean;
 }
 
 export interface FormationFigmaFlowProps {
@@ -51,6 +52,7 @@ export function FormationFigmaFlow({
   // SECTION 3: Starting Plan Mode ('solo' | 'team' | 'undecided')
   // -------------------------------------------------------------
   const initialMode = useMemo<'solo' | 'team' | 'undecided'>(() => {
+    if (formation.startingMode) return formation.startingMode;
     if (formation.cofounderDraft?.roleNeeded) return 'team';
     if (formation.recommendedType === 'SAS-U') return 'solo';
     if (formation.recommendedType === 'SAS') return 'team';
@@ -58,6 +60,7 @@ export function FormationFigmaFlow({
   }, [formation]);
 
   const [startingMode, setStartingMode] = useState<'solo' | 'team' | 'undecided'>(initialMode);
+  const [isModeExplicit, setIsModeExplicit] = useState<boolean>(Boolean(formation.startingMode));
 
   // -------------------------------------------------------------
   // SECTION 4: Structure Details & Exploration
@@ -84,14 +87,18 @@ export function FormationFigmaFlow({
   // SECTION 5: Ownership Split
   // -------------------------------------------------------------
   const [isAdjustingOwnership, setIsAdjustingOwnership] = useState(false);
-  const [founderEquity, setFounderEquity] = useState<number>(startingMode === 'solo' ? 100 : 75);
+  const [isEquityExplicit, setIsEquityExplicit] = useState<boolean>(formation.founderEquity != null);
+  const [founderEquity, setFounderEquity] = useState<number>(
+    formation.founderEquity ?? (startingMode === 'solo' ? 100 : 70)
+  );
 
   // -------------------------------------------------------------
   // SECTION 6: Leadership Role
   // -------------------------------------------------------------
   const [isChangingRole, setIsChangingRole] = useState(false);
+  const [isRoleExplicit, setIsRoleExplicit] = useState<boolean>(Boolean(formation.plannedRole));
   const [plannedRole, setPlannedRole] = useState<string>(
-    currentStructureCode === 'SARL' ? 'Managing Director (Gérant)' : 'President'
+    formation.plannedRole ?? (currentStructureCode === 'SARL' ? 'Managing Director (Gérant)' : 'President')
   );
 
   // -------------------------------------------------------------
@@ -112,8 +119,15 @@ export function FormationFigmaFlow({
     return '€';
   }, [formation.forecastBasis?.currency]);
 
-  const [capitalAmount, setCapitalAmount] = useState<number>(initialCapitalValue);
-  const [capitalConfirmed, setCapitalConfirmed] = useState(true);
+  const [isCapitalInteracted, setIsCapitalInteracted] = useState<boolean>(
+    formation.capitalConfirmed != null || formation.capitalAmount != null
+  );
+  const [capitalAmount, setCapitalAmount] = useState<number>(
+    formation.capitalAmount ?? initialCapitalValue
+  );
+  const [capitalConfirmed, setCapitalConfirmed] = useState<boolean>(
+    formation.capitalConfirmed === true
+  );
   const [isEditingCapital, setIsEditingCapital] = useState(false);
 
   // -------------------------------------------------------------
@@ -144,18 +158,14 @@ export function FormationFigmaFlow({
   const [selectedPathway, setSelectedPathway] = useState<string>('external');
 
   // Handle starting mode switch
-  const handleModeChange = async (mode: 'solo' | 'team' | 'undecided') => {
+  const handleModeChange = (mode: 'solo' | 'team' | 'undecided') => {
     setStartingMode(mode);
+    setIsModeExplicit(true);
+    setIsEquityExplicit(true);
     if (mode === 'solo') {
       setFounderEquity(100);
-      if (formation.selectedType !== 'SAS-U') {
-        await onSelectType('SAS-U');
-      }
     } else if (mode === 'team') {
       setFounderEquity(70);
-      if (formation.selectedType !== 'SAS') {
-        await onSelectType('SAS');
-      }
     }
   };
 
@@ -524,7 +534,10 @@ export function FormationFigmaFlow({
                 max="100"
                 step="5"
                 value={founderEquity}
-                onChange={(e) => setFounderEquity(Number(e.target.value))}
+                onChange={(e) => {
+                  setFounderEquity(Number(e.target.value));
+                  setIsEquityExplicit(true);
+                }}
                 className="w-32 accent-primary cursor-pointer"
               />
               <span className="font-mono text-xs font-semibold text-foreground">
@@ -568,6 +581,7 @@ export function FormationFigmaFlow({
                   value={plannedRole}
                   onChange={(e) => {
                     setPlannedRole(e.target.value);
+                    setIsRoleExplicit(true);
                     setIsChangingRole(false);
                   }}
                   className="rounded-lg border border-border bg-card px-2.5 py-1 text-label font-medium text-foreground outline-none"
@@ -620,6 +634,7 @@ export function FormationFigmaFlow({
                 onClick={() => {
                   setIsEditingCapital(false);
                   setCapitalConfirmed(true);
+                  setIsCapitalInteracted(true);
                 }}
                 className="rounded-lg h-9 px-3"
               >
@@ -637,7 +652,10 @@ export function FormationFigmaFlow({
           <Button
             type="button"
             size="sm"
-            onClick={() => setCapitalConfirmed(true)}
+            onClick={() => {
+              setCapitalConfirmed(true);
+              setIsCapitalInteracted(true);
+            }}
             className={cn(
               'rounded-lg text-button font-medium h-8 px-3 gap-1.5 shadow-none transition-colors',
               capitalConfirmed
@@ -1018,7 +1036,14 @@ export function FormationFigmaFlow({
 
         <Button
           type="button"
-          onClick={() => onContinue({ mode: startingMode, founderEquity, plannedRole, capitalAmount })}
+          onClick={() =>
+            onContinue({
+              ...(isModeExplicit ? { mode: startingMode } : {}),
+              ...(isEquityExplicit ? { founderEquity } : {}),
+              ...(isRoleExplicit ? { plannedRole } : {}),
+              ...(isCapitalInteracted ? { capitalAmount, capitalConfirmed } : {}),
+            })
+          }
           disabled={isSaving}
           className="gap-2 rounded-xl text-button font-semibold h-11 px-6 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm font-sans"
         >

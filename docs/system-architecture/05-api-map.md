@@ -128,10 +128,10 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `GET /api/creator/legal-compliance/section-12`: Get Business Plan Section 12 legal preview (strictly requires explicit `ideaId`, returns 400 Bad Request if missing).
   - `POST /api/creator/ai/legal-checklist/generate`: Legacy compatibility adapter routing to canonical `Evaluate` and `LegalAssessment`.
   - `PATCH /api/creator/legal-checklist/item/{itemId}`: Legacy compatibility adapter delegating to canonical `UpdateLegalAssessmentItemStatusAsync`.
-  - `POST /api/creator/ai/formation-generator/start`: Generate formation recommendation (3.5).
-  - `PATCH /api/creator/formation/select-type`: Select legal entity type (SAS/SAS-U/SARL).
-  - `PATCH /api/creator/formation/skills`: Update skill-gap / team assessment.
-  - `GET /api/creator/sp-matches`: Service Provider skill-gap matches.
+  - `POST /api/creator/ai/formation-generator/start`: Generate formation recommendation and options (`CreatorFormationGenerator`, Step 3.5, requires explicit `ideaId`).
+  - `PATCH /api/creator/formation/select-type`: Explicitly select legal entity type (`SAS`, `SAS-U`, `SARL`), set `SelectedType`, record `IsOverride`, reconcile Step 3.4 legal assessment, and append version snapshot (`FormationVersions`).
+  - `PATCH /api/creator/formation/skills`: Declare self-reported skills, optional cofounder draft, and setup configuration (`StartingMode`, `FounderEquity`, `PlannedRole`, `CapitalAmount`, `CapitalConfirmed`). Non-destructive partial update; appends version snapshot.
+  - `GET /api/creator/sp-matches`: Service Provider skill-gap matches for unresolved needs.
   - `POST /api/creator/workroom/open`: Open a workroom with a matched SP.
   - `POST /api/creator/journey/phase3/session`: Link AI session IDs to the journey.
   - `PATCH /api/creator/masterplan/complete`: Trigger Phase 3 completion gate.

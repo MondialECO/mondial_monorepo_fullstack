@@ -100,6 +100,15 @@ This matrix establishes the definitive, canonical data authority for every major
    - Upstream assumption propagation (`MarketStudyVersion`, `BusinessModelVersion`) uses strict monotonic version guards: `incoming < stored` is rejected as stale, `incoming == stored` is an idempotent no-op, `incoming > stored` accepts the update. Founder-edited fields (`IsFounderLocked`) are permanently locked and survive all upstream version changes.
    - The latest valid completed version resolver (`hasValidCompletedForecast`) governs displayed results; failed or in-progress regenerations preserve existing valid results non-destructively.
 
+12. **Creator Phase 3.5 Company Formation & Team Single Source of Truth Rule**:
+    - `CreatorFormationGenerator` on `CreatorIdea.Phase3Data.FormationGenerator` is the sole canonical source of truth for Step 3.5 company formation, setup configuration, and initial team planning (mirrored/composed into journey state where required by current architecture).
+    - Snapshot history: `CreatorIdea.OutputSnapshots.FormationVersions`. Every canonical mutation creates a timestamped version snapshot. Zero parallel formation or versioning stores.
+    - Three canonical writers: `SetFormationAsync`, `SelectFormationTypeAsync`, and `DeclareFormationSkillsAsync`.
+    - Setup Configuration: Canonically persists `StartingMode` (`solo` | `team` | `undecided`), `FounderEquity` (`0 <= x <= 100`), `PlannedRole`, `CapitalAmount`, and `CapitalConfirmed`.
+    - Non-destructive partial updates: Omitted values never overwrite existing canonical values (no null -> 0, null -> true, or missing -> default).
+    - Unconfirmed default protection: Missing `CapitalConfirmed != true`. Suggested capital from forecast is reference-only until confirmed. Missing `FounderEquity` display fallbacks (100% solo / 70% team) never auto-persist on load or continue.
+    - StartingMode selection does NOT confirm legal structure or set `SelectedType`. `SelectedType` requires explicit structure selection (`SelectFormationTypeAsync`), which reconciles Step 3.4 legal applicability without creating duplicate engines.
+
 ---
 
 ## 3. Creator Phase 2–5 Clean Baseline
@@ -116,6 +125,11 @@ ForecastSession.Inputs (sole financial assumptions authority)
 
 Phase 3.4 Legal authority:
 CreatorLegalAssessment (CreatorIdea.Phase3Data.LegalAssessment)
+
+Phase 3.5 Formation authority:
+CreatorFormationGenerator (CreatorIdea.Phase3Data.FormationGenerator)
+Sole canonical source of truth for company formation, setup configuration, and initial team planning.
+Snapshot history: CreatorIdea.OutputSnapshots.FormationVersions
 
 HumainX onboarding authority:
 ProfessionalProfileRecord.QuickStart (sole onboarding journey authority; localStorage has no access/progression authority)

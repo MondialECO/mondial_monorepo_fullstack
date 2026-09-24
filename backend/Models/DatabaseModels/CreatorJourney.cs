@@ -247,6 +247,13 @@ namespace WebApp.Models.DatabaseModels
 
         // Structured inputs that drove the recommendation so founders can audit the reasoning
         public List<FormationRecommendationFactor> RecommendationFactors { get; set; } = new();
+
+        // 3.5 founder setup configuration persistence
+        public string? StartingMode { get; set; } // solo | team | undecided
+        public double? FounderEquity { get; set; }
+        public string? PlannedRole { get; set; }
+        public double? CapitalAmount { get; set; }
+        public bool? CapitalConfirmed { get; set; }
     }
 
     public class FormationRecommendationFactor

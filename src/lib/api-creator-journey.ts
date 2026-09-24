@@ -288,11 +288,38 @@ export const creatorJourneyApi = {
     return unwrap<{ formation: FormationGenerator; legalChecklist?: LegalChecklist; legalAssessment?: CreatorLegalAssessmentDto }>(res.data);
   },
 
-  // 3.5b: persist self-declared skills (+ optional co-founder draft). Backend derives the
+  // 3.5b: persist self-declared skills (+ optional co-founder draft + setup config). Backend derives the
   // SP-backed gaps + matches; returns the updated formation.
-  declareFormationSkills: async (youHave: string[], cofounder?: CofounderDraft, ideaId?: string | null): Promise<FormationGenerator> => {
-    const res = await api.patch('/creator/formation/skills', { youHave, cofounder: cofounder ?? null }, withIdeaWrite(ideaId));
-    rememberIdeaVersion(res, ideaId);
+  declareFormationSkills: async (
+    youHave: string[],
+    cofounder?: CofounderDraft,
+    setupConfigOrIdeaId?: {
+      startingMode?: string;
+      founderEquity?: number;
+      plannedRole?: string;
+      capitalAmount?: number;
+      capitalConfirmed?: boolean;
+    } | string | null,
+    ideaId?: string | null,
+  ): Promise<FormationGenerator> => {
+    const isConfig = typeof setupConfigOrIdeaId === 'object' && setupConfigOrIdeaId !== null;
+    const setupConfig = isConfig ? setupConfigOrIdeaId : undefined;
+    const resolvedIdeaId = typeof setupConfigOrIdeaId === 'string' ? setupConfigOrIdeaId : ideaId;
+
+    const res = await api.patch(
+      '/creator/formation/skills',
+      {
+        youHave,
+        cofounder: cofounder ?? null,
+        startingMode: setupConfig?.startingMode,
+        founderEquity: setupConfig?.founderEquity,
+        plannedRole: setupConfig?.plannedRole,
+        capitalAmount: setupConfig?.capitalAmount,
+        capitalConfirmed: setupConfig?.capitalConfirmed,
+      },
+      withIdeaWrite(resolvedIdeaId),
+    );
+    rememberIdeaVersion(res, resolvedIdeaId);
     return unwrap<FormationGenerator>(res.data);
   },
 
@@ -799,6 +826,11 @@ export interface FormationGenerator {
   selectedType: FormationTypeCode | null;
   skillsDeclared?: boolean;
   cofounderDraft?: CofounderDraft | null;
+  startingMode?: 'solo' | 'team' | 'undecided' | null;
+  founderEquity?: number | null;
+  plannedRole?: string | null;
+  capitalAmount?: number | null;
+  capitalConfirmed?: boolean | null;
 }
 
 export interface SpMatchDto {
