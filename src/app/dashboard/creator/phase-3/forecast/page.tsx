@@ -670,7 +670,7 @@ export default function ForecastPage() {
         )}
 
         {/* Polling / Generating / Regenerating State */}
-        {(forecastSessionId && session.phase === 'polling' || startForecast.isPending || regenerateForecast.isPending) && (
+        {((forecastSessionId && session.phase === 'polling') || startForecast.isPending || regenerateForecast.isPending) && (
           <div className="space-y-6 max-w-2xl mx-auto py-12">
             <Card className="rounded-2xl border border-border bg-card p-8 text-center space-y-4 shadow-sm">
               <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
@@ -678,10 +678,12 @@ export default function ForecastPage() {
               </div>
               <div className="space-y-1">
                 <h3 className="font-heading font-bold text-base text-foreground">
-                  {regenerateForecast.isPending ? 'Regenerating Financial Forecast…' : 'Simulating 36-Month Projections…'}
+                  {regenerateForecast.isPending || (output && session.phase === 'polling')
+                    ? 'Regenerating Financial Forecast…'
+                    : 'Simulating 36-Month Projections…'}
                 </h3>
                 <p className="text-caption text-muted-foreground">
-                  {regenerateForecast.isPending
+                  {regenerateForecast.isPending || (output && session.phase === 'polling')
                     ? 'Recalculating projections with your updated assumptions. This may take up to two minutes.'
                     : 'Synthesizing multi-year unit economics, revenue compounding, cost dynamics, and cash flow milestones.'}
                 </p>
