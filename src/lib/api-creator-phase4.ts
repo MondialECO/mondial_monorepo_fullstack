@@ -1,56 +1,43 @@
-import { ConstructionSnapshotResponse } from '@/types/creator/phase4';
+import api from '@/lib/axios';
+import type { ConstructionSnapshotResponse } from '@/types/creator/phase4';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5093';
-
-function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+export interface ApiEnvelope<T> {
+  success?: boolean;
+  message?: string;
+  data: T;
+  traceId?: string | null;
 }
 
-export async function getConstructionSnapshot(ideaId: string): Promise<ConstructionSnapshotResponse> {
-  const res = await fetch(`${BASE_URL}/api/creator/phase4/construction-snapshot?ideaId=${encodeURIComponent(ideaId)}`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || `Failed to fetch snapshot (status ${res.status})`);
+const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
+  if (body && typeof body === 'object' && 'data' in (body as ApiEnvelope<T>)) {
+    return (body as ApiEnvelope<T>).data;
   }
+  return body as T;
+};
 
-  return res.json();
+export async function getConstructionSnapshot(ideaId: string): Promise<ConstructionSnapshotResponse> {
+  const res = await api.get<ApiEnvelope<ConstructionSnapshotResponse> | ConstructionSnapshotResponse>(
+    '/creator/phase4/construction-snapshot',
+    {
+      params: { ideaId },
+    }
+  );
+  return unwrap(res.data);
 }
 
 export async function generateConstructionSnapshot(ideaId: string): Promise<ConstructionSnapshotResponse> {
-  const res = await fetch(`${BASE_URL}/api/creator/phase4/construction-snapshot/generate`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || `Failed to generate snapshot (status ${res.status})`);
-  }
-
-  return res.json();
+  const res = await api.post<ApiEnvelope<ConstructionSnapshotResponse> | ConstructionSnapshotResponse>(
+    '/creator/phase4/construction-snapshot/generate',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
 
 export async function refreshConstructionSnapshot(ideaId: string): Promise<ConstructionSnapshotResponse> {
-  const res = await fetch(`${BASE_URL}/api/creator/phase4/construction-snapshot/refresh`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.message || `Failed to refresh snapshot (status ${res.status})`);
-  }
-
-  return res.json();
+  const res = await api.post<ApiEnvelope<ConstructionSnapshotResponse> | ConstructionSnapshotResponse>(
+    '/creator/phase4/construction-snapshot/refresh',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
+

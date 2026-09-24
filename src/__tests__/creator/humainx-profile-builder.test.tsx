@@ -378,7 +378,7 @@ describe("Phase4ProfileGuard Component", () => {
     expect(creatorProfileApi.getPhase4Readiness).not.toHaveBeenCalled();
   });
 
-  it("renders protected Phase 4 children when both phase 3 is completed and phase4Ready is true", async () => {
+  it("redirects to HumainX profile builder when phase4Ready is true but profileCompletion < 100", async () => {
     mockCreatorState.journeyState.phase3.status = "completed";
     vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
       phase4Ready: true,
@@ -396,8 +396,41 @@ describe("Phase4ProfileGuard Component", () => {
     );
 
     await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith(
+        expect.stringContaining("/dashboard/creator/profile")
+      );
+      expect(mockRouter.replace).toHaveBeenCalledWith(
+        expect.stringContaining("ideaId=idea-456")
+      );
+      expect(mockRouter.replace).toHaveBeenCalledWith(
+        expect.stringContaining("returnTo=%2Fdashboard%2Fcreator%2Fphase-4%3FideaId%3Didea-456")
+      );
+      expect(screen.queryByText("Protected Phase 4 Content")).toBeNull();
+    });
+    expect(creatorProfileApi.getPhase4Readiness).not.toHaveBeenCalled();
+  });
+
+  it("renders protected Phase 4 children when phase 3 is completed, phase4Ready is true, and profileCompletion is 100", async () => {
+    mockCreatorState.journeyState.phase3.status = "completed";
+    vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
+      phase4Ready: true,
+      missingForPhase4: [],
+      profileCompletion: 100,
+    });
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Phase4ProfileGuard>
+          <div>Protected Phase 4 Content</div>
+        </Phase4ProfileGuard>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
       expect(screen.getByText("Protected Phase 4 Content")).toBeDefined();
     });
+    expect(mockRouter.replace).not.toHaveBeenCalled();
     expect(creatorProfileApi.getPhase4Readiness).not.toHaveBeenCalled();
   });
 });

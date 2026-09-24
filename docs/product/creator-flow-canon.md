@@ -1064,15 +1064,25 @@ CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
    - AI is strictly advisory, explanatory, and presentational.
 5. **No Premature Global Readiness %:** Global Construction Readiness is owned exclusively by Stage 4.9. Stages 4.1–4.7 track only their own completion status.
 6. **Retirement of Legacy Phase 4:** The legacy `/dashboard/creator/offer-pricing` route, `CreatorPhase4Controller`, and legacy components (`Phase4Pricing`, `Phase4Resource`, `Phase4Gtm`, `Phase4Complete`) are completely retired.
-7. **Phase 3 → Phase 4 Access Gate (`Phase4ProfileGuard`):**
-   - **Phase 3 Completion Authority:** `state.journeyState.phase3.status === 'completed'` via `useCreatorProgress()`.
-   - **Profile Readiness Authority:** `creatorProfileApi.getCompleteness()` (`GET /api/profile/me/completeness`).
+7. **Phase 3 → Phase 4 Access Gate & HumainX Continuation (`Phase4ProfileGuard`):**
+   - **Canonical Entry Sequence:**
+     1. *Phase 3 Completion:* `state.journeyState.phase3.status === 'completed'` (incomplete $\to$ existing "Phase 3 Must Be Completed First" screen).
+     2. *Quick Start / Core Profile Readiness:* `completeness.phase4Ready` (missing core fields $\to$ Phase 4 Personalization checklist card).
+     3. *Full HumainX Profile Completion:* `completeness.profileCompletion >= 100`.
+        - If `profileCompletion < 100`: seamlessly resumes in existing HumainX Full Profile Builder (`/dashboard/creator/profile`) preserving all previous answers, binding to the same `ideaId`, and setting `returnTo` back to Phase 4 (`/dashboard/creator/phase-4?ideaId=<ideaId>`).
+        - If `profileCompletion >= 100`: unlocks and renders Phase 4 main flow (`ConstructionSnapshotView`).
+   - **Canonical Authorities:**
+     - Phase 3 Completion: `state.journeyState.phase3.status === 'completed'` via `useCreatorProgress()`.
+     - Quick Start / Core Readiness: `completeness.phase4Ready` from `GET /api/profile/me/completeness`.
+     - Full HumainX Completion: `completeness.profileCompletion >= 100` from `GET /api/profile/me/completeness`.
+     - Profile Completeness Backend Authority: `ProfileCompletenessResolver` via `GET /api/profile/me/completeness`.
+     - HumainX Profile SSoT: `ProfessionalProfileRecord` in MongoDB (`ProfessionalProfiles` collection).
+   - **Canonical Phase 4 API Client:**
+     - Phase 4 client (`src/lib/api-creator-phase4.ts`) strictly uses the canonical Axios client (`api` from `@/lib/axios`) with relative endpoints (`/creator/phase4/...`), eliminating manual `NEXT_PUBLIC_API_URL` interpolation and duplicate `/api/api` path risks.
    - **Important Invariants:**
      - Phase 3 completion and HumainX profile readiness are strictly separate checks.
-     - `Phase4ProfileGuard` no longer depends on deprecated `GET /api/creator/offer/readiness` (`getPhase4Readiness`).
-     - Phase 3 completed users proceed directly to normal Phase 4 profile-readiness evaluation.
-     - Phase 3 incomplete users retain the existing blocked screen ("Phase 3 Must Be Completed First").
-     - UI layout, typography, cards, and CTA buttons remain unchanged.
+     - `Phase4ProfileGuard` no longer depends on deprecated `GET /api/creator/offer/readiness`.
+     - UI layout, cards, styling, and copy remain completely frozen.
 
 ### 6.1 Stage 4.1 — Construction Snapshot (`ConstructionSnapshotView.tsx`)
 - **Route:** `/dashboard/creator/phase-4`
