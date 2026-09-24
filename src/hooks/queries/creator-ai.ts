@@ -393,6 +393,21 @@ export const useStartBusinessPlan = () => {
   });
 };
 
+export const useRegenerateBusinessPlan = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) =>
+      creatorAiApi.regenerateBusinessPlan(sessionId),
+    onSuccess: (_, sessionId) => {
+      qc.invalidateQueries({ queryKey: businessPlanKeys.detail(sessionId) });
+      qc.invalidateQueries({
+        queryKey: ["creator-ai", "business-plan", "list"],
+      });
+      qc.invalidateQueries({ queryKey: creditKeys.balance });
+    },
+  });
+};
+
 // ---------- C-4 Forecast ----------
 
 export const forecastKeys = {

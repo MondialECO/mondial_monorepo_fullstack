@@ -59,6 +59,8 @@ export interface BusinessPlanFigmaFlowProps {
   onRewriteSection: (sectionId: string) => Promise<void>;
   onEditSection: (sectionId: string, content: string) => Promise<void>;
   onExportPdf: () => void;
+  onRegenerate?: () => void;
+  isGenerating?: boolean;
   onNext: () => void;
   onBack: () => void;
   effectiveIdeaId?: string | null;
@@ -77,6 +79,8 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
   onRewriteSection,
   onEditSection,
   onExportPdf,
+  onRegenerate,
+  isGenerating = false,
   onNext,
   onBack,
   effectiveIdeaId,
@@ -266,11 +270,12 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           </Button>
 
           <Button
-            onClick={onNext}
+            onClick={onRegenerate}
+            disabled={isGenerating}
             className="gap-2 text-button font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-xs font-sans"
           >
-            <span>Review next section</span>
-            <ArrowRight className="h-4 w-4" />
+            <span>Regenerate Business Plan</span>
+            <RotateCw className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>

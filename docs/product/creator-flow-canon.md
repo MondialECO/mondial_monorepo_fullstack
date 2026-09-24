@@ -940,10 +940,14 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   10. **Operations & Milestones:** 4-stage execution roadmap (*Validate*, *Build*, *Pilot*, *Launch*).
   11. **Risks & Next Steps:** Categorized risk matrix (Regulatory, Adoption, Financial) + 3 prioritized immediate actions.
   12. **Legal & Compliance:** France-first compliance roadmap synced to Step 3.4 Greffe/CNIL statutory requirements.
-- **Zero Static Data Policy:** No fabricated numbers or placeholder text; calculates live totals from project records or defaults gracefully to real parameters.
-- **Universal Inline Editing & AI Rewrites:** All editable chapters support modal text edits and AI rewriting with credit verification.
+- **Universal Inline Editing, AI Rewrites & Full Regeneration:**
+  - All editable chapters support modal text edits (`PATCH /api/ai/business-plan/{sessionId}/section`) and AI rewriting (`POST /api/ai/business-plan/rewrite-section`).
+  - Full regeneration endpoint: `POST /api/ai/business-plan/{sessionId}/regenerate` wired to the top header toolbar button (*"Regenerate Business Plan"*), preserving exact button position, size, and styling.
+  - **Generation & Regeneration Loading Canon:** Aligned with Step 3.1 & Step 3.2 canonical presentation (`RotateCw` spinner, indeterminate progress indicator, `role="status"`, `aria-live="polite"`).
+  - **Zero-Blank Regeneration State:** Existing valid Business Plan remains completely visible while regeneration runs with the canonical loading card displayed above it; the new valid plan replaces the previous output only upon successful completion.
+  - **Footer Navigation:** Primary *"Continue to Investor Readiness"* navigation button remains dedicated to progressing to Step 3.7.
 - **Credit Costs & Job Types:**
-  - Full Business Plan Synthesis: **25 credits** (`AiJobType.BusinessPlan`).
+  - Full Business Plan Synthesis / Regeneration: **25 credits** (`AiJobType.BusinessPlan`).
   - Single Section Rewrite: **5 credits** (`AiJobType.BusinessPlanSectionRewrite`).
 
 ### 5.7 Step 3.7 — Phase 3 Complete & Investor Readiness Audit (LIVE)

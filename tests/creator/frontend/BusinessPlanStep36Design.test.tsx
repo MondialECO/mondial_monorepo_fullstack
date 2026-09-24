@@ -225,4 +225,16 @@ describe('BusinessPlanPage & BusinessPlanFigmaFlow (Figma Node 57158:10712 Align
       expect(screen.getAllByText('Reviewed').length).toBeGreaterThan(0);
     });
   });
+
+  it('renders "Regenerate Business Plan" in the toolbar', async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BusinessPlanPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Regenerate Business Plan/i })).toBeInTheDocument();
+    });
+  });
 });
