@@ -513,6 +513,8 @@ namespace WebApp.Services.Implementations
             var legalItems = context.LegalAssessment?.Items ?? context.LegalChecklist?.Items;
             if (legalItems != null)
             {
+                bool hasPlannedHiring = context.Formation?.YouNeed != null && context.Formation.YouNeed.Count > 0;
+
                 foreach (var legalItem in legalItems)
                 {
                     if (legalItem.Status == "completed" || legalItem.Status == "not_applicable") continue;
@@ -521,19 +523,30 @@ namespace WebApp.Services.Implementations
                     var taskKey = rawId.StartsWith("legal.") ? rawId : $"legal.{Slugify(rawId)}";
                     if (candidates.Any(c => c.Key == taskKey)) continue;
 
-                    string stage = MapLegalStage(legalItem.Id, legalItem.Stage, legalItem.Category);
+                    bool isDpae = rawId.IndexOf("FR-SOC-002", StringComparison.OrdinalIgnoreCase) >= 0 || rawId.IndexOf("DPAE", StringComparison.OrdinalIgnoreCase) >= 0;
+                    string? stage = MapLegalStage(legalItem.Id, legalItem.Stage, legalItem.Category, hasPlannedHiring);
                     bool isBlocking = legalItem.Priority?.ToLowerInvariant() == "critical" || legalItem.Stage == "company_creation";
                     bool isExternal = legalItem.Stage == "company_creation" || legalItem.RequiresEvidence;
+
+                    string targetWindow = isDpae
+                        ? (hasPlannedHiring ? "≤ 8 days before employee start date" : "Timing unresolved (≤ 8 days before employee start date)")
+                        : string.Empty;
+
+                    string whyText = isDpae
+                        ? "Statutory requirement (social): Déclaration Préalable à l'Embauche (DPAE) must be submitted to URSSAF at earliest 8 days before the employee's effective start date." + (hasPlannedHiring ? " Scheduled with planned team hiring milestone." : " Timing is unresolved until specific employee hiring dates are planned.")
+                        : $"Statutory requirement ({legalItem.Category}): {legalItem.WhyItApplies}";
 
                     candidates.Add(new RoadmapTask
                     {
                         Key = taskKey,
                         Title = legalItem.Title ?? rawId,
-                        Description = legalItem.WhyItApplies ?? string.Empty,
+                        Description = isDpae && !hasPlannedHiring
+                            ? "Mandatory pre-hiring social declaration (DPAE) to URSSAF before onboarding employees. Timing is unresolved until specific employee hiring dates are planned."
+                            : (legalItem.WhyItApplies ?? string.Empty),
                         Category = RoadmapCategories.LegalAndAdministration,
                         Priority = legalItem.Priority?.ToLowerInvariant() == "critical" ? RoadmapTaskPriority.Critical : RoadmapTaskPriority.High,
                         Blocking = isBlocking,
-                        Why = $"Statutory requirement ({legalItem.Category}): {legalItem.WhyItApplies}",
+                        Why = whyText,
                         ExpectedResult = $"Statutory compliance and administrative clearance for {legalItem.Title}.",
                         EstimatedEffort = legalItem.RequiresEvidence ? RoadmapTaskEffort.Medium : RoadmapTaskEffort.Small,
                         EstimatedEffortHours = legalItem.RequiresEvidence ? 3.5 : 1.5,
@@ -541,7 +554,8 @@ namespace WebApp.Services.Implementations
                         EstimatedDuration = isExternal ? "3–7 business days" : string.Empty,
                         Source = new List<string> { "Legal Assessment" },
                         SourceReference = new List<string> { rawId },
-                        EarliestStart = stage
+                        EarliestStart = stage,
+                        TargetWindow = !string.IsNullOrEmpty(targetWindow) ? targetWindow : null
                     });
                 }
             }
@@ -634,20 +648,31 @@ namespace WebApp.Services.Implementations
             if (corp1 != null && corp3 != null && !corp3.Dependencies.Contains(corp1.Key))
                 corp3.Dependencies.Add(corp1.Key);
             if (corp2 != null && corp3 != null && !corp3.Dependencies.Contains(corp2.Key))
-                corp2.Dependencies.Add(corp2.Key);
-            if (corp3 != null && corp4 != null && !corp4.Dependencies.Contains(corp3.Key))
-                corp4.Dependencies.Add(corp3.Key);
+                corp3.Dependencies.Add(corp2.Key);
 
-            // RBE declaration (FR-CORP-005) is tied directly to company registration (FR-CORP-004)
-            if (corp4 != null && rbe != null && !rbe.Dependencies.Contains(corp4.Key))
+            // RBE preparation (FR-CORP-005) precedes/accompanies company registration submission (FR-CORP-004)
+            if (corp2 != null && rbe != null && !rbe.Dependencies.Contains(corp2.Key))
             {
-                rbe.Dependencies.Add(corp4.Key);
+                rbe.Dependencies.Add(corp2.Key);
             }
 
-            // Company registration (FR-CORP-004) precedes insurance, payment gateway, and post-launch social security
+            // Company registration filing (FR-CORP-004) requires JAL (FR-CORP-003), Capital deposit (FR-CORP-001), Statuts (FR-CORP-002), and RBE declaration (FR-CORP-005)
             if (corp4 != null)
             {
-                foreach (var depTask in candidates.Where(c => c.Key.Contains("fr-ins-001") || c.Key.Contains("fr-pay-001") || c.Key.Contains("fr-soc-001")))
+                if (corp3 != null && !corp4.Dependencies.Contains(corp3.Key))
+                    corp4.Dependencies.Add(corp3.Key);
+                if (corp1 != null && !corp4.Dependencies.Contains(corp1.Key))
+                    corp4.Dependencies.Add(corp1.Key);
+                if (corp2 != null && !corp4.Dependencies.Contains(corp2.Key))
+                    corp4.Dependencies.Add(corp2.Key);
+                if (rbe != null && !corp4.Dependencies.Contains(rbe.Key))
+                    corp4.Dependencies.Add(rbe.Key);
+            }
+
+            // Company registration (FR-CORP-004) precedes insurance, payment gateway, e-invoicing, and post-launch social security
+            if (corp4 != null)
+            {
+                foreach (var depTask in candidates.Where(c => c.Key.Contains("fr-ins-001") || c.Key.Contains("fr-pay-001") || c.Key.Contains("fr-soc-001") || c.Key.Contains("fr-tax-001") || c.Key.Contains("fr-corp-006")))
                 {
                     if (!depTask.Dependencies.Contains(corp4.Key))
                     {
@@ -656,7 +681,7 @@ namespace WebApp.Services.Implementations
                 }
             }
 
-            // DPAE (FR-SOC-002) is tied to employee hiring / skill gap engagement, not product launch
+            // DPAE (FR-SOC-002) is tied to employee hiring / skill gap engagement if planned
             var dpaeTask = candidates.FirstOrDefault(c => c.Key.Contains("fr-soc-002") || c.Key.Contains("dpae"));
             var teamOrSkillTask = candidates.FirstOrDefault(c => c.Category == RoadmapCategories.Skills || c.Category == RoadmapCategories.Team || c.Key.Contains("skill-gap"));
             if (dpaeTask != null)
@@ -706,6 +731,14 @@ namespace WebApp.Services.Implementations
                         lt.Dependencies.Add(techCritical.Key);
                     }
                 }
+            }
+
+            // DAG SANITIZATION:
+            // 1. Remove self-dependencies
+            // 2. Remove dangling dependencies (prerequisites excluded because they were completed, not applicable, or not generated)
+            foreach (var task in candidates)
+            {
+                task.Dependencies.RemoveAll(dep => string.IsNullOrWhiteSpace(dep) || dep == task.Key || !taskByKey.ContainsKey(dep));
             }
         }
 
@@ -928,7 +961,7 @@ namespace WebApp.Services.Implementations
             return isCritical ? RoadmapStages.Now : RoadmapStages.Next30Days;
         }
 
-        private static string MapLegalStage(string? ruleId, string? legalStage, string? category)
+        private static string? MapLegalStage(string? ruleId, string? legalStage, string? category, bool hasPlannedHiring = false)
         {
             var id = (ruleId ?? string.Empty).ToUpperInvariant();
             
@@ -936,7 +969,7 @@ namespace WebApp.Services.Implementations
             if (id.Contains("FR-REG-001")) return RoadmapStages.Now;
 
             // 2. Company formation & formal registration formalities (SAS, SARL, etc.)
-            // Initial RBE (FR-CORP-005) is filed concurrently with registration or within 15 days of Kbis receipt (Guichet Unique).
+            // Initial RBE (FR-CORP-005) preparation is conducted alongside bylaws (statuts) for the INPI Guichet Unique registration dossier.
             if (id.Contains("FR-CORP-001") || id.Contains("FR-CORP-002") || id.Contains("FR-CORP-003") || id.Contains("FR-CORP-004") || id.Contains("FR-CORP-005"))
                 return RoadmapStages.Next30Days;
 
@@ -944,9 +977,12 @@ namespace WebApp.Services.Implementations
             if (id.Contains("FR-IP-001") || id.Contains("FR-INS-001"))
                 return RoadmapStages.Days30To60;
 
-            // 4. Pre-hiring DPAE declarations: tied to planned employee onboarding milestone
+            // 4. Pre-hiring DPAE declarations: scheduled from planned employee onboarding milestone
             if (id.Contains("FR-SOC-002"))
-                return RoadmapStages.Days30To60;
+            {
+                // If hiring milestone exists, align with Days 30-60; otherwise keep timing unforced/unresolved
+                return hasPlannedHiring ? RoadmapStages.Days30To60 : null;
+            }
 
             // 5. Data protection & payment integrations
             if (id.Contains("FR-PRIV-001") || id.Contains("FR-PRIV-002") || id.Contains("FR-PRIV-003") || id.Contains("FR-PAY-001") || id.Contains("FR-MKT-001"))
@@ -982,7 +1018,7 @@ namespace WebApp.Services.Implementations
             return RoadmapStages.Days30To60;
         }
 
-        private static string MapLegalStage(string? legalStage) => MapLegalStage(null, legalStage, null);
+        private static string? MapLegalStage(string? legalStage) => MapLegalStage(null, legalStage, null, false);
 
         private static string Slugify(string text)
         {

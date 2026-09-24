@@ -341,6 +341,72 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
+        public async Task Refresh_Updates_Roadmap_With_Corrected_Mappings_While_Preserving_Completed_Statuses_And_Overrides()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            var existingRoadmap = new OperationalRoadmap
+            {
+                Status = "Active",
+                FounderEdited = true,
+                Tasks = new List<RoadmapTask>
+                {
+                    new()
+                    {
+                        Id = "task-form-1",
+                        Key = "formation.confirm-structure",
+                        Title = "Confirm SAS Structure",
+                        Status = RoadmapTaskStatus.Done,
+                        FounderEdited = true,
+                        FounderNotes = "Approved with co-founder"
+                    },
+                    new()
+                    {
+                        Id = "task-tech-1",
+                        Key = "tech.execution",
+                        Title = "Resolve technical execution capability",
+                        Status = RoadmapTaskStatus.InProgress,
+                        FounderEdited = true,
+                        FounderNotes = "Interviewing lead dev"
+                    }
+                }
+            };
+            journey.Phase4Data.Roadmap = existingRoadmap;
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-CORP-004", Title = "Business Registration via INPI Guichet Unique", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Statutory registration." },
+                    new() { Id = "FR-CORP-005", Title = "Declaration of Beneficial Ownership (RBE)", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "AML beneficial owner disclosure." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.RefreshRoadmapAsync("user-1", "idea-1");
+
+            // Preserved tasks keep their completed status and notes
+            var formTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key == "formation.confirm-structure");
+            formTask.Should().NotBeNull();
+            formTask!.Status.Should().Be(RoadmapTaskStatus.Done);
+            formTask.FounderNotes.Should().Be("Approved with co-founder");
+            formTask.Id.Should().Be("task-form-1");
+
+            var techTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key == "tech.execution");
+            techTask.Should().NotBeNull();
+            techTask!.Status.Should().Be(RoadmapTaskStatus.InProgress);
+            techTask.Id.Should().Be("task-tech-1");
+
+            // Newly mapped legal tasks are present with corrected semantics
+            var rbeTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-005"));
+            var regTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-004"));
+            rbeTask.Should().NotBeNull();
+            regTask.Should().NotBeNull();
+            rbeTask!.Stage.Should().Be(RoadmapStages.Next30Days);
+            regTask!.Dependencies.Should().Contain(rbeTask.Key);
+        }
+
+        [Fact]
         public async Task Next_Best_Action_Updates_When_Current_Marked_Done()
         {
             var journey = BuildCompleteJourneyWithSnapshot();
@@ -574,7 +640,7 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
-        public async Task Initial_RBE_Declaration_Is_Linked_To_Company_Registration_In_Next_30_Days()
+        public async Task Initial_RBE_Preparation_Precedes_Company_Registration_Submission_In_Next_30_Days_Without_Cycles()
         {
             var journey = BuildCompleteJourneyWithSnapshot();
             journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
@@ -582,6 +648,9 @@ namespace WebApp.Tests.Unit
                 EvaluatedAt = DateTime.UtcNow,
                 Items = new List<CreatorLegalChecklistItem>
                 {
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Priority = "critical", WhyItApplies = "Capital deposit." },
+                    new() { Id = "FR-CORP-002", Title = "Drafting Statuts", Category = "corporate", Stage = "before_creation", Priority = "critical", WhyItApplies = "Constitutional bylaws." },
+                    new() { Id = "FR-CORP-003", Title = "JAL Publication", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Gazette notice." },
                     new() { Id = "FR-CORP-004", Title = "Business Registration via INPI Guichet Unique", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "Statutory registration." },
                     new() { Id = "FR-CORP-005", Title = "Declaration of Beneficial Ownership (RBE)", Category = "corporate", Stage = "company_creation", Priority = "critical", WhyItApplies = "AML beneficial owner disclosure." }
                 }
@@ -593,14 +662,128 @@ namespace WebApp.Tests.Unit
 
             var rbeTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-005"));
             var regTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-004"));
+            var statutsTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-002"));
 
             rbeTask.Should().NotBeNull();
             regTask.Should().NotBeNull();
+            statutsTask.Should().NotBeNull();
 
             // RBE is scheduled in NEXT_30_DAYS (company creation window), NOT POST_LAUNCH
             rbeTask!.Stage.Should().Be(RoadmapStages.Next30Days);
-            // RBE depends on INPI Guichet Unique registration
-            rbeTask.Dependencies.Should().Contain(regTask!.Key);
+            // RBE preparation depends on Statuts governance
+            rbeTask.Dependencies.Should().Contain(statutsTask!.Key);
+            // INPI Registration submission dossier requires RBE preparation
+            regTask!.Dependencies.Should().Contain(rbeTask.Key);
+            // No reverse circular dependency
+            rbeTask.Dependencies.Should().NotContain(regTask.Key);
+        }
+
+        [Fact]
+        public async Task DPAE_With_Unknown_Employee_Start_Date_Leaves_Timing_Unresolved_Without_Assuming_Month_2()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            // No planned skill gaps or specific hiring dates
+            journey.Phase3Data!.FormationGenerator!.YouNeed = new List<CreatorSkillGap>();
+            journey.Phase3Data.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-SOC-002", Title = "Pre-Hiring Declarations (DPAE)", Category = "social", Stage = "ongoing", Priority = "critical", WhyItApplies = "Planned payroll." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var dpaeTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key.Contains("fr-soc-002"));
+            dpaeTask.Should().NotBeNull();
+
+            // Timing is explicitly marked unresolved rather than assuming Month 2
+            dpaeTask!.TargetWindow.Should().Contain("Timing unresolved");
+            dpaeTask.Why.Should().Contain("Timing is unresolved until specific employee hiring dates are planned");
+            // Stage is NOT forced to DAYS_30_TO_60
+            dpaeTask.Stage.Should().NotBe(RoadmapStages.Days30To60);
+        }
+
+        [Fact]
+        public async Task DPAE_With_Planned_Hiring_Milestone_Is_Scheduled_To_Hiring_Window()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.FormationGenerator!.YouNeed = new List<CreatorSkillGap>
+            {
+                new() { Label = "Lead Fullstack Engineer", SpSpecialty = "development" }
+            };
+            journey.Phase3Data.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    new() { Id = "FR-SOC-002", Title = "Pre-Hiring Declarations (DPAE)", Category = "social", Stage = "ongoing", Priority = "critical", WhyItApplies = "Planned payroll." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var dpaeTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key.Contains("fr-soc-002"));
+            var hiringTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("skill-gap"));
+
+            dpaeTask.Should().NotBeNull();
+            hiringTask.Should().NotBeNull();
+
+            // Scheduled with hiring milestone (DAYS_30_TO_60)
+            dpaeTask!.Stage.Should().Be(RoadmapStages.Days30To60);
+            dpaeTask.Dependencies.Should().Contain(hiringTask!.Key);
+            dpaeTask.TargetWindow.Should().Be("≤ 8 days before employee start date");
+        }
+
+        [Fact]
+        public async Task DAG_Sanitization_Removes_Dangling_Dependencies_When_Prerequisite_Is_Completed_Or_Excluded()
+        {
+            var journey = BuildCompleteJourneyWithSnapshot();
+            journey.Phase3Data!.LegalAssessment = new CreatorLegalAssessment
+            {
+                EvaluatedAt = DateTime.UtcNow,
+                Items = new List<CreatorLegalChecklistItem>
+                {
+                    // FR-CORP-001 & FR-CORP-002 completed, FR-CORP-003 and FR-CORP-004 pending
+                    new() { Id = "FR-CORP-001", Title = "Share Capital Deposit", Category = "corporate", Stage = "before_creation", Status = "completed", WhyItApplies = "Done." },
+                    new() { Id = "FR-CORP-002", Title = "Drafting Statuts", Category = "corporate", Stage = "before_creation", Status = "completed", WhyItApplies = "Done." },
+                    new() { Id = "FR-CORP-003", Title = "JAL Publication", Category = "corporate", Stage = "company_creation", Status = "not_started", Priority = "critical", WhyItApplies = "Pending notice." },
+                    new() { Id = "FR-CORP-004", Title = "INPI Registration", Category = "corporate", Stage = "company_creation", Status = "not_started", Priority = "critical", WhyItApplies = "Pending filing." }
+                }
+            };
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            var res = await svc.GenerateRoadmapAsync("user-1", "idea-1");
+
+            var regTask = res.Roadmap!.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-004"));
+            var jalTask = res.Roadmap.Tasks.FirstOrDefault(t => t.Key.Contains("fr-corp-003"));
+
+            regTask.Should().NotBeNull();
+            jalTask.Should().NotBeNull();
+
+            // FR-CORP-001 and FR-CORP-002 are excluded because they are completed
+            res.Roadmap.Tasks.Should().NotContain(t => t.Key.Contains("fr-corp-001"));
+            res.Roadmap.Tasks.Should().NotContain(t => t.Key.Contains("fr-corp-002"));
+
+            // No dangling dependencies pointing to nonexistent tasks
+            var allTaskKeys = res.Roadmap.Tasks.Select(t => t.Key).ToHashSet();
+            foreach (var task in res.Roadmap.Tasks)
+            {
+                foreach (var dep in task.Dependencies)
+                {
+                    allTaskKeys.Should().Contain(dep, $"dependency '{dep}' in task '{task.Key}' must point to an active task in the roadmap DAG");
+                }
+                task.Dependencies.Should().NotContain(task.Key, "task cannot depend on itself");
+            }
+
+            // regTask depends on remaining active prerequisite JAL
+            regTask!.Dependencies.Should().Contain(jalTask!.Key);
         }
 
         [Fact]
