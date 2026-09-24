@@ -941,7 +941,8 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   11. **Risks & Next Steps:** Categorized risk matrix (Regulatory, Adoption, Financial) + 3 prioritized immediate actions.
   12. **Legal & Compliance:** France-first compliance roadmap synced to Step 3.4 Greffe/CNIL statutory requirements.
 - **Universal Inline Editing, AI Rewrites & Full Regeneration:**
-  - All editable chapters support modal text edits (`PATCH /api/ai/business-plan/{sessionId}/section`) and AI rewriting (`POST /api/ai/business-plan/rewrite-section`).
+  - All editable chapters support modal text edits (`PATCH /api/ai/business-plan/{sessionId}/section`) and AI rewriting (`POST /api/ai/business-plan/rewrite-section` via `useRewriteBusinessPlanSection` mutation hook).
+  - **Section Rewrite Lifecycle & Race Resolution:** Resolves premature terminal settlement race by waiting for the rewrite mutation to enter its active processing lifecycle (`hasEnteredProcessing: true`) before evaluating terminal state. A rewrite succeeds when `currentVersion > baseVersion`, preserving previous valid content on genuine failure.
   - Full regeneration endpoint: `POST /api/ai/business-plan/{sessionId}/regenerate` wired to the top header toolbar button (*"Regenerate Business Plan"*), preserving exact button position, size, and styling.
   - **Generation & Regeneration Loading Canon:** Aligned with Step 3.1 & Step 3.2 canonical presentation (`RotateCw` spinner, indeterminate progress indicator, `role="status"`, `aria-live="polite"`).
   - **Zero-Blank Regeneration State:** Existing valid Business Plan remains completely visible while regeneration runs with the canonical loading card displayed above it; the new valid plan replaces the previous output only upon successful completion.

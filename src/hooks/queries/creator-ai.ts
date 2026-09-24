@@ -408,6 +408,54 @@ export const useRegenerateBusinessPlan = () => {
   });
 };
 
+export const useRewriteBusinessPlanSection = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      businessPlanSessionId,
+      sectionId,
+    }: {
+      businessPlanSessionId: string;
+      sectionId: string;
+    }) => creatorAiApi.rewriteSection(businessPlanSessionId, sectionId),
+    onMutate: async ({ businessPlanSessionId }) => {
+      await qc.cancelQueries({
+        queryKey: businessPlanKeys.detail(businessPlanSessionId),
+      });
+      const previousSession = qc.getQueryData<BusinessPlanSession>(
+        businessPlanKeys.detail(businessPlanSessionId),
+      );
+      if (previousSession) {
+        qc.setQueryData<BusinessPlanSession>(
+          businessPlanKeys.detail(businessPlanSessionId),
+          {
+            ...previousSession,
+            status: "Processing",
+          },
+        );
+      }
+      return { previousSession };
+    },
+    onError: (_err, { businessPlanSessionId }, context) => {
+      if (context?.previousSession) {
+        qc.setQueryData(
+          businessPlanKeys.detail(businessPlanSessionId),
+          context.previousSession,
+        );
+      }
+      qc.invalidateQueries({
+        queryKey: businessPlanKeys.detail(businessPlanSessionId),
+      });
+    },
+    onSuccess: (_, { businessPlanSessionId }) => {
+      qc.invalidateQueries({
+        queryKey: businessPlanKeys.detail(businessPlanSessionId),
+      });
+      qc.invalidateQueries({ queryKey: creditKeys.balance });
+    },
+  });
+};
+
 // ---------- C-4 Forecast ----------
 
 export const forecastKeys = {

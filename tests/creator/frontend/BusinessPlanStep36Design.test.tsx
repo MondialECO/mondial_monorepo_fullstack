@@ -237,4 +237,24 @@ describe('BusinessPlanPage & BusinessPlanFigmaFlow (Figma Node 57158:10712 Align
       expect(screen.getByRole('button', { name: /Regenerate Business Plan/i })).toBeInTheDocument();
     });
   });
+
+  it('does not prematurely show section rewrite error when Rewrite with AI is clicked', async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BusinessPlanPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('01 · Executive Summary')).toBeInTheDocument();
+    });
+
+    const rewriteBtns = screen.getAllByRole('button', { name: /Rewrite with AI/i });
+    expect(rewriteBtns.length).toBeGreaterThan(0);
+
+    fireEvent.click(rewriteBtns[0]);
+
+    // Ensure the premature generic error message is NOT rendered
+    expect(screen.queryByText(/The section rewrite didn’t complete/i)).not.toBeInTheDocument();
+  });
 });

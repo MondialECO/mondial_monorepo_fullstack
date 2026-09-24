@@ -24,6 +24,7 @@ import {
   useForecastSessionTimed,
   useStartBusinessPlan,
   useRegenerateBusinessPlan,
+  useRewriteBusinessPlanSection,
 } from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { creatorAiApi } from '@/lib/api-creator-ai';
@@ -73,10 +74,15 @@ export default function BusinessPlanPage() {
     seedAsk: null as number | null,
   });
   const [startError, setStartError] = useState<AiError | null>(null);
-  const [rewriting, setRewriting] = useState<{ sectionId: string; baseVersion: number } | null>(null);
+  const [rewriting, setRewriting] = useState<{
+    sectionId: string;
+    baseVersion: number;
+    hasEnteredProcessing: boolean;
+  } | null>(null);
 
   const startBp = useStartBusinessPlan();
   const regenerateBp = useRegenerateBusinessPlan();
+  const rewriteSectionMutation = useRewriteBusinessPlanSection();
   const credits = useAiCredits();
   const isCostLoading = credits.isLoading;
   const isCostError = credits.isError || (!isCostLoading && credits.data?.costs?.BusinessPlan == null);
@@ -93,18 +99,44 @@ export default function BusinessPlanPage() {
     (session.data as { status?: string } | undefined)?.status?.toLowerCase() === 'pending' ||
     (session.data as { status?: string } | undefined)?.status?.toLowerCase() === 'queued';
   const isSessionProcessing = Boolean(bpSessionId && (session.phase === 'polling' || isStatusProcessing));
-  const isGenerating = Boolean(startBp.isPending || regenerateBp.isPending || isSessionProcessing);
+  const isGenerating = Boolean(
+    startBp.isPending ||
+    regenerateBp.isPending ||
+    rewriteSectionMutation.isPending ||
+    isSessionProcessing
+  );
 
   useEffect(() => {
-    if (rewriting && currentVersion > rewriting.baseVersion) setRewriting(null);
+    if (rewriting && currentVersion > rewriting.baseVersion) {
+      setRewriting(null);
+    }
   }, [currentVersion, rewriting]);
 
   useEffect(() => {
-    if (rewriting && session.phase === 'terminal' && currentVersion <= rewriting.baseVersion) {
-      setRewriting(null);
-      setStartError({ kind: 'other', message: 'The section rewrite didn’t complete — your plan is unchanged. You can try again.' });
+    if (
+      rewriting &&
+      !rewriting.hasEnteredProcessing &&
+      (session.phase === 'polling' || isStatusProcessing || rewriteSectionMutation.isPending)
+    ) {
+      setRewriting((prev) => (prev ? { ...prev, hasEnteredProcessing: true } : null));
     }
-  }, [session.phase, currentVersion, rewriting]);
+  }, [rewriting, session.phase, isStatusProcessing, rewriteSectionMutation.isPending]);
+
+  useEffect(() => {
+    if (
+      rewriting &&
+      rewriting.hasEnteredProcessing &&
+      session.phase === 'terminal' &&
+      !rewriteSectionMutation.isPending &&
+      currentVersion <= rewriting.baseVersion
+    ) {
+      setRewriting(null);
+      setStartError({
+        kind: 'other',
+        message: 'The section rewrite didn’t complete — your plan is unchanged. You can try again.',
+      });
+    }
+  }, [session.phase, currentVersion, rewriting, rewriteSectionMutation.isPending]);
 
   useEffect(() => {
     let active = true;
@@ -254,12 +286,18 @@ export default function BusinessPlanPage() {
   };
 
   const handleRewrite = async (sectionId: string) => {
-    if (!bpSessionId || rewriting) return;
+    if (!bpSessionId || rewriting || rewriteSectionMutation.isPending) return;
     setStartError(null);
-    setRewriting({ sectionId, baseVersion: currentVersion });
+    setRewriting({
+      sectionId,
+      baseVersion: currentVersion,
+      hasEnteredProcessing: false,
+    });
     try {
-      await creatorAiApi.rewriteSection(bpSessionId, sectionId);
-      session.retry();
+      await rewriteSectionMutation.mutateAsync({
+        businessPlanSessionId: bpSessionId,
+        sectionId,
+      });
     } catch (e) {
       setStartError({ kind: 'other', message: friendlyError(e, 'Rewrite failed.') });
       setRewriting(null);
