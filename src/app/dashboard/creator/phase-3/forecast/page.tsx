@@ -669,17 +669,21 @@ export default function ForecastPage() {
           </div>
         )}
 
-        {/* Polling / Generating State */}
-        {forecastSessionId && session.phase === 'polling' && (
+        {/* Polling / Generating / Regenerating State */}
+        {(forecastSessionId && session.phase === 'polling' || startForecast.isPending || regenerateForecast.isPending) && (
           <div className="space-y-6 max-w-2xl mx-auto py-12">
             <Card className="rounded-2xl border border-border bg-card p-8 text-center space-y-4 shadow-sm">
               <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
               <div className="space-y-1">
-                <h3 className="font-heading font-bold text-base text-foreground">Simulating 36-Month Projections…</h3>
+                <h3 className="font-heading font-bold text-base text-foreground">
+                  {regenerateForecast.isPending ? 'Regenerating Financial Forecast…' : 'Simulating 36-Month Projections…'}
+                </h3>
                 <p className="text-caption text-muted-foreground">
-                  Synthesizing multi-year unit economics, revenue compounding, cost dynamics, and cash flow milestones.
+                  {regenerateForecast.isPending
+                    ? 'Recalculating projections with your updated assumptions. This may take up to two minutes.'
+                    : 'Synthesizing multi-year unit economics, revenue compounding, cost dynamics, and cash flow milestones.'}
                 </p>
               </div>
               <div className="h-2 w-48 mx-auto bg-muted rounded-full overflow-hidden">
@@ -711,7 +715,7 @@ export default function ForecastPage() {
         )}
 
         {/* Continuous 8-Section Layout (Figma Node 57157:9297) */}
-        {!loadingJourney && (session.phase !== 'polling' || !forecastSessionId) && (
+        {!loadingJourney && !startForecast.isPending && !regenerateForecast.isPending && (session.phase !== 'polling' || !forecastSessionId) && (
           <div className="space-y-6">
             {/* ======================================================
                 SECTION 1 — Header Bar & Actions (Figma Exact)
