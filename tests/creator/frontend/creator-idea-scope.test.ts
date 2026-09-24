@@ -73,9 +73,7 @@ describe("Creator Formation and Phase 4 idea scoping", () => {
     await generateGtmStrategy(canonicalIdeaId);
 
     // Verify each call targeted canonical /api/creator/phase4/* endpoint with exact ideaId
-    const snapshotCall = mockFetch.mock.calls.find(([url]) => String(url).includes('/api/creator/phase4/construction-snapshot/generate'));
-    expect(snapshotCall).toBeDefined();
-    expect(JSON.parse(snapshotCall![1].body)).toEqual({ ideaId: canonicalIdeaId });
+    expect(api.post).toHaveBeenCalledWith('/creator/phase4/construction-snapshot/generate', { ideaId: canonicalIdeaId });
 
     const pricingCall = mockFetch.mock.calls.find(([url]) => String(url).includes('/api/creator/phase4/pricing/generate'));
     expect(pricingCall).toBeDefined();

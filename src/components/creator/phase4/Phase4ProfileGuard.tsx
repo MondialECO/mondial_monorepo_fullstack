@@ -1,8 +1,6 @@
-'use client';
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   CheckCircle2,
@@ -31,19 +29,38 @@ const CHECKLIST_DEFINITIONS = [
 ] as const;
 
 export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { state, isLoading: journeyLoading } = useCreatorProgress();
   const activeIdeaId = searchParams.get('ideaId') || state.activeIdeaId;
 
-  const { data: readiness, isLoading: readinessLoading, refetch } = useQuery({
-    queryKey: ['creator', 'phase4-readiness', activeIdeaId],
-    queryFn: () => creatorProfileApi.getPhase4Readiness(activeIdeaId),
-    enabled: Boolean(activeIdeaId),
+  const { data: completeness, isLoading: completenessLoading, refetch } = useQuery({
+    queryKey: ['creator', 'profile-completeness'],
+    queryFn: () => creatorProfileApi.getCompleteness(),
     staleTime: 5000,
   });
 
-  const isLoading = journeyLoading || readinessLoading;
+  const isLoading = journeyLoading || completenessLoading;
+
+  // Gate 1: Phase 3 completion
+  const isPhase3Done = state.journeyState.phase3.status === 'completed';
+
+  // Gate 2: Quick Start / core profile readiness
+  const isProfileReady = completeness?.phase4Ready ?? false;
+
+  // Gate 3: Full HumainX completion check
+  const isHumainXComplete = (completeness?.profileCompletion ?? 0) >= 100;
+
+  useEffect(() => {
+    if (!isLoading && isPhase3Done && isProfileReady && !isHumainXComplete) {
+      const returnToUrl = `/dashboard/creator/phase-4${activeIdeaId ? `?ideaId=${encodeURIComponent(activeIdeaId)}` : ''}`;
+      const profileUrl = `/dashboard/creator/profile?returnTo=${encodeURIComponent(returnToUrl)}${
+        activeIdeaId ? `&ideaId=${encodeURIComponent(activeIdeaId)}` : ''
+      }`;
+      router.replace(profileUrl);
+    }
+  }, [isLoading, isPhase3Done, isProfileReady, isHumainXComplete, activeIdeaId, router]);
 
   if (isLoading) {
     return (
@@ -59,7 +76,6 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
   }
 
   // Gate 1: Phase 3 completion
-  const isPhase3Done = readiness?.phase3Complete ?? false;
   if (!isPhase3Done) {
     return (
       <div className="max-w-3xl mx-auto py-12 px-4">
@@ -86,9 +102,8 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
   }
 
   // Gate 2: HumainX Profile Completeness Gate
-  const isProfileReady = readiness?.phase4Ready ?? false;
   if (!isProfileReady) {
-    const missingKeys = readiness?.missingForPhase4 ?? [];
+    const missingKeys = completeness?.missingForPhase4 ?? [];
     const returnTo = pathname;
     const profileUrl = `/dashboard/creator/profile?returnTo=${encodeURIComponent(returnTo)}${
       activeIdeaId ? `&ideaId=${encodeURIComponent(activeIdeaId)}` : ''
@@ -166,6 +181,20 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
     );
   }
 
-  // Passed both gates: render Phase 4 children
+  // Gate 3: Full HumainX completion (renders skeleton while useEffect redirects to profile builder)
+  if (!isHumainXComplete) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <Skeleton className="h-8 w-64 rounded-xl" />
+        <Skeleton className="h-4 w-96 rounded-lg" />
+        <div className="grid gap-4 sm:grid-cols-2 pt-4">
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
+  // Passed all gates: render Phase 4 children
   return <>{children}</>;
 }

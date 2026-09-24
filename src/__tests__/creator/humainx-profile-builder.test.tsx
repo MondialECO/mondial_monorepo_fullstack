@@ -40,6 +40,9 @@ vi.mock("next/link", () => ({
 // Mock CreatorProgressProvider
 const mockCreatorState = {
   activeIdeaId: "idea-456",
+  journeyState: {
+    phase3: { status: "completed" },
+  } as any,
   phases: {
     3: { status: "completed" },
   } as any,
@@ -318,12 +321,10 @@ describe("Phase4ProfileGuard Component", () => {
     vi.clearAllMocks();
   });
 
-  it("shows Phase 3 incomplete barrier when phase3Complete is false", async () => {
-    mockCreatorState.phases[3].status = "in_progress";
-    vi.mocked(creatorProfileApi.getPhase4Readiness).mockResolvedValueOnce({
-      phase3Complete: false,
+  it("shows Phase 3 incomplete barrier when journeyState.phase3.status is not completed", async () => {
+    mockCreatorState.journeyState.phase3.status = "in_progress";
+    vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
       phase4Ready: true,
-      ready: false,
       missingForPhase4: [],
       profileCompletion: 80,
     });
@@ -344,14 +345,13 @@ describe("Phase4ProfileGuard Component", () => {
 
     const cta = screen.getByText("Return to Phase 3").closest("a");
     expect(cta?.getAttribute("href")).toContain("/dashboard/creator/phase-3");
+    expect(creatorProfileApi.getPhase4Readiness).not.toHaveBeenCalled();
   });
 
-  it("shows Profile Incomplete gate when phase3Complete is true but phase4Ready is false", async () => {
-    mockCreatorState.phases[3].status = "completed";
-    vi.mocked(creatorProfileApi.getPhase4Readiness).mockResolvedValueOnce({
-      phase3Complete: true,
+  it("shows Profile Incomplete gate when phase 3 is completed but phase4Ready is false", async () => {
+    mockCreatorState.journeyState.phase3.status = "completed";
+    vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
       phase4Ready: false,
-      ready: false,
       missingForPhase4: ["Skills", "ProgressPreference"],
       profileCompletion: 40,
     });
@@ -375,14 +375,13 @@ describe("Phase4ProfileGuard Component", () => {
     const cta = screen.getByText("Complete My Profile").closest("a");
     expect(cta?.getAttribute("href")).toContain("/dashboard/creator/profile");
     expect(cta?.getAttribute("href")).toContain("ideaId=idea-456");
+    expect(creatorProfileApi.getPhase4Readiness).not.toHaveBeenCalled();
   });
 
-  it("renders protected Phase 4 children when both phase3Complete and phase4Ready are true", async () => {
-    mockCreatorState.phases[3].status = "completed";
-    vi.mocked(creatorProfileApi.getPhase4Readiness).mockResolvedValueOnce({
-      phase3Complete: true,
+  it("redirects to HumainX profile builder when phase4Ready is true but profileCompletion < 100", async () => {
+    mockCreatorState.journeyState.phase3.status = "completed";
+    vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
       phase4Ready: true,
-      ready: true,
       missingForPhase4: [],
       profileCompletion: 70,
     });
@@ -397,7 +396,41 @@ describe("Phase4ProfileGuard Component", () => {
     );
 
     await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalledWith(
+        expect.stringContaining("/dashboard/creator/profile")
+      );
+      expect(mockRouter.replace).toHaveBeenCalledWith(
+        expect.stringContaining("ideaId=idea-456")
+      );
+      expect(mockRouter.replace).toHaveBeenCalledWith(
+        expect.stringContaining("returnTo=%2Fdashboard%2Fcreator%2Fphase-4%3FideaId%3Didea-456")
+      );
+      expect(screen.queryByText("Protected Phase 4 Content")).toBeNull();
+    });
+    expect(creatorProfileApi.getPhase4Readiness).not.toHaveBeenCalled();
+  });
+
+  it("renders protected Phase 4 children when phase 3 is completed, phase4Ready is true, and profileCompletion is 100", async () => {
+    mockCreatorState.journeyState.phase3.status = "completed";
+    vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
+      phase4Ready: true,
+      missingForPhase4: [],
+      profileCompletion: 100,
+    });
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Phase4ProfileGuard>
+          <div>Protected Phase 4 Content</div>
+        </Phase4ProfileGuard>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
       expect(screen.getByText("Protected Phase 4 Content")).toBeDefined();
     });
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+    expect(creatorProfileApi.getPhase4Readiness).not.toHaveBeenCalled();
   });
 });

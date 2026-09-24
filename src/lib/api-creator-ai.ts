@@ -168,6 +168,13 @@ export const creatorAiApi = {
     return unwrap<BusinessPlanSession[]>(res.data) ?? [];
   },
 
+  regenerateBusinessPlan: async (
+    sessionId: string,
+  ): Promise<StartSessionResult> => {
+    const res = await api.post(`/ai/business-plan/${sessionId}/regenerate`);
+    return unwrap<StartSessionResult>(res.data);
+  },
+
   // ---------- C-4 Forecast ----------
   startForecast: async (
     payload: StartForecastRequest,

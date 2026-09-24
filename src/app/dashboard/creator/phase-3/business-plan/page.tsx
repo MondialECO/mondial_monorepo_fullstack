@@ -16,9 +16,16 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
-import { BusinessPlanFigmaFlow } from '@/components/creator/business-plan/BusinessPlanFigmaFlow';
+import { BusinessPlanFigmaFlow, CHAPTERS_META } from '@/components/creator/business-plan/BusinessPlanFigmaFlow';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
-import { useAiCredits, useBusinessPlanSessionTimed, useForecastSessionTimed, useStartBusinessPlan } from '@/hooks/queries/creator-ai';
+import {
+  useAiCredits,
+  useBusinessPlanSessionTimed,
+  useForecastSessionTimed,
+  useStartBusinessPlan,
+  useRegenerateBusinessPlan,
+  useRewriteBusinessPlanSection,
+} from '@/hooks/queries/creator-ai';
 import { creatorJourneyApi } from '@/lib/api-creator-journey';
 import { creatorAiApi } from '@/lib/api-creator-ai';
 import { hasAiOutput, type BusinessPlanOutput, type ForecastOutput } from '@/types/creator/ai';
@@ -67,9 +74,15 @@ export default function BusinessPlanPage() {
     seedAsk: null as number | null,
   });
   const [startError, setStartError] = useState<AiError | null>(null);
-  const [rewriting, setRewriting] = useState<{ sectionId: string; baseVersion: number } | null>(null);
+  const [rewriting, setRewriting] = useState<{
+    sectionId: string;
+    baseVersion: number;
+    hasEnteredProcessing: boolean;
+  } | null>(null);
 
   const startBp = useStartBusinessPlan();
+  const regenerateBp = useRegenerateBusinessPlan();
+  const rewriteSectionMutation = useRewriteBusinessPlanSection();
   const credits = useAiCredits();
   const isCostLoading = credits.isLoading;
   const isCostError = credits.isError || (!isCostLoading && credits.data?.costs?.BusinessPlan == null);
@@ -81,16 +94,49 @@ export default function BusinessPlanPage() {
   const forecastOutput = (forecastSession.data as { output?: ForecastOutput } | undefined)?.output ?? null;
   const currentVersion = (session.data as { currentVersion?: number } | undefined)?.currentVersion ?? 0;
 
+  const isStatusProcessing =
+    (session.data as { status?: string } | undefined)?.status?.toLowerCase() === 'processing' ||
+    (session.data as { status?: string } | undefined)?.status?.toLowerCase() === 'pending' ||
+    (session.data as { status?: string } | undefined)?.status?.toLowerCase() === 'queued';
+  const isSessionProcessing = Boolean(bpSessionId && (session.phase === 'polling' || isStatusProcessing));
+  const isGenerating = Boolean(
+    startBp.isPending ||
+    regenerateBp.isPending ||
+    rewriteSectionMutation.isPending ||
+    isSessionProcessing
+  );
+
   useEffect(() => {
-    if (rewriting && currentVersion > rewriting.baseVersion) setRewriting(null);
+    if (rewriting && currentVersion > rewriting.baseVersion) {
+      setRewriting(null);
+    }
   }, [currentVersion, rewriting]);
 
   useEffect(() => {
-    if (rewriting && session.phase === 'terminal' && currentVersion <= rewriting.baseVersion) {
-      setRewriting(null);
-      setStartError({ kind: 'other', message: 'The section rewrite didn’t complete — your plan is unchanged. You can try again.' });
+    if (
+      rewriting &&
+      !rewriting.hasEnteredProcessing &&
+      (session.phase === 'polling' || isStatusProcessing || rewriteSectionMutation.isPending)
+    ) {
+      setRewriting((prev) => (prev ? { ...prev, hasEnteredProcessing: true } : null));
     }
-  }, [session.phase, currentVersion, rewriting]);
+  }, [rewriting, session.phase, isStatusProcessing, rewriteSectionMutation.isPending]);
+
+  useEffect(() => {
+    if (
+      rewriting &&
+      rewriting.hasEnteredProcessing &&
+      session.phase === 'terminal' &&
+      !rewriteSectionMutation.isPending &&
+      currentVersion <= rewriting.baseVersion
+    ) {
+      setRewriting(null);
+      setStartError({
+        kind: 'other',
+        message: 'The section rewrite didn’t complete — your plan is unchanged. You can try again.',
+      });
+    }
+  }, [session.phase, currentVersion, rewriting, rewriteSectionMutation.isPending]);
 
   useEffect(() => {
     let active = true;
@@ -157,10 +203,10 @@ export default function BusinessPlanPage() {
     session.phase === 'terminal' &&
     hasAiOutput((session.data as { status?: import('@/types/creator/ai').AiSessionStatus })?.status) &&
     !!bpOutput;
-  const showDocument = completed || (!!rewriting && !!bpOutput);
+  const showDocument = completed || (!!rewriting && !!bpOutput) || (isGenerating && !!bpOutput);
 
   const bpError = (session.data as { error?: string | null } | undefined)?.error ?? null;
-  const terminalFailed = !!bpSessionId && session.phase === 'terminal' && !completed && !rewriting;
+  const terminalFailed = !!bpSessionId && session.phase === 'terminal' && !completed && !rewriting && !bpOutput && !isGenerating;
   const failedIsProviderBilling = /openrouter error \(402\)/i.test(bpError ?? '');
   const failedIsCredits = !failedIsProviderBilling && /402|credit|insufficient|payment/i.test(bpError ?? '');
 
@@ -229,13 +275,29 @@ export default function BusinessPlanPage() {
     }
   };
 
-  const handleRewrite = async (sectionId: string) => {
-    if (!bpSessionId || rewriting) return;
+  const handleRegenerate = async () => {
+    if (!bpSessionId || isGenerating) return;
     setStartError(null);
-    setRewriting({ sectionId, baseVersion: currentVersion });
     try {
-      await creatorAiApi.rewriteSection(bpSessionId, sectionId);
-      session.retry();
+      await regenerateBp.mutateAsync(bpSessionId);
+    } catch (e) {
+      setStartError(toAiError(e, 'Could not regenerate the business plan.'));
+    }
+  };
+
+  const handleRewrite = async (sectionId: string) => {
+    if (!bpSessionId || rewriting || rewriteSectionMutation.isPending) return;
+    setStartError(null);
+    setRewriting({
+      sectionId,
+      baseVersion: currentVersion,
+      hasEnteredProcessing: false,
+    });
+    try {
+      await rewriteSectionMutation.mutateAsync({
+        businessPlanSessionId: bpSessionId,
+        sectionId,
+      });
     } catch (e) {
       setStartError({ kind: 'other', message: friendlyError(e, 'Rewrite failed.') });
       setRewriting(null);
@@ -248,7 +310,59 @@ export default function BusinessPlanPage() {
     session.retry();
   };
 
-  const handleNext = () => {
+  const handleNext = async (_currentReviewed?: Record<string, boolean>) => {
+    if (bpSessionId && bpOutput) {
+      try {
+        const meta: Record<string, { status?: 'generated' | 'edited' | 'reviewed'; lastEditedAt?: string }> = {
+          ...(bpOutput._sectionMeta ?? {}),
+        };
+        const now = new Date().toISOString();
+        let hasDraftSections = false;
+
+        CHAPTERS_META.forEach((ch) => {
+          const isAlreadyReviewed =
+            meta[ch.num]?.status === 'reviewed' ||
+            meta[ch.id]?.status === 'reviewed' ||
+            (ch.field && meta[ch.field]?.status === 'reviewed');
+
+          if (!isAlreadyReviewed) {
+            hasDraftSections = true;
+            const existingTime =
+              meta[ch.id]?.lastEditedAt ||
+              (ch.field ? meta[ch.field]?.lastEditedAt : undefined) ||
+              meta[ch.num]?.lastEditedAt ||
+              now;
+
+            meta[ch.num] = {
+              status: 'reviewed',
+              lastEditedAt: existingTime,
+            };
+            meta[ch.id] = {
+              status: 'reviewed',
+              lastEditedAt: existingTime,
+            };
+            if (ch.field) {
+              meta[ch.field] = {
+                status: 'reviewed',
+                lastEditedAt: existingTime,
+              };
+            }
+          }
+        });
+
+        if (hasDraftSections) {
+          const updatedPlan: BusinessPlanOutput = {
+            ...bpOutput,
+            _sectionMeta: meta,
+          };
+          await creatorAiApi.editBusinessPlan(bpSessionId, updatedPlan as Record<string, unknown>);
+        }
+      } catch (e) {
+        setStartError(toAiError(e, 'Failed to save reviewed sections.'));
+        return;
+      }
+    }
+
     completeStep(3, 6);
     router.push(withIdeaContext('/dashboard/creator/phase-3/complete', effectiveIdeaId));
   };
@@ -281,7 +395,7 @@ export default function BusinessPlanPage() {
           </div>
         )}
 
-        {!loading && !bpSessionId && (
+        {!loading && !bpSessionId && !isGenerating && (
           <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl mx-auto shadow-sm">
             <h3 className="font-bold text-base font-sans">
               {startError?.kind === 'credits'
@@ -336,16 +450,21 @@ export default function BusinessPlanPage() {
           </Card>
         )}
 
-        {bpSessionId && session.phase === 'polling' && !rewriting && (
-          <div className="space-y-4 max-w-4xl mx-auto py-8">
-            <div className="flex items-center justify-center gap-3 text-sm font-medium text-foreground py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-              Synthesizing 12-chapter executive business plan across market, operations, and financials…
+        {!showDocument && isGenerating && !rewriting && (
+          <Card className="rounded-2xl border border-border bg-card p-12 text-center max-w-2xl mx-auto space-y-6 shadow-sm animate-pulse" role="status" aria-live="polite">
+            <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+              <RotateCw className="w-6 h-6 animate-spin" />
             </div>
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-28 w-full rounded-2xl border border-border bg-card/60 animate-pulse" />
-            ))}
-          </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-foreground font-sans">Synthesizing Executive Business Plan</h3>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto font-sans">
+                Assembling 12-chapter investor-ready plan across market sizing, operations, unit economics, and governance…
+              </p>
+            </div>
+            <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">
+              <div className="h-full bg-primary rounded-full animate-indeterminate" />
+            </div>
+          </Card>
         )}
 
         {bpSessionId && session.phase === 'timedout' && (
@@ -361,7 +480,7 @@ export default function BusinessPlanPage() {
           </div>
         )}
 
-        {bpSessionId && session.isError && session.phase !== 'polling' && (
+        {bpSessionId && session.isError && session.phase !== 'polling' && !showDocument && (
           <div className="flex flex-col items-center gap-3 py-16 text-center max-w-md mx-auto">
             <AlertTriangle className="h-10 w-10 text-destructive" />
             <h3 className="font-bold text-base text-destructive">Unable to load business plan</h3>
@@ -404,6 +523,35 @@ export default function BusinessPlanPage() {
           </Card>
         )}
 
+        {startError && showDocument && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 mb-6 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-destructive font-sans">Regeneration Error</h4>
+              <p className="text-xs text-foreground/80 font-sans">{startError.message}</p>
+            </div>
+          </div>
+        )}
+
+        {showDocument && isGenerating && !rewriting && (
+          <div className="mb-6">
+            <Card className="rounded-2xl border border-border bg-card p-8 text-center max-w-2xl mx-auto space-y-5 shadow-sm animate-pulse" role="status" aria-live="polite">
+              <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <RotateCw className="w-6 h-6 animate-spin" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-base font-semibold text-foreground font-sans">Regenerating Executive Business Plan</h3>
+                <p className="text-xs text-muted-foreground max-w-md mx-auto font-sans">
+                  Updating 12-chapter document with latest verified inputs across financials, market data, and formation…
+                </p>
+              </div>
+              <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">
+                <div className="h-full bg-primary rounded-full animate-indeterminate" />
+              </div>
+            </Card>
+          </div>
+        )}
+
         {showDocument && (
           <BusinessPlanFigmaFlow
             project={project}
@@ -418,6 +566,8 @@ export default function BusinessPlanPage() {
             onRewriteSection={handleRewrite}
             onEditSection={handleEditSection}
             onExportPdf={() => setShowExport(true)}
+            onRegenerate={handleRegenerate}
+            isGenerating={isGenerating}
             onNext={handleNext}
             onBack={() => router.push(withIdeaContext('/dashboard/creator/phase-3/formation', effectiveIdeaId))}
             effectiveIdeaId={effectiveIdeaId}

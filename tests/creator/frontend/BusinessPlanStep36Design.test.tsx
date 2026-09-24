@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import BusinessPlanPage from '@/app/dashboard/creator/phase-3/business-plan/page';
 import { BusinessPlanFigmaFlow } from '@/components/creator/business-plan/BusinessPlanFigmaFlow';
 import * as creatorJourneyApiModule from '@/lib/api-creator-journey';
+import * as creatorAiApiModule from '@/lib/api-creator-ai';
 import * as creatorAiQueries from '@/hooks/queries/creator-ai';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -224,5 +225,168 @@ describe('BusinessPlanPage & BusinessPlanFigmaFlow (Figma Node 57158:10712 Align
     await waitFor(() => {
       expect(screen.getAllByText('Reviewed').length).toBeGreaterThan(0);
     });
+  });
+
+  it('renders "Regenerate Business Plan" in the toolbar', async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BusinessPlanPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Regenerate Business Plan/i })).toBeInTheDocument();
+    });
+  });
+
+  it('does not prematurely show section rewrite error when Rewrite with AI is clicked', async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BusinessPlanPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('01 · Executive Summary')).toBeInTheDocument();
+    });
+
+    const rewriteBtns = screen.getAllByRole('button', { name: /Rewrite with AI/i });
+    expect(rewriteBtns.length).toBeGreaterThan(0);
+
+    fireEvent.click(rewriteBtns[0]);
+
+    // Ensure the premature generic error message is NOT rendered
+    expect(screen.queryByText(/The section rewrite didn’t complete/i)).not.toBeInTheDocument();
+  });
+
+  it('marks all Draft sections as Reviewed, persists them via editBusinessPlan, completes Step 3.6, and navigates with same ideaId', async () => {
+    const editPlanSpy = vi.spyOn(creatorAiApiModule.creatorAiApi, 'editBusinessPlan').mockResolvedValue({
+      sessionId: 'bp-sess-123',
+      currentVersion: 1,
+      status: 'Completed',
+    } as any);
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BusinessPlanPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('01 · Executive Summary')).toBeInTheDocument();
+    });
+
+    const continueBtn = screen.getByRole('button', { name: /Continue to Investor Readiness/i });
+    expect(continueBtn).toBeInTheDocument();
+
+    fireEvent.click(continueBtn);
+
+    await waitFor(() => {
+      expect(editPlanSpy).toHaveBeenCalledTimes(1);
+    });
+
+    const [calledSessionId, calledPlan] = editPlanSpy.mock.calls[0] as [string, any];
+    expect(calledSessionId).toBe('bp-sess-123');
+
+    // Verify all 12 sections are marked reviewed in _sectionMeta
+    expect(calledPlan._sectionMeta).toBeDefined();
+    expect(calledPlan._sectionMeta['01'].status).toBe('reviewed');
+    expect(calledPlan._sectionMeta['12'].status).toBe('reviewed');
+    expect(calledPlan._sectionMeta['executive'].status).toBe('reviewed');
+    expect(calledPlan._sectionMeta['executiveSummary'].status).toBe('reviewed');
+
+    // Verify Business Plan content is completely preserved
+    expect(calledPlan.problemSolution.problem).toBe('Businesses spend excessive time manually organizing incoming invoices.');
+    expect(calledPlan.executiveSummary.overview).toBe('AutoInvoice is a planned subscription platform that helps small businesses organise incoming invoices.');
+
+    // Verify step completion and navigation with same ideaId
+    await waitFor(() => {
+      expect(mockCompleteStep).toHaveBeenCalledWith(3, 6);
+      expect(mockPush).toHaveBeenCalledWith('/dashboard/creator/phase-3/complete?ideaId=idea-123');
+    });
+  });
+
+  it('preserves already Reviewed sections without resetting them', async () => {
+    vi.spyOn(creatorAiQueries, 'useBusinessPlanSessionTimed').mockReturnValue({
+      data: {
+        sessionId: 'bp-sess-123',
+        currentVersion: 1,
+        status: 'Completed',
+        output: {
+          problemSolution: {
+            problem: 'Businesses spend excessive time manually organizing incoming invoices.',
+            solution: 'AutoInvoice streamlines intake, OCR extraction, and reconciliation.',
+          },
+          executiveSummary: {
+            overview: 'AutoInvoice is a planned subscription platform.',
+          },
+          _sectionMeta: {
+            '01': { status: 'reviewed', lastEditedAt: '2026-09-01T12:00:00.000Z' },
+            executive: { status: 'reviewed', lastEditedAt: '2026-09-01T12:00:00.000Z' },
+            executiveSummary: { status: 'reviewed', lastEditedAt: '2026-09-01T12:00:00.000Z' },
+          },
+        },
+      },
+      phase: 'terminal',
+      isError: false,
+      retry: vi.fn(),
+    } as any);
+
+    const editPlanSpy = vi.spyOn(creatorAiApiModule.creatorAiApi, 'editBusinessPlan').mockResolvedValue({
+      sessionId: 'bp-sess-123',
+      currentVersion: 1,
+      status: 'Completed',
+    } as any);
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BusinessPlanPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('01 · Executive Summary')).toBeInTheDocument();
+    });
+
+    const continueBtn = screen.getByRole('button', { name: /Continue to Investor Readiness/i });
+    fireEvent.click(continueBtn);
+
+    await waitFor(() => {
+      expect(editPlanSpy).toHaveBeenCalledTimes(1);
+    });
+
+    const [, calledPlan] = editPlanSpy.mock.calls[0] as [string, any];
+    // Chapter 01 already-reviewed timestamp and status must be preserved
+    expect(calledPlan._sectionMeta['01'].status).toBe('reviewed');
+    expect(calledPlan._sectionMeta['01'].lastEditedAt).toBe('2026-09-01T12:00:00.000Z');
+    // Draft chapters become reviewed
+    expect(calledPlan._sectionMeta['02'].status).toBe('reviewed');
+  });
+
+  it('does not navigate or complete step if review persistence fails', async () => {
+    vi.spyOn(creatorAiApiModule.creatorAiApi, 'editBusinessPlan').mockRejectedValueOnce(
+      new Error('Database network timeout')
+    );
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <BusinessPlanPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('01 · Executive Summary')).toBeInTheDocument();
+    });
+
+    const continueBtn = screen.getByRole('button', { name: /Continue to Investor Readiness/i });
+    fireEvent.click(continueBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Database network timeout|Failed to save reviewed sections/i)).toBeInTheDocument();
+    });
+
+    // Does NOT navigate or complete step on failure
+    expect(mockCompleteStep).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });

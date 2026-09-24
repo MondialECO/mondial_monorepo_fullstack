@@ -940,10 +940,24 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   10. **Operations & Milestones:** 4-stage execution roadmap (*Validate*, *Build*, *Pilot*, *Launch*).
   11. **Risks & Next Steps:** Categorized risk matrix (Regulatory, Adoption, Financial) + 3 prioritized immediate actions.
   12. **Legal & Compliance:** France-first compliance roadmap synced to Step 3.4 Greffe/CNIL statutory requirements.
-- **Zero Static Data Policy:** No fabricated numbers or placeholder text; calculates live totals from project records or defaults gracefully to real parameters.
-- **Universal Inline Editing & AI Rewrites:** All editable chapters support modal text edits and AI rewriting with credit verification.
+- **Universal Inline Editing, AI Rewrites & Full Regeneration:**
+  - All editable chapters support modal text edits (`PATCH /api/ai/business-plan/{sessionId}/section`) and AI rewriting (`POST /api/ai/business-plan/rewrite-section` via `useRewriteBusinessPlanSection` mutation hook).
+  - **Section Rewrite Lifecycle & Race Resolution:** Resolves premature terminal settlement race by waiting for the rewrite mutation to enter its active processing lifecycle (`hasEnteredProcessing: true`) before evaluating terminal state. A rewrite succeeds when `currentVersion > baseVersion`, preserving previous valid content on genuine failure.
+  - Full regeneration endpoint: `POST /api/ai/business-plan/{sessionId}/regenerate` wired to the top header toolbar button (*"Regenerate Business Plan"*), preserving exact button position, size, and styling.
+  - **Generation & Regeneration Loading Canon:** Aligned with Step 3.1 & Step 3.2 canonical presentation (`RotateCw` spinner, indeterminate progress indicator, `role="status"`, `aria-live="polite"`).
+  - **Zero-Blank Regeneration State:** Existing valid Business Plan remains completely visible while regeneration runs with the canonical loading card displayed above it; the new valid plan replaces the previous output only upon successful completion.
+  - **Footer Navigation & Review Status Persistence:** Primary *"Continue to Investor Readiness"* navigation button completes Step 3.6 and navigates to Step 3.7 (`/dashboard/creator/phase-3/complete`) with the same `ideaId`.
+  - **"Continue to Investor Readiness" Review Persistence Lifecycle:**
+    - Lifecycle: Draft sections $\to$ Reviewed $\to$ persisted (`PUT /api/ai/business-plan/{sessionId}`) $\to$ `completeStep(3, 6)` $\to$ navigate to Investor Readiness using same `ideaId`.
+    - **Rules:**
+      - *Only Draft $\to$ Reviewed:* Remaining Draft sections transition to Reviewed automatically before navigation.
+      - *Already Reviewed Preserved:* Sections already marked Reviewed maintain their status and timestamp without reset.
+      - *Content Untouched:* Business Plan section text, manual edits, AI outputs, and ordering remain completely untouched.
+      - *Awaited Persistence:* Persistence must complete successfully before step completion and navigation execute (failure prevents premature navigation and surfaces friendly error).
+      - *Existing Architecture Reused:* Employs existing canonical Business Plan persistence (`_sectionMeta` via `creatorAiApi.editBusinessPlan` / `PUT /api/ai/business-plan/{sessionId}`).
+      - *UI Unchanged:* Button label, position, layout, and visual styling remain 100% frozen.
 - **Credit Costs & Job Types:**
-  - Full Business Plan Synthesis: **25 credits** (`AiJobType.BusinessPlan`).
+  - Full Business Plan Synthesis / Regeneration: **25 credits** (`AiJobType.BusinessPlan`).
   - Single Section Rewrite: **5 credits** (`AiJobType.BusinessPlanSectionRewrite`).
 
 ### 5.7 Step 3.7 — Phase 3 Complete & Investor Readiness Audit (LIVE)
@@ -1050,6 +1064,25 @@ CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
    - AI is strictly advisory, explanatory, and presentational.
 5. **No Premature Global Readiness %:** Global Construction Readiness is owned exclusively by Stage 4.9. Stages 4.1–4.7 track only their own completion status.
 6. **Retirement of Legacy Phase 4:** The legacy `/dashboard/creator/offer-pricing` route, `CreatorPhase4Controller`, and legacy components (`Phase4Pricing`, `Phase4Resource`, `Phase4Gtm`, `Phase4Complete`) are completely retired.
+7. **Phase 3 → Phase 4 Access Gate & HumainX Continuation (`Phase4ProfileGuard`):**
+   - **Canonical Entry Sequence:**
+     1. *Phase 3 Completion:* `state.journeyState.phase3.status === 'completed'` (incomplete $\to$ existing "Phase 3 Must Be Completed First" screen).
+     2. *Quick Start / Core Profile Readiness:* `completeness.phase4Ready` (missing core fields $\to$ Phase 4 Personalization checklist card).
+     3. *Full HumainX Profile Completion:* `completeness.profileCompletion >= 100`.
+        - If `profileCompletion < 100`: seamlessly resumes in existing HumainX Full Profile Builder (`/dashboard/creator/profile`) preserving all previous answers, binding to the same `ideaId`, and setting `returnTo` back to Phase 4 (`/dashboard/creator/phase-4?ideaId=<ideaId>`).
+        - If `profileCompletion >= 100`: unlocks and renders Phase 4 main flow (`ConstructionSnapshotView`).
+   - **Canonical Authorities:**
+     - Phase 3 Completion: `state.journeyState.phase3.status === 'completed'` via `useCreatorProgress()`.
+     - Quick Start / Core Readiness: `completeness.phase4Ready` from `GET /api/profile/me/completeness`.
+     - Full HumainX Completion: `completeness.profileCompletion >= 100` from `GET /api/profile/me/completeness`.
+     - Profile Completeness Backend Authority: `ProfileCompletenessResolver` via `GET /api/profile/me/completeness`.
+     - HumainX Profile SSoT: `ProfessionalProfileRecord` in MongoDB (`ProfessionalProfiles` collection).
+   - **Canonical Phase 4 API Client:**
+     - Phase 4 client (`src/lib/api-creator-phase4.ts`) strictly uses the canonical Axios client (`api` from `@/lib/axios`) with relative endpoints (`/creator/phase4/...`), eliminating manual `NEXT_PUBLIC_API_URL` interpolation and duplicate `/api/api` path risks.
+   - **Important Invariants:**
+     - Phase 3 completion and HumainX profile readiness are strictly separate checks.
+     - `Phase4ProfileGuard` no longer depends on deprecated `GET /api/creator/offer/readiness`.
+     - UI layout, cards, styling, and copy remain completely frozen.
 
 ### 6.1 Stage 4.1 — Construction Snapshot (`ConstructionSnapshotView.tsx`)
 - **Route:** `/dashboard/creator/phase-4`
