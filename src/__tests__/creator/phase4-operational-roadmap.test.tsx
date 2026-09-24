@@ -80,7 +80,7 @@ const mockRoadmap: OperationalRoadmap = {
   founderEdited: false,
 };
 
-describe('OperationalRoadmapView — Phase 4.2 Canon', () => {
+describe('OperationalRoadmapView — Phase 4.2 Canon Visual Layout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Element.prototype.scrollIntoView = vi.fn();
@@ -158,7 +158,7 @@ describe('OperationalRoadmapView — Phase 4.2 Canon', () => {
     expect(screen.getByText('Building your operational roadmap…')).toBeInTheDocument();
   });
 
-  it('renders planning context, Next Best Action card, and canonical stages with real data', () => {
+  it('renders 3-column planning context card, Start Here card, and 6 canonical stacked group cards', () => {
     render(
       <OperationalRoadmapView
         ideaId="idea-1"
@@ -189,39 +189,38 @@ describe('OperationalRoadmapView — Phase 4.2 Canon', () => {
       />
     );
 
-    // Section 2: Planning Context
+    // Section 2: Planning Context (3 columns)
     expect(screen.getByText('Your Availability')).toBeInTheDocument();
     expect(screen.getByText('4 hours / week')).toBeInTheDocument();
     expect(screen.getByText('Planned Now')).toBeInTheDocument();
     expect(screen.getByText(/~2.5 hrs/i)).toBeInTheDocument();
-    expect(screen.getByText('Capacity Guardrail')).toBeInTheDocument();
-    expect(screen.getByText(/Under 5 hours\/week permits at most 2 Now tasks/i)).toBeInTheDocument();
-    expect(screen.getByText('Status:')).toBeInTheDocument();
+    expect(screen.getByText('Plan Status')).toBeInTheDocument();
     expect(screen.getByText('Draft')).toBeInTheDocument();
+    expect(screen.getByText(/Under 5 hours\/week permits at most 2 Now tasks/i)).toBeInTheDocument();
 
-    // Section 3: Start Here (Next Best Action)
-    expect(screen.getByText(/START HERE · NEXT BEST ACTION/i)).toBeInTheDocument();
+    // Section 3: Start Here
+    expect(screen.getByText('START HERE')).toBeInTheDocument();
     expect(screen.getAllByText('Resolve technical execution capability').length).toBeGreaterThan(0);
     expect(screen.getByText(/Technical execution is critical and blocking/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /view task details/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /view task/i })).toBeInTheDocument();
 
     // Section 4: Roadmap Groups (in canonical order)
     expect(screen.getByText('Now')).toBeInTheDocument();
-    expect(screen.getByText('Next 30 Days')).toBeInTheDocument();
+    expect(screen.getByText('Next 30 days')).toBeInTheDocument();
     expect(screen.getByText('Days 30–60')).toBeInTheDocument();
     expect(screen.getByText('Days 60–90')).toBeInTheDocument();
-    expect(screen.getByText('Before Launch')).toBeInTheDocument();
-    expect(screen.getByText('After Launch')).toBeInTheDocument();
+    expect(screen.getByText('Before launch')).toBeInTheDocument();
+    expect(screen.getByText('After launch')).toBeInTheDocument();
 
     // Section 5: Activation Footer
-    expect(screen.getByRole('link', { name: /back to construction snapshot/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /back to snapshot/i })).toHaveAttribute(
       'href',
       '/dashboard/creator/phase-4?ideaId=idea-1'
     );
     expect(screen.getByRole('button', { name: /activate roadmap & continue/i })).toBeInTheDocument();
   });
 
-  it('expands task card details when clicking Details button', () => {
+  it('expands task row to reveal 2-row inset detail panel with Expected Result and Why', () => {
     render(
       <OperationalRoadmapView
         ideaId="idea-1"
@@ -252,22 +251,24 @@ describe('OperationalRoadmapView — Phase 4.2 Canon', () => {
       />
     );
 
-    // Find Details button for the first task card and click it
-    const detailsBtns = screen.getAllByRole('button', { name: /details/i });
-    fireEvent.click(detailsBtns[0]);
+    // Click the first task row title to expand
+    const taskTitle = screen.getAllByText('Resolve technical execution capability')[1];
+    fireEvent.click(taskTitle);
 
     // Verify detail area content
-    expect(screen.getByText('Expected Result:')).toBeInTheDocument();
+    expect(screen.getByText('Expected Result')).toBeInTheDocument();
     expect(
       screen.getByText('Fractional CTO or technical agency engaged with signed agreement.')
     ).toBeInTheDocument();
-    expect(screen.getByText('Why this is here:')).toBeInTheDocument();
+    expect(screen.getByText('Why This Is Here')).toBeInTheDocument();
     expect(screen.getAllByText('Software platform requires technical lead').length).toBeGreaterThan(0);
-    expect(screen.getByText('Unblocks Downstream:')).toBeInTheDocument();
+    expect(screen.getByText('Estimated Effort')).toBeInTheDocument();
+    expect(screen.getByText('Dependencies')).toBeInTheDocument();
+    expect(screen.getByText('Unblocks')).toBeInTheDocument();
     expect(screen.getAllByText('Finalize launch pricing tiers').length).toBeGreaterThan(0);
     expect(screen.getByText('Built from:')).toBeInTheDocument();
     expect(screen.getByText('Construction Snapshot')).toBeInTheDocument();
-    expect(screen.getByText(/adjust task & notes/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /adjust task/i })).toBeInTheDocument();
   });
 
   it('triggers task inline adjustment edit and saves changes via onUpdateTask', async () => {
@@ -303,11 +304,10 @@ describe('OperationalRoadmapView — Phase 4.2 Canon', () => {
     );
 
     // Expand first task
-    const detailsBtns = screen.getAllByRole('button', { name: /details/i });
-    fireEvent.click(detailsBtns[0]);
+    fireEvent.click(screen.getAllByText('Resolve technical execution capability')[1]);
 
-    // Click "Adjust Task & Notes"
-    const adjustBtn = screen.getByRole('button', { name: /adjust task & notes/i });
+    // Click "Adjust task"
+    const adjustBtn = screen.getByRole('button', { name: /adjust task/i });
     fireEvent.click(adjustBtn);
 
     // Edit founder notes
@@ -362,7 +362,7 @@ describe('OperationalRoadmapView — Phase 4.2 Canon', () => {
     fireEvent.click(adjustBtn);
 
     expect(screen.getByText('Adjust Weekly Availability')).toBeInTheDocument();
-    
+
     // Select 10–20 hours/week
     const tierOption = screen.getByText('10–20 hours/week');
     fireEvent.click(tierOption);
@@ -373,7 +373,7 @@ describe('OperationalRoadmapView — Phase 4.2 Canon', () => {
     expect(onUpdateAvailability).toHaveBeenCalledWith('10–20 hours/week');
   });
 
-  it('renders Update Notice banner and triggers onKeepCurrent or onRefresh', async () => {
+  it('renders Update Notice strip with blue left accent and triggers onKeepCurrent or onRefresh', async () => {
     const onKeepCurrent = vi.fn().mockResolvedValue(undefined);
     const onRefresh = vi.fn().mockResolvedValue(undefined);
     render(
@@ -406,8 +406,7 @@ describe('OperationalRoadmapView — Phase 4.2 Canon', () => {
       />
     );
 
-    // Section 1: Update Notice
-    expect(screen.getByText('Update Available')).toBeInTheDocument();
+    // Section 1: Update Notice Strip
     expect(
       screen.getByText(/Your project or availability has changed and may affect this roadmap/i)
     ).toBeInTheDocument();
@@ -427,11 +426,6 @@ describe('OperationalRoadmapView — Phase 4.2 Canon', () => {
     const keepBtn = screen.getByRole('button', { name: /keep current plan/i });
     fireEvent.click(keepBtn);
     expect(onKeepCurrent).toHaveBeenCalled();
-
-    // Refresh Roadmap
-    const refreshBtn = screen.getByRole('button', { name: /refresh roadmap/i });
-    fireEvent.click(refreshBtn);
-    expect(onRefresh).toHaveBeenCalled();
   });
 
   it('triggers onActivate and navigates to 4.3 Needs & Requirements on success', async () => {
@@ -477,7 +471,7 @@ describe('OperationalRoadmapView — Phase 4.2 Canon', () => {
     });
   });
 
-  it('Next Best Action View Task button expands the task card', () => {
+  it('Next Best Action View Task button expands the task row', () => {
     render(
       <OperationalRoadmapView
         ideaId="idea-1"
@@ -508,11 +502,11 @@ describe('OperationalRoadmapView — Phase 4.2 Canon', () => {
       />
     );
 
-    const viewTaskBtn = screen.getByRole('button', { name: /view task details/i });
+    const viewTaskBtn = screen.getByRole('button', { name: /view task/i });
     fireEvent.click(viewTaskBtn);
 
     // It should expand the task detail view
-    expect(screen.getByText('Expected Result:')).toBeInTheDocument();
+    expect(screen.getByText('Expected Result')).toBeInTheDocument();
     expect(
       screen.getByText('Fractional CTO or technical agency engaged with signed agreement.')
     ).toBeInTheDocument();

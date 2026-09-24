@@ -212,9 +212,9 @@ function RoadmapPageContent({ ideaId }: { ideaId: string }) {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8 animate-fadeIn">
+    <div className="w-full max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 animate-fadeIn">
       {/* Compact Page Header (Aligned with 4.1 Canon) */}
-      <div className="mb-6 space-y-1">
+      <div className="space-y-1">
         <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
           PHASE 4 · STEP 4.2
         </div>
