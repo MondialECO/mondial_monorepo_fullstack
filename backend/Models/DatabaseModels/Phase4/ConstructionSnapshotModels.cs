@@ -115,5 +115,6 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public int MissingCount { get; set; }
         public int CriticalCount { get; set; }
         public int OptionalCount { get; set; }
+        public long IdeaVersion { get; set; }
     }
 }

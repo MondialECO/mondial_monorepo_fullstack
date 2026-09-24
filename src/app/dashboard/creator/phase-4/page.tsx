@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useTransition, Suspense } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Phase4ProfileGuard } from '@/components/creator/phase4/Phase4ProfileGuard';
 import { ConstructionSnapshotView } from '@/components/creator/phase4/ConstructionSnapshotView';
+import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { 
   getConstructionSnapshot, 
   generateConstructionSnapshot, 
@@ -13,7 +14,7 @@ import { ConstructionSnapshot, ConstructionSnapshotResponse } from '@/types/crea
 
 export default function CreatorPhase4Page() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">Loading Construction Snapshot...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading Construction Snapshot...</div>}>
       <CreatorPhase4Inner />
     </Suspense>
   );
@@ -21,7 +22,8 @@ export default function CreatorPhase4Page() {
 
 function CreatorPhase4Inner() {
   const searchParams = useSearchParams();
-  const ideaId = searchParams.get('ideaId') || '';
+  const { state: progressState } = useCreatorProgress();
+  const ideaId = searchParams.get('ideaId') || progressState?.activeIdeaId || '';
 
   return (
     <Phase4ProfileGuard>
@@ -31,19 +33,26 @@ function CreatorPhase4Inner() {
 }
 
 function Phase4Content({ ideaId }: { ideaId: string }) {
+  const { state: progressState, refetch } = useCreatorProgress();
   const [snapshot, setSnapshot] = useState<ConstructionSnapshot | null>(null);
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
   const [changedSources, setChangedSources] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [projectName, setProjectName] = useState<string>('Your Project');
+
+  const effectiveIdeaId = ideaId || progressState?.activeIdeaId || '';
+  const projectName = progressState?.project?.name || 'Your Project';
 
   const loadSnapshot = useCallback(async () => {
+    if (!effectiveIdeaId) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
-      const res: ConstructionSnapshotResponse = await getConstructionSnapshot(ideaId);
+      const res: ConstructionSnapshotResponse = await getConstructionSnapshot(effectiveIdeaId);
       if (res.snapshot) {
         setSnapshot(res.snapshot);
       } else {
@@ -53,94 +62,100 @@ function Phase4Content({ ideaId }: { ideaId: string }) {
       setChangedSources(res.changedSources || []);
     } catch (err: any) {
       console.warn('Could not load construction snapshot:', err);
-      // Empty/not generated snapshot might 404 or return empty, which is valid empty state
       setSnapshot(null);
     } finally {
       setIsLoading(false);
     }
-  }, [ideaId]);
+  }, [effectiveIdeaId]);
 
   useEffect(() => {
     loadSnapshot();
   }, [loadSnapshot]);
 
   const handleGenerate = async () => {
+    if (!effectiveIdeaId) {
+      setError('ideaId is required for Creator changes. Please open your project from the dashboard.');
+      return;
+    }
     setIsGenerating(true);
     setError(null);
     try {
-      const res = await generateConstructionSnapshot(ideaId);
+      const res = await generateConstructionSnapshot(effectiveIdeaId);
       if (res.snapshot) {
         setSnapshot(res.snapshot);
       }
       setUpdateAvailable(res.updateAvailable || false);
       setChangedSources(res.changedSources || []);
     } catch (err: any) {
-      setError(err.message || 'Failed to generate construction snapshot.');
+      if (err?.response?.status === 409) {
+        await loadSnapshot();
+        await refetch(effectiveIdeaId);
+        setError('This idea was updated in another tab. We loaded the latest project version for you. Please try again.');
+      } else {
+        const message = err.response?.data?.message || err.message || 'Failed to generate construction snapshot.';
+        setError(message);
+      }
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleRefresh = async () => {
+    if (!effectiveIdeaId) {
+      setError('ideaId is required for Creator changes. Please open your project from the dashboard.');
+      return;
+    }
     setIsGenerating(true);
     setError(null);
     try {
-      const res = await refreshConstructionSnapshot(ideaId);
+      const res = await refreshConstructionSnapshot(effectiveIdeaId);
       if (res.snapshot) {
         setSnapshot(res.snapshot);
       }
       setUpdateAvailable(false);
       setChangedSources([]);
     } catch (err: any) {
-      setError(err.message || 'Failed to refresh construction snapshot.');
+      if (err?.response?.status === 409) {
+        await loadSnapshot();
+        await refetch(effectiveIdeaId);
+        setError('This idea was updated in another tab. We loaded the latest project version for you. Please try again.');
+      } else {
+        const message = err.response?.data?.message || err.message || 'Failed to refresh construction snapshot.';
+        setError(message);
+      }
     } finally {
       setIsGenerating(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
-      <div className="max-w-6xl mx-auto space-y-10">
-        {/* Canonical Phase 4 Header */}
-        <div className="space-y-3 pb-8 border-b border-slate-800">
-          <div className="text-xs uppercase font-bold tracking-widest text-emerald-400">
-            PHASE 4 · CONSTRUCTION & LAUNCH PREPARATION
-          </div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-            Turn your business plan into an action plan.
-          </h1>
-          <p className="text-slate-400 text-sm md:text-base max-w-3xl leading-relaxed">
-            MBC combines your business intelligence with your skills, situation and resources to help you understand what is ready, what is missing and what needs attention next.
-          </p>
+    <div className="w-full max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8 animate-fadeIn">
+      {/* Compact Page Header */}
+      <div className="mb-6 space-y-1">
+        <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+          PHASE 4 · STEP 4.1
         </div>
-
-        {/* Canonical Step 4.1 Header */}
-        <div className="space-y-2">
-          <div className="text-xs uppercase font-semibold tracking-wider text-slate-400">
-            STEP 4.1 · CONSTRUCTION SNAPSHOT
-          </div>
-          <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
-            See what is ready — and what is still missing.
-          </h2>
-          <p className="text-slate-400 text-sm max-w-2xl">
-            MBC reviews your project, business plan and professional profile to build a complete construction snapshot.
-          </p>
-        </div>
-
-        {/* Construction Snapshot Main View */}
-        <ConstructionSnapshotView
-          ideaId={ideaId}
-          projectName={projectName}
-          snapshot={snapshot}
-          updateAvailable={updateAvailable}
-          changedSources={changedSources}
-          isLoading={isLoading}
-          isGenerating={isGenerating}
-          error={error}
-          onGenerate={handleGenerate}
-          onRefresh={handleRefresh}
-        />
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+          Construction Snapshot
+        </h1>
+        <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+          See what’s ready, what needs attention, and where to go next.
+        </p>
       </div>
+
+      {/* Construction Snapshot Content */}
+      <ConstructionSnapshotView
+        ideaId={effectiveIdeaId}
+        projectName={projectName}
+        snapshot={snapshot}
+        updateAvailable={updateAvailable}
+        changedSources={changedSources}
+        isLoading={isLoading}
+        isGenerating={isGenerating}
+        error={error}
+        onGenerate={handleGenerate}
+        onRefresh={handleRefresh}
+      />
     </div>
   );
 }

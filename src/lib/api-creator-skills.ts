@@ -1,65 +1,47 @@
+import api from '@/lib/axios';
 import type {
   SkillsPlanResponse,
   UpdateResolutionRequest,
 } from '@/types/creator/skills';
 
-function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+export interface ApiEnvelope<T> {
+  success?: boolean;
+  message?: string;
+  data: T;
+  traceId?: string | null;
 }
 
-export async function getSkillsPlan(ideaId: string): Promise<SkillsPlanResponse> {
-  const res = await fetch(`/api/creator/phase4/skills-plan?ideaId=${encodeURIComponent(ideaId)}`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to fetch skills plan (${res.status})`);
+const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
+  if (body && typeof body === 'object' && 'data' in (body as ApiEnvelope<T>)) {
+    return (body as ApiEnvelope<T>).data;
   }
+  return body as T;
+};
 
-  const json = await res.json();
-  return json.data || json;
+export async function getSkillsPlan(ideaId: string): Promise<SkillsPlanResponse> {
+  const res = await api.get<ApiEnvelope<SkillsPlanResponse> | SkillsPlanResponse>(
+    '/creator/phase4/skills-plan',
+    {
+      params: { ideaId },
+    }
+  );
+  return unwrap(res.data);
 }
 
 export async function generateSkillsPlan(ideaId: string): Promise<SkillsPlanResponse> {
-  const res = await fetch('/api/creator/phase4/skills-plan/generate', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const err: any = new Error(data.message || `Failed to generate skills plan (${res.status})`);
-    if (data.code) err.code = data.code;
-    throw err;
-  }
-
-  const json = await res.json();
-  return json.data || json;
+  const res = await api.post<ApiEnvelope<SkillsPlanResponse> | SkillsPlanResponse>(
+    '/creator/phase4/skills-plan/generate',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
 
 export async function refreshSkillsPlan(ideaId: string): Promise<SkillsPlanResponse> {
-  const res = await fetch('/api/creator/phase4/skills-plan/refresh', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const err: any = new Error(data.message || `Failed to refresh skills plan (${res.status})`);
-    if (data.code) err.code = data.code;
-    throw err;
-  }
-
-  const json = await res.json();
-  return json.data || json;
+  const res = await api.post<ApiEnvelope<SkillsPlanResponse> | SkillsPlanResponse>(
+    '/creator/phase4/skills-plan/refresh',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
 
 export async function updateResolution(
@@ -67,22 +49,13 @@ export async function updateResolution(
   resolutionKey: string,
   req: UpdateResolutionRequest
 ): Promise<SkillsPlanResponse> {
-  const res = await fetch(
-    `/api/creator/phase4/skills-plan/${encodeURIComponent(resolutionKey)}?ideaId=${encodeURIComponent(ideaId)}`,
+  const res = await api.patch<ApiEnvelope<SkillsPlanResponse> | SkillsPlanResponse>(
+    `/creator/phase4/skills-plan/${encodeURIComponent(resolutionKey)}`,
+    { ...req, ideaId },
     {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ ...req, ideaId }),
+      params: { ideaId },
     }
   );
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const err: any = new Error(data.message || `Failed to update resolution (${res.status})`);
-    if (data.code) err.code = data.code;
-    throw err;
-  }
-
-  const json = await res.json();
-  return json.data || json;
+  return unwrap(res.data);
 }
+

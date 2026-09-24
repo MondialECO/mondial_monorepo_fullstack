@@ -12,7 +12,7 @@ const mockItems: ConstructionSnapshotItem[] = [
     status: 'Critical',
     priority: 'Critical',
     reason: 'Software product requires technical execution before build.',
-    source: ['Business Plan'],
+    source: ['Business Plan', 'Professional Profile'],
     sourceReference: [],
     recommendedNextStep: 'Find technical partner or development team.',
     blocking: true,
@@ -82,7 +82,23 @@ const mockSnapshot: ConstructionSnapshot = {
   missingItems: [mockItems[3]],
   criticalItems: [mockItems[0]],
   optionalItems: [mockItems[4]],
-  categories: ['Technology', 'Market', 'Skills', 'Services', 'Legal & Administration'],
+  categories: [
+    'Business Foundation',
+    'Brand',
+    'Market',
+    'Business Model',
+    'Finance',
+    'Legal & Administration',
+    'Team',
+    'Skills',
+    'Services',
+    'Technology',
+    'Funding',
+    'Pricing',
+    'Go-to-Market',
+    'Launch Assets',
+    'Operations',
+  ],
   sourceReferences: {},
   founderEdited: false,
 };
@@ -128,7 +144,7 @@ describe('ConstructionSnapshotView', () => {
     expect(screen.getByText(/MBC is combining your business plan/i)).toBeDefined();
   });
 
-  it('renders counts in Hero without any percentage score', () => {
+  it('renders Status Summary 5-column counts and scope sub-strip without any percentage score', () => {
     render(
       <ConstructionSnapshotView
         projectName="Test Enterprise"
@@ -143,13 +159,22 @@ describe('ConstructionSnapshotView', () => {
       />
     );
 
-    expect(screen.getByText('Test Enterprise')).toBeDefined();
-    expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(4); // 4 category boxes
+    expect(screen.getByText(/TEST ENTERPRISE · SCOPE V1/i)).toBeDefined();
+    expect(screen.getByText('Includes items needing review')).toBeDefined();
+    expect(screen.getByText(/requirements identified from your project and Creator profile/i)).toBeDefined();
+    
+    // Status column labels
+    expect(screen.getAllByText('Ready').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Partial').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Missing').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Critical').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Optional').length).toBeGreaterThanOrEqual(1);
+
     // Confirm no fake percentage appears
     expect(screen.queryByText(/%/)).toBeNull();
   });
 
-  it('renders canonical UI sections with Critical Attention first and NeedsReview under Partially Ready', () => {
+  it('renders Critical item highlight attention strip when criticalItems exist', () => {
     render(
       <ConstructionSnapshotView
         snapshot={mockSnapshot}
@@ -163,20 +188,77 @@ describe('ConstructionSnapshotView', () => {
       />
     );
 
-    // Section headings by role or getAllByText
-    expect(screen.getByRole('heading', { level: 2, name: 'Critical Attention' })).toBeDefined();
-    expect(screen.getByRole('heading', { level: 2, name: 'Ready' })).toBeDefined();
-    expect(screen.getByRole('heading', { level: 2, name: 'Partially Ready' })).toBeDefined();
-    expect(screen.getByRole('heading', { level: 2, name: 'Missing' })).toBeDefined();
-    expect(screen.getByRole('heading', { level: 2, name: 'Optional' })).toBeDefined();
+    expect(screen.getByText('Critical item identified')).toBeDefined();
+    expect(screen.getAllByText('Full-Stack Technical Execution').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Detailed under Technology category below/i)).toBeDefined();
+  });
 
-    // NeedsReview badge is visible inside Partially Ready
-    expect(screen.getByText('Needs Review')).toBeDefined();
+  it('renders all 15 canonical categories with expandable/collapsible interaction', () => {
+    render(
+      <ConstructionSnapshotView
+        snapshot={mockSnapshot}
+        updateAvailable={false}
+        changedSources={[]}
+        isLoading={false}
+        isGenerating={false}
+        error={null}
+        onGenerate={vi.fn()}
+        onRefresh={vi.fn()}
+      />
+    );
+
+    // Verify presence of canonical categories
+    expect(screen.getByText('Business Foundation')).toBeDefined();
+    expect(screen.getByText('Brand')).toBeDefined();
+    expect(screen.getByText('Market')).toBeDefined();
+    expect(screen.getByText('Business Model')).toBeDefined();
+    expect(screen.getByText('Finance')).toBeDefined();
+    expect(screen.getByText('Legal & Administration')).toBeDefined();
+    expect(screen.getByText('Team')).toBeDefined();
+    expect(screen.getByText('Skills')).toBeDefined();
+    expect(screen.getByText('Services')).toBeDefined();
+    expect(screen.getByText('Technology')).toBeDefined();
+    expect(screen.getByText('Funding')).toBeDefined();
+    expect(screen.getByText('Pricing')).toBeDefined();
+    expect(screen.getByText('Go-to-Market')).toBeDefined();
+    expect(screen.getByText('Launch Assets')).toBeDefined();
+    expect(screen.getByText('Operations')).toBeDefined();
+
+    // Items within categories
+    expect(screen.getByText('Market Problem & Customer Definition')).toBeDefined();
     expect(screen.getByText('React Capability Review')).toBeDefined();
+    expect(screen.getByText('Accounting Support')).toBeDefined();
+    expect(screen.getByText('Trademark Registration')).toBeDefined();
 
-    // Blocking badge on critical item
+    // Badges
+    expect(screen.getByText('Needs Review')).toBeDefined();
     expect(screen.getByText('Blocking')).toBeDefined();
-    expect(screen.getByText('Full-Stack Technical Execution')).toBeDefined();
+  });
+
+  it('renders 3-column diagnostic breakdown and Provenance source footer for expanded items', () => {
+    render(
+      <ConstructionSnapshotView
+        ideaId="idea_123"
+        snapshot={mockSnapshot}
+        updateAvailable={false}
+        changedSources={[]}
+        isLoading={false}
+        isGenerating={false}
+        error={null}
+        onGenerate={vi.fn()}
+        onRefresh={vi.fn()}
+      />
+    );
+
+    // Click on Market item row to expand it
+    const marketItem = screen.getByText('Market Problem & Customer Definition');
+    fireEvent.click(marketItem);
+
+    expect(screen.getAllByText('WHAT IS NEEDED').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('WHAT WE KNOW').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('WHY THIS MATTERS').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Built from').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('View source').length).toBeGreaterThan(0);
   });
 
   it('renders Stale banner when updateAvailable is true with Refresh and Keep Current Version actions', () => {
@@ -197,11 +279,11 @@ describe('ConstructionSnapshotView', () => {
       />
     );
 
-    expect(screen.getByText('Update Available')).toBeDefined();
-    expect(screen.getByText('• Professional Profile')).toBeDefined();
-    expect(screen.getByText('• Financial Forecast')).toBeDefined();
+    expect(screen.getByText(/Update available · Changes to your project information may affect this snapshot/i)).toBeDefined();
+    expect(screen.getAllByText('Professional Profile').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Financial Forecast').length).toBeGreaterThanOrEqual(1);
 
-    const refreshBtn = screen.getByRole('button', { name: /refresh snapshot/i });
+    const refreshBtn = screen.getByRole('button', { name: /review changes/i });
     fireEvent.click(refreshBtn);
     expect(onRefresh).toHaveBeenCalledTimes(1);
 
@@ -210,9 +292,10 @@ describe('ConstructionSnapshotView', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
-  it('renders Build My Roadmap CTA as disabled with Coming Next tag', () => {
+  it('renders Quiet Journey Footer with Back and Continue to Roadmap links', () => {
     render(
       <ConstructionSnapshotView
+        ideaId="idea_456"
         snapshot={mockSnapshot}
         updateAvailable={false}
         changedSources={[]}
@@ -224,8 +307,84 @@ describe('ConstructionSnapshotView', () => {
       />
     );
 
-    const roadmapLink = screen.getByRole('link', { name: /build my roadmap/i });
+    const backLink = screen.getByRole('link', { name: /back/i });
+    expect(backLink).toBeDefined();
+    expect(backLink.getAttribute('href')).toContain('/dashboard/creator/phase-3?ideaId=idea_456');
+
+    const roadmapLink = screen.getByRole('link', { name: /continue to roadmap/i });
     expect(roadmapLink).toBeDefined();
-    expect(roadmapLink.getAttribute('href')).toContain('/dashboard/creator/phase-4/roadmap');
+    expect(roadmapLink.getAttribute('href')).toContain('/dashboard/creator/phase-4/roadmap?ideaId=idea_456');
+  });
+
+  it('renders genuine API error message and retry button without mock fallback', () => {
+    const onGenerate = vi.fn();
+    render(
+      <ConstructionSnapshotView
+        snapshot={null}
+        updateAvailable={false}
+        changedSources={[]}
+        isLoading={false}
+        isGenerating={false}
+        error="ideaId is required for Creator changes."
+        onGenerate={onGenerate}
+        onRefresh={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("We couldn't build your construction snapshot.")).toBeDefined();
+    expect(screen.getByText(/ideaId is required for Creator changes\./i)).toBeDefined();
+    const retryBtn = screen.getByRole('button', { name: /try again/i });
+    expect(retryBtn).toBeDefined();
+    fireEvent.click(retryBtn);
+    expect(onGenerate).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('api-creator-phase4 client contract', () => {
+  it('validates ideaId on getConstructionSnapshot, generateConstructionSnapshot and refreshConstructionSnapshot', async () => {
+    const { getConstructionSnapshot, generateConstructionSnapshot, refreshConstructionSnapshot } = await import('@/lib/api-creator-phase4');
+    
+    await expect(getConstructionSnapshot('')).rejects.toThrow('ideaId is required');
+    await expect(getConstructionSnapshot('   ')).rejects.toThrow('ideaId is required');
+    await expect(generateConstructionSnapshot('')).rejects.toThrow('ideaId is required');
+    await expect(generateConstructionSnapshot('   ')).rejects.toThrow('ideaId is required');
+    await expect(refreshConstructionSnapshot('')).rejects.toThrow('ideaId is required');
+    await expect(refreshConstructionSnapshot('   ')).rejects.toThrow('ideaId is required');
+  });
+
+  it('passes ideaId and expectedVersion in both params and body and tracks version progression', async () => {
+    const apiModule = await import('@/lib/axios');
+    const postSpy = vi.spyOn(apiModule.default, 'post').mockResolvedValueOnce({
+      data: { data: { snapshot: { status: 'Completed' }, ideaVersion: 2 } },
+      headers: { 'x-creator-idea-version': '2' }
+    } as any).mockResolvedValueOnce({
+      data: { data: { snapshot: { status: 'Completed' }, ideaVersion: 3 } },
+      headers: { 'x-creator-idea-version': '3' }
+    } as any);
+
+    const { generateConstructionSnapshot, refreshConstructionSnapshot } = await import('@/lib/api-creator-phase4');
+    
+    // First mutation: Generate with explicit or resolved expectedVersion=1
+    const genRes = await generateConstructionSnapshot('idea_real_123', 1);
+    expect(postSpy).toHaveBeenNthCalledWith(
+      1,
+      '/creator/phase4/construction-snapshot/generate',
+      { ideaId: 'idea_real_123', expectedVersion: 1 },
+      { params: { ideaId: 'idea_real_123', expectedVersion: 1 } }
+    );
+    expect(genRes.ideaVersion).toBe(2);
+
+    // Second mutation: Refresh using stored next version=2
+    const refRes = await refreshConstructionSnapshot('idea_real_123');
+    expect(postSpy).toHaveBeenNthCalledWith(
+      2,
+      '/creator/phase4/construction-snapshot/refresh',
+      { ideaId: 'idea_real_123', expectedVersion: 2 },
+      { params: { ideaId: 'idea_real_123', expectedVersion: 2 } }
+    );
+    expect(refRes.ideaVersion).toBe(3);
+  });
+});
+
+
+

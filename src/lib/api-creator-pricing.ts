@@ -1,65 +1,47 @@
+import api from '@/lib/axios';
 import type {
   PricingStrategyResponse,
   UpdatePricingOfferRequest,
 } from '@/types/creator/pricing';
 
-function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+export interface ApiEnvelope<T> {
+  success?: boolean;
+  message?: string;
+  data: T;
+  traceId?: string | null;
 }
 
-export async function getPricingStrategy(ideaId: string): Promise<PricingStrategyResponse> {
-  const res = await fetch(`/api/creator/phase4/pricing?ideaId=${encodeURIComponent(ideaId)}`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to fetch pricing strategy (${res.status})`);
+const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
+  if (body && typeof body === 'object' && 'data' in (body as ApiEnvelope<T>)) {
+    return (body as ApiEnvelope<T>).data;
   }
+  return body as T;
+};
 
-  const json = await res.json();
-  return json.data || json;
+export async function getPricingStrategy(ideaId: string): Promise<PricingStrategyResponse> {
+  const res = await api.get<ApiEnvelope<PricingStrategyResponse> | PricingStrategyResponse>(
+    '/creator/phase4/pricing',
+    {
+      params: { ideaId },
+    }
+  );
+  return unwrap(res.data);
 }
 
 export async function generatePricingStrategy(ideaId: string): Promise<PricingStrategyResponse> {
-  const res = await fetch('/api/creator/phase4/pricing/generate', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const err: any = new Error(data.message || `Failed to generate pricing strategy (${res.status})`);
-    if (data.code) err.code = data.code;
-    throw err;
-  }
-
-  const json = await res.json();
-  return json.data || json;
+  const res = await api.post<ApiEnvelope<PricingStrategyResponse> | PricingStrategyResponse>(
+    '/creator/phase4/pricing/generate',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
 
 export async function refreshPricingStrategy(ideaId: string): Promise<PricingStrategyResponse> {
-  const res = await fetch('/api/creator/phase4/pricing/refresh', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const err: any = new Error(data.message || `Failed to refresh pricing strategy (${res.status})`);
-    if (data.code) err.code = data.code;
-    throw err;
-  }
-
-  const json = await res.json();
-  return json.data || json;
+  const res = await api.post<ApiEnvelope<PricingStrategyResponse> | PricingStrategyResponse>(
+    '/creator/phase4/pricing/refresh',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
 
 export async function updatePricingOffer(
@@ -67,20 +49,12 @@ export async function updatePricingOffer(
   offerKey: string,
   req: UpdatePricingOfferRequest
 ): Promise<PricingStrategyResponse> {
-  const res = await fetch(
-    `/api/creator/phase4/pricing/${encodeURIComponent(offerKey)}?ideaId=${encodeURIComponent(ideaId)}`,
+  const res = await api.patch<ApiEnvelope<PricingStrategyResponse> | PricingStrategyResponse>(
+    `/creator/phase4/pricing/${encodeURIComponent(offerKey)}`,
+    { ...req, ideaId },
     {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(req),
+      params: { ideaId },
     }
   );
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to update pricing offer (${res.status})`);
-  }
-
-  const json = await res.json();
-  return json.data || json;
+  return unwrap(res.data);
 }

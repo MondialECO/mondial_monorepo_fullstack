@@ -2,8 +2,10 @@ using System;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebApp.Models;
+using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
 
 namespace WebApp.Controllers
@@ -55,67 +57,153 @@ namespace WebApp.Controllers
             {
                 var userId = GetUserId();
                 var result = await _snapshotService.GetSnapshotAsync(userId, ideaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("Construction snapshot retrieved", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
 
         // POST /api/creator/phase4/construction-snapshot/generate
         [HttpPost("construction-snapshot/generate")]
-        public async Task<IActionResult> GenerateSnapshot([FromBody] GenerateSnapshotRequest? request)
+        public async Task<IActionResult> GenerateSnapshot(
+            [FromBody] GenerateSnapshotRequest? request,
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null)
         {
             try
             {
+                if (!string.IsNullOrWhiteSpace(request?.IdeaId) && !string.IsNullOrWhiteSpace(ideaId) && !string.Equals(request.IdeaId.Trim(), ideaId.Trim(), StringComparison.Ordinal))
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting ideaId provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedIdeaId = !string.IsNullOrWhiteSpace(request?.IdeaId) ? request.IdeaId.Trim() : ideaId?.Trim();
+                if (string.IsNullOrWhiteSpace(resolvedIdeaId))
+                {
+                    return BadRequest(ApiResponse.Error("ideaId is required for Creator changes.", HttpContext.TraceIdentifier));
+                }
+
+                if (expectedVersion.HasValue && request?.ExpectedVersion.HasValue == true && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request?.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+
                 var userId = GetUserId();
-                var result = await _snapshotService.GenerateSnapshotAsync(userId, request?.IdeaId);
+                var result = await _snapshotService.GenerateSnapshotAsync(userId, resolvedIdeaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("Construction snapshot generated", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
 
         // POST /api/creator/phase4/construction-snapshot/refresh
         [HttpPost("construction-snapshot/refresh")]
-        public async Task<IActionResult> RefreshSnapshot([FromBody] GenerateSnapshotRequest? request)
+        public async Task<IActionResult> RefreshSnapshot(
+            [FromBody] GenerateSnapshotRequest? request,
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null)
         {
             try
             {
+                if (!string.IsNullOrWhiteSpace(request?.IdeaId) && !string.IsNullOrWhiteSpace(ideaId) && !string.Equals(request.IdeaId.Trim(), ideaId.Trim(), StringComparison.Ordinal))
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting ideaId provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedIdeaId = !string.IsNullOrWhiteSpace(request?.IdeaId) ? request.IdeaId.Trim() : ideaId?.Trim();
+                if (string.IsNullOrWhiteSpace(resolvedIdeaId))
+                {
+                    return BadRequest(ApiResponse.Error("ideaId is required for Creator changes.", HttpContext.TraceIdentifier));
+                }
+
+                if (expectedVersion.HasValue && request?.ExpectedVersion.HasValue == true && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request?.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+
                 var userId = GetUserId();
-                var result = await _snapshotService.RefreshSnapshotAsync(userId, request?.IdeaId);
+                var result = await _snapshotService.RefreshSnapshotAsync(userId, resolvedIdeaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("Construction snapshot refreshed", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
 
@@ -845,5 +933,6 @@ namespace WebApp.Controllers
     public class GenerateSnapshotRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
     }
 }

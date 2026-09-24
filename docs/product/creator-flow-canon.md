@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-24 (Step 3.3 Regeneration Loading Alignment & Project-Context Safety Hardening & Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-25 (Creator Phase 4.1 Construction Snapshot Runtime Fix, Page Header, Optimistic Concurrency & Navigation Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -1084,13 +1084,34 @@ CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
      - `Phase4ProfileGuard` no longer depends on deprecated `GET /api/creator/offer/readiness`.
      - UI layout, cards, styling, and copy remain completely frozen.
 
-### 6.1 Stage 4.1 — Construction Snapshot (`ConstructionSnapshotView.tsx`)
+### 6.1 Stage 4.1 — Construction Snapshot (`page.tsx` + `ConstructionSnapshotView.tsx`)
 - **Route:** `/dashboard/creator/phase-4`
-- **Controller:** `CreatorPhase4ConstructionController.GetSnapshot` (`GET /api/creator/phase4/snapshot`).
-- **Services:** `ConstructionSnapshotService`, `ProfileCompletenessResolver`.
-- **Taxonomy Categories:** `Critical Attention`, `Ready`, `Partially Ready`, `Missing`, `Optional`, `NeedsReview`.
-- **Operations:** Read-only `GET`, idempotent `generate`, explicit `refresh`.
-- **No Deceptive Percentages:** The snapshot reports raw category counts rather than misleading composite percentages.
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/construction-snapshot`, `POST /api/creator/phase4/construction-snapshot/generate`, `POST /api/creator/phase4/construction-snapshot/refresh`).
+- **Services:** `ConstructionSnapshotService`, `CreatorJourneyService`, `ProfileCompletenessResolver`, `CapabilityMatcher`.
+- **Page-Level Header (Canonical Structure):**
+  - Rendered inside the main content container (`w-full max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8`) above the status summary:
+    - *Eyebrow:* `"PHASE 4 · STEP 4.1"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase`)
+    - *Title:* `"Construction Snapshot"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`)
+    - *Supporting text:* `"See what’s ready, what needs attention, and where to go next."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`)
+- **Endpoints & Optimistic Concurrency Contract:**
+  - `GET /api/creator/phase4/construction-snapshot?ideaId={ideaId}`: Read-only retrieval of persisted snapshot, category items, and source staleness detection.
+  - `POST /api/creator/phase4/construction-snapshot/generate?ideaId={ideaId}&expectedVersion={version}`: Idempotent generation. Requires `expectedVersion` on initial write; returns existing snapshot without re-running if one already exists.
+  - `POST /api/creator/phase4/construction-snapshot/refresh?ideaId={ideaId}&expectedVersion={version}`: Explicit regeneration against latest project intelligence, financial forecast, legal assessment, and HumainX profile data. Requires valid `expectedVersion`.
+  - *Query & Body Contract:* `{ ideaId, expectedVersion }` submitted in both URL query params and request body; controller validates consistency and rejects conflicting parameters with HTTP 400 Bad Request.
+  - *Version Lineage & Response Headers:* Publishes `X-Creator-Idea-Version` response header and returns `data.ideaVersion` in payload.
+  - *HTTP 409 Conflict Recovery:* When concurrent writes occur in another tab, the client reloads the latest snapshot (`loadSnapshot()`) and project composite (`refetch()`) to restore state safely and offers a non-destructive retry.
+- **Taxonomy Categories (15 Canonical Categories):**
+  - `Business Foundation`, `Brand`, `Market`, `Business Model`, `Finance`, `Legal & Administration`, `Team`, `Skills`, `Services`, `Technology`, `Funding`, `Pricing`, `Go-to-Market`, `Launch Assets`, `Operations`.
+- **Item Statuses (5 Diagnostic Tiers):**
+  - `Ready` (green), `Partial` (amber), `Missing` (gray/slate), `Critical` (rose/red), `Optional` (blue/muted), `NeedsReview` (grouped within Partial with actionable notice).
+- **Core UI Structure:**
+  1. *Compact Page Header:* Eyebrow, Title, and descriptive subtitle.
+  2. *Component 1: Status Summary:* 5-column metric grid reporting exact counts (`Ready`, `Partially Ready`, `Needs Attention`, `Critical Blockers`, `Optional`).
+  3. *Critical Blockers Alert:* Surfaces critical blockers with anchor navigation when `criticalCount > 0`.
+  4. *Stale Snapshot Banner:* Appears when upstream sources change, with `"Refresh Snapshot"` and `"Keep Current"` controls.
+  5. *Component 2: Category Breakdown:* 15 collapsible category cards with requirement status badges, detail accordions, and external service provider recommendations.
+  6. *Footer Navigation:* Primary CTA `"Continue to Operational Roadmap →"` routing to Step 4.2 (`/dashboard/creator/phase-4/roadmap?ideaId={ideaId}`) preserving the active idea scope.
+- **No Deceptive Percentages:** The snapshot reports raw category counts rather than misleading composite percentages. All data is dynamically derived from live database records.
 
 ### 6.2 Stage 4.2 — Operational Roadmap (`OperationalRoadmapView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/roadmap`
@@ -1421,8 +1442,14 @@ RC1 Freeze
 - **Non-Destructive Result Preservation (§5.3):** First generation failure preserves saved inputs with retry/edit CTAs; regeneration failure preserves previous valid forecast intact with dismissible banner and retry/edit CTAs. During regeneration, previous valid results remain mounted and visible below the processing card until atomically replaced by the new version.
 - **Dead Code & Parallel Schema Elimination (§5.3):** Excised `StartingBudgetModal.tsx`; starting budget natively integrated into `ForecastAssumptionsForm` (single canonical schema). Excised obsolete projection math methods (`ExtendToThirtySixMonths`, `RecomputeBreakEven`) and dead helpers from `ForecastHandler.cs`. Confirmed `FinancialForecastEngine` as the sole deterministic calculation authority.
 - **Driver Invariant Rule (§5.3):** Enforced that every active editable backend forecast driver across SaaS, E-commerce, Service, and Marketplace is exposed in the canonical form, with inactive drivers hidden/N-A.
-- **Safety Invariants (§5.3):** Mandatory ideaId scoping, zero first-idea fallback, zero `'active'` localStorage keys, monotonic version race protection, founder-lock preservation, non-destructive regeneration failure, and zero hardcoded tax defaults.
-- **Full Verification:** Dedicated Loading Suite: 8/8 passed, Selected Forecast Regression Suites: 19/19 passed, Historical Extended Suite: 39/39 passed, Backend 94/94 passed (108 total, 14 skipped), TypeScript 0 errors, Next.js production build PASS (187/187 routes), Backend build PASS. Status: PASS / FROZEN.
+**2026-09-25 — Creator Phase 4.1 Construction Snapshot: Runtime Architecture Fix, Page Header, Optimistic Concurrency & Navigation Delivery.**
+- **Runtime Concurrency Fix (§6.1):** Fixed HTTP 400 `"expectedVersion is required for Creator changes."` failure on `POST /api/creator/phase4/construction-snapshot/generate` and `refresh`. Synchronized `expectedVersion` across URL query params and request body with `CreatorJourneyService.WriteIdeaAsync`.
+- **Version Tracking & Response Headers (§6.1):** Added `IdeaVersion` to `ConstructionSnapshotResponse` DTO and `ExpectedVersion` to `GenerateSnapshotRequest`. Published `X-Creator-Idea-Version` response header from `CreatorPhase4ConstructionController` and synchronized `j.IdeaVersion = idea.Version` post-write.
+- **Client Cache & Concurrency Resolution (§6.1):** Implemented `resolveExpectedVersion(ideaId)` in `src/lib/api-creator-phase4.ts` pulling cached or authoritative `journey.ideaVersion`. Captured response versions on all GET and POST requests.
+- **HTTP 409 Conflict Recovery (§6.1):** Implemented non-destructive reload (`loadSnapshot()` + `refetch(ideaId)`) on 409 conflict, surfacing an inline conflict recovery banner with "Reload & Retry" preserving user state.
+- **Compact Page-Level Header Added (§6.1):** Added compact page-level header inside the existing content area matching typography canon: Eyebrow `"PHASE 4 · STEP 4.1"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase`), Title `"Construction Snapshot"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`), and Subtitle `"See what’s ready, what needs attention, and where to go next."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`). Corrected older statements claiming 4.1 has no page header.
+- **Navigation & Gating (§6.1):** Primary forward CTA `"Continue to Operational Roadmap →"` seamlessly navigates to Step 4.2 `/dashboard/creator/phase-4/roadmap?ideaId={ideaId}` preserving active project context.
+- **Verification:** Backend unit tests 14/14 PASS; Frontend Vitest 142/142 PASS across 12 files; TypeScript 0 errors; Live authenticated browser verification (Generate 200 $\to$ GET 200 $\to$ Refresh 200 $\to$ Stale 409 Conflict $\to$ Mismatched params 400). Status: PASS / LIVE.
 
 ---
 

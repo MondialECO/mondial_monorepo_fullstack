@@ -1,74 +1,57 @@
+import api from '@/lib/axios';
 import type {
   OperationalRoadmapResponse,
   UpdateRoadmapTaskRequest,
 } from '@/types/creator/roadmap';
 
-function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+export interface ApiEnvelope<T> {
+  success?: boolean;
+  message?: string;
+  data: T;
+  traceId?: string | null;
 }
 
-export async function getOperationalRoadmap(ideaId: string): Promise<OperationalRoadmapResponse> {
-  const res = await fetch(`/api/creator/phase4/roadmap?ideaId=${encodeURIComponent(ideaId)}`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to fetch operational roadmap (${res.status})`);
+const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
+  if (body && typeof body === 'object' && 'data' in (body as ApiEnvelope<T>)) {
+    return (body as ApiEnvelope<T>).data;
   }
+  return body as T;
+};
 
-  return res.json();
+export async function getOperationalRoadmap(ideaId: string): Promise<OperationalRoadmapResponse> {
+  const res = await api.get<ApiEnvelope<OperationalRoadmapResponse> | OperationalRoadmapResponse>(
+    '/creator/phase4/roadmap',
+    {
+      params: { ideaId },
+    }
+  );
+  return unwrap(res.data);
 }
 
 export async function generateOperationalRoadmap(ideaId: string): Promise<OperationalRoadmapResponse> {
-  const res = await fetch('/api/creator/phase4/roadmap/generate', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to generate operational roadmap (${res.status})`);
-  }
-
-  return res.json();
+  const res = await api.post<ApiEnvelope<OperationalRoadmapResponse> | OperationalRoadmapResponse>(
+    '/creator/phase4/roadmap/generate',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
 
 export async function refreshOperationalRoadmap(ideaId: string): Promise<OperationalRoadmapResponse> {
-  const res = await fetch('/api/creator/phase4/roadmap/refresh', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to refresh operational roadmap (${res.status})`);
-  }
-
-  return res.json();
+  const res = await api.post<ApiEnvelope<OperationalRoadmapResponse> | OperationalRoadmapResponse>(
+    '/creator/phase4/roadmap/refresh',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
 
 export async function updateRoadmapTask(
   ideaId: string,
   req: UpdateRoadmapTaskRequest
 ): Promise<OperationalRoadmapResponse> {
-  const res = await fetch(`/api/creator/phase4/roadmap/task?ideaId=${encodeURIComponent(ideaId)}`, {
-    method: 'PATCH',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(req),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to update roadmap task (${res.status})`);
-  }
-
-  return res.json();
+  const res = await api.patch<ApiEnvelope<OperationalRoadmapResponse> | OperationalRoadmapResponse>(
+    '/creator/phase4/roadmap/task',
+    { ...req, ideaId }
+  );
+  return unwrap(res.data);
 }
+

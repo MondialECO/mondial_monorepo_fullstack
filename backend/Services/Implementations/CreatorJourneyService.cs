@@ -1369,6 +1369,7 @@ namespace WebApp.Services.Implementations
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Phase4Data.ConstructionSnapshot, snapshot)
                 .Set(x => x.Phase4Data.SourceVersions, sourceVersions));
+            j.IdeaVersion = idea.Version;
             return j;
         }
 
@@ -1382,6 +1383,7 @@ namespace WebApp.Services.Implementations
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Phase4Data.Roadmap, roadmap));
+            j.IdeaVersion = idea.Version;
             return j;
         }
 

@@ -39,6 +39,16 @@ const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
 let workspaceIdeaId: string | null = null;
 const ideaVersions = new Map<string, number>();
 
+export const getIdeaVersion = (ideaId: string): number | undefined => {
+  return ideaVersions.get(ideaId);
+};
+
+export const setIdeaVersion = (ideaId: string, version: number): void => {
+  if (ideaId && Number.isSafeInteger(version) && version > 0) {
+    ideaVersions.set(ideaId, version);
+  }
+};
+
 export const setCreatorWorkspaceIdea = (ideaId: string | null) => {
   workspaceIdeaId = ideaId;
 };
@@ -78,7 +88,7 @@ const readIdeaVersionHeader = (headers?: IdeaVersionHeaders): unknown => {
   )?.[1];
 };
 
-const rememberIdeaVersion = (response: { headers?: IdeaVersionHeaders }, ideaId?: string | null) => {
+export const rememberIdeaVersion = (response: { headers?: IdeaVersionHeaders }, ideaId?: string | null) => {
   const version = Number(readIdeaVersionHeader(response.headers));
   const resolved = ideaId ?? workspaceIdeaId;
   if (resolved && Number.isSafeInteger(version) && version > 0) ideaVersions.set(resolved, version);

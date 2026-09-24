@@ -1,66 +1,48 @@
+import api from '@/lib/axios';
 import type {
   SupportPlanResponse,
   UpdateFounderSupportStateRequest,
   AnswerEligibilityFactRequest,
 } from '@/types/creator/support';
 
-function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+export interface ApiEnvelope<T> {
+  success?: boolean;
+  message?: string;
+  data: T;
+  traceId?: string | null;
 }
 
-export async function getSupportPlan(ideaId: string): Promise<SupportPlanResponse> {
-  const res = await fetch(`/api/creator/phase4/support?ideaId=${encodeURIComponent(ideaId)}`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to fetch support plan (${res.status})`);
+const unwrap = <T>(body: ApiEnvelope<T> | T): T => {
+  if (body && typeof body === 'object' && 'data' in (body as ApiEnvelope<T>)) {
+    return (body as ApiEnvelope<T>).data;
   }
+  return body as T;
+};
 
-  const json = await res.json();
-  return json.data || json;
+export async function getSupportPlan(ideaId: string): Promise<SupportPlanResponse> {
+  const res = await api.get<ApiEnvelope<SupportPlanResponse> | SupportPlanResponse>(
+    '/creator/phase4/support',
+    {
+      params: { ideaId },
+    }
+  );
+  return unwrap(res.data);
 }
 
 export async function generateSupportPlan(ideaId: string): Promise<SupportPlanResponse> {
-  const res = await fetch('/api/creator/phase4/support/generate', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const err: any = new Error(data.message || `Failed to generate support plan (${res.status})`);
-    if (data.code) err.code = data.code;
-    throw err;
-  }
-
-  const json = await res.json();
-  return json.data || json;
+  const res = await api.post<ApiEnvelope<SupportPlanResponse> | SupportPlanResponse>(
+    '/creator/phase4/support/generate',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
 
 export async function refreshSupportPlan(ideaId: string): Promise<SupportPlanResponse> {
-  const res = await fetch('/api/creator/phase4/support/refresh', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ ideaId }),
-  });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    const err: any = new Error(data.message || `Failed to refresh support plan (${res.status})`);
-    if (data.code) err.code = data.code;
-    throw err;
-  }
-
-  const json = await res.json();
-  return json.data || json;
+  const res = await api.post<ApiEnvelope<SupportPlanResponse> | SupportPlanResponse>(
+    '/creator/phase4/support/refresh',
+    { ideaId }
+  );
+  return unwrap(res.data);
 }
 
 export async function updateFounderSupportState(
@@ -68,22 +50,14 @@ export async function updateFounderSupportState(
   matchKey: string,
   req: UpdateFounderSupportStateRequest
 ): Promise<SupportPlanResponse> {
-  const res = await fetch(
-    `/api/creator/phase4/support/${encodeURIComponent(matchKey)}?ideaId=${encodeURIComponent(ideaId)}`,
+  const res = await api.patch<ApiEnvelope<SupportPlanResponse> | SupportPlanResponse>(
+    `/creator/phase4/support/${encodeURIComponent(matchKey)}`,
+    { ...req, ideaId },
     {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(req),
+      params: { ideaId },
     }
   );
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to update support state (${res.status})`);
-  }
-
-  const json = await res.json();
-  return json.data || json;
+  return unwrap(res.data);
 }
 
 export async function answerEligibilityFact(
@@ -97,20 +71,12 @@ export async function answerEligibilityFact(
     value,
   };
 
-  const res = await fetch(
-    `/api/creator/phase4/support/context/${encodeURIComponent(factKey)}?ideaId=${encodeURIComponent(ideaId)}`,
+  const res = await api.patch<ApiEnvelope<SupportPlanResponse> | SupportPlanResponse>(
+    `/creator/phase4/support/context/${encodeURIComponent(factKey)}`,
+    req,
     {
-      method: 'PATCH',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(req),
+      params: { ideaId },
     }
   );
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || `Failed to update eligibility fact (${res.status})`);
-  }
-
-  const json = await res.json();
-  return json.data || json;
+  return unwrap(res.data);
 }
