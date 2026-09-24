@@ -4,7 +4,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ForecastPage from '@/app/dashboard/creator/phase-3/forecast/page';
 import * as creatorAiQueries from '@/hooks/queries/creator-ai';
 import * as creatorJourneyApi from '@/lib/api-creator-journey';
-import { ForecastAssumptionsModal } from '@/components/creator/forecast/ForecastAssumptionsModal';
+import { ForecastAssumptionsModal, ForecastAssumptionsForm } from '@/components/creator/forecast/ForecastAssumptionsModal';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -40,6 +40,7 @@ vi.mock('recharts', async () => {
 describe('Progressive Financial Assumptions Generation & Display Flow', () => {
   const mockStartForecastMutate = vi.fn();
   const mockRegenerateMutate = vi.fn();
+  const mockUpdateAssumptionsMutate = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,6 +63,13 @@ describe('Progressive Financial Assumptions Generation & Display Flow', () => {
       mutateAsync: mockRegenerateMutate.mockResolvedValue({
         sessionId: 'session-fc-new',
         jobId: 'job-124',
+      }),
+      isPending: false,
+    } as any);
+
+    vi.spyOn(creatorAiQueries, 'useUpdateForecastAssumptions').mockReturnValue({
+      mutateAsync: mockUpdateAssumptionsMutate.mockResolvedValue({
+        success: true,
       }),
       isPending: false,
     } as any);
@@ -94,7 +102,7 @@ describe('Progressive Financial Assumptions Generation & Display Flow', () => {
     } as any);
   });
 
-  it('pre-loads progressive assumptions generated during Step 3.1 & 3.2 on first visit', async () => {
+  it('pre-loads progressive assumptions generated during Step 3.1 & 3.2 as canonical page content on first visit', async () => {
     (creatorJourneyApi.creatorJourneyApi.get as any).mockResolvedValue({
       journey: {
         project: { name: 'SaaS Suite', sector: 'Software' },
@@ -128,11 +136,13 @@ describe('Progressive Financial Assumptions Generation & Display Flow', () => {
 
     render(<ForecastPage />);
 
-    // Budget setup modal automatically displays progressive starting budget
+    // No modal popup; main page renders canonical Adjust Forecast Assumptions form
     await waitFor(() => {
-      expect(screen.getByText('Starting Budget Setup')).toBeInTheDocument();
-      expect(screen.getByText('€60,000')).toBeInTheDocument();
-      expect(screen.getByText(/Runway tailored from Step 3.2 OPEX/i)).toBeInTheDocument();
+      expect(screen.getAllByText('Adjust Forecast Assumptions').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Review the assumptions prepared from your Market Study and Business Model/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByDisplayValue('60000')).toBeInTheDocument();
+      expect(screen.getByText(/Tailored 6-month runway/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Generate Forecast/i })).toBeInTheDocument();
     });
   });
 
@@ -154,22 +164,62 @@ describe('Progressive Financial Assumptions Generation & Display Flow', () => {
           variableCost: 25,
           opex: 7000,
           tam: 200000000,
+          averageOrderValue: 65,
         }}
         initialProvenance={{
           startingBudget: 'ai_suggested',
           launchSubscribers: 'ai_suggested',
+          tam: 'canonical_step_3_1',
         }}
-        isRegenerating={false}
+        isSubmitting={false}
         creditCost={15}
         onConfirm={onConfirmMock}
       />
     );
 
-    // E-commerce specific labels
+    // E-commerce specific labels & inactive churn
     expect(screen.getByText('Initial Monthly Orders')).toBeInTheDocument();
     expect(screen.getByText('Average Order Value (AOV) (€)')).toBeInTheDocument();
     expect(screen.getByText('N/A · Inactive Driver')).toBeInTheDocument();
     expect(screen.getByText('Canonical · Step 3.1 Market Study')).toBeInTheDocument();
+  });
+
+  it('ForecastAssumptionsModal adapts labels and units to Marketplace archetype', () => {
+    const onConfirmMock = vi.fn();
+    const onCloseMock = vi.fn();
+
+    render(
+      <ForecastAssumptionsModal
+        open={true}
+        onClose={onCloseMock}
+        businessModelType="marketplace"
+        initialValues={{
+          startingBudget: 75000,
+          launchSubscribers: 500,
+          monthlyGrowthPct: 12,
+          monthlyChurnPct: 0,
+          arpu: 15,
+          variableCost: 1.5,
+          opex: 12000,
+          tam: 500000000,
+          averageOrderValue: 100,
+          takeRatePct: 15,
+        }}
+        initialProvenance={{
+          startingBudget: 'ai_suggested',
+          tam: 'canonical_step_3_1',
+        }}
+        isSubmitting={false}
+        creditCost={32}
+        onConfirm={onConfirmMock}
+      />
+    );
+
+    // Marketplace specific labels: Transaction Volume, ATV, Take Rate % (NOT ARPU)
+    expect(screen.getByText('Starting Transaction Volume')).toBeInTheDocument();
+    expect(screen.getByText('Average Transaction Value (ATV) (€)')).toBeInTheDocument();
+    expect(screen.getByText('Platform Take Rate (%)')).toBeInTheDocument();
+    expect(screen.getByText('N/A · Inactive Driver')).toBeInTheDocument();
   });
 
   it('ForecastAssumptionsModal marks TAM as read-only and canonical to Step 3.1', () => {
@@ -194,7 +244,7 @@ describe('Progressive Financial Assumptions Generation & Display Flow', () => {
         initialProvenance={{
           tam: 'canonical_step_3_1',
         }}
-        isRegenerating={false}
+        isSubmitting={false}
         creditCost={15}
         onConfirm={onConfirmMock}
       />
@@ -206,4 +256,73 @@ describe('Progressive Financial Assumptions Generation & Display Flow', () => {
     expect(tamInput).toHaveAttribute('readOnly');
     expect(screen.getByText(/Canonical TAM ceiling from Step 3.1 Market Study/i)).toBeInTheDocument();
   });
+
+  it('ForecastAssumptionsModal handles null tax rate without 25% default and shows Needs Input', () => {
+    const onConfirmMock = vi.fn();
+    const onCloseMock = vi.fn();
+
+    render(
+      <ForecastAssumptionsModal
+        open={true}
+        onClose={onCloseMock}
+        businessModelType="saas"
+        initialValues={{
+          startingBudget: 40000,
+          launchSubscribers: 75,
+          monthlyGrowthPct: 15,
+          monthlyChurnPct: 5,
+          arpu: 32,
+          variableCost: 5,
+          opex: 8000,
+          tam: 900000000,
+          taxRatePct: undefined, // no tax rate
+        }}
+        initialProvenance={{}}
+        isSubmitting={false}
+        creditCost={15}
+        onConfirm={onConfirmMock}
+      />
+    );
+
+    // Should NOT inject 25 into the tax input value
+    const taxInputs = screen.getAllByPlaceholderText('e.g. 25');
+    expect(taxInputs.length).toBeGreaterThanOrEqual(1);
+    expect((taxInputs[0] as HTMLInputElement).value).toBe('');
+    expect(screen.getByText('Needs Input')).toBeInTheDocument();
+  });
+
+  it('ForecastAssumptionsModal preserves explicit 0% tax rate and upstream_legal badge', () => {
+    const onConfirmMock = vi.fn();
+    const onCloseMock = vi.fn();
+
+    render(
+      <ForecastAssumptionsModal
+        open={true}
+        onClose={onCloseMock}
+        businessModelType="saas"
+        initialValues={{
+          startingBudget: 40000,
+          launchSubscribers: 75,
+          monthlyGrowthPct: 15,
+          monthlyChurnPct: 5,
+          arpu: 32,
+          variableCost: 5,
+          opex: 8000,
+          tam: 900000000,
+          taxRatePct: 0, // explicit 0%
+        }}
+        initialProvenance={{
+          taxRatePct: 'upstream_legal',
+        }}
+        isSubmitting={false}
+        creditCost={15}
+        onConfirm={onConfirmMock}
+      />
+    );
+
+    // Input displays '0'
+    expect(screen.getByDisplayValue('0')).toBeInTheDocument();
+    expect(screen.getByText('Upstream · Legal context')).toBeInTheDocument();
+  });
 });
+

@@ -172,20 +172,21 @@ namespace WebApp.Services.Legal
             bool hasB2B = ContainsAny(target, b2bIndicators) || ContainsAny(market, b2bIndicators) || ContainsAny(canvasCorpus, b2bIndicators) || ContainsAny(marketCorpus, b2bIndicators) || ContainsAny(projectCorpus, b2bIndicators);
             bool hasB2C = ContainsAny(target, b2cIndicators) || ContainsAny(market, b2cIndicators) || ContainsAny(canvasCorpus, b2cIndicators) || ContainsAny(marketCorpus, b2cIndicators);
 
-            // Default inference if unspecified
+            // Absence of evidence: when neither B2B nor B2C indicators exist
             if (!hasB2B && !hasB2C)
             {
-                // Most web apps and marketplaces default to B2C or mixed
-                hasB2C = true;
+                var b2bUnknown = BusinessSignal.Unknown("CreatorIdea.Project.TargetUser/Market", "Customer segment (B2B vs B2C) not explicitly specified in project context.");
+                var b2cUnknown = BusinessSignal.Unknown("CreatorIdea.Project.TargetUser/Market", "Customer segment (B2B vs B2C) not explicitly specified in project context.");
+                return (b2bUnknown, b2cUnknown);
             }
 
             var b2bSignal = hasB2B
                 ? BusinessSignal.Derived(true, "CreatorIdea.Project.TargetUser/Market", "B2B enterprise or professional customer segments targeted.")
-                : BusinessSignal.Derived(false, "CreatorIdea.Project.TargetUser", "No B2B segment identified.");
+                : BusinessSignal.Derived(false, "CreatorIdea.Project.TargetUser", "Direct B2C focus indicated without B2B enterprise segments.");
 
             var b2cSignal = hasB2C
                 ? BusinessSignal.Derived(true, "CreatorIdea.Project.TargetUser/Market", "B2C consumer or individual end-user segments targeted.")
-                : BusinessSignal.Derived(false, "CreatorIdea.Project.TargetUser", "Direct-to-consumer sales not targeted.");
+                : BusinessSignal.Derived(false, "CreatorIdea.Project.TargetUser", "Direct B2B focus indicated without consumer retail segments.");
 
             return (b2bSignal, b2cSignal);
         }
@@ -200,20 +201,28 @@ namespace WebApp.Services.Legal
             {
                 return BusinessSignal.Derived(true, "ForecastSession", "Financial forecast models recurring subscription metrics.");
             }
+            if (string.IsNullOrWhiteSpace(canvasCorpus) && string.IsNullOrWhiteSpace(forecastCorpus))
+            {
+                return BusinessSignal.Unknown("BusinessModelSession.canvas", "Monetization model not yet specified.");
+            }
             return BusinessSignal.Derived(false, "BusinessModelSession.canvas", "One-off or usage-based pricing rather than recurring subscription.");
         }
 
         private static BusinessSignal DetectOnlinePayments(bool isSaaS, bool isEcommerce, bool isMarketplace, string canvasCorpus, string combined)
         {
-            if (isSaaS || isEcommerce || isMarketplace)
-            {
-                return BusinessSignal.Derived(true, "BusinessModelSession.channels", "Digital SaaS, e-commerce, or marketplace operations entail online payment processing.");
-            }
             if (ContainsAny(combined, "stripe", "adyen", "paypal", "carte bancaire", "paiement en ligne", "checkout", "prélèvement sepa"))
             {
                 return BusinessSignal.Confirmed(true, "BusinessModelSession.keyPartners", "Explicit online payment gateway integration configured.");
             }
-            return BusinessSignal.Derived(false, "BusinessModelSession", "No online payment processing detected (invoicing/wire transfer).");
+            if (isSaaS || isEcommerce || isMarketplace)
+            {
+                return BusinessSignal.Derived(true, "BusinessModelSession.channels", "Digital SaaS, e-commerce, or marketplace operations entail online payment processing.");
+            }
+            if (string.IsNullOrWhiteSpace(canvasCorpus) && string.IsNullOrWhiteSpace(combined))
+            {
+                return BusinessSignal.Unknown("BusinessModelSession.channels", "Payment collection mechanism not specified.");
+            }
+            return BusinessSignal.Derived(false, "BusinessModelSession", "Commercial invoicing or offline settlement model without card checkout.");
         }
 
         private static BusinessSignal DetectWebsite(bool isSaaS, bool isEcommerce, bool isMarketplace, string projectCorpus, string combined)
@@ -224,9 +233,13 @@ namespace WebApp.Services.Legal
             }
             if (ContainsAny(combined, "site internet", "site web", "web app", "application mobile", "portail web", "vitrine en ligne"))
             {
-                return BusinessSignal.Derived(true, "CreatorIdea.Project.Channels", "Public digital website presence confirmed.");
+                return BusinessSignal.Confirmed(true, "CreatorIdea.Project.Channels", "Public digital website presence confirmed.");
             }
-            return BusinessSignal.Derived(true, "Default", "Default standard for contemporary commercial ventures in France.");
+            if (string.IsNullOrWhiteSpace(combined))
+            {
+                return BusinessSignal.Unknown("CreatorIdea.Project.Channels", "Digital channel presence not yet defined.");
+            }
+            return BusinessSignal.Derived(false, "CreatorIdea.Project", "Purely physical or offline operations without digital channel.");
         }
 
         private static BusinessSignal DetectSellsProducts(bool isEcommerce, string combined)
@@ -234,6 +247,10 @@ namespace WebApp.Services.Legal
             if (isEcommerce || ContainsAny(combined, "produits physiques", "marchandises", "stock", "matériel", "hardware", "articles vendus"))
             {
                 return BusinessSignal.Derived(true, "BusinessModelSession.canvas", "Sale of physical goods or hardware detected.");
+            }
+            if (string.IsNullOrWhiteSpace(combined))
+            {
+                return BusinessSignal.Unknown("BusinessModelSession.canvas", "Product vs service catalog not yet specified.");
             }
             return BusinessSignal.Derived(false, "BusinessModelSession.canvas", "Pure service or digital intangible software offering.");
         }
@@ -244,16 +261,28 @@ namespace WebApp.Services.Legal
             {
                 return BusinessSignal.Derived(true, "BusinessModelSession.canvas", "Service or software licensing business model.");
             }
+            if (string.IsNullOrWhiteSpace(combined))
+            {
+                return BusinessSignal.Unknown("BusinessModelSession.canvas", "Product vs service catalog not yet specified.");
+            }
             return BusinessSignal.Derived(false, "BusinessModelSession.canvas", "No commercial service offering detected.");
         }
 
         private static BusinessSignal DetectCollectsPersonalData(bool hasWebsite, bool isSaaS, bool isEcommerce, string combined)
         {
-            if (hasWebsite || isSaaS || isEcommerce || ContainsAny(combined, "compte utilisateur", "email", "données personnelles", "formulaire", "contact"))
+            if (ContainsAny(combined, "compte utilisateur", "email", "données personnelles", "formulaire", "contact", "user account", "sign up", "inscription"))
             {
-                return BusinessSignal.Derived(true, "CreatorIdea.Project / Website", "Collection of customer emails, user accounts, or contact details triggers RGPD application.");
+                return BusinessSignal.Confirmed(true, "CreatorIdea.Project / Website", "Collection of customer emails, user accounts, or contact details confirmed.");
             }
-            return BusinessSignal.Derived(false, "CreatorIdea.Project", "No personal data processing identified.");
+            if (hasWebsite || isSaaS || isEcommerce)
+            {
+                return BusinessSignal.Derived(true, "CreatorIdea.Project / Website", "Digital application or storefront standardly processes user account/order data under RGPD.");
+            }
+            if (string.IsNullOrWhiteSpace(combined))
+            {
+                return BusinessSignal.Unknown("CreatorIdea.Project", "Personal data collection practices not specified.");
+            }
+            return BusinessSignal.Derived(false, "CreatorIdea.Project", "Offline business with no user account or personal customer data processing.");
         }
 
         private static BusinessSignal DetectAnalyticsOrTracking(bool hasWebsite, string combined)
@@ -266,6 +295,10 @@ namespace WebApp.Services.Legal
             {
                 return BusinessSignal.Derived(true, "Website standard", "Web applications deploy audience measurement or session analytics standardly.");
             }
+            if (string.IsNullOrWhiteSpace(combined))
+            {
+                return BusinessSignal.Unknown("BusinessModelSession", "Analytics or tracking deployment not specified.");
+            }
             return BusinessSignal.Derived(false, "BusinessModelSession", "No digital tracking tools detected.");
         }
 
@@ -273,13 +306,17 @@ namespace WebApp.Services.Legal
         {
             if (ContainsAny(forecastCorpus, "salaires", "masse salariale", "recrutement", "employés", "payroll", "fte", "salariés"))
             {
-                return BusinessSignal.Derived(true, "ForecastSession.OpEx", "Forecast financial model includes payroll or salaried personnel.");
+                return BusinessSignal.Confirmed(true, "ForecastSession.OpEx", "Forecast financial model includes payroll or salaried personnel.");
             }
             if (ContainsAny(canvasCorpus, "équipe salariée", "recrutement de développeurs", "commerciaux salariés"))
             {
                 return BusinessSignal.Derived(true, "BusinessModelSession.keyResources", "Key resources outline salaried team members.");
             }
-            return BusinessSignal.Derived(false, "ForecastSession", "Early-stage founder-operated venture without immediate salaried hires.");
+            if (!string.IsNullOrWhiteSpace(forecastCorpus))
+            {
+                return BusinessSignal.Derived(false, "ForecastSession", "Forecast model confirms zero salaried employee payroll for Year 1.");
+            }
+            return BusinessSignal.Unknown("ForecastSession", "Employment structure and salaried headcount not yet modeled in forecast.");
         }
 
         private static BusinessSignal DetectContractors(string canvasCorpus, string combined)
@@ -288,7 +325,11 @@ namespace WebApp.Services.Legal
             {
                 return BusinessSignal.Derived(true, "BusinessModelSession.keyPartners", "Partnership model relies on external contractors or agencies.");
             }
-            return BusinessSignal.Derived(false, "BusinessModelSession", "No external contractor dependencies flagged.");
+            if (!string.IsNullOrWhiteSpace(canvasCorpus))
+            {
+                return BusinessSignal.Derived(false, "BusinessModelSession.keyPartners", "Business model canvas does not flag external contractor dependencies.");
+            }
+            return BusinessSignal.Unknown("BusinessModelSession", "Contractor and subcontractor relationships not yet defined.");
         }
 
         private static BusinessSignal DetectPhysicalPremises(bool isPhysicalBusiness, string canvasCorpus, string combined)
@@ -297,7 +338,11 @@ namespace WebApp.Services.Legal
             {
                 return BusinessSignal.Derived(true, "BusinessModelSession.costStructure", "Physical commercial lease or premises required.");
             }
-            return BusinessSignal.Derived(false, "BusinessModelSession", "Virtual or remote operations with no commercial lease required.");
+            if (!string.IsNullOrWhiteSpace(canvasCorpus) || !string.IsNullOrWhiteSpace(combined))
+            {
+                return BusinessSignal.Derived(false, "BusinessModelSession", "Remote operations with no commercial lease requirements flagged.");
+            }
+            return BusinessSignal.Unknown("BusinessModelSession", "Physical premises requirements not yet specified.");
         }
 
         private static BusinessSignal DetectRegulatedActivity(string projectCorpus, string combined, out string? notes)

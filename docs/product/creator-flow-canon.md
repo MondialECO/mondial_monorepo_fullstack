@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-24 (Step 3.3 Project-Context Safety Hardening & Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-24 (Step 3.3 Regeneration Loading Alignment & Project-Context Safety Hardening & Creator HumainX Dual-Gate & Phase 4 Frozen Baseline).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -617,105 +617,292 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Credit Cost:** **18 credits** (`AiJobType.BusinessModel`).
 - **UI Presentation:** Canonical Osterwalder grid matching Figma Node `57156:8456` with numbered index tags (`01`–`09`) and hairline dividers (5 upper columns: Key Partners, Key Activities over Key Resources, Value Propositions centered, Customer Relationships over Channels, Customer Segments; 2 lower columns: Cost Structure [55% width with 2-column breakdown] and Revenue Streams [45% width]). Followed by a dedicated Unit Economics strip (4 calibrated benchmark cards: CAC, LTV, LTV/CAC with 'Healthy' badge, Payback Period), a Step Complete checklist with 5 validation items, and a footer action row (Back navigation to Market Study & Build Financial Forecast, with Regenerate preserved in the persistent header actions). Responsive across 1440px–1920px with Inter headings (`font-heading`), DM Sans body copy (`font-sans`), JetBrains Mono numerals/metrics (`font-mono`), zero raw hex values or arbitrary bracket font sizes, and full dark theme token support. Out-of-contract strings reaching the frontend are styled with destructive visual tokens rather than silently absorbed.
 
-### 5.3 Step 3.3 — Financial Forecast (C-4, LIVE)
-- **Route:** Unified workspace at `/dashboard/creator/phase-3/forecast` (continuous 8-section financial command dashboard replacing legacy tabbed navigation).
+### 5.3 Step 3.3 — Financial Forecast (C-4, LIVE & FROZEN)
+- **Route:** Unified workspace at `/dashboard/creator/phase-3/forecast` (dual-mode: First-Time Full Assumptions View $\to$ Continuous 8-Section Financial Command Results Dashboard).
 - **Backing Entity & Controller:** `ForecastSession` stored in `ForecastSessions` collection via `ForecastController` (`/api/ai/forecast`).
-- **Inputs Consumed:** `BusinessIdeaId` (or `BusinessPlanSessionId` if available), plus financial assumptions (`ARPU`, `OPEX`, `Growth %`, `TAM`, `Churn %`).
-- **TAM Source Provenance:** TAM is auto-seeded from Step 3.1 Market Study (`marketSizing.tam.value`) with visible provenance attribution and a 1-click reset option. Saved forecast TAM values are strictly preserved and never overwritten on resume.
-- **Figma Parity & 1:1 Design Conformance (Approved Nodes 57157:9297 & 57157:9348):**
-  - **Section 1: Header Bar & Persistent Actions:** Eyebrow `STEP 3.3 · FINANCIAL FORECAST`, Title `Your 3-year financial forecast`, Subtitle `36 months · Months 1–12 modelled, 13–36 projected · EUR`, persistent `Download report` (PDF preview overlay) and `Regenerate` button with live credit balance pill (`Uses 32 credits · balance [X]`).
-  - **Section 2: Conditional Out-of-Date Alert Strip:** Activates when live simulation operational drivers deviate from last saved run (*"Assumptions changed since last run — results may be out of date. Click Regenerate to update forecast projections."*).
-  - **Section 2.5: Executive Verdict Hero Card:** High-impact milestone headline highlighting Break-even Month and Loss Recovery Month, starting budget exhaustion month, and funding gap calculation with dynamic badge (`Funding gap` in warm amber or `Fully funded` in emerald).
-  - **Section 3: Three Summary Cards (Figma Node 57157:9348):**
-    - `REVENUE`: Net growth badge (`+X% Y1→Y3`), ARR run-rate stat (`€X ARR (Y3)`), Y1/Y2/Y3 mini-breakdown pills, and custom 341x112 SVG area chart (`RevenueAreaSvg`) with solid line M1–12 modelled, dashed line M12–36 projected, M12 vertical divider with labels, on-curve break-even indicator dot and floating pill badge `M{breakEvenMonth} break-even`.
-    - `COST VS REVENUE`: Revenue vs Total Cost dual curves (`CostVsRevenueCrossingSvg`), drop line at break-even month with outer/inner circle dot and floating badge `€{breakEvenRevenue} ({breakEvenSubs} subs)`, Inflection Point stat (`Month {x}`), and break-even subscriber callout.
-    - `CASH POSITION`: Deficit duration badge (`Deficit: M{x}–M{y}` or `Fully funded`), lowest cash point stat (`−€{minCumulative}` or `Cash positive`), liquidity trajectory chart (`Cash36BarSvg`) with 36 individual vertical bars (5.7px width, 9.47px pitch, horizontal zero baseline, slate initial cash, warm amber deficit, vibrant amber lowest month, teal positive cash, and dotted vertical callouts for budget runs out and cash positive).
-  - **Section 4: Assumptions & Live Simulation Parameters Grid:** Responsive 8-card operational driver grid: Starting budget, Subscribers at launch, New subscribers % MoM, Monthly churn %, Price per subscriber (Linked from 3.2), Variable cost/sub, Fixed costs/mo, and Market size TAM (Linked from 3.1 with reset trigger). Real-time parameter tweaking dynamically recalculates all 36 months, break-even, and runway, with live warning banners for tight economics, high growth, and churn risks.
-  - **Section 5: Continuous 36-Month Consolidated Data Table:** Direct, continuous 10-column table across 36 months (`MONTH`, `SUBSCRIBERS`, `REVENUE`, `FIXED COST`, `VARIABLE COST`, `TOTAL COST`, `NET CASH FLOW`, `CUMULATIVE`, `CASH ON HAND`, `NOTES`) with distinct year grouping headers (`YEAR 1 · MODELLED`, `YEAR 2 · PROJECTED`, `YEAR 3 · PROJECTED`), subtotal rows (`Y1 SUBTOTAL`, `Y2 SUBTOTAL`, `Y3 SUBTOTAL`), and milestone highlight tags (`Budget runs out`, `Lowest cash point`, `Break-even`, `Cash positive again`, `All losses recovered`).
-  - **Section 6: Break-Even & Unit Economics Side-by-Side:** Left: Break-even analysis with 4 key metrics, narrative analysis, and exact contribution margin formula breakdown. Right: Unit economics with CAC, LTV, LTV/CAC (Healthy badge), Payback period, Gross margin %, and Month 1 Burn.
-  - **Section 7: Key Assumptions & Risk Assessment:** Left: 7 key model assumptions tagged with provenance badges (`YOUR INPUT`, `FROM 3.2`, `MODEL`). Right: 4-tier risk assessment matrix with severity badges (Funding risk, Growth shortfall, Subscriber retention, Delivery cost).
-  - **Section 8: Milestones Complete & Navigation Footer:** Step Complete checklist (6/6 milestones verified) and navigation footer: `Business Model` Back button (navigates to Step 3.2 `/dashboard/creator/phase-3/business-model`), and `Continue to Legal & Compliance` button (navigates to Step 3.4 `/dashboard/creator/phase-3/compliance`).
-- **Complete Elimination of Static Fallback Data:**
-  - Starting budget is dynamically seeded from `ForecastSession.StartingBudget` or live operational drivers.
-  - Runway and funding gap copy is dynamically computed: if zero deficit, displays positive operational runway without deficit.
-  - Market size TAM is dynamically parsed and formatted from `inputs.tam`.
-  - Break-even calculations, unit economics fallback derivation, and risk severity dynamically reflect live values.
-  - Net cumulative cash flow mathematically reconciled across all summary cards and table rows.
+- **Inputs Consumed:** `BusinessIdeaId` (or `BusinessPlanSessionId` if available), plus financial assumptions (`ARPU`, `OPEX`, `Growth %`, `TAM`, `Churn %`, `StartingBudget`, `TaxRate`).
+- **TAM Source Provenance:** TAM is a canonical read-only linked fact auto-seeded from Step 3.1 Market Study (`marketSizing.tam.value`) with visible provenance attribution and a 1-click reset option. Saved forecast TAM values are strictly preserved and never overwritten on resume.
+
+#### 1. Canonical Flow Architecture
+- **First-Time Generation (No Valid Completed Forecast):**
+  ```text
+  NO valid completed forecast
+  → Full Adjust Forecast Assumptions page (/dashboard/creator/phase-3/forecast)
+  → Founder reviews/edits archetype operational drivers & starting budget
+  → PUT /api/ai/forecast/assumptions (persists inputs & locks edited fields)
+  → POST /api/ai/forecast (starts 36-month deterministic projection generation)
+  → Immediate backend-driven processing state screen
+  → Results Dashboard rendered upon completion
+  ```
+- **Regeneration Flow (Valid Completed Forecast Exists):**
+  ```text
+  VALID completed forecast exists
+  → Results page displayed directly
+  → Founder clicks "Adjust Assumptions" button in Persistent Header
+  → Adjust Assumptions modal opens (ForecastAssumptionsModal)
+  → PUT /api/ai/forecast/assumptions (persists inputs & locks edited fields)
+  → POST /api/ai/forecast/{sessionId}/regenerate (starts new version calculation)
+  → Modal closes; previous valid forecast results remain visible while processing
+  → Header & action bar show non-blocking regeneration indicator
+  → Latest valid version seamlessly replaces displayed forecast on success
+  ```
+
+#### 2. Exact Processing UX & Failure Behavior
+- **Shared Phase 3 Loading Canon:**
+  - Step 3.3 strictly follows the visual and interaction loading language established by Step 3.1 (Market Intelligence) and Step 3.2 (Business Model). No independent or custom loading system exists for Step 3.3.
+  - **Visual Presentation:** `Card` with `rounded-2xl border border-border bg-card p-10 md:p-12 text-center max-w-2xl mx-auto space-y-6 shadow-sm animate-pulse`, `role="status"`, and `aria-live="polite"`.
+  - **Spinner / Icon:** Centered circular badge `<div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary"><RotateCw className="w-6 h-6 animate-spin" /></div>`.
+  - **Progress Bar:** Continuous indeterminate bar `<div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden"><div className="h-full bg-primary rounded-full animate-indeterminate" /></div>`.
+  - **State Authority:** Real processing state (`startForecast.isPending || regenerateForecast.isPending || isSubmittingAssumptions || isSessionProcessing`). No fake timers or synthetic progress percentages ("This may take up to two minutes" is explanatory UI copy only).
+  - **Status Normalization:** `isSessionProcessing` case-insensitively recognizes all backend processing lifecycle states (`Pending`, `Processing`, `Generating`, `Running`, `Queued`). Terminal status check (`isTerminalStatus`) case-insensitively recognizes `Completed`, `Failed`, and `NeedsReview`.
+  - **Zero-Gap Mutation-to-Polling Bridge:** `useRegenerateForecast.onMutate` optimistically updates the session cache query (`forecastKeys.detail(sessionId)`) to `status: "Processing"`. This guarantees that `isGenerating` stays continuously `true` between POST dispatch, HTTP response arrival, and the first polling update, preventing any loading card flicker or disappearance.
+- **First-Time Generation Processing Screen:**
+  - **Title:** `"Generating Your Financial Forecast…"`
+  - **Body:** `"Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes."`
+  - **Failure Handling:** If generation fails (network error, timeout, HTTP 500), preserved saved assumptions are retained; displays honest retry card with `[Try Again]` and `[Adjust Assumptions]` actions.
+- **Regeneration Processing State:**
+  - **Title:** `"Regenerating Financial Forecast…"`
+  - **Body:** `"Recalculating projections with your updated assumptions. This may take up to two minutes."`
+  - **Non-Destructive Preservation:** The existing valid forecast output (`latestValidVersion`) remains fully visible and intact below the top processing card throughout regeneration. The header `Adjust Assumptions` button is disabled with an inline spinner (`RotateCw animate-spin`) to prevent duplicate requests.
+  - **Terminal Completion:** On `Completed` status, the loading card unmounts and the new valid version replaces the previous forecast atomically without page reload.
+  - **Failure Handling:** If regeneration fails (`Failed` or error), previous valid forecast remains completely intact and displayed; a non-destructive failure alert card renders with `[Adjust & Retry]` without wiping or corrupting the results.
+
+#### 3. Single Canonical Assumptions Authority & Dead Code Cleanup
+- **Single Canonical Form Schema:** `ForecastAssumptionsForm` is the single canonical assumptions form and validation schema across both the initial setup page and the in-results modal.
+- **Removal of `StartingBudgetModal.tsx`:** The legacy separate `StartingBudgetModal.tsx` wrapper has been completely excised. Starting Budget is natively integrated into the canonical assumptions form across all views.
+- **`FinancialForecastEngine` as Sole Authority:** `FinancialForecastEngine` is the sole deterministic 36-month calculation authority for all 4 business archetypes. Obsolete projection helpers (`ExtendToThirtySixMonths`, `RecomputeBreakEven`, and unused static helpers) have been completely removed from `ForecastHandler`.
+- **Zero Client-Side Calculation Engine:** React components contain no competing forecast calculation engine or parallel math forks.
+- **Zero Static Fallback Data:** Static fallback counts = 0; first-idea fallbacks = 0; all cards, tables, charts, and metrics are derived from live database records.
+- **Budget Suggestion API:** `GET /api/ai/forecast/budget-suggestion` remains fully active and contracted to supply intelligent baseline recommendations.
+
+#### 4. Archetype Driver Coverage & UI Invariant Rule
+- **Core Invariant:** *Every active editable backend forecast driver must be exposed in the canonical Adjust Forecast Assumptions form. Inactive drivers for an archetype must be hidden or marked N/A, never rendered as misleading fake zeros.*
+- **Archetype Driver Matrix:**
+  - **SaaS:** Launch Subscribers, MoM Subscriber Growth (%), Monthly Churn (%), ARPU (€/mo), Variable Cost per Subscriber (€/mo), Fixed OPEX (€/mo), Corporate Tax Rate (%), Starting Budget (€).
+  - **E-Commerce:** Launch Orders / Month, MoM Order Growth (%), Average Order Value / AOV (€), Cost of Goods Sold / COGS (%), Fulfillment & Packaging Cost per Order (€), Fixed OPEX (€/mo), Corporate Tax Rate (%), Starting Budget (€).
+  - **Service / Agency:** Launch Clients / Projects, MoM Client Growth (%), Average Retainer or Project Value (€/mo), Delivery Cost per Client (€/mo), Fixed OPEX (€/mo), Corporate Tax Rate (%), Starting Budget (€).
+  - **Marketplace:** Launch Monthly GMV / Transactions, MoM Volume Growth (%), Average Transaction Value (€), Take Rate / Commission (%), Payment Processing & Variable Cost (%), Fixed OPEX (€/mo), Corporate Tax Rate (%), Starting Budget (€).
+  - **TAM (All Archetypes):** Canonical read-only linked fact derived from Step 3.1 Market Study.
+
+#### 5. Safety Rules & Project-Context Isolation
+- **Mandatory `ideaId` Contract:** All forecast endpoints (`GET /session`, `POST /start`, `POST /regenerate`, `GET /assumptions`, `PUT /assumptions`, `GET /budget-suggestion`) require a non-empty `ideaId`. Missing/whitespace returns HTTP 400; foreign/unowned returns HTTP 404.
+- **Zero First-Idea Fallback:** Legacy silent fallbacks (`allIdeas.FirstOrDefault()?.Id`) are completely removed.
+- **Zero Unscoped LocalStorage:** LocalStorage keys strictly bind to `mondial_forecast_budget_${ideaId}`. The generic `'active'` key fallback is eliminated.
+- **Monotonic Upstream Version Guard:** `FinancialAssumptionsService` enforces `incoming < stored → reject stale`, `incoming == stored → idempotent no-op`, `incoming > stored → accept update`, independently for `MarketStudyVersion` and `BusinessModelVersion`.
+- **Founder-Lock Protection:** Founder-edited or confirmed fields (`IsFounderLocked`) are permanently protected and survive upstream re-runs.
+- **Latest Valid Completed Resolver:** `hasValidCompletedForecast` evaluates the presence of at least one valid completed `ForecastVersion` with non-empty output, preventing UI breakage during failed or in-flight regenerations.
+- **Tax Default Semantics:** Corporate tax rate carries no universal hardcoded 25% assumption; `null != 0 != inactive/N-A`.
+
+#### 6. Figma Parity & 1:1 Design Conformance (Approved Nodes 57157:9297 & 57157:9348)
+- **Section 1: Header Bar & Persistent Actions:** Eyebrow `STEP 3.3 · FINANCIAL FORECAST`, Title `Your 3-year financial forecast`, Subtitle `36 months · Months 1–12 modelled, 13–36 projected · EUR`, persistent `Adjust Assumptions`, `Download report` (PDF preview overlay), and `Regenerate` button with live credit balance pill (`Uses 32 credits · balance [X]`).
+- **Section 2: Conditional Out-of-Date Alert Strip:** Activates when live simulation operational drivers deviate from last saved run (*"Assumptions changed since last run — results may be out of date. Click Regenerate to update forecast projections."*).
+- **Section 2.5: Executive Verdict Hero Card:** High-impact milestone headline highlighting Break-even Month and Loss Recovery Month, starting budget exhaustion month, and funding gap calculation with dynamic badge (`Funding gap` in warm amber or `Fully funded` in emerald).
+- **Section 3: Three Summary Cards (Figma Node 57157:9348):**
+  - `REVENUE`: Net growth badge (`+X% Y1→Y3`), ARR run-rate stat (`€X ARR (Y3)`), Y1/Y2/Y3 mini-breakdown pills, and custom 341x112 SVG area chart (`RevenueAreaSvg`) with solid line M1–12 modelled, dashed line M12–36 projected, M12 vertical divider with labels, on-curve break-even indicator dot and floating pill badge `M{breakEvenMonth} break-even`.
+  - `COST VS REVENUE`: Revenue vs Total Cost dual curves (`CostVsRevenueCrossingSvg`), drop line at break-even month with outer/inner circle dot and floating badge `€{breakEvenRevenue} ({breakEvenSubs} subs)`, Inflection Point stat (`Month {x}`), and break-even subscriber callout.
+  - `CASH POSITION`: Deficit duration badge (`Deficit: M{x}–M{y}` or `Fully funded`), lowest cash point stat (`−€{minCumulative}` or `Cash positive`), liquidity trajectory chart (`Cash36BarSvg`) with 36 individual vertical bars (5.7px width, 9.47px pitch, horizontal zero baseline, slate initial cash, warm amber deficit, vibrant amber lowest month, teal positive cash, and dotted vertical callouts for budget runs out and cash positive).
+- **Section 4: Assumptions & Live Simulation Parameters Grid:** Responsive 8-card operational driver grid: Starting budget, Subscribers at launch, New subscribers % MoM, Monthly churn %, Price per subscriber (Linked from 3.2), Variable cost/sub, Fixed costs/mo, and Market size TAM (Linked from 3.1 with reset trigger). Real-time parameter tweaking dynamically recalculates all 36 months, break-even, and runway, with live warning banners for tight economics, high growth, and churn risks.
+- **Section 5: Continuous 36-Month Consolidated Data Table:** Direct, continuous 10-column table across 36 months (`MONTH`, `SUBSCRIBERS`, `REVENUE`, `FIXED COST`, `VARIABLE COST`, `TOTAL COST`, `NET CASH FLOW`, `CUMULATIVE`, `CASH ON HAND`, `NOTES`) with distinct year grouping headers (`YEAR 1 · MODELLED`, `YEAR 2 · PROJECTED`, `YEAR 3 · PROJECTED`), subtotal rows (`Y1 SUBTOTAL`, `Y2 SUBTOTAL`, `Y3 SUBTOTAL`), and milestone highlight tags (`Budget runs out`, `Lowest cash point`, `Break-even`, `Cash positive again`, `All losses recovered`).
+- **Section 6: Break-Even & Unit Economics Side-by-Side:** Left: Break-even analysis with 4 key metrics, narrative analysis, and exact contribution margin formula breakdown. Right: Unit economics with CAC, LTV, LTV/CAC (Healthy badge), Payback period, Gross margin %, and Month 1 Burn.
+- **Section 7: Key Assumptions & Risk Assessment:** Left: 7 key model assumptions tagged with provenance badges (`YOUR INPUT`, `FROM 3.2`, `MODEL`). Right: 4-tier risk assessment matrix with severity badges (Funding risk, Growth shortfall, Subscriber retention, Delivery cost).
+- **Section 8: Milestones Complete & Navigation Footer:** Step Complete checklist (6/6 milestones verified) and navigation footer: `Business Model` Back button (navigates to Step 3.2 `/dashboard/creator/phase-3/business-model`), and `Continue to Legal & Compliance` button (navigates to Step 3.4 `/dashboard/creator/phase-3/compliance`).
 - **Credit Cost:** **32 credits** (`AiJobType.Forecast`).
-- **Project-Context Safety & Zero Silent Fallbacks (LIVE & CERTIFIED):**
-  - **Zero First-Idea Fallback:** All legacy fallbacks to the user's first idea (`ListByUserAsync(owner) -> allIdeas.FirstOrDefault()?.Id`) have been completely excised from `ForecastController`.
-  - **Strict Endpoint Scoping:** All forecast endpoints (`GET /api/ai/forecast/session`, `POST /api/ai/forecast`, `POST /api/ai/forecast/regenerate`, `GET /api/ai/forecast/assumptions`, `PUT /api/ai/forecast/assumptions`, `GET /api/ai/forecast/budget-suggestion`) require a non-empty `ideaId`. Missing or whitespace `ideaId` strictly returns HTTP 400 Bad Request (`"ideaId is required"`). Foreign or unowned `ideaId` strictly returns HTTP 404 (ownership violation).
-  - **Frontend Query & Mutation Gating:** Step 3.3 page and React Query hooks (`useForecastAssumptions`, `useBudgetSuggestion`) enforce `enabled: !!ideaId`. Mutations validate `ideaId` before request dispatch. The UI remains in an explicit context-resolution loading state until `ideaId` resolves, preventing unanchored queries.
-  - **LocalStorage Scoping & Precedence:** Unscoped `'active'` key fallbacks (`mondial_forecast_budget_${ideaId || 'active'}`) are eliminated. Local storage key is strictly `mondial_forecast_budget_${ideaId}` only when a valid `ideaId` exists.
-  - **Canonical Assumptions SSoT Precedence:** `ForecastSession.Inputs` is the sole canonical source of truth for financial assumptions. Authority order: `ForecastSession.Inputs` persisted server value > current explicit unsaved form state > scoped temporary cache. Client storage NEVER overrides persisted server values.
-  - **Account & Project Switch Safety:** Switching accounts (User A logout -> User B login) or projects (Idea A -> Idea B) isolates cache and state. React Query keys are idea-scoped (`["creator-ai", "forecast", ..., ideaId]`).
-  - **Monotonic Version Guarding:** `FinancialAssumptionsService` enforces strict monotonic version checks independently for `MarketStudyVersion` and `BusinessModelVersion`:
-    - `incomingVersion < storedVersion`: rejected / ignored as stale.
-    - `incomingVersion == storedVersion`: idempotent no-op.
-    - `incomingVersion > storedVersion`: accepts upstream update.
-    - Founder-edited assumptions (`IsFounderLocked`) are permanently locked and survive any upstream version changes.
+
+#### 7. Verification Status (PASS & FROZEN)
+- **Dedicated Loading Suite:** 8 / 8 passed (`ForecastLoadingExperienceAlignment.test.tsx`)
+- **Selected Forecast Regression Suites:** 19 / 19 passed (`ForecastLoadingExperienceAlignment`, `ForecastProjectContextSafety`, `ForecastPrintView`, `ForecastViewAndPrintTolerance`)
+- **Historical Extended Frontend Suite:** 39 / 39 passed (7 test suites)
+- **Backend Test Suite:** 94 / 94 passed (108 total, 14 integration skipped)
+- **TypeScript Compilation:** PASS (0 errors)
+- **Backend Solution Build:** PASS (0 errors)
+- **Frontend Production Build:** PASS (187 / 187 Next.js routes)
+- **Real-Browser Regeneration:** PASS
+- **Immediate Loading & Zero-Gap Bridge:** PASS
+- **Loading Remains After POST:** PASS
+- **Previous Forecast Preserved During Regeneration:** PASS
+- **New Forecast Atomically Replaces Old:** PASS
+- **Forecast Math Changed:** NO
+- **Figma Results UI Changed:** NO
+- **Duplicate Assumptions Schemas:** 0
+- **Client-Side Forecast Engines:** 0
+- **Static Financial Fallback Code:** 0
+- **Legacy First-Idea Fallback:** 0
+- **Historical Database Compatibility Removed:** NO
+- **Final Status:** PASS / FROZEN / CLOSED
 
 ### 5.4 Step 3.4 — Legal & Compliance Intelligence (LIVE — 100% Figma Node 57156:9158 Aligned)
+- **Status:** **FINAL PASS / FROZEN / CLOSED**
 - **Route:** `/dashboard/creator/phase-3/compliance`
 - **Figma Reference:** 100% verified and aligned against approved Figma Node `57156:9158` ("Legal & Compliance · Creator Phase 3.4").
-- **Backing Entity & Controller:** Backed by `CreatorPhase3Controller` (`/api/creator/phase-3/legal/assessment`, `/api/creator/phase-3/legal/refresh`, `/api/creator/phase-3/legal/item/{itemId}/status`).
-- **Core Principle & Architecture:**
-  > **Legal System Principle:** Deterministic rules determine statutory applicability. AI may explain requirements or draft founder responses. AI does NOT determine statutory applicability or certify legal compliance.
-- **6 Canonical UI Sections (Full-Width Responsive Flow):**
+- **Canonical Boundary & Purpose:**
+  - **Purpose:** Determine WHAT statutory legal and compliance obligations apply to the Creator's project, why they apply, their current planning status, their official legal sources, and what preparation/action is required.
+  - **Boundary:** Step 3.4 is **NOT** company formation execution. Step 3.5 remains strictly responsible for final legal structure selection, formation execution, incorporation workflows, and formation-specific administration.
+- **Data Flow & Architecture:**
+  - `Creator Project / Canvas / Market Study / Forecast`
+  - $\to$ `BusinessProfileClassifier`
+  - $\to$ `LegalBusinessProfile` (`BusinessSignal`, `SignalConfidenceLevels`)
+  - $\to$ `FranceRules.json` (`FranceLegalRulesCatalog`)
+  - $\to$ `LegalApplicabilityEngine`
+  - $\to$ `CreatorIdea.Phase3Data.LegalAssessment` (Single Source of Truth)
+  - $\to$ `LegalComplianceOverviewDto`
+  - $\to$ Step 3.4 Accepted UI (`/dashboard/creator/phase-3/compliance`)
+- **Business Signal Certainty Model:**
+  - Reuses existing canonical certainty primitives: `BusinessSignal` (`Value`, `Confidence`, `Source`, `Rationale`) and `SignalConfidenceLevels` (`Confirmed`, `Derived`, `Unknown`).
+  - **Canonical Semantics:** Absence of evidence strictly evaluates to `SignalConfidenceLevels.Unknown` (never false or true defaults without positive supporting evidence).
+  - **Certainty Gate:** Legal applicability rules checking signals with `Unknown` confidence evaluate deterministically to `NeedsInformation` (or `NeedsProfessionalReview` for ambiguous sector triggers).
+  - **Zero Frontend Inference:** Frontend performs 0 substantive business or legal inference, consuming typed profile signals directly from backend.
+- **6 Canonical UI Sections (Full-Width Responsive Flow — FROZEN):**
   1. *Header & Short Introduction:* `Phase3SetupShell` header (`STEP 3.4 · LEGAL & COMPLIANCE`, `Legal & Compliance Intelligence`) followed by introduction *"Let’s make the legal side of your project easier to understand."*
   2. *Roadmap Summary Card:* *"Your legal roadmap is ready."* with clear guidance on what to prepare before registration, launch, and day-to-day operations.
   3. *Recommended Next Action Card:* Soft secondary background (`bg-secondary`), prominent `START HERE` badge, dynamic requirement title and justification, and `"Review this step →"` action button with deep scroll.
-  4. *About Your Project Card:* Personalized project overview dynamically synthesized from detected business archetypes and classified profile traits, with `"Update your project details ↗"` deep link to Step 3.2.
+  4. *About Your Project Card:* Personalized project overview dynamically bound from typed `LegalBusinessProfileDto` signals, with `"Update your project details ↗"` deep link to Step 3.2.
   5. *Checklist Stage Section (`LegalFigmaStageSection.tsx`):*
      - 3 Segmented Stage Tabs: *"Before you register"*, *"Register & prepare to launch"*, *"Running your business"* with live task count badges.
      - Single card container with `divide-y` row separators.
      - Completed tasks feature `#157A55` (`bg-success-strong`) checkmark, title, subtitle, and inline `"Marked done by you"` badge (`bg-success-light text-success-strong`).
-     - Expanded tasks feature a 56px indented accordion layout with uppercase section titles (`WHY THIS APPLIES TO YOU`, `WHEN TO DO IT`, `WHAT TO DO`), canonical Official Public Guidance card with deep links to authoritative French portals (`Service-Public.fr`, `INPI`, `CNIL`), and subtle check reminder.
+     - Expanded tasks feature a 56px indented accordion layout with uppercase section titles (`WHY THIS APPLIES TO YOU`, `WHEN TO DO IT`, `WHAT TO DO`), canonical Official Public Guidance card with deep links to authoritative French portals (`Service-Public.fr`, `INPI`, `CNIL`, `Legifrance`, `DGFiP`), and subtle check reminder.
      - Quiet statutory disclaimer: *"Checkmarks record your progress; they do not represent legal verification by MBC."*
   6. *Footer Reassurance & Continuation:* Reassurance text *"You can return to this roadmap as your project moves forward."*, `"Back"` button routing back to Step 3.3 Financial Forecast (`/dashboard/creator/phase-3/forecast`), and `"Save and continue"` button completing Step 3.4 and advancing to Step 3.5 Company Formation (`/dashboard/creator/phase-3/formation`).
-- **Typography & Theme Token Canon (`globals.css`):**
-  - Zero raw HEX literals and zero arbitrary bracket font sizes (`text-[...]`).
-  - Uses role-based font classes (`text-page-heading`, `text-card-title`, `text-section-title`, `text-body`, `text-label`, `text-button`, `text-caption`, `text-badge`, `text-footnote`).
-  - Colors strictly bind to semantic tokens: `text-foreground`, `text-muted-foreground`, `text-primary`, `bg-card`, `bg-muted`, `bg-primary`, `bg-secondary`, `bg-success-strong`, `bg-success-light`, `border-border`.
-- **Authoritative National Catalogue (France — 100% English):**
-  - **Catalogue Version:** `FR-2026.1`
-  - **Canonical Rules (18 Total):** Fully declared in English in `backend/Resources/LegalRules/FranceRules.json`:
-    - *Corporate Governance (5):* `FR-CORP-001` (Share Capital Deposit & Escrow Certificate), `FR-CORP-002` (Drafting & Formal Execution of Constitutional Bylaws), `FR-CORP-003` (Statutory Legal Notice Publication in an Authorized Gazette), `FR-CORP-004` (Company Registration via INPI Guichet Unique), `FR-CORP-005` (Beneficial Ownership Declaration / RBE).
-    - *Intellectual Property (1):* `FR-IP-001` (Trademark & Brand Name Rights Verification with INPI).
-    - *Data Privacy (3):* `FR-PRIV-001` (Article 30 GDPR Data Processing Records), `FR-PRIV-002` (GDPR Privacy Policy & Data Subject Disclosures), `FR-PRIV-003` (Cookie & Online Tracker Consent Compliance).
-    - *Web Presence (1):* `FR-WEB-001` (Mandatory Website Legal Notice / Mentions Légales).
-    - *Consumer Protection (3):* `FR-CONS-001` (Standard B2C Terms of Sale / CGV), `FR-CONS-002` (Mandatory 14-Day Consumer Withdrawal Right), `FR-CONS-003` (Consumer Dispute Mediation Designation).
-    - *Payment & Commercial (2):* `FR-PAY-001` (Authorized Payment Service Provider Integration), `FR-MKT-001` (Direct Electronic Marketing & Commercial Communications).
-    - *Operations & Sector (3):* `FR-INS-001` (Professional Liability Insurance Coverage / RC Pro), `FR-SOC-001` (Social Security Affiliation & Pre-Employment Declaration), `FR-REG-001` (Regulated Activities & Professional Qualifications).
-- **Legal Source-Of-Truth Architecture:**
-  - **Canonical Legal Authority:** `CreatorLegalAssessment` (`CreatorIdea.Phase3Data.LegalAssessment` and `CreatorJourney.Phase3Data.LegalAssessment`) serves as the sole active Creator legal source of truth.
-  - **Legacy Checklist Compatibility:** `CreatorPhase3Data.LegalChecklist` is preserved strictly as a backward-compatible BSON deserialization surface for historical documents (0 canonical active readers, 0 new writers).
-  - **Compatibility Command Adapter:** `UpdateLegalChecklistItemAsync` contains zero independent legal business logic and acts purely as an adapter delegating to canonical `UpdateLegalAssessmentItemStatusAsync`.
-  - **Compatibility HTTP Endpoints:** `POST /api/creator/ai/legal-checklist/generate` and `PATCH /api/creator/legal-checklist/item/{itemId}` are compatibility HTTP surfaces only, not separate legal authorities.
-  - **Before Level Up:** Active Creator legal assessment is the sole authority.
-  - **At Level Up:** The active Creator legal assessment is preserved intact as the immutable Creator baseline.
-  - **After Level Up:** `Companies.LegalAssessment` becomes the active Entrepreneur operational legal state.
-  - **Deep-Copy Isolation:** Creator and Entrepreneur legal graphs use independent deep copies so mutable Entrepreneur operational changes never alter the frozen Creator baseline.
+- **Authoritative National Catalogue (France — 21 Active Rules):**
+  - **Catalogue Version:** `FR-2026.2` (`backend/Resources/LegalRules/FranceRules.json`)
+  - **Canonical Rules (21 Total):**
+    - *Corporate Governance (6):*
+      - `FR-CORP-001` (Share Capital Deposit & Escrow Certificate — evaluated as `NeedsInformation` at Step 3.4 pending Step 3.5 structure choice; dispensable for EI/Micro).
+      - `FR-CORP-002` (Drafting & Formal Execution of Constitutional Bylaws / Statuts — evaluated as `NeedsInformation` pending Step 3.5).
+      - `FR-CORP-003` (Statutory Legal Notice Publication in an Authorized Gazette / JAL — evaluated as `NeedsInformation` pending Step 3.5).
+      - `FR-CORP-004` (Business Registration via INPI Guichet Unique — SIREN & Official Registry Extract; no universal Kbis promise).
+      - `FR-CORP-005` (Beneficial Ownership Declaration / RBE — evaluated as `NeedsInformation` pending Step 3.5).
+      - `FR-CORP-006` (Annual Financial Accounts Approval & Filing — ongoing corporate governance requirement).
+    - *Intellectual Property (1):*
+      - `FR-IP-001` (Trademark Clearance & Brand Protection with INPI — priority `recommended`, triggered across commercial activity signals).
+    - *Data Privacy & Consumer Protection (7):*
+      - `FR-PRIV-001` (Article 30 GDPR Data Processing Records — SME simplified record keeping).
+      - `FR-PRIV-002` (GDPR Privacy Policy & Data Subject Disclosures).
+      - `FR-PRIV-003` (Cookie & Online Tracker Consent Management).
+      - `FR-WEB-001` (Mandatory Website Legal Notice / Mentions Légales).
+      - `FR-CONS-001` (Standard B2C Terms of Sale / CGV).
+      - `FR-CONS-002` (Mandatory 14-Day Consumer Right of Withdrawal).
+      - `FR-CONS-003` (Consumer Dispute Mediation Designation).
+    - *Payment, Commercial & Tax (3):*
+      - `FR-PAY-001` (Merchant Payment-Provider Integration & PCI-DSS SAQ-A — merchant delegation model, not regulated PSP entity).
+      - `FR-MKT-001` (Direct Electronic B2C Marketing & Commercial Communications Consent).
+      - `FR-TAX-001` (Electronic Invoicing & E-Reporting Reform 2026/2027 — universal 1 Sept 2026 reception capability mandate + phased 1 Sept 2027 issuance/e-reporting for SMEs).
+    - *Operations & Employment (4):*
+      - `FR-INS-001` (Professional Liability Insurance Coverage / RC Pro — priority `recommended` commercial risk management).
+      - `FR-SOC-001` (Founder Social Security Affiliation Planning / URSSAF / SSI).
+      - `FR-SOC-002` (Mandatory Employee Pre-Hiring Declaration / DPAE — conditioned on positive `HasEmployees: true`).
+      - `FR-REG-001` (Regulated Activities & Professional Qualifications Verification).
+- **FR-TAX-001 Reform Scope & Limitation:**
+  - Step 3.4 models the 1 September 2026 reception mandate as universal for all VAT-subject businesses. Phased issuance and e-reporting dates (1 September 2027 for SMEs/micro-enterprises) are explicitly detailed in statutory guidance.
+  - Personalization is limited by available canonical signals (`LegalBusinessProfile` does not contain explicit `VatRegime` or `CompanySize` fields; unknown facts yield `NeedsInformation`).
+- **Canonical Legal Planning Readiness Formula:**
+  - **Single Authority:** `LegalApplicabilityEngine.ComputePlanningReadiness`
+  - **Stage Weights:** Pre-registration = 40%, Launch = 40%, Ongoing = 20%.
+  - **Item Weights:** Critical = 2.0, Recommended = 1.0.
+  - **Progress Credit:** `completed` = 1.0, `in_progress` = 0.5, `ready_for_review` = 0.5, `not_started` = 0.0, `needs_information` = 0.0, `not_applicable` = excluded.
+  - **Meaning:** Represents **Legal Planning Readiness** (not legal certification, legal approval, or guaranteed statutory compliance).
+- **Step 3.7 Connection:**
+  - `Legal dimension score = (PlanningReadinessPct / 100) * 15` (Max 15 points).
+  - Source: `CreatorIdea.Phase3Data.LegalAssessment.PlanningReadinessPct` (0 legacy checklist dependencies).
+- **Project Context & Multi-Project Isolation:**
+  - All legal endpoints (`overview`, `evaluate`, `item status`, `evidence`, `section-12`) strictly require an explicit `ideaId`.
+  - Missing `ideaId` on `GET /api/creator/legal-compliance/section-12` returns HTTP 400 Bad Request.
+  - Zero fallbacks to first idea or ambient active idea.
+- **Legal Source-Of-Truth Architecture & Compatibility:**
+  - **Canonical SSoT:** `CreatorLegalAssessment` (`CreatorIdea.Phase3Data.LegalAssessment`).
+  - **Legacy Checklist Compatibility:** `CreatorPhase3Data.LegalChecklist` is preserved strictly for historical BSON document deserialization (0 active readers, 0 new writers).
+  - **Compatibility Command Adapters:** `UpdateLegalChecklistItemAsync`, `PATCH /api/creator/legal-checklist/item/{itemId}`, and `POST /api/creator/ai/legal-checklist/generate` act purely as compatibility adapters writing to canonical `LegalAssessment`.
 - **Evidence Management & Auditability:**
   - Uses an **Evidence Activity Trail** (append-only activity history tracking upload, status changes, and notes).
-  - Terminology canon: uses "Evidence Activity Trail" and "Append-only activity history" (never "cryptographically immutable" or "tamper-proof").
-- **Live Stage 10 Verification Certified:**
-  - *Legal Refresh Preservation:* `PASS` — Completed requirement status, founder notes, evidence links, physical document files on disk, and activity history are 100% preserved when upstream business signals trigger staleness and refresh is run.
-  - *Legal Refresh Idempotency:* `PASS` — Consecutive refresh without changing inputs produces 0 duplicate requirements, 0 duplicate evidence links, 0 duplicate sources, 0 duplicate reconciliation records, and 0 duplicate audit events.
-  - *Four-Surface Freshness Consistency:* `PASS` — Business classifier mutations (e.g. B2B $\to$ B2B+B2C) mark all 4 surfaces stale (`Phase3LegalCard`, `Legal & Compliance Workspace`, `Business Plan Section 12`, `Investor Readiness`). After refresh, all 4 surfaces return to current/synchronized state.
+- **Final Verification Certification:**
+  - Backend Legal tests: 138/138 PASS (0 failed, 0 skipped).
+  - Targeted Step 3.4/3.7 tests: 83/83 PASS.
+  - Frontend Step 3.4/3.7 tests: 12/12 PASS.
+  - TypeScript: 0 errors.
+  - Backend build: 0 errors.
+  - Frontend build: 187 routes compiled cleanly.
+  - UI visual changes: 0.
 
-### 5.5 Step 3.5 — Company Formation & Team (LIVE — 100% Figma Node 57156:8767 Aligned)
+### 5.5 Step 3.5 — Company Formation & Team (CREATOR PHASE 3.5 — FINAL PASS — FROZEN — CLOSED)
 - **Route:** `/dashboard/creator/phase-3/formation`
 - **Figma Reference:** 100% verified and aligned against approved Figma Node `57156:8767` ("Company Formation & Team · Creator Phase 3.5").
-- **Backing Entity & Controller:** Backed by `CreatorPhase3Controller` (`/api/creator/ai/formation-generator/start`, `PATCH /api/creator/formation/select-type`, `PATCH /api/creator/formation/skills`).
+- **Status:** **FINAL PASS — FROZEN — CLOSED**. UI, Figma structure, tokens, layout, copy, semantics, and API contracts are frozen.
+- **Purpose:** Turn the Creator's validated business/legal planning context into a company-formation and initial-team setup plan. Handles: starting configuration, legal structure recommendation, explicit legal structure selection, founder ownership planning, planned leadership role, starting-capital planning, capability/team-gap assessment, formation snapshot/version history, Step 3.4 legal-assessment reconciliation after explicit structure choice, and handoff to Step 3.6.
+- **Step 3.4 ↔ Step 3.5 Boundary:**
+  - *Step 3.4 (Legal & Compliance):* WHAT legal/compliance obligations apply. Canonical source: `CreatorIdea.Phase3Data.LegalAssessment`.
+  - *Step 3.5 (Company Formation & Team):* HOW the company formation and founder/team setup are planned.
+  - Step 3.5 consumes Step 3.4. It does **NOT** create a second `LegalApplicabilityEngine`.
+- **Canonical Step 3.5 SSoT:**
+  - Canonical source: `CreatorIdea.Phase3Data.FormationGenerator` (mirrored/composed into journey state where required by current architecture).
+  - Snapshot history: `CreatorIdea.OutputSnapshots.FormationVersions`.
+  - `FormationGenerator` = Step 3.5 single source of truth. Zero parallel formation or versioning stores.
+- **Canonical Formation Writers:**
+  1. `SetFormationAsync` (generation initialization)
+  2. `SelectFormationTypeAsync` (explicit legal structure selection)
+  3. `DeclareFormationSkillsAsync` (skills, cofounder draft, and setup configuration persistence)
+  - All 3 write through existing formation architecture and append timestamped version snapshots to `CreatorIdea.OutputSnapshots.FormationVersions`. Zero second versioning systems.
+- **Starting Mode Semantics:**
+  - Canonical values: `solo` ("Just me"), `team` ("With co-founders"), `undecided` ("I’m not sure yet").
+  - *Critical Semantic Rule:* `StartingMode` DOES NOT confirm legal structure. Founder mode selection must **NOT** silently set `SelectedType`.
+- **RecommendedType vs SelectedType:**
+  - `RecommendedType`: System/backend recommendation only (advisory).
+  - `SelectedType`: Explicit founder-confirmed legal structure only.
+  - Zero `RecommendedType` $\to$ `SelectedType` silent copy. Explicit selection occurs strictly through `SelectFormationTypeAsync`.
+- **Canonical Legal-Form Codes:**
+  - Persisted canonical codes: `SAS`, `SARL`, `SAS-U`.
+  - Display formatting may show `SAS-U` $\to$ `SASU`, but persisted canonical value remains `SAS-U`. Zero alternative persisted aliases.
+- **Setup Configuration Persistence:**
+  - `CreatorFormationGenerator` canonically supports: `StartingMode`, `FounderEquity`, `PlannedRole`, `CapitalAmount`, `CapitalConfirmed`.
+  - Persists through `DeclareFormationSkillsAsync` without schema pollution or parallel endpoints.
+- **Partial Update & Non-Destructive Semantics:**
+  - Optional setup fields use non-destructive partial updates. Omitted values **MUST NOT** overwrite existing canonical values.
+  - Omitted `FounderEquity` $\to$ preserve existing persisted `FounderEquity`.
+  - Omitted `PlannedRole` $\to$ preserve existing persisted `PlannedRole`.
+  - Omitted `CapitalAmount` $\to$ preserve existing persisted `CapitalAmount`.
+  - Omitted `CapitalConfirmed` $\to$ preserve existing persisted `CapitalConfirmed`.
+  - Zero omitted properties become `0`, `false`, `null`, empty, or default.
+- **Unconfirmed Default Protection:**
+  - Missing `CapitalConfirmed` $\neq$ `true`. Missing/null legacy value $\to$ unconfirmed (`false` display state, omitted on continue unless explicitly confirmed).
+  - Suggested capital: displayed from forecast planning context (e.g. OpEx baseline) as a reference suggestion, but is **NOT** automatically canonical founder-confirmed capital.
+  - Missing `FounderEquity`: UI planning display fallback (`100%` solo, `70%` team) is **NOT** automatically persisted merely by page load or Continue.
+  - Zero migration-by-page-load.
+- **Team Mode Equity Default:**
+  - Canonical presentation/default behavior: Team mode: `70%` founder / `30%` team.
+  - Conflicting `75%` fallback eliminated across all layers.
+  - Display suggestion $\neq$ confirmed canonical ownership until explicitly confirmed/persisted.
+- **Capital Semantics:**
+  - Starting capital in Step 3.5 is a *planning capital baseline*.
+  - Financial Forecast OpEx may be used as planning/reference context. It **MUST NOT** be described as statutory share capital.
+  - Founder-confirmed/edited value persists to `FormationGenerator.CapitalAmount`.
+  - Confirmation status persists to `FormationGenerator.CapitalConfirmed`.
+- **Validations (Authoritative Backend Enforced):**
+  - `FounderEquity`: `0 <= FounderEquity <= 100` (400 Bad Request on out-of-range).
+  - `StartingMode`: Must be one of `solo`, `team`, `undecided` (400 Bad Request on arbitrary values).
+  - `PlannedRole`: Must be one of `President`, `CEO`, `Chief Executive Officer`, `Managing Director (Gérant)`, `Managing Director`. Planning data only.
+  - `CapitalAmount`: Must be non-negative (`CapitalAmount >= 0`).
+- **Project Isolation:**
+  - All Step 3.5 APIs use explicit `ideaId` $\to$ `ResolveIdeaAsync` $\to$ ownership verification.
+  - Zero `FirstOrDefault`, zero first-idea, zero cross-project mutation. Multi-project isolation: **PASS**.
+- **Step 3.4 Reconciliation:**
+  - Only explicit legal structure selection (`SelectFormationTypeAsync`) reconciles company-form-dependent Step 3.4 legal obligations (`FR-CORP-001`, `FR-CORP-002`, `FR-CORP-003`, `FR-CORP-005`).
+  - `StartingMode` alone does **NOT** resolve legal-form `NeedsInformation`.
+  - `SelectFormationTypeAsync` preserves founder evidence/notes, uses stable rule IDs, recomputes readiness via `LegalApplicabilityEngine`, and does not create duplicate `LegalAssessment` instances.
+- **Step 3.6 Handoff:**
+  - Continue flow: flush pending formation changes $\to$ persist canonical formation state $\to$ `completeStep(3,5)` $\to$ navigate to `/dashboard/creator/phase-3/business-plan?ideaId=<same ideaId>`. Zero hidden `SelectedType` mutation.
+- **UI Freeze Record:**
+  - Visual diff: 0. Copy changes: 0. Layout changes: 0. Responsive changes: 0. Figma structure changes: 0.
+- **Final Verification Record:**
+  - Broad Step 3.5 regression: Backend unit tests 422/422 PASS; Frontend suite 1209/1215 PASS (0 Step 3.5 failures); TypeScript PASS; Backend build PASS; Frontend production build PASS (187 routes).
+  - Final semantic fix verification: Focused backend tests 8/8 PASS; Focused frontend tests 6/6 PASS; TypeScript PASS; UI visual diff 0.
+  - Full integration suite: **NOT COMPLETED — INFRASTRUCTURE LIMITATION** (MongoDB Atlas free-tier 500/500 collection limit). Verified non-product issue.
 - **Continuous Document Architecture (13 Canonical Sections):**
   1. *Section 1: Quiet Intro:* DM Sans header (*"Let’s work out how your company could be set up."*).
   2. *Section 2: Your Setup So Far:* French digital venture summary card and jurisdiction advisory context.
   3. *Section 3: How Are You Planning to Start?:* 3 interactive selectable starting modes (*Just me*, *With co-founders*, *I’m not sure yet*) with reactive state updates.
   4. *Section 4: A Structure to Consider:* Canonical recommendation card (*SASU*, *SAS*, or *SARL*) with "Worth considering" badge, "Why it may fit your plan" (3 checkmark signals), "Things to think about" (4 consideration lines), 4-cell Quick Facts strip (*OWNERS*, *MANAGEMENT*, *OWNERSHIP LATER*, *BEFORE REGISTRATION*), and an exploration selector for alternative structures.
-  5. *Section 5: Ownership:* Visual percentage breakdown bar (*YOU · 100%*) with inline slider/adjustment modal.
+  5. *Section 5: Ownership:* Visual percentage breakdown bar with inline slider/adjustment control (`100%` solo, `70%` team presentation default).
   6. *Section 6: Leadership:* Legal representative card (*Planned role: President / Gérant*) with custom title selector.
-  7. *Section 7: Starting Capital Plan:* Large bold starting capital display (seeded from forecast OPEX baseline, e.g. *€5,000*) with *"Looks right"* confirmation and editable input toggle.
+  7. *Section 7: Starting Capital Plan:* Large bold starting capital display (seeded from forecast OPEX baseline, e.g. *€5,000*) with *"Looks right"* confirmation and editable input toggle. Missing confirmation does not default to true.
   8. *Section 8: Who Do You Actually Need to Get Started?:* 3-tier capability grid:
      - *YOU CAN HANDLE* (green indicator, chips from `youHave`)
      - *YOU MAY NEED HELP WITH* (amber indicator, chips from `youNeed` / gaps)
@@ -728,18 +915,8 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Full-Width Layout & Zero Hardcoded Data Guarantee:**
   - *Full-Width Shell:* Rendered inside `Phase3SetupShell` configured with `fullWidth={true}` and `w-full min-w-0`, perfectly responsive from 1440px to 1920px without arbitrary max-width constraints.
   - *Dynamic Domain Data:* 100% free of static/hardcoded venture mocks. Project name, country, business description, currency symbol, why-it-fits reasoning bullets, leadership roles, starting capital basis, team skill tags, priority launch gap, and Day 1 roster are dynamically bound from `journey.project`, `formation.recommendationFactors`, `forecastBasis`, and `journey.state.phase3.marketStudy`.
-- **Bi-Directional Persistence Contracts:**
-  - *Instant Entity Override:* Selecting an entity card calls `PATCH /api/creator/formation/select-type` with `{ selectedType: string }`, instantly persisting the selection to MongoDB and flagging `IsOverride: true` if divergent from engine recommendation.
-  - *Atomic Save-on-Continue:* Advancing via *"Continue to Executive Business Plan"* commits `{ skills: string[], cofounders: CofounderDraft[], setup: FormationSetupPayload }` to `PATCH /api/creator/formation/skills`, synchronizing ownership split, leadership role, starting capital, and team gaps directly to the creator session.
-- **Supported Legal Structures (Current Production Canon):**
-  - `SAS` (Société par Actions Simplifiée) — Multi-founder archetype
-  - `SAS-U` / `SASU` (Société par Actions Simplifiée Unipersonnelle) — Solo-founder archetype
-  - `SARL` (Société à Responsabilité Limitée) — Commercial partnership archetype
 - **Formation Engine MVP Product Limitation:**
   > **Known Product Limitation:** Current France MVP formation recommendations are limited to the legal structures supported by the current recommendation engine (SAS, SAS-U, SARL). The engine does not yet represent every possible French business structure (e.g., EURL, Micro-entreprise / Auto-entrepreneur, Entreprise Individuelle).
-- **Discrete Recommendation Reasoning:** Exposes `RecommendationFactors` (`Category`, `Signal`, `Implication`) breaking down the exact signals driving the recommendation (Sector/FinTech, TAM & Growth from forecast, Funding model, Founding team structure).
-- **Override Tracking:** Persists `IsOverride` (`bool`) on `CreatorFormationGenerator` whenever a founder chooses an alternative entity structure over the automated recommendation.
-- **Skills Declaration & Protected Clobber Guard:** Clear separation between *Founder-Declared Capabilities (Self-Reported)* and *System-Derived Competence Gaps (Inferred Baseline)* with deep links to `/marketplace?category={specialty}`. Atomic clobber guard prevents rule-engine echoes from overwriting self-declared skills.
 
 ### 5.6 Step 3.6 — Executive Business Plan (C-3, LIVE & FIGMA-ALIGNED)
 - **Route:** `/dashboard/creator/phase-3/business-plan`
@@ -1204,18 +1381,18 @@ RC1 Freeze
 - **Legacy Artifact Elimination:** Removed hardcoded "SaaS" badge, global "Idea Readiness" score, premature Day-1 "Interested Buyers (0)" KPI, static EBITDA "—" KPI, "Generate Pitch Deck" misnomer, and client-side `advancePhase(5)` bypass.
 - **Strict Scope Boundaries:** Confirmed zero cards, routes, or progress items for Phase 4.8 (Launch Assets) or Phase 4.9 (Construction Readiness).
 
-**2026-09-24 — Step 3.3 Financial Forecast: Project-Context Safety Hardening.**
-- **Zero First-Idea Fallback (§5.3):** Completely removed `ListByUserAsync(owner) → allIdeas.FirstOrDefault()?.Id` fallback from `ForecastController`. All forecast endpoints now strictly require a non-empty `ideaId` parameter and return HTTP 400 on missing/whitespace input.
-- **Strict Endpoint Scoping (§5.3):** Verified and enforced across all 6 forecast endpoints: `GET /assumptions`, `PUT /assumptions`, `POST /start`, `POST /regenerate`, `GET /session`, `GET /budget-suggestion`. Foreign/unowned `ideaId` returns HTTP 404.
-- **Frontend Query & Mutation Gating (§5.3):** React Query hooks (`useForecastAssumptions`, `useBudgetSuggestion`) enforce `enabled: !!ideaId`. Mutations reject before dispatch when `ideaId` is absent. Page remains in context-resolution loading state until resolved.
-- **LocalStorage Scoping (§5.3):** Removed all 6 occurrences of `ideaId || 'active'` fallback in `forecast/page.tsx`. Keys strictly scoped to `mondial_forecast_budget_${ideaId}` only when `ideaId` is truthy.
-- **Canonical SSoT Precedence (§5.3):** `ForecastSession.Inputs` > unsaved form state > scoped cache. Client storage never overrides persisted server values.
-- **Monotonic Version Guard (§5.3):** `FinancialAssumptionsService` enforces `incoming < stored → stale reject`, `incoming == stored → idempotent no-op`, `incoming > stored → accept update`, independently for `MarketStudyVersion` and `BusinessModelVersion`. Founder-locked fields survive all upstream updates.
-- **New Backend Tests:** `ForecastProjectContextSafetyTests` (9 tests: 400 on missing ideaId, 404 on foreign idea, multi-project isolation, monotonic version semantics, founder lock preservation).
-- **New Frontend Tests:** `ForecastProjectContextSafety.test.tsx` (5 tests: query gating, mutation gating, zero `'active'` localStorage keys, server precedence).
-- **Regression:** All existing Step 3.3 tests remain green. Backend build: 0 errors. Frontend TypeScript: 0 errors. Next.js build: 187/187 routes. Forecast math and Figma Results UI unchanged.
+**2026-09-24 — Step 3.3 Financial Forecast: Canonical Architecture, Processing UX, Loading Canon Alignment, Dead Code Cleanup & Final Verification Freeze.**
+- **Canonical Flow Reconciliation (§5.3):** Formalized first-generation flow (NO valid forecast $\to$ full Adjust Forecast Assumptions page $\to$ PUT assumptions $\to$ POST generate $\to$ processing state $\to$ Results) and regeneration flow (VALID forecast $\to$ Results directly $\to$ Adjust Assumptions modal $\to$ PUT assumptions $\to$ POST regenerate $\to$ non-destructive processing overlay $\to$ latest valid version replaces on success).
+- **Exact Processing UX & Loading Canon Alignment (§5.3):** Standardized exact user-facing titles and descriptions for first generation (`"Generating Your Financial Forecast…"` / `"Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes."`) and regeneration (`"Regenerating Financial Forecast…"` / `"Recalculating projections with your updated assumptions. This may take up to two minutes."`). Reused Phase 3 canonical visual loading presentation (Step 3.1 & 3.2 pattern: `RotateCw animate-spin`, `rounded-full bg-primary/10`, centered `rounded-2xl Card`, `animate-pulse`, `animate-indeterminate` progress bar).
+- **Zero-Gap State Bridge (§5.3):** Implemented `useRegenerateForecast.onMutate` optimistic session cache update to `Processing`, bridging mutation dispatch $\to$ HTTP response $\to$ backend polling and eliminating any loading flicker or premature unmount.
+- **Non-Destructive Result Preservation (§5.3):** First generation failure preserves saved inputs with retry/edit CTAs; regeneration failure preserves previous valid forecast intact with dismissible banner and retry/edit CTAs. During regeneration, previous valid results remain mounted and visible below the processing card until atomically replaced by the new version.
+- **Dead Code & Parallel Schema Elimination (§5.3):** Excised `StartingBudgetModal.tsx`; starting budget natively integrated into `ForecastAssumptionsForm` (single canonical schema). Excised obsolete projection math methods (`ExtendToThirtySixMonths`, `RecomputeBreakEven`) and dead helpers from `ForecastHandler.cs`. Confirmed `FinancialForecastEngine` as the sole deterministic calculation authority.
+- **Driver Invariant Rule (§5.3):** Enforced that every active editable backend forecast driver across SaaS, E-commerce, Service, and Marketplace is exposed in the canonical form, with inactive drivers hidden/N-A.
+- **Safety Invariants (§5.3):** Mandatory ideaId scoping, zero first-idea fallback, zero `'active'` localStorage keys, monotonic version race protection, founder-lock preservation, non-destructive regeneration failure, and zero hardcoded tax defaults.
+- **Full Verification:** Dedicated Loading Suite: 8/8 passed, Selected Forecast Regression Suites: 19/19 passed, Historical Extended Suite: 39/39 passed, Backend 94/94 passed (108 total, 14 skipped), TypeScript 0 errors, Next.js production build PASS (187/187 routes), Backend build PASS. Status: PASS / FROZEN.
 
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
+
 

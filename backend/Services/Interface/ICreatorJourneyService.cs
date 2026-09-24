@@ -107,7 +107,7 @@ namespace WebApp.Services.Interface
 
         /// <summary>Store the chosen company type; flips legal item 1 (company type) to done.</summary>
         Task<CreatorJourney> SelectFormationTypeAsync(string userId, string selectedType, string ideaId = null);
-        Task<CreatorJourney> DeclareFormationSkillsAsync(string userId, System.Collections.Generic.List<string> youHave, System.Collections.Generic.List<CreatorSkillGap> youNeed, System.Collections.Generic.List<string> matchedSpIds, CreatorCofounderDraft cofounder, string ideaId = null);
+        Task<CreatorJourney> DeclareFormationSkillsAsync(string userId, System.Collections.Generic.List<string> youHave, System.Collections.Generic.List<CreatorSkillGap> youNeed, System.Collections.Generic.List<string> matchedSpIds, CreatorCofounderDraft cofounder, string startingMode = null, double? founderEquity = null, string plannedRole = null, double? capitalAmount = null, bool? capitalConfirmed = null, string ideaId = null);
 
         /// <summary>
         /// Persist a Phase-3 AI session reference (kind = "forecast" | "businessPlan")

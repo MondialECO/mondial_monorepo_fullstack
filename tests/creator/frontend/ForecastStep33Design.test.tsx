@@ -194,7 +194,7 @@ describe('ForecastPage (Step 3.3 Figma Node 57157:9297 Alignment)', () => {
       expect(screen.getByRole('heading', { name: 'Your 3-year financial forecast', level: 1 })).toBeInTheDocument();
       expect(screen.getByText('36 months · Months 1–12 modelled, 13–36 projected · EUR')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Download report/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Regenerate/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Adjust Assumptions|Regenerate/i })).toBeInTheDocument();
       expect(screen.getByText(/Uses 32 credits · balance 152/i)).toBeInTheDocument();
     });
   });

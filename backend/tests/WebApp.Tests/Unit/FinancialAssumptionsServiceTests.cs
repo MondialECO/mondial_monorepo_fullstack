@@ -391,4 +391,76 @@ public class FinancialAssumptionsServiceTests
 
         result.Inputs!.BusinessModelType.Should().Be(expectedType);
     }
+
+    [Fact]
+    public async Task UpdateFounderAssumptions_PersistsAllArchetypeDriversAndTaxRate()
+    {
+        var ideaId = ObjectId.GenerateNewId().ToString();
+        var idea = new CreatorIdea
+        {
+            Id = ideaId,
+            UserId = "user-1",
+            Project = new CreatorJourneyProject { Solution = "Marketplace for creative tools" }
+        };
+
+        var session = new ForecastSession
+        {
+            Id = "session-1",
+            OwnerUserId = "user-1",
+            BusinessIdeaId = ideaId,
+            Inputs = new ForecastInputs
+            {
+                StartingBudget = 50000,
+                LaunchSubscribers = 200,
+                Arpu = 50,
+                VariableCost = 5,
+                Opex = 8000,
+                MonthlyGrowthPct = 12,
+                Tam = 100000000
+            }
+        };
+
+        _ideas.Setup(x => x.GetOwnedAsync(ideaId, "user-1")).ReturnsAsync(idea);
+        _sessions.Setup(x => x.GetOwnedAsync("session-1", "user-1")).ReturnsAsync(session);
+        _sessions.Setup(x => x.GetByIdeaAsync(ideaId, "user-1")).ReturnsAsync(session);
+
+        var dto = new UpdateFinancialAssumptionsDto
+        {
+            StartingBudget = 75000,
+            LaunchSubscribers = 350,
+            MonthlyGrowthPct = 15,
+            MonthlyChurnPct = null,
+            Arpu = 0,
+            VariableCost = 2.5,
+            Opex = 11000,
+            AverageOrderValue = 120,
+            TakeRatePct = 12.5,
+            TaxRatePct = 25.0,
+            BusinessModelType = "marketplace",
+            ActiveDrivers = new Dictionary<string, bool>
+            {
+                ["monthlyChurnPct"] = false,
+                ["arpu"] = false,
+                ["averageOrderValue"] = true,
+                ["takeRatePct"] = true
+            },
+            Provenance = new Dictionary<string, string>
+            {
+                ["startingBudget"] = "founder_edited",
+                ["takeRatePct"] = "founder_edited"
+            }
+        };
+
+        var result = await Service().UpdateFounderAssumptionsAsync(ideaId, "user-1", dto);
+
+        result.Inputs.Should().NotBeNull();
+        result.Inputs!.StartingBudget.Should().Be(75000);
+        result.Inputs.AverageOrderValue.Should().Be(120);
+        result.Inputs.TakeRatePct.Should().Be(12.5);
+        result.Inputs.TaxRatePct.Should().Be(25.0);
+        result.Inputs.BusinessModelType.Should().Be("marketplace");
+        result.Inputs.ActiveDrivers!["monthlyChurnPct"].Should().BeFalse();
+        result.Inputs.ActiveDrivers!["takeRatePct"].Should().BeTrue();
+        result.Inputs.Provenance!["takeRatePct"].Should().Be("founder_edited");
+    }
 }

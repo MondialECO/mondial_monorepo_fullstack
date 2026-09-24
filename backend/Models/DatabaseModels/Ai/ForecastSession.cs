@@ -169,6 +169,9 @@ namespace WebApp.Models.DatabaseModels.Ai
         /// <summary>Marketplace Take Rate as a percentage (e.g. 15 for 15%).</summary>
         public double? TakeRatePct { get; set; }
 
+        /// <summary>Standard corporate tax rate percentage (e.g. 25 for France IS 25%).</summary>
+        public double? TaxRatePct { get; set; }
+
         public string? StartingBudgetRationale { get; set; }
 
         public string? StartingBudgetProvenance { get; set; }
@@ -200,24 +203,12 @@ namespace WebApp.Models.DatabaseModels.Ai
     public static class ForecastSessionExtensions
     {
         /// <summary>
-        /// Evaluates whether a session has a strictly completed forecast with usable output.
-        /// Requires:
-        /// 1. Status == "Completed"
-        /// 2. Latest/current completed version exists
-        /// 3. Output exists and contains monthly revenueForecast and costForecast usable by Results UI.
+        /// Checks whether a single ForecastVersion contains valid, non-empty forecast output.
         /// </summary>
-        public static bool HasValidCompletedForecast(this ForecastSession? session)
+        public static bool IsValidCompletedVersion(this ForecastVersion? version)
         {
-            if (session == null) return false;
-            if (session.Status != "Completed") return false;
-            if (session.Versions == null || session.Versions.Count == 0) return false;
-
-            var current = session.CurrentVersion > 0
-                ? session.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion)
-                : session.Versions.OrderByDescending(v => v.Version).FirstOrDefault();
-
-            if (current == null) return false;
-            var content = current.Content ?? current.GeneratedContent;
+            if (version == null) return false;
+            var content = version.Content ?? version.GeneratedContent;
             if (content == null) return false;
 
             if (!content.Contains("revenueForecast") || !content["revenueForecast"].IsBsonDocument) return false;
@@ -231,6 +222,30 @@ namespace WebApp.Models.DatabaseModels.Ai
             if (cost["monthly"].AsBsonArray.Count == 0) return false;
 
             return true;
+        }
+
+        /// <summary>
+        /// Inspects all versions in the session and returns the highest/latest valid completed ForecastVersion,
+        /// ignoring failed, queued, in-progress, or empty/corrupt versions. Returns null if none exist.
+        /// </summary>
+        public static ForecastVersion? GetLatestValidCompletedVersion(this ForecastSession? session)
+        {
+            if (session == null || session.Versions == null || session.Versions.Count == 0) return null;
+
+            return session.Versions
+                .Where(v => v.IsValidCompletedVersion())
+                .OrderByDescending(v => v.Version)
+                .FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Canonical rule: returns true if there exists at least one valid completed ForecastVersion
+        /// with usable output. Does NOT depend on session-level status being 'Completed' so that
+        /// a failed or in-progress regeneration does not destroy access to prior valid forecasts.
+        /// </summary>
+        public static bool HasValidCompletedForecast(this ForecastSession? session)
+        {
+            return session.GetLatestValidCompletedVersion() != null;
         }
     }
 }

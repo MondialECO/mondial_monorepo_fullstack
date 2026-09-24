@@ -37,6 +37,40 @@ public class CreatorIdeaScopeTests
     }
 
     [Fact]
+    public void Formation_skills_request_allows_absent_setup_config_fields()
+    {
+        var modeProp = typeof(DeclareFormationSkillsRequest).GetProperty(nameof(DeclareFormationSkillsRequest.StartingMode));
+        var equityProp = typeof(DeclareFormationSkillsRequest).GetProperty(nameof(DeclareFormationSkillsRequest.FounderEquity));
+        var roleProp = typeof(DeclareFormationSkillsRequest).GetProperty(nameof(DeclareFormationSkillsRequest.PlannedRole));
+        var capitalProp = typeof(DeclareFormationSkillsRequest).GetProperty(nameof(DeclareFormationSkillsRequest.CapitalAmount));
+        var confirmedProp = typeof(DeclareFormationSkillsRequest).GetProperty(nameof(DeclareFormationSkillsRequest.CapitalConfirmed));
+
+        modeProp.Should().NotBeNull();
+        equityProp.Should().NotBeNull();
+        roleProp.Should().NotBeNull();
+        capitalProp.Should().NotBeNull();
+        confirmedProp.Should().NotBeNull();
+
+        var ctx = new NullabilityInfoContext();
+        ctx.Create(modeProp!).WriteState.Should().Be(NullabilityState.Nullable);
+        ctx.Create(equityProp!).WriteState.Should().Be(NullabilityState.Nullable);
+        ctx.Create(roleProp!).WriteState.Should().Be(NullabilityState.Nullable);
+        ctx.Create(capitalProp!).WriteState.Should().Be(NullabilityState.Nullable);
+        ctx.Create(confirmedProp!).WriteState.Should().Be(NullabilityState.Nullable);
+    }
+
+    [Fact]
+    public void Legacy_formation_generator_has_nullable_setup_fields_without_silent_defaults()
+    {
+        var legacy = new CreatorFormationGenerator();
+        legacy.StartingMode.Should().BeNull();
+        legacy.FounderEquity.Should().BeNull();
+        legacy.PlannedRole.Should().BeNull();
+        legacy.CapitalAmount.Should().BeNull();
+        legacy.CapitalConfirmed.Should().BeNull();
+    }
+
+    [Fact]
     public void Company_formation_request_allows_an_absent_formation_provider()
     {
         var property = typeof(CompanyFormationRequest).GetProperty(nameof(CompanyFormationRequest.FormationSpId));

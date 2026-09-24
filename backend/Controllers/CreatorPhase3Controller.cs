@@ -411,28 +411,14 @@ namespace WebApp.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var j = await _journeys.GetOrCreateAsync(userId);
-                CreatorIdea? idea = null;
-                if (!string.IsNullOrEmpty(ideaId))
-                {
-                    if (_ideas != null)
-                    {
-                        idea = await _ideas.GetOwnedAsync(ideaId, userId);
-                    }
-                    if (idea == null)
-                    {
-                        return NotFound(ApiResponse.Error("Venture idea not found or access denied"));
-                    }
-                }
-                else if (_ideas != null)
-                {
-                    var ideas = await _ideas.ListByUserAsync(userId);
-                    idea = ideas.FirstOrDefault(i => string.Equals(i.Status, "active", StringComparison.OrdinalIgnoreCase)) ?? ideas.FirstOrDefault();
-                }
+                if (string.IsNullOrWhiteSpace(ideaId))
+                    return BadRequest(ApiResponse.Error("ideaId query parameter is required"));
 
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId)
+                           ?? (_ideas != null ? await _ideas.GetOwnedAsync(ideaId, userId) : null);
                 if (idea == null)
-                    return NotFound(ApiResponse.Error("Venture idea not found"));
+                    return NotFound(ApiResponse.Error("Venture idea not found or access denied"));
 
                 var assessment = idea.Phase3Data?.LegalAssessment;
                 var currentProfile = await ExtractCurrentBusinessProfileAsync(userId, idea);
@@ -922,6 +908,40 @@ namespace WebApp.Controllers
             try
             {
                 var userId = GetUserId();
+
+                // Validate starting mode if provided (solo | team | undecided)
+                if (!string.IsNullOrWhiteSpace(request?.StartingMode))
+                {
+                    var mode = request.StartingMode.Trim().ToLowerInvariant();
+                    if (mode != "solo" && mode != "team" && mode != "undecided")
+                    {
+                        return BadRequest(ApiResponse.Error("Starting mode must be solo, team, or undecided."));
+                    }
+                }
+
+                // Validate planned role if provided
+                if (!string.IsNullOrWhiteSpace(request?.PlannedRole))
+                {
+                    var role = request.PlannedRole.Trim();
+                    var allowedRoles = new[] { "President", "CEO", "Chief Executive Officer", "Managing Director (Gérant)", "Managing Director" };
+                    if (!allowedRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+                    {
+                        return BadRequest(ApiResponse.Error("Planned role must be one of: President, Chief Executive Officer, or Managing Director (Gérant)."));
+                    }
+                }
+
+                // Validate founder equity if provided (0 <= FounderEquity <= 100)
+                if (request?.FounderEquity.HasValue == true && (request.FounderEquity.Value < 0 || request.FounderEquity.Value > 100))
+                {
+                    return BadRequest(ApiResponse.Error("Founder equity must be between 0 and 100 percent."));
+                }
+
+                // Validate capital if provided (CapitalAmount >= 0)
+                if (request?.CapitalAmount.HasValue == true && request.CapitalAmount.Value < 0)
+                {
+                    return BadRequest(ApiResponse.Error("Capital amount cannot be negative."));
+                }
+
                 var declared = (request?.YouHave ?? new List<string>())
                     .Where(DeclarableSkills.Contains).Distinct().ToList();
 
@@ -951,7 +971,9 @@ namespace WebApp.Controllers
                 };
 
                 var journey = await _journeys.DeclareFormationSkillsAsync(
-                    userId, declared, youNeed, matchedSpIds.Distinct().ToList(), cofounder, ideaId);
+                    userId, declared, youNeed, matchedSpIds.Distinct().ToList(), cofounder,
+                    request?.StartingMode, request?.FounderEquity, request?.PlannedRole, request?.CapitalAmount, request?.CapitalConfirmed,
+                    ideaId);
                 return Ok(ApiResponse.Ok("Skills declared", journey.Phase3Data.FormationGenerator));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }

@@ -22,6 +22,7 @@ import {
   creatorJourneyApi,
   getCreatorWorkspaceIdea,
   type LegalComplianceOverview,
+  type LegalBusinessProfileDto,
   type ExtendedLegalChecklistItem,
   type ChecklistStatus,
 } from '@/lib/api-creator-journey';
@@ -33,23 +34,17 @@ import {
 import { withIdeaContext } from '@/lib/creator-routes';
 
 function generateProjectSummary(
-  detectedArchetypes: string[] = [],
-  profile?: any,
+  profile?: LegalBusinessProfileDto | null,
   projectName?: string
 ): string {
   const parts: string[] = [];
-  const archetypesLower = detectedArchetypes.map((a) => a.toLowerCase());
-  const isSub =
-    profile?.hasSubscription?.value ?? archetypesLower.some((a) => a.includes('subscription'));
-  const isSaaS =
-    profile?.isSaaS?.value ??
-    archetypesLower.some((a) => a.includes('saas') || a.includes('software'));
-  const isMarketplace =
-    profile?.isMarketplace?.value ?? archetypesLower.some((a) => a.includes('marketplace'));
-  const isB2B =
-    profile?.isB2B?.value ?? archetypesLower.some((a) => a.includes('b2b'));
-  const isB2C =
-    profile?.isB2C?.value ?? archetypesLower.some((a) => a.includes('b2c'));
+  const isSub = profile?.hasSubscription?.value === true;
+  const isSaaS = profile?.isSaaS?.value === true;
+  const isMarketplace = profile?.isMarketplace?.value === true;
+  const isB2B = profile?.isB2B?.value === true;
+  const isB2C = profile?.isB2C?.value === true;
+  const hasOnlinePayments = profile?.hasOnlinePayments?.value === true;
+  const collectsPersonalData = profile?.collectsPersonalData?.value === true;
 
   const name = (profile?.businessName || projectName || '').trim();
   const entityLead = name ? `For "${name}", you’re planning ` : 'You’re planning ';
@@ -68,7 +63,7 @@ function generateProjectSummary(
     parts.push(`The project operates in the ${profile.rawSector} sector.`);
   }
 
-  if (isSub || isB2C || isMarketplace) {
+  if (hasOnlinePayments || collectsPersonalData || isSub || isB2C || isMarketplace) {
     parts.push("You expect to take online payments and collect customer information.");
   } else {
     parts.push("You expect to issue commercial invoices and process client business information.");
@@ -184,11 +179,10 @@ export default function ComplianceWorkspacePage() {
 
   const projectSummaryNarrative = useMemo(() => {
     return generateProjectSummary(
-      overview?.detectedArchetypes,
-      (overview?.assessment as any)?.businessProfile,
+      overview?.assessment?.businessProfile,
       state?.project?.name
     );
-  }, [overview?.detectedArchetypes, (overview?.assessment as any)?.businessProfile, state?.project?.name]);
+  }, [overview?.assessment?.businessProfile, state?.project?.name]);
 
   return (
     <Phase3SetupShell

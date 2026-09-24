@@ -52,7 +52,7 @@ namespace WebApp.Tests.Unit
             rules.Count.Should().BeGreaterOrEqualTo(18);
 
             // Canonical prefixes defined in FR-2026.1 taxonomy:
-            var canonicalPrefixes = new[] { "FR-CORP-", "FR-IP-", "FR-PRIV-", "FR-WEB-", "FR-CONS-", "FR-PAY-", "FR-MKT-", "FR-INS-", "FR-SOC-", "FR-REG-" };
+            var canonicalPrefixes = new[] { "FR-CORP-", "FR-IP-", "FR-PRIV-", "FR-WEB-", "FR-CONS-", "FR-PAY-", "FR-MKT-", "FR-INS-", "FR-SOC-", "FR-REG-", "FR-TAX-" };
 
             foreach (var rule in rules)
             {
@@ -60,12 +60,11 @@ namespace WebApp.Tests.Unit
                 canonicalPrefixes.Any(p => rule.Id.StartsWith(p, StringComparison.OrdinalIgnoreCase))
                     .Should().BeTrue($"Rule ID '{rule.Id}' must match canonical taxonomy prefixes");
 
-                // Check for obsolete/invented prefixes: no FR-GDPR-*, FR-FISCAL-*, FR-LABOR-*, FR-DATA-*, FR-TAX-*
+                // Check for obsolete/invented prefixes: no FR-GDPR-*, FR-FISCAL-*, FR-LABOR-*, FR-DATA-*
                 rule.Id.Should().NotStartWith("FR-GDPR-", "FR-GDPR is non-canonical; FR-PRIV-* must be used");
                 rule.Id.Should().NotStartWith("FR-FISCAL-", "FR-FISCAL is non-canonical; FR-SOC-* must be used");
                 rule.Id.Should().NotStartWith("FR-LABOR-", "FR-LABOR is non-canonical; FR-SOC-* must be used");
                 rule.Id.Should().NotStartWith("FR-DATA-", "FR-DATA is non-canonical; FR-PRIV-* must be used");
-                rule.Id.Should().NotStartWith("FR-TAX-", "FR-TAX is non-canonical; FR-SOC-* must be used");
             }
         }
 

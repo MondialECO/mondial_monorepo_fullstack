@@ -342,23 +342,22 @@ namespace WebApp.Services.Legal
             var raw = string.Join("|",
                 profile.Country,
                 profile.Jurisdiction,
-                profile.IsSaaS.Value,
-                profile.IsEcommerce.Value,
-                profile.IsMarketplace.Value,
-                profile.IsConsulting.Value,
-                profile.IsPhysicalBusiness.Value,
-                profile.IsB2B.Value,
-                profile.IsB2C.Value,
-                profile.HasSubscription.Value,
-                profile.HasOnlinePayments.Value,
-                profile.HasWebsite.Value,
-                profile.CollectsPersonalData.Value,
-                profile.UsesAnalyticsOrTracking.Value,
-                profile.HasEmployees.Value,
-                profile.HasContractors.Value,
-                profile.HasPhysicalPremises.Value,
-                profile.MayBeRegulatedActivity.Value,
-                profile.MayBeRegulatedActivity.Confidence
+                $"{profile.IsSaaS.Value}:{profile.IsSaaS.Confidence}",
+                $"{profile.IsEcommerce.Value}:{profile.IsEcommerce.Confidence}",
+                $"{profile.IsMarketplace.Value}:{profile.IsMarketplace.Confidence}",
+                $"{profile.IsConsulting.Value}:{profile.IsConsulting.Confidence}",
+                $"{profile.IsPhysicalBusiness.Value}:{profile.IsPhysicalBusiness.Confidence}",
+                $"{profile.IsB2B.Value}:{profile.IsB2B.Confidence}",
+                $"{profile.IsB2C.Value}:{profile.IsB2C.Confidence}",
+                $"{profile.HasSubscription.Value}:{profile.HasSubscription.Confidence}",
+                $"{profile.HasOnlinePayments.Value}:{profile.HasOnlinePayments.Confidence}",
+                $"{profile.HasWebsite.Value}:{profile.HasWebsite.Confidence}",
+                $"{profile.CollectsPersonalData.Value}:{profile.CollectsPersonalData.Confidence}",
+                $"{profile.UsesAnalyticsOrTracking.Value}:{profile.UsesAnalyticsOrTracking.Confidence}",
+                $"{profile.HasEmployees.Value}:{profile.HasEmployees.Confidence}",
+                $"{profile.HasContractors.Value}:{profile.HasContractors.Confidence}",
+                $"{profile.HasPhysicalPremises.Value}:{profile.HasPhysicalPremises.Confidence}",
+                $"{profile.MayBeRegulatedActivity.Value}:{profile.MayBeRegulatedActivity.Confidence}"
             );
 
             using var sha = SHA256.Create();
@@ -439,6 +438,7 @@ namespace WebApp.Services.Legal
         {
             var matched = new List<string>();
             var missing = new List<string>();
+            var unknownSignals = new List<string>();
 
             // Always applicable
             if (rule.Conditions.Always == true)
@@ -450,6 +450,54 @@ namespace WebApp.Services.Legal
                     missing,
                     "Obligation statutaire universelle imposée à toute création d'activité commerciale en France."
                 );
+            }
+
+            // Corporate company-dependent formation & governance rules (capital deposit, statuts, JAL, RBE, annual accounts)
+            // Step 3.4 precedes legal structure selection (Step 3.5); if legal form is not yet finalized,
+            // evaluate as NeedsInformation for conditional planning rather than guessing SAS vs EI.
+            var corporateCompanyRuleIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "FR-CORP-001",
+                "FR-CORP-002",
+                "FR-CORP-003",
+                "FR-CORP-005",
+                "FR-CORP-006"
+            };
+
+            if (corporateCompanyRuleIds.Contains(rule.Id) && rule.Conditions.Always != true)
+            {
+                matched.Add("Obligation conditionnelle aux formes de sociétés commerciales (SAS, SASU, SARL, EURL)");
+                unknownSignals.Add("Structure juridique définitive (société vs entreprise individuelle non encore arrêtée à l'Étape 3.4)");
+                return (
+                    ApplicabilityEvaluationStatuses.NeedsInformation,
+                    matched,
+                    unknownSignals,
+                    "Cette obligation s'applique en cas de création sous forme de société (SAS, SASU, SARL, EURL). La confirmation de votre statut juridique à l'Étape 3.5 déterminera son applicabilité définitive (les entreprises individuelles et micro-entreprises en étant dispensées)."
+                );
+            }
+
+            // Trademark & Brand Clearance (FR-IP-001): Recommended protection across all commercial ventures
+            if (string.Equals(rule.Id, "FR-IP-001", StringComparison.OrdinalIgnoreCase))
+            {
+                bool hasCommercialActivity = profile.IsSaaS.Value ||
+                                             profile.IsEcommerce.Value ||
+                                             profile.IsMarketplace.Value ||
+                                             profile.IsConsulting.Value ||
+                                             profile.SellsProducts.Value ||
+                                             profile.SellsServices.Value ||
+                                             profile.HasWebsite.Value ||
+                                             !string.IsNullOrWhiteSpace(profile.BusinessName);
+
+                if (hasCommercialActivity)
+                {
+                    matched.Add("Activité commerciale ou offre de produits/services sous marque distinctive");
+                    return (
+                        ApplicabilityEvaluationStatuses.Applicable,
+                        matched,
+                        missing,
+                        "Pratique recommandée pour vérifier la disponibilité de la dénomination commerciale (recherche d'antériorités INPI) et protéger vos actifs de propriété intellectuelle."
+                    );
+                }
             }
 
             // Regulated activity special check (ambiguous check)
@@ -488,10 +536,18 @@ namespace WebApp.Services.Legal
 
             // Condition evaluation against business profile
             bool allMatched = true;
+            bool hasUnknown = false;
 
             void CheckCondition(string name, bool? expected, BusinessSignal signal)
             {
                 if (!expected.HasValue) return;
+
+                if (signal.Confidence == SignalConfidenceLevels.Unknown)
+                {
+                    hasUnknown = true;
+                    unknownSignals.Add($"{name} (Information required: {signal.Rationale})");
+                    return;
+                }
 
                 if (signal.Value == expected.Value)
                 {
@@ -522,14 +578,25 @@ namespace WebApp.Services.Legal
             CheckCondition(nameof(rule.Conditions.HasContractors), rule.Conditions.HasContractors, profile.HasContractors);
             CheckCondition(nameof(rule.Conditions.HasPhysicalPremises), rule.Conditions.HasPhysicalPremises, profile.HasPhysicalPremises);
 
-            if (allMatched && matched.Count > 0)
+            if (!allMatched)
+            {
+                var nonApplicableRationale = $"Non applicable car les critères suivants ne sont pas réunis : {string.Join(", ", missing)}.";
+                return (ApplicabilityEvaluationStatuses.NotApplicable, matched, missing, nonApplicableRationale);
+            }
+
+            if (hasUnknown)
+            {
+                var needsInfoRationale = $"Informations complémentaires requises pour confirmer l'applicabilité : {string.Join("; ", unknownSignals)}.";
+                return (ApplicabilityEvaluationStatuses.NeedsInformation, matched, unknownSignals, needsInfoRationale);
+            }
+
+            if (matched.Count > 0)
             {
                 var rationale = $"Applicable car votre profil correspond aux critères légaux : {string.Join(", ", matched)}.";
                 return (ApplicabilityEvaluationStatuses.Applicable, matched, missing, rationale);
             }
 
-            var nonApplicableRationale = $"Non applicable car les critères suivants ne sont pas réunis : {string.Join(", ", missing)}.";
-            return (ApplicabilityEvaluationStatuses.NotApplicable, matched, missing, nonApplicableRationale);
+            return (ApplicabilityEvaluationStatuses.NotApplicable, matched, missing, "Critères non satisfaits.");
         }
     }
 }

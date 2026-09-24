@@ -288,11 +288,38 @@ export const creatorJourneyApi = {
     return unwrap<{ formation: FormationGenerator; legalChecklist?: LegalChecklist; legalAssessment?: CreatorLegalAssessmentDto }>(res.data);
   },
 
-  // 3.5b: persist self-declared skills (+ optional co-founder draft). Backend derives the
+  // 3.5b: persist self-declared skills (+ optional co-founder draft + setup config). Backend derives the
   // SP-backed gaps + matches; returns the updated formation.
-  declareFormationSkills: async (youHave: string[], cofounder?: CofounderDraft, ideaId?: string | null): Promise<FormationGenerator> => {
-    const res = await api.patch('/creator/formation/skills', { youHave, cofounder: cofounder ?? null }, withIdeaWrite(ideaId));
-    rememberIdeaVersion(res, ideaId);
+  declareFormationSkills: async (
+    youHave: string[],
+    cofounder?: CofounderDraft,
+    setupConfigOrIdeaId?: {
+      startingMode?: string;
+      founderEquity?: number;
+      plannedRole?: string;
+      capitalAmount?: number;
+      capitalConfirmed?: boolean;
+    } | string | null,
+    ideaId?: string | null,
+  ): Promise<FormationGenerator> => {
+    const isConfig = typeof setupConfigOrIdeaId === 'object' && setupConfigOrIdeaId !== null;
+    const setupConfig = isConfig ? setupConfigOrIdeaId : undefined;
+    const resolvedIdeaId = typeof setupConfigOrIdeaId === 'string' ? setupConfigOrIdeaId : ideaId;
+
+    const res = await api.patch(
+      '/creator/formation/skills',
+      {
+        youHave,
+        cofounder: cofounder ?? null,
+        startingMode: setupConfig?.startingMode,
+        founderEquity: setupConfig?.founderEquity,
+        plannedRole: setupConfig?.plannedRole,
+        capitalAmount: setupConfig?.capitalAmount,
+        capitalConfirmed: setupConfig?.capitalConfirmed,
+      },
+      withIdeaWrite(resolvedIdeaId),
+    );
+    rememberIdeaVersion(res, resolvedIdeaId);
     return unwrap<FormationGenerator>(res.data);
   },
 
@@ -660,6 +687,40 @@ export interface LegalEvidenceAuditEntryDto {
   actorUserId: string;
 }
 
+export interface LegalBusinessSignalDto {
+  value: boolean;
+  confidence: 'confirmed' | 'derived' | 'unknown' | string;
+  source: string;
+  rationale: string;
+}
+
+export interface LegalBusinessProfileDto {
+  country: string;
+  jurisdiction: string;
+  businessName: string;
+  rawSector: string;
+  rawCategory: string;
+  isSaaS: LegalBusinessSignalDto;
+  isEcommerce: LegalBusinessSignalDto;
+  isMarketplace: LegalBusinessSignalDto;
+  isConsulting: LegalBusinessSignalDto;
+  isPhysicalBusiness: LegalBusinessSignalDto;
+  isB2B: LegalBusinessSignalDto;
+  isB2C: LegalBusinessSignalDto;
+  hasSubscription: LegalBusinessSignalDto;
+  hasOnlinePayments: LegalBusinessSignalDto;
+  hasWebsite: LegalBusinessSignalDto;
+  sellsProducts: LegalBusinessSignalDto;
+  sellsServices: LegalBusinessSignalDto;
+  collectsPersonalData: LegalBusinessSignalDto;
+  usesAnalyticsOrTracking: LegalBusinessSignalDto;
+  hasEmployees: LegalBusinessSignalDto;
+  hasContractors: LegalBusinessSignalDto;
+  hasPhysicalPremises: LegalBusinessSignalDto;
+  mayBeRegulatedActivity: LegalBusinessSignalDto;
+  regulatoryNotes?: string | null;
+}
+
 export interface CreatorLegalAssessmentDto {
   id: string;
   creatorIdeaId: string;
@@ -673,6 +734,7 @@ export interface CreatorLegalAssessmentDto {
   reconciliationSummary?: LegalReconciliationSummary | null;
   evaluatedAt: string;
   lastRelevantBusinessChangeAt?: string | null;
+  businessProfile?: LegalBusinessProfileDto | null;
   detectedArchetypes: string[];
   planningReadinessPct: number;
   stageBreakdown: LegalStageBreakdownDto[];
@@ -764,6 +826,11 @@ export interface FormationGenerator {
   selectedType: FormationTypeCode | null;
   skillsDeclared?: boolean;
   cofounderDraft?: CofounderDraft | null;
+  startingMode?: 'solo' | 'team' | 'undecided' | null;
+  founderEquity?: number | null;
+  plannedRole?: string | null;
+  capitalAmount?: number | null;
+  capitalConfirmed?: boolean | null;
 }
 
 export interface SpMatchDto {

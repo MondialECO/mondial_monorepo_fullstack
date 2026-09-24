@@ -122,6 +122,12 @@ namespace WebApp.Models.Dtos
         // remain nullable so [ApiController] does not reject `{ cofounder: null }`
         // with a model-binding 400 before the partial-merge handler can run.
         public CofounderDraftDto? Cofounder { get; set; }
+
+        public string? StartingMode { get; set; }
+        public double? FounderEquity { get; set; }
+        public string? PlannedRole { get; set; }
+        public double? CapitalAmount { get; set; }
+        public bool? CapitalConfirmed { get; set; }
     }
 
     public class CofounderDraftDto

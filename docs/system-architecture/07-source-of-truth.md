@@ -80,18 +80,35 @@ This matrix establishes the definitive, canonical data authority for every major
    - Progression preferences are deterministically mapped to canonical `LearningPreference` and `DelegationPreference` without introducing redundant schema fields.
    - Legacy `localStorage` migration policy: Backend state always wins. If backend state is complete, legacy `localStorage` is cleaned up. If backend state is absent, user undergoes one-time backend Quick Start onboarding. Subsequent profile edits after completion never reopen the Quick Start gate.
 9. **Creator Phase 3.4 Legal Authority & Compatibility Surface Rule**:
-   - `CreatorLegalAssessment` on `CreatorIdea.Phase3Data.LegalAssessment` is the sole canonical legal authority.
+   - `CreatorLegalAssessment` on `CreatorIdea.Phase3Data.LegalAssessment` is the sole canonical Creator legal source of truth.
    - `CreatorPhase3Data.LegalChecklist` is preserved strictly as a backward-compatible BSON deserialization surface for historical documents, with 0 canonical active readers and 0 active new writers.
-   - `UpdateLegalChecklistItemAsync` is a pure compatibility command adapter delegating to canonical `UpdateLegalAssessmentItemStatusAsync` with zero independent legal business rules.
-   - `POST /api/creator/ai/legal-checklist/generate` and `PATCH /api/creator/legal-checklist/item/{itemId}` are compatibility HTTP endpoints only, not separate legal authorities.
+   - Statutory Evaluation: Deterministic 21-rule catalogue in `FranceRules.json` evaluated via `FranceLegalRulesCatalog` and `LegalApplicabilityEngine`.
+   - Business Signal Certainty: Absence of evidence evaluates strictly to `SignalConfidenceLevels.Unknown`, ensuring unknown facts yield `NeedsInformation` when legal applicability requires positive confirmation. Zero frontend legal inference.
+   - Planning Readiness Calculation: Single canonical calculator `LegalApplicabilityEngine.ComputePlanningReadiness` (40% Pre-registration, 40% Launch, 20% Ongoing; Critical wt = 2.0, Recommended wt = 1.0; completed = 1.0, in_progress = 0.5, ready_for_review = 0.5, needs_information = 0.0, not_applicable = excluded).
+   - Step 3.7 Connection: `Legal dimension score = (PlanningReadinessPct / 100) * 15` reading directly from `LegalAssessment` with 0 legacy checklist dependencies.
+   - Project Isolation: All legal endpoints require an explicit `ideaId`. Missing `ideaId` on `GET /api/creator/legal-compliance/section-12` returns HTTP 400 Bad Request. Zero ambient/first idea fallbacks.
+   - Compatibility Adapters: `UpdateLegalChecklistItemAsync` is a pure compatibility command adapter delegating to canonical `UpdateLegalAssessmentItemStatusAsync`. `POST /api/creator/ai/legal-checklist/generate` and `PATCH /api/creator/legal-checklist/item/{itemId}` are compatibility HTTP endpoints only, writing directly to canonical `LegalAssessment`.
 10. **Creator Phase 4 Completion Single-Authority Rule**:
    - `Phase4CompletionResolver` is the sole authority for determining Phase 4 completion.
    - Generic `Status != Draft` checks and ad-hoc flags are prohibited. All 7 stages (4.1 Construction Snapshot, 4.2 Operational Roadmap, 4.3 Needs & Requirements, 4.4 Skills & Training, 4.5 Aids, Grants & Support, 4.6 Pricing Strategy, 4.7 GTM Strategy) are resolved using domain-native criteria.
    - Phase 4.8 is not implemented; Phase 4.9 is reserved.
-11. **Forecast Financial Assumptions Single-Authority & Project-Context Safety Rule**:
+11. **Forecast Financial Assumptions Single-Authority, Calculation Authority & Loading Canon Rule**:
    - `ForecastSession.Inputs` is the sole canonical source of truth for Step 3.3 financial assumptions. Authority precedence: persisted server value > current unsaved form state > scoped temporary client cache.
+   - `ForecastAssumptionsForm` is the single canonical assumptions form/schema. `StartingBudgetModal.tsx` is removed; starting budget is an integrated input.
+   - `FinancialForecastEngine` is the sole deterministic 36-month calculation authority. Zero client-side forecast engines; zero parallel math helpers in `ForecastHandler`.
    - All forecast endpoints require a non-empty `ideaId`. Missing or whitespace `ideaId` returns HTTP 400; foreign/unowned `ideaId` returns HTTP 404. Zero silent fallbacks to first-idea or `'active'` key.
    - Upstream assumption propagation (`MarketStudyVersion`, `BusinessModelVersion`) uses strict monotonic version guards: `incoming < stored` is rejected as stale, `incoming == stored` is an idempotent no-op, `incoming > stored` accepts the update. Founder-edited fields (`IsFounderLocked`) are permanently locked and survive all upstream version changes.
+   - The latest valid completed version resolver (`hasValidCompletedForecast`) governs displayed results; failed or in-progress regenerations preserve existing valid results non-destructively.
+   - **Phase 3 Loading Canon & Zero-Gap State Bridge**: Step 3.3 reuses the canonical Phase 3 loading UX (Step 3.1 & 3.2 pattern: `RotateCw animate-spin`, `rounded-full bg-primary/10`, centered `rounded-2xl Card`, `animate-pulse`, `animate-indeterminate` bar). `useRegenerateForecast.onMutate` optimistically updates session state to `Processing`, bridging mutation dispatch to polling and preventing loading flicker. Zero fake timers or synthetic progress percentages. Real processing state drives UI. During regeneration, previous valid results remain mounted and visible below the processing card until atomically replaced by the new version.
+
+12. **Creator Phase 3.5 Company Formation & Team Single Source of Truth Rule**:
+    - `CreatorFormationGenerator` on `CreatorIdea.Phase3Data.FormationGenerator` is the sole canonical source of truth for Step 3.5 company formation, setup configuration, and initial team planning (mirrored/composed into journey state where required by current architecture).
+    - Snapshot history: `CreatorIdea.OutputSnapshots.FormationVersions`. Every canonical mutation creates a timestamped version snapshot. Zero parallel formation or versioning stores.
+    - Three canonical writers: `SetFormationAsync`, `SelectFormationTypeAsync`, and `DeclareFormationSkillsAsync`.
+    - Setup Configuration: Canonically persists `StartingMode` (`solo` | `team` | `undecided`), `FounderEquity` (`0 <= x <= 100`), `PlannedRole`, `CapitalAmount`, and `CapitalConfirmed`.
+    - Non-destructive partial updates: Omitted values never overwrite existing canonical values (no null -> 0, null -> true, or missing -> default).
+    - Unconfirmed default protection: Missing `CapitalConfirmed != true`. Suggested capital from forecast is reference-only until confirmed. Missing `FounderEquity` display fallbacks (100% solo / 70% team) never auto-persist on load or continue.
+    - StartingMode selection does NOT confirm legal structure or set `SelectedType`. `SelectedType` requires explicit structure selection (`SelectFormationTypeAsync`), which reconciles Step 3.4 legal applicability without creating duplicate engines.
 
 ---
 
@@ -103,8 +120,17 @@ CREATOR PHASE 2–5 CLEAN BASELINE
 Phase 2 Brand authority:
 BrandKit (canonical visual identity authority; CreatorIdea.Project.Branding is derived projection only)
 
+Phase 3.3 Forecast authority:
+FinancialForecastEngine (sole deterministic calculation authority)
+ForecastSession.Inputs (sole financial assumptions authority)
+
 Phase 3.4 Legal authority:
 CreatorLegalAssessment (CreatorIdea.Phase3Data.LegalAssessment)
+
+Phase 3.5 Formation authority:
+CreatorFormationGenerator (CreatorIdea.Phase3Data.FormationGenerator)
+Sole canonical source of truth for company formation, setup configuration, and initial team planning.
+Snapshot history: CreatorIdea.OutputSnapshots.FormationVersions
 
 HumainX onboarding authority:
 ProfessionalProfileRecord.QuickStart (sole onboarding journey authority; localStorage has no access/progression authority)
@@ -117,6 +143,7 @@ IFounderCapacityResolver (sole founder-capacity authority)
 
 Pricing authority:
 PricingPolicyEngine (canonical pricing-policy authority)
+
 
 Legacy legal business logic:
 0

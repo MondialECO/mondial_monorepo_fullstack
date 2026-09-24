@@ -118,12 +118,20 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `PUT /api/ai/forecast/assumptions`: Update financial assumptions with monotonic version guards and founder-lock preservation (requires non-empty `ideaId`).
   - `GET /api/ai/forecast/budget-suggestion`: Suggest starting budget derived from upstream data for a given `ideaId` (required, HTTP 400 if missing).
 - **`CreatorPhase3Controller`** (`/api/creator`):
-  - `POST /api/creator/ai/legal-checklist/generate`: Generate deterministic sector-specific legal checklist (3.3).
-  - `PATCH /api/creator/legal-checklist/item/{itemId}`: Toggle checklist item completion status.
-  - `POST /api/creator/ai/formation-generator/start`: Generate formation recommendation (3.4).
-  - `PATCH /api/creator/formation/select-type`: Select legal entity type (SAS/SAS-U/SARL).
-  - `PATCH /api/creator/formation/skills`: Update skill-gap / team assessment.
-  - `GET /api/creator/sp-matches`: Service Provider skill-gap matches.
+  - `GET /api/creator/legal-compliance/overview`: Retrieve authoritative legal assessment and public guidance sources (requires explicit `ideaId`).
+  - `POST /api/creator/legal-compliance/evaluate`: Evaluate or refresh legal assessment from current business signals (requires explicit `ideaId`).
+  - `PATCH /api/creator/legal-compliance/item/{itemId}/status`: Update statutory task progress status (requires explicit `ideaId`).
+  - `POST /api/creator/legal-compliance/item/{itemId}/evidence`: Attach evidence document link to requirement (requires explicit `ideaId`).
+  - `POST /api/creator/legal-compliance/item/{itemId}/evidence/unlink`: Unlink evidence document (requires explicit `ideaId`).
+  - `POST /api/creator/legal-compliance/evidence/replace`: Replace evidence document link (requires explicit `ideaId`).
+  - `PATCH /api/creator/legal-compliance/evidence/{linkId}/status`: Update evidence link review status (requires explicit `ideaId`).
+  - `GET /api/creator/legal-compliance/section-12`: Get Business Plan Section 12 legal preview (strictly requires explicit `ideaId`, returns 400 Bad Request if missing).
+  - `POST /api/creator/ai/legal-checklist/generate`: Legacy compatibility adapter routing to canonical `Evaluate` and `LegalAssessment`.
+  - `PATCH /api/creator/legal-checklist/item/{itemId}`: Legacy compatibility adapter delegating to canonical `UpdateLegalAssessmentItemStatusAsync`.
+  - `POST /api/creator/ai/formation-generator/start`: Generate formation recommendation and options (`CreatorFormationGenerator`, Step 3.5, requires explicit `ideaId`).
+  - `PATCH /api/creator/formation/select-type`: Explicitly select legal entity type (`SAS`, `SAS-U`, `SARL`), set `SelectedType`, record `IsOverride`, reconcile Step 3.4 legal assessment, and append version snapshot (`FormationVersions`).
+  - `PATCH /api/creator/formation/skills`: Declare self-reported skills, optional cofounder draft, and setup configuration (`StartingMode`, `FounderEquity`, `PlannedRole`, `CapitalAmount`, `CapitalConfirmed`). Non-destructive partial update; appends version snapshot.
+  - `GET /api/creator/sp-matches`: Service Provider skill-gap matches for unresolved needs.
   - `POST /api/creator/workroom/open`: Open a workroom with a matched SP.
   - `POST /api/creator/journey/phase3/session`: Link AI session IDs to the journey.
   - `PATCH /api/creator/masterplan/complete`: Trigger Phase 3 completion gate.

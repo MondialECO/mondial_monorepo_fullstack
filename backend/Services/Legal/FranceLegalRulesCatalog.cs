@@ -179,8 +179,8 @@ namespace WebApp.Services.Legal
                         Stage = LegalStages.BeforeCreation,
                         Priority = LegalPriorities.Critical,
                         Description = "Mandatory deposit of initial cash contributions forming the share capital with an accredited bank, notaire, or public depository.",
-                        WhyItApplies = "Every commercial company formation in France mandates the prior deposit of founding share capital.",
-                        Conditions = new LegalRuleCondition { Always = true },
+                        WhyItApplies = "Applicable if choosing a corporate legal structure with share capital (SAS, SARL, SASU, EURL).",
+                        Conditions = new LegalRuleCondition(),
                         OfficialSource = new OfficialSourceReference
                         {
                             Authority = "Service-Public.fr",

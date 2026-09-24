@@ -28,6 +28,11 @@ namespace WebApp.Models.Dtos.Ai
         /// <summary>Monthly churn as a percent (e.g. 3 = 3%/month). Drives LTV/CAC.</summary>
         public double? MonthlyChurnPct { get; set; }
 
+        public double? AverageOrderValue { get; set; }
+        public double? TakeRatePct { get; set; }
+        public double? TaxRatePct { get; set; }
+        public string? BusinessModelType { get; set; }
+
         /// <summary>Provenance dictionary tracking source of each assumption.</summary>
         public Dictionary<string, string>? Provenance { get; set; }
     }
