@@ -80,10 +80,14 @@ This matrix establishes the definitive, canonical data authority for every major
    - Progression preferences are deterministically mapped to canonical `LearningPreference` and `DelegationPreference` without introducing redundant schema fields.
    - Legacy `localStorage` migration policy: Backend state always wins. If backend state is complete, legacy `localStorage` is cleaned up. If backend state is absent, user undergoes one-time backend Quick Start onboarding. Subsequent profile edits after completion never reopen the Quick Start gate.
 9. **Creator Phase 3.4 Legal Authority & Compatibility Surface Rule**:
-   - `CreatorLegalAssessment` on `CreatorIdea.Phase3Data.LegalAssessment` is the sole canonical legal authority.
+   - `CreatorLegalAssessment` on `CreatorIdea.Phase3Data.LegalAssessment` is the sole canonical Creator legal source of truth.
    - `CreatorPhase3Data.LegalChecklist` is preserved strictly as a backward-compatible BSON deserialization surface for historical documents, with 0 canonical active readers and 0 active new writers.
-   - `UpdateLegalChecklistItemAsync` is a pure compatibility command adapter delegating to canonical `UpdateLegalAssessmentItemStatusAsync` with zero independent legal business rules.
-   - `POST /api/creator/ai/legal-checklist/generate` and `PATCH /api/creator/legal-checklist/item/{itemId}` are compatibility HTTP endpoints only, not separate legal authorities.
+   - Statutory Evaluation: Deterministic 21-rule catalogue in `FranceRules.json` evaluated via `FranceLegalRulesCatalog` and `LegalApplicabilityEngine`.
+   - Business Signal Certainty: Absence of evidence evaluates strictly to `SignalConfidenceLevels.Unknown`, ensuring unknown facts yield `NeedsInformation` when legal applicability requires positive confirmation. Zero frontend legal inference.
+   - Planning Readiness Calculation: Single canonical calculator `LegalApplicabilityEngine.ComputePlanningReadiness` (40% Pre-registration, 40% Launch, 20% Ongoing; Critical wt = 2.0, Recommended wt = 1.0; completed = 1.0, in_progress = 0.5, ready_for_review = 0.5, needs_information = 0.0, not_applicable = excluded).
+   - Step 3.7 Connection: `Legal dimension score = (PlanningReadinessPct / 100) * 15` reading directly from `LegalAssessment` with 0 legacy checklist dependencies.
+   - Project Isolation: All legal endpoints require an explicit `ideaId`. Missing `ideaId` on `GET /api/creator/legal-compliance/section-12` returns HTTP 400 Bad Request. Zero ambient/first idea fallbacks.
+   - Compatibility Adapters: `UpdateLegalChecklistItemAsync` is a pure compatibility command adapter delegating to canonical `UpdateLegalAssessmentItemStatusAsync`. `POST /api/creator/ai/legal-checklist/generate` and `PATCH /api/creator/legal-checklist/item/{itemId}` are compatibility HTTP endpoints only, writing directly to canonical `LegalAssessment`.
 10. **Creator Phase 4 Completion Single-Authority Rule**:
    - `Phase4CompletionResolver` is the sole authority for determining Phase 4 completion.
    - Generic `Status != Draft` checks and ad-hoc flags are prohibited. All 7 stages (4.1 Construction Snapshot, 4.2 Operational Roadmap, 4.3 Needs & Requirements, 4.4 Skills & Training, 4.5 Aids, Grants & Support, 4.6 Pricing Strategy, 4.7 GTM Strategy) are resolved using domain-native criteria.

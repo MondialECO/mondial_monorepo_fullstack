@@ -660,6 +660,40 @@ export interface LegalEvidenceAuditEntryDto {
   actorUserId: string;
 }
 
+export interface LegalBusinessSignalDto {
+  value: boolean;
+  confidence: 'confirmed' | 'derived' | 'unknown' | string;
+  source: string;
+  rationale: string;
+}
+
+export interface LegalBusinessProfileDto {
+  country: string;
+  jurisdiction: string;
+  businessName: string;
+  rawSector: string;
+  rawCategory: string;
+  isSaaS: LegalBusinessSignalDto;
+  isEcommerce: LegalBusinessSignalDto;
+  isMarketplace: LegalBusinessSignalDto;
+  isConsulting: LegalBusinessSignalDto;
+  isPhysicalBusiness: LegalBusinessSignalDto;
+  isB2B: LegalBusinessSignalDto;
+  isB2C: LegalBusinessSignalDto;
+  hasSubscription: LegalBusinessSignalDto;
+  hasOnlinePayments: LegalBusinessSignalDto;
+  hasWebsite: LegalBusinessSignalDto;
+  sellsProducts: LegalBusinessSignalDto;
+  sellsServices: LegalBusinessSignalDto;
+  collectsPersonalData: LegalBusinessSignalDto;
+  usesAnalyticsOrTracking: LegalBusinessSignalDto;
+  hasEmployees: LegalBusinessSignalDto;
+  hasContractors: LegalBusinessSignalDto;
+  hasPhysicalPremises: LegalBusinessSignalDto;
+  mayBeRegulatedActivity: LegalBusinessSignalDto;
+  regulatoryNotes?: string | null;
+}
+
 export interface CreatorLegalAssessmentDto {
   id: string;
   creatorIdeaId: string;
@@ -673,6 +707,7 @@ export interface CreatorLegalAssessmentDto {
   reconciliationSummary?: LegalReconciliationSummary | null;
   evaluatedAt: string;
   lastRelevantBusinessChangeAt?: string | null;
+  businessProfile?: LegalBusinessProfileDto | null;
   detectedArchetypes: string[];
   planningReadinessPct: number;
   stageBreakdown: LegalStageBreakdownDto[];

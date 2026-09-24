@@ -712,56 +712,100 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
 - **Static Financial Fallback Code:** 0
 - **Legacy First-Idea Fallback:** 0
 - **Historical Database Compatibility Removed:** NO
-- **Final Status:** PASS / FROZEN
+- **Final Status:** PASS / FROZEN / CLOSED
 
 ### 5.4 Step 3.4 — Legal & Compliance Intelligence (LIVE — 100% Figma Node 57156:9158 Aligned)
+- **Status:** **FINAL PASS / FROZEN / CLOSED**
 - **Route:** `/dashboard/creator/phase-3/compliance`
 - **Figma Reference:** 100% verified and aligned against approved Figma Node `57156:9158` ("Legal & Compliance · Creator Phase 3.4").
-- **Backing Entity & Controller:** Backed by `CreatorPhase3Controller` (`/api/creator/phase-3/legal/assessment`, `/api/creator/phase-3/legal/refresh`, `/api/creator/phase-3/legal/item/{itemId}/status`).
-- **Core Principle & Architecture:**
-  > **Legal System Principle:** Deterministic rules determine statutory applicability. AI may explain requirements or draft founder responses. AI does NOT determine statutory applicability or certify legal compliance.
-- **6 Canonical UI Sections (Full-Width Responsive Flow):**
+- **Canonical Boundary & Purpose:**
+  - **Purpose:** Determine WHAT statutory legal and compliance obligations apply to the Creator's project, why they apply, their current planning status, their official legal sources, and what preparation/action is required.
+  - **Boundary:** Step 3.4 is **NOT** company formation execution. Step 3.5 remains strictly responsible for final legal structure selection, formation execution, incorporation workflows, and formation-specific administration.
+- **Data Flow & Architecture:**
+  - `Creator Project / Canvas / Market Study / Forecast`
+  - $\to$ `BusinessProfileClassifier`
+  - $\to$ `LegalBusinessProfile` (`BusinessSignal`, `SignalConfidenceLevels`)
+  - $\to$ `FranceRules.json` (`FranceLegalRulesCatalog`)
+  - $\to$ `LegalApplicabilityEngine`
+  - $\to$ `CreatorIdea.Phase3Data.LegalAssessment` (Single Source of Truth)
+  - $\to$ `LegalComplianceOverviewDto`
+  - $\to$ Step 3.4 Accepted UI (`/dashboard/creator/phase-3/compliance`)
+- **Business Signal Certainty Model:**
+  - Reuses existing canonical certainty primitives: `BusinessSignal` (`Value`, `Confidence`, `Source`, `Rationale`) and `SignalConfidenceLevels` (`Confirmed`, `Derived`, `Unknown`).
+  - **Canonical Semantics:** Absence of evidence strictly evaluates to `SignalConfidenceLevels.Unknown` (never false or true defaults without positive supporting evidence).
+  - **Certainty Gate:** Legal applicability rules checking signals with `Unknown` confidence evaluate deterministically to `NeedsInformation` (or `NeedsProfessionalReview` for ambiguous sector triggers).
+  - **Zero Frontend Inference:** Frontend performs 0 substantive business or legal inference, consuming typed profile signals directly from backend.
+- **6 Canonical UI Sections (Full-Width Responsive Flow — FROZEN):**
   1. *Header & Short Introduction:* `Phase3SetupShell` header (`STEP 3.4 · LEGAL & COMPLIANCE`, `Legal & Compliance Intelligence`) followed by introduction *"Let’s make the legal side of your project easier to understand."*
   2. *Roadmap Summary Card:* *"Your legal roadmap is ready."* with clear guidance on what to prepare before registration, launch, and day-to-day operations.
   3. *Recommended Next Action Card:* Soft secondary background (`bg-secondary`), prominent `START HERE` badge, dynamic requirement title and justification, and `"Review this step →"` action button with deep scroll.
-  4. *About Your Project Card:* Personalized project overview dynamically synthesized from detected business archetypes and classified profile traits, with `"Update your project details ↗"` deep link to Step 3.2.
+  4. *About Your Project Card:* Personalized project overview dynamically bound from typed `LegalBusinessProfileDto` signals, with `"Update your project details ↗"` deep link to Step 3.2.
   5. *Checklist Stage Section (`LegalFigmaStageSection.tsx`):*
      - 3 Segmented Stage Tabs: *"Before you register"*, *"Register & prepare to launch"*, *"Running your business"* with live task count badges.
      - Single card container with `divide-y` row separators.
      - Completed tasks feature `#157A55` (`bg-success-strong`) checkmark, title, subtitle, and inline `"Marked done by you"` badge (`bg-success-light text-success-strong`).
-     - Expanded tasks feature a 56px indented accordion layout with uppercase section titles (`WHY THIS APPLIES TO YOU`, `WHEN TO DO IT`, `WHAT TO DO`), canonical Official Public Guidance card with deep links to authoritative French portals (`Service-Public.fr`, `INPI`, `CNIL`), and subtle check reminder.
+     - Expanded tasks feature a 56px indented accordion layout with uppercase section titles (`WHY THIS APPLIES TO YOU`, `WHEN TO DO IT`, `WHAT TO DO`), canonical Official Public Guidance card with deep links to authoritative French portals (`Service-Public.fr`, `INPI`, `CNIL`, `Legifrance`, `DGFiP`), and subtle check reminder.
      - Quiet statutory disclaimer: *"Checkmarks record your progress; they do not represent legal verification by MBC."*
   6. *Footer Reassurance & Continuation:* Reassurance text *"You can return to this roadmap as your project moves forward."*, `"Back"` button routing back to Step 3.3 Financial Forecast (`/dashboard/creator/phase-3/forecast`), and `"Save and continue"` button completing Step 3.4 and advancing to Step 3.5 Company Formation (`/dashboard/creator/phase-3/formation`).
-- **Typography & Theme Token Canon (`globals.css`):**
-  - Zero raw HEX literals and zero arbitrary bracket font sizes (`text-[...]`).
-  - Uses role-based font classes (`text-page-heading`, `text-card-title`, `text-section-title`, `text-body`, `text-label`, `text-button`, `text-caption`, `text-badge`, `text-footnote`).
-  - Colors strictly bind to semantic tokens: `text-foreground`, `text-muted-foreground`, `text-primary`, `bg-card`, `bg-muted`, `bg-primary`, `bg-secondary`, `bg-success-strong`, `bg-success-light`, `border-border`.
-- **Authoritative National Catalogue (France — 100% English):**
-  - **Catalogue Version:** `FR-2026.1`
-  - **Canonical Rules (18 Total):** Fully declared in English in `backend/Resources/LegalRules/FranceRules.json`:
-    - *Corporate Governance (5):* `FR-CORP-001` (Share Capital Deposit & Escrow Certificate), `FR-CORP-002` (Drafting & Formal Execution of Constitutional Bylaws), `FR-CORP-003` (Statutory Legal Notice Publication in an Authorized Gazette), `FR-CORP-004` (Company Registration via INPI Guichet Unique), `FR-CORP-005` (Beneficial Ownership Declaration / RBE).
-    - *Intellectual Property (1):* `FR-IP-001` (Trademark & Brand Name Rights Verification with INPI).
-    - *Data Privacy (3):* `FR-PRIV-001` (Article 30 GDPR Data Processing Records), `FR-PRIV-002` (GDPR Privacy Policy & Data Subject Disclosures), `FR-PRIV-003` (Cookie & Online Tracker Consent Compliance).
-    - *Web Presence (1):* `FR-WEB-001` (Mandatory Website Legal Notice / Mentions Légales).
-    - *Consumer Protection (3):* `FR-CONS-001` (Standard B2C Terms of Sale / CGV), `FR-CONS-002` (Mandatory 14-Day Consumer Withdrawal Right), `FR-CONS-003` (Consumer Dispute Mediation Designation).
-    - *Payment & Commercial (2):* `FR-PAY-001` (Authorized Payment Service Provider Integration), `FR-MKT-001` (Direct Electronic Marketing & Commercial Communications).
-    - *Operations & Sector (3):* `FR-INS-001` (Professional Liability Insurance Coverage / RC Pro), `FR-SOC-001` (Social Security Affiliation & Pre-Employment Declaration), `FR-REG-001` (Regulated Activities & Professional Qualifications).
-- **Legal Source-Of-Truth Architecture:**
-  - **Canonical Legal Authority:** `CreatorLegalAssessment` (`CreatorIdea.Phase3Data.LegalAssessment` and `CreatorJourney.Phase3Data.LegalAssessment`) serves as the sole active Creator legal source of truth.
-  - **Legacy Checklist Compatibility:** `CreatorPhase3Data.LegalChecklist` is preserved strictly as a backward-compatible BSON deserialization surface for historical documents (0 canonical active readers, 0 new writers).
-  - **Compatibility Command Adapter:** `UpdateLegalChecklistItemAsync` contains zero independent legal business logic and acts purely as an adapter delegating to canonical `UpdateLegalAssessmentItemStatusAsync`.
-  - **Compatibility HTTP Endpoints:** `POST /api/creator/ai/legal-checklist/generate` and `PATCH /api/creator/legal-checklist/item/{itemId}` are compatibility HTTP surfaces only, not separate legal authorities.
-  - **Before Level Up:** Active Creator legal assessment is the sole authority.
-  - **At Level Up:** The active Creator legal assessment is preserved intact as the immutable Creator baseline.
-  - **After Level Up:** `Companies.LegalAssessment` becomes the active Entrepreneur operational legal state.
-  - **Deep-Copy Isolation:** Creator and Entrepreneur legal graphs use independent deep copies so mutable Entrepreneur operational changes never alter the frozen Creator baseline.
+- **Authoritative National Catalogue (France — 21 Active Rules):**
+  - **Catalogue Version:** `FR-2026.2` (`backend/Resources/LegalRules/FranceRules.json`)
+  - **Canonical Rules (21 Total):**
+    - *Corporate Governance (6):*
+      - `FR-CORP-001` (Share Capital Deposit & Escrow Certificate — evaluated as `NeedsInformation` at Step 3.4 pending Step 3.5 structure choice; dispensable for EI/Micro).
+      - `FR-CORP-002` (Drafting & Formal Execution of Constitutional Bylaws / Statuts — evaluated as `NeedsInformation` pending Step 3.5).
+      - `FR-CORP-003` (Statutory Legal Notice Publication in an Authorized Gazette / JAL — evaluated as `NeedsInformation` pending Step 3.5).
+      - `FR-CORP-004` (Business Registration via INPI Guichet Unique — SIREN & Official Registry Extract; no universal Kbis promise).
+      - `FR-CORP-005` (Beneficial Ownership Declaration / RBE — evaluated as `NeedsInformation` pending Step 3.5).
+      - `FR-CORP-006` (Annual Financial Accounts Approval & Filing — ongoing corporate governance requirement).
+    - *Intellectual Property (1):*
+      - `FR-IP-001` (Trademark Clearance & Brand Protection with INPI — priority `recommended`, triggered across commercial activity signals).
+    - *Data Privacy & Consumer Protection (7):*
+      - `FR-PRIV-001` (Article 30 GDPR Data Processing Records — SME simplified record keeping).
+      - `FR-PRIV-002` (GDPR Privacy Policy & Data Subject Disclosures).
+      - `FR-PRIV-003` (Cookie & Online Tracker Consent Management).
+      - `FR-WEB-001` (Mandatory Website Legal Notice / Mentions Légales).
+      - `FR-CONS-001` (Standard B2C Terms of Sale / CGV).
+      - `FR-CONS-002` (Mandatory 14-Day Consumer Right of Withdrawal).
+      - `FR-CONS-003` (Consumer Dispute Mediation Designation).
+    - *Payment, Commercial & Tax (3):*
+      - `FR-PAY-001` (Merchant Payment-Provider Integration & PCI-DSS SAQ-A — merchant delegation model, not regulated PSP entity).
+      - `FR-MKT-001` (Direct Electronic B2C Marketing & Commercial Communications Consent).
+      - `FR-TAX-001` (Electronic Invoicing & E-Reporting Reform 2026/2027 — universal 1 Sept 2026 reception capability mandate + phased 1 Sept 2027 issuance/e-reporting for SMEs).
+    - *Operations & Employment (4):*
+      - `FR-INS-001` (Professional Liability Insurance Coverage / RC Pro — priority `recommended` commercial risk management).
+      - `FR-SOC-001` (Founder Social Security Affiliation Planning / URSSAF / SSI).
+      - `FR-SOC-002` (Mandatory Employee Pre-Hiring Declaration / DPAE — conditioned on positive `HasEmployees: true`).
+      - `FR-REG-001` (Regulated Activities & Professional Qualifications Verification).
+- **FR-TAX-001 Reform Scope & Limitation:**
+  - Step 3.4 models the 1 September 2026 reception mandate as universal for all VAT-subject businesses. Phased issuance and e-reporting dates (1 September 2027 for SMEs/micro-enterprises) are explicitly detailed in statutory guidance.
+  - Personalization is limited by available canonical signals (`LegalBusinessProfile` does not contain explicit `VatRegime` or `CompanySize` fields; unknown facts yield `NeedsInformation`).
+- **Canonical Legal Planning Readiness Formula:**
+  - **Single Authority:** `LegalApplicabilityEngine.ComputePlanningReadiness`
+  - **Stage Weights:** Pre-registration = 40%, Launch = 40%, Ongoing = 20%.
+  - **Item Weights:** Critical = 2.0, Recommended = 1.0.
+  - **Progress Credit:** `completed` = 1.0, `in_progress` = 0.5, `ready_for_review` = 0.5, `not_started` = 0.0, `needs_information` = 0.0, `not_applicable` = excluded.
+  - **Meaning:** Represents **Legal Planning Readiness** (not legal certification, legal approval, or guaranteed statutory compliance).
+- **Step 3.7 Connection:**
+  - `Legal dimension score = (PlanningReadinessPct / 100) * 15` (Max 15 points).
+  - Source: `CreatorIdea.Phase3Data.LegalAssessment.PlanningReadinessPct` (0 legacy checklist dependencies).
+- **Project Context & Multi-Project Isolation:**
+  - All legal endpoints (`overview`, `evaluate`, `item status`, `evidence`, `section-12`) strictly require an explicit `ideaId`.
+  - Missing `ideaId` on `GET /api/creator/legal-compliance/section-12` returns HTTP 400 Bad Request.
+  - Zero fallbacks to first idea or ambient active idea.
+- **Legal Source-Of-Truth Architecture & Compatibility:**
+  - **Canonical SSoT:** `CreatorLegalAssessment` (`CreatorIdea.Phase3Data.LegalAssessment`).
+  - **Legacy Checklist Compatibility:** `CreatorPhase3Data.LegalChecklist` is preserved strictly for historical BSON document deserialization (0 active readers, 0 new writers).
+  - **Compatibility Command Adapters:** `UpdateLegalChecklistItemAsync`, `PATCH /api/creator/legal-checklist/item/{itemId}`, and `POST /api/creator/ai/legal-checklist/generate` act purely as compatibility adapters writing to canonical `LegalAssessment`.
 - **Evidence Management & Auditability:**
   - Uses an **Evidence Activity Trail** (append-only activity history tracking upload, status changes, and notes).
-  - Terminology canon: uses "Evidence Activity Trail" and "Append-only activity history" (never "cryptographically immutable" or "tamper-proof").
-- **Live Stage 10 Verification Certified:**
-  - *Legal Refresh Preservation:* `PASS` — Completed requirement status, founder notes, evidence links, physical document files on disk, and activity history are 100% preserved when upstream business signals trigger staleness and refresh is run.
-  - *Legal Refresh Idempotency:* `PASS` — Consecutive refresh without changing inputs produces 0 duplicate requirements, 0 duplicate evidence links, 0 duplicate sources, 0 duplicate reconciliation records, and 0 duplicate audit events.
-  - *Four-Surface Freshness Consistency:* `PASS` — Business classifier mutations (e.g. B2B $\to$ B2B+B2C) mark all 4 surfaces stale (`Phase3LegalCard`, `Legal & Compliance Workspace`, `Business Plan Section 12`, `Investor Readiness`). After refresh, all 4 surfaces return to current/synchronized state.
+- **Final Verification Certification:**
+  - Backend Legal tests: 138/138 PASS (0 failed, 0 skipped).
+  - Targeted Step 3.4/3.7 tests: 83/83 PASS.
+  - Frontend Step 3.4/3.7 tests: 12/12 PASS.
+  - TypeScript: 0 errors.
+  - Backend build: 0 errors.
+  - Frontend build: 187 routes compiled cleanly.
+  - UI visual changes: 0.
 
 ### 5.5 Step 3.5 — Company Formation & Team (LIVE — 100% Figma Node 57156:8767 Aligned)
 - **Route:** `/dashboard/creator/phase-3/formation`

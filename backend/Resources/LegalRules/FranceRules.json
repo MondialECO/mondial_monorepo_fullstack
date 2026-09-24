@@ -2,16 +2,19 @@
   "rulesVersion": "FR-2026.1",
   "jurisdiction": "FR",
   "title": "National Catalogue of Statutory Legal & Regulatory Rules for France",
-  "lastUpdated": "2026-09-19",
+  "lastUpdated": "2026-09-24",
   "metadata": {
     "version": "FR-2026.1",
-    "effectiveDate": "2026-01-01",
-    "lastVerifiedAt": "2026-09-19T00:00:00Z",
+    "effectiveDate": "2026-09-01",
+    "lastVerifiedAt": "2026-09-24T00:00:00Z",
     "sourceFingerprint": "legifrance-fr-2026.1-sha256",
     "sources": [
-      "Legifrance (Code de commerce, Code civil, Code du travail)",
-      "Service-Public.fr",
-      "INPI Guichet Unique"
+      "Legifrance (Code de commerce, Code civil, Code du travail, Code général des impôts)",
+      "Service-Public.fr / Entreprendre.Service-Public.fr",
+      "INPI Guichet Unique",
+      "CNIL",
+      "DGFiP",
+      "URSSAF"
     ]
   },
   "rules": [
@@ -21,19 +24,17 @@
       "category": "corporate",
       "stage": "before_creation",
       "priority": "critical",
-      "description": "Mandatory deposit of initial cash contributions forming the share capital with an accredited bank, notaire, or the Caisse des Dépôts, generating the deposit certificate required for signing constitutional bylaws.",
-      "whyItApplies": "Every commercial company formation in France (SAS, SARL, SASU, EURL) mandates the prior deposit of founding share capital.",
-      "conditions": {
-        "always": true
-      },
+      "description": "Deposit of initial cash contributions forming the share capital with an accredited bank, notaire, or the Caisse des Dépôts, generating the deposit certificate required for signing constitutional bylaws. Mandatory for corporate legal entities (sociétés: SAS, SARL, SASU, EURL); not required for sole proprietorships (EI / micro-entreprises).",
+      "whyItApplies": "Applicable if choosing a corporate legal structure with share capital (SAS, SARL, SASU, EURL). Sole proprietorships (EI / micro-entreprises) have no share capital requirement.",
+      "conditions": {},
       "officialSource": {
         "authority": "Service-Public.fr",
         "title": "Share capital deposit for commercial companies",
         "url": "https://www.service-public.fr/professionnels-entreprises/vosdroits/F31440",
         "sourceType": "official_portal",
-        "lastVerified": "2026-06-01",
+        "lastVerified": "2026-09-01",
         "articleReference": "Code de commerce, Articles L223-7 et L225-3",
-        "notes": "The deposit certificate (attestation de dépôt) is mandatory for official company registration."
+        "notes": "The deposit certificate (attestation de dépôt des fonds) is required for company registration filing."
       },
       "requiresEvidence": true,
       "evidenceDocType": "capital_deposit_cert",
@@ -45,19 +46,17 @@
       "category": "corporate",
       "stage": "before_creation",
       "priority": "critical",
-      "description": "Drafting constitutional bylaws defining corporate governance, corporate purpose, registered name, duration, and shareholding split among founding partners.",
-      "whyItApplies": "Mandatory founding document governing the legal, governance, and operational rules of the enterprise.",
-      "conditions": {
-        "always": true
-      },
+      "description": "Drafting and signing constitutional bylaws defining corporate governance, corporate purpose, registered name, duration, and shareholding split. Mandatory for corporate entities (sociétés: SAS, SARL, SASU, EURL); individual enterprises (EI / micro-entreprises) do not have legal bylaws.",
+      "whyItApplies": "Mandatory founding document governing the legal, governance, and operational rules of commercial companies (sociétés).",
+      "conditions": {},
       "officialSource": {
         "authority": "Entreprendre.Service-Public.fr",
         "title": "Drafting articles of association for a company",
         "url": "https://entreprendre.service-public.fr/vosdroits/F32230",
         "sourceType": "official_portal",
-        "lastVerified": "2026-06-01",
+        "lastVerified": "2026-09-01",
         "articleReference": "Code civil, Article 1835",
-        "notes": "Bylaws must be initialed and signed by all founding shareholders."
+        "notes": "Bylaws must be initialed and signed by all founding shareholders or sole partner."
       },
       "requiresEvidence": true,
       "evidenceDocType": "statuts_draft",
@@ -69,19 +68,17 @@
       "category": "corporate",
       "stage": "company_creation",
       "priority": "critical",
-      "description": "Mandatory publication of a legal notice of incorporation in an authorized legal gazette (JAL) or certified digital press service in the département of the registered headquarters to inform third parties.",
-      "whyItApplies": "Statutory public notice formality required prior to filing the registration dossier.",
-      "conditions": {
-        "always": true
-      },
+      "description": "Publication of a legal notice of incorporation in an authorized legal gazette (JAL) or certified digital press service (SHAL) in the département of the registered office. Mandatory for commercial company incorporations (sociétés); ordinary EI / micro-enterprise registrations do not require a gazette publication.",
+      "whyItApplies": "Statutory public notice formality required for commercial companies prior to filing the registration dossier.",
+      "conditions": {},
       "officialSource": {
         "authority": "Service-Public.fr / SHAL",
         "title": "Legal notices: publication in an authorized journal",
         "url": "https://entreprendre.service-public.fr/vosdroits/F21852",
         "sourceType": "official_portal",
-        "lastVerified": "2026-05-20",
+        "lastVerified": "2026-09-01",
         "articleReference": "Code de commerce, Article R210-3",
-        "notes": "The publication certificate (attestation de parution) is required by the INPI Guichet Unique."
+        "notes": "The publication certificate (attestation de parution JAL) is required by the INPI Guichet Unique."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
@@ -89,12 +86,12 @@
     },
     {
       "id": "FR-CORP-004",
-      "title": "Company Registration via INPI Guichet Unique (SIREN & Kbis)",
+      "title": "Business Registration via INPI Guichet Unique (SIREN & Official Registry Extract)",
       "category": "corporate",
       "stage": "company_creation",
       "priority": "critical",
-      "description": "Mandatory company registration filing via the INPI Guichet Unique portal to register in the National Register of Companies (RNE) and Trade Register (RCS), issuing SIREN, SIRET numbers, and official Kbis extract.",
-      "whyItApplies": "Under French law (PACTE Act), the INPI Guichet Unique is the sole legal channel for incorporating any enterprise in France.",
+      "description": "Mandatory business registration filing via the INPI Guichet Unique portal to register in the National Register of Companies (RNE) and Trade Register (RCS if commercial), issuing official SIREN and SIRET numbers, along with the statutory registration extract (Extrait Kbis for commercial companies/traders, Extrait RNE or Avis SIRENE for individual professionals).",
+      "whyItApplies": "Under French law (PACTE Act), the INPI Guichet Unique is the sole statutory channel for registering any business or company in France.",
       "conditions": {
         "always": true
       },
@@ -103,13 +100,13 @@
         "title": "Single window portal for business formalities",
         "url": "https://formalites.entreprises.gouv.fr/",
         "sourceType": "official_portal",
-        "lastVerified": "2026-06-15",
+        "lastVerified": "2026-09-01",
         "articleReference": "Code de commerce, Article L123-33",
-        "notes": "Assigns official SIREN/SIRET numbers and generates the formal Kbis extract."
+        "notes": "Assigns official SIREN/SIRET numbers and generates the formal registration extract (Kbis for commercial entities, extrait RNE / avis SIRENE for individual enterprises)."
       },
       "requiresEvidence": true,
       "evidenceDocType": "kbis_extract",
-      "evidenceLabel": "Official Kbis extract or Guichet Unique filing confirmation receipt"
+      "evidenceLabel": "Official business registration extract (Extrait Kbis, Extrait RNE, or Guichet Unique filing confirmation)"
     },
     {
       "id": "FR-CORP-005",
@@ -117,43 +114,61 @@
       "category": "corporate",
       "stage": "company_creation",
       "priority": "critical",
-      "description": "Mandatory statutory declaration identifying any individual exercising direct or indirect control over the company (holding more than 25% of capital or voting rights) under anti-money laundering and counter-terrorist financing obligations.",
-      "whyItApplies": "Statutory obligation for all registered commercial enterprises in France.",
-      "conditions": {
-        "always": true
-      },
+      "description": "Mandatory statutory declaration identifying any individual exercising direct or indirect control over the company (holding more than 25% of capital or voting rights) under anti-money laundering and counter-terrorist financing obligations. Applies to registered commercial companies (sociétés); sole proprietorships (EI / micro) without separate corporate personality are exempt.",
+      "whyItApplies": "Statutory obligation for registered commercial and civil companies (sociétés) in France under AML/CFT directives.",
+      "conditions": {},
       "officialSource": {
         "authority": "INPI / Greffe du Tribunal de Commerce",
-        "title": "Declaration of beneficial owners",
+        "title": "Declaration of beneficial owners (Registre des Bénéficiaires Effectifs)",
         "url": "https://entreprendre.service-public.fr/vosdroits/F36284",
         "sourceType": "official_portal",
-        "lastVerified": "2026-06-01",
+        "lastVerified": "2026-09-01",
         "articleReference": "Code monétaire et financier, Articles L561-46 et R561-55",
-        "notes": "Submitted concurrently with the company incorporation filing."
+        "notes": "Submitted concurrently with the company incorporation filing on the Guichet Unique."
       },
       "requiresEvidence": false,
       "evidenceDocType": "legal_evidence",
       "evidenceLabel": "Beneficial ownership declaration receipt (RBE)"
     },
     {
+      "id": "FR-CORP-006",
+      "title": "Approval & Filing of Annual Financial Accounts (Greffe du Tribunal)",
+      "category": "corporate",
+      "stage": "ongoing",
+      "priority": "critical",
+      "description": "Mandatory annual approval of financial statements by shareholders/partners and filing of annual accounts (bilan, compte de résultat, annexe) with the commercial court registry (Greffe du Tribunal de Commerce) within 7 months following the close of each fiscal year. Applicable to commercial companies (SAS, SARL, SASU, EURL); individual enterprises (EI / micro-entrepreneurs) are exempt.",
+      "whyItApplies": "Mandatory recurring corporate obligation for registered commercial companies (sociétés) under French corporate law.",
+      "conditions": {},
+      "officialSource": {
+        "authority": "INPI / Greffe du Tribunal de Commerce",
+        "title": "Filing annual accounts for commercial companies",
+        "url": "https://entreprendre.service-public.fr/vosdroits/F1482",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-09-01",
+        "articleReference": "Code de commerce, Articles L232-21 à L232-23",
+        "notes": "Failure to file annual accounts can incur civil injunctions from the commercial court president and criminal fines under Article L242-8 du Code de commerce."
+      },
+      "requiresEvidence": false,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "Annual accounts filing certificate issued by the Greffe"
+    },
+    {
       "id": "FR-IP-001",
-      "title": "Trademark & Brand Name Protection (INPI Register)",
+      "title": "Trademark Clearance & Brand Protection (INPI Register)",
       "category": "intellectual_property",
       "stage": "before_launch",
       "priority": "recommended",
-      "description": "Verification of brand name availability on the INPI register, registration in relevant Nice classes, and execution of formal IP assignment agreements between founders/contractors and the corporate entity.",
-      "whyItApplies": "Your venture markets a proprietary solution with a distinctive commercial identity and digital assets requiring intellectual property protection.",
-      "conditions": {
-        "hasWebsite": true
-      },
+      "description": "Prior availability search on the INPI database to verify that the proposed brand name and trade sign do not infringe existing trademarks, company names, or domain names, followed by optional trademark filing in relevant Nice classes and IP assignment agreements.",
+      "whyItApplies": "Recommended intellectual property clearance and brand protection for commercial ventures marketing products, software, or services under a distinctive brand name.",
+      "conditions": {},
       "officialSource": {
         "authority": "INPI (Institut National de la Propriété Industrielle)",
         "title": "Filing a trademark in France",
         "url": "https://www.inpi.fr/deposer-une-marque",
         "sourceType": "regulatory_agency",
-        "lastVerified": "2026-05-15",
-        "articleReference": "Code de la propriété intellectuelle, Article L711-1",
-        "notes": "Search the INPI trademark database prior to filing to prevent infringement conflicts."
+        "lastVerified": "2026-09-01",
+        "articleReference": "Code de la propriété intellectuelle, Articles L711-1 et suivants",
+        "notes": "Search the INPI trademark and trade name database prior to commercial launch to prevent infringement actions."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
@@ -175,7 +190,7 @@
         "title": "GDPR: Getting started with compliance",
         "url": "https://www.cnil.fr/fr/rgpd-par-ou-commencer",
         "sourceType": "regulatory_agency",
-        "lastVerified": "2026-06-01",
+        "lastVerified": "2026-09-01",
         "articleReference": "Règlement Général sur la Protection des Données (RGPD), Articles 12, 13 et 14",
         "notes": "Must be easily accessible on all data collection forms and interfaces."
       },
@@ -199,7 +214,7 @@
         "title": "Cookies and trackers: applicable regulatory standards",
         "url": "https://www.cnil.fr/fr/cookies-et-autres-traceurs/regles/cookies-solutions-pour-les-outils-de-mesure-daudience",
         "sourceType": "regulatory_agency",
-        "lastVerified": "2026-06-01",
+        "lastVerified": "2026-09-01",
         "articleReference": "Loi Informatique et Libertés, Article 82 et Lignes directrices CNIL (Délibération 2020-091)",
         "notes": "Refusal must be as easy as acceptance (a visible 'Refuse All' button is mandatory)."
       },
@@ -213,19 +228,19 @@
       "category": "privacy",
       "stage": "ongoing",
       "priority": "recommended",
-      "description": "Creation and recurring maintenance of an internal register recording every category of personal data processing (customer accounts, billing, customer support, personnel).",
-      "whyItApplies": "Statutory obligation to document ongoing compliance with GDPR personal data processing principles.",
+      "description": "Creation and recurring maintenance of an internal register recording categories of personal data processing (customer accounts, billing, support, personnel). Under GDPR Article 30(5), while enterprises with <250 employees have a statutory exemption for purely occasional processing, maintaining a simplified register is strongly recommended by CNIL and becomes mandatory for recurring customer data processing.",
+      "whyItApplies": "Recommended compliance practice under CNIL guidelines for ventures processing recurring customer, lead, or account data.",
       "conditions": {
         "collectsPersonalData": true
       },
       "officialSource": {
         "authority": "CNIL",
-        "title": "Register of processing activities",
+        "title": "Register of processing activities (Modèle simplifié CNIL)",
         "url": "https://www.cnil.fr/fr/modele-de-registre-des-traitements",
         "sourceType": "regulatory_agency",
-        "lastVerified": "2026-05-15",
-        "articleReference": "Règlement Général sur la Protection des Données (RGPD), Article 30",
-        "notes": "CNIL provides an official downloadable register template."
+        "lastVerified": "2026-09-01",
+        "articleReference": "Règlement Général sur la Protection des Données (RGPD), Article 30 (paragraphes 1 et 5)",
+        "notes": "CNIL provides an official downloadable simplified register template tailored for SMEs and recurring activities."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
@@ -237,7 +252,7 @@
       "category": "consumer_protection",
       "stage": "before_launch",
       "priority": "critical",
-      "description": "Mandatory publication of complete legal notices on the website or mobile app: company name, legal structure, share capital, registered address, RCS and EU VAT numbers, publication director name, and hosting provider details.",
+      "description": "Mandatory publication of complete legal notices on the website or mobile app: company name, legal structure, share capital (if applicable), registered address, RCS and EU VAT numbers, publication director name, and hosting provider details.",
       "whyItApplies": "Every electronic communication service open to the public in France is legally required to publish statutory legal notices.",
       "conditions": {
         "hasWebsite": true
@@ -247,9 +262,9 @@
         "title": "Mandatory legal disclosures on professional websites",
         "url": "https://entreprendre.service-public.fr/vosdroits/F31228",
         "sourceType": "official_portal",
-        "lastVerified": "2026-06-01",
+        "lastVerified": "2026-09-01",
         "articleReference": "Loi n° 2004-575 pour la confiance dans l'économie numérique (LCEN), Article 6",
-        "notes": "Failing to provide mandatory legal notices can incur fines up to €75,000."
+        "notes": "Failing to provide mandatory legal notices can incur fines up to €75,000 for individuals and €375,000 for legal entities."
       },
       "requiresEvidence": false,
       "evidenceDocType": "legal_evidence",
@@ -257,27 +272,27 @@
     },
     {
       "id": "FR-CONS-001",
-      "title": "General Terms of Sale (CGV) & Consumer Protection",
+      "title": "General Terms of Sale (CGV), Retraction & Consumer Mediation",
       "category": "consumer_protection",
       "stage": "before_sale",
       "priority": "critical",
-      "description": "Drafting and pre-purchase acceptance of consumer Terms of Sale specifying total price including taxes (TTC), service execution terms, statutory warranties, and 14-day statutory right of withdrawal information with standard form.",
-      "whyItApplies": "Your business model sells digital services or products directly to consumer retail customers in France.",
+      "description": "Drafting and pre-purchase acceptance of consumer Terms of Sale specifying total price including taxes (TTC), service execution terms, statutory legal warranties, 14-day statutory right of withdrawal information, and mandatory designation of an accredited consumer mediator.",
+      "whyItApplies": "Your business sells digital services or products directly to consumer retail customers (B2C) in France.",
       "conditions": {
         "isB2C": true
       },
       "officialSource": {
         "authority": "DGCCRF / Service-Public.fr",
-        "title": "Distance selling: consumer contract requirements",
+        "title": "Distance selling: consumer contract requirements and mediation",
         "url": "https://www.service-public.fr/professionnels-entreprises/vosdroits/F31228",
         "sourceType": "official_portal",
-        "lastVerified": "2026-05-15",
-        "articleReference": "Code de la consommation, Articles L221-18 et suivants",
-        "notes": "For immediate digital content delivery, express waiver of the 14-day retraction right must be collected."
+        "lastVerified": "2026-09-01",
+        "articleReference": "Code de la consommation, Articles L221-18 et suivants, et Articles L612-1 et suivants (Médiation)",
+        "notes": "Mandatory consumer mediation membership details and retraction form must be provided before checkout."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Published General Terms of Sale (CGV) for Consumers"
+      "evidenceLabel": "Published General Terms of Sale (CGV) with consumer mediation details"
     },
     {
       "id": "FR-CONS-002",
@@ -295,7 +310,7 @@
         "title": "Commercial terms of sale between professionals",
         "url": "https://entreprendre.service-public.fr/vosdroits/F23211",
         "sourceType": "official_portal",
-        "lastVerified": "2026-05-10",
+        "lastVerified": "2026-09-01",
         "articleReference": "Code de commerce, Articles L441-1 et L441-10",
         "notes": "B2B terms must be communicated upon request to any professional buyer."
       },
@@ -320,7 +335,7 @@
         "title": "Electronic contract cancellation in 3 clicks",
         "url": "https://www.economie.gouv.fr/dgccrf/la-resiliation-en-trois-clics",
         "sourceType": "regulatory_agency",
-        "lastVerified": "2026-06-01",
+        "lastVerified": "2026-09-01",
         "articleReference": "Code de la consommation, Article L215-1-1 (Décret n° 2023-417)",
         "notes": "Mandatory French consumer protection requirement in force since June 1, 2023."
       },
@@ -330,27 +345,27 @@
     },
     {
       "id": "FR-PAY-001",
-      "title": "Online Payment Gateway Compliance (DSP2 & PCI-DSS)",
+      "title": "Online Payment Provider Integration & Security (DSP2 & PCI-DSS SAQ-A)",
       "category": "payments",
       "stage": "before_sale",
       "priority": "critical",
-      "description": "Selection of an ACPR-licensed Payment Service Provider (PSP) enforcing Strong Customer Authentication (3DS2) and shielding the business from handling raw credit card data (PCI-DSS SAQ-A scope).",
-      "whyItApplies": "Your platform directly collects online payments via credit card or SEPA direct debit.",
+      "description": "Integration of an authorized Payment Service Provider (PSP e.g. Stripe, Adyen, Mollie) supporting Strong Customer Authentication (3DS2) under DSP2 rules, ensuring the merchant operates within PCI-DSS SAQ-A scope without storing or handling raw cardholder data.",
+      "whyItApplies": "Your platform collects online customer payments, requiring integration with an authorized payment service provider and compliance with merchant data security standards.",
       "conditions": {
         "hasOnlinePayments": true
       },
       "officialSource": {
-        "authority": "Banque de France / ACPR",
-        "title": "Online payment security and DSP2 regulation",
+        "authority": "Banque de France / ACPR / PCI Security Standards Council",
+        "title": "Online payment security standards and merchant PSP delegation",
         "url": "https://acpr.banque-france.fr/autorisations/paiement-et-monnaie-electronique",
         "sourceType": "regulatory_agency",
-        "lastVerified": "2026-05-01",
-        "articleReference": "Code monétaire et financier, Article L133-44 (Directive DSP2)",
-        "notes": "Major PSPs like Stripe or Adyen supply the PCI-DSS SAQ-A compliance certificate."
+        "lastVerified": "2026-09-01",
+        "articleReference": "Code monétaire et financier, Article L133-44 (Directive DSP2) & Norme PCI-DSS (SAQ-A)",
+        "notes": "As an online merchant, you delegate transaction processing and 3DS2 authentication to an authorized PSP. Direct handling of credit card data by non-PSP entities is prohibited under PCI-DSS."
       },
       "requiresEvidence": false,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Payment provider compliance confirmation or integration certificate"
+      "evidenceLabel": "Payment gateway configuration receipt or merchant agreement with licensed PSP"
     },
     {
       "id": "FR-MKT-001",
@@ -368,7 +383,7 @@
         "title": "Online platforms and transparency obligations",
         "url": "https://www.economie.gouv.fr/dgccrf/Publications/Vie-pratique/Fiches-pratiques/plateformes-en-ligne",
         "sourceType": "regulatory_agency",
-        "lastVerified": "2026-05-15",
+        "lastVerified": "2026-09-01",
         "articleReference": "Code de la consommation, Article L111-7 et Décret n° 2017-1434",
         "notes": "Strict transparency obligations for digital intermediaries and matching platforms."
       },
@@ -382,32 +397,32 @@
       "category": "insurance",
       "stage": "before_sale",
       "priority": "recommended",
-      "description": "Underwriting a professional liability insurance policy tailored to the sector to cover physical, material, and consequential damages that may arise during business operations.",
-      "whyItApplies": "Recommended for commercial entities to protect against operational liability and client contract risks.",
+      "description": "Underwriting a professional civil liability insurance policy (RC Pro) tailored to your business sector. While statutorily mandatory only for regulated professions (health, law, construction, financial intermediation, travel, real estate), it is strongly recommended as an operational safeguard for all commercial and digital ventures to cover client disputes and contractual damages.",
+      "whyItApplies": "Advisory risk-management guidance for commercial ventures to cover operational liabilities and satisfy client contract terms.",
       "conditions": {
         "always": true
       },
       "officialSource": {
         "authority": "Service-Public.fr",
-        "title": "Professional liability insurance for businesses",
+        "title": "Professional liability insurance for commercial activities",
         "url": "https://entreprendre.service-public.fr/vosdroits/F23668",
         "sourceType": "official_portal",
-        "lastVerified": "2026-05-10",
-        "articleReference": "Code des assurances, Article L111-1",
-        "notes": "Essential for commercial contracts, corporate client onboarding, and tender bids."
+        "lastVerified": "2026-09-01",
+        "articleReference": "Code des assurances, Article L111-1 ; Code civil, Articles 1231-1 et 1240",
+        "notes": "Mandatory for regulated activities under specific sector codes; highly recommended for non-regulated commercial enterprises to satisfy B2B client contract requirements."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
-      "evidenceLabel": "Valid Professional Liability Insurance (RC Pro) certificate"
+      "evidenceLabel": "Valid Professional Liability Insurance (RC Pro) certificate or policy schedule"
     },
     {
       "id": "FR-SOC-001",
-      "title": "Social Security Affiliation & Pre-Hiring Filings (URSSAF)",
+      "title": "Social Security Affiliation & Founder Social Regime (URSSAF)",
       "category": "social",
       "stage": "ongoing",
       "priority": "critical",
-      "description": "Registration with the relevant French social security regime (General Social Security for SAS/SASU executives or Self-Employed regime for SARL managing partners) and statutory filings (DPAE, periodic social declarations).",
-      "whyItApplies": "Statutory obligation for active commercial entities remunerating officers, founders, or employees.",
+      "description": "Registration with the relevant French social security regime for company officers and founders: General Social Security (Régime Général des assimilés-salariés) for SAS/SASU presidents or Self-Employed regime (Sécurité Sociale des Indépendants - SSI) for SARL majority managers and micro-entrepreneurs.",
+      "whyItApplies": "Statutory obligation for all active business creators and corporate officers in France to affiliate with the competent social security scheme.",
       "conditions": {
         "always": true
       },
@@ -416,13 +431,37 @@
         "title": "Business creator: social declarations and contributions",
         "url": "https://www.urssaf.fr/portail/home/createur-dentreprise.html",
         "sourceType": "official_portal",
-        "lastVerified": "2026-06-01",
+        "lastVerified": "2026-09-01",
         "articleReference": "Code de la sécurité sociale, Articles L311-3 et L611-1",
-        "notes": "Initial social registration details are automatically transmitted via the INPI Guichet Unique."
+        "notes": "Initial founder social registration details are automatically transmitted via the INPI Guichet Unique."
       },
       "requiresEvidence": false,
       "evidenceDocType": "legal_evidence",
       "evidenceLabel": "URSSAF social security affiliation or compliance certificate"
+    },
+    {
+      "id": "FR-SOC-002",
+      "title": "Pre-Hiring Declarations & Employment Formalities (DPAE / URSSAF)",
+      "category": "social",
+      "stage": "ongoing",
+      "priority": "critical",
+      "description": "Mandatory transmission of the Prior Declaration of Employment (Déclaration Préalable à l'Embauche - DPAE) to URSSAF before any employee begins work, establishment of the single personnel register (Registre Unique du Personnel), and affiliation with an occupational health service.",
+      "whyItApplies": "Your business models payroll, salaried employees, or planned personnel hiring, triggering mandatory pre-hiring social declarations.",
+      "conditions": {
+        "hasEmployees": true
+      },
+      "officialSource": {
+        "authority": "URSSAF / Ministère du Travail",
+        "title": "Hiring an employee: mandatory formalities (DPAE)",
+        "url": "https://www.urssaf.fr/portail/home/employeur/declarer-et-payer/les-declarations-a-remettre/la-declaration-prealable-a-lemb.html",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-09-01",
+        "articleReference": "Code du travail, Articles L1221-10 et R1221-1 et suivants",
+        "notes": "DPAE must be transmitted to URSSAF at the earliest 8 days before hiring and strictly before the effective start of employment."
+      },
+      "requiresEvidence": true,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "DPAE filing confirmation receipt issued by URSSAF"
     },
     {
       "id": "FR-REG-001",
@@ -440,13 +479,37 @@
         "title": "Regulated activities in France",
         "url": "https://entreprendre.service-public.fr/vosdroits/F33814",
         "sourceType": "official_portal",
-        "lastVerified": "2026-05-01",
+        "lastVerified": "2026-09-01",
         "articleReference": "Code de commerce, Article L123-11-1",
         "notes": "For regulated activities, the commercial court registry rejects incorporation without required permits."
       },
       "requiresEvidence": true,
       "evidenceDocType": "legal_evidence",
       "evidenceLabel": "State qualification certificate, professional card, or administrative permit"
+    },
+    {
+      "id": "FR-TAX-001",
+      "title": "Electronic Invoicing & E-Reporting Compliance (Reform 2026/2027)",
+      "category": "tax_compliance",
+      "stage": "before_sale",
+      "priority": "critical",
+      "description": "Compliance with the French electronic invoicing and e-reporting reform (loi de finances). (1) Reception Readiness (1 Sept 2026): All VAT-subject entities established in France (including micro-enterprises under franchise en base) must be capable of receiving electronic invoices via an accredited Partner Dematerialization Platform (PDP / plateforme agréée) or the public billing portal. (2) Issuance & E-Reporting (1 Sept 2027 for SMEs/micro): Mandatory issuance of structured electronic invoices for domestic B2B sales and transmission of e-reporting transaction/payment data for B2C and international operations.",
+      "whyItApplies": "Universal statutory reform for all economic entities established in France: reception capability is mandatory from 1 September 2026, followed by phased issuance and e-reporting obligations from 1 September 2027 for SMEs.",
+      "conditions": {
+        "always": true
+      },
+      "officialSource": {
+        "authority": "DGFiP / Ministère de l'Économie et des Finances",
+        "title": "Electronic invoicing and transaction reporting (e-invoicing / e-reporting)",
+        "url": "https://www.impots.gouv.fr/professionnel/facturation-electronique",
+        "sourceType": "official_portal",
+        "lastVerified": "2026-09-01",
+        "articleReference": "Code général des impôts, Articles 289 bis, 290 et 290 A ; Décret n° 2024-266",
+        "notes": "Statutory rollout: 1 September 2026 (mandatory reception for all businesses, mandatory issuance for large/ETI); 1 September 2027 (mandatory issuance and e-reporting for SMEs and micro-enterprises). Supported via accredited partner platforms (PDP) and the public portal."
+      },
+      "requiresEvidence": false,
+      "evidenceDocType": "legal_evidence",
+      "evidenceLabel": "PDP account confirmation receipt or electronic invoicing reception setup verification"
     }
   ]
 }

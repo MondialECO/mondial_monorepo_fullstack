@@ -411,28 +411,13 @@ namespace WebApp.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var j = await _journeys.GetOrCreateAsync(userId);
-                CreatorIdea? idea = null;
-                if (!string.IsNullOrEmpty(ideaId))
-                {
-                    if (_ideas != null)
-                    {
-                        idea = await _ideas.GetOwnedAsync(ideaId, userId);
-                    }
-                    if (idea == null)
-                    {
-                        return NotFound(ApiResponse.Error("Venture idea not found or access denied"));
-                    }
-                }
-                else if (_ideas != null)
-                {
-                    var ideas = await _ideas.ListByUserAsync(userId);
-                    idea = ideas.FirstOrDefault(i => string.Equals(i.Status, "active", StringComparison.OrdinalIgnoreCase)) ?? ideas.FirstOrDefault();
-                }
+                if (string.IsNullOrWhiteSpace(ideaId))
+                    return BadRequest(ApiResponse.Error("ideaId query parameter is required"));
 
+                var userId = GetUserId();
+                var idea = await _journeys.ResolveIdeaAsync(userId, ideaId);
                 if (idea == null)
-                    return NotFound(ApiResponse.Error("Venture idea not found"));
+                    return NotFound(ApiResponse.Error("Venture idea not found or access denied"));
 
                 var assessment = idea.Phase3Data?.LegalAssessment;
                 var currentProfile = await ExtractCurrentBusinessProfileAsync(userId, idea);

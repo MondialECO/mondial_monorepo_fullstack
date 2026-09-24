@@ -1223,9 +1223,10 @@ namespace WebApp.Services.Implementations
             {
                 assessmentItem.Status = "done";
                 assessmentItem.CompletedAt = DateTime.UtcNow;
-                var completed = j.Phase3Data.LegalAssessment.Items.Count(i => i.Status == "done");
-                var total = j.Phase3Data.LegalAssessment.Items.Count;
-                j.Phase3Data.LegalAssessment.PlanningReadinessPct = total > 0 ? Math.Round((double)completed / total * 100.0, 1) : 0;
+                if (_legalEngine != null)
+                {
+                    j.Phase3Data.LegalAssessment.PlanningReadinessPct = _legalEngine.ComputePlanningReadiness(j.Phase3Data.LegalAssessment.Items);
+                }
                 ideaUpdate = ideaUpdate.Set(x => x.Phase3Data.LegalAssessment, j.Phase3Data.LegalAssessment);
             }
 
