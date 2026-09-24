@@ -388,11 +388,24 @@ namespace WebApp.Services.Implementations
                         candidate.FounderEdited = existingTask.FounderEdited;
                         candidate.FounderNotes = existingTask.FounderNotes;
                         candidate.UpdatedAt = existingTask.UpdatedAt;
+                        if (existingTask.Dependencies != null && existingTask.Dependencies.Count > 0)
+                        {
+                            foreach (var dep in existingTask.Dependencies)
+                            {
+                                if (!candidate.Dependencies.Contains(dep))
+                                {
+                                    candidate.Dependencies.Add(dep);
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            // 3. Schedule and order tasks
+            // 3. Establish and resolve explicit dependencies across reconciled candidates
+            WireDependencies(candidates, context);
+
+            // 4. Schedule and order tasks
             var scheduledTasks = _scheduler.ScheduleTasks(candidates, capacity, context);
 
             // 4. Group by stage
@@ -513,8 +526,6 @@ namespace WebApp.Services.Implementations
             var legalItems = context.LegalAssessment?.Items ?? context.LegalChecklist?.Items;
             if (legalItems != null)
             {
-                bool hasPlannedHiring = context.Formation?.YouNeed != null && context.Formation.YouNeed.Count > 0;
-
                 foreach (var legalItem in legalItems)
                 {
                     if (legalItem.Status == "completed" || legalItem.Status == "not_applicable") continue;
@@ -524,23 +535,23 @@ namespace WebApp.Services.Implementations
                     if (candidates.Any(c => c.Key == taskKey)) continue;
 
                     bool isDpae = rawId.IndexOf("FR-SOC-002", StringComparison.OrdinalIgnoreCase) >= 0 || rawId.IndexOf("DPAE", StringComparison.OrdinalIgnoreCase) >= 0;
-                    string? stage = MapLegalStage(legalItem.Id, legalItem.Stage, legalItem.Category, hasPlannedHiring);
+                    string? stage = MapLegalStage(legalItem.Id, legalItem.Stage, legalItem.Category);
                     bool isBlocking = legalItem.Priority?.ToLowerInvariant() == "critical" || legalItem.Stage == "company_creation";
                     bool isExternal = legalItem.Stage == "company_creation" || legalItem.RequiresEvidence;
 
                     string targetWindow = isDpae
-                        ? (hasPlannedHiring ? "≤ 8 days before employee start date" : "Timing unresolved (≤ 8 days before employee start date)")
+                        ? "Timing unresolved (≤ 8 days before employee start date)"
                         : string.Empty;
 
                     string whyText = isDpae
-                        ? "Statutory requirement (social): Déclaration Préalable à l'Embauche (DPAE) must be submitted to URSSAF at earliest 8 days before the employee's effective start date." + (hasPlannedHiring ? " Scheduled with planned team hiring milestone." : " Timing is unresolved until specific employee hiring dates are planned.")
+                        ? "Statutory requirement (social): Déclaration Préalable à l'Embauche (DPAE) must be submitted to URSSAF at earliest 8 days before the employee's effective start date. Timing is unresolved until an explicit employee start date is established."
                         : $"Statutory requirement ({legalItem.Category}): {legalItem.WhyItApplies}";
 
                     candidates.Add(new RoadmapTask
                     {
                         Key = taskKey,
                         Title = legalItem.Title ?? rawId,
-                        Description = isDpae && !hasPlannedHiring
+                        Description = isDpae
                             ? "Mandatory pre-hiring social declaration (DPAE) to URSSAF before onboarding employees. Timing is unresolved until specific employee hiring dates are planned."
                             : (legalItem.WhyItApplies ?? string.Empty),
                         Category = RoadmapCategories.LegalAndAdministration,
@@ -613,15 +624,77 @@ namespace WebApp.Services.Implementations
                 }
             }
 
-            // 6. Establish Logical DAG Dependencies across Tasks
-            WireDependencies(candidates);
+            // 6. Establish Logical DAG Dependencies across Tasks with Explicit Resolution
+            WireDependencies(candidates, context);
 
             return candidates;
         }
 
-        private static void WireDependencies(List<RoadmapTask> candidates)
+        private static void WireDependencies(List<RoadmapTask> candidates, RoadmapContext context)
         {
             var taskByKey = candidates.ToDictionary(c => c.Key, c => c);
+
+            // 1. Identify confirmed completed prerequisite keys
+            var confirmedCompletedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (context.LegalAssessment?.Items != null)
+            {
+                foreach (var item in context.LegalAssessment.Items.Where(i => i.Status == "completed"))
+                {
+                    if (!string.IsNullOrEmpty(item.Id))
+                    {
+                        confirmedCompletedKeys.Add(item.Id);
+                        confirmedCompletedKeys.Add($"legal.{Slugify(item.Id)}");
+                        confirmedCompletedKeys.Add(Slugify(item.Id));
+                    }
+                }
+            }
+            if (context.LegalChecklist?.Items != null)
+            {
+                foreach (var item in context.LegalChecklist.Items.Where(i => i.Status == "completed"))
+                {
+                    if (!string.IsNullOrEmpty(item.Id))
+                    {
+                        confirmedCompletedKeys.Add(item.Id);
+                        confirmedCompletedKeys.Add($"legal.{Slugify(item.Id)}");
+                        confirmedCompletedKeys.Add(Slugify(item.Id));
+                    }
+                }
+            }
+            if (context.ConstructionSnapshot.ReadyItems != null)
+            {
+                foreach (var item in context.ConstructionSnapshot.ReadyItems)
+                {
+                    if (!string.IsNullOrEmpty(item.Key))
+                        confirmedCompletedKeys.Add(item.Key);
+                }
+            }
+
+            // 2. Identify confirmed inapplicable prerequisite keys
+            var confirmedInapplicableKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (context.LegalAssessment?.Items != null)
+            {
+                foreach (var item in context.LegalAssessment.Items.Where(i => i.Status == "not_applicable"))
+                {
+                    if (!string.IsNullOrEmpty(item.Id))
+                    {
+                        confirmedInapplicableKeys.Add(item.Id);
+                        confirmedInapplicableKeys.Add($"legal.{Slugify(item.Id)}");
+                        confirmedInapplicableKeys.Add(Slugify(item.Id));
+                    }
+                }
+            }
+            var formType = (context.Formation?.SelectedType ?? string.Empty).ToUpperInvariant();
+            if (formType.Contains("EI") || formType.Contains("MICRO") || formType.Contains("AUTO"))
+            {
+                confirmedInapplicableKeys.Add("fr-corp-001");
+                confirmedInapplicableKeys.Add("legal.fr-corp-001");
+                confirmedInapplicableKeys.Add("fr-corp-002");
+                confirmedInapplicableKeys.Add("legal.fr-corp-002");
+                confirmedInapplicableKeys.Add("fr-corp-003");
+                confirmedInapplicableKeys.Add("legal.fr-corp-003");
+                confirmedInapplicableKeys.Add("fr-corp-005");
+                confirmedInapplicableKeys.Add("legal.fr-corp-005");
+            }
 
             // Structure confirmation (Phase 4 planning) must precede company creation and downstream legal items (Phase 5 execution)
             if (taskByKey.TryGetValue("formation.confirm-structure", out var formationTask))
@@ -733,12 +806,50 @@ namespace WebApp.Services.Implementations
                 }
             }
 
-            // DAG SANITIZATION:
-            // 1. Remove self-dependencies
-            // 2. Remove dangling dependencies (prerequisites excluded because they were completed, not applicable, or not generated)
+            // 3. Explicit Dependency Resolution Pass:
+            // - Confirmed completed: satisfied (removed from blocking dependencies).
+            // - Confirmed inapplicable: removed from dependencies.
+            // - Missing for unknown reasons: RETAINED as unresolved blocker; task status marked Blocked with explicit explanation.
             foreach (var task in candidates)
             {
-                task.Dependencies.RemoveAll(dep => string.IsNullOrWhiteSpace(dep) || dep == task.Key || !taskByKey.ContainsKey(dep));
+                var resolvedDeps = new List<string>();
+                foreach (var dep in task.Dependencies)
+                {
+                    if (string.IsNullOrWhiteSpace(dep) || dep == task.Key)
+                    {
+                        continue; // Skip self-loops or empty keys
+                    }
+
+                    if (taskByKey.ContainsKey(dep))
+                    {
+                        // Active prerequisite candidate present in roadmap
+                        resolvedDeps.Add(dep);
+                    }
+                    else if (confirmedCompletedKeys.Contains(dep))
+                    {
+                        // Confirmed completed: satisfied
+                        continue;
+                    }
+                    else if (confirmedInapplicableKeys.Contains(dep))
+                    {
+                        // Confirmed inapplicable: removed
+                        continue;
+                    }
+                    else
+                    {
+                        // Missing for unknown reasons: keep as unresolved blocker
+                        resolvedDeps.Add(dep);
+                        if (task.Status != RoadmapTaskStatus.Done && task.Status != RoadmapTaskStatus.InProgress)
+                        {
+                            task.Status = RoadmapTaskStatus.Blocked;
+                        }
+                        if (!task.Why.Contains($"[Blocked by unresolved prerequisite: {dep}]"))
+                        {
+                            task.Why = $"{task.Why} [Blocked by unresolved prerequisite: {dep}]".Trim();
+                        }
+                    }
+                }
+                task.Dependencies = resolvedDeps.Distinct().ToList();
             }
         }
 
@@ -851,8 +962,13 @@ namespace WebApp.Services.Implementations
             if (curr.BusinessPlanVersion != stored.BusinessPlanVersion)
                 changed.Add("Business Plan");
 
-            if (curr.LegalChecklistCompletedCount != stored.LegalChecklistCompletedCount)
+            if (curr.LegalChecklistCompletedCount != stored.LegalChecklistCompletedCount ||
+                (curr.LegalAssessmentUpdatedAt.HasValue && stored.LegalAssessmentUpdatedAt.HasValue &&
+                 curr.LegalAssessmentUpdatedAt.Value > stored.LegalAssessmentUpdatedAt.Value.AddSeconds(2)) ||
+                (curr.LegalAssessmentUpdatedAt.HasValue != stored.LegalAssessmentUpdatedAt.HasValue))
+            {
                 changed.Add("Legal Assessment");
+            }
 
             if (curr.ProfessionalProfileUpdatedAt.HasValue && stored.ProfessionalProfileUpdatedAt.HasValue &&
                 curr.ProfessionalProfileUpdatedAt.Value > stored.ProfessionalProfileUpdatedAt.Value.AddSeconds(2))
@@ -961,7 +1077,7 @@ namespace WebApp.Services.Implementations
             return isCritical ? RoadmapStages.Now : RoadmapStages.Next30Days;
         }
 
-        private static string? MapLegalStage(string? ruleId, string? legalStage, string? category, bool hasPlannedHiring = false)
+        private static string? MapLegalStage(string? ruleId, string? legalStage, string? category)
         {
             var id = (ruleId ?? string.Empty).ToUpperInvariant();
             
@@ -977,12 +1093,9 @@ namespace WebApp.Services.Implementations
             if (id.Contains("FR-IP-001") || id.Contains("FR-INS-001"))
                 return RoadmapStages.Days30To60;
 
-            // 4. Pre-hiring DPAE declarations: scheduled from planned employee onboarding milestone
+            // 4. Pre-hiring DPAE declarations: timing derived from actual employee start date (unresolved by default, skill gap alone does not assume Month 2)
             if (id.Contains("FR-SOC-002"))
-            {
-                // If hiring milestone exists, align with Days 30-60; otherwise keep timing unforced/unresolved
-                return hasPlannedHiring ? RoadmapStages.Days30To60 : null;
-            }
+                return null;
 
             // 5. Data protection & payment integrations
             if (id.Contains("FR-PRIV-001") || id.Contains("FR-PRIV-002") || id.Contains("FR-PRIV-003") || id.Contains("FR-PAY-001") || id.Contains("FR-MKT-001"))
@@ -1018,7 +1131,7 @@ namespace WebApp.Services.Implementations
             return RoadmapStages.Days30To60;
         }
 
-        private static string? MapLegalStage(string? legalStage) => MapLegalStage(null, legalStage, null, false);
+        private static string? MapLegalStage(string? legalStage) => MapLegalStage(null, legalStage, null);
 
         private static string Slugify(string text)
         {
