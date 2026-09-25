@@ -915,67 +915,214 @@ namespace WebApp.Controllers
             {
                 var userId = GetUserId();
                 var result = await _skillsService.GetSkillsPlanAsync(userId, ideaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("Skills plan retrieved", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
 
         // POST /api/creator/phase4/skills-plan/generate
         [HttpPost("skills-plan/generate")]
-        public async Task<IActionResult> GenerateSkillsPlan([FromBody] GenerateSnapshotRequest? request)
+        public async Task<IActionResult> GenerateSkillsPlan(
+            [FromBody] GenerateSnapshotRequest? request,
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null)
         {
             try
             {
+                if (!string.IsNullOrWhiteSpace(request?.IdeaId) && !string.IsNullOrWhiteSpace(ideaId) && !string.Equals(request.IdeaId.Trim(), ideaId.Trim(), StringComparison.Ordinal))
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting ideaId provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedIdeaId = !string.IsNullOrWhiteSpace(request?.IdeaId) ? request.IdeaId.Trim() : ideaId?.Trim();
+                if (string.IsNullOrWhiteSpace(resolvedIdeaId))
+                {
+                    return BadRequest(ApiResponse.Error("ideaId is required for Creator changes.", HttpContext.TraceIdentifier));
+                }
+
+                if (expectedVersion.HasValue && request?.ExpectedVersion.HasValue == true && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request?.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+
                 var userId = GetUserId();
-                var result = await _skillsService.GenerateSkillsPlanAsync(userId, request?.IdeaId);
+                var result = await _skillsService.GenerateSkillsPlanAsync(userId, resolvedIdeaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("Skills plan generated", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
 
         // POST /api/creator/phase4/skills-plan/refresh
         [HttpPost("skills-plan/refresh")]
-        public async Task<IActionResult> RefreshSkillsPlan([FromBody] GenerateSnapshotRequest? request)
+        public async Task<IActionResult> RefreshSkillsPlan(
+            [FromBody] GenerateSnapshotRequest? request,
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null)
         {
             try
             {
+                if (!string.IsNullOrWhiteSpace(request?.IdeaId) && !string.IsNullOrWhiteSpace(ideaId) && !string.Equals(request.IdeaId.Trim(), ideaId.Trim(), StringComparison.Ordinal))
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting ideaId provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedIdeaId = !string.IsNullOrWhiteSpace(request?.IdeaId) ? request.IdeaId.Trim() : ideaId?.Trim();
+                if (string.IsNullOrWhiteSpace(resolvedIdeaId))
+                {
+                    return BadRequest(ApiResponse.Error("ideaId is required for Creator changes.", HttpContext.TraceIdentifier));
+                }
+
+                if (expectedVersion.HasValue && request?.ExpectedVersion.HasValue == true && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request?.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+
                 var userId = GetUserId();
-                var result = await _skillsService.RefreshSkillsPlanAsync(userId, request?.IdeaId);
+                var result = await _skillsService.RefreshSkillsPlanAsync(userId, resolvedIdeaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("Skills plan refreshed", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/skills-plan/keep-current
+        [HttpPost("skills-plan/keep-current")]
+        public async Task<IActionResult> KeepCurrentSkills(
+            [FromBody] GenerateSnapshotRequest? request,
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(request?.IdeaId) && !string.IsNullOrWhiteSpace(ideaId) && !string.Equals(request.IdeaId.Trim(), ideaId.Trim(), StringComparison.Ordinal))
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting ideaId provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedIdeaId = !string.IsNullOrWhiteSpace(request?.IdeaId) ? request.IdeaId.Trim() : ideaId?.Trim();
+                if (string.IsNullOrWhiteSpace(resolvedIdeaId))
+                {
+                    return BadRequest(ApiResponse.Error("ideaId is required for Creator changes.", HttpContext.TraceIdentifier));
+                }
+
+                if (expectedVersion.HasValue && request?.ExpectedVersion.HasValue == true && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request?.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+
+                var userId = GetUserId();
+                var result = await _skillsService.KeepCurrentSkillsPlanAsync(userId, resolvedIdeaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
+                return Ok(ApiResponse.Ok("Skills plan current version preserved", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
 
@@ -984,34 +1131,64 @@ namespace WebApp.Controllers
         public async Task<IActionResult> UpdateResolution(
             [FromRoute] string resolutionKey,
             [FromQuery] string? ideaId,
+            [FromQuery] long? expectedVersion,
             [FromBody] Models.DatabaseModels.Phase4.UpdateResolutionRequest request)
         {
             try
             {
-                var userId = GetUserId();
                 request ??= new Models.DatabaseModels.Phase4.UpdateResolutionRequest();
                 if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
                 {
                     request.IdeaId = ideaId;
                 }
+
+                if (string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    return BadRequest(ApiResponse.Error("ideaId is required for Creator changes.", HttpContext.TraceIdentifier));
+                }
+
+                if (expectedVersion.HasValue && request.ExpectedVersion.HasValue && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+
+                var userId = GetUserId();
                 var result = await _skillsService.UpdateResolutionAsync(userId, resolutionKey, request);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("Resolution updated", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (KeyNotFoundException ex)
             {
-                return StatusCode(404, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status404NotFound, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
 

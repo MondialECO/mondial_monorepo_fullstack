@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-25 (Creator Phase 4.2 Operational Roadmap Delivery: Exact Figma Alignment, Deduplication, Legal Isolation, Concurrency & Verification).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-25 (Creator Phase 4.4 Skills & Training Plan Delivery: Exact Figma Alignment, Dynamic Detail Panels, Mandatory Verification Lock, Keep-Current Lifecycle & Concurrency Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -1274,16 +1274,47 @@ CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
   - *TypeScript & Solution Build:* `npx tsc --noEmit` PASS (0 errors); `dotnet build backend/WebApp.csproj` PASS (0 errors).
   - *Playwright Browser E2E Test (`verify_browser_needs.mjs`):* Live execution against running application verified real project data (6 requirements, 0 satisfied, 6 identified), update available banner detection, review modal display, keep current version POST (HTTP 200), confirm need PATCH (HTTP 200), expanded 2-column breakdown, founder information submission PATCH (HTTP 200), persistence across page reload, and responsive rendering at 1440px desktop, 1920px desktop, and 375px mobile viewports.
 
-### 6.4 Stage 4.4 — Skills & Training Plan (`SkillsPlanView.tsx`)
-- **Route:** `/dashboard/creator/phase-4/skills`
-- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/skills-plan`, `POST /api/creator/phase4/skills-plan/generate`, `POST /api/creator/phase4/skills-plan/refresh`, `PATCH /api/creator/phase4/skills-plan/{resolutionKey}`).
-- **Services:** `SkillsResolutionService`, `CapabilityResolutionPolicy`.
-- **Resolution Modes:**
-  - `Advanced` / `Comfortable` → normally covered.
-  - `Comfortable` + critical/blocking requirement without verified track record → `NeedsReview`.
-  - `Beginner` → never auto-covered (routes to `LEARN` or `DELEGATE`).
-  - `null` / unassessed → `NeedsReview`.
-- **Mandatory Legal Verification:** Regulated/statutory requirements enforce `VERIFY`. Learning alone cannot bypass legal compliance.
+### 6.4 Stage 4.4 — Skills & Training Plan (`page.tsx` + `SkillsPlanView.tsx`)
+- **Figma Reference & Layout:** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11470` "Skills & Training · Step 4.4 Full Plan"). 1120px max content width, 24px section gaps, 12px card gaps, responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/skills`
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/skills-plan`, `POST /api/creator/phase4/skills-plan/generate`, `POST /api/creator/phase4/skills-plan/refresh`, `POST /api/creator/phase4/skills-plan/keep-current`, `PATCH /api/creator/phase4/skills-plan/{resolutionKey}`).
+- **Services:** `SkillsResolutionService`, `CapabilityResolutionPolicy`, `NeedsAnalysisService`, `OperationalRoadmapService`, `CreatorJourneyService`.
+- **Compact Page-Level Header:**
+  - *Eyebrow:* `"PHASE 4 · STEP 4.4"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono`)
+  - *Title:* `"Skills & Training Plan"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`)
+  - *Supporting text:* `"Map capabilities to learn, delegate, or verify based on your background, project scope, and weekly time."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`)
+- **Eight Canonical Figma UI Components:**
+  1. **Component 1: Upstream Update Notice:** Amber alert banner triggered when upstream sources (Needs Analysis, Roadmap, HumainX profile, Legal Assessment) have updated. Provides `"Review changes"` modal and `"Keep my choices"` action calling `POST /api/creator/phase4/skills-plan/keep-current` to synchronize source versions without losing founder decisions.
+  2. **Component 2: Compact Skills Summary Header:** Displays `{total} project skills`, `{covered} covered` (emerald badge), `{attention} need attention` (amber badge), alongside project metadata (`PROJECT SCOPE: {projectName}`, `REGION: France`).
+  3. **Component 3: Existing Strengths ("You can already handle"):** Lists capabilities already covered by founder's background or prior phase milestones. Features `"Update my experience ↗"` link to profile and `"Why this matches"` modal explaining coverage evidence.
+  4. **Component 4: Resolution Approach Legend:** 3 cards explaining the resolution strategies in plain language:
+     - *Learn:* `"Build the skills to do it yourself."`
+     - *Delegate:* `"Get help from someone with the right skills."`
+     - *Verify:* `"Check whether your experience covers this work."`
+  5. **Components 5, 6, 7: Need Attention Cards & Dynamic Inset Panels:**
+     - *Header Strip:* Capability name, `Needs attention` badge, `Launch-Blocking` tag (if blocking), and `Statutory` lock icon (if mandatory verification).
+     - *Strip Meta:* Current level, Recommended mode, and Your choice (`{Mode} (Selected)`).
+     - *Rationale:* Contextual explanation of why this approach was recommended.
+     - *3-Button Mode Selector:* Interactive pills for `Learn`, `Delegate`, and `Verify`. Enforces statutory verification safety lock (disables Learn/Delegate when `isMandatoryVerification` is true).
+     - *Delegation Detail Panel (Component 5):* 6-field structured brief preview (Capability needed, Target timing, Suggested budget tier, Working language, Estimated weekly time, Expected deliverable) with action buttons (`View brief`, `Edit brief`, `Add existing support`).
+     - *Learning Detail Panel (Component 6):* `WHAT YOU'LL BE ABLE TO DO`, `WHAT YOU'LL CREATE`, 4 practical learning steps (`Understand the customer problem`, `Write a clear first message`, `Plan your follow-up`, `Review responses and improve`), Training options box, and Workload Impact Preview calculating weekly availability vs already planned and proposed learning hours with buffer calculation and link to roadmap changes.
+     - *Verification Detail Panel (Component 7):* 3 analytical columns (`What needs checking`, `What you can share`, `What is still unclear`) with `"See what to share"` Evidence Guide modal and `"Choose Verify"` button.
+     - *Built-from Provenance:* Displays source tags (`Needs & Requirements`, `Creator profile`, `Operational Roadmap`, etc.) and `"Why this suggestion?"` explanation modal.
+  6. **Component 8: Quiet Journey Footer Navigation:**
+     - Left: `"← Back to Needs & Requirements"` linking to `/dashboard/creator/phase-4/needs?ideaId={ideaId}`.
+     - Right: Primary CTA `"Continue to Aids & Support →"` linking to Step 4.5 `/dashboard/creator/phase-4/support?ideaId={ideaId}`, with supporting text *"Save your choices and explore support for your project."*
+- **Resolution Engine Rules & Invariants:**
+  - *Pass-through Coverage:* Phase 4.3 Covered Requirements pass through as `Covered` and are separated from attention cards.
+  - *Mandatory Statutory Verification:* Regulated requirements (e.g. Legal Capital Deposit, Share Capital, Trademark filing) enforce `VERIFY`. The policy rejects founder overrides to Learn or Delegate with HTTP 403 Forbidden.
+  - *Founder Decision Preservation:* Re-generation or refresh preserves founder choices and custom notes across re-derivation cycles by stable resolution key (`Key`).
+- **Concurrency & Concurrency Recovery:**
+  - Scoped to `CreatorIdea.Phase4Data.SkillsPlan` via `SetPhase4SkillsPlanAsync` with `WriteIdeaAsync`.
+  - Requires `expectedVersion`, validates concurrency, passes `X-Creator-Idea-Version` response headers, and gracefully handles HTTP 409 Conflict with non-destructive reload.
+- **Verification Evidence:**
+  - Automated Unit Tests: 14/14 PASS (`CreatorPhase4SkillsTests.cs`); Frontend tests: 11/11 PASS (`phase4-skills-plan.test.tsx`).
+  - Full Creator Vitest Suite: 150/150 PASS across 12 test files.
+  - Live Browser E2E: Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, Delegation Brief modal, and Evidence Guide modal with 0 DOM errors and 0 layout overflows.
+  - TypeScript & Build: `npx tsc --noEmit` 0 errors; `dotnet build backend/WebApp.csproj` 0 errors.
 
 ### 6.5 Stage 4.5 — Aids, Grants & Public Support (`SupportPlanView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/support`
@@ -1628,6 +1659,33 @@ RC1 Freeze
   - Automated Unit Tests: 16/16 PASS (`CreatorPhase4NeedsTests.cs`); Frontend tests: 11/11 PASS (`phase4-needs-analysis.test.tsx`).
   - Browser E2E & Visual Verification: Playwright script `verify_browser_needs.mjs` executed cleanly against live environment; generated screenshots for 1440px initial, 1440px expanded, 1920px desktop, 375px mobile, and review modal.
   - TypeScript & Solution Build: `npx tsc --noEmit` 0 errors; `dotnet build backend/WebApp.csproj` 0 errors.
+
+**2026-09-25 — Creator Phase 4.4 Skills & Training Plan: Exact Figma 57221-11470 Alignment, Dynamic Detail Panels, Mandatory Verification Lock, Keep-Current Lifecycle & Concurrency Delivery.**
+- **Figma Reference & Layout (§6.4):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11470` "Skills & Training · Step 4.4 Full Plan"). 1120px max content width, 24px section gaps, 12px card gaps, responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/skills`
+- **Compact Page-Level Header (§6.4):** Eyebrow `"PHASE 4 · STEP 4.4"`, Title `"Skills & Training Plan"`, Subtitle `"Map capabilities to learn, delegate, or verify based on your background, project scope, and weekly time."`.
+- **Eight Canonical Figma UI Components:**
+  1. *Component 1: Upstream Update Notice:* Warm-tinted alert banner with `"Review changes"` modal and `"Keep my choices"` action wired to `POST /api/creator/phase4/skills-plan/keep-current` to synchronize source versions without losing founder decisions.
+  2. *Component 2: Compact Skills Summary Header:* Single card displaying `{total} project skills`, `{covered} covered` (emerald badge), `{attention} need attention` (amber badge), and project scope metadata (`PROJECT SCOPE: {projectName}`, `REGION: France`).
+  3. *Component 3: Existing Strengths ("You can already handle"):* Lists capabilities covered by founder's background or prior phase milestones with `"Update my experience ↗"` link to profile and `"Why this matches"` modal explaining coverage evidence.
+  4. *Component 4: Resolution Approach Legend:* 3 cards explaining the resolution strategies in plain language (Learn: Build skills yourself; Delegate: Get help from someone with right skills; Verify: Check whether experience covers work).
+  5. *Components 5, 6, 7: Need Attention Cards & Dynamic Inset Panels:* Unresolved capability cards with 3-button mode selector (`Learn`, `Delegate`, `Verify`), Launch-Blocking badge, Statutory lock icon, and rich dynamic inset panels:
+     - *Delegation Detail Panel (Component 5):* 6 structured attributes grid + Delegation Brief Modal (`View brief`, `Edit brief`, `Add existing support`).
+     - *Learning Detail Panel (Component 6):* `WHAT YOU'LL BE ABLE TO DO`, `WHAT YOU'LL CREATE`, 4 practical learning steps, Training options box, and Workload Impact Preview calculating weekly availability vs already planned and proposed learning hours with buffer calculation and link to roadmap changes.
+     - *Verification Detail Panel (Component 7):* 3 analytical columns (`What needs checking`, `What you can share`, `What is still unclear`) with `"See what to share"` Evidence Guide modal and `"Choose Verify"` button.
+  6. *Component 8: Quiet Journey Footer Navigation:* Left `"← Back to Needs & Requirements"` linking to Step 4.3 and Right primary CTA `"Continue to Aids & Support →"` linking to Step 4.5.
+- **Resolution Engine Rules & Invariants:**
+  - *Pass-through Coverage:* Phase 4.3 Covered Requirements pass through as `Covered` and are separated from attention cards.
+  - *Mandatory Statutory Verification:* Regulated requirements (e.g. Legal Capital Deposit, Share Capital, Trademark filing) enforce `VERIFY`. The policy rejects founder overrides to Learn or Delegate with HTTP 403 Forbidden.
+  - *Founder Decision Preservation:* Re-generation or refresh preserves founder choices and custom notes across re-derivation cycles by stable resolution key (`Key`).
+- **Concurrency & Concurrency Recovery:**
+  - Scoped to `CreatorIdea.Phase4Data.SkillsPlan` via `SetPhase4SkillsPlanAsync` with `WriteIdeaAsync`.
+  - Requires `expectedVersion`, validates concurrency, passes `X-Creator-Idea-Version` response headers, and gracefully handles HTTP 409 Conflict with non-destructive reload.
+- **Verification Evidence:**
+  - Automated Unit Tests: 14/14 PASS (`CreatorPhase4SkillsTests.cs`); Frontend tests: 11/11 PASS (`phase4-skills-plan.test.tsx`).
+  - Full Creator Vitest Suite: 150/150 PASS across 12 test files.
+  - Live Browser E2E: Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, Delegation Brief modal, and Evidence Guide modal with 0 DOM errors and 0 layout overflows.
+  - TypeScript & Build: `npx tsc --noEmit` 0 errors; `dotnet build backend/WebApp.csproj` 0 errors.
 
 ---
 

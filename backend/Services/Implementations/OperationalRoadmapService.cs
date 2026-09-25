@@ -345,8 +345,9 @@ namespace WebApp.Services.Implementations
                 LegalChecklistCompletedCount = p3.LegalAssessment?.Items?.Count(i => i.Status == "completed") ?? (p3.LegalChecklist?.CompletedCount ?? 0),
                 LegalAssessmentUpdatedAt = p3.LegalAssessment?.EvaluatedAt,
                 FormationVersion = p3.FormationGenerator != null ? 1 : 0,
-                FormationUpdatedAt = journey.UpdatedAt,
+                FormationUpdatedAt = p3.LegalAssessment?.EvaluatedAt ?? journey.CreatedAt,
                 ProfessionalProfileUpdatedAt = profile?.UpdatedAt ?? DateTime.UtcNow
+
             };
 
             return new RoadmapContext

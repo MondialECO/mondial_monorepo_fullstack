@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { Phase4ProfileGuard } from '@/components/creator/phase4/Phase4ProfileGuard';
 import { SkillsPlanView } from '@/components/creator/phase4/SkillsPlanView';
+import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import {
   getSkillsPlan,
   generateSkillsPlan,
   refreshSkillsPlan,
   updateResolution,
+  keepCurrentSkills,
 } from '@/lib/api-creator-skills';
 import type {
   SkillsPlanResponse,
@@ -21,151 +21,183 @@ export default function CreatorPhase4SkillsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 font-mono text-sm">
+        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-mono text-sm">
           Loading Skills & Training Plan...
         </div>
       }
     >
-      <Phase4ProfileGuard>
-        <SkillsPageContent />
-      </Phase4ProfileGuard>
+      <CreatorPhase4SkillsInner />
     </Suspense>
   );
 }
 
-function SkillsPageContent() {
+function CreatorPhase4SkillsInner() {
   const searchParams = useSearchParams();
-  const ideaId = searchParams.get('ideaId') || '';
+  const { state: progressState } = useCreatorProgress();
+  const ideaId = searchParams.get('ideaId') || progressState?.activeIdeaId || '';
 
+  return (
+    <Phase4ProfileGuard>
+      <SkillsPageContent ideaId={ideaId} />
+    </Phase4ProfileGuard>
+  );
+}
+
+function SkillsPageContent({ ideaId }: { ideaId: string }) {
+  const { state: progressState, refetch } = useCreatorProgress();
   const [data, setData] = useState<SkillsPlanResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [gateError, setGateError] = useState<{ code: string; message: string } | null>(null);
 
-  const fetchData = async () => {
+  const effectiveIdeaId = ideaId || progressState?.activeIdeaId || '';
+  const projectName = progressState?.project?.name || 'Your Venture';
+
+  const loadSkills = useCallback(async () => {
+    if (!effectiveIdeaId) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    setGateError(null);
     try {
-      setLoading(true);
-      setError(null);
-      setGateError(null);
-      const res = await getSkillsPlan(ideaId);
+      const res: SkillsPlanResponse = await getSkillsPlan(effectiveIdeaId);
       setData(res);
     } catch (err: any) {
-      if (err.message && err.message.includes('404')) {
+      if (err?.response?.status === 404 || (err?.message && err.message.includes('404'))) {
         setData(null);
       } else {
-        setError(err.message || "We couldn't load your skills plan.");
+        console.warn('Could not load skills plan:', err);
+        setError(err.response?.data?.message || err.message || "We couldn't load your skills plan.");
       }
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, [effectiveIdeaId]);
 
   useEffect(() => {
-    fetchData();
-  }, [ideaId]);
+    loadSkills();
+  }, [loadSkills]);
 
   const handleGenerate = async () => {
+    if (!effectiveIdeaId) {
+      setError('ideaId is required for Creator changes. Please open your project from the dashboard.');
+      return;
+    }
+    setIsGenerating(true);
+    setError(null);
+    setGateError(null);
     try {
-      setLoading(true);
-      setError(null);
-      setGateError(null);
-      const res = await generateSkillsPlan(ideaId);
+      const res = await generateSkillsPlan(effectiveIdeaId);
       setData(res);
+      await refetch(effectiveIdeaId);
     } catch (err: any) {
-      if (err.code) {
+      if (err?.response?.status === 409) {
+        await loadSkills();
+        await refetch(effectiveIdeaId);
+        setError('This idea was updated in another tab. We loaded the latest project version for you. Please try again.');
+      } else if (err.code) {
         setGateError({ code: err.code, message: err.message });
       } else if (err.message && (err.message.includes('Needs') || err.message.includes('Phase 3'))) {
         setGateError({ code: 'PREREQUISITE_FAILED', message: err.message });
       } else {
-        setError(err.message || "We couldn't generate your skills plan.");
+        const message = err.response?.data?.message || err.message || "We couldn't generate your skills plan.";
+        setError(message);
       }
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
   const handleRefresh = async () => {
+    if (!effectiveIdeaId) {
+      setError('ideaId is required for Creator changes. Please open your project from the dashboard.');
+      return;
+    }
+    setIsGenerating(true);
+    setError(null);
+    setGateError(null);
     try {
-      setLoading(true);
-      setError(null);
-      setGateError(null);
-      const res = await refreshSkillsPlan(ideaId);
+      const res = await refreshSkillsPlan(effectiveIdeaId);
       setData(res);
+      await refetch(effectiveIdeaId);
     } catch (err: any) {
-      if (err.code) {
+      if (err?.response?.status === 409) {
+        await loadSkills();
+        await refetch(effectiveIdeaId);
+        setError('This idea was updated in another tab. We loaded the latest project version for you. Please try again.');
+      } else if (err.code) {
         setGateError({ code: err.code, message: err.message });
       } else {
-        setError(err.message || "We couldn't refresh your skills plan.");
+        const message = err.response?.data?.message || err.message || 'Failed to refresh skills plan.';
+        setError(message);
       }
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
   const handleUpdateResolution = async (resolutionKey: string, req: UpdateResolutionRequest) => {
+    if (!effectiveIdeaId) return;
     try {
-      const res = await updateResolution(ideaId, resolutionKey, req);
+      const res = await updateResolution(effectiveIdeaId, resolutionKey, req);
       setData(res);
     } catch (err: any) {
-      setError(err.message || "Couldn't update your decision.");
+      if (err?.response?.status === 409) {
+        await loadSkills();
+        await refetch(effectiveIdeaId);
+        setError('This idea was updated in another tab. Please review and retry.');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to update decision.');
+      }
       throw err;
     }
   };
 
+  const handleKeepCurrent = async () => {
+    if (!effectiveIdeaId) return;
+    try {
+      const res = await keepCurrentSkills(effectiveIdeaId);
+      setData(res);
+    } catch (err: any) {
+      console.warn('Could not preserve current version:', err);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Top Banner Navigation */}
-      <div className="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-10 px-6 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <Link
-            href={`/dashboard/creator/phase-4/needs?ideaId=${ideaId}`}
-            className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Step 4.3 Needs & Requirements
-          </Link>
-          <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
-            <span>4.1 Snapshot ✓</span>
-            <span>4.2 Roadmap ✓</span>
-            <span>4.3 Needs ✓</span>
-            <span className="text-emerald-400 font-semibold">4.4 Skills (Current)</span>
-            <span className="text-slate-600">4.5 Grants</span>
-          </div>
+    <div className="w-full max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 animate-fadeIn">
+      {/* Compact Page Header (Aligned with Phase 4 Canon & Figma) */}
+      <div className="space-y-1">
+        <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
+          PHASE 4 · STEP 4.4
         </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+          Skills & Training Plan
+        </h1>
+        <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+          Map capabilities to learn, delegate, or verify based on your background, project scope, and weekly time.
+        </p>
       </div>
 
-      {/* Global Error Banner */}
-      {error && (
-        <div className="max-w-6xl mx-auto p-6">
-          <div className="bg-red-950/40 border border-red-800/60 rounded-xl p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h4 className="text-sm font-semibold text-red-200">Error</h4>
-              <p className="text-xs text-red-300/80">{error}</p>
-            </div>
-            <button
-              onClick={() => setError(null)}
-              className="text-xs text-red-400 hover:text-red-200"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Main View */}
+      {/* Main Skills Plan View */}
       <SkillsPlanView
-        ideaId={ideaId}
-        projectName="Your Project"
+        ideaId={effectiveIdeaId}
+        projectName={projectName}
         plan={data?.skillsPlan || null}
         updateAvailable={data?.updateAvailable || false}
         changedSources={data?.changedSources || []}
-        profileSummary={data?.founderProfileSummary}
-        isLoading={loading}
+        profileSummary={data?.profileContext || data?.founderProfileSummary}
+        isLoading={isLoading}
+        isGenerating={isGenerating}
+        error={error}
         gateError={gateError}
         onGenerate={handleGenerate}
         onRefresh={handleRefresh}
         onUpdateResolution={handleUpdateResolution}
+        onKeepCurrent={handleKeepCurrent}
+        onClearError={() => setError(null)}
       />
     </div>
   );

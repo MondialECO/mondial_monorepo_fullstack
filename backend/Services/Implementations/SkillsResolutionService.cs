@@ -43,14 +43,15 @@ namespace WebApp.Services.Implementations
                 {
                     SkillsPlan = null,
                     UpdateAvailable = false,
-                    ChangedSources = new List<string>()
+                    ChangedSources = new List<string>(),
+                    IdeaVersion = journey.IdeaVersion
                 };
             }
 
             var context = await BuildContextAsync(userId, journey, ideaId);
             var (isStale, changedSources) = DetectStaleness(plan.SourceVersions, context.CurrentSourceVersions);
 
-            return BuildResponse(plan, isStale, changedSources, context);
+            return BuildResponse(plan, isStale, changedSources, context, journey.IdeaVersion);
         }
 
         public async Task<SkillsPlanResponse> GenerateSkillsPlanAsync(string userId, string? ideaId = null)
@@ -63,7 +64,7 @@ namespace WebApp.Services.Implementations
             {
                 var ctx = await BuildContextAsync(userId, journey, ideaId);
                 var (isStale, changed) = DetectStaleness(existing.SourceVersions, ctx.CurrentSourceVersions);
-                return BuildResponse(existing, isStale, changed, ctx);
+                return BuildResponse(existing, isStale, changed, ctx, journey.IdeaVersion);
             }
 
             // Enforce domain gates (must have completed Phase 3, HumainX, and non-stale snapshot, roadmap & needs)
@@ -73,9 +74,9 @@ namespace WebApp.Services.Implementations
             var newPlan = ExecuteDerivation(context, existingPlan: null);
 
             // Single source of truth: Persisted strictly on CreatorJourney
-            await _journeys.SetPhase4SkillsPlanAsync(userId, newPlan, ideaId);
+            var savedJourney = await _journeys.SetPhase4SkillsPlanAsync(userId, newPlan, ideaId);
 
-            return BuildResponse(newPlan, updateAvailable: false, changedSources: new List<string>(), context);
+            return BuildResponse(newPlan, updateAvailable: false, changedSources: new List<string>(), context, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
         }
 
         public async Task<SkillsPlanResponse> RefreshSkillsPlanAsync(string userId, string? ideaId = null)
@@ -89,9 +90,28 @@ namespace WebApp.Services.Implementations
             var refreshedPlan = ExecuteDerivation(context, existingPlan: existing);
 
             // Single source of truth: Persisted on CreatorJourney
-            await _journeys.SetPhase4SkillsPlanAsync(userId, refreshedPlan, ideaId);
+            var savedJourney = await _journeys.SetPhase4SkillsPlanAsync(userId, refreshedPlan, ideaId);
 
-            return BuildResponse(refreshedPlan, updateAvailable: false, changedSources: new List<string>(), context);
+            return BuildResponse(refreshedPlan, updateAvailable: false, changedSources: new List<string>(), context, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
+        }
+
+        public async Task<SkillsPlanResponse> KeepCurrentSkillsPlanAsync(string userId, string? ideaId = null)
+        {
+            var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+            var plan = journey.Phase4Data?.SkillsPlan;
+
+            if (plan == null)
+            {
+                throw new InvalidOperationException("Skills plan has not been generated yet.");
+            }
+
+            var context = await BuildContextAsync(userId, journey, ideaId);
+            plan.SourceVersions = context.CurrentSourceVersions;
+            plan.UpdatedAt = DateTime.UtcNow;
+
+            var savedJourney = await _journeys.SetPhase4SkillsPlanAsync(userId, plan, ideaId);
+
+            return BuildResponse(plan, updateAvailable: false, changedSources: new List<string>(), context, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
         }
 
         public async Task<SkillsPlanResponse> UpdateResolutionAsync(string userId, string resolutionKey, UpdateResolutionRequest request)
@@ -140,11 +160,11 @@ namespace WebApp.Services.Implementations
             plan.FounderEdited = true;
             plan.UpdatedAt = DateTime.UtcNow;
 
-            await _journeys.SetPhase4SkillsPlanAsync(userId, plan, request.IdeaId);
+            var savedJourney = await _journeys.SetPhase4SkillsPlanAsync(userId, plan, request.IdeaId);
 
             var context = await BuildContextAsync(userId, journey, request.IdeaId);
             var (isStale, changedSources) = DetectStaleness(plan.SourceVersions, context.CurrentSourceVersions);
-            return BuildResponse(plan, isStale, changedSources, context);
+            return BuildResponse(plan, isStale, changedSources, context, savedJourney?.IdeaVersion ?? journey.IdeaVersion);
         }
 
         private async Task EnforceGateAsync(string userId, string? ideaId)
@@ -229,8 +249,9 @@ namespace WebApp.Services.Implementations
                 LearningPreference = profile?.VentureContext?.LearningPreference ?? string.Empty,
                 DelegationPreference = profile?.VentureContext?.DelegationPreference ?? string.Empty,
                 LegalAssessmentUpdatedAt = p3.LegalAssessment?.EvaluatedAt,
-                FormationUpdatedAt = journey.UpdatedAt
+                FormationUpdatedAt = p3.LegalAssessment?.EvaluatedAt ?? journey.CreatedAt
             };
+
 
             return ctx;
         }
@@ -436,7 +457,8 @@ namespace WebApp.Services.Implementations
             SkillsPlan plan,
             bool updateAvailable,
             List<string> changedSources,
-            SkillsResolutionContext context)
+            SkillsResolutionContext context,
+            long ideaVersion = 0)
         {
             var vc = context.VentureContext;
             var strongestSkills = (context.Skills ?? new List<ProfileSkill>())
@@ -468,7 +490,8 @@ namespace WebApp.Services.Implementations
                 DelegateCount = plan.DelegateCount,
                 VerifyCount = plan.VerifyCount,
                 CoveredCount = plan.CoveredCount,
-                NeedsReviewCount = plan.NeedsReviewCount
+                NeedsReviewCount = plan.NeedsReviewCount,
+                IdeaVersion = ideaVersion
             };
         }
 

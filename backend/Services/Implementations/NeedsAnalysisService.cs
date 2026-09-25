@@ -292,8 +292,9 @@ namespace WebApp.Services.Implementations
             {
                 var fg = p3.FormationGenerator;
                 ctx.Formation.Version = 1;
-                ctx.Formation.UpdatedAt = journey.UpdatedAt;
+                ctx.Formation.UpdatedAt = p3.LegalAssessment?.EvaluatedAt ?? journey.CreatedAt;
                 ctx.Formation.RecommendedType = fg.RecommendedType ?? string.Empty;
+
                 ctx.Formation.SelectedType = fg.SelectedType ?? string.Empty;
                 ctx.Formation.YouHave = fg.YouHave ?? new();
                 ctx.Formation.YouNeed = fg.YouNeed ?? new();
