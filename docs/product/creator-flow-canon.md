@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-25 (Creator Phase 4.2 Operational Roadmap Delivery: Exact Figma Alignment, Deduplication, Legal Isolation, Concurrency & Verification).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-25 (Creator Phase 4.6 Pricing & Revenue Model Exact Figma 57221:12167 and Phase 4.7 GTM & Launch Strategy Exact Figma 57221:12464 Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -1196,33 +1196,213 @@ CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
 
 ### 6.3 Stage 4.3 — Needs Analysis & Requirements (`NeedsAnalysisView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/needs`
-- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/needs`, `POST /api/creator/phase4/needs/generate`, `POST /api/creator/phase4/needs/refresh`, `PATCH /api/creator/phase4/needs/{needKey}`).
-- **Services:** `NeedsAnalysisService`.
-- **SystemStatus:** `Identified`, `NeedsReview`, `Satisfied`, `NotRequired`.
-- **FounderState:** `Unreviewed`, `Confirmed`, `InProgress`, `Deferred`, `ClaimedSatisfied`.
-- **Core Invariant:** Active Need ≠ Covered Need. `TrainingCandidate` is reserved exclusively for formal/mandatory training needs.
+- **Figma Reference & Layout:** 100% aligned with approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11163`, Requirements list `57221:11197`, Expanded requirement `57221:11282`).
+  - Max content width: `1120px` (`max-w-[1120px] mx-auto`).
+  - Section gaps: `24px` (`space-y-6`), Requirement card gaps: `12px` (`space-y-3`).
+  - Requirement cards: White/card background, subtle borders, `16px` corners (`rounded-2xl`), `20px` row padding (`p-5`).
+  - Category icon containers: `32px` with `8px` corners (`w-8 h-8 rounded-lg flex items-center justify-center shrink-0`).
+  - Expanded inset panels: `12px` corners (`rounded-xl p-5 bg-muted/20 border border-border/70`).
+  - Responsive across `1440px` and `1920px` desktop viewports down to narrow mobile (`375px`) with complete dark/light theme token compliance (`globals.css`).
+- **Controller & Services:**
+  - Controller: `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/needs`, `POST /api/creator/phase4/needs/generate`, `POST /api/creator/phase4/needs/refresh`, `POST /api/creator/phase4/needs/keep-current`, `PATCH /api/creator/phase4/needs/{needKey}`, `PUT /api/creator/phase4/needs/{needKey}/state`).
+  - Services: `NeedsAnalysisService`, `CreatorJourneyService`, `ICapabilityMatcher`, `IConstructionSnapshotService`, `IOperationalRoadmapService`.
+- **Page-Level Header (Canonical Structure):**
+  - Rendered at top of content container:
+    - *Eyebrow:* `"PHASE 4 · STEP 4.3"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase`)
+    - *Title:* `"Needs & Requirements"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`)
+    - *Supporting text:* `"Review what your project needs, what you already have, and what remains to be covered."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`)
+- **Update Available Notice:**
+  - Compact warm-tinted alert banner rendered conditionally when upstream project information changes (`updateAvailable === true`):
+    - Title: `"Update available:"` (fixes Figma typo `"Updat available"`).
+    - Copy: `"Changed project information may affect these needs. Updates detected in: {sources}."`
+    - Action 1: `"Review changes"` — opens accessible modal exposing upstream diff and explicit refresh action (`POST /api/creator/phase4/needs/refresh`).
+    - Action 2: `"Keep current version"` — persists source version acknowledgement to `POST /api/creator/phase4/needs/keep-current` so the banner clears permanently until future upstream edits occur.
+  - Re-generation and refresh strictly preserve all founder decisions, notes, and submitted capabilities by stable requirement key (`Key`).
+- **Compact Summary Surface (Single Horizontal Card):**
+  - Left: Total authoritative requirements count (e.g. `6 Requirements`).
+  - Compact badges: `● {count} Satisfied` (emerald), `● {count} Identified` (muted).
+  - Supporting copy: *"Confirming a need records your decision. It does not mean the need has been met."*
+  - Subtle vertical divider on desktop.
+  - Right: Awaiting review counter (e.g. `6 needs are awaiting your review` in warm amber, or `All needs reviewed` with green checkmark when 0).
+  - All metrics computed strictly from authoritative requirement items.
+- **Requirement Accordion List (Full-Width Compact Rows):**
+  - Desktop row anatomy:
+    - 32px Category Icon container (Sky blue for Skills/Team, Purple for Services, Amber for Legal & Admin, Green for Finance).
+    - Uppercase small category label (`SKILLS`, `SERVICES`, `LEGAL & ADMIN`, `FINANCE`).
+    - Requirement title (e.g. `"Capability: Financial Advisor Capability"`, `"Statutory Share Capital Deposit"`).
+    - Priority tag (`· Critical priority`, `· High priority`, `· Medium priority`).
+    - Fulfilment status badge (`● Identified`, `● Satisfied`).
+    - Decision badge (`Confirmed`, `Awaiting your review`, `Deferred`).
+    - Inline action buttons on awaiting-review rows: `"Confirm need"` (card background with border), `"Defer for now"` (subtle text).
+    - Dedicated accordion toggle chevron with accessible keyboard controls (`aria-expanded`, `aria-controls`).
+  - Long titles and badges wrap gracefully without overlapping or clipping across all viewports.
+- **Expanded Requirement Breakdown (5-Section Inset Panel):**
+  - Two desktop columns:
+    - Left column: `WHAT IS NEEDED`, `WHY THIS APPLIES`.
+    - Right column: `WHAT YOU ALREADY HAVE`, `WHAT IS STILL MISSING`.
+  - Full-width lower section with subtle hairline divider: `WHAT WOULD SATISFY THIS NEED`.
+  - All content is derived dynamically from real project facts and diagnostic models (Snapshot, Roadmap, Legal Assessment, Forecast, Business Model). No hardcoded sample claims.
+  - **Connected Work:** Lists linked operational roadmap tasks as compact bordered chips showing real task title, status, and navigation to the Roadmap task preserving `ideaId`.
+  - **Built From (Provenance):** Displays genuine source origin chips (e.g. `Construction Snapshot`, `HumainX Profile`, `Company Formation`, `Financial Forecast`) paired with working `View source ↗` navigation.
+  - **Founder Information Panel:**
+    - Header: `"Provide information about an existing capability, resource, or asset"`.
+    - Textarea with contextual placeholder.
+    - Actions: `"+ Add what I have"` (primary submit), `"Defer for now"`.
+    - Footnote copy: *"Founder-provided details will be assessed against this requirement's criteria. Adding details records your information; it does not automatically mark the need Satisfied."*
+    - Persisted via `PUT /api/creator/phase4/needs/{needKey}/state` with non-destructive reload preservation. Rejects blank submissions.
+- **Domain Semantics & Decision Independence:**
+  - **Decision ≠ Fulfilment:**
+    - `Confirm need` (`FounderState = Confirmed`) records acceptance/relevance by the founder. It does NOT mark the requirement `Satisfied`.
+    - `Defer for now` (`FounderState = Deferred`) records postponement.
+    - Adding founder information records evidence in `FounderInformation`. It does NOT auto-satisfy the need.
+    - `Satisfied` requires authoritative evaluation against the requirement's criteria.
+  - Legal assessments or formation plans do not prove statutory company registration is complete.
+  - Verified founder capabilities inform needs dynamically without redundant duplicates.
+- **API, Concurrency & State Ownership:**
+  - Persisted strictly to `CreatorIdea.Phase4Data.NeedsAnalysis` via `SetPhase4NeedsAnalysisAsync` with `WriteIdeaAsync`.
+  - Enforces `ideaId` validation, `expectedVersion` matching, `HttpContext.Items["CreatorIdeaVersion"]`, and `X-Creator-Idea-Version` response header.
+  - Returns authoritative `IdeaVersion` on all responses.
+  - HTTP 409 Conflict handling with non-destructive state reload and retry.
+- **Footer Navigation (4.2 $\to$ 4.3 $\to$ 4.4):**
+  - Thin top divider.
+  - Left: `"Back to Roadmap"` linking to `/dashboard/creator/phase-4/roadmap?ideaId={ideaId}`.
+  - Supporting copy: `"Your reviewed needs will help shape the next step."`
+  - Primary pill button: `"Continue to Skills & Training →"` linking to canonical Step 4.4 `/dashboard/creator/phase-4/skills?ideaId={ideaId}`.
+- **Verification & Acceptance Evidence:**
+  - *Frontend Unit Tests:* 11 / 11 tests pass in `src/__tests__/creator/phase4-needs-analysis.test.tsx` (summary counts, confirm inline action, defer inline action, 2-column analytical breakdown, founder information submission, update available banner, footer navigation).
+  - *Backend Service Tests:* 16 / 16 tests pass in `CreatorPhase4NeedsTests.cs` (including `Founder_Decision_And_Information_Do_Not_Automatically_Satisfy_Need` and `Keep_Current_Preserves_Version_And_Clears_Update_Available`).
+  - *TypeScript & Solution Build:* `npx tsc --noEmit` PASS (0 errors); `dotnet build backend/WebApp.csproj` PASS (0 errors).
+  - *Playwright Browser E2E Test (`verify_browser_needs.mjs`):* Live execution against running application verified real project data (6 requirements, 0 satisfied, 6 identified), update available banner detection, review modal display, keep current version POST (HTTP 200), confirm need PATCH (HTTP 200), expanded 2-column breakdown, founder information submission PATCH (HTTP 200), persistence across page reload, and responsive rendering at 1440px desktop, 1920px desktop, and 375px mobile viewports.
 
-### 6.4 Stage 4.4 — Skills & Training Plan (`SkillsPlanView.tsx`)
-- **Route:** `/dashboard/creator/phase-4/skills`
-- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/skills-plan`, `POST /api/creator/phase4/skills-plan/generate`, `POST /api/creator/phase4/skills-plan/refresh`, `PATCH /api/creator/phase4/skills-plan/{resolutionKey}`).
-- **Services:** `SkillsResolutionService`, `CapabilityResolutionPolicy`.
-- **Resolution Modes:**
-  - `Advanced` / `Comfortable` → normally covered.
-  - `Comfortable` + critical/blocking requirement without verified track record → `NeedsReview`.
-  - `Beginner` → never auto-covered (routes to `LEARN` or `DELEGATE`).
-  - `null` / unassessed → `NeedsReview`.
-- **Mandatory Legal Verification:** Regulated/statutory requirements enforce `VERIFY`. Learning alone cannot bypass legal compliance.
+### 6.4 Stage 4.4 — Skills & Training Plan (`page.tsx` + `SkillsPlanView.tsx`)
+- **Figma Reference & Layout:** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11470` "Skills & Training · Step 4.4 Full Plan"). 1120px max content width, 24px section gaps, 12px card gaps, responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/skills`
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/skills-plan`, `POST /api/creator/phase4/skills-plan/generate`, `POST /api/creator/phase4/skills-plan/refresh`, `POST /api/creator/phase4/skills-plan/keep-current`, `PATCH /api/creator/phase4/skills-plan/{resolutionKey}`).
+- **Services:** `SkillsResolutionService`, `CapabilityResolutionPolicy`, `NeedsAnalysisService`, `OperationalRoadmapService`, `CreatorJourneyService`.
+- **Compact Page-Level Header:**
+  - *Eyebrow:* `"PHASE 4 · STEP 4.4"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono`)
+  - *Title:* `"Skills & Training Plan"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`)
+  - *Supporting text:* `"Map capabilities to learn, delegate, or verify based on your background, project scope, and weekly time."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`)
+- **Eight Canonical Figma UI Components:**
+  1. **Component 1: Upstream Update Notice:** Amber alert banner triggered when upstream sources (Needs Analysis, Roadmap, HumainX profile, Legal Assessment) have updated. Provides `"Review changes"` modal and `"Keep my choices"` action calling `POST /api/creator/phase4/skills-plan/keep-current` to synchronize source versions without losing founder decisions.
+  2. **Component 2: Compact Skills Summary Header:** Displays `{total} project skills`, `{covered} covered` (emerald badge), `{attention} need attention` (amber badge), alongside project metadata (`PROJECT SCOPE: {projectName}`, `REGION: France`).
+  3. **Component 3: Existing Strengths ("You can already handle"):** Lists capabilities already covered by founder's background or prior phase milestones. Features `"Update my experience ↗"` link to profile and `"Why this matches"` modal explaining coverage evidence.
+  4. **Component 4: Resolution Approach Legend:** 3 cards explaining the resolution strategies in plain language:
+     - *Learn:* `"Build the skills to do it yourself."`
+     - *Delegate:* `"Get help from someone with the right skills."`
+     - *Verify:* `"Check whether your experience covers this work."`
+  5. **Components 5, 6, 7: Need Attention Cards & Dynamic Inset Panels:**
+     - *Header Strip:* Capability name, `Needs attention` badge, `Launch-Blocking` tag (if blocking), and `Statutory` lock icon (if mandatory verification).
+     - *Strip Meta:* Current level, Recommended mode, and Your choice (`{Mode} (Selected)`).
+     - *Rationale:* Contextual explanation of why this approach was recommended.
+     - *3-Button Mode Selector:* Interactive pills for `Learn`, `Delegate`, and `Verify`. Enforces statutory verification safety lock (disables Learn/Delegate when `isMandatoryVerification` is true).
+     - *Delegation Detail Panel (Component 5):* 6-field structured brief preview (Capability needed, Target timing, Suggested budget tier, Working language, Estimated weekly time, Expected deliverable dynamically derived from `res.delegationRequirement.expectedOutcome` or `res.capability`) with action buttons (`View brief`, `Edit brief`, `Add existing support`).
+     - *Learning Detail Panel (Component 6):* `WHAT YOU'LL BE ABLE TO DO`, `WHAT YOU'LL CREATE`, 4 practical learning steps dynamically derived from curated domain taxonomy (`res.learningAction.learningTopics` from `CapabilityResolutionPolicy` for Tech, Design, Ads, SEO/Content, Sales, Finance, Operations), Training options box, and Workload Impact Preview dynamically calculating weekly availability vs already planned and proposed learning hours with buffer calculation and link to roadmap changes.
+     - *Verification Detail Panel (Component 7):* 3 analytical columns (`What needs checking`, `What you can share`, `What is still unclear`) dynamically derived from `res.verificationRequirement` and `res.capability`, with `"See what to share"` Evidence Guide modal and `"Choose Verify"` button.
+     - *Built-from Provenance:* Displays source tags (`Needs & Requirements`, `Creator profile`, `Operational Roadmap`, etc.) and `"Why this suggestion?"` explanation modal.
+     - *Zero Static/Mock Data Guarantee:* All cards, subtitle descriptions, practical learning steps, deliverables, verification columns, and hours are 100% dynamically bound from backend resolution entities and user profile data; all hardcoded Figma sample copy fallbacks have been eliminated.
+  6. **Component 8: Quiet Journey Footer Navigation:**
+     - Left: `"← Back to Needs & Requirements"` linking to `/dashboard/creator/phase-4/needs?ideaId={ideaId}`.
+     - Right: Primary CTA `"Continue to Aids & Support →"` linking to Step 4.5 `/dashboard/creator/phase-4/support?ideaId={ideaId}`, with supporting text *"Save your choices and explore support for your project."*
+- **Zero Static/Mock Data Audit:**
+  - Audited fullstack data flow. Identified and replaced 7 static fallback strings borrowed from Figma sales card with 100% dynamic data binding: card subtitles, 4 practical learning steps, deliverables, verification 3-column analysis, workload hours and buffer, and quiet notes.
+  - Practical learning steps dynamically bind to `CapabilityResolutionPolicy.cs` curated taxonomy (Finance -> Cash flow / P&L, Tech -> Architecture / APIs, Sales -> ICP / Pitching, Design -> Design systems, etc.), ensuring every capability card reflects true domain-specific guidance without hardcoded sales outreach copy.
+- **Resolution Engine Rules & Invariants:**
+  - *Pass-through Coverage:* Phase 4.3 Covered Requirements pass through as `Covered` and are separated from attention cards.
+  - *Mandatory Statutory Verification:* Regulated requirements (e.g. Legal Capital Deposit, Share Capital, Trademark filing) enforce `VERIFY`. The policy rejects founder overrides to Learn or Delegate with HTTP 403 Forbidden.
+  - *Founder Decision Preservation:* Re-generation or refresh preserves founder choices and custom notes across re-derivation cycles by stable resolution key (`Key`).
+- **Concurrency & Concurrency Recovery:**
+  - Scoped to `CreatorIdea.Phase4Data.SkillsPlan` via `SetPhase4SkillsPlanAsync` with `WriteIdeaAsync`.
+  - Requires `expectedVersion`, validates concurrency, passes `X-Creator-Idea-Version` response headers, and gracefully handles HTTP 409 Conflict with non-destructive reload.
+- **Verification Evidence:**
+  - Automated Unit Tests: 14/14 PASS (`CreatorPhase4SkillsTests.cs`); Frontend tests: 11/11 PASS (`phase4-skills-plan.test.tsx`).
+  - Full Creator Vitest Suite: 150/150 PASS across 12 test files.
+  - Live Browser E2E: Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, Delegation Brief modal, and Evidence Guide modal with 0 DOM errors and 0 layout overflows.
+  - TypeScript & Build: `npx tsc --noEmit` 0 errors; `dotnet build backend/WebApp.csproj` 0 errors.
 
-### 6.5 Stage 4.5 — Aids, Grants & Public Support (`SupportPlanView.tsx`)
-- **Route:** `/dashboard/creator/phase-4/support`
-- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/support`, `POST /api/creator/phase4/support/generate`, `POST /api/creator/phase4/support/refresh`, `PATCH /api/creator/phase4/support/{supportKey}`).
+### 6.5 Stage 4.5 — Aids, Grants & Public Support (`page.tsx` + `SupportPlanView.tsx`)
+- **Figma Reference & Layout:** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11932` "Aids, Grants & Support · Step 4.5 Content"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/support`
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/support`, `POST /api/creator/phase4/support/generate`, `POST /api/creator/phase4/support/refresh`, `PATCH /api/creator/phase4/support/{supportKey}`, `POST /api/creator/phase4/support/facts`).
 - **Services:** `SupportPlanService`, `SupportCatalogueService`, `SupportEligibilityEngine`, `SupportMatchingService`.
 - **Selection Modes:** `Entitlement`, `Discretionary`, `Competitive`, `CreditAssessment`, `NeedsReview`.
 - **Eligibility Statuses:** `EligibleToApply`, `Awarded`.
 - **Critical Invariant:** `EligibleToApply` ≠ spendable launch cash. Potential or unawarded grants are strictly excluded from spendable launch budgets.
 
+#### Deterministic Prerequisite Gate & Upstream Staleness Resolution UX
+Stage 4.5 enforces a strict deterministic readiness gate via `SupportPlanService.EvaluateGateAsync`:
+- **Prerequisite Checks:**
+  1. `gate.Phase3Completed`: Phase 3 core artifacts (Business Plan, Financial Plan, Legal Assessment) must be finalized.
+  2. `gate.HumainXReady`: HumainX profile must exist and be completed.
+  3. `gate.SnapshotExists`: Step 4.1 Construction Snapshot must be generated.
+  4. `gate.RoadmapExists`: Step 4.2 Operational Roadmap must exist.
+  5. `gate.NeedsAnalysisCurrent`: Step 4.3 Needs Analysis must not be stale (`!needsRes.UpdateAvailable`).
+  6. `gate.SkillsPlanCurrent`: Step 4.4 Skills Plan must not be stale (`!skillsRes.UpdateAvailable`).
+- **Why the Gate Exists:** Public funding, training allowances (OPCO/CPF), and tax exemptions (ACRE) depend directly on operational requirements (hiring schedules, legal structure, capital expenditure, founder capability gaps). When upstream steps (Step 4.2 Roadmap, Step 4.3 Needs, Step 4.4 Skills) are edited, public aid matching must not evaluate against obsolete requirements.
+- **Upstream Staleness Blocked UI (`Support Engine Unavailable`):**
+  - When the gate is blocked due to upstream staleness, the UI displays the canonical `Support Engine Unavailable` alert with the exact reason (e.g. `Needs Analysis is stale. Skills Plan is stale (SKILLS_PLAN_REFRESH_REQUIRED).`).
+  - Provides dual contextual remediation navigation buttons:
+    - `"Go to Step 4.3 Needs Analysis"` (`/dashboard/creator/phase-4/needs?ideaId={ideaId}`) when Needs Analysis requires synchronization.
+    - `"Go to Step 4.4 Skills & Training"` (`/dashboard/creator/phase-4/skills?ideaId={ideaId}`) when Skills Plan requires synchronization.
+  - Navigating upstream and clicking `"Keep Current"` (or refreshing) syncs the source versions and instantly unlocks Step 4.5 evaluation.
+
+#### Canonical UI Components (Figma 57221:11932)
+1. **Compact Page-Level Header:**
+   - *Eyebrow:* `"PHASE 4 · STEP 4.5"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono`)
+   - *Title:* `"Aids, Grants & Public Support"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`)
+   - *Supporting text:* `"Explore funding schemes, training support, and institutional backing for your venture."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`)
+2. **Component 1: Summary Card ("{count} options to explore"):**
+   - Header reporting total options count in JetBrains Mono font + bold Inter heading.
+   - Dynamic profile chips: Country `France`, Situation `{currentSituation}` (e.g. `Jobseeker receiving ARE`), Formation phase `Project in preparation`.
+   - Profile deep link: `"Update my details ↗"` linking to `/dashboard/creator/profile`.
+   - Quiet conditions disclaimer: *"Each programme has its own conditions and application process. Saving an option does not submit an application."*
+3. **Component 2: Location Card ("Where will you start your business?"):**
+   - Subtitle: *"This helps us check local support."*
+   - MapPin icon input prefilled with recorded location fact (or city fallback).
+   - `"Save location"` action dispatching `onAnswerFact('project_location', location)` to persist into `RecordedEligibilityFacts` and automatically trigger re-evaluation without modifying backend schemas.
+4. **Component 3: Metric Strip (Evaluated / Eligible / Potential / Missing / Ready / Tracking):**
+   - Quantitative counts for catalog schemes, authoritative matches, pending minor facts, requires input, MBC docs ready, and in-preparation founder tracking.
+5. **Component 4: Opportunity Cards List & Rich Inset Panels:**
+   - *Badges:* Category pill badge (`Advice & mentoring`, `Social Contribution Exemption`, `Grant`, `Allowance`, `InnovationSupport`, `Financing & Loan`, `Training support`, `EuropeanFunding`) + Status badge (`● A few details to check`, `● May fit your project`, `● Eligible to Apply`, `● Eligible (Statutory)`, `● Awarded`).
+   - Card Headline, Value Subtitle, Description, and Official source provenance line (`Official details: {programmeOwner} via {catalogueSource}`).
+   - Collapsed State Actions: `"Save this option"` (with toggleable bookmark icon) + `"View details ⌄"` chevron action.
+   - Expanded Inset Panel (Figma 57221:11932):
+     - **2-Column Analytical Breakdown:**
+       - `WHAT YOU COULD GET`: Financial/support quantification from match award estimation.
+       - `WHY THIS MAY FIT`: Dynamic strategic fit commentary based on business model and scheme objectives.
+       - `WHAT WE ALREADY KNOW`: Live founder facts (country, legal form, founding status, recorded location).
+       - `WHEN TO APPLY`: Timing notes from `match.timing?.timingNotes` (with category-aware intelligent fallback).
+       - `WHAT TO CHECK`: 5 subtle dot bullet points dynamically derived from type-aware scheme condition checklists (`TrainingFunding`, `SocialContributionExemption`, `HonorLoan`, general) without duplicating verbatim `conditionsMet` text.
+       - `WHAT YOU MAY NEED`: Required application documents synthesized from `plan.applicationChecklists` and Phase 3 artifact links (e.g. Executive Business Plan, Financial Forecast).
+       - `OFFICIAL SOURCE`: Verified official authority links (`legifrance.gouv.fr`, `service-public.fr`, `urssaf.fr`, etc.) with `"Official portal verified ↗"`.
+     - **Blue Callout Box (`BEFORE YOU APPLY`):** Info icon + *"When an official source is verified, you can prepare required documents and propose preparation tasks to your Operational Roadmap."*.
+     - **Action Buttons Bar:** `"Check my details"`, `"Audit Details"` (opens Audit Provenance modal), `"Save this option"`, `"Track Application"`, and primary `"Open official website ↗"`.
+6. **Component 5: Quiet Journey Footer Navigation:**
+   - Left: `"← Back to Skills & Training"` linking to Step 4.4 `/dashboard/creator/phase-4/skills?ideaId={ideaId}`.
+   - Center: Reassurance text *"You can return to your saved support options later."*.
+   - Right: Primary CTA `"Continue to Pricing & Revenue →"` linking to Step 4.6 `/dashboard/creator/phase-4/pricing?ideaId={ideaId}`.
+7. **Component 6: Milestone Banner:**
+   - Operational readiness banner (`"PHASE 4.6 READY · NEXT OPERATIONAL MILESTONE"`, `"Pricing & Revenue Model Engine"`, `"Build My Pricing Strategy →"`).
+
+#### Audit Details Modal
+Surfaces complete regulatory and computational provenance:
+- **Provenance Trace:** `Programme Owner`, `Managing Authority`, `Catalogue Source`, `Selection Dimension`.
+- **Conditions Met:** Evaluated criteria confirmed by the rule engine with green checkmarks.
+- **Application Checklist & MBC Artifact Reuse:** Required documents mapped to reusable Phase 3 deliverables (e.g. `"Reuses: Phase 3 Executive Business Plan"`, `"Reuses: Phase 3 Financial Forecast"`).
+
+#### Zero Static/Mock Data Guarantee
+100% of rendered opportunities, amounts, conditions, categories, timing, and breakdown copy are dynamically derived from active MongoDB database records and backend rule evaluation. All placeholder or hardcoded sample strings have been eliminated.
+
+#### Verification Evidence
+- **Automated Frontend Tests:** 8 / 8 PASS (`src/__tests__/creator/phase4-support-plan.test.tsx`).
+- **Full Creator Vitest Suite:** 150 / 150 PASS across all 12 test files.
+- **Live Browser E2E:** Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, and Audit Details modal with 0 DOM errors and 0 layout overflows.
+- **TypeScript Compilation:** `npx tsc --noEmit` 0 errors (Exit 0).
+- **Backend Build:** `dotnet build backend/WebApp.csproj` 0 errors (Exit 0).
+
 ### 6.6 Stage 4.6 — Pricing & Revenue Model (`PricingStrategyView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/pricing`
+- **Figma Reference:** Frame `57221:12167` ("Pricing & Revenue Model · Step 4.6").
 - **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/pricing`, `POST /api/creator/phase4/pricing/generate`, `POST /api/creator/phase4/pricing/refresh`, `PATCH /api/creator/phase4/pricing/{offerKey}`).
 - **Services:** `PricingStrategyService`, `PricingPolicyEngine`.
 - **13 Supported Models:** OneTime, Subscription, UsageBased, TransactionFee, Commission, Retainer, ProjectBased, Freemium, Tiered, MarketplaceFee, Licensing, Hybrid, Other.
@@ -1231,14 +1411,50 @@ CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
   - Absolute contribution: $P_{min} = VC + A$
 - **Tax Semantics:** Explicit `ConfiguredTaxMode` (`HT`, `TTC`, `Exempt`, `Unknown`). Zero crude B2B/B2C automatic tax inferences.
 - **Four-Price Independence:** `RecommendedPrice`, `FounderSelectedPrice`, `MarketReferencePrice`, and `ValidatedMarketPrice` are tracked independently. `ValidatedMarketPrice` strictly requires empirical evidence (paid pilot, preorder, historical sale).
+- **Eight Canonical Figma UI Sections:**
+  1. *Section 1: Compact Pricing Summary:* `YOUR CHOSEN PRICE`, large price display (`€{chosenPrice} per business / month`), badges (`Monthly subscription`, `Not tested` / `Empirically Validated`, `Draft`), and reassurance note *"Choose a starting price, then check how customers respond."*.
+  2. *Section 2: How you'll charge:* Inset card with `Suggested` badge, `Change model` action, 2-column breakdown of `Customers pay for`, `What's included`, `Usage limits — To confirm`, `Support included — To confirm`, and `Edit what's included` inline action.
+  3. *Section 3: Price comparison & choice:*
+     - Left: `SUGGESTED PRICE` with amber warning *"Delivery costs and market prices still need checking."* and `"Use suggested price"` CTA.
+     - Right: `YOUR CHOSEN PRICE` interactive input with `EUR (€)` prefix, numerical value input, dynamic note trigger (`+ Add a note about your choice`), and tax confirmation indicator (`Tax basis — To confirm`).
+  4. *Section 4: Why this suggestion?:* 3 analytical rows (`YOUR OFFER`, `YOUR CUSTOMERS`, `TO VERIFY`), status strip (`Delivery costs: {cost}`, `Market references: {status}`, `View assumptions ▾`), and expandable technical ledger.
+  5. *Section 5: What could you earn?:* Interactive Scenario Simulator with `PAYING BUSINESSES` numeric input, real-time revenue formula (`€{chosenPrice} × {businesses} businesses = €{total}` `Estimated monthly revenue`), footnote caveats, and yellow warning box *"Profit estimate unavailable: Confirm your costs to understand what you could keep."*.
+  6. *Section 6: Check your price:* Status badge (`Not tested`), empty state alert (`No sales or paid preorders recorded.`), educational comparison matrix (Market reference, Customer feedback, Customer interest, Sale or paid preorder), and dynamic action buttons (`Add feedback`, `Add a sale or paid preorder`).
+  7. *Section 7: Next action:* `NEXT ACTION` eyebrow, `Test your starting offer` title, 3 verification bullet points (Offer, Price to test, Customers), and `"Review roadmap task"` action button.
+  8. *Section 8: Quiet Journey Footer Navigation:* Left `"← Back to Aids & Support"`, reassurance label *"You can continue while your price still needs testing."*, and primary CTA `"Save & Continue →"` linking to Step 4.7.
+- **Verification Evidence:**
+  - Automated Unit Tests: 11 / 11 PASS (`src/__tests__/creator/phase4-pricing-strategy.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
+  - Live Browser E2E: Playwright test verified 1440px desktop and 1920px widescreen across live server with 0 DOM errors, 0 layout overflows, and responsive scaling.
+  - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
 
 ### 6.7 Stage 4.7 — GTM & Launch Strategy (`GtmStrategyView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/gtm`
+- **Figma Reference:** Frame `57221:12464` ("GTM & Launch Strategy · Step 4.7").
 - **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/gtm`, `POST /api/creator/phase4/gtm/generate`, `POST /api/creator/phase4/gtm/refresh`, `PATCH /api/creator/phase4/gtm/channels/{channelKey}`, `POST /api/creator/phase4/gtm/experiments/{experimentKey}/runs`).
 - **Services:** `GtmStrategyService`, `GtmPolicyEngine`.
 - **Multi-Signal Sales Motion:** Considers price, founder capacity, sales cycle, and buyer persona.
 - **Budget Provenance:** Distinguishes `ForecastCacAssumption`, `ObservedCac`, and `ValidatedCac`. If pricing is `NeedsValidation`, GTM enforces validation-first testing before paid scaling.
 - **Immutable Experiment Evidence:** Completed validation runs and evidence are never deleted during refreshes.
+- **Canonical UI Components (Figma 57221:12464):**
+  1. *Header & Motion Badge:* Eyebrow `PHASE 4 · STEP 4.7`, dynamic venture title, motion badge (`ConsultativePilot`, `ProductLed`, etc.), and `Refresh GTM` CTA.
+  2. *Top Provenance & Capacity Metric Cards (4 Cards):*
+     - *Weekly Founder Capacity:* `{allocated}h / {available}h`, band status, remaining weekly buffer.
+     - *Spendable Marketing Cash:* Spendable total, status (`Planned`, `ConfirmedAvailable`), budget source.
+     - *CAC Provenance:* Observed CAC vs Forecast CAC Assumption vs `Needs Baseline`.
+     - *Primary Launch Segment:* Segment title, selected unit price, and revenue model.
+  3. *Primary Launch Segment & Positioning:* Target Segment name, match relevance score, core problem, value proposition message angle, buying complexity, and sales cycle basis.
+  4. *Prioritized Acquisition Channels:* Channel cards with priority badges (`Primary`, `Secondary`, `Later`, `NotRecommended`), effort levels, estimated weekly hours, deterministic reason codes (`FOUNDER_CAPABILITY_MATCH`, `SALES_MOTION_MATCH`, etc.), why now, first step, and `Adjust Priority` modal.
+  5. *GTM Validation Experiments & Empirical Evidence Log:* Timeboxed hypotheses, budget caps, primary metric threshold status (`NeedsBaseline`, `EvidenceBased`), success/stop conditions, `Log Completed Run` modal, and expandable immutable run history.
+  6. *Standardized Measurement Contract:* Funnel stage matrix (Awareness, Discovery, Pilot, Conversion, Activation), metric names, formulas, data sources, and targets.
+  7. *Sequenced Launch Timeline & Phasing:* Phased milestones with timeframes, objectives, and exit criteria.
+  8. *Phase 4.8 Boundary Banner & Quiet Footer Navigation:* Phase 4.8 boundary card + `← Back to Step 4.6 Pricing Strategy` and `Review Construction Snapshot →`.
+- **Verification Evidence:**
+  - Automated Unit Tests: 6 / 6 PASS (`src/__tests__/creator/phase4-gtm-strategy.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
+  - Backend Tests (C#): 179 / 179 PASS (`WebApp.Tests.dll`).
+  - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
+
 
 ### 6.8 Stage 4.8 — Launch Assets (Next Approved Stage)
 - **Approved Direction:** **One-Page Professional Launch Website** (responsive, branded, component-based, section families: Hero, Problem, Solution, Features, How It Works, Offer/Pricing, Social Proof, FAQ, Final CTA).
@@ -1538,8 +1754,125 @@ RC1 Freeze
   - Live Browser & API Verification: 10 persisted tasks across stages verified via Playwright E2E; DOM tree walker confirmed 0 literal "svg" text nodes.
   - User Acceptance: Formally confirmed by user ("The user has confirmed the current result works correctly").
 
+**2026-09-25 — Creator Phase 4.3 Needs & Requirements: Exact Figma 57221-11163 Alignment, Analytical Breakdown, Domain Semantics, Keep-Current Lifecycle & Concurrency Delivery.**
+- **Figma Reference & Layout (§6.3):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11163`, Requirements list `57221:11197`, Expanded requirement `57221:11282`). 1120px max content width, 24px section gaps, 12px requirement card gaps, 32px category icon containers with 8px corners, 12px expanded inset panels, responsive 1440px/1920px desktop and 375px mobile viewports with complete dark/light theme token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/needs`
+- **Compact Page-Level Header (§6.3):** Eyebrow `"PHASE 4 · STEP 4.3"`, Title `"Needs & Requirements"`, Subtitle `"Review what your project needs, what you already have, and what remains to be covered."`.
+- **Horizontal Summary Card:** Single card layout reporting total count, emerald `Satisfied` badge, muted `Identified` badge, authoritative copy (*"Confirming a need records your decision. It does not mean the need has been met."*), subtle vertical divider, and dynamic `Awaiting your review` status badge.
+- **Update Available Notice & Modal:** Warm-tinted alert banner with `"Review changes"` modal and `"Keep current version"` action wired to `POST /api/creator/phase4/needs/keep-current` to dismiss staleness across sessions. Re-generation and refresh strictly preserve founder decisions and notes by stable requirement keys.
+- **Full-Width Accordion Cards with Inline Actions:** Inline `"Confirm need"` and `"Defer for now"` actions on awaiting-review items; fulfillment badges (`Identified` / `Satisfied`) and decision badges (`Confirmed`, `Deferred`, `Awaiting your review`).
+- **5-Section Analytical Breakdown:** Two-column desktop grid for `WHAT IS NEEDED`, `WHY THIS APPLIES`, `WHAT YOU ALREADY HAVE`, `WHAT IS STILL MISSING`, and full-width `WHAT WOULD SATISFY THIS NEED`. Derived from real project data (Snapshot, Roadmap, Legal Assessment, Forecast, Business Model, HumainX profile).
+- **Connected Work & Provenance:** Connected operational roadmap tasks with deep links; provenance chips (`Construction Snapshot`, `Financial Forecast`, etc.) with functional `View source ↗` navigation.
+- **Founder Information Panel:** Allows recording existing assets, credentials, or resources (`founderInformation`) via `PUT /api/creator/phase4/needs/{needKey}/state` without auto-satisfying the requirement.
+- **Domain Semantics & Decision Independence:** Strict decoupling between decision (`Confirmed`/`Deferred`) and fulfillment (`Satisfied`). Confirmed decisions and founder notes are preserved across refreshes by stable requirement keys.
+- **Concurrency & Concurrency Recovery:** Scoped to `CreatorIdea` via `WriteIdeaAsync`, enforcing `expectedVersion` matching, `X-Creator-Idea-Version` response headers, and non-destructive HTTP 409 conflict recovery.
+- **Navigation Flow:** Step 4.2 Operational Roadmap $\to$ Step 4.3 Needs & Requirements $\to$ Step 4.4 Skills & Training Plan.
+- **Zero Static/Mock Data Guarantee:** All rendered requirements, counts, categories, and analytical breakdowns are 100% dynamically derived from active MongoDB database records with zero hardcoded sample cards or fake fallback lists.
+- **Verification Evidence:**
+  - Automated Unit Tests: 16/16 PASS (`CreatorPhase4NeedsTests.cs`); Frontend tests: 11/11 PASS (`phase4-needs-analysis.test.tsx`).
+  - Browser E2E & Visual Verification: Playwright script `verify_browser_needs.mjs` executed cleanly against live environment; generated screenshots for 1440px initial, 1440px expanded, 1920px desktop, 375px mobile, and review modal.
+  - TypeScript & Solution Build: `npx tsc --noEmit` 0 errors; `dotnet build backend/WebApp.csproj` 0 errors.
+
+**2026-09-25 — Creator Phase 4.4 Skills & Training Plan: Exact Figma 57221-11470 Alignment, Dynamic Detail Panels, Mandatory Verification Lock, Keep-Current Lifecycle & Concurrency Delivery.**
+- **Figma Reference & Layout (§6.4):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11470` "Skills & Training · Step 4.4 Full Plan"). 1120px max content width, 24px section gaps, 12px card gaps, responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/skills`
+- **Compact Page-Level Header (§6.4):** Eyebrow `"PHASE 4 · STEP 4.4"`, Title `"Skills & Training Plan"`, Subtitle `"Map capabilities to learn, delegate, or verify based on your background, project scope, and weekly time."`.
+- **Eight Canonical Figma UI Components:**
+  1. *Component 1: Upstream Update Notice:* Warm-tinted alert banner with `"Review changes"` modal and `"Keep my choices"` action wired to `POST /api/creator/phase4/skills-plan/keep-current` to synchronize source versions without losing founder decisions.
+  2. *Component 2: Compact Skills Summary Header:* Single card displaying `{total} project skills`, `{covered} covered` (emerald badge), `{attention} need attention` (amber badge), and project scope metadata (`PROJECT SCOPE: {projectName}`, `REGION: France`).
+  3. *Component 3: Existing Strengths ("You can already handle"):* Lists capabilities covered by founder's background or prior phase milestones with `"Update my experience ↗"` link to profile and `"Why this matches"` modal explaining coverage evidence.
+  4. *Component 4: Resolution Approach Legend:* 3 cards explaining the resolution strategies in plain language (Learn: Build skills yourself; Delegate: Get help from someone with right skills; Verify: Check whether experience covers work).
+  5. *Components 5, 6, 7: Need Attention Cards & Dynamic Inset Panels:* Unresolved capability cards with 3-button mode selector (`Learn`, `Delegate`, `Verify`), Launch-Blocking badge, Statutory lock icon, and rich dynamic inset panels:
+     - *Delegation Detail Panel (Component 5):* 6 structured attributes grid + Delegation Brief Modal (`View brief`, `Edit brief`, `Add existing support`).
+     - *Learning Detail Panel (Component 6):* `WHAT YOU'LL BE ABLE TO DO`, `WHAT YOU'LL CREATE`, 4 practical learning steps, Training options box, and Workload Impact Preview calculating weekly availability vs already planned and proposed learning hours with buffer calculation and link to roadmap changes.
+     - *Verification Detail Panel (Component 7):* 3 analytical columns (`What needs checking`, `What you can share`, `What is still unclear`) with `"See what to share"` Evidence Guide modal and `"Choose Verify"` button.
+  6. *Component 8: Quiet Journey Footer Navigation:* Left `"← Back to Needs & Requirements"` linking to Step 4.3 and Right primary CTA `"Continue to Aids & Support →"` linking to Step 4.5.
+- **Resolution Engine Rules & Invariants:**
+  - *Pass-through Coverage:* Phase 4.3 Covered Requirements pass through as `Covered` and are separated from attention cards.
+  - *Mandatory Statutory Verification:* Regulated requirements (e.g. Legal Capital Deposit, Share Capital, Trademark filing) enforce `VERIFY`. The policy rejects founder overrides to Learn or Delegate with HTTP 403 Forbidden.
+  - *Founder Decision Preservation:* Re-generation or refresh preserves founder choices and custom notes across re-derivation cycles by stable resolution key (`Key`).
+- **Concurrency & Concurrency Recovery:**
+  - Scoped to `CreatorIdea.Phase4Data.SkillsPlan` via `SetPhase4SkillsPlanAsync` with `WriteIdeaAsync`.
+  - Requires `expectedVersion`, validates concurrency, passes `X-Creator-Idea-Version` response headers, and gracefully handles HTTP 409 Conflict with non-destructive reload.
+- **Verification Evidence:**
+  - Automated Unit Tests: 14/14 PASS (`CreatorPhase4SkillsTests.cs`); Frontend tests: 11/11 PASS (`phase4-skills-plan.test.tsx`).
+  - Full Creator Vitest Suite: 150/150 PASS across 12 test files.
+  - Live Browser E2E: Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, Delegation Brief modal, and Evidence Guide modal with 0 DOM errors and 0 layout overflows.
+
+**2026-09-25 — Creator Phase 4.5 Aids, Grants & Public Support: Exact Figma 57221-11932 Alignment, Analytical Breakdown, Location Persistence, Prerequisite Gate Lifecycle & Concurrency Delivery.**
+- **Figma Reference & Layout (§6.5):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11932` "Aids, Grants & Support · Step 4.5 Content"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/support`
+- **Compact Page-Level Header (§6.5):** Eyebrow `"PHASE 4 · STEP 4.5"`, Title `"Aids, Grants & Public Support"`, Subtitle `"Explore funding schemes, training support, and institutional backing for your venture."`.
+- **Deterministic Prerequisite Gate & Upstream Staleness Resolution UX (§6.5):**
+  - Enforces `SupportPlanService.EvaluateGateAsync` requiring Phase 3 completion, HumainX readiness, Construction Snapshot existence, Operational Roadmap existence, and current (non-stale) Needs Analysis and Skills Plan.
+  - When upstream steps are edited (e.g. Roadmap tasks updated), Step 4.5 locks safely with `Support Engine Unavailable` alert and explicit diagnostic message (e.g. `Needs Analysis is stale. Skills Plan is stale (SKILLS_PLAN_REFRESH_REQUIRED).`).
+  - Provides dual contextual remediation buttons (`Go to Step 4.3 Needs Analysis` and `Go to Step 4.4 Skills & Training`) allowing founders to synchronize upstream choices before evaluating public support schemes.
+- **Six Canonical Figma UI Components:**
+  1. *Component 1: Summary Card ("{count} options to explore"):* Reports total options count (JetBrains Mono number + bold Inter heading), dynamic founder profile chips (Country `France` • Situation `{currentSituation}` • Formation phase `Project in preparation`), profile edit deep link (`Update my details ↗`), and quiet conditions disclaimer: *"Each programme has its own conditions and application process. Saving an option does not submit an application."*.
+  2. *Component 2: Location Card ("Where will you start your business?"):* Subtitle *"This helps us check local support."*, MapPin icon input (`City or postcode (e.g. Lyon, 69002)`), and `"Save location"` button. Dispatches `onAnswerFact('project_location', location)` to persist location fact into `RecordedEligibilityFacts` and automatically trigger re-evaluation without modifying backend schemas.
+  3. *Metric Strip (Evaluated / Eligible / Potential / Missing / Ready / Tracking):* Satisfies contract with quantitative counts for catalog schemes, authoritative matches, pending minor facts, requires input, MBC docs ready, and in-preparation founder tracking.
+  4. *Component 4: Opportunity Cards List & Rich Inset Panels:*
+     - Pill badges: Category badge (`Advice & mentoring`, `Social Contribution Exemption`, `Grant`, `Allowance`, `InnovationSupport`, `Financing & Loan`, `Training support`, `EuropeanFunding`) + Status badge (`● A few details to check`, `● May fit your project`, `● Eligible to Apply`, `● Eligible (Statutory)`, `● Awarded`).
+     - Card Headline, Value Subtitle, Description, and Official source provenance line (`Official details: {programmeOwner} via {catalogueSource}`).
+     - Collapsed State Actions: `"Save this option"` (with toggleable bookmark icon) + `"View details ⌄"` chevron action.
+     - Expanded Inset Panel (Figma 57221:11932):
+       - 2-Column Analytical Breakdown: `WHAT YOU COULD GET`, `WHY THIS MAY FIT`, `WHAT WE ALREADY KNOW`, `WHEN TO APPLY` (sourced from `timingNotes`), `WHAT TO CHECK` (5 subtle dot bullet points derived from type-aware scheme condition checklists), `WHAT YOU MAY NEED` (sourced from `applicationChecklists` with Phase 3 document links), `OFFICIAL SOURCE` (`Official portal verified ↗` with deep link).
+       - Blue Callout Box (`BEFORE YOU APPLY`): Info icon + *"When an official source is verified, you can prepare required documents and propose preparation tasks to your Operational Roadmap."*.
+       - Action Buttons Bar: `Check my details`, `Audit Details` (opens Audit Provenance modal), `Save this option`, `Track Application`, and primary `Open official website ↗`.
+  5. *Component 5: Quiet Journey Footer Navigation:* Left `"← Back to Skills & Training"` linking to Step 4.4, centered reassurance text *"You can return to your saved support options later."*, and right primary CTA `"Continue to Pricing & Revenue →"` linking to Step 4.6.
+  6. *Phase 4.6 Milestone Banner:* Operational readiness banner (`"PHASE 4.6 READY · NEXT OPERATIONAL MILESTONE"`, `"Pricing & Revenue Model Engine"`, `"Build My Pricing Strategy →"`).
+- **Audit Details Modal:** Surfaces full provenance trace (`Programme Owner`, `Managing Authority`, `Catalogue Source`, `Selection Dimension`), Conditions Met (with green checkmarks), and Application Checklist & MBC Artifact Reuse ("Reuses: Phase 3 Executive Business Plan", "Reuses: Phase 3 Financial Forecast").
+- **Zero Static/Mock Data Guarantee:** 100% of rendered opportunities, amounts, conditions, categories, and breakdown copy are dynamically derived from active MongoDB database records and backend rule evaluation.
+- **Verification Evidence:**
+  - Automated Unit Tests: 8/8 PASS (`phase4-support-plan.test.tsx`).
+  - Full Creator Vitest Suite: 150/150 PASS across all 12 test files.
+  - Live Browser E2E: Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, and Audit Details modal with 0 DOM errors and 0 layout overflows.
+
+**2026-09-25 — Creator Phase 4.6 Pricing & Revenue Model: Exact Figma 57221-12167 Alignment, Interactive Simulator, Four-Price Separation & Verification Delivery.**
+- **Figma Reference & Layout (§6.6):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:12167` "Pricing & Revenue Model · Step 4.6"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/pricing`
+- **Compact Page-Level Header (§6.6):** Eyebrow `"PHASE 4 · STEP 4.6"`, Title `"Launch Pricing & Revenue Model Strategy"`, Subtitle `"Financial packaging and launch offers for {projectName}. Built from underlying unit economics, contribution margins, and forecast benchmarks."`.
+- **Eight Canonical Figma UI Components:**
+  1. *Section 1: Compact Pricing Summary:* `YOUR CHOSEN PRICE`, large price display (`€{chosenPrice} per business / month`), badges (`Monthly subscription`, `Not tested` / `Empirically Validated`, `Draft`), and reassurance note *"Choose a starting price, then check how customers respond."*.
+  2. *Section 2: How you'll charge:* Inset card with `Suggested` badge, `Change model` action, 2-column breakdown of `Customers pay for`, `What's included`, `Usage limits — To confirm`, `Support included — To confirm`, and `Edit what's included` inline action.
+  3. *Section 3: Price comparison & choice:*
+     - Left: `SUGGESTED PRICE` with amber warning *"Delivery costs and market prices still need checking."* and `"Use suggested price"` CTA.
+     - Right: `YOUR CHOSEN PRICE` interactive input with `EUR (€)` prefix, numerical value input, dynamic note trigger (`+ Add a note about your choice`), and tax confirmation indicator (`Tax basis — To confirm`).
+  4. *Section 4: Why this suggestion?:* 3 analytical rows (`YOUR OFFER`, `YOUR CUSTOMERS`, `TO VERIFY`), status strip (`Delivery costs: {cost}`, `Market references: {status}`, `View assumptions ▾`), and expandable technical ledger.
+  5. *Section 5: What could you earn?:* Interactive Scenario Simulator with `PAYING BUSINESSES` numeric input, real-time revenue formula (`€{chosenPrice} × {businesses} businesses = €{total}` `Estimated monthly revenue`), footnote caveats, and yellow warning box *"Profit estimate unavailable: Confirm your costs to understand what you could keep."*.
+  6. *Section 6: Check your price:* Status badge (`Not tested`), empty state alert (`No sales or paid preorders recorded.`), educational comparison matrix (Market reference, Customer feedback, Customer interest, Sale or paid preorder), and dynamic action buttons (`Add feedback`, `Add a sale or paid preorder`).
+  7. *Section 7: Next action:* `NEXT ACTION` eyebrow, `Test your starting offer` title, 3 verification bullet points (Offer, Price to test, Customers), and `"Review roadmap task"` action button.
+  8. *Section 8: Quiet Journey Footer Navigation:* Left `"← Back to Aids & Support"`, reassurance label *"You can continue while your price still needs testing."*, and primary CTA `"Save & Continue →"` linking to Step 4.7.
+- **Modals:**
+  - *Founder Offer Customization Modal:* Overrides algorithm price, launch discount %, included features, and strategic notes with immediate unit economics and contribution margin recalculation.
+  - *Strategic Note Modal:* Captures founder choice rationale and persists to backend.
+  - *Feedback Modal & Preorder Modal:* Records empirical customer feedback and paid preorders without full-page reloads.
+- **Verification Evidence:**
+  - Automated Unit Tests: 11 / 11 PASS (`src/__tests__/creator/phase4-pricing-strategy.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
+  - Live Browser E2E: Playwright verified 1440px desktop, 1920px widescreen, and live database strategy generation with 0 DOM errors, 0 layout overflows, and responsive scaling.
+**2026-09-25 — Creator Phase 4.7 GTM & Launch Strategy: Exact Figma 57221-12464 Alignment, Deterministic Prioritization, Capacity Guardrails & Verification Delivery.**
+- **Figma Reference & Layout (§6.7):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:12464` "GTM & Launch Strategy · Step 4.7"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/gtm`
+- **Canonical UI Components:**
+  1. *Header & Motion Badge:* Eyebrow `"PHASE 4 · STEP 4.7"`, Title `"{projectName} Go-To-Market Strategy"`, Subtitle `"Deterministic channel prioritization grounded in founder availability, offer economics, and empirical validation gates."`.
+  2. *Top Provenance & Capacity Metric Cards (4 Cards):* Weekly founder capacity (`{allocated}h / {available}h`, band, buffer), spendable marketing cash, CAC provenance (`Observed` vs `Assumed` vs `Needs Baseline`), and primary launch segment.
+  3. *Primary Launch Segment & Positioning:* Target Segment name, match relevance score, core problem, value proposition message angle, buying complexity, and sales cycle basis.
+  4. *Prioritized Acquisition Channels:* Channel cards with priority badges (`Primary`, `Secondary`, `Later`, `NotRecommended`), effort levels, estimated weekly hours, deterministic reason codes (`FOUNDER_CAPABILITY_MATCH`, `SALES_MOTION_MATCH`, etc.), why now, first step, and `Adjust Priority` modal.
+  5. *GTM Validation Experiments & Empirical Evidence Log:* Timeboxed hypotheses, budget caps, primary metric threshold status (`NeedsBaseline`, `EvidenceBased`), success/stop conditions, `Log Completed Run` modal, and expandable immutable run history.
+  6. *Standardized Measurement Contract:* Funnel stage matrix (Awareness, Discovery, Pilot, Conversion, Activation), metric names, formulas, data sources, and targets.
+  7. *Sequenced Launch Timeline & Phasing:* Phased milestones with timeframes, objectives, and exit criteria.
+  8. *Phase 4.8 Boundary Banner & Quiet Footer Navigation:* Phase 4.8 boundary card + `← Back to Step 4.6 Pricing Strategy` and `Review Construction Snapshot →`.
+- **Verification Evidence:**
+  - Automated Unit Tests: 6 / 6 PASS (`src/__tests__/creator/phase4-gtm-strategy.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
+  - Backend Tests (C#): 179 / 179 PASS (`WebApp.Tests.dll`).
+  - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
+
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
+
+
 
 

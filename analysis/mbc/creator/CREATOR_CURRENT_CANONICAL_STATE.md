@@ -190,7 +190,7 @@ Stage 4.1: Construction Snapshot       → FROZEN (Backend 14/14, Frontend 6/6)
 Stage 4.2: Operational Roadmap         → FROZEN (Backend 10/10, Frontend 5/5)
 Stage 4.3: Needs & Requirements        → FROZEN (Backend 14/14, Frontend 31/31)
 Stage 4.4: Skills & Training           → FROZEN (Backend 14/14, Frontend 9/9)
-Stage 4.5: Aids, Grants & Support      → FROZEN (Backend 22/22, Adapters Active)
+Stage 4.5: Aids, Grants & Support      → FROZEN (Backend 22/22, Frontend 8/8, Exact Figma 57221:11932)
 Stage 4.6: Pricing & Revenue Model     → FROZEN (Backend 41/41, Frontend 11/11)
 Stage 4.7: GTM & Launch Strategy       → FROZEN (Backend 19/19, Frontend 6/6)
 Stage 4.8: Launch Assets               → NEXT / APPROVED ARCHITECTURE (Not in this commit)
@@ -250,13 +250,19 @@ Stage 4.9: Construction Readiness      → RESERVED / FUTURE TASK
 - **Mandatory Legal Verification:** Legal or regulated requirements enforce `VERIFY`. Learning alone cannot bypass legal compliance.
 
 ### Stage 4.5 — Aids, Grants & Support Plan
+- **Persistence:** `Phase4Data.SupportPlan`.
+- **Deterministic Gate:** Guarded by `SupportPlanService.EvaluateGateAsync` (requires Phase 3 complete, HumainX complete, Snapshot active, Roadmap scheduled, Needs Analysis current, and Skills Plan current).
+- **Upstream Staleness Resolution UX:** If upstream roadmap or needs/skills are edited, Stage 4.5 safely blocks with `Support Engine Unavailable` alert and contextual dual navigation (`Go to Step 4.3 Needs Analysis`, `Go to Step 4.4 Skills & Training`).
 - **Selection Modes:** `Entitlement`, `Discretionary`, `Competitive`, `CreditAssessment`, `NeedsReview`.
 - **Eligibility Statuses:** `EligibleToApply`, `Awarded`.
 - **Critical Invariant:** `EligibleToApply` ≠ spendable launch cash. Potential or unawarded grants are strictly excluded from spendable launch budgets.
-- **Data Provenance:** Integrates *Aides-entreprises* Open Data + official French regional adapters.
+- **Data Provenance:** Integrates *Aides-entreprises* Open Data + official French regional adapters. Full audit trace accessible via Audit Details modal.
+- **Dynamic Breakdown:** 100% dynamic analytical breakdown (`WHAT YOU COULD GET`, `WHY THIS MAY FIT`, `WHAT WE ALREADY KNOW`, `WHEN TO APPLY`, `WHAT TO CHECK`, `WHAT YOU MAY NEED`, `OFFICIAL SOURCE`).
+- **Location Fact Persistence:** City/postcode input persists `project_location` into `RecordedEligibilityFacts` and triggers immediate re-evaluation without database schema drift.
 
 ### Stage 4.6 — Pricing & Revenue Model
 - **Persistence:** `Phase4Data.PricingStrategy`.
+- **Figma Reference:** Frame `57221:12167` ("Pricing & Revenue Model · Step 4.6").
 - **13 Supported Models:** OneTime, Subscription, UsageBased, TransactionFee, Commission, Retainer, ProjectBased, Freemium, Tiered, MarketplaceFee, Licensing, Hybrid, Other.
 - **No Invented Prices:** Grounding required from research, forecasts, or benchmarks. Insufficient data resolves to `NeedsValidation`.
 - **Floor Formulas:**
@@ -264,6 +270,20 @@ Stage 4.9: Construction Readiness      → RESERVED / FUTURE TASK
   - Absolute contribution: $P_{min} = VC + A$
 - **Tax Semantics:** Explicit `ConfiguredTaxMode` (`HT`, `TTC`, `Exempt`, `Unknown`). Zero crude B2B/B2C automatic tax inferences.
 - **Four-Price Independence:** `RecommendedPrice`, `FounderSelectedPrice`, `MarketReferencePrice`, and `ValidatedMarketPrice` are tracked independently. `ValidatedMarketPrice` strictly requires empirical evidence (paid pilot, preorder, historical sale).
+- **Eight Canonical Figma UI Sections:**
+  1. *Section 1: Compact Pricing Summary:* `YOUR CHOSEN PRICE`, large price display (`€{chosenPrice} per business / month`), badges (`Monthly subscription`, `Not tested` / `Empirically Validated`, `Draft`), and reassurance note *"Choose a starting price, then check how customers respond."*.
+  2. *Section 2: How you'll charge:* Inset card with `Suggested` badge, `Change model` action, 2-column breakdown of `Customers pay for`, `What's included`, `Usage limits — To confirm`, `Support included — To confirm`, and `Edit what's included` inline action.
+  3. *Section 3: Price comparison & choice:* Left `SUGGESTED PRICE` with amber warning and `"Use suggested price"` CTA; Right `YOUR CHOSEN PRICE` interactive input with `EUR (€)` prefix, numerical value input, dynamic note trigger, and tax confirmation indicator.
+  4. *Section 4: Why this suggestion?:* 3 analytical rows (`YOUR OFFER`, `YOUR CUSTOMERS`, `TO VERIFY`), status strip (`Delivery costs: {cost}`, `Market references: {status}`, `View assumptions ▾`), and expandable technical ledger.
+  5. *Section 5: What could you earn?:* Interactive Scenario Simulator with `PAYING BUSINESSES` numeric input, real-time revenue formula (`€{chosenPrice} × {businesses} businesses = €{total}` `Estimated monthly revenue`), footnote caveats, and yellow warning box *"Profit estimate unavailable: Confirm your costs to understand what you could keep."*.
+  6. *Section 6: Check your price:* Status badge (`Not tested`), empty state alert (`No sales or paid preorders recorded.`), educational comparison matrix (Market reference, Customer feedback, Customer interest, Sale or paid preorder), and dynamic action buttons (`Add feedback`, `Add a sale or paid preorder`).
+  7. *Section 7: Next action:* `NEXT ACTION` eyebrow, `Test your starting offer` title, 3 verification bullet points (Offer, Price to test, Customers), and `"Review roadmap task"` action button.
+  8. *Section 8: Quiet Journey Footer Navigation:* Left `"← Back to Aids & Support"`, reassurance label *"You can continue while your price still needs testing."*, and primary CTA `"Save & Continue →"` linking to Step 4.7.
+- **Verification Evidence:**
+  - Automated Unit Tests: 11 / 11 PASS (`src/__tests__/creator/phase4-pricing-strategy.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
+  - Live Browser E2E: Playwright verified 1440px desktop and 1920px widescreen across live server with 0 DOM errors, 0 layout overflows, and responsive scaling.
+  - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
 
 ### Stage 4.7 — GTM & Launch Strategy
 - **Persistence:** `Phase4Data.GtmStrategy`.

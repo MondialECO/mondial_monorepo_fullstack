@@ -75,6 +75,12 @@ export interface CreatorNeed {
   founderEdited: boolean;
   customBudget?: number | null;
   customTiming?: string | null;
+  whatIsNeeded?: string;
+  whyThisApplies?: string;
+  whatYouAlreadyHave?: string;
+  whatIsStillMissing?: string;
+  whatWouldSatisfy?: string;
+  founderInformation?: string;
   generatedAt: string;
   updatedAt: string;
 }
@@ -112,6 +118,7 @@ export interface NeedsAnalysisResponse {
   criticalCount: number;
   highCount: number;
   satisfiedCount: number;
+  ideaVersion?: number;
 }
 
 export interface UpdateNeedStateRequest {
@@ -120,4 +127,7 @@ export interface UpdateNeedStateRequest {
   notes?: string;
   customBudget?: number | null;
   customTiming?: string | null;
+  founderInformation?: string;
+  expectedVersion?: number;
 }
+

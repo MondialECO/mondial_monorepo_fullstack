@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { Phase4ProfileGuard } from '@/components/creator/phase4/Phase4ProfileGuard';
 import { NeedsAnalysisView } from '@/components/creator/phase4/NeedsAnalysisView';
+import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import {
   getNeedsAnalysis,
   generateNeedsAnalysis,
   refreshNeedsAnalysis,
   updateNeedState,
+  keepCurrentNeeds,
 } from '@/lib/api-creator-needs';
 import type {
   NeedsAnalysisResponse,
@@ -21,166 +21,185 @@ export default function CreatorPhase4NeedsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
+        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
           Loading Needs & Requirements...
         </div>
       }
     >
-      <Phase4ProfileGuard>
-        <NeedsPageContent />
-      </Phase4ProfileGuard>
+      <CreatorPhase4NeedsInner />
     </Suspense>
   );
 }
 
-function NeedsPageContent() {
+function CreatorPhase4NeedsInner() {
   const searchParams = useSearchParams();
-  const ideaId = searchParams.get('ideaId') || '';
+  const { state: progressState } = useCreatorProgress();
+  const ideaId = searchParams.get('ideaId') || progressState?.activeIdeaId || '';
 
+  return (
+    <Phase4ProfileGuard>
+      <NeedsPageContent ideaId={ideaId} />
+    </Phase4ProfileGuard>
+  );
+}
+
+function NeedsPageContent({ ideaId }: { ideaId: string }) {
+  const { state: progressState, refetch } = useCreatorProgress();
   const [data, setData] = useState<NeedsAnalysisResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [gateError, setGateError] = useState<{ code: string; message: string } | null>(null);
 
-  const fetchData = async () => {
+  const effectiveIdeaId = ideaId || progressState?.activeIdeaId || '';
+  const projectName = progressState?.project?.name || 'Your Venture';
+
+  const loadNeeds = useCallback(async () => {
+    if (!effectiveIdeaId) {
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    setGateError(null);
     try {
-      setLoading(true);
-      setError(null);
-      setGateError(null);
-      const res = await getNeedsAnalysis(ideaId);
+      const res: NeedsAnalysisResponse = await getNeedsAnalysis(effectiveIdeaId);
       setData(res);
     } catch (err: any) {
-      if (err.message && err.message.includes('404')) {
+      if (err?.response?.status === 404 || (err?.message && err.message.includes('404'))) {
         setData(null);
       } else {
-        setError(err.message || "We couldn't load your needs analysis.");
+        console.warn('Could not load needs analysis:', err);
+        setError(err.response?.data?.message || err.message || "We couldn't load your needs analysis.");
       }
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, [effectiveIdeaId]);
 
   useEffect(() => {
-    fetchData();
-  }, [ideaId]);
+    loadNeeds();
+  }, [loadNeeds]);
 
   const handleGenerate = async () => {
+    if (!effectiveIdeaId) {
+      setError('ideaId is required for Creator changes. Please open your project from the dashboard.');
+      return;
+    }
+    setIsGenerating(true);
+    setError(null);
+    setGateError(null);
     try {
-      setLoading(true);
-      setError(null);
-      setGateError(null);
-      const res = await generateNeedsAnalysis(ideaId);
+      const res = await generateNeedsAnalysis(effectiveIdeaId);
       setData(res);
+      await refetch(effectiveIdeaId);
     } catch (err: any) {
-      if (err.code) {
+      if (err?.response?.status === 409) {
+        await loadNeeds();
+        await refetch(effectiveIdeaId);
+        setError('This idea was updated in another tab. We loaded the latest project version for you. Please try again.');
+      } else if (err.code) {
         setGateError({ code: err.code, message: err.message });
       } else {
-        setError(err.message || "We couldn't generate your needs analysis.");
+        const message = err.response?.data?.message || err.message || "We couldn't generate your needs analysis.";
+        setError(message);
       }
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
   const handleRefresh = async () => {
+    if (!effectiveIdeaId) {
+      setError('ideaId is required for Creator changes. Please open your project from the dashboard.');
+      return;
+    }
+    setIsGenerating(true);
+    setError(null);
+    setGateError(null);
     try {
-      setLoading(true);
-      setError(null);
-      setGateError(null);
-      const res = await refreshNeedsAnalysis(ideaId);
+      const res = await refreshNeedsAnalysis(effectiveIdeaId);
       setData(res);
+      await refetch(effectiveIdeaId);
     } catch (err: any) {
-      if (err.code) {
+      if (err?.response?.status === 409) {
+        await loadNeeds();
+        await refetch(effectiveIdeaId);
+        setError('This idea was updated in another tab. We loaded the latest project version for you. Please try again.');
+      } else if (err.code) {
         setGateError({ code: err.code, message: err.message });
       } else {
-        setError(err.message || 'Failed to refresh needs analysis.');
+        const message = err.response?.data?.message || err.message || 'Failed to refresh needs analysis.';
+        setError(message);
       }
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
   const handleUpdateNeedState = async (needKey: string, req: UpdateNeedStateRequest) => {
+    if (!effectiveIdeaId) return;
     try {
-      const res = await updateNeedState(ideaId, needKey, req);
+      const res = await updateNeedState(effectiveIdeaId, needKey, req);
       setData(res);
     } catch (err: any) {
-      setError(err.message || 'Failed to update requirement state.');
+      if (err?.response?.status === 409) {
+        await loadNeeds();
+        await refetch(effectiveIdeaId);
+        setError('This idea was updated in another tab. Please review and retry.');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to update requirement state.');
+      }
+      throw err;
+    }
+  };
+
+  const handleKeepCurrent = async () => {
+    if (!effectiveIdeaId) return;
+    try {
+      const res = await keepCurrentNeeds(effectiveIdeaId);
+      setData(res);
+    } catch (err: any) {
+      console.warn('Could not preserve current version:', err);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-      <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 space-y-8">
-        {/* Navigation & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
-          <div className="space-y-1">
-            <Link
-              href={`/dashboard/creator/phase-4/roadmap?ideaId=${encodeURIComponent(ideaId)}`}
-              className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors mb-2"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Operational Roadmap</span>
-            </Link>
-            <div className="text-xs uppercase tracking-wider font-semibold text-indigo-400">
-              PHASE 4 · CONSTRUCTION & LAUNCH PREPARATION
-            </div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-0.5">
-              STEP 4.3 · NEEDS & REQUIREMENTS ENGINE
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Define what you need to build and launch.
-            </h1>
-            <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
-              MBC converts your construction snapshot gaps and operational roadmap into a structured, traceable inventory of team, services, technology, legal, and capital requirements.
-            </p>
-          </div>
+    <div className="w-full max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 animate-fadeIn">
+      {/* Compact Page Header (Aligned with Phase 4 Canon) */}
+      <div className="space-y-1">
+        <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+          PHASE 4 · STEP 4.3
         </div>
-
-        {/* Error State */}
-        {error && (
-          <div className="p-6 rounded-2xl bg-rose-950/30 border border-rose-500/40 text-rose-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-6 h-6 text-rose-400 shrink-0 mt-0.5" />
-              <div>
-                <div className="font-semibold text-white">We couldn't process your needs analysis.</div>
-                <div className="text-xs text-rose-300 mt-1">Your existing project data is safe.</div>
-                <div className="text-xs text-rose-400/80 mt-1 font-mono">{error}</div>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                if (!data?.needsAnalysis) {
-                  handleGenerate();
-                } else {
-                  fetchData();
-                }
-              }}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
-            >
-              Try Again
-            </button>
-          </div>
-        )}
-
-        {/* Needs Analysis View */}
-        <NeedsAnalysisView
-          ideaId={ideaId}
-          projectName="Your Venture"
-          analysis={data?.needsAnalysis || null}
-          updateAvailable={data?.updateAvailable || false}
-          changedSources={data?.changedSources || []}
-          totalActiveNeeds={data?.totalActiveNeeds || 0}
-          criticalCount={data?.criticalCount || 0}
-          highCount={data?.highCount || 0}
-          satisfiedCount={data?.satisfiedCount || 0}
-          isLoading={loading}
-          gateError={gateError}
-          onGenerate={handleGenerate}
-          onRefresh={handleRefresh}
-          onUpdateNeedState={handleUpdateNeedState}
-        />
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+          Needs & Requirements
+        </h1>
+        <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+          Review what your project needs, what you already have, and what remains to be covered.
+        </p>
       </div>
+
+      {/* Main Needs Analysis View */}
+      <NeedsAnalysisView
+        ideaId={effectiveIdeaId}
+        projectName={projectName}
+        analysis={data?.needsAnalysis || null}
+        updateAvailable={data?.updateAvailable || false}
+        changedSources={data?.changedSources || []}
+        totalActiveNeeds={data?.totalActiveNeeds || 0}
+        criticalCount={data?.criticalCount || 0}
+        highCount={data?.highCount || 0}
+        satisfiedCount={data?.satisfiedCount || 0}
+        isLoading={isLoading}
+        isGenerating={isGenerating}
+        error={error}
+        gateError={gateError}
+        onGenerate={handleGenerate}
+        onRefresh={handleRefresh}
+        onUpdateNeedState={handleUpdateNeedState}
+        onKeepCurrent={handleKeepCurrent}
+        onClearError={() => setError(null)}
+      />
     </div>
   );
 }

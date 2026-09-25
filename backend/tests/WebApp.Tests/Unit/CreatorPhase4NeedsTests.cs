@@ -450,5 +450,72 @@ namespace WebApp.Tests.Unit
             journey.Phase4Data!.ConstructionSnapshot.Should().BeSameAs(origSnapshot);
             journey.Phase4Data!.Roadmap.Should().BeSameAs(origRoadmap);
         }
+
+        [Fact]
+        public async Task Founder_Decision_And_Information_Do_Not_Automatically_Satisfy_Need()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            await svc.GenerateNeedsAnalysisAsync(journey.UserId, journey.ActiveIdeaId);
+
+            // Confirm need
+            var confirmRes = await svc.UpdateNeedStateAsync(journey.UserId, "legal.capital-deposit", new UpdateNeedStateRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                FounderState = NeedFounderState.Confirmed
+            });
+
+            var needAfterConfirm = confirmRes.NeedsAnalysis!.ActiveNeeds.FirstOrDefault(n => n.Key == "legal.capital-deposit");
+            needAfterConfirm.Should().NotBeNull();
+            needAfterConfirm!.FounderState.Should().Be(NeedFounderState.Confirmed);
+            needAfterConfirm.SystemStatus.Should().Be(NeedSystemStatus.Identified, "Confirming a need must not automatically satisfy it");
+
+            // Provide founder information
+            var infoRes = await svc.UpdateNeedStateAsync(journey.UserId, "legal.capital-deposit", new UpdateNeedStateRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                FounderInformation = "Opened Qonto account and deposited EUR 1,000 awaiting notary certificate."
+            });
+
+            var needAfterInfo = infoRes.NeedsAnalysis!.ActiveNeeds.FirstOrDefault(n => n.Key == "legal.capital-deposit");
+            needAfterInfo.Should().NotBeNull();
+            needAfterInfo!.FounderInformation.Should().Be("Opened Qonto account and deposited EUR 1,000 awaiting notary certificate.");
+            needAfterInfo.SystemStatus.Should().Be(NeedSystemStatus.Identified, "Adding founder information records evidence but does not mark satisfied");
+
+            // Refresh preserves founder decision and information
+            var refreshRes = await svc.RefreshNeedsAnalysisAsync(journey.UserId, journey.ActiveIdeaId);
+            var needAfterRefresh = refreshRes.NeedsAnalysis!.ActiveNeeds.FirstOrDefault(n => n.Key == "legal.capital-deposit");
+            needAfterRefresh.Should().NotBeNull();
+            needAfterRefresh!.FounderState.Should().Be(NeedFounderState.Confirmed);
+            needAfterRefresh.FounderInformation.Should().Be("Opened Qonto account and deposited EUR 1,000 awaiting notary certificate.");
+            needAfterRefresh.SystemStatus.Should().Be(NeedSystemStatus.Identified);
+        }
+
+        [Fact]
+        public async Task Keep_Current_Preserves_Version_And_Clears_Update_Available()
+        {
+            var journey = BuildCompleteJourney();
+            journey.IdeaVersion = 42;
+            SetupValidPrerequisites(journey);
+
+            var svc = CreateService();
+            await svc.GenerateNeedsAnalysisAsync(journey.UserId, journey.ActiveIdeaId);
+
+            // Simulate upstream update
+            journey.Phase4Data!.Roadmap!.UpdatedAt = DateTime.UtcNow.AddMinutes(5);
+
+            var checkRes = await svc.GetNeedsAnalysisAsync(journey.UserId, journey.ActiveIdeaId);
+            checkRes.UpdateAvailable.Should().BeTrue();
+
+            var keepRes = await svc.KeepCurrentNeedsAsync(journey.UserId, journey.ActiveIdeaId);
+            keepRes.UpdateAvailable.Should().BeFalse();
+            keepRes.IdeaVersion.Should().Be(42);
+
+            var verifyRes = await svc.GetNeedsAnalysisAsync(journey.UserId, journey.ActiveIdeaId);
+            verifyRes.UpdateAvailable.Should().BeFalse();
+        }
     }
 }
+

@@ -29,50 +29,98 @@ export type FounderDecisionChoice =
   | 'ResetRecommendation';
 
 export interface LearningAction {
-  topic: string;
+  id?: string;
+  resolutionKey?: string;
+  topic?: string;
+  capability?: string;
   objective: string;
   currentLevel?: string;
   targetLevel: string;
-  estimatedHours: number;
-  recommendedFormat: string;
-  timing: string;
-  suggestedTopics: string[];
-  priority: string;
-  feasibility: string;
+  estimatedHours?: number;
+  estimatedLearningEffort?: string;
+  recommendedFormat?: string;
+  learningFormat?: string;
+  timing?: string;
+  suggestedTopics?: string[];
+  learningTopics?: string[];
+  completionCriteria?: string[];
+  priority?: string;
+  feasibility?: string;
+  whatYoullBeAbleToDo?: string;
+  whatYoullCreate?: string;
+  suggestedEffortText?: string;
+  practicalSteps?: Array<{ step: string; title: string }>;
+  trainingOptions?: {
+    status?: string;
+    courseName?: string;
+    providerAndCost?: string;
+  };
+  workloadImpact?: {
+    weeklyAvailabilityHours?: number;
+    alreadyPlannedHours?: number;
+    proposedLearningHours?: number;
+    totalIfAcceptedHours?: number;
+    weeklyBufferHours?: number;
+  };
 }
 
 export interface DelegationRequirement {
-  roleTitle: string;
+  id?: string;
+  resolutionKey?: string;
+  roleTitle?: string;
+  capability?: string;
   suggestedResourceType: string;
-  estimatedBudgetTier: string;
-  timing: string;
-  urgency: string;
-  delegationScope: string;
+  estimatedBudgetTier?: string;
+  timing?: string;
+  urgency?: string;
+  delegationScope?: string;
+  requirementSummary?: string;
   expectedOutcome: string;
+  targetTiming?: string;
+  workingLanguage?: string;
+  estimatedWeeklyTime?: string;
+  expectedDeliverable?: string;
+  blocking?: boolean;
 }
 
 export interface VerificationRequirement {
+  id?: string;
+  resolutionKey?: string;
+  requirement?: string;
   verificationType: string;
-  authoritySource: string;
-  requiredEvidence: string;
+  authoritySource?: string;
+  requiredEvidence?: string;
+  evidenceRequired?: string[];
+  whyRequired?: string;
   isMandatory: boolean;
   statutoryDeadline?: string;
   optionalLearningSupplement?: LearningAction;
+  whatNeedsChecking?: string;
+  whatYouCanShare?: string;
+  whatIsStillUnclear?: string;
+  timing?: string;
+  blocking?: boolean;
 }
 
 export interface CoveredCapability {
-  key: string;
+  id?: string;
+  key?: string;
+  resolutionKey?: string;
   needKey?: string;
   capability: string;
-  category: string;
-  evidence: string;
-  source: string;
+  category?: string;
+  evidence?: string;
+  source?: string | string[];
+  coverageSource?: string;
+  currentLevel?: string;
   skillLevel?: string;
   yearsOfExperience?: number;
-  resolvedAt: string;
+  resolvedAt?: string;
+  matchReason?: string;
 }
 
 export interface CapabilityResolution {
+  id?: string;
   key: string;
   needKey: string;
   capability: string;
@@ -87,11 +135,15 @@ export interface CapabilityResolution {
   why: string;
   currentSkillLevel?: string;
   targetSkillLevel?: string;
+  requiredCapabilityLevel?: string;
   estimatedLearningHours?: number;
+  estimatedEffort?: string;
+  learningFeasibility?: string;
   learningAction?: LearningAction;
   delegationRequirement?: DelegationRequirement;
   verificationRequirement?: VerificationRequirement;
   isMandatoryVerification: boolean;
+  authoritySource?: string;
   founderDecision?: string;
   founderNotes?: string;
   customTargetLevel?: string;
@@ -99,7 +151,7 @@ export interface CapabilityResolution {
   source: string[];
   sourceReference: string[];
   generatedAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export interface SkillsSourceVersions {
@@ -118,34 +170,46 @@ export interface FounderProfileSummaryDto {
   weeklyAvailability?: string;
   learningPreference?: string;
   delegationPreference?: string;
-  topSkills: string[];
+  preferredApproach?: string;
+  currentSituation?: string;
+  topSkills?: string[];
+  strongestRelevantCapabilities?: string[];
   yearsOfExperienceTotal?: number;
-  isProfileComplete: boolean;
+  isProfileComplete?: boolean;
 }
 
 export interface SkillsPlanMetrics {
-  totalRequirements: number;
+  totalRequirements?: number;
   learnCount: number;
   delegateCount: number;
   verifyCount: number;
   coveredCount: number;
   needsReviewCount: number;
-  mandatoryVerificationCount: number;
-  totalEstimatedLearningHours: number;
-  immediateActionCount: number;
+  mandatoryVerificationCount?: number;
+  totalEstimatedLearningHours?: number;
+  immediateActionCount?: number;
 }
 
 export interface SkillsPlan {
-  version: number;
+  version?: number;
   generatedAt: string;
   updatedAt: string;
   status: string;
-  sourceVersions: SkillsSourceVersions;
+  sourceVersions?: SkillsSourceVersions;
   resolutions: CapabilityResolution[];
+  learningPlan?: LearningAction[];
+  delegationPlan?: DelegationRequirement[];
+  verificationPlan?: VerificationRequirement[];
   coveredCapabilities: CoveredCapability[];
   founderProfileSummary?: FounderProfileSummaryDto;
   summary: SkillsPlanMetrics;
-  founderEdited: boolean;
+  founderEdited?: boolean;
+  totalResolutions?: number;
+  learnCount?: number;
+  delegateCount?: number;
+  verifyCount?: number;
+  coveredCount?: number;
+  needsReviewCount?: number;
 }
 
 export interface SkillsPlanResponse {
@@ -153,6 +217,13 @@ export interface SkillsPlanResponse {
   updateAvailable: boolean;
   changedSources: string[];
   founderProfileSummary?: FounderProfileSummaryDto;
+  profileContext?: FounderProfileSummaryDto;
+  learnCount?: number;
+  delegateCount?: number;
+  verifyCount?: number;
+  coveredCount?: number;
+  needsReviewCount?: number;
+  ideaVersion?: number;
   error?: string;
 }
 
@@ -161,4 +232,6 @@ export interface UpdateResolutionRequest {
   founderDecision?: string;
   founderNotes?: string;
   customTargetLevel?: string;
+  expectedVersion?: number;
 }
+

@@ -8,6 +8,7 @@ namespace WebApp.Services.Interface
         Task<SkillsPlanResponse> GetSkillsPlanAsync(string userId, string? ideaId = null);
         Task<SkillsPlanResponse> GenerateSkillsPlanAsync(string userId, string? ideaId = null);
         Task<SkillsPlanResponse> RefreshSkillsPlanAsync(string userId, string? ideaId = null);
+        Task<SkillsPlanResponse> KeepCurrentSkillsPlanAsync(string userId, string? ideaId = null);
         Task<SkillsPlanResponse> UpdateResolutionAsync(string userId, string resolutionKey, UpdateResolutionRequest request);
     }
 }

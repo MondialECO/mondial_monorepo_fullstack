@@ -252,6 +252,7 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public int VerifyCount { get; set; }
         public int CoveredCount { get; set; }
         public int NeedsReviewCount { get; set; }
+        public long IdeaVersion { get; set; }
     }
 
     public class UpdateResolutionRequest
@@ -261,5 +262,6 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public string? FounderDecision { get; set; }
         public string? FounderNotes { get; set; }
         public string? CustomTargetLevel { get; set; }
+        public long? ExpectedVersion { get; set; }
     }
 }

@@ -184,8 +184,10 @@ export interface PricingStrategy {
 
 export interface PricingStrategyResponse {
   pricingStrategy?: PricingStrategy | null;
+  strategy?: PricingStrategy | null;
   updateAvailable: boolean;
   changedSources: string[];
+  prerequisiteGate?: any;
 }
 
 export interface UpdatePricingOfferRequest {

@@ -260,38 +260,39 @@ namespace WebApp.Services.Implementations
             j.Phase2Data = idea.Phase2Data ??= new CreatorPhase2Data();
             j.Phase3Data = idea.Phase3Data ??= new CreatorPhase3Data();
             j.Phase4Data = idea.Phase4Data ??= new CreatorPhase4Data();
-            if (canonicalNeeds != null)
+            if (canonicalNeeds != null && idea.Phase4Data.NeedsAnalysis == null)
             {
                 j.Phase4Data.NeedsAnalysis = canonicalNeeds;
             }
-            if (canonicalSkills != null)
+            if (canonicalSkills != null && idea.Phase4Data.SkillsPlan == null)
             {
                 j.Phase4Data.SkillsPlan = canonicalSkills;
             }
-            if (canonicalSupport != null)
+            if (canonicalSupport != null && idea.Phase4Data.SupportPlan == null)
             {
                 j.Phase4Data.SupportPlan = canonicalSupport;
             }
-            if (canonicalPricing != null)
+            if (canonicalPricing != null && idea.Phase4Data.PricingStrategy == null)
             {
                 j.Phase4Data.PricingStrategy = canonicalPricing;
             }
-            if (canonicalGtm != null)
+            if (canonicalGtm != null && idea.Phase4Data.GtmStrategy == null)
             {
                 j.Phase4Data.GtmStrategy = canonicalGtm;
             }
-            if (canonicalSnapshot != null)
+            if (canonicalSnapshot != null && idea.Phase4Data.ConstructionSnapshot == null)
             {
                 j.Phase4Data.ConstructionSnapshot = canonicalSnapshot;
             }
-            if (canonicalRoadmap != null)
+            if (canonicalRoadmap != null && idea.Phase4Data.Roadmap == null)
             {
                 j.Phase4Data.Roadmap = canonicalRoadmap;
             }
-            if (canonicalVersions != null)
+            if (canonicalVersions != null && idea.Phase4Data.SourceVersions == null)
             {
                 j.Phase4Data.SourceVersions = canonicalVersions;
             }
+
             j.Phase5Data = idea.Phase5Data ??= new CreatorPhase5Data();
             var p6 = j.Phase6Data ??= new CreatorPhase6Data();
             p6.SmartMatchmaking = idea.SmartMatchmaking ??= new CreatorSmartMatchmaking();
@@ -1390,30 +1391,28 @@ namespace WebApp.Services.Implementations
         public async Task<CreatorJourney> SetPhase4NeedsAnalysisAsync(string userId, Models.DatabaseModels.Phase4.NeedsAnalysis needsAnalysis, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var p4 = j.Phase4Data ??= new CreatorPhase4Data();
             p4.NeedsAnalysis = needsAnalysis;
 
-            // Single source of truth: Persisted on CreatorJourney, NO dual write to CreatorIdea
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update
-                    .Set(x => x.Phase4Data.NeedsAnalysis, needsAnalysis)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase4Data.NeedsAnalysis, needsAnalysis));
+            j.IdeaVersion = idea.Version;
             return j;
         }
 
         public async Task<CreatorJourney> SetPhase4SkillsPlanAsync(string userId, Models.DatabaseModels.Phase4.SkillsPlan skillsPlan, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var p4 = j.Phase4Data ??= new CreatorPhase4Data();
             p4.SkillsPlan = skillsPlan;
 
-            // Single source of truth: Persisted on CreatorJourney, NO dual write to CreatorIdea
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update
-                    .Set(x => x.Phase4Data.SkillsPlan, skillsPlan)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase4Data.SkillsPlan, skillsPlan));
+            j.IdeaVersion = idea.Version;
             return j;
         }
 

@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { Phase4ProfileGuard } from '@/components/creator/phase4/Phase4ProfileGuard';
 import { PricingStrategyView } from '@/components/creator/phase4/PricingStrategyView';
+import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import {
   getPricingStrategy,
   generatePricingStrategy,
@@ -21,33 +22,48 @@ export default function CreatorPhase4PricingPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 font-mono text-sm">
+        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-mono text-sm">
           Loading Pricing & Revenue Model Engine...
         </div>
       }
     >
-      <Phase4ProfileGuard>
-        <PricingPageContent />
-      </Phase4ProfileGuard>
+      <CreatorPhase4PricingInner />
     </Suspense>
   );
 }
 
-function PricingPageContent() {
+function CreatorPhase4PricingInner() {
   const searchParams = useSearchParams();
-  const ideaId = searchParams.get('ideaId') || '';
+  const { state: progressState } = useCreatorProgress();
+  const ideaId = searchParams.get('ideaId') || progressState?.activeIdeaId || '';
+
+  return (
+    <Phase4ProfileGuard>
+      <PricingPageContent ideaId={ideaId} />
+    </Phase4ProfileGuard>
+  );
+}
+
+function PricingPageContent({ ideaId }: { ideaId: string }) {
+  const { state: progressState, refetch } = useCreatorProgress();
+  const effectiveIdeaId = ideaId || progressState?.activeIdeaId || '';
+  const projectName = progressState?.project?.name || 'Your Project';
 
   const [data, setData] = useState<PricingStrategyResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [gateError, setGateError] = useState<{ code: string; message: string } | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!effectiveIdeaId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
       setGateError(null);
-      const res = await getPricingStrategy(ideaId);
+      const res = await getPricingStrategy(effectiveIdeaId);
       setData(res);
     } catch (err: any) {
       if (err.message && err.message.includes('404')) {
@@ -68,19 +84,24 @@ function PricingPageContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [effectiveIdeaId]);
 
   useEffect(() => {
     fetchData();
-  }, [ideaId]);
+  }, [fetchData]);
 
   const handleGenerate = async () => {
+    if (!effectiveIdeaId) {
+      setError('ideaId is required. Please open your project from the dashboard.');
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
       setGateError(null);
-      const res = await generatePricingStrategy(ideaId);
+      const res = await generatePricingStrategy(effectiveIdeaId);
       setData(res);
+      await refetch(effectiveIdeaId);
     } catch (err: any) {
       if (err.code) {
         setGateError({ code: err.code, message: err.message });
@@ -103,12 +124,14 @@ function PricingPageContent() {
   };
 
   const handleRefresh = async () => {
+    if (!effectiveIdeaId) return;
     try {
       setLoading(true);
       setError(null);
       setGateError(null);
-      const res = await refreshPricingStrategy(ideaId);
+      const res = await refreshPricingStrategy(effectiveIdeaId);
       setData(res);
+      await refetch(effectiveIdeaId);
     } catch (err: any) {
       if (err.code) {
         setGateError({ code: err.code, message: err.message });
@@ -121,9 +144,11 @@ function PricingPageContent() {
   };
 
   const handleUpdateOffer = async (offerKey: string, req: UpdatePricingOfferRequest) => {
+    if (!effectiveIdeaId) return;
     try {
-      const res = await updatePricingOffer(ideaId, offerKey, req);
+      const res = await updatePricingOffer(effectiveIdeaId, offerKey, req);
       setData(res);
+      await refetch(effectiveIdeaId);
     } catch (err: any) {
       setError(err.message || "Couldn't update your offer.");
       throw err;
@@ -131,46 +156,20 @@ function PricingPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Top Banner Navigation */}
-      <div className="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-10 px-6 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link
-            href={`/dashboard/creator/phase-4/support?ideaId=${ideaId}`}
-            className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Step 4.5 Aids & Grants
-          </Link>
-          <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
-            <span>4.1 Snapshot ✓</span>
-            <span>4.2 Roadmap ✓</span>
-            <span>4.3 Needs ✓</span>
-            <span>4.4 Skills ✓</span>
-            <span>4.5 Grants ✓</span>
-            <span className="text-emerald-400 font-semibold">4.6 Pricing (Current)</span>
-            <Link
-              href={`/dashboard/creator/phase-4/gtm?ideaId=${ideaId}`}
-              className="text-slate-400 hover:text-emerald-400 transition-colors"
-            >
-              4.7 GTM →
-            </Link>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background text-foreground">
 
       {/* Global Error Banner */}
       {error && (
         <div className="max-w-7xl mx-auto p-6">
-          <div className="bg-red-950/40 border border-red-800/60 rounded-xl p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
             <div className="flex-1">
-              <h4 className="text-sm font-semibold text-red-200">Error</h4>
-              <p className="text-xs text-red-300/80">{error}</p>
+              <h4 className="text-sm font-semibold text-foreground">Error</h4>
+              <p className="text-xs text-muted-foreground">{error}</p>
             </div>
             <button
               onClick={() => setError(null)}
-              className="text-xs text-red-400 hover:text-red-200"
+              className="text-xs text-muted-foreground hover:text-foreground font-semibold"
             >
               Dismiss
             </button>
@@ -180,9 +179,9 @@ function PricingPageContent() {
 
       {/* Main View */}
       <PricingStrategyView
-        ideaId={ideaId}
-        projectName="Your Project"
-        strategy={data?.pricingStrategy || null}
+        ideaId={effectiveIdeaId}
+        projectName={projectName}
+        strategy={data?.strategy || data?.pricingStrategy || null}
         updateAvailable={data?.updateAvailable || false}
         changedSources={data?.changedSources || []}
         isLoading={loading}
