@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-25 (Creator Phase 4.4 Skills & Training Plan Delivery: Exact Figma Alignment, Dynamic Detail Panels, Mandatory Verification Lock, Keep-Current Lifecycle & Concurrency Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-25 (Creator Phase 4.5 Aids, Grants & Public Support Delivery: Exact Figma 57221-11932 Alignment, Analytical Breakdown, Location Persistence, Audit Trace & Concurrency Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -1689,7 +1689,32 @@ RC1 Freeze
   - Automated Unit Tests: 14/14 PASS (`CreatorPhase4SkillsTests.cs`); Frontend tests: 11/11 PASS (`phase4-skills-plan.test.tsx`).
   - Full Creator Vitest Suite: 150/150 PASS across 12 test files.
   - Live Browser E2E: Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, Delegation Brief modal, and Evidence Guide modal with 0 DOM errors and 0 layout overflows.
-  - TypeScript & Build: `npx tsc --noEmit` 0 errors; `dotnet build backend/WebApp.csproj` 0 errors.
+
+**2026-09-25 — Creator Phase 4.5 Aids, Grants & Public Support: Exact Figma 57221-11932 Alignment, Analytical Breakdown, Location Persistence, Audit Trace & Concurrency Delivery.**
+- **Figma Reference & Layout (§6.5):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11932` "Aids, Grants & Support · Step 4.5 Content"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/support`
+- **Compact Page-Level Header (§6.5):** Eyebrow `"PHASE 4 · STEP 4.5"`, Title `"Aids, Grants & Public Support"`, Subtitle `"Explore funding schemes, training support, and institutional backing for your venture."`.
+- **Five Canonical Figma UI Components:**
+  1. *Component 1: Summary Card ("{count} options to explore"):* Reports total options count (JetBrains Mono number + bold Inter heading), dynamic founder profile chips (Country `France` • Situation `{currentSituation}` • Formation phase `Project in preparation`), profile edit deep link (`Update my details ↗`), and quiet conditions disclaimer: *"Each programme has its own conditions and application process. Saving an option does not submit an application."*.
+  2. *Component 2: Location Card ("Where will you start your business?"):* Subtitle *"This helps us check local support."*, MapPin icon input (`City or postcode (e.g. Lyon, 69002)`), and `"Save location"` button. Dispatches `onAnswerFact('project_location', location)` to persist location fact into `RecordedEligibilityFacts` and automatically trigger re-evaluation without modifying backend schemas.
+  3. *Metric Strip (Evaluated / Eligible / Potential / Missing / Ready / Tracking):* Satisfies contract with quantitative counts for catalog schemes, authoritative matches, pending minor facts, requires input, MBC docs ready, and in-preparation founder tracking.
+  4. *Component 4: Opportunity Cards List & Rich Inset Panels:*
+     - Pill badges: Category badge (`Advice & mentoring`, `Social Contribution Exemption`, `Grant`, `Allowance`, `InnovationSupport`, `Financing & Loan`, `Training support`, `EuropeanFunding`) + Status badge (`● A few details to check`, `● May fit your project`, `● Eligible to Apply`, `● Eligible (Statutory)`, `● Awarded`).
+     - Card Headline, Value Subtitle, Description, and Official source provenance line (`Official details: {programmeOwner} via {catalogueSource}`).
+     - Collapsed State Actions: `"Save this option"` (with toggleable bookmark icon) + `"View details ⌄"` chevron action.
+     - Expanded Inset Panel (Figma 57221:11932):
+       - 2-Column Analytical Breakdown: `WHAT YOU COULD GET`, `WHY THIS MAY FIT`, `WHAT WE ALREADY KNOW`, `WHEN TO APPLY`, `WHAT TO CHECK` (5 bullet points with subtle dots), `WHAT YOU MAY NEED`, `OFFICIAL SOURCE` (`Official portal verified ↗` with deep link).
+       - Blue Callout Box (`BEFORE YOU APPLY`): Info icon + *"When an official source is verified, you can prepare required documents and propose preparation tasks to your Operational Roadmap."*.
+       - Action Buttons Bar: `Check my details`, `Audit Details` (opens Audit Provenance modal), `Save this option`, `Track Application`, and primary `Open official website ↗`.
+  5. *Component 5: Quiet Journey Footer Navigation:* Left `"← Back to Skills & Training"` linking to Step 4.4, centered reassurance text *"You can return to your saved support options later."*, and right primary CTA `"Continue to Pricing & Revenue →"` linking to Step 4.6.
+  6. *Phase 4.6 Milestone Banner:* Operational readiness banner (`"PHASE 4.6 READY · NEXT OPERATIONAL MILESTONE"`, `"Pricing & Revenue Model Engine"`, `"Build My Pricing Strategy →"`).
+- **Audit Details Modal:** Surfaces full provenance trace (`Programme Owner`, `Managing Authority`, `Catalogue Source`, `Selection Dimension`), Conditions Met (with green checkmarks), and Application Checklist & MBC Artifact Reuse ("Reuses: Phase 3 Executive Business Plan", "Reuses: Phase 3 Financial Forecast").
+- **Zero Static/Mock Data Guarantee:** 100% of rendered opportunities, amounts, conditions, categories, and breakdown copy are dynamically derived from active MongoDB database records and backend rule evaluation.
+- **Verification Evidence:**
+  - Automated Unit Tests: 8/8 PASS (`phase4-support-plan.test.tsx`).
+  - Full Creator Vitest Suite: 150/150 PASS across all 12 test files.
+  - Live Browser E2E: Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, and Audit Details modal with 0 DOM errors and 0 layout overflows.
+  - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
 
 ---
 
