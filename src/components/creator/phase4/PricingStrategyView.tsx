@@ -62,6 +62,13 @@ function getCurrencySymbol(currency?: string): string {
   return currency;
 }
 
+function getCurrencyLabel(currency?: string): string {
+  if (currency === 'USD' || currency === '$') return 'USD ($)';
+  if (currency === 'GBP' || currency === '£') return 'GBP (£)';
+  if (currency === 'EUR' || currency === '€' || !currency) return 'EUR (€)';
+  return `${currency} (${getCurrencySymbol(currency)})`;
+}
+
 export function PricingStrategyView({
   ideaId,
   projectName,
@@ -97,7 +104,7 @@ export function PricingStrategyView({
     ? activeOffer.founderPrice !== undefined && activeOffer.founderPrice !== null
       ? activeOffer.founderPrice
       : activeOffer.recommendedPrice
-    : 15;
+    : 0;
   const [chosenPriceInput, setChosenPriceInput] = useState<string>(initialPrice.toString());
 
   useEffect(() => {
@@ -325,6 +332,19 @@ export function PricingStrategyView({
     validationLevel === 'EmpiricallyValidated' ||
     (activeOffer?.validatedMarketPrice !== null && activeOffer?.validatedMarketPrice !== undefined);
 
+  // Dynamic feature capabilities derived from offer
+  const supportFeature = activeOffer?.featuresIncluded?.find(
+    (f) => f.toLowerCase().includes('support') || f.toLowerCase().includes('sla')
+  );
+  const limitFeature = activeOffer?.featuresIncluded?.find(
+    (f) =>
+      f.toLowerCase().includes('limit') ||
+      f.toLowerCase().includes('unlimited') ||
+      f.toLowerCase().includes('integration') ||
+      f.toLowerCase().includes('workspace') ||
+      f.toLowerCase().includes('tier')
+  );
+
   return (
     <div className="max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
       {/* 0. Top Page-Level Eyebrow & Refresh Header */}
@@ -497,10 +517,12 @@ export function PricingStrategyView({
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Customers pay each month to use your product.
+                Customers pay each {activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'} to use your product.
               </p>
               <p className="text-xs text-foreground/90 font-medium">
-                {projectName} is designed for ongoing enquiries, quotations, and follow-ups.
+                {activeOffer?.featuresIncluded && activeOffer.featuresIncluded.length > 0
+                  ? `${projectName} includes ${activeOffer.featuresIncluded.slice(0, 3).join(', ')}.`
+                  : `${projectName} is configured for ongoing operational customer workflows.`}
               </p>
             </div>
 
@@ -517,7 +539,7 @@ export function PricingStrategyView({
               <div>
                 <span className="text-muted-foreground font-medium block">Customers pay for</span>
                 <span className="text-foreground font-semibold text-sm">
-                  {activeOffer?.targetSegment || activeOffer?.name || 'One business workspace'}
+                  {activeOffer?.targetSegment || activeOffer?.name || `${projectName} workspace`}
                 </span>
               </div>
               <div>
@@ -525,7 +547,7 @@ export function PricingStrategyView({
                 <span className="text-foreground/90 leading-relaxed block">
                   {activeOffer?.featuresIncluded && activeOffer.featuresIncluded.length > 0
                     ? activeOffer.featuresIncluded.join(', ')
-                    : 'Enquiry management, quotations, and follow-ups.'}
+                    : 'Standard workspace access and operational features.'}
                 </span>
               </div>
             </div>
@@ -533,12 +555,12 @@ export function PricingStrategyView({
             <div className="space-y-3 flex flex-col justify-between">
               <div className="space-y-1.5 text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                  <span>Usage limits — To confirm</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${limitFeature ? 'bg-emerald-500' : 'bg-amber-500'} shrink-0`} />
+                  <span>{limitFeature ? `Usage limits — ${limitFeature}` : 'Usage limits — To confirm'}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                  <span>Support included — To confirm</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${supportFeature ? 'bg-emerald-500' : 'bg-amber-500'} shrink-0`} />
+                  <span>{supportFeature ? `Support included — ${supportFeature}` : 'Support included — To confirm'}</span>
                 </div>
               </div>
               <div>
@@ -610,7 +632,7 @@ export function PricingStrategyView({
 
               <div className="flex items-center">
                 <span className="bg-muted px-3 py-2 rounded-l-lg border border-r-0 border-border text-xs font-medium text-muted-foreground">
-                  EUR (€)
+                  {getCurrencyLabel(activeOffer?.presentation?.currency)}
                 </span>
                 <input
                   type="number"
@@ -702,7 +724,7 @@ export function PricingStrategyView({
                 YOUR OFFER
               </span>
               <span className="text-foreground">
-                Ongoing use of one {projectName} business workspace.
+                Ongoing use of {activeOffer?.name || `${projectName} business workspace`}.
               </span>
             </div>
             <span className="text-[11px] font-mono border border-border/80 px-2 py-0.5 rounded text-muted-foreground bg-muted/40 self-start sm:self-center">
@@ -717,7 +739,7 @@ export function PricingStrategyView({
                 YOUR CUSTOMERS
               </span>
               <span className="text-foreground">
-                {activeOffer?.targetSegment || 'Independent service businesses in France.'}
+                {activeOffer?.targetSegment || `${projectName} target customers.`}
               </span>
             </div>
             <span className="text-[11px] font-mono border border-border/80 px-2 py-0.5 rounded text-muted-foreground bg-muted/40 self-start sm:self-center">
@@ -979,7 +1001,7 @@ export function PricingStrategyView({
             <li className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
               <span>
-                Offer: {activeOffer?.name || `One ${projectName} business workspace`}
+                Offer: {activeOffer?.name || `${projectName} launch offer`}
               </span>
             </li>
             <li className="flex items-center gap-2">
@@ -991,7 +1013,7 @@ export function PricingStrategyView({
             <li className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
               <span>
-                Customers: {activeOffer?.targetSegment || 'Independent service businesses in France'}
+                Customers: {activeOffer?.targetSegment || `${projectName} target customers`}
               </span>
             </li>
           </ul>
@@ -1403,7 +1425,7 @@ export function PricingStrategyView({
               rows={3}
               value={feedbackNote}
               onChange={(e) => setFeedbackNote(e.target.value)}
-              placeholder="e.g. Talked with 3 agencies: they found €15/mo very affordable for quotes..."
+              placeholder={`e.g. Talked with 3 potential customers: they found ${currencySymbol}${chosenPrice || 15}/mo very affordable...`}
               className="w-full bg-background border border-border rounded-lg p-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <div className="flex justify-end gap-2">
@@ -1449,7 +1471,7 @@ export function PricingStrategyView({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-muted-foreground font-medium">Paid Amount (€)</label>
+                <label className="text-muted-foreground font-medium">Paid Amount ({currencySymbol})</label>
                 <input
                   type="number"
                   value={salePrice}
@@ -1468,7 +1490,7 @@ export function PricingStrategyView({
                   if (saleCustomer.trim() && salePrice.trim()) {
                     setRecordedNotes((prev) => [
                       ...prev,
-                      `Preorder: €${salePrice} paid by ${saleCustomer.trim()}`,
+                      `Preorder: ${currencySymbol}${salePrice} paid by ${saleCustomer.trim()}`,
                     ]);
                   }
                   setSalePrice('');
