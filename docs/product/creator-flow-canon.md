@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-25 (Creator Phase 4.5 Aids, Grants & Public Support Delivery: Exact Figma 57221-11932 Alignment, Analytical Breakdown, Location Persistence, Audit Trace & Concurrency Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-25 (Creator Phase 4.6 Pricing & Revenue Model Exact Figma 57221:12167 and Phase 4.7 GTM & Launch Strategy Exact Figma 57221:12464 Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -1430,11 +1430,31 @@ Surfaces complete regulatory and computational provenance:
 
 ### 6.7 Stage 4.7 — GTM & Launch Strategy (`GtmStrategyView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/gtm`
+- **Figma Reference:** Frame `57221:12464` ("GTM & Launch Strategy · Step 4.7").
 - **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/gtm`, `POST /api/creator/phase4/gtm/generate`, `POST /api/creator/phase4/gtm/refresh`, `PATCH /api/creator/phase4/gtm/channels/{channelKey}`, `POST /api/creator/phase4/gtm/experiments/{experimentKey}/runs`).
 - **Services:** `GtmStrategyService`, `GtmPolicyEngine`.
 - **Multi-Signal Sales Motion:** Considers price, founder capacity, sales cycle, and buyer persona.
 - **Budget Provenance:** Distinguishes `ForecastCacAssumption`, `ObservedCac`, and `ValidatedCac`. If pricing is `NeedsValidation`, GTM enforces validation-first testing before paid scaling.
 - **Immutable Experiment Evidence:** Completed validation runs and evidence are never deleted during refreshes.
+- **Canonical UI Components (Figma 57221:12464):**
+  1. *Header & Motion Badge:* Eyebrow `PHASE 4 · STEP 4.7`, dynamic venture title, motion badge (`ConsultativePilot`, `ProductLed`, etc.), and `Refresh GTM` CTA.
+  2. *Top Provenance & Capacity Metric Cards (4 Cards):*
+     - *Weekly Founder Capacity:* `{allocated}h / {available}h`, band status, remaining weekly buffer.
+     - *Spendable Marketing Cash:* Spendable total, status (`Planned`, `ConfirmedAvailable`), budget source.
+     - *CAC Provenance:* Observed CAC vs Forecast CAC Assumption vs `Needs Baseline`.
+     - *Primary Launch Segment:* Segment title, selected unit price, and revenue model.
+  3. *Primary Launch Segment & Positioning:* Target Segment name, match relevance score, core problem, value proposition message angle, buying complexity, and sales cycle basis.
+  4. *Prioritized Acquisition Channels:* Channel cards with priority badges (`Primary`, `Secondary`, `Later`, `NotRecommended`), effort levels, estimated weekly hours, deterministic reason codes (`FOUNDER_CAPABILITY_MATCH`, `SALES_MOTION_MATCH`, etc.), why now, first step, and `Adjust Priority` modal.
+  5. *GTM Validation Experiments & Empirical Evidence Log:* Timeboxed hypotheses, budget caps, primary metric threshold status (`NeedsBaseline`, `EvidenceBased`), success/stop conditions, `Log Completed Run` modal, and expandable immutable run history.
+  6. *Standardized Measurement Contract:* Funnel stage matrix (Awareness, Discovery, Pilot, Conversion, Activation), metric names, formulas, data sources, and targets.
+  7. *Sequenced Launch Timeline & Phasing:* Phased milestones with timeframes, objectives, and exit criteria.
+  8. *Phase 4.8 Boundary Banner & Quiet Footer Navigation:* Phase 4.8 boundary card + `← Back to Step 4.6 Pricing Strategy` and `Review Construction Snapshot →`.
+- **Verification Evidence:**
+  - Automated Unit Tests: 6 / 6 PASS (`src/__tests__/creator/phase4-gtm-strategy.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
+  - Backend Tests (C#): 179 / 179 PASS (`WebApp.Tests.dll`).
+  - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
+
 
 ### 6.8 Stage 4.8 — Launch Assets (Next Approved Stage)
 - **Approved Direction:** **One-Page Professional Launch Website** (responsive, branded, component-based, section families: Hero, Problem, Solution, Features, How It Works, Offer/Pricing, Social Proof, FAQ, Final CTA).
@@ -1831,6 +1851,22 @@ RC1 Freeze
   - Automated Unit Tests: 11 / 11 PASS (`src/__tests__/creator/phase4-pricing-strategy.test.tsx`).
   - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
   - Live Browser E2E: Playwright verified 1440px desktop, 1920px widescreen, and live database strategy generation with 0 DOM errors, 0 layout overflows, and responsive scaling.
+**2026-09-25 — Creator Phase 4.7 GTM & Launch Strategy: Exact Figma 57221-12464 Alignment, Deterministic Prioritization, Capacity Guardrails & Verification Delivery.**
+- **Figma Reference & Layout (§6.7):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:12464` "GTM & Launch Strategy · Step 4.7"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/gtm`
+- **Canonical UI Components:**
+  1. *Header & Motion Badge:* Eyebrow `"PHASE 4 · STEP 4.7"`, Title `"{projectName} Go-To-Market Strategy"`, Subtitle `"Deterministic channel prioritization grounded in founder availability, offer economics, and empirical validation gates."`.
+  2. *Top Provenance & Capacity Metric Cards (4 Cards):* Weekly founder capacity (`{allocated}h / {available}h`, band, buffer), spendable marketing cash, CAC provenance (`Observed` vs `Assumed` vs `Needs Baseline`), and primary launch segment.
+  3. *Primary Launch Segment & Positioning:* Target Segment name, match relevance score, core problem, value proposition message angle, buying complexity, and sales cycle basis.
+  4. *Prioritized Acquisition Channels:* Channel cards with priority badges (`Primary`, `Secondary`, `Later`, `NotRecommended`), effort levels, estimated weekly hours, deterministic reason codes (`FOUNDER_CAPABILITY_MATCH`, `SALES_MOTION_MATCH`, etc.), why now, first step, and `Adjust Priority` modal.
+  5. *GTM Validation Experiments & Empirical Evidence Log:* Timeboxed hypotheses, budget caps, primary metric threshold status (`NeedsBaseline`, `EvidenceBased`), success/stop conditions, `Log Completed Run` modal, and expandable immutable run history.
+  6. *Standardized Measurement Contract:* Funnel stage matrix (Awareness, Discovery, Pilot, Conversion, Activation), metric names, formulas, data sources, and targets.
+  7. *Sequenced Launch Timeline & Phasing:* Phased milestones with timeframes, objectives, and exit criteria.
+  8. *Phase 4.8 Boundary Banner & Quiet Footer Navigation:* Phase 4.8 boundary card + `← Back to Step 4.6 Pricing Strategy` and `Review Construction Snapshot →`.
+- **Verification Evidence:**
+  - Automated Unit Tests: 6 / 6 PASS (`src/__tests__/creator/phase4-gtm-strategy.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
+  - Backend Tests (C#): 179 / 179 PASS (`WebApp.Tests.dll`).
   - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
 
 ---

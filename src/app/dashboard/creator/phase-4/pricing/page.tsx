@@ -157,32 +157,6 @@ function PricingPageContent({ ideaId }: { ideaId: string }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Top Banner Navigation */}
-      <div className="border-b border-border bg-card/60 backdrop-blur sticky top-0 z-10 px-6 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link
-            href={`/dashboard/creator/phase-4/support?ideaId=${effectiveIdeaId}`}
-            className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Step 4.5 Aids & Grants
-          </Link>
-          <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground">
-            <span>4.1 Snapshot ✓</span>
-            <span>4.2 Roadmap ✓</span>
-            <span>4.3 Needs ✓</span>
-            <span>4.4 Skills ✓</span>
-            <span>4.5 Grants ✓</span>
-            <span className="text-primary font-semibold">4.6 Pricing (Current)</span>
-            <Link
-              href={`/dashboard/creator/phase-4/gtm?ideaId=${effectiveIdeaId}`}
-              className="text-muted-foreground hover:text-primary transition-colors"
-            >
-              4.7 GTM →
-            </Link>
-          </div>
-        </div>
-      </div>
 
       {/* Global Error Banner */}
       {error && (

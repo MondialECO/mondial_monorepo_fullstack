@@ -347,15 +347,12 @@ export function PricingStrategyView({
 
   return (
     <div className="max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
-      {/* 0. Top Page-Level Eyebrow & Refresh Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/80 pb-5">
+      {/* 0. Top Page-Level Eyebrow & Refresh Header (Figma 57221:12167) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
             <span className="text-xs uppercase font-mono tracking-wider text-muted-foreground font-semibold">
               PHASE 4 · STEP 4.6
-            </span>
-            <span className="text-xs font-mono text-muted-foreground/70">
-              · Generated {new Date(strategy.generatedAt).toLocaleDateString()}
             </span>
             {strategy.founderEdited && (
               <span className="text-[11px] font-mono bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded-full font-medium">
@@ -1425,7 +1422,7 @@ export function PricingStrategyView({
               rows={3}
               value={feedbackNote}
               onChange={(e) => setFeedbackNote(e.target.value)}
-              placeholder={`e.g. Talked with 3 potential customers: they found ${currencySymbol}${chosenPrice || 15}/mo very affordable...`}
+              placeholder={`e.g. Talked with 3 potential customers: they found ${currencySymbol}${chosenPrice}/mo very affordable...`}
               className="w-full bg-background border border-border rounded-lg p-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <div className="flex justify-end gap-2">
