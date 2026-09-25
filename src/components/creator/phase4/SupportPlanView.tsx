@@ -85,6 +85,14 @@ export function SupportPlanView({
 
   // Gate blocked state
   if (gateError) {
+    const isNeedsStale =
+      gateError.message.includes('Needs') ||
+      gateError.code === 'NEEDS_ANALYSIS_REFRESH_REQUIRED';
+    const isSkillsStale =
+      gateError.code === 'SKILLS_PLAN_REFRESH_REQUIRED' ||
+      gateError.message.includes('Skills');
+    const isPhase3Gate = gateError.message.includes('Phase 3');
+
     return (
       <div className="max-w-4xl mx-auto p-6 space-y-6">
         <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-8 text-center space-y-4 shadow-sm">
@@ -95,25 +103,26 @@ export function SupportPlanView({
           <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
             {gateError.message}
           </p>
-          <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
-            {gateError.code === 'SKILLS_PLAN_REFRESH_REQUIRED' ||
-            gateError.message.includes('Skills') ? (
-              <Link
-                href={`/dashboard/creator/phase-4/skills?ideaId=${ideaId}`}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm transition-all shadow"
-              >
-                Go to Step 4.4 Skills & Training
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            ) : gateError.message.includes('Needs') ? (
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
+            {isNeedsStale && (
               <Link
                 href={`/dashboard/creator/phase-4/needs?ideaId=${ideaId}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm transition-all shadow"
               >
-                Go to Step 4.3 Needs Analysis
+                <span>Go to Step 4.3 Needs Analysis</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
-            ) : (
+            )}
+            {isSkillsStale && (
+              <Link
+                href={`/dashboard/creator/phase-4/skills?ideaId=${ideaId}`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm transition-all shadow"
+              >
+                <span>Go to Step 4.4 Skills & Training</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            )}
+            {isPhase3Gate && (
               <Link
                 href={`/dashboard/creator/phase-3?ideaId=${ideaId}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-semibold text-sm transition-colors"
