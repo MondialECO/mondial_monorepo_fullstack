@@ -1320,13 +1320,85 @@ CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
   - Live Browser E2E: Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, Delegation Brief modal, and Evidence Guide modal with 0 DOM errors and 0 layout overflows.
   - TypeScript & Build: `npx tsc --noEmit` 0 errors; `dotnet build backend/WebApp.csproj` 0 errors.
 
-### 6.5 Stage 4.5 — Aids, Grants & Public Support (`SupportPlanView.tsx`)
-- **Route:** `/dashboard/creator/phase-4/support`
-- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/support`, `POST /api/creator/phase4/support/generate`, `POST /api/creator/phase4/support/refresh`, `PATCH /api/creator/phase4/support/{supportKey}`).
+### 6.5 Stage 4.5 — Aids, Grants & Public Support (`page.tsx` + `SupportPlanView.tsx`)
+- **Figma Reference & Layout:** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11932` "Aids, Grants & Support · Step 4.5 Content"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/support`
+- **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/support`, `POST /api/creator/phase4/support/generate`, `POST /api/creator/phase4/support/refresh`, `PATCH /api/creator/phase4/support/{supportKey}`, `POST /api/creator/phase4/support/facts`).
 - **Services:** `SupportPlanService`, `SupportCatalogueService`, `SupportEligibilityEngine`, `SupportMatchingService`.
 - **Selection Modes:** `Entitlement`, `Discretionary`, `Competitive`, `CreditAssessment`, `NeedsReview`.
 - **Eligibility Statuses:** `EligibleToApply`, `Awarded`.
 - **Critical Invariant:** `EligibleToApply` ≠ spendable launch cash. Potential or unawarded grants are strictly excluded from spendable launch budgets.
+
+#### Deterministic Prerequisite Gate & Upstream Staleness Resolution UX
+Stage 4.5 enforces a strict deterministic readiness gate via `SupportPlanService.EvaluateGateAsync`:
+- **Prerequisite Checks:**
+  1. `gate.Phase3Completed`: Phase 3 core artifacts (Business Plan, Financial Plan, Legal Assessment) must be finalized.
+  2. `gate.HumainXReady`: HumainX profile must exist and be completed.
+  3. `gate.SnapshotExists`: Step 4.1 Construction Snapshot must be generated.
+  4. `gate.RoadmapExists`: Step 4.2 Operational Roadmap must exist.
+  5. `gate.NeedsAnalysisCurrent`: Step 4.3 Needs Analysis must not be stale (`!needsRes.UpdateAvailable`).
+  6. `gate.SkillsPlanCurrent`: Step 4.4 Skills Plan must not be stale (`!skillsRes.UpdateAvailable`).
+- **Why the Gate Exists:** Public funding, training allowances (OPCO/CPF), and tax exemptions (ACRE) depend directly on operational requirements (hiring schedules, legal structure, capital expenditure, founder capability gaps). When upstream steps (Step 4.2 Roadmap, Step 4.3 Needs, Step 4.4 Skills) are edited, public aid matching must not evaluate against obsolete requirements.
+- **Upstream Staleness Blocked UI (`Support Engine Unavailable`):**
+  - When the gate is blocked due to upstream staleness, the UI displays the canonical `Support Engine Unavailable` alert with the exact reason (e.g. `Needs Analysis is stale. Skills Plan is stale (SKILLS_PLAN_REFRESH_REQUIRED).`).
+  - Provides dual contextual remediation navigation buttons:
+    - `"Go to Step 4.3 Needs Analysis"` (`/dashboard/creator/phase-4/needs?ideaId={ideaId}`) when Needs Analysis requires synchronization.
+    - `"Go to Step 4.4 Skills & Training"` (`/dashboard/creator/phase-4/skills?ideaId={ideaId}`) when Skills Plan requires synchronization.
+  - Navigating upstream and clicking `"Keep Current"` (or refreshing) syncs the source versions and instantly unlocks Step 4.5 evaluation.
+
+#### Canonical UI Components (Figma 57221:11932)
+1. **Compact Page-Level Header:**
+   - *Eyebrow:* `"PHASE 4 · STEP 4.5"` (`text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono`)
+   - *Title:* `"Aids, Grants & Public Support"` (`text-2xl sm:text-3xl font-bold text-foreground tracking-tight`)
+   - *Supporting text:* `"Explore funding schemes, training support, and institutional backing for your venture."` (`text-sm text-muted-foreground max-w-2xl leading-relaxed`)
+2. **Component 1: Summary Card ("{count} options to explore"):**
+   - Header reporting total options count in JetBrains Mono font + bold Inter heading.
+   - Dynamic profile chips: Country `France`, Situation `{currentSituation}` (e.g. `Jobseeker receiving ARE`), Formation phase `Project in preparation`.
+   - Profile deep link: `"Update my details ↗"` linking to `/dashboard/creator/profile`.
+   - Quiet conditions disclaimer: *"Each programme has its own conditions and application process. Saving an option does not submit an application."*
+3. **Component 2: Location Card ("Where will you start your business?"):**
+   - Subtitle: *"This helps us check local support."*
+   - MapPin icon input prefilled with recorded location fact (or city fallback).
+   - `"Save location"` action dispatching `onAnswerFact('project_location', location)` to persist into `RecordedEligibilityFacts` and automatically trigger re-evaluation without modifying backend schemas.
+4. **Component 3: Metric Strip (Evaluated / Eligible / Potential / Missing / Ready / Tracking):**
+   - Quantitative counts for catalog schemes, authoritative matches, pending minor facts, requires input, MBC docs ready, and in-preparation founder tracking.
+5. **Component 4: Opportunity Cards List & Rich Inset Panels:**
+   - *Badges:* Category pill badge (`Advice & mentoring`, `Social Contribution Exemption`, `Grant`, `Allowance`, `InnovationSupport`, `Financing & Loan`, `Training support`, `EuropeanFunding`) + Status badge (`● A few details to check`, `● May fit your project`, `● Eligible to Apply`, `● Eligible (Statutory)`, `● Awarded`).
+   - Card Headline, Value Subtitle, Description, and Official source provenance line (`Official details: {programmeOwner} via {catalogueSource}`).
+   - Collapsed State Actions: `"Save this option"` (with toggleable bookmark icon) + `"View details ⌄"` chevron action.
+   - Expanded Inset Panel (Figma 57221:11932):
+     - **2-Column Analytical Breakdown:**
+       - `WHAT YOU COULD GET`: Financial/support quantification from match award estimation.
+       - `WHY THIS MAY FIT`: Dynamic strategic fit commentary based on business model and scheme objectives.
+       - `WHAT WE ALREADY KNOW`: Live founder facts (country, legal form, founding status, recorded location).
+       - `WHEN TO APPLY`: Timing notes from `match.timing?.timingNotes` (with category-aware intelligent fallback).
+       - `WHAT TO CHECK`: 5 subtle dot bullet points dynamically derived from type-aware scheme condition checklists (`TrainingFunding`, `SocialContributionExemption`, `HonorLoan`, general) without duplicating verbatim `conditionsMet` text.
+       - `WHAT YOU MAY NEED`: Required application documents synthesized from `plan.applicationChecklists` and Phase 3 artifact links (e.g. Executive Business Plan, Financial Forecast).
+       - `OFFICIAL SOURCE`: Verified official authority links (`legifrance.gouv.fr`, `service-public.fr`, `urssaf.fr`, etc.) with `"Official portal verified ↗"`.
+     - **Blue Callout Box (`BEFORE YOU APPLY`):** Info icon + *"When an official source is verified, you can prepare required documents and propose preparation tasks to your Operational Roadmap."*.
+     - **Action Buttons Bar:** `"Check my details"`, `"Audit Details"` (opens Audit Provenance modal), `"Save this option"`, `"Track Application"`, and primary `"Open official website ↗"`.
+6. **Component 5: Quiet Journey Footer Navigation:**
+   - Left: `"← Back to Skills & Training"` linking to Step 4.4 `/dashboard/creator/phase-4/skills?ideaId={ideaId}`.
+   - Center: Reassurance text *"You can return to your saved support options later."*.
+   - Right: Primary CTA `"Continue to Pricing & Revenue →"` linking to Step 4.6 `/dashboard/creator/phase-4/pricing?ideaId={ideaId}`.
+7. **Component 6: Milestone Banner:**
+   - Operational readiness banner (`"PHASE 4.6 READY · NEXT OPERATIONAL MILESTONE"`, `"Pricing & Revenue Model Engine"`, `"Build My Pricing Strategy →"`).
+
+#### Audit Details Modal
+Surfaces complete regulatory and computational provenance:
+- **Provenance Trace:** `Programme Owner`, `Managing Authority`, `Catalogue Source`, `Selection Dimension`.
+- **Conditions Met:** Evaluated criteria confirmed by the rule engine with green checkmarks.
+- **Application Checklist & MBC Artifact Reuse:** Required documents mapped to reusable Phase 3 deliverables (e.g. `"Reuses: Phase 3 Executive Business Plan"`, `"Reuses: Phase 3 Financial Forecast"`).
+
+#### Zero Static/Mock Data Guarantee
+100% of rendered opportunities, amounts, conditions, categories, timing, and breakdown copy are dynamically derived from active MongoDB database records and backend rule evaluation. All placeholder or hardcoded sample strings have been eliminated.
+
+#### Verification Evidence
+- **Automated Frontend Tests:** 8 / 8 PASS (`src/__tests__/creator/phase4-support-plan.test.tsx`).
+- **Full Creator Vitest Suite:** 150 / 150 PASS across all 12 test files.
+- **Live Browser E2E:** Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, and Audit Details modal with 0 DOM errors and 0 layout overflows.
+- **TypeScript Compilation:** `npx tsc --noEmit` 0 errors (Exit 0).
+- **Backend Build:** `dotnet build backend/WebApp.csproj` 0 errors (Exit 0).
 
 ### 6.6 Stage 4.6 — Pricing & Revenue Model (`PricingStrategyView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/pricing`
@@ -1690,11 +1762,15 @@ RC1 Freeze
   - Full Creator Vitest Suite: 150/150 PASS across 12 test files.
   - Live Browser E2E: Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, Delegation Brief modal, and Evidence Guide modal with 0 DOM errors and 0 layout overflows.
 
-**2026-09-25 — Creator Phase 4.5 Aids, Grants & Public Support: Exact Figma 57221-11932 Alignment, Analytical Breakdown, Location Persistence, Audit Trace & Concurrency Delivery.**
+**2026-09-25 — Creator Phase 4.5 Aids, Grants & Public Support: Exact Figma 57221-11932 Alignment, Analytical Breakdown, Location Persistence, Prerequisite Gate Lifecycle & Concurrency Delivery.**
 - **Figma Reference & Layout (§6.5):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11932` "Aids, Grants & Support · Step 4.5 Content"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
 - **Canonical Route:** `/dashboard/creator/phase-4/support`
 - **Compact Page-Level Header (§6.5):** Eyebrow `"PHASE 4 · STEP 4.5"`, Title `"Aids, Grants & Public Support"`, Subtitle `"Explore funding schemes, training support, and institutional backing for your venture."`.
-- **Five Canonical Figma UI Components:**
+- **Deterministic Prerequisite Gate & Upstream Staleness Resolution UX (§6.5):**
+  - Enforces `SupportPlanService.EvaluateGateAsync` requiring Phase 3 completion, HumainX readiness, Construction Snapshot existence, Operational Roadmap existence, and current (non-stale) Needs Analysis and Skills Plan.
+  - When upstream steps are edited (e.g. Roadmap tasks updated), Step 4.5 locks safely with `Support Engine Unavailable` alert and explicit diagnostic message (e.g. `Needs Analysis is stale. Skills Plan is stale (SKILLS_PLAN_REFRESH_REQUIRED).`).
+  - Provides dual contextual remediation buttons (`Go to Step 4.3 Needs Analysis` and `Go to Step 4.4 Skills & Training`) allowing founders to synchronize upstream choices before evaluating public support schemes.
+- **Six Canonical Figma UI Components:**
   1. *Component 1: Summary Card ("{count} options to explore"):* Reports total options count (JetBrains Mono number + bold Inter heading), dynamic founder profile chips (Country `France` • Situation `{currentSituation}` • Formation phase `Project in preparation`), profile edit deep link (`Update my details ↗`), and quiet conditions disclaimer: *"Each programme has its own conditions and application process. Saving an option does not submit an application."*.
   2. *Component 2: Location Card ("Where will you start your business?"):* Subtitle *"This helps us check local support."*, MapPin icon input (`City or postcode (e.g. Lyon, 69002)`), and `"Save location"` button. Dispatches `onAnswerFact('project_location', location)` to persist location fact into `RecordedEligibilityFacts` and automatically trigger re-evaluation without modifying backend schemas.
   3. *Metric Strip (Evaluated / Eligible / Potential / Missing / Ready / Tracking):* Satisfies contract with quantitative counts for catalog schemes, authoritative matches, pending minor facts, requires input, MBC docs ready, and in-preparation founder tracking.
@@ -1703,7 +1779,7 @@ RC1 Freeze
      - Card Headline, Value Subtitle, Description, and Official source provenance line (`Official details: {programmeOwner} via {catalogueSource}`).
      - Collapsed State Actions: `"Save this option"` (with toggleable bookmark icon) + `"View details ⌄"` chevron action.
      - Expanded Inset Panel (Figma 57221:11932):
-       - 2-Column Analytical Breakdown: `WHAT YOU COULD GET`, `WHY THIS MAY FIT`, `WHAT WE ALREADY KNOW`, `WHEN TO APPLY`, `WHAT TO CHECK` (5 bullet points with subtle dots), `WHAT YOU MAY NEED`, `OFFICIAL SOURCE` (`Official portal verified ↗` with deep link).
+       - 2-Column Analytical Breakdown: `WHAT YOU COULD GET`, `WHY THIS MAY FIT`, `WHAT WE ALREADY KNOW`, `WHEN TO APPLY` (sourced from `timingNotes`), `WHAT TO CHECK` (5 subtle dot bullet points derived from type-aware scheme condition checklists), `WHAT YOU MAY NEED` (sourced from `applicationChecklists` with Phase 3 document links), `OFFICIAL SOURCE` (`Official portal verified ↗` with deep link).
        - Blue Callout Box (`BEFORE YOU APPLY`): Info icon + *"When an official source is verified, you can prepare required documents and propose preparation tasks to your Operational Roadmap."*.
        - Action Buttons Bar: `Check my details`, `Audit Details` (opens Audit Provenance modal), `Save this option`, `Track Application`, and primary `Open official website ↗`.
   5. *Component 5: Quiet Journey Footer Navigation:* Left `"← Back to Skills & Training"` linking to Step 4.4, centered reassurance text *"You can return to your saved support options later."*, and right primary CTA `"Continue to Pricing & Revenue →"` linking to Step 4.6.

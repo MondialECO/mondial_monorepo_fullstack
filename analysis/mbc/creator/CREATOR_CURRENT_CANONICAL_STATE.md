@@ -190,7 +190,7 @@ Stage 4.1: Construction Snapshot       → FROZEN (Backend 14/14, Frontend 6/6)
 Stage 4.2: Operational Roadmap         → FROZEN (Backend 10/10, Frontend 5/5)
 Stage 4.3: Needs & Requirements        → FROZEN (Backend 14/14, Frontend 31/31)
 Stage 4.4: Skills & Training           → FROZEN (Backend 14/14, Frontend 9/9)
-Stage 4.5: Aids, Grants & Support      → FROZEN (Backend 22/22, Adapters Active)
+Stage 4.5: Aids, Grants & Support      → FROZEN (Backend 22/22, Frontend 8/8, Exact Figma 57221:11932)
 Stage 4.6: Pricing & Revenue Model     → FROZEN (Backend 41/41, Frontend 11/11)
 Stage 4.7: GTM & Launch Strategy       → FROZEN (Backend 19/19, Frontend 6/6)
 Stage 4.8: Launch Assets               → NEXT / APPROVED ARCHITECTURE (Not in this commit)
@@ -250,10 +250,15 @@ Stage 4.9: Construction Readiness      → RESERVED / FUTURE TASK
 - **Mandatory Legal Verification:** Legal or regulated requirements enforce `VERIFY`. Learning alone cannot bypass legal compliance.
 
 ### Stage 4.5 — Aids, Grants & Support Plan
+- **Persistence:** `Phase4Data.SupportPlan`.
+- **Deterministic Gate:** Guarded by `SupportPlanService.EvaluateGateAsync` (requires Phase 3 complete, HumainX complete, Snapshot active, Roadmap scheduled, Needs Analysis current, and Skills Plan current).
+- **Upstream Staleness Resolution UX:** If upstream roadmap or needs/skills are edited, Stage 4.5 safely blocks with `Support Engine Unavailable` alert and contextual dual navigation (`Go to Step 4.3 Needs Analysis`, `Go to Step 4.4 Skills & Training`).
 - **Selection Modes:** `Entitlement`, `Discretionary`, `Competitive`, `CreditAssessment`, `NeedsReview`.
 - **Eligibility Statuses:** `EligibleToApply`, `Awarded`.
 - **Critical Invariant:** `EligibleToApply` ≠ spendable launch cash. Potential or unawarded grants are strictly excluded from spendable launch budgets.
-- **Data Provenance:** Integrates *Aides-entreprises* Open Data + official French regional adapters.
+- **Data Provenance:** Integrates *Aides-entreprises* Open Data + official French regional adapters. Full audit trace accessible via Audit Details modal.
+- **Dynamic Breakdown:** 100% dynamic analytical breakdown (`WHAT YOU COULD GET`, `WHY THIS MAY FIT`, `WHAT WE ALREADY KNOW`, `WHEN TO APPLY`, `WHAT TO CHECK`, `WHAT YOU MAY NEED`, `OFFICIAL SOURCE`).
+- **Location Fact Persistence:** City/postcode input persists `project_location` into `RecordedEligibilityFacts` and triggers immediate re-evaluation without database schema drift.
 
 ### Stage 4.6 — Pricing & Revenue Model
 - **Persistence:** `Phase4Data.PricingStrategy`.
