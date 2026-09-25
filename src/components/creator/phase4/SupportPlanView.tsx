@@ -681,111 +681,151 @@ export function SupportPlanView({
                 {isExpanded && (
                   <div className="p-5 rounded-xl bg-muted/30 border border-border/70 space-y-5 animate-fadeIn">
                     {/* 2-Column Analytical Breakdown */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
-                      {/* Left: What You Could Get */}
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                          WHAT YOU COULD GET
-                        </span>
-                        <p className="font-semibold text-foreground leading-relaxed">
-                          {match.supportValueDescription ||
-                            'Help with eligible project costs, depending on the programme’s rules.'}
-                        </p>
-                      </div>
+                    {(() => {
+                      const matchChecklist = (plan.applicationChecklists || []).find(
+                        (c) =>
+                          c.opportunityKey === match.key ||
+                          c.opportunityId === match.opportunityId
+                      );
 
-                      {/* Right: Why This May Fit */}
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                          WHY THIS MAY FIT
-                        </span>
-                        <p className="font-semibold text-foreground leading-relaxed">
-                          {match.whyMatched && match.whyMatched.length > 0
-                            ? match.whyMatched.join(' ')
-                            : 'Aligned with your project goals, founder situation, and operational roadmap.'}
-                        </p>
-                      </div>
+                      const checks =
+                        match.supportType === 'TrainingFunding'
+                          ? [
+                              'Your location',
+                              'The selected training or development scope',
+                              'Whether the programme supports that scope',
+                              'The relevant application conditions',
+                              'Whether applications are currently open',
+                            ]
+                          : match.supportType === 'SocialContributionExemption'
+                          ? [
+                              'Your business registration date (within 45 days)',
+                              'Selected legal form and founder corporate mandate',
+                              'Eligibility of social security regime with URSSAF',
+                              'Whether applications are currently open',
+                            ]
+                          : match.supportType === 'HonorLoan' || match.supportType === 'Loan'
+                          ? [
+                              'Your local platform territory in France',
+                              'The amount of equity co-financing needed',
+                              '3-year financial forecast and cash flow viability',
+                              'Whether applications are currently open',
+                            ]
+                          : [
+                              'Your declared location and registered territory',
+                              'Whether your venture meets the specific criteria of this scheme',
+                              'Applicable deadlines and submission requirements',
+                              'Whether applications are currently open',
+                            ];
 
-                      {/* Left: What We Already Know */}
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                          WHAT WE ALREADY KNOW
-                        </span>
-                        <p className="font-semibold text-foreground leading-relaxed">
-                          You are{' '}
-                          {profileSummary?.currentSituation
-                            ? `a ${profileSummary.currentSituation.toLowerCase()}`
-                            : 'an entrepreneur'}{' '}
-                          preparing a project in France.
-                        </p>
-                      </div>
+                      const mayNeedSummary =
+                        matchChecklist && matchChecklist.items.length > 0
+                          ? matchChecklist.items.map((i) => i.label).join(' • ')
+                          : 'A checklist based on the programme’s published requirements.';
 
-                      {/* Right: When To Apply */}
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                          WHEN TO APPLY
-                        </span>
-                        <p className="font-semibold text-foreground leading-relaxed">
-                          {match.timing?.rolling
-                            ? 'Rolling programme — applications open year-round.'
-                            : 'Application dates need checking.'}
-                        </p>
-                      </div>
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
+                          {/* Left: What You Could Get */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                              WHAT YOU COULD GET
+                            </span>
+                            <p className="font-semibold text-foreground leading-relaxed">
+                              {match.supportValueDescription ||
+                                'Help with eligible project costs, depending on the programme’s rules.'}
+                            </p>
+                          </div>
 
-                      {/* Left: What To Check */}
-                      <div className="space-y-1 sm:col-span-2">
-                        <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                          WHAT TO CHECK
-                        </span>
-                        <ul className="space-y-1 pt-0.5">
-                          {[
-                            'Your location',
-                            'The selected training or development scope',
-                            'Whether the programme supports that scope',
-                            'The relevant application conditions',
-                            'Whether applications are currently open',
-                          ].map((checkItem, idx) => (
-                            <li
-                              key={idx}
-                              className="flex items-center gap-2 font-medium text-foreground"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 shrink-0" />
-                              <span>{checkItem}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                          {/* Right: Why This May Fit */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                              WHY THIS MAY FIT
+                            </span>
+                            <p className="font-semibold text-foreground leading-relaxed">
+                              {match.whyMatched && match.whyMatched.length > 0
+                                ? match.whyMatched.join(' ')
+                                : 'Aligned with your project goals, founder situation, and operational roadmap.'}
+                            </p>
+                          </div>
 
-                      {/* Left: What You May Need */}
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                          WHAT YOU MAY NEED
-                        </span>
-                        <p className="font-semibold text-foreground leading-relaxed">
-                          A checklist based on the programme’s published requirements.
-                        </p>
-                      </div>
+                          {/* Left: What We Already Know */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                              WHAT WE ALREADY KNOW
+                            </span>
+                            <p className="font-semibold text-foreground leading-relaxed">
+                              You are{' '}
+                              {profileSummary?.currentSituation
+                                ? `a ${profileSummary.currentSituation.toLowerCase()}`
+                                : 'an entrepreneur'}{' '}
+                              preparing a project{locationInput ? ` in ${locationInput}` : ' in France'}.
+                            </p>
+                          </div>
 
-                      {/* Right: Official Source */}
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                          OFFICIAL SOURCE
-                        </span>
-                        <p className="font-medium text-muted-foreground leading-relaxed">
-                          {match.officialUrl ? (
-                            <a
-                              href={match.officialUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-primary hover:underline inline-flex items-center gap-1"
-                            >
-                              Official portal verified <ExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : (
-                            'Source to confirm · Official link not available yet.'
-                          )}
-                        </p>
-                      </div>
-                    </div>
+                          {/* Right: When To Apply */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                              WHEN TO APPLY
+                            </span>
+                            <p className="font-semibold text-foreground leading-relaxed">
+                              {match.timing?.timingNotes ||
+                                (match.timing?.rolling
+                                  ? 'Rolling programme — applications open year-round.'
+                                  : 'Application dates need checking.')}
+                            </p>
+                          </div>
+
+                          {/* Left: What To Check */}
+                          <div className="space-y-1 sm:col-span-2">
+                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                              WHAT TO CHECK
+                            </span>
+                            <ul className="space-y-1 pt-0.5">
+                              {checks.map((checkItem, idx) => (
+                                <li
+                                  key={idx}
+                                  className="flex items-center gap-2 font-medium text-foreground"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 shrink-0" />
+                                  <span>{checkItem}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          {/* Left: What You May Need */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                              WHAT YOU MAY NEED
+                            </span>
+                            <p className="font-semibold text-foreground leading-relaxed">
+                              {mayNeedSummary}
+                            </p>
+                          </div>
+
+                          {/* Right: Official Source */}
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                              OFFICIAL SOURCE
+                            </span>
+                            <p className="font-medium text-muted-foreground leading-relaxed">
+                              {match.officialUrl ? (
+                                <a
+                                  href={match.officialUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-primary hover:underline inline-flex items-center gap-1"
+                                >
+                                  Official portal verified <ExternalLink className="w-3 h-3" />
+                                </a>
+                              ) : (
+                                'Source to confirm · Official link not available yet.'
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* BLUE INFO BOX (BEFORE YOU APPLY) */}
                     <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
