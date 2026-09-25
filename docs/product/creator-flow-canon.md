@@ -1402,6 +1402,7 @@ Surfaces complete regulatory and computational provenance:
 
 ### 6.6 Stage 4.6 — Pricing & Revenue Model (`PricingStrategyView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/pricing`
+- **Figma Reference:** Frame `57221:12167` ("Pricing & Revenue Model · Step 4.6").
 - **Controller:** `CreatorPhase4ConstructionController` (`GET /api/creator/phase4/pricing`, `POST /api/creator/phase4/pricing/generate`, `POST /api/creator/phase4/pricing/refresh`, `PATCH /api/creator/phase4/pricing/{offerKey}`).
 - **Services:** `PricingStrategyService`, `PricingPolicyEngine`.
 - **13 Supported Models:** OneTime, Subscription, UsageBased, TransactionFee, Commission, Retainer, ProjectBased, Freemium, Tiered, MarketplaceFee, Licensing, Hybrid, Other.
@@ -1410,6 +1411,22 @@ Surfaces complete regulatory and computational provenance:
   - Absolute contribution: $P_{min} = VC + A$
 - **Tax Semantics:** Explicit `ConfiguredTaxMode` (`HT`, `TTC`, `Exempt`, `Unknown`). Zero crude B2B/B2C automatic tax inferences.
 - **Four-Price Independence:** `RecommendedPrice`, `FounderSelectedPrice`, `MarketReferencePrice`, and `ValidatedMarketPrice` are tracked independently. `ValidatedMarketPrice` strictly requires empirical evidence (paid pilot, preorder, historical sale).
+- **Eight Canonical Figma UI Sections:**
+  1. *Section 1: Compact Pricing Summary:* `YOUR CHOSEN PRICE`, large price display (`€{chosenPrice} per business / month`), badges (`Monthly subscription`, `Not tested` / `Empirically Validated`, `Draft`), and reassurance note *"Choose a starting price, then check how customers respond."*.
+  2. *Section 2: How you'll charge:* Inset card with `Suggested` badge, `Change model` action, 2-column breakdown of `Customers pay for`, `What's included`, `Usage limits — To confirm`, `Support included — To confirm`, and `Edit what's included` inline action.
+  3. *Section 3: Price comparison & choice:*
+     - Left: `SUGGESTED PRICE` with amber warning *"Delivery costs and market prices still need checking."* and `"Use suggested price"` CTA.
+     - Right: `YOUR CHOSEN PRICE` interactive input with `EUR (€)` prefix, numerical value input, dynamic note trigger (`+ Add a note about your choice`), and tax confirmation indicator (`Tax basis — To confirm`).
+  4. *Section 4: Why this suggestion?:* 3 analytical rows (`YOUR OFFER`, `YOUR CUSTOMERS`, `TO VERIFY`), status strip (`Delivery costs: {cost}`, `Market references: {status}`, `View assumptions ▾`), and expandable technical ledger.
+  5. *Section 5: What could you earn?:* Interactive Scenario Simulator with `PAYING BUSINESSES` numeric input, real-time revenue formula (`€{chosenPrice} × {businesses} businesses = €{total}` `Estimated monthly revenue`), footnote caveats, and yellow warning box *"Profit estimate unavailable: Confirm your costs to understand what you could keep."*.
+  6. *Section 6: Check your price:* Status badge (`Not tested`), empty state alert (`No sales or paid preorders recorded.`), educational comparison matrix (Market reference, Customer feedback, Customer interest, Sale or paid preorder), and dynamic action buttons (`Add feedback`, `Add a sale or paid preorder`).
+  7. *Section 7: Next action:* `NEXT ACTION` eyebrow, `Test your starting offer` title, 3 verification bullet points (Offer, Price to test, Customers), and `"Review roadmap task"` action button.
+  8. *Section 8: Quiet Journey Footer Navigation:* Left `"← Back to Aids & Support"`, reassurance label *"You can continue while your price still needs testing."*, and primary CTA `"Save & Continue →"` linking to Step 4.7.
+- **Verification Evidence:**
+  - Automated Unit Tests: 11 / 11 PASS (`src/__tests__/creator/phase4-pricing-strategy.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
+  - Live Browser E2E: Playwright test verified 1440px desktop and 1920px widescreen across live server with 0 DOM errors, 0 layout overflows, and responsive scaling.
+  - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
 
 ### 6.7 Stage 4.7 — GTM & Launch Strategy (`GtmStrategyView.tsx`)
 - **Route:** `/dashboard/creator/phase-4/gtm`
@@ -1790,11 +1807,36 @@ RC1 Freeze
   - Automated Unit Tests: 8/8 PASS (`phase4-support-plan.test.tsx`).
   - Full Creator Vitest Suite: 150/150 PASS across all 12 test files.
   - Live Browser E2E: Playwright test verified 1440px desktop, 1920px widescreen, 375px mobile, and Audit Details modal with 0 DOM errors and 0 layout overflows.
+
+**2026-09-25 — Creator Phase 4.6 Pricing & Revenue Model: Exact Figma 57221-12167 Alignment, Interactive Simulator, Four-Price Separation & Verification Delivery.**
+- **Figma Reference & Layout (§6.6):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:12167` "Pricing & Revenue Model · Step 4.6"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/pricing`
+- **Compact Page-Level Header (§6.6):** Eyebrow `"PHASE 4 · STEP 4.6"`, Title `"Launch Pricing & Revenue Model Strategy"`, Subtitle `"Financial packaging and launch offers for {projectName}. Built from underlying unit economics, contribution margins, and forecast benchmarks."`.
+- **Eight Canonical Figma UI Components:**
+  1. *Section 1: Compact Pricing Summary:* `YOUR CHOSEN PRICE`, large price display (`€{chosenPrice} per business / month`), badges (`Monthly subscription`, `Not tested` / `Empirically Validated`, `Draft`), and reassurance note *"Choose a starting price, then check how customers respond."*.
+  2. *Section 2: How you'll charge:* Inset card with `Suggested` badge, `Change model` action, 2-column breakdown of `Customers pay for`, `What's included`, `Usage limits — To confirm`, `Support included — To confirm`, and `Edit what's included` inline action.
+  3. *Section 3: Price comparison & choice:*
+     - Left: `SUGGESTED PRICE` with amber warning *"Delivery costs and market prices still need checking."* and `"Use suggested price"` CTA.
+     - Right: `YOUR CHOSEN PRICE` interactive input with `EUR (€)` prefix, numerical value input, dynamic note trigger (`+ Add a note about your choice`), and tax confirmation indicator (`Tax basis — To confirm`).
+  4. *Section 4: Why this suggestion?:* 3 analytical rows (`YOUR OFFER`, `YOUR CUSTOMERS`, `TO VERIFY`), status strip (`Delivery costs: {cost}`, `Market references: {status}`, `View assumptions ▾`), and expandable technical ledger.
+  5. *Section 5: What could you earn?:* Interactive Scenario Simulator with `PAYING BUSINESSES` numeric input, real-time revenue formula (`€{chosenPrice} × {businesses} businesses = €{total}` `Estimated monthly revenue`), footnote caveats, and yellow warning box *"Profit estimate unavailable: Confirm your costs to understand what you could keep."*.
+  6. *Section 6: Check your price:* Status badge (`Not tested`), empty state alert (`No sales or paid preorders recorded.`), educational comparison matrix (Market reference, Customer feedback, Customer interest, Sale or paid preorder), and dynamic action buttons (`Add feedback`, `Add a sale or paid preorder`).
+  7. *Section 7: Next action:* `NEXT ACTION` eyebrow, `Test your starting offer` title, 3 verification bullet points (Offer, Price to test, Customers), and `"Review roadmap task"` action button.
+  8. *Section 8: Quiet Journey Footer Navigation:* Left `"← Back to Aids & Support"`, reassurance label *"You can continue while your price still needs testing."*, and primary CTA `"Save & Continue →"` linking to Step 4.7.
+- **Modals:**
+  - *Founder Offer Customization Modal:* Overrides algorithm price, launch discount %, included features, and strategic notes with immediate unit economics and contribution margin recalculation.
+  - *Strategic Note Modal:* Captures founder choice rationale and persists to backend.
+  - *Feedback Modal & Preorder Modal:* Records empirical customer feedback and paid preorders without full-page reloads.
+- **Verification Evidence:**
+  - Automated Unit Tests: 11 / 11 PASS (`src/__tests__/creator/phase4-pricing-strategy.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
+  - Live Browser E2E: Playwright verified 1440px desktop, 1920px widescreen, and live database strategy generation with 0 DOM errors, 0 layout overflows, and responsive scaling.
   - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
 
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
+
 
 
 

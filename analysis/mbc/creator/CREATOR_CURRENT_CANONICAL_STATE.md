@@ -262,6 +262,7 @@ Stage 4.9: Construction Readiness      → RESERVED / FUTURE TASK
 
 ### Stage 4.6 — Pricing & Revenue Model
 - **Persistence:** `Phase4Data.PricingStrategy`.
+- **Figma Reference:** Frame `57221:12167` ("Pricing & Revenue Model · Step 4.6").
 - **13 Supported Models:** OneTime, Subscription, UsageBased, TransactionFee, Commission, Retainer, ProjectBased, Freemium, Tiered, MarketplaceFee, Licensing, Hybrid, Other.
 - **No Invented Prices:** Grounding required from research, forecasts, or benchmarks. Insufficient data resolves to `NeedsValidation`.
 - **Floor Formulas:**
@@ -269,6 +270,20 @@ Stage 4.9: Construction Readiness      → RESERVED / FUTURE TASK
   - Absolute contribution: $P_{min} = VC + A$
 - **Tax Semantics:** Explicit `ConfiguredTaxMode` (`HT`, `TTC`, `Exempt`, `Unknown`). Zero crude B2B/B2C automatic tax inferences.
 - **Four-Price Independence:** `RecommendedPrice`, `FounderSelectedPrice`, `MarketReferencePrice`, and `ValidatedMarketPrice` are tracked independently. `ValidatedMarketPrice` strictly requires empirical evidence (paid pilot, preorder, historical sale).
+- **Eight Canonical Figma UI Sections:**
+  1. *Section 1: Compact Pricing Summary:* `YOUR CHOSEN PRICE`, large price display (`€{chosenPrice} per business / month`), badges (`Monthly subscription`, `Not tested` / `Empirically Validated`, `Draft`), and reassurance note *"Choose a starting price, then check how customers respond."*.
+  2. *Section 2: How you'll charge:* Inset card with `Suggested` badge, `Change model` action, 2-column breakdown of `Customers pay for`, `What's included`, `Usage limits — To confirm`, `Support included — To confirm`, and `Edit what's included` inline action.
+  3. *Section 3: Price comparison & choice:* Left `SUGGESTED PRICE` with amber warning and `"Use suggested price"` CTA; Right `YOUR CHOSEN PRICE` interactive input with `EUR (€)` prefix, numerical value input, dynamic note trigger, and tax confirmation indicator.
+  4. *Section 4: Why this suggestion?:* 3 analytical rows (`YOUR OFFER`, `YOUR CUSTOMERS`, `TO VERIFY`), status strip (`Delivery costs: {cost}`, `Market references: {status}`, `View assumptions ▾`), and expandable technical ledger.
+  5. *Section 5: What could you earn?:* Interactive Scenario Simulator with `PAYING BUSINESSES` numeric input, real-time revenue formula (`€{chosenPrice} × {businesses} businesses = €{total}` `Estimated monthly revenue`), footnote caveats, and yellow warning box *"Profit estimate unavailable: Confirm your costs to understand what you could keep."*.
+  6. *Section 6: Check your price:* Status badge (`Not tested`), empty state alert (`No sales or paid preorders recorded.`), educational comparison matrix (Market reference, Customer feedback, Customer interest, Sale or paid preorder), and dynamic action buttons (`Add feedback`, `Add a sale or paid preorder`).
+  7. *Section 7: Next action:* `NEXT ACTION` eyebrow, `Test your starting offer` title, 3 verification bullet points (Offer, Price to test, Customers), and `"Review roadmap task"` action button.
+  8. *Section 8: Quiet Journey Footer Navigation:* Left `"← Back to Aids & Support"`, reassurance label *"You can continue while your price still needs testing."*, and primary CTA `"Save & Continue →"` linking to Step 4.7.
+- **Verification Evidence:**
+  - Automated Unit Tests: 11 / 11 PASS (`src/__tests__/creator/phase4-pricing-strategy.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
+  - Live Browser E2E: Playwright verified 1440px desktop and 1920px widescreen across live server with 0 DOM errors, 0 layout overflows, and responsive scaling.
+  - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
 
 ### Stage 4.7 — GTM & Launch Strategy
 - **Persistence:** `Phase4Data.GtmStrategy`.
