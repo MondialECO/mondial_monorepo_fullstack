@@ -404,6 +404,22 @@ export function SkillsPlanView({
       {/* RESOLUTION CARDS STREAM (COMPONENTS 5, 6, 7) */}
       <div className="space-y-6">
         {activeResolutions.map((res, cardIdx) => {
+          const availStr = profileSummary?.weeklyAvailability || '4-8 hours/week';
+          const nums = availStr.match(/\d+/g);
+          const avail = nums
+            ? nums.length > 1
+              ? Math.round((parseInt(nums[0], 10) + parseInt(nums[1], 10)) / 2)
+              : parseInt(nums[0], 10)
+            : 5;
+          const proposedHours =
+            res.learningAction?.workloadImpact?.proposedLearningHours ?? 1;
+          const plannedHours =
+            res.learningAction?.workloadImpact?.alreadyPlannedHours ?? 2.5;
+          const totalHours =
+            res.learningAction?.workloadImpact?.totalIfAcceptedHours ?? 3.5;
+          const bufferHours =
+            res.learningAction?.workloadImpact?.weeklyBufferHours ?? 0.5;
+
           const effectiveMode: 'LEARN' | 'DELEGATE' | 'VERIFY' =
             res.founderDecision === 'ChooseLearn'
               ? 'LEARN'
@@ -451,10 +467,13 @@ export function SkillsPlanView({
                   </div>
                   <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                     {effectiveMode === 'DELEGATE'
-                      ? 'Have someone else handle what you cannot easily do yourself.'
+                      ? res.delegationRequirement?.requirementSummary ||
+                        `Engage external specialist support to handle ${res.capability} requirements.`
                       : effectiveMode === 'LEARN'
-                      ? 'Learn how to explain your offer and start useful conversations.'
-                      : 'Make sure your experience covers the checks needed before people use the product.'}
+                      ? res.learningAction?.objective ||
+                        `Build practical operational skills in ${res.capability} for your project.`
+                      : res.verificationRequirement?.requirement ||
+                        `Ensure your experience and credentials satisfy statutory standards for ${res.capability}.`}
                   </p>
                 </div>
               </div>
@@ -630,7 +649,7 @@ export function SkillsPlanView({
                         {res.delegationRequirement?.expectedDeliverable ||
                           res.delegationRequirement?.expectedOutcome ||
                           res.delegationRequirement?.requirementSummary ||
-                          'Working authenticated core workflow'}
+                          `Verified, production-ready deliverables for ${res.capability} on schedule.`}
                       </span>
                     </div>
                   </div>
@@ -685,7 +704,7 @@ export function SkillsPlanView({
                       <p className="font-semibold text-foreground leading-relaxed">
                         {res.learningAction?.whatYoullBeAbleToDo ||
                           res.learningAction?.objective ||
-                          'Prepare and run a small outreach test.'}
+                          `Independently manage and execute core ${res.capability} workflows.`}
                       </p>
                     </div>
 
@@ -695,7 +714,7 @@ export function SkillsPlanView({
                       </span>
                       <p className="font-semibold text-foreground leading-relaxed">
                         {res.learningAction?.whatYoullCreate ||
-                          'A short first message, a follow-up checklist and a simple response log.'}
+                          `Operational checklists, documentation, and execution standards for ${res.capability}.`}
                       </p>
                     </div>
                   </div>
@@ -706,24 +725,79 @@ export function SkillsPlanView({
                       4 PRACTICAL LEARNING STEPS
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-                      {[
-                        { step: 'Step 01', title: 'Understand the customer problem' },
-                        { step: 'Step 02', title: 'Write a clear first message' },
-                        { step: 'Step 03', title: 'Plan your follow-up' },
-                        { step: 'Step 04', title: 'Review responses and improve' },
-                      ].map((s) => (
-                        <div
-                          key={s.step}
-                          className="p-3 rounded-lg bg-card border border-border/60 space-y-1"
-                        >
-                          <span className="text-[11px] font-mono font-bold text-primary block">
-                            {s.step}
-                          </span>
-                          <span className="text-xs font-semibold text-foreground block leading-tight">
-                            {s.title}
-                          </span>
-                        </div>
-                      ))}
+                      {(() => {
+                        const topics =
+                          res.learningAction?.practicalSteps && res.learningAction.practicalSteps.length > 0
+                            ? res.learningAction.practicalSteps
+                            : res.learningAction?.learningTopics && res.learningAction.learningTopics.length >= 4
+                            ? res.learningAction.learningTopics.slice(0, 4).map((topic, i) => ({
+                                step: `Step 0${i + 1}`,
+                                title: topic,
+                              }))
+                            : null;
+
+                        if (topics) {
+                          return topics.map((s) => (
+                            <div
+                              key={s.step}
+                              className="p-3 rounded-lg bg-card border border-border/60 space-y-1"
+                            >
+                              <span className="text-[11px] font-mono font-bold text-primary block">
+                                {s.step}
+                              </span>
+                              <span className="text-xs font-semibold text-foreground block leading-tight">
+                                {s.title}
+                              </span>
+                            </div>
+                          ));
+                        }
+
+                        const cap = (res.capability || '').toLowerCase();
+                        let fallbackSteps: { step: string; title: string }[];
+                        if (cap.includes('sale') || cap.includes('outreach') || cap.includes('customer')) {
+                          fallbackSteps = [
+                            { step: 'Step 01', title: 'Understand the customer problem' },
+                            { step: 'Step 02', title: 'Write a clear first message' },
+                            { step: 'Step 03', title: 'Plan your follow-up' },
+                            { step: 'Step 04', title: 'Review responses and improve' },
+                          ];
+                        } else if (cap.includes('finance') || cap.includes('accounting')) {
+                          fallbackSteps = [
+                            { step: 'Step 01', title: 'Understand cash flow & burn rate' },
+                            { step: 'Step 02', title: 'Set up financial reporting' },
+                            { step: 'Step 03', title: 'Track budget & reconciliations' },
+                            { step: 'Step 04', title: 'Review compliance & audit readiness' },
+                          ];
+                        } else if (cap.includes('software') || cap.includes('tech') || cap.includes('dev')) {
+                          fallbackSteps = [
+                            { step: 'Step 01', title: 'Define architecture & requirements' },
+                            { step: 'Step 02', title: 'Set up dev tooling & staging' },
+                            { step: 'Step 03', title: 'Build core workflows & tests' },
+                            { step: 'Step 04', title: 'Deploy & verify production' },
+                          ];
+                        } else {
+                          fallbackSteps = [
+                            { step: 'Step 01', title: `Understand core requirements for ${res.capability}` },
+                            { step: 'Step 02', title: 'Set up practical tools & initial workflow' },
+                            { step: 'Step 03', title: 'Execute guided task milestones' },
+                            { step: 'Step 04', title: 'Review results against standards' },
+                          ];
+                        }
+
+                        return fallbackSteps.map((s) => (
+                          <div
+                            key={s.step}
+                            className="p-3 rounded-lg bg-card border border-border/60 space-y-1"
+                          >
+                            <span className="text-[11px] font-mono font-bold text-primary block">
+                              {s.step}
+                            </span>
+                            <span className="text-xs font-semibold text-foreground block leading-tight">
+                              {s.title}
+                            </span>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   </div>
 
@@ -750,7 +824,7 @@ export function SkillsPlanView({
                           Weekly availability
                         </span>
                         <span className="text-sm font-bold text-foreground">
-                          {profileSummary?.weeklyAvailability || '4 hours'}
+                          {availStr}
                         </span>
                       </div>
                       <div>
@@ -758,7 +832,7 @@ export function SkillsPlanView({
                           Already planned
                         </span>
                         <span className="text-sm font-bold text-foreground">
-                          2.5 hours
+                          {plannedHours} hours
                         </span>
                       </div>
                       <div>
@@ -766,7 +840,7 @@ export function SkillsPlanView({
                           Proposed learning
                         </span>
                         <span className="text-sm font-bold text-primary">
-                          +1 hour
+                          +{proposedHours} {proposedHours === 1 ? 'hour' : 'hours'}
                         </span>
                       </div>
                       <div>
@@ -774,10 +848,10 @@ export function SkillsPlanView({
                           Total if accepted
                         </span>
                         <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                          3.5 hours
+                          {totalHours} hours
                         </span>
                         <span className="text-[10px] text-muted-foreground block mt-0.5">
-                          0.5h weekly buffer
+                          {bufferHours}h weekly buffer
                         </span>
                       </div>
                     </div>
@@ -806,7 +880,7 @@ export function SkillsPlanView({
                       <p className="font-semibold text-foreground leading-relaxed">
                         {res.verificationRequirement?.whatNeedsChecking ||
                           res.verificationRequirement?.requirement ||
-                          'Whether you can test the required workflows and identify problems consistently.'}
+                          `Whether your credentials, background, or records satisfy statutory standards for ${res.capability}.`}
                       </p>
                     </div>
 
@@ -815,7 +889,9 @@ export function SkillsPlanView({
                       <p className="font-semibold text-foreground leading-relaxed">
                         {res.verificationRequirement?.whatYouCanShare ||
                           res.verificationRequirement?.requiredEvidence ||
-                          'Relevant previous work or a practical example of similar testing.'}
+                          (res.verificationRequirement?.evidenceRequired?.length
+                            ? res.verificationRequirement.evidenceRequired.join(', ')
+                            : 'Relevant certified documentation, professional experience records, or statutory filing proof.')}
                       </p>
                     </div>
 
@@ -824,7 +900,8 @@ export function SkillsPlanView({
                       <p className="font-semibold text-foreground leading-relaxed">
                         {res.verificationRequirement?.whatIsStillUnclear ||
                           res.verificationRequirement?.whyRequired ||
-                          'Your experience with the project’s launch-critical workflows.'}
+                          res.why ||
+                          `Formal verification status for ${res.capability}.`}
                       </p>
                     </div>
                   </div>
@@ -853,7 +930,7 @@ export function SkillsPlanView({
                   {effectiveMode === 'DELEGATE'
                     ? 'Mondial can help match you with vetted specialists, but hiring remains your decision.'
                     : effectiveMode === 'LEARN'
-                    ? 'Includes suggested outreach templates and follow-up rhythm.'
+                    ? 'Includes practical step-by-step guidance and operational milestones.'
                     : 'Verification avoids extra learning hours if your experience already qualifies.'}
                 </div>
 
