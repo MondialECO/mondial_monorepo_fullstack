@@ -314,19 +314,19 @@ export function SupportPlanView({
       )}
 
       {/* COMPONENT 1: OPTIONS TO EXPLORE SUMMARY CARD (FIGMA 57221:11932) */}
-      <section className="p-6 rounded-2xl bg-card border border-border/80 shadow-sm space-y-4">
+      <section className="p-6 rounded-2xl bg-card border border-border/80 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
               {totalOptions} options to explore
             </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground font-sans">
               Based on your project, learning needs and current situation.
             </p>
           </div>
           <Link
             href={`/dashboard/creator/profile?ideaId=${ideaId}`}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline transition-colors shrink-0"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline transition-colors shrink-0 font-sans"
           >
             <Edit3 className="w-3.5 h-3.5" />
             <span>Update my details</span>
@@ -334,7 +334,7 @@ export function SupportPlanView({
         </div>
 
         {/* Tags Strip */}
-        <div className="flex items-center gap-2 flex-wrap text-xs text-foreground font-medium">
+        <div className="flex items-center gap-2 flex-wrap text-xs text-foreground font-medium font-sans">
           <span className="px-3 py-1 rounded-full bg-muted/60 border border-border/60">France</span>
           <span className="text-muted-foreground">•</span>
           <span className="px-3 py-1 rounded-full bg-muted/60 border border-border/60">
@@ -347,17 +347,17 @@ export function SupportPlanView({
         </div>
 
         {/* Quiet Footnote */}
-        <p className="text-xs text-muted-foreground pt-1 border-t border-border/50">
+        <p className="text-xs text-muted-foreground pt-1 border-t border-border/50 font-sans">
           Each programme has its own conditions and application process. Saving an option does not
           submit an application.
         </p>
       </section>
 
       {/* COMPONENT 2: LOCATION CARD (FIGMA 57221:11932) */}
-      <section className="p-6 rounded-2xl bg-card border border-border/80 shadow-sm space-y-3">
+      <section className="p-6 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
         <div className="space-y-0.5">
-          <h2 className="text-base font-bold text-foreground">Where will you start your business?</h2>
-          <p className="text-xs text-muted-foreground">This helps us check local support.</p>
+          <h2 className="text-base font-bold text-foreground font-heading">Where will you start your business?</h2>
+          <p className="text-xs text-muted-foreground font-sans">This helps us check local support.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-md pt-1">
@@ -368,13 +368,13 @@ export function SupportPlanView({
               value={locationInput}
               onChange={(e) => setLocationInput(e.target.value)}
               placeholder="City or postcode (e.g. Lyon, 69002)"
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
             />
           </div>
           <button
             onClick={handleSaveLocation}
             disabled={isSavingLocation || !locationInput.trim()}
-            className="px-4 py-2 rounded-xl bg-card hover:bg-muted border border-border text-foreground font-semibold text-xs transition-colors shrink-0 disabled:opacity-50 flex items-center justify-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-card hover:bg-muted border border-border text-foreground font-semibold text-xs transition-colors shrink-0 disabled:opacity-50 flex items-center justify-center gap-1.5 font-sans"
           >
             {isSavingLocation ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -389,7 +389,7 @@ export function SupportPlanView({
           </button>
         </div>
 
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
+        <p className="text-xs text-muted-foreground leading-relaxed font-sans">
           Reused from your declared project country (France). Other details are requested only when
           required by a specific programme.
         </p>
@@ -404,7 +404,7 @@ export function SupportPlanView({
           <div className="text-xl font-bold text-foreground font-mono">
             {summary.totalEvaluatedCount}
           </div>
-          <div className="text-[10px] text-muted-foreground">Catalog Schemes</div>
+          <div className="text-[10px] text-muted-foreground font-sans">Catalog Schemes</div>
         </div>
 
         <div className="bg-card border border-border/80 rounded-xl p-3.5 space-y-1">
@@ -414,13 +414,13 @@ export function SupportPlanView({
           <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
             {summary.eligibleCount}
           </div>
-          <div className="text-[10px] text-muted-foreground">Authoritative match</div>
+          <div className="text-[10px] text-muted-foreground font-sans">Authoritative match</div>
         </div>
 
         <div className="bg-card border border-border/80 rounded-xl p-3.5 space-y-1">
           <div className="text-[10px] font-mono uppercase text-primary font-semibold">Potential</div>
           <div className="text-xl font-bold text-primary font-mono">{summary.potentialCount}</div>
-          <div className="text-[10px] text-muted-foreground">Pending minor facts</div>
+          <div className="text-[10px] text-muted-foreground font-sans">Pending minor facts</div>
         </div>
 
         <div className="bg-card border border-border/80 rounded-xl p-3.5 space-y-1">
@@ -430,7 +430,7 @@ export function SupportPlanView({
           <div className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono">
             {summary.needsInfoCount}
           </div>
-          <div className="text-[10px] text-muted-foreground">Requires input</div>
+          <div className="text-[10px] text-muted-foreground font-sans">Requires input</div>
         </div>
 
         <div className="bg-card border border-border/80 rounded-xl p-3.5 space-y-1">
@@ -440,7 +440,7 @@ export function SupportPlanView({
           <div className="text-xl font-bold text-foreground font-mono">
             {summary.readyToPrepareCount}
           </div>
-          <div className="text-[10px] text-muted-foreground">MBC Docs Ready</div>
+          <div className="text-[10px] text-muted-foreground font-sans">MBC Docs Ready</div>
         </div>
 
         <div className="bg-card border border-border/80 rounded-xl p-3.5 space-y-1">
@@ -448,14 +448,14 @@ export function SupportPlanView({
             Founder Tracking
           </div>
           <div className="text-xl font-bold text-foreground font-mono">{summary.actionCount}</div>
-          <div className="text-[10px] text-muted-foreground">In Preparation</div>
+          <div className="text-[10px] text-muted-foreground font-sans">In Preparation</div>
         </div>
       </section>
 
       {/* MISSING ELIGIBILITY FACTS ASSISTANT */}
       {plan.missingEligibilityFacts && plan.missingEligibilityFacts.length > 0 && (
         <section className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 space-y-3">
-          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-semibold text-xs">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-semibold text-xs font-sans">
             <HelpCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <span>
               Clarify Venture Facts to Unlock Deterministic Eligibility (
@@ -469,8 +469,8 @@ export function SupportPlanView({
                 className="bg-card border border-border rounded-xl p-4 space-y-2.5 flex flex-col justify-between"
               >
                 <div className="space-y-1">
-                  <div className="text-xs font-semibold text-foreground">{fact.question}</div>
-                  <div className="text-[11px] text-muted-foreground leading-relaxed">
+                  <div className="text-xs font-semibold text-foreground font-sans">{fact.question}</div>
+                  <div className="text-xs text-muted-foreground leading-relaxed font-sans">
                     {fact.whyNeeded}
                   </div>
                 </div>
@@ -481,14 +481,14 @@ export function SupportPlanView({
                       <button
                         onClick={() => handleFactResponse(fact.key, 'true')}
                         disabled={answeringFactKey === fact.key}
-                        className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors"
+                        className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors font-sans"
                       >
                         Yes
                       </button>
                       <button
                         onClick={() => handleFactResponse(fact.key, 'false')}
                         disabled={answeringFactKey === fact.key}
-                        className="px-3.5 py-1.5 rounded-lg bg-card hover:bg-muted border border-border text-foreground text-xs font-semibold transition-colors"
+                        className="px-3.5 py-1.5 rounded-lg bg-card hover:bg-muted border border-border text-foreground text-xs font-semibold transition-colors font-sans"
                       >
                         No
                       </button>
@@ -500,7 +500,7 @@ export function SupportPlanView({
                           key={val}
                           onClick={() => handleFactResponse(fact.key, val)}
                           disabled={answeringFactKey === fact.key}
-                          className="px-2.5 py-1 rounded-md bg-card hover:bg-muted border border-border text-foreground text-xs font-medium"
+                          className="px-2.5 py-1 rounded-md bg-card hover:bg-muted border border-border text-foreground text-xs font-medium font-sans"
                         >
                           {val}
                         </button>
@@ -515,7 +515,7 @@ export function SupportPlanView({
                           handleFactResponse(fact.key, e.currentTarget.value);
                         }
                       }}
-                      className="bg-muted/40 border border-border rounded-lg px-2.5 py-1 text-xs text-foreground w-full"
+                      className="bg-muted/40 border border-border rounded-lg px-2.5 py-1 text-xs text-foreground w-full font-sans"
                     />
                   )}
                 </div>
@@ -530,10 +530,10 @@ export function SupportPlanView({
         {allMatches.length === 0 ? (
           <div className="bg-card border border-border/80 rounded-2xl p-12 text-center text-muted-foreground space-y-2">
             <Compass className="w-8 h-8 mx-auto text-muted-foreground/60" />
-            <div className="text-sm font-semibold text-foreground">
+            <div className="text-sm font-semibold text-foreground font-sans">
               No matching support schemes identified yet.
             </div>
-            <div className="text-xs">
+            <div className="text-xs font-sans">
               Update your declared location or refresh after completing your Skills Plan.
             </div>
           </div>
@@ -579,13 +579,13 @@ export function SupportPlanView({
             return (
               <article
                 key={match.key}
-                className="rounded-2xl bg-card border border-border/80 p-6 space-y-4 shadow-sm hover:border-border transition-all"
+                className="rounded-2xl bg-card border border-border/80 p-6 space-y-4 shadow-xs hover:border-border transition-all"
               >
                 {/* Top Row: Pill badges & Toggle */}
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap font-sans">
                     {/* Category Badge */}
-                    <span className="px-2.5 py-1 rounded-md bg-muted text-[11px] font-medium text-foreground">
+                    <span className="px-2.5 py-1 rounded-md bg-muted text-xs font-medium text-foreground">
                       {categoryLabel}
                     </span>
 
@@ -619,7 +619,7 @@ export function SupportPlanView({
 
                     {/* Saved State Badge if tracked */}
                     {isSaved && (
-                      <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-semibold">
+                      <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-semibold">
                         {match.founderApplicationState}
                       </span>
                     )}
@@ -640,15 +640,15 @@ export function SupportPlanView({
 
                 {/* Headline & Subheadlines */}
                 <div className="space-y-1">
-                  <h3 className="text-xl font-bold text-foreground tracking-tight">{match.name}</h3>
-                  <p className="text-sm font-semibold text-foreground leading-snug">
+                  <h3 className="text-xl font-bold text-foreground font-heading tracking-tight">{match.name}</h3>
+                  <p className="text-sm font-semibold text-foreground font-sans leading-snug">
                     {match.supportValueDescription || match.description}
                   </p>
-                  <p className="text-xs text-muted-foreground leading-relaxed pt-0.5">
+                  <p className="text-xs text-muted-foreground font-sans leading-relaxed pt-0.5">
                     {match.whyMatched?.[0] ||
                       'You are preparing an early-stage project and may benefit from guidance.'}
                   </p>
-                  <div className="text-[11px] text-muted-foreground pt-0.5 flex items-center gap-2 flex-wrap">
+                  <div className="text-xs text-muted-foreground font-sans pt-0.5 flex items-center gap-2 flex-wrap">
                     <span>
                       Official details:{' '}
                       <span className="font-medium text-foreground">
@@ -656,14 +656,14 @@ export function SupportPlanView({
                       </span>
                     </span>
                     {match.catalogueSource && (
-                      <span className="text-muted-foreground/80">via {match.catalogueSource}</span>
+                      <span className="text-muted-foreground/80 font-mono">via {match.catalogueSource}</span>
                     )}
                   </div>
                 </div>
 
                 {/* Collapsed State Actions Bar */}
                 {!isExpanded && (
-                  <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-3">
+                  <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-3 font-sans">
                     <button
                       onClick={() => handleToggleBookmark(match)}
                       className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors flex items-center gap-1.5 ${
