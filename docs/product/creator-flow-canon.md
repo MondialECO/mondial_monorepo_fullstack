@@ -1431,23 +1431,29 @@ Surfaces complete regulatory and computational provenance:
 - **Multi-Signal Sales Motion:** Considers price, founder capacity, sales cycle, and buyer persona.
 - **Budget Provenance:** Distinguishes `ForecastCacAssumption`, `ObservedCac`, and `ValidatedCac`. If pricing is `NeedsValidation`, GTM enforces validation-first testing before paid scaling.
 - **Immutable Experiment Evidence:** Completed validation runs and evidence are never deleted during refreshes.
-- **Canonical UI Components (Figma 57221:12464):**
-  1. *Header & Motion Badge:* Eyebrow `PHASE 4 · STEP 4.7`, dynamic venture title, motion badge (`ConsultativePilot`, `ProductLed`, etc.), and `Refresh GTM` CTA.
-  2. *Top Provenance & Capacity Metric Cards (4 Cards):*
-     - *Weekly Founder Capacity:* `{allocated}h / {available}h`, band status, remaining weekly buffer.
-     - *Spendable Marketing Cash:* Spendable total, status (`Planned`, `ConfirmedAvailable`), budget source.
-     - *CAC Provenance:* Observed CAC vs Forecast CAC Assumption vs `Needs Baseline`.
-     - *Primary Launch Segment:* Segment title, selected unit price, and revenue model.
-  3. *Primary Launch Segment & Positioning:* Target Segment name, match relevance score, core problem, value proposition message angle, buying complexity, and sales cycle basis.
-  4. *Prioritized Acquisition Channels:* Channel cards with priority badges (`Primary`, `Secondary`, `Later`, `NotRecommended`), effort levels, estimated weekly hours, deterministic reason codes (`FOUNDER_CAPABILITY_MATCH`, `SALES_MOTION_MATCH`, etc.), why now, first step, and `Adjust Priority` modal.
-  5. *GTM Validation Experiments & Empirical Evidence Log:* Timeboxed hypotheses, budget caps, primary metric threshold status (`NeedsBaseline`, `EvidenceBased`), success/stop conditions, `Log Completed Run` modal, and expandable immutable run history.
-  6. *Standardized Measurement Contract:* Funnel stage matrix (Awareness, Discovery, Pilot, Conversion, Activation), metric names, formulas, data sources, and targets.
-  7. *Sequenced Launch Timeline & Phasing:* Phased milestones with timeframes, objectives, and exit criteria.
-  8. *Phase 4.8 Boundary Banner & Quiet Footer Navigation:* Phase 4.8 boundary card + `← Back to Step 4.6 Pricing Strategy` and `Review Construction Snapshot →`.
+- **Ten Canonical Figma UI Sections (Figma Node 57221:12464):**
+  1. *Section 1: Plan Summary Card (`YOUR LAUNCH PLAN`):* Eyebrow `"YOUR LAUNCH PLAN"`, `"Draft"` badge, project chip `"Project: {projectName}"`, overall motion heading, dynamic problem subtitle, 3 compact facts (`First customers`, `Main channel`, `Budget`), and next-action reminder line (`"Next launch action: Prepare customer conversations"`).
+  2. *Section 2: Your First Customers:* Target customer card with highlighted problem description, `Suggested` badge, decision-maker status (`Likely decision-maker: Business owner — To confirm`), expandable `Why this group?` explanation (grounded rationale, sales cycle basis, aligned revenue model), and `Adjust customer group` modal trigger.
+  3. *Section 3: What You'll Say:* `POSITIONING` badge with core value proposition, `INITIAL OUTREACH MESSAGE DRAFT` quote card with `Ready for testing` badge, copy action (`Copy message`), and `Edit message` modal.
+  4. *Section 4: How Customers Will Buy:* `Talk first, demonstrate when ready` strategy header, 3 decision cards (`WHO DECIDES?`, `WHAT NEEDS EXPLAINING?`, `WHAT COULD BUILD TRUST?`), stage progression preview (`Now: Customer conversations` → `Later: Product demo`), and small pricing reference card (`Review pricing →`).
+  5. *Section 5: Where To Reach Them:* Primary channel card with `Main channel` badge, description, 3 structured details (`WHY START HERE?`, `WHAT YOU’LL DO`, `WHAT NEEDS CHECKING`), and `Change channel` modal.
+  6. *Section 6: What You Can Commit:* 2-column capacity breakdown for `PROJECT TIME` (weekly available/allocated hours, capacity band, `Review available time` modal) and `MARKETING BUDGET` (validation status, budget source, spendable status, `Set budget` modal).
+  7. *Section 7: Your Launch Actions:* Action 1 expanded with 4-quadrant breakdown (`What to do`, `Expected output`, `Why it matters`, `Time & Capacity`) + roadmap task link; Actions 2–4 compact with condition locks (`Needs a usable product demo`, `Needs launch assets`, `Needs recorded activity`).
+  8. *Section 8: What To Track:* Funnel measure table (`Businesses contacted`, `Replies received`, `Demo requests`, `Purchases` with target vs actual columns calculated dynamically from `experiments.runs.metricsObserved`), empty state note, and modal triggers (`Set targets`, `Record results`).
+  9. *Section 9: Connection To Launch Assets:* `NEXT STEP PREVIEW` eyebrow, 3 mini preview pills (`For: {segment}`, `Message: {message}`, `Proposed CTA: Express interest`), and launch asset boundary notice.
+  10. *Section 10: Journey Footer:* Left `← Back to Pricing`, reassurance label, and primary CTA `Activate plan & continue` with `Next: Launch Assets`.
+- **Interactive Modals:**
+  - *Edit Message Modal:* Customizes initial outreach introductory draft.
+  - *Adjust Customer Group Modal:* Modifies target customer segment problem description.
+  - *Change Channel Modal:* Allows switching primary acquisition channel priority.
+  - *Set Budget & Time Modal:* Configures weekly project hours and spendable marketing budget.
+  - *Set Targets Modal:* Configures numerical goals for funnel tracking.
+  - *Record Results Modal:* Records actual spend, invested effort, observations, and validation outcome for empirical runs.
 - **Verification Evidence:**
   - Automated Unit Tests: 6 / 6 PASS (`src/__tests__/creator/phase4-gtm-strategy.test.tsx`).
   - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
   - Backend Tests (C#): 179 / 179 PASS (`WebApp.Tests.dll`).
+  - TypeScript Typecheck: 0 errors (`tsc --noEmit`).
   - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
 
 
