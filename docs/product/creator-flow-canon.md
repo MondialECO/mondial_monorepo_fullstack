@@ -1862,25 +1862,31 @@ RC1 Freeze
   - Automated Unit Tests: 6 / 6 PASS (`src/__tests__/creator/phase4-gtm-strategy.test.tsx`).
   - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
   - Backend Tests (C#): 179 / 179 PASS (`WebApp.Tests.dll`).
-**2026-09-26 — Creator Phase 4.5 Aids, Grants & Public Support: Exact Figma 57221:11932 Alignment, Zero Mock Data & Verification Delivery.**
-- **Figma Reference & Layout (§6.5):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11932` "Aids, Grants & Support · Step 4.5 Content"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
-- **Canonical Route:** `/dashboard/creator/phase-4/support`
-- **Canonical UI Components (Figma 57221:11932):**
-  1. *Compact Page-Level Header:* Eyebrow `"PHASE 4 · STEP 4.5"`, Title `"Aids, Grants & Public Support"`, Subtitle `"Explore funding schemes, training support, and institutional backing for your venture."`.
-  2. *Summary Card:* Total options count, live profile chips (Country, Situation, Formation phase), `"Update my details ↗"` deep link, and legal disclaimer.
-  3. *Location Card:* Location inquiry card with MapPin input prefilled with recorded fact, and `"Save location"` action dispatching `onAnswerFact('project_location', location)`.
-  4. *Opportunity Cards List & Rich Inset Panels:* Category pill badge, status badge, card headline, value subtitle, description, official details provenance, expandable 2-column breakdown (`WHAT YOU COULD GET`, `WHY THIS MAY FIT`, `WHAT WE ALREADY KNOW`, `WHEN TO APPLY`, `WHAT TO CHECK`, `WHAT YOU MAY NEED`, `OFFICIAL SOURCE`), `BEFORE YOU APPLY` callout box, and action buttons (`Check my details`, `Audit Details`, `Save this option`, `Track Application`, `Open official website ↗`). Removed non-canonical metric strip and milestone banner.
-  5. *Quiet Journey Footer Navigation:* Left `"← Back to Skills & Training"`, reassurance text, and primary CTA `"Continue to Pricing & Revenue →"`.
-- **Modals:**
-  - *Audit Details Modal:* Complete regulatory and computational provenance, criteria met checks, and Phase 3 artifact reuse mappings.
+**2026-09-26 — Creator Phase 4.6 Pricing Strategy: Exact Figma 57221:12167 8-Section Redesign, Multi-Idea Atomic Persistence & Gate Resolution.**
+- **Figma Reference & Layout (§6.6):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:12167` "Pricing & Revenue Model · Step 4.6"). Max content width 1120px (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with full dark/light semantic design token compliance.
+- **Canonical Route:** `/dashboard/creator/phase-4/pricing`
+- **Eight Canonical Figma UI Sections:**
+  1. *Section 1: Compact Pricing Summary:* `YOUR CHOSEN PRICE`, large price display (`€{chosenPrice} per business / month`), billing mode badge, validation status badge (`Empirically Validated` / `Needs Validation`), and reassurance text.
+  2. *Section 2: How you'll charge:* Inset packaging card with `Suggested` badge, `Change model` trigger, 2-column breakdown of deliverables, usage limits, and support inclusions.
+  3. *Section 3: Price comparison & choice:* Split comparison between MBC algorithm `SUGGESTED PRICE` and interactive `YOUR CHOSEN PRICE` input with currency prefix and tax basis indicator.
+  4. *Section 4: Why this suggestion?:* Analytical breakdown of value drivers, target customer profile, and cost assumptions with expandable technical ledger.
+  5. *Section 5: What could you earn?:* Interactive Scenario Simulator with paying business input, real-time monthly revenue formula, and cost caveat alerts.
+  6. *Section 6: Check your price:* Status badge, empty state alert, validation matrix (Market reference, Feedback, Interest, Preorder), and live entry modals (`Add feedback`, `Add a sale or paid preorder`).
+  7. *Section 7: Next action:* `Test your starting offer` action card linking to operational roadmap task.
+  8. *Section 8: Quiet Journey Footer Navigation:* Left `"← Back to Aids & Support"`, reassurance label, and smart primary CTA `"Save & Continue →"` that persists changes, re-evaluates freshness, and transitions directly to Step 4.7 GTM Strategy.
+- **Multi-Idea Persistence & Gate Integration:**
+  - Persists Step 4.6 outputs atomically into active `CreatorIdea` via `WriteIdeaAsync(idea, ...)` in `CreatorJourneyService.cs`, eliminating multi-idea overlay wipeouts.
+  - Resolves circular `ProjectUpdatedAt` staleness checks in `PricingStrategyService.cs`, unblocking Phase 4.7 prerequisite validation seamlessly.
 - **Verification Evidence:**
-  - Automated Unit Tests: 8 / 8 PASS (`src/__tests__/creator/phase4-support-plan.test.tsx`).
+  - Automated Unit Tests: 11 / 11 PASS (`src/__tests__/creator/phase4-pricing-strategy.test.tsx`).
   - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
-  - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
+  - Backend Tests (C#): 268 / 268 PASS (`WebApp.Tests.dll --filter Phase4`).
+  - Next.js Production Build: 100% clean compilation of all Creator Phase 4 routes.
 
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
+
 
 
 
