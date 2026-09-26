@@ -336,10 +336,22 @@ export function SupportPlanView({
         {/* Tags Strip */}
         <div className="flex items-center gap-2 flex-wrap text-xs text-foreground font-medium font-sans">
           <span className="px-3 py-1 rounded-full bg-muted/60 border border-border/60">France</span>
-          <span className="text-muted-foreground">•</span>
-          <span className="px-3 py-1 rounded-full bg-muted/60 border border-border/60">
-            {profileSummary?.currentSituation || 'Student'}
-          </span>
+          {profileSummary?.currentSituation && (
+            <>
+              <span className="text-muted-foreground">•</span>
+              <span className="px-3 py-1 rounded-full bg-muted/60 border border-border/60">
+                {profileSummary.currentSituation}
+              </span>
+            </>
+          )}
+          {profileSummary?.weeklyAvailability && (
+            <>
+              <span className="text-muted-foreground">•</span>
+              <span className="px-3 py-1 rounded-full bg-muted/60 border border-border/60">
+                {profileSummary.weeklyAvailability}
+              </span>
+            </>
+          )}
           <span className="text-muted-foreground">•</span>
           <span className="px-3 py-1 rounded-full bg-muted/60 border border-border/60">
             Project in preparation
@@ -698,17 +710,19 @@ export function SupportPlanView({
                       );
 
                       const checks =
-                        match.supportType === 'TrainingFunding'
+                        match.conditionsMissing && match.conditionsMissing.length > 0
+                          ? match.conditionsMissing
+                          : match.supportType === 'TrainingFunding'
                           ? [
-                              'Your location',
-                              'The selected training or development scope',
+                              'Your location and declared region',
+                              'The selected training or development scope from your Skills Plan',
                               'Whether the programme supports that scope',
                               'The relevant application conditions',
                               'Whether applications are currently open',
                             ]
                           : match.supportType === 'SocialContributionExemption'
                           ? [
-                              'Your business registration date (within 45 days)',
+                              'Your business registration date (within 45 days of formation)',
                               'Selected legal form and founder corporate mandate',
                               'Eligibility of social security regime with URSSAF',
                               'Whether applications are currently open',
