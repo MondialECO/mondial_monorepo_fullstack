@@ -1457,10 +1457,30 @@ Surfaces complete regulatory and computational provenance:
   - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
 
 
-### 6.8 Stage 4.8 — Launch Assets (Next Approved Stage)
-- **Approved Direction:** **One-Page Professional Launch Website** (responsive, branded, component-based, section families: Hero, Problem, Solution, Features, How It Works, Offer/Pricing, Social Proof, FAQ, Final CTA).
-- **Storage Decision:** Active configuration in `CreatorJourney.Phase4Data.LaunchAssets`. Historical generated revisions stored in dedicated `LaunchAssetVersions` to avoid unbounded MongoDB documents.
-- **Current Status:** **APPROVED ARCHITECTURE / NOT PART OF CURRENT COMMIT**.
+### 6.8 Stage 4.8 — Launch Assets (One-Page Launch Website)
+- **Approved Direction & Canonical Specification:**
+  - **Figma Source of Truth:** `https://www.figma.com/design/yLDPLB9hIAIqfYY9uHuJom/Mondial-Dashboard-EDU?node-id=57221-12861&m=dev` (Node `57221:12861`).
+  - **Component Structure (6 Canonical Sections):**
+    1. *Section 1: Compact Asset Summary Card:* Project Name, `/ ONE-PAGE WEBSITE`, `Draft` badge, `v1.0-rc` badge, description, status badge (`Available to view in MBC. Not published.`), 3 primary actions (`View website` modal, `Download source` static bundle exporter, `Use this version`), and Version meta footer (`Current draft: Version {n}`, `Create a new version` trigger).
+    2. *Section 2: Source Strip & Attention Notice Card:* Built From strip (`Your Brand Kit`, `Project information`, `Chosen offer`, `Launch strategy`) and Amber Attention Notice (`Add a destination for your main button` with `Set button destination` action).
+    3. *Section 3: Website Preview Controls & Responsive Device Frame:* Viewport selector toggle (`Desktop` vs `Mobile`), clean honest preview envelope containing:
+       - *Top Bar & Hero:* Brand name, `In preparation` badge, Headline, Description, `Express interest` CTA, `Interactive link disabled in preview` badge.
+       - *Planned Workflow Visual Container:* 3 clean step cards (`1. Enquiry` - Unified intake, `2. Quotation` - Context continuity, `3. Follow-up` - Next step clarity).
+       - *Section B (Problem Statement):* Eyebrow `KEEP TRACK OF THE NEXT STEP`, problem statement, divider, operational momentum statement.
+       - *Section C (Planned Solution):* `What’s being planned` + 3 cards (`Enquiries together`, `Quotations in view`, `Follow-ups to remember`).
+       - *Section D (How It Is Intended To Work):* `A simpler flow for your work` + 3 numbered workflow steps (`Organise the enquiry`, `Prepare and track the quotation`, `Follow up on the next action`).
+       - *Section E (FAQ):* `Frequently Asked Questions` + 3 honest Q&A cards (`Can I use {projectName} today?`, `Who is it being designed for?`, `When will it launch?`).
+       - *Section F (Final Call to Action):* `Share how you work today` + `Express interest` button with destination warning note.
+       - *Section G (Footer):* Project name + `Project in preparation`.
+    4. *Section 4: Simple Content Editing Card:* Headline input, Description textarea, Button label input, Button destination radio choice (`Email address` vs `Existing link`) with destination input, `Apply changes` action, and `Suggest new wording` AI copy generator.
+    5. *Section 5: Website Sections Card:* 7 Included sections (`Hero`, `Problem`, `Planned solution`, `How it works`, `FAQ`, `Final call to action`, `Footer`) with inline `Edit` navigation; 2 Excluded sections (`Pricing` with link to Step 4.6 and `Testimonials and customer proof` with link to Proof).
+    6. *Section 6: Footer Actions & Progression:* `← Back to Launch Strategy` and `Continue to Construction Readiness →`.
+- **Storage Decision:** Active configuration in `CreatorJourney.Phase4Data.LaunchAssets` with deterministic versioning.
+- **Verification Evidence:**
+  - Automated Unit Tests: 9 / 9 PASS (`src/__tests__/creator/phase4-launch-assets.test.tsx`).
+  - Full Creator Vitest Suite: 159 / 159 PASS across 13 test files.
+  - TypeScript Compilation: `npx tsc --noEmit` 0 errors.
+- **Current Status:** **LIVE & FULLY IMPLEMENTED (MATCHING FIGMA NODE 57221:12861)**.
 
 ### 6.9 Stage 4.9 — Construction Readiness
 - Final deterministic assessment synthesizing all 8 stages into launch certification.
@@ -1503,7 +1523,7 @@ Legacy compatibility surfaces:
 Retained intentionally where needed for backward compatibility (1 BSON field, 1 command adapter, 2 HTTP endpoints)
 
 Phase 4.8:
-NOT IMPLEMENTED (Next approved stage)
+LaunchAssets (Live, deterministic, matching Figma Node 57221:12861)
 
 Phase 4.9:
 RESERVED (Construction readiness)

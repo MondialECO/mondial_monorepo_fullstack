@@ -26,6 +26,7 @@ namespace WebApp.Controllers
         private readonly ISupportPlanService _supportService;
         private readonly IPricingStrategyService _pricingService;
         private readonly IGtmStrategyService _gtmService;
+        private readonly ILaunchAssetsService _assetsService;
 
         public CreatorPhase4ConstructionController(
             IConstructionSnapshotService snapshotService,
@@ -34,7 +35,8 @@ namespace WebApp.Controllers
             ISkillsResolutionService skillsService,
             ISupportPlanService supportService,
             IPricingStrategyService pricingService,
-            IGtmStrategyService gtmService)
+            IGtmStrategyService gtmService,
+            ILaunchAssetsService assetsService)
         {
             _snapshotService = snapshotService;
             _roadmapService = roadmapService;
@@ -43,6 +45,7 @@ namespace WebApp.Controllers
             _supportService = supportService;
             _pricingService = pricingService;
             _gtmService = gtmService;
+            _assetsService = assetsService;
         }
 
         private string GetUserId() =>
@@ -1847,6 +1850,266 @@ namespace WebApp.Controllers
             catch (InvalidOperationException ex)
             {
                 return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // =========================================================================
+        // STEP 4.8: LAUNCH ASSETS
+        // =========================================================================
+
+        // GET /api/creator/phase4/assets?ideaId={ideaId}
+        [HttpGet("assets")]
+        public async Task<IActionResult> GetLaunchAssets([FromQuery] string? ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _assetsService.GetLaunchAssetsAsync(userId, ideaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
+                return Ok(ApiResponse.Ok("Launch assets retrieved", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/assets/generate?ideaId={ideaId}&expectedVersion={v}
+        [HttpPost("assets/generate")]
+        public async Task<IActionResult> GenerateLaunchAssets(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            [FromBody] Models.DatabaseModels.Phase4.GenerateLaunchAssetsRequest? request = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.GenerateLaunchAssetsRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                if (expectedVersion.HasValue && request.ExpectedVersion.HasValue && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+                if (!string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    HttpContext.Items["CreatorIdeaId"] = request.IdeaId;
+                }
+
+                var result = await _assetsService.GenerateLaunchAssetsAsync(userId, request.IdeaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
+                return Ok(ApiResponse.Ok("Launch assets generated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/assets/refresh?ideaId={ideaId}&expectedVersion={v}
+        [HttpPost("assets/refresh")]
+        public async Task<IActionResult> RefreshLaunchAssets(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            [FromBody] Models.DatabaseModels.Phase4.GenerateLaunchAssetsRequest? request = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.GenerateLaunchAssetsRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                if (expectedVersion.HasValue && request.ExpectedVersion.HasValue && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+                if (!string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    HttpContext.Items["CreatorIdeaId"] = request.IdeaId;
+                }
+
+                var result = await _assetsService.RefreshLaunchAssetsAsync(userId, request.IdeaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
+                return Ok(ApiResponse.Ok("Launch assets refreshed", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // PATCH /api/creator/phase4/assets?ideaId={ideaId}&expectedVersion={v}
+        [HttpPatch("assets")]
+        public async Task<IActionResult> UpdateLaunchAssets(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            [FromBody] Models.DatabaseModels.Phase4.UpdateLaunchAssetsRequest? request = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.UpdateLaunchAssetsRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                if (expectedVersion.HasValue && request.ExpectedVersion.HasValue && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+                if (!string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    HttpContext.Items["CreatorIdeaId"] = request.IdeaId;
+                }
+
+                var result = await _assetsService.UpdateLaunchAssetsAsync(userId, request);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
+                return Ok(ApiResponse.Ok("Launch assets updated", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/assets/new-version?ideaId={ideaId}&expectedVersion={v}
+        [HttpPost("assets/new-version")]
+        public async Task<IActionResult> CreateNewVersion(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            [FromBody] Models.DatabaseModels.Phase4.GenerateLaunchAssetsRequest? request = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.GenerateLaunchAssetsRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                if (expectedVersion.HasValue && request.ExpectedVersion.HasValue && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+                if (!string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    HttpContext.Items["CreatorIdeaId"] = request.IdeaId;
+                }
+
+                var result = await _assetsService.CreateNewVersionAsync(userId, request.IdeaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
+                return Ok(ApiResponse.Ok("New launch assets version created", result));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // GET /api/creator/phase4/assets/source?ideaId={ideaId}
+        [HttpGet("assets/source")]
+        public async Task<IActionResult> GetSourceCode([FromQuery] string? ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var html = await _assetsService.GetSourceCodeBundleAsync(userId, ideaId);
+                return Content(html, "text/html");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status404NotFound, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
