@@ -44,6 +44,7 @@ import type {
   LaunchFaqItem,
   UpdateLaunchAssetsRequest,
 } from '@/types/creator/launch-assets';
+import { resolveMediaUrl } from '@/lib/brand-kit-media';
 
 interface LaunchAssetsViewProps {
   ideaId: string;
@@ -293,8 +294,20 @@ export function LaunchAssetsView({
   const brandPrimary = brandStudio?.primaryColorHex || '#3B82F6';
   const brandSecondary = brandStudio?.secondaryColorHex || '#10B981';
   const brandAccent = brandStudio?.accentColorHex || '#F59E0B';
-  const displayFont = brandStudio?.displayFontFamily || 'inherit';
-  const textFont = brandStudio?.textFontFamily || 'inherit';
+  const brandBackground = brandStudio?.backgroundColorHex || '#090A0C';
+  const brandText = brandStudio?.textColorHex || '#F3F4F6';
+  const displayFont = brandStudio?.displayFontFamily || 'Inter';
+  const textFont = brandStudio?.textFontFamily || 'DM Sans';
+  const headingWeight = brandStudio?.headingWeight || '700';
+  const bodyWeight = brandStudio?.bodyWeight || '400';
+
+  const logoUri = brandStudio?.logoLockupUri || brandStudio?.logoMarkUri;
+  const resolvedLogoUrl = logoUri ? resolveMediaUrl(logoUri) : '';
+  const googleFontsUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
+    textFont
+  ).replace(/%20/g, '+')}:wght@300;400;500;600;700;800&family=${encodeURIComponent(
+    displayFont
+  ).replace(/%20/g, '+')}:wght@400;500;600;700;800;900&display=swap`;
 
   // AI copy suggestions synthesized directly from Brand Studio
   const wordingSuggestions = [
@@ -381,6 +394,9 @@ export function LaunchAssetsView({
 
   return (
     <div className="max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 pb-24">
+      {/* Inject Brand Studio Google Fonts */}
+      {googleFontsUrl && <link rel="stylesheet" href={googleFontsUrl} />}
+
       {/* ------------------------------------------------------------------------- */}
       {/* SECTION 1: COMPACT ASSET SUMMARY CARD */}
       {/* ------------------------------------------------------------------------- */}
@@ -694,18 +710,24 @@ export function LaunchAssetsView({
                 <div className="p-6 sm:p-10 space-y-8">
                   {/* Header */}
                   <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      {brandStudio?.logoMarkUri && (
+                    <div className="flex items-center gap-2.5">
+                      {resolvedLogoUrl ? (
+                        <img
+                          src={resolvedLogoUrl}
+                          alt={brandName || projectName}
+                          className="h-8 w-auto max-w-[150px] object-contain"
+                        />
+                      ) : (
                         <div
-                          className="w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs text-white"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-xs"
                           style={{ backgroundColor: brandPrimary }}
                         >
-                          {brandName.slice(0, 1)}
+                          {(brandName || projectName || 'M').slice(0, 1).toUpperCase()}
                         </div>
                       )}
                       <span
-                        className="font-bold text-base sm:text-lg text-foreground"
-                        style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                        className="font-bold text-base sm:text-lg text-foreground tracking-tight"
+                        style={{ fontFamily: `'${displayFont}', sans-serif`, fontWeight: headingWeight }}
                       >
                         {brandName || projectName}
                       </span>
@@ -1006,13 +1028,29 @@ export function LaunchAssetsView({
 
               {/* SECTION G: FOOTER (INSIDE PREVIEW) */}
               {isSectionIncluded('footer') && (
-                <div className="p-6 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                  <span
-                    className="font-semibold text-foreground"
-                    style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
-                  >
-                    {brandName || projectName}
-                  </span>
+                <div className="p-6 border-t border-border flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    {resolvedLogoUrl ? (
+                      <img
+                        src={resolvedLogoUrl}
+                        alt={brandName || projectName}
+                        className="h-5 w-auto max-w-[100px] object-contain opacity-80"
+                      />
+                    ) : (
+                      <div
+                        className="w-4 h-4 rounded flex items-center justify-center font-bold text-[9px] text-white"
+                        style={{ backgroundColor: brandPrimary }}
+                      >
+                        {(brandName || projectName || 'M').slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
+                    <span
+                      className="font-semibold text-foreground"
+                      style={{ fontFamily: `'${displayFont}', sans-serif` }}
+                    >
+                      {brandName || projectName}
+                    </span>
+                  </div>
                   <span>{footerNotice}</span>
                 </div>
               )}
@@ -1766,16 +1804,65 @@ export function LaunchAssetsView({
           </div>
 
           <div className="flex-1 overflow-y-auto max-w-4xl mx-auto w-full bg-card border border-border rounded-xl p-8 space-y-8">
+            <div className="flex items-center justify-between pb-6 border-b border-border">
+              <div className="flex items-center gap-2.5">
+                {resolvedLogoUrl ? (
+                  <img
+                    src={resolvedLogoUrl}
+                    alt={brandName || projectName}
+                    className="h-8 w-auto max-w-[150px] object-contain"
+                  />
+                ) : (
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-xs"
+                    style={{ backgroundColor: brandPrimary }}
+                  >
+                    {(brandName || projectName || 'M').slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+                <span
+                  className="font-bold text-lg text-foreground tracking-tight"
+                  style={{ fontFamily: `'${displayFont}', sans-serif`, fontWeight: headingWeight }}
+                >
+                  {brandName || projectName}
+                </span>
+              </div>
+              <span
+                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                style={{
+                  borderColor: `${brandPrimary}40`,
+                  color: brandPrimary,
+                  backgroundColor: `${brandPrimary}15`,
+                }}
+              >
+                In preparation
+              </span>
+            </div>
+
             <div className="text-center space-y-4 max-w-2xl mx-auto pt-6">
-              <span className="text-xs font-mono uppercase tracking-widest text-primary font-semibold">
+              <span
+                className="text-xs font-mono uppercase tracking-widest font-semibold"
+                style={{ color: brandPrimary }}
+              >
                 {assets.conceptBadge}
               </span>
-              <h1 className="text-3xl sm:text-4xl font-heading font-bold text-foreground">{headline}</h1>
-              <p className="text-sm sm:text-base text-muted-foreground">{description}</p>
+              <h1
+                className="text-3xl sm:text-4xl font-bold text-foreground"
+                style={{ fontFamily: `'${displayFont}', sans-serif`, fontWeight: headingWeight }}
+              >
+                {headline}
+              </h1>
+              <p
+                className="text-sm sm:text-base text-muted-foreground leading-relaxed"
+                style={{ fontFamily: `'${textFont}', sans-serif`, fontWeight: bodyWeight }}
+              >
+                {description}
+              </p>
               <div className="pt-2">
                 <button
                   disabled
-                  className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm inline-flex items-center gap-2 cursor-not-allowed opacity-90 shadow-sm"
+                  className="px-6 py-2.5 rounded-lg text-white font-medium text-sm inline-flex items-center gap-2 cursor-not-allowed opacity-95 shadow-sm"
+                  style={{ backgroundColor: brandPrimary }}
                 >
                   <span>{buttonLabel}</span>
                   <ArrowRight className="w-4 h-4" />
@@ -1784,10 +1871,18 @@ export function LaunchAssetsView({
             </div>
 
             <div className="border-t border-border pt-8 space-y-4">
-              <h3 className="text-lg font-heading font-semibold text-foreground">
+              <h3
+                className="text-lg font-semibold text-foreground"
+                style={{ fontFamily: `'${displayFont}', sans-serif` }}
+              >
                 {problemEyebrow}
               </h3>
-              <p className="text-sm text-muted-foreground">{problemStatement}</p>
+              <p
+                className="text-sm text-muted-foreground leading-relaxed"
+                style={{ fontFamily: `'${textFont}', sans-serif` }}
+              >
+                {problemStatement}
+              </p>
             </div>
           </div>
         </div>

@@ -133,9 +133,19 @@ namespace WebApp.Services.Implementations
             var headingWeight = brandKit?.Typography?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Heading", StringComparison.OrdinalIgnoreCase))?.Weight ?? "700";
             var bodyWeight = brandKit?.Typography?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Body", StringComparison.OrdinalIgnoreCase))?.Weight ?? "400";
 
+            string? primaryVar = null;
+            string? horizVar = null;
+            string? iconVar = null;
+            if (brandKit?.Logo?.Variations != null)
+            {
+                if (brandKit.Logo.Variations.TryGetValue("primary", out var pv)) primaryVar = pv.SvgUri;
+                if (brandKit.Logo.Variations.TryGetValue("horizontal", out var hv)) horizVar = hv.SvgUri;
+                if (brandKit.Logo.Variations.TryGetValue("icon_only", out var iv)) iconVar = iv.SvgUri;
+            }
+
             var selectedConcept = brandKit?.Logo?.Concepts?.FirstOrDefault(c => c.Key == brandKit.Logo.SelectedConceptKey) ?? brandKit?.Logo?.Concepts?.FirstOrDefault();
-            var logoMarkUri = selectedConcept?.MarkAssetUri ?? string.Empty;
-            var logoLockupUri = selectedConcept?.LockupAssetUri ?? string.Empty;
+            var logoMarkUri = !string.IsNullOrWhiteSpace(iconVar) ? iconVar : (selectedConcept?.MarkAssetUri ?? string.Empty);
+            var logoLockupUri = !string.IsNullOrWhiteSpace(primaryVar) ? primaryVar : (!string.IsNullOrWhiteSpace(horizVar) ? horizVar : (selectedConcept?.LockupAssetUri ?? string.Empty));
             var logoDescriptor = selectedConcept?.DescriptorLine ?? string.Empty;
 
             var pricing = journey.Phase4Data?.PricingStrategy;
@@ -405,9 +415,19 @@ namespace WebApp.Services.Implementations
             var headingWeight = kit.Typography?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Heading", StringComparison.OrdinalIgnoreCase))?.Weight ?? "700";
             var bodyWeight = kit.Typography?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Body", StringComparison.OrdinalIgnoreCase))?.Weight ?? "400";
 
+            string? primaryVar = null;
+            string? horizVar = null;
+            string? iconVar = null;
+            if (kit.Logo?.Variations != null)
+            {
+                if (kit.Logo.Variations.TryGetValue("primary", out var pv)) primaryVar = pv.SvgUri;
+                if (kit.Logo.Variations.TryGetValue("horizontal", out var hv)) horizVar = hv.SvgUri;
+                if (kit.Logo.Variations.TryGetValue("icon_only", out var iv)) iconVar = iv.SvgUri;
+            }
+
             var selectedConcept = kit.Logo?.Concepts?.FirstOrDefault(c => c.Key == kit.Logo.SelectedConceptKey) ?? kit.Logo?.Concepts?.FirstOrDefault();
-            var logoMarkUri = selectedConcept?.MarkAssetUri ?? string.Empty;
-            var logoLockupUri = selectedConcept?.LockupAssetUri ?? string.Empty;
+            var logoMarkUri = !string.IsNullOrWhiteSpace(iconVar) ? iconVar : (selectedConcept?.MarkAssetUri ?? string.Empty);
+            var logoLockupUri = !string.IsNullOrWhiteSpace(primaryVar) ? primaryVar : (!string.IsNullOrWhiteSpace(horizVar) ? horizVar : (selectedConcept?.LockupAssetUri ?? string.Empty));
             var logoDescriptor = selectedConcept?.DescriptorLine ?? string.Empty;
 
             assets.BrandStudio = new LaunchBrandStudioSummary
@@ -547,6 +567,7 @@ namespace WebApp.Services.Implementations
             var textColor = !string.IsNullOrWhiteSpace(brandStudio.TextColorHex) ? brandStudio.TextColorHex : "#F3F4F6";
             var displayFont = !string.IsNullOrWhiteSpace(brandStudio.DisplayFontFamily) ? brandStudio.DisplayFontFamily : "Inter";
             var textFont = !string.IsNullOrWhiteSpace(brandStudio.TextFontFamily) ? brandStudio.TextFontFamily : "DM Sans";
+            var logoUri = !string.IsNullOrWhiteSpace(brandStudio.LogoLockupUri) ? brandStudio.LogoLockupUri : brandStudio.LogoMarkUri;
 
             var html = $@"<!DOCTYPE html>
 <html lang=""en"">
@@ -556,7 +577,7 @@ namespace WebApp.Services.Implementations
   <title>{assets.BrandName} · In Preparation</title>
   <link rel=""preconnect"" href=""https://fonts.googleapis.com"">
   <link rel=""preconnect"" href=""https://fonts.gstatic.com"" crossorigin>
-  <link href=""https://fonts.googleapis.com/css2?family={Uri.EscapeDataString(textFont)}:ital,wght@0,300..800;1,300..800&family={Uri.EscapeDataString(displayFont)}:wght@300..900&display=swap"" rel=""stylesheet"">
+  <link href=""https://fonts.googleapis.com/css2?family={Uri.EscapeDataString(textFont).Replace("%20", "+")}:ital,wght@0,300..800;1,300..800&family={Uri.EscapeDataString(displayFont).Replace("%20", "+")}:wght@300..900&display=swap"" rel=""stylesheet"">
   <style>
     :root {{
       --bg: {bgColor};
@@ -575,7 +596,8 @@ namespace WebApp.Services.Implementations
     body {{ background: var(--bg); color: var(--text); font-family: var(--font-sans); line-height: 1.6; padding: 0 1.5rem; }}
     .container {{ max-width: 1040px; margin: 0 auto; }}
     header {{ display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 0; border-bottom: 1px solid var(--border); }}
-    .brand-logo {{ display: flex; items-center; gap: 0.625rem; font-family: var(--font-heading); font-weight: 700; font-size: 1.25rem; color: #FFFFFF; }}
+    .brand-logo {{ display: flex; align-items: center; gap: 0.75rem; font-family: var(--font-heading); font-weight: 700; font-size: 1.25rem; color: #FFFFFF; }}
+    .brand-logo img {{ height: 32px; width: auto; max-width: 160px; object-fit: contain; }}
     .badge {{ background: rgba(59, 130, 246, 0.1); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 9999px; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }}
     .hero {{ padding: 5rem 0 3rem; text-align: center; max-width: 760px; margin: 0 auto; }}
     .eyebrow {{ color: var(--primary); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }}
@@ -589,13 +611,16 @@ namespace WebApp.Services.Implementations
     h2 {{ font-family: var(--font-heading); font-size: 1.75rem; margin-bottom: 1rem; color: #FFF; }}
     h3 {{ font-family: var(--font-heading); font-size: 1.125rem; margin-bottom: 0.5rem; color: #FFF; }}
     .section-wrap {{ padding: 4rem 0; border-top: 1px solid var(--border); }}
-    footer {{ border-top: 1px solid var(--border); padding: 2rem 0; display: flex; justify-content: space-between; color: var(--muted); font-size: 0.875rem; }}
+    footer {{ border-top: 1px solid var(--border); padding: 2rem 0; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 0.875rem; }}
   </style>
 </head>
 <body>
   <div class=""container"">
     <header>
-      <div class=""brand-logo"">{assets.BrandName}</div>
+      <div class=""brand-logo"">
+        {(!string.IsNullOrWhiteSpace(logoUri) ? $@"<img src=""{logoUri}"" alt=""{assets.BrandName}"" />" : "")}
+        <span>{assets.BrandName}</span>
+      </div>
       <div class=""badge"">{assets.FooterNotice}</div>
     </header>
 
