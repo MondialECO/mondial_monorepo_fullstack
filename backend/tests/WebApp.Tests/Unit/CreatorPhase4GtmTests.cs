@@ -930,6 +930,52 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
+        public async Task UpdateStrategy_Rejects_InvalidLifecycleTransitions_With_400()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            await service.GenerateGtmStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+
+            // 1. Mark as Completed
+            await service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                Status = "Completed"
+            });
+
+            // 2. Attempt invalid transition Completed -> Active
+            var actCompletedToActive = () => service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                Status = "Active"
+            });
+
+            var ex1 = await actCompletedToActive.Should().ThrowAsync<CreatorJourneyException>();
+            ex1.Subject.Single().StatusCode.Should().Be(400);
+            ex1.Subject.Single().Message.Should().Contain("Cannot transition completed GTM strategy");
+
+            // 3. Set to Archived
+            await service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                Status = "Archived"
+            });
+
+            // 4. Attempt invalid direct transition Archived -> Active
+            var actArchivedToActive = () => service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                Status = "Active"
+            });
+
+            var ex2 = await actArchivedToActive.Should().ThrowAsync<CreatorJourneyException>();
+            ex2.Subject.Single().StatusCode.Should().Be(400);
+            ex2.Subject.Single().Message.Should().Contain("Cannot activate an archived GTM strategy directly");
+        }
+
+        [Fact]
         public async Task UpdateStrategy_RepeatActivation_IsIdempotent_PreservesActivatedAt()
         {
             var journey = BuildCompleteJourney();

@@ -421,8 +421,25 @@ namespace WebApp.Services.Implementations
                     throw new CreatorJourneyException(400, $"Invalid GTM strategy status '{request.Status}'. Valid statuses are: Draft, Review, Active, Archived, Completed.");
                 }
 
-                strategy.Status = request.Status;
-                if (request.Status.Equals("Active", StringComparison.OrdinalIgnoreCase))
+                // Validate state transitions
+                var currentStatus = string.IsNullOrWhiteSpace(strategy.Status) ? "Draft" : strategy.Status;
+                var targetStatus = request.Status;
+
+                if (currentStatus.Equals("Completed", StringComparison.OrdinalIgnoreCase) &&
+                    !targetStatus.Equals("Completed", StringComparison.OrdinalIgnoreCase) &&
+                    !targetStatus.Equals("Archived", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new CreatorJourneyException(400, $"Cannot transition completed GTM strategy back to '{targetStatus}'.");
+                }
+
+                if (currentStatus.Equals("Archived", StringComparison.OrdinalIgnoreCase) &&
+                    targetStatus.Equals("Active", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new CreatorJourneyException(400, "Cannot activate an archived GTM strategy directly. Unarchive to Draft first.");
+                }
+
+                strategy.Status = targetStatus;
+                if (targetStatus.Equals("Active", StringComparison.OrdinalIgnoreCase))
                 {
                     strategy.FounderOverrides["PlanActivated"] = "true";
                     if (!strategy.FounderOverrides.ContainsKey("ActivatedAt") || string.IsNullOrWhiteSpace(strategy.FounderOverrides["ActivatedAt"]))
