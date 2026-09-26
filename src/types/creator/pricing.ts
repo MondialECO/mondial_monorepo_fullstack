@@ -78,6 +78,12 @@ export interface PricePresentation {
   displayPrice: string;
 }
 
+export type CostBasisState =
+  | 'UnknownOrIncomplete'
+  | 'ExplicitZero'
+  | 'ValidPositive'
+  | 'InvalidNegative';
+
 export interface UnitEconomics {
   variableCostPerUnit: number;
   deliveryCostPerUnit: number;
@@ -89,6 +95,9 @@ export interface UnitEconomics {
   contributionMarginRate: number;
   breakevenUnitsPerMonth?: number | null;
   economicsValidation: string;
+  isCostBasisConfigured?: boolean;
+  costBasisState?: CostBasisState;
+  validationStatus?: string;
 }
 
 export interface ForecastAlignment {
@@ -119,6 +128,25 @@ export interface PricingExperiment {
   suggestedAction: string;
 }
 
+export type PricingEvidenceRecordType =
+  | 'Feedback'
+  | 'PreOrder'
+  | 'Sale'
+  | 'Commitment';
+
+export interface PricingEvidenceRecord {
+  id: string;
+  type: PricingEvidenceRecordType;
+  amount?: number | null;
+  currency: string;
+  participantOrCustomer: string;
+  channel: string;
+  notes: string;
+  isPaid: boolean;
+  isFounderReported: boolean;
+  recordedAt: string;
+}
+
 export interface PricingOffer {
   key: string;
   name: string;
@@ -141,6 +169,7 @@ export interface PricingOffer {
   isRecommendedDefault: boolean;
   status: PriceValidationStatus;
   founderNotes?: string | null;
+  recordedEvidence?: PricingEvidenceRecord[];
 }
 
 export interface PricingSourceVersions {
@@ -191,11 +220,23 @@ export interface PricingStrategyResponse {
   ideaVersion?: number;
 }
 
+export type BillingPeriod =
+  | 'Monthly'
+  | 'Annual'
+  | 'Retainer'
+  | 'Milestone'
+  | 'OneOff'
+  | 'PerUse';
+
 export interface UpdatePricingOfferRequest {
   ideaId?: string;
   expectedVersion?: number;
   founderPrice?: number | null;
+  billingFrequency?: BillingPeriod | string | null;
   featuresIncluded?: string[] | null;
   launchDiscountPercentage?: number | null;
   founderNotes?: string | null;
+  newEvidenceRecord?: PricingEvidenceRecord;
+  recordedEvidence?: PricingEvidenceRecord[];
 }
+

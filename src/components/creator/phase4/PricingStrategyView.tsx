@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -9,20 +9,18 @@ import {
   AlertCircle,
   RefreshCw,
   Sparkles,
-  ArrowRight,
   ArrowLeft,
-  ShieldCheck,
   FileText,
-  Sliders,
   Check,
   X,
   Edit3,
-  Zap,
 } from 'lucide-react';
 import type {
   PricingStrategy,
   PricingOffer,
+  PricingEvidenceRecord,
   UpdatePricingOfferRequest,
+  BillingPeriod,
 } from '@/types/creator/pricing';
 
 interface PricingStrategyViewProps {
@@ -101,8 +99,14 @@ export function PricingStrategyView({
     }
   }, [activeOffer?.key, activeOffer?.founderPrice, activeOffer?.recommendedPrice]);
 
-  // Interactive Scenario Simulator: Paying Businesses count
-  const [payingBusinesses, setPayingBusinesses] = useState<number>(10);
+  // Save coordination & race prevention locks
+  const isSavingRef = useRef<boolean>(false);
+  const activeSavePromiseRef = useRef<Promise<void> | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Interactive Scenario Simulator: Quantity count
+  const [simulatorQuantity, setSimulatorQuantity] = useState<number>(10);
 
   // Assumptions disclosure toggle
   const [showAssumptions, setShowAssumptions] = useState<boolean>(false);
@@ -111,22 +115,55 @@ export function PricingStrategyView({
   const [editingOffer, setEditingOffer] = useState<PricingOffer | null>(null);
   const [editPrice, setEditPrice] = useState<string>('');
   const [editDiscount, setEditDiscount] = useState<string>('');
+  const [editBillingPeriod, setEditBillingPeriod] = useState<string>('Monthly');
   const [editFeatures, setEditFeatures] = useState<string>('');
   const [editNotes, setEditNotes] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Feedback / Sale Modals
   const [feedbackModalOpen, setFeedbackModalOpen] = useState<boolean>(false);
+  const [feedbackParticipant, setFeedbackParticipant] = useState<string>('');
   const [feedbackNote, setFeedbackNote] = useState<string>('');
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+
   const [saleModalOpen, setSaleModalOpen] = useState<boolean>(false);
   const [salePrice, setSalePrice] = useState<string>('');
   const [saleCustomer, setSaleCustomer] = useState<string>('');
-  const [recordedNotes, setRecordedNotes] = useState<string[]>([]);
+  const [saleNotes, setSaleNotes] = useState<string>('');
+  const [saleError, setSaleError] = useState<string | null>(null);
 
   // Note Modal
   const [noteModalOpen, setNoteModalOpen] = useState<boolean>(false);
   const [offerNoteText, setOfferNoteText] = useState<string>('');
+
+  const executeSavePrice = async (targetPrice: number): Promise<void> => {
+    if (!activeOffer) return;
+    if (isSavingRef.current && activeSavePromiseRef.current) {
+      return activeSavePromiseRef.current;
+    }
+
+    isSavingRef.current = true;
+    setIsSubmitting(true);
+    setSaveError(null);
+
+    const promise = (async () => {
+      try {
+        await onUpdateOffer(activeOffer.key, {
+          founderPrice: targetPrice,
+          founderNotes: activeOffer.founderNotes,
+        });
+      } catch (err: any) {
+        setSaveError(err.message || 'Failed to save price selection.');
+        throw err;
+      } finally {
+        isSavingRef.current = false;
+        setIsSubmitting(false);
+        activeSavePromiseRef.current = null;
+      }
+    })();
+
+    activeSavePromiseRef.current = promise;
+    return promise;
+  };
 
   const openEditModal = (offer: PricingOffer) => {
     setEditingOffer(offer);
@@ -136,6 +173,7 @@ export function PricingStrategyView({
         : offer.recommendedPrice.toString()
     );
     setEditDiscount(offer.launchDiscountPercentage ? offer.launchDiscountPercentage.toString() : '0');
+    setEditBillingPeriod(offer.billingPeriod || 'Monthly');
     setEditFeatures(offer.featuresIncluded?.join('\n') || '');
     setEditNotes(offer.founderNotes || '');
     setSaveError(null);
@@ -159,6 +197,7 @@ export function PricingStrategyView({
       const req: UpdatePricingOfferRequest = {
         founderPrice: isNaN(parsedPrice) ? null : parsedPrice,
         launchDiscountPercentage: isNaN(parsedDiscount) ? null : parsedDiscount,
+        billingFrequency: editBillingPeriod || 'Monthly',
         featuresIncluded: featuresList,
         founderNotes: editNotes.trim() || null,
       };
@@ -172,37 +211,102 @@ export function PricingStrategyView({
     }
   };
 
-  const handleQuickSavePrice = async (targetPrice: number) => {
-    if (!activeOffer) return;
+  const handleSaveAndContinue = async () => {
     try {
       setIsSubmitting(true);
-      await onUpdateOffer(activeOffer.key, {
-        founderPrice: targetPrice,
-        founderNotes: activeOffer.founderNotes,
-      });
+      setSaveError(null);
+
+      // 1. Wait for any in-flight blur save first
+      if (activeSavePromiseRef.current) {
+        await activeSavePromiseRef.current;
+      }
+
+      // 2. Check if current price input needs persisting
+      const parsed = parseFloat(chosenPriceInput);
+      if (!isNaN(parsed) && activeOffer && parsed !== initialPrice) {
+        await executeSavePrice(parsed);
+      }
+
+      if (updateAvailable) {
+        await onRefresh();
+      }
+
+      router.push(`/dashboard/creator/phase-4/gtm?ideaId=${ideaId}`);
     } catch (err: any) {
-      setSaveError(err.message || 'Failed to update price.');
+      setSaveError(err.message || 'Failed to save and continue.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSaveAndContinue = async () => {
+  const handleSaveFeedback = async () => {
+    if (!activeOffer || !feedbackNote.trim()) return;
     try {
       setIsSubmitting(true);
-      const parsed = parseFloat(chosenPriceInput);
-      if (!isNaN(parsed) && activeOffer && parsed !== initialPrice) {
-        await onUpdateOffer(activeOffer.key, {
-          founderPrice: parsed,
-          founderNotes: activeOffer.founderNotes,
-        });
-      }
-      if (updateAvailable) {
-        await onRefresh();
-      }
-      router.push(`/dashboard/creator/phase-4/gtm?ideaId=${ideaId}`);
+      setFeedbackError(null);
+
+      const newRecord: PricingEvidenceRecord = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `ev-${Date.now()}`,
+        type: 'Feedback',
+        participantOrCustomer: feedbackParticipant.trim() || 'Prospect / Interviewee',
+        channel: 'Customer Discovery Interview',
+        notes: feedbackNote.trim(),
+        isPaid: false,
+        isFounderReported: true,
+        currency: activeOffer.presentation?.currency || 'EUR',
+        recordedAt: new Date().toISOString(),
+      };
+
+      await onUpdateOffer(activeOffer.key, {
+        newEvidenceRecord: newRecord,
+      });
+
+      setFeedbackNote('');
+      setFeedbackParticipant('');
+      setFeedbackModalOpen(false);
     } catch (err: any) {
-      setSaveError(err.message || 'Failed to complete step.');
+      setFeedbackError(err.message || 'Failed to persist feedback record.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSavePreorder = async () => {
+    if (!activeOffer || !saleCustomer.trim() || !salePrice.trim()) return;
+    try {
+      setIsSubmitting(true);
+      setSaleError(null);
+
+      const parsedAmount = parseFloat(salePrice);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        setSaleError('Please enter a valid positive payment amount.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const newRecord: PricingEvidenceRecord = {
+        id: crypto.randomUUID ? crypto.randomUUID() : `ev-${Date.now()}`,
+        type: 'PreOrder',
+        amount: parsedAmount,
+        participantOrCustomer: saleCustomer.trim(),
+        channel: 'Direct Preorder / Pilot Sale',
+        notes: saleNotes.trim() || 'Paid launch commitment',
+        isPaid: true,
+        isFounderReported: true,
+        currency: activeOffer.presentation?.currency || 'EUR',
+        recordedAt: new Date().toISOString(),
+      };
+
+      await onUpdateOffer(activeOffer.key, {
+        newEvidenceRecord: newRecord,
+      });
+
+      setSaleCustomer('');
+      setSalePrice('');
+      setSaleNotes('');
+      setSaleModalOpen(false);
+    } catch (err: any) {
+      setSaleError(err.message || 'Failed to persist sale / preorder record.');
     } finally {
       setIsSubmitting(false);
     }
@@ -316,8 +420,18 @@ export function PricingStrategyView({
   const currencySymbol = getCurrencySymbol(activeOffer?.presentation?.currency);
   const chosenPrice = parseFloat(chosenPriceInput) || 0;
   const recommendedPrice = activeOffer?.recommendedPrice || 0;
-  const risks = strategy.risks || [];
-  const experiments = strategy.experiments || [];
+  const variableCost = activeOffer?.unitEconomics?.variableCostPerUnit ?? 0;
+  const priceFloor = activeOffer?.unitEconomics?.minimumPriceFloor;
+  const isCostConfigured = activeOffer?.unitEconomics?.isCostBasisConfigured ?? (variableCost > 0);
+  const costBasisState =
+    activeOffer?.unitEconomics?.costBasisState ||
+    (variableCost < 0
+      ? 'InvalidNegative'
+      : !isCostConfigured
+      ? 'UnknownOrIncomplete'
+      : variableCost === 0
+      ? 'ExplicitZero'
+      : 'ValidPositive');
 
   // Active Offer Format Helpers
   const modelDisplay = activeOffer?.revenueModel
@@ -326,14 +440,72 @@ export function PricingStrategyView({
       : `${activeOffer.revenueModel} Model`
     : 'Monthly subscription';
 
-  const validationLevel = activeOffer?.marketPriceValidationLevel;
+  const recordedEvidence = activeOffer?.recordedEvidence || [];
   const isTested =
-    validationLevel === 'EmpiricallyValidated' ||
-    (activeOffer?.validatedMarketPrice !== null && activeOffer?.validatedMarketPrice !== undefined);
+    activeOffer?.marketPriceValidationLevel === 'EmpiricallyValidated' ||
+    activeOffer?.marketPriceValidationLevel === 'Supported' ||
+    (activeOffer?.validatedMarketPrice !== null && activeOffer?.validatedMarketPrice !== undefined && activeOffer.validatedMarketPrice > 0);
+
+  // Dynamic Simulator Quantities & Labels
+  const revModel = activeOffer?.revenueModel || 'Subscription';
+  const billingPer = activeOffer?.billingPeriod || 'Monthly';
+  const isAnnual = billingPer === 'Annual' || billingPer === 'Yearly';
+  const isRetainer = revModel === 'Retainer' || billingPer === 'Retainer';
+  const isProject = revModel === 'TieredService' || billingPer === 'Milestone' || (!isRetainer && revModel === 'OneTime' && billingPer === 'OneOff');
+  const isOneTimeUnit = revModel === 'OneTime' && !isProject;
+  const isUsage = revModel === 'UsageBased';
+  const isCommission = revModel === 'MarketplaceCommission';
+
+  const simulatorLabel = isRetainer
+    ? 'ACTIVE RETAINER CLIENTS'
+    : isProject
+    ? 'ACTIVE CLIENT PROJECTS'
+    : isOneTimeUnit
+    ? 'UNITS SOLD'
+    : isUsage
+    ? 'BILLABLE USAGE UNITS'
+    : isCommission
+    ? 'TRANSACTIONS FACILITATED'
+    : isAnnual
+    ? 'ANNUAL SUBSCRIBERS'
+    : 'PAYING BUSINESSES';
+
+  const simulatorPeriod = isRetainer
+    ? 'Estimated recurring monthly retainer revenue'
+    : isProject
+    ? 'Estimated one-time project delivery revenue'
+    : isOneTimeUnit
+    ? 'Estimated unit sales revenue'
+    : isUsage
+    ? 'Estimated usage-based revenue'
+    : isCommission
+    ? 'Estimated platform commission revenue (net of gross GMV)'
+    : isAnnual
+    ? `Estimated annual revenue (${currencySymbol}${Math.round((chosenPrice * simulatorQuantity) / 12).toLocaleString()}/mo equivalent)`
+    : 'Estimated monthly revenue';
+
+  const simulatorFormula = isRetainer
+    ? `${currencySymbol}${chosenPrice}/mo retainer × ${simulatorQuantity} clients`
+    : isProject
+    ? `${currencySymbol}${chosenPrice}/project × ${simulatorQuantity} projects`
+    : isOneTimeUnit
+    ? `${currencySymbol}${chosenPrice}/unit × ${simulatorQuantity} units`
+    : isUsage
+    ? `${currencySymbol}${chosenPrice}/unit × ${simulatorQuantity} units`
+    : isCommission
+    ? `${currencySymbol}${chosenPrice} commission/tx × ${simulatorQuantity} transactions`
+    : isAnnual
+    ? `${currencySymbol}${chosenPrice}/yr × ${simulatorQuantity} subscribers`
+    : `${currencySymbol}${chosenPrice} × ${simulatorQuantity} businesses`;
+
+  const isPriceConfigured = chosenPrice > 0;
+  const simulatorTotalValue = isPriceConfigured
+    ? `${currencySymbol}${(chosenPrice * simulatorQuantity).toLocaleString()}`
+    : 'Incomplete estimate';
 
   return (
     <div className="w-full max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 animate-fadeIn">
-      {/* 0. Top Page-Level Refresh & Tier Selection Header (Canonical Phase 4 Header Pattern) */}
+      {/* 0. Top Page-Level Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -370,6 +542,19 @@ export function PricingStrategyView({
         </div>
       </div>
 
+      {saveError && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3 text-xs text-red-700 dark:text-red-300">
+          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
+          <div className="flex-1">
+            <span className="font-semibold block">Save Conflict or Error:</span>
+            <span>{saveError} Your entered price was preserved.</span>
+          </div>
+          <button onClick={() => setSaveError(null)} className="text-red-500 hover:underline text-xs">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Upstream Stale Notice Banner */}
       {updateAvailable && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -382,7 +567,7 @@ export function PricingStrategyView({
               <p className="text-xs text-amber-800 dark:text-amber-300/90 mt-0.5 font-sans">
                 Upstream sources have evolved since pricing was generated:{' '}
                 <span className="font-medium">{changedSources.join(', ')}</span>.
-                Refreshing will recalculate economics while preserving your founder overrides.
+                Refreshing will recalculate economics while preserving your recorded evidence and founder overrides.
               </p>
             </div>
           </div>
@@ -423,11 +608,12 @@ export function PricingStrategyView({
                       Default
                     </span>
                   )}
-                  {offer.status === 'BelowFloor' && (
-                    <span className="text-[10px] bg-red-500/20 text-red-700 dark:text-red-300 px-1.5 py-0.2 rounded-full font-mono">
-                      Below Floor
-                    </span>
-                  )}
+                  {offer.unitEconomics?.minimumPriceFloor &&
+                    offer.effectivePrice < offer.unitEconomics.minimumPriceFloor && (
+                      <span className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 px-1.5 py-0.2 rounded-full font-mono">
+                        Below Floor
+                      </span>
+                    )}
                 </button>
               );
             })}
@@ -444,7 +630,7 @@ export function PricingStrategyView({
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block font-sans">
               YOUR CHOSEN PRICE
             </span>
-            <p className="text-3xl sm:text-4xl font-semibold text-foreground font-sans tracking-tight">
+            <p className="text-3xl sm:text-4xl font-semibold text-foreground font-mono tabular-nums tracking-tight">
               {`${currencySymbol}${chosenPrice} per business / ${activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'}`}
             </p>
           </div>
@@ -461,7 +647,7 @@ export function PricingStrategyView({
               }`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${isTested ? 'bg-emerald-500' : 'bg-amber-600'}`} />
-              <span>{isTested ? 'Empirically Validated' : 'Not tested'}</span>
+              <span>{isTested ? (activeOffer?.marketPriceValidationLevel === 'EmpiricallyValidated' ? 'Empirically Validated' : 'Supported') : 'Not tested'}</span>
             </span>
             <span className="px-2.5 py-1 rounded bg-secondary text-xs font-normal text-muted-foreground font-sans border border-border/50">
               {activeOffer?.status === 'Valid' ? 'Draft' : activeOffer?.status || 'Draft'}
@@ -584,7 +770,7 @@ export function PricingStrategyView({
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-sans block">
                 SUGGESTED PRICE
               </span>
-              <p className="text-3xl font-semibold text-foreground font-sans">
+              <p className="text-3xl font-semibold text-foreground font-mono tabular-nums">
                 {`${currencySymbol}${recommendedPrice} per business / ${activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'}`}
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
@@ -596,25 +782,62 @@ export function PricingStrategyView({
                 <span>Delivery costs and market prices still need checking.</span>
               </div>
 
-              {(activeOffer?.status === 'BelowFloor' ||
-                (activeOffer?.unitEconomics?.minimumPriceFloor &&
-                  chosenPrice < activeOffer.unitEconomics.minimumPriceFloor)) && (
+              {/* Precise semantic separation of cost risks & contribution-margin boundaries */}
+              {costBasisState === 'InvalidNegative' ? (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2.5 text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                  <span className="font-semibold">
-                    Price below floor! Loss-making under current cost structure
-                  </span>
+                  <div>
+                    <span className="font-semibold block">Invalid negative cost input</span>
+                    <span>Variable cost is negative ({currencySymbol}{variableCost}). Please correct your cost model.</span>
+                  </div>
                 </div>
-              )}
+              ) : costBasisState === 'UnknownOrIncomplete' ? (
+                <div className="bg-muted/40 border border-border rounded-lg p-2 text-xs text-muted-foreground flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0" />
+                  <span>Variable unit cost basis unconfigured.</span>
+                </div>
+              ) : costBasisState === 'ExplicitZero' ? (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2.5 text-xs text-blue-800 dark:text-blue-200 flex items-start gap-2">
+                  <FileText className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold block">Zero variable cost confirmed</span>
+                    <span>Unit delivery cost is €0 (100% gross margin contribution per sale).</span>
+                  </div>
+                </div>
+              ) : chosenPrice < variableCost ? (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2.5 text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold block">Price below floor! Loss-making under current cost structure</span>
+                    <span>Selling price ({currencySymbol}{chosenPrice}) is below variable unit cost ({currencySymbol}{variableCost}), producing negative unit contribution ({currencySymbol}{chosenPrice - variableCost}/unit).</span>
+                  </div>
+                </div>
+              ) : chosenPrice === variableCost ? (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold block">Zero contribution margin (Price = Variable Cost)</span>
+                    <span>Selling price ({currencySymbol}{chosenPrice}) equals variable delivery cost ({currencySymbol}{variableCost}), generating €0 contribution margin toward overhead or CAC.</span>
+                  </div>
+                </div>
+              ) : priceFloor && chosenPrice < priceFloor ? (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold block">Price below target margin floor ({currencySymbol}{priceFloor})</span>
+                    <span>Unit contribution is positive (+{currencySymbol}{chosenPrice - variableCost}/unit), but below your target margin floor.</span>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="pt-2">
               <button
                 onClick={() => {
                   setChosenPriceInput(recommendedPrice.toString());
-                  handleQuickSavePrice(recommendedPrice);
+                  executeSavePrice(recommendedPrice);
                 }}
-                className="px-3.5 py-2 rounded-lg bg-card hover:bg-muted text-primary border border-primary text-xs font-medium transition-colors shadow-sm"
+                className="px-3.5 py-2 rounded-lg bg-card hover:bg-muted text-primary border border-primary text-xs font-medium transition-colors shadow-sm cursor-pointer"
               >
                 Use suggested price
               </button>
@@ -642,10 +865,10 @@ export function PricingStrategyView({
                   onBlur={() => {
                     const parsed = parseFloat(chosenPriceInput);
                     if (!isNaN(parsed) && parsed !== initialPrice) {
-                      handleQuickSavePrice(parsed);
+                      executeSavePrice(parsed);
                     }
                   }}
-                  className="bg-card border border-primary px-3 py-1 text-2xl font-semibold font-sans text-foreground w-28 rounded-r-lg focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="bg-card border border-primary px-3 py-1 text-2xl font-semibold font-mono tabular-nums text-foreground w-28 rounded-r-lg focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 <span className="text-sm text-muted-foreground ml-3 font-sans">
                   per business / {activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'}
@@ -756,16 +979,16 @@ export function PricingStrategyView({
           <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <span>Minimum viable price:</span>
-              <span className="rounded-full bg-muted text-muted-foreground text-[11px] px-2 py-0.5 flex items-center gap-1 border border-border">
+              <span className="rounded-full bg-muted text-muted-foreground text-[11px] px-2 py-0.5 flex items-center gap-1 border border-border font-mono">
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60" />
-                {activeOffer?.unitEconomics?.minimumPriceFloor
-                  ? `${currencySymbol}${activeOffer.unitEconomics.minimumPriceFloor} / unit`
+                {priceFloor
+                  ? `${currencySymbol}${priceFloor} / unit`
                   : 'Not yet confirmed'}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <span>Market reference:</span>
-              <span className="rounded-full bg-muted text-muted-foreground text-[11px] px-2 py-0.5 flex items-center gap-1 border border-border">
+              <span className="rounded-full bg-muted text-muted-foreground text-[11px] px-2 py-0.5 flex items-center gap-1 border border-border font-mono">
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60" />
                 {activeOffer?.marketReferencePrice
                   ? `${currencySymbol}${activeOffer.marketReferencePrice} recorded`
@@ -849,15 +1072,15 @@ export function PricingStrategyView({
         {/* Customer Simulator Input */}
         <div className="flex flex-wrap items-center gap-3 text-xs font-sans">
           <span className="font-semibold uppercase tracking-wider text-muted-foreground text-xs">
-            PAYING BUSINESSES
+            {simulatorLabel}
           </span>
           <input
             type="number"
             min="1"
             max="10000"
-            value={payingBusinesses}
-            onChange={(e) => setPayingBusinesses(Math.max(1, parseInt(e.target.value) || 1))}
-            className="bg-muted/40 border border-border px-2.5 py-1.5 rounded-lg text-sm font-semibold font-sans text-foreground w-20 focus:outline-none focus:ring-1 focus:ring-primary"
+            value={simulatorQuantity}
+            onChange={(e) => setSimulatorQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+            className="bg-muted/40 border border-border px-2.5 py-1.5 rounded-lg text-sm font-semibold font-mono tabular-nums text-foreground w-20 focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <span className="text-muted-foreground text-xs">
             Changing this number does not predict how many customers you will get.
@@ -867,15 +1090,21 @@ export function PricingStrategyView({
         {/* Calculation Result Strip */}
         <div className="bg-muted/30 border border-border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-2 text-base text-foreground font-sans">
-            <span>{`${currencySymbol}${chosenPrice} × ${payingBusinesses} businesses`}</span>
+            <span>{simulatorFormula}</span>
           </div>
 
           <div className="text-left sm:text-right space-y-0.5">
-            <div className="text-3xl sm:text-4xl font-semibold font-sans text-foreground tracking-tight">
-              {currencySymbol}{(chosenPrice * payingBusinesses).toLocaleString()}
-            </div>
+            {isPriceConfigured ? (
+              <div className="text-3xl sm:text-4xl font-semibold font-mono tabular-nums text-foreground tracking-tight">
+                {simulatorTotalValue}
+              </div>
+            ) : (
+              <div className="text-base font-medium font-sans text-amber-600 dark:text-amber-400">
+                Incomplete estimate (enter price above)
+              </div>
+            )}
             <div className="text-xs text-muted-foreground font-medium font-sans">
-              Estimated monthly revenue
+              {simulatorPeriod}
             </div>
           </div>
         </div>
@@ -919,24 +1148,41 @@ export function PricingStrategyView({
             }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${isTested ? 'bg-emerald-500' : 'bg-amber-600'}`} />
-            <span>{isTested ? 'Empirically Validated' : 'Not tested'}</span>
+            <span>{isTested ? (activeOffer?.marketPriceValidationLevel === 'EmpiricallyValidated' ? 'Empirically Validated' : 'Supported') : 'Not tested'}</span>
           </span>
         </div>
 
-        {/* Recorded Notes / Empty state */}
-        {recordedNotes.length > 0 ? (
+        {/* Persisted Recorded Evidence Ledger */}
+        {recordedEvidence.length > 0 ? (
           <div className="space-y-2">
-            {recordedNotes.map((note, idx) => (
-              <div key={idx} className="bg-muted/40 border border-border rounded-lg p-3 text-xs text-foreground flex items-center justify-between">
-                <span>{note}</span>
-                <span className="text-[10px] text-muted-foreground font-mono">Recorded</span>
+            {recordedEvidence.map((ev) => (
+              <div key={ev.id} className="bg-muted/40 border border-border rounded-xl p-3.5 text-xs text-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-foreground">{ev.participantOrCustomer}</span>
+                    <span className="text-[10px] bg-secondary text-secondary-foreground px-2 py-0.5 rounded font-mono">
+                      {ev.type}
+                    </span>
+                    {ev.amount !== undefined && ev.amount !== null && (
+                      <span className="font-mono font-semibold text-primary">
+                        {currencySymbol}{ev.amount}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground text-xs">{ev.notes}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                  <span className="text-[10px] text-muted-foreground/80 font-mono">
+                    {ev.isFounderReported ? 'Founder Reported' : 'Verified'}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="bg-muted/30 border border-border rounded-xl p-4 flex items-center gap-3 text-xs text-muted-foreground font-sans">
             <FileText className="w-4 h-4 text-muted-foreground/60 shrink-0" />
-            <span>No sales or paid preorders recorded.</span>
+            <span>No sales or paid preorders recorded yet.</span>
           </div>
         )}
 
@@ -975,14 +1221,20 @@ export function PricingStrategyView({
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <button
-            onClick={() => setFeedbackModalOpen(true)}
-            className="px-3.5 py-2 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-medium transition-colors shadow-sm"
+            onClick={() => {
+              setFeedbackError(null);
+              setFeedbackModalOpen(true);
+            }}
+            className="px-3.5 py-2 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-medium transition-colors shadow-sm cursor-pointer"
           >
             Add feedback
           </button>
           <button
-            onClick={() => setSaleModalOpen(true)}
-            className="px-3.5 py-2 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-medium transition-colors shadow-sm"
+            onClick={() => {
+              setSaleError(null);
+              setSaleModalOpen(true);
+            }}
+            className="px-3.5 py-2 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-medium transition-colors shadow-sm cursor-pointer"
           >
             Add a sale or paid preorder
           </button>
@@ -1053,7 +1305,7 @@ export function PricingStrategyView({
             <button
               onClick={handleSaveAndContinue}
               disabled={isSubmitting || isLoading}
-              className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium transition-colors shadow-sm font-sans flex items-center gap-2 cursor-pointer"
+              className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium transition-colors shadow-sm font-sans flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>
@@ -1103,19 +1355,40 @@ export function PricingStrategyView({
             )}
 
             <form onSubmit={handleSaveOffer} className="space-y-4 text-xs">
-              <div className="space-y-1.5">
-                <label htmlFor="founder-price-input" className="font-semibold text-foreground block">
-                  Founder Selected Price ({getCurrencySymbol(editingOffer.presentation?.currency)})
-                </label>
-                <input
-                  id="founder-price-input"
-                  type="number"
-                  step="any"
-                  value={editPrice}
-                  onChange={(e) => setEditPrice(e.target.value)}
-                  placeholder={editingOffer.recommendedPrice.toString()}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label htmlFor="founder-price-input" className="font-semibold text-foreground block">
+                    Founder Selected Price ({getCurrencySymbol(editingOffer.presentation?.currency)})
+                  </label>
+                  <input
+                    id="founder-price-input"
+                    type="number"
+                    step="any"
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    placeholder={editingOffer.recommendedPrice.toString()}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground font-mono tabular-nums focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="founder-billing-period" className="font-semibold text-foreground block">
+                    Billing Frequency
+                  </label>
+                  <select
+                    id="founder-billing-period"
+                    value={editBillingPeriod}
+                    onChange={(e) => setEditBillingPeriod(e.target.value as BillingPeriod)}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground font-sans focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="Monthly">Monthly Recurring</option>
+                    <option value="Annual">Annual Upfront</option>
+                    <option value="Retainer">Monthly Retainer</option>
+                    <option value="Milestone">Milestone / Stage</option>
+                    <option value="OneOff">One-off / Fixed Price</option>
+                    <option value="PerUse">Per-use / Consumption</option>
+                  </select>
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -1126,7 +1399,7 @@ export function PricingStrategyView({
                   max="100"
                   value={editDiscount}
                   onChange={(e) => setEditDiscount(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground font-mono tabular-nums focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
 
@@ -1225,28 +1498,51 @@ export function PricingStrategyView({
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <textarea
-              rows={3}
-              value={feedbackNote}
-              onChange={(e) => setFeedbackNote(e.target.value)}
-              placeholder={`e.g. Talked with 3 potential customers: they found ${currencySymbol}${chosenPrice}/mo very affordable...`}
-              className="w-full bg-background border border-border rounded-lg p-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setFeedbackModalOpen(false)} className="px-3 py-1.5 rounded-lg bg-secondary text-xs text-secondary-foreground">
+
+            {feedbackError && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2.5 text-xs text-red-700 dark:text-red-300">
+                {feedbackError}
+              </div>
+            )}
+
+            <div className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="text-muted-foreground font-medium">Participant / Prospect</label>
+                <input
+                  type="text"
+                  value={feedbackParticipant}
+                  onChange={(e) => setFeedbackParticipant(e.target.value)}
+                  placeholder="e.g. Lead Founder / Agency Director"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-muted-foreground font-medium">Feedback Notes</label>
+                <textarea
+                  rows={3}
+                  value={feedbackNote}
+                  onChange={(e) => setFeedbackNote(e.target.value)}
+                  placeholder={`e.g. Interviewed prospect: found ${currencySymbol}${chosenPrice}/mo aligned with value, asked for multi-seat plan.`}
+                  className="w-full bg-background border border-border rounded-lg p-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setFeedbackModalOpen(false)}
+                className="px-3 py-1.5 rounded-lg bg-secondary text-xs text-secondary-foreground"
+              >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  if (feedbackNote.trim()) {
-                    setRecordedNotes((prev) => [...prev, `Feedback: ${feedbackNote.trim()}`]);
-                  }
-                  setFeedbackNote('');
-                  setFeedbackModalOpen(false);
-                }}
-                className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium"
+                type="button"
+                disabled={isSubmitting || !feedbackNote.trim()}
+                onClick={handleSaveFeedback}
+                className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50"
               >
-                Save Feedback
+                {isSubmitting ? 'Saving...' : 'Save Feedback'}
               </button>
             </div>
           </div>
@@ -1263,6 +1559,13 @@ export function PricingStrategyView({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {saleError && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2.5 text-xs text-red-700 dark:text-red-300">
+                {saleError}
+              </div>
+            )}
+
             <div className="space-y-3 text-xs">
               <div className="space-y-1">
                 <label className="text-muted-foreground font-medium">Customer / Company</label>
@@ -1278,32 +1581,39 @@ export function PricingStrategyView({
                 <label className="text-muted-foreground font-medium">Paid Amount ({currencySymbol})</label>
                 <input
                   type="number"
+                  step="any"
                   value={salePrice}
                   onChange={(e) => setSalePrice(e.target.value)}
                   placeholder={chosenPrice.toString()}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground font-mono tabular-nums focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-muted-foreground font-medium">Commitment Details / Notes</label>
+                <input
+                  type="text"
+                  value={saleNotes}
+                  onChange={(e) => setSaleNotes(e.target.value)}
+                  placeholder="e.g. First cohort launch subscription commitment"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setSaleModalOpen(false)} className="px-3 py-1.5 rounded-lg bg-secondary text-xs text-secondary-foreground">
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setSaleModalOpen(false)}
+                className="px-3 py-1.5 rounded-lg bg-secondary text-xs text-secondary-foreground"
+              >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  if (saleCustomer.trim() && salePrice.trim()) {
-                    setRecordedNotes((prev) => [
-                      ...prev,
-                      `Preorder: ${currencySymbol}${salePrice} paid by ${saleCustomer.trim()}`,
-                    ]);
-                  }
-                  setSalePrice('');
-                  setSaleCustomer('');
-                  setSaleModalOpen(false);
-                }}
-                className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium"
+                type="button"
+                disabled={isSubmitting || !saleCustomer.trim() || !salePrice.trim()}
+                onClick={handleSavePreorder}
+                className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50"
               >
-                Save Preorder
+                {isSubmitting ? 'Saving...' : 'Save Preorder'}
               </button>
             </div>
           </div>

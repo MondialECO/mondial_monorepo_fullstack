@@ -119,6 +119,10 @@ namespace WebApp.Tests.Unit
 
             _supportServiceMock.Setup(s => s.GetSupportPlanAsync(journey.UserId, journey.ActiveIdeaId))
                 .ReturnsAsync(new SupportPlanResponse { SupportPlan = null, UpdateAvailable = false });
+
+            _journeysMock.Setup(j => j.SetPhase4PricingStrategyAsync(journey.UserId, It.IsAny<PricingStrategy>(), journey.ActiveIdeaId))
+                .Callback<string, PricingStrategy, string?>((u, s, i) => journey.Phase4Data.PricingStrategy = s)
+                .ReturnsAsync(journey);
         }
 
         // =========================================================================
@@ -1140,6 +1144,284 @@ namespace WebApp.Tests.Unit
 
             response.Should().NotBeNull();
             response.IdeaVersion.Should().Be(7);
+        }
+
+        [Fact]
+        public async Task UpdatePricingOffer_WithNewEvidenceRecord_PersistsEvidenceAndElevatesValidation()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            var initial = await service.GeneratePricingStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+            var offerKey = initial.Strategy!.Offers.First().Key;
+
+            // Update with a paid preorder evidence record
+            var newRecord = new PricingEvidenceRecord
+            {
+                Type = PricingEvidenceRecordType.PreOrder,
+                Amount = 149m,
+                Currency = "EUR",
+                ParticipantOrCustomer = "Beta Partner Studio",
+                Channel = "Direct Interview",
+                Notes = "Committed to initial 3-month pilot at €149/mo",
+                IsPaid = true
+            };
+
+            var updateReq = new UpdatePricingOfferRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                NewEvidenceRecord = newRecord
+            };
+
+            var updated = await service.UpdatePricingOfferAsync(journey.UserId, offerKey, updateReq);
+
+            var targetOffer = updated.Strategy!.Offers.First(o => o.Key == offerKey);
+            targetOffer.RecordedEvidence.Should().HaveCount(1);
+            targetOffer.RecordedEvidence[0].ParticipantOrCustomer.Should().Be("Beta Partner Studio");
+            targetOffer.RecordedEvidence[0].IsFounderReported.Should().BeTrue(); // Founder-reported provenance preserved
+            targetOffer.ValidatedMarketPrice.Should().Be(149m);
+            targetOffer.MarketPriceEvidenceType.Should().Be(MarketPriceEvidenceType.PreOrder);
+            targetOffer.MarketPriceValidationLevel.Should().Be(MarketPriceValidationLevel.Supported);
+        }
+
+        [Fact]
+        public async Task RefreshPricingStrategy_PreservesRecordedEvidenceAndFounderEdits()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            var initial = await service.GeneratePricingStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+            var offerKey = initial.Strategy!.Offers.First().Key;
+
+            // Add founder edit and evidence
+            var updateReq = new UpdatePricingOfferRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                FounderPrice = 89m,
+                NewEvidenceRecord = new PricingEvidenceRecord
+                {
+                    Type = PricingEvidenceRecordType.Feedback,
+                    ParticipantOrCustomer = "Early Customer A",
+                    Notes = "Positive reception on core feature set",
+                    IsPaid = false
+                }
+            };
+            await service.UpdatePricingOfferAsync(journey.UserId, offerKey, updateReq);
+
+            // Now perform a refresh
+            var refreshed = await service.RefreshPricingStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+
+            var targetOffer = refreshed.Strategy!.Offers.First(o => o.Key == offerKey);
+            targetOffer.FounderPrice.Should().Be(89m);
+            targetOffer.FounderEdited.Should().BeTrue();
+            targetOffer.RecordedEvidence.Should().HaveCount(1);
+            targetOffer.RecordedEvidence[0].ParticipantOrCustomer.Should().Be("Early Customer A");
+        }
+
+        [Fact]
+        public void PricingPolicyEngine_DistinguishesBelowCost_FromBelowTargetMarginFloor_AndIncompleteBasis()
+        {
+            var engine = new PricingPolicyEngine();
+            var ctx = new PricingContext
+            {
+                CostStructure = new PricingCostStructureContext
+                {
+                    EstimatedVariableCostPerUnit = 10m,
+                    EstimatedMonthlyFixedCosts = 500m
+                },
+                Forecast = new PricingForecastContext { Arpu = 50m }
+            };
+
+            // Case 1: Below Variable Cost (Price=8 < VC=10) -> BelowCost (Critical, negative contribution)
+            var belowCostOffer = new PricingOffer
+            {
+                Key = "tier.below_cost",
+                Name = "Below Cost Tier",
+                Price = 8m,
+                UnitEconomics = engine.CalculateUnitEconomics(8m, 10m, null, ctx, MarginTargetType.Percentage, 0.20m)
+            };
+            belowCostOffer.UnitEconomics.ContributionMargin.Should().Be(-2m);
+            belowCostOffer.UnitEconomics.ValidationStatus.Should().Be("BelowCostWarning");
+
+            var belowCostRisks = engine.DetectPricingRisks(new List<PricingOffer> { belowCostOffer }, null, ctx);
+            belowCostRisks.Should().Contain(r => r.Type == PricingRiskType.BelowCost && r.Severity == PricingRiskSeverity.Critical);
+
+            // Case 2: Above Variable Cost but Below Target Margin Floor (VC=10, TargetMargin=20% -> Floor=12.50. Price=11)
+            var belowFloorOffer = new PricingOffer
+            {
+                Key = "tier.below_floor",
+                Name = "Below Floor Tier",
+                Price = 11m,
+                UnitEconomics = engine.CalculateUnitEconomics(11m, 10m, null, ctx, MarginTargetType.Percentage, 0.20m)
+            };
+            belowFloorOffer.UnitEconomics.ContributionMargin.Should().Be(1m); // Positive contribution!
+            belowFloorOffer.UnitEconomics.MinimumPriceFloor.Should().Be(12.50m);
+            belowFloorOffer.UnitEconomics.ValidationStatus.Should().Be("BelowTargetMarginWarning");
+
+            var belowFloorRisks = engine.DetectPricingRisks(new List<PricingOffer> { belowFloorOffer }, null, ctx);
+            belowFloorRisks.Should().Contain(r => r.Type == PricingRiskType.BelowTargetMarginFloor && r.Severity == PricingRiskSeverity.Medium);
+            belowFloorRisks.Should().NotContain(r => r.Type == PricingRiskType.BelowCost);
+
+            // Case 3: Incomplete Cost Basis (IsVariableCostConfigured = false)
+            var incompleteCtx = new PricingContext
+            {
+                CostStructure = new PricingCostStructureContext
+                {
+                    IsVariableCostConfigured = false,
+                    EstimatedVariableCostPerUnit = 0m
+                }
+            };
+            var zeroCostOffer = new PricingOffer
+            {
+                Key = "tier.unknown_cost",
+                Name = "Unknown Cost Tier",
+                Price = 25m,
+                UnitEconomics = engine.CalculateUnitEconomics(25m, 0m, null, incompleteCtx, MarginTargetType.Percentage, 0.20m)
+            };
+            zeroCostOffer.UnitEconomics.ValidationStatus.Should().Be("IncompleteCostBasis");
+            var zeroCostRisks = engine.DetectPricingRisks(new List<PricingOffer> { zeroCostOffer }, null, incompleteCtx);
+            zeroCostRisks.Should().Contain(r => r.Type == PricingRiskType.IncompleteCostBasis);
+        }
+
+        [Fact]
+        public void PricingPolicyEngine_FloorPrice_HandlesEdgeCasesAndInvalidDenominators()
+        {
+            var engine = new PricingPolicyEngine();
+            var unconfiguredCtx = new PricingContext
+            {
+                CostStructure = new PricingCostStructureContext { IsVariableCostConfigured = false }
+            };
+
+            // Unconfigured variable cost -> returns null floor
+            var ueZero = engine.CalculateUnitEconomics(10m, 0m, null, unconfiguredCtx, MarginTargetType.Percentage, 0.20m);
+            ueZero.MinimumPriceFloor.Should().BeNull();
+
+            var configuredCtx = new PricingContext
+            {
+                CostStructure = new PricingCostStructureContext { IsVariableCostConfigured = true }
+            };
+
+            // Margin >= 100% (invalid denominator) -> capped at 90% safely
+            var ueInvalidDenominator = engine.CalculateUnitEconomics(10m, 20m, null, configuredCtx, MarginTargetType.Percentage, 1.0m);
+            ueInvalidDenominator.MinimumPriceFloor.Should().Be(200m); // 20 / (1 - 0.90) = 200
+
+            // Absolute amount target margin
+            var ueAbsolute = engine.CalculateUnitEconomics(30m, 20m, null, configuredCtx, MarginTargetType.AbsoluteAmount, 15m);
+            ueAbsolute.MinimumPriceFloor.Should().Be(35m); // 20 + 15 = 35
+        }
+
+        [Fact]
+        public void PricingPolicyEngine_ContributionMarginBoundaries_AndCostStateSemantics_AreStrictlyClassified()
+        {
+            var engine = new PricingPolicyEngine();
+            var configuredCtx = new PricingContext
+            {
+                CostStructure = new PricingCostStructureContext
+                {
+                    IsVariableCostConfigured = true,
+                    EstimatedVariableCostPerUnit = 10m,
+                    EstimatedMonthlyFixedCosts = 1000m
+                }
+            };
+
+            // Boundary 1: Price == VC -> CM = 0, Rate = 0%, ZeroContributionWarning
+            var ueEqual = engine.CalculateUnitEconomics(10m, 10m, null, configuredCtx, MarginTargetType.Percentage, 0.20m);
+            ueEqual.ContributionMargin.Should().Be(0m);
+            ueEqual.ContributionMarginRate.Should().Be(0m);
+            ueEqual.ValidationStatus.Should().Be("ZeroContributionWarning");
+            ueEqual.CostBasisState.Should().Be("ValidPositive");
+
+            // Boundary 2: Price < VC -> CM < 0, BelowCostWarning
+            var ueBelowCost = engine.CalculateUnitEconomics(8m, 10m, null, configuredCtx, MarginTargetType.Percentage, 0.20m);
+            ueBelowCost.ContributionMargin.Should().Be(-2m);
+            ueBelowCost.ContributionMarginRate.Should().Be(-0.25m);
+            ueBelowCost.ValidationStatus.Should().Be("BelowCostWarning");
+
+            // Boundary 3: VC < Price < MinimumFloor (Floor is 10 / (1 - 0.20) = 12.50) -> CM > 0, BelowTargetMarginWarning
+            var ueBelowFloor = engine.CalculateUnitEconomics(11m, 10m, null, configuredCtx, MarginTargetType.Percentage, 0.20m);
+            ueBelowFloor.ContributionMargin.Should().Be(1m);
+            ueBelowFloor.ContributionMarginRate.Should().Be(0.0909m);
+            ueBelowFloor.MinimumPriceFloor.Should().Be(12.50m);
+            ueBelowFloor.ValidationStatus.Should().Be("BelowTargetMarginWarning");
+
+            // Boundary 4: Price >= MinimumFloor -> CM > 0, Supported
+            var ueHealthy = engine.CalculateUnitEconomics(15m, 10m, null, configuredCtx, MarginTargetType.Percentage, 0.20m);
+            ueHealthy.ContributionMargin.Should().Be(5m);
+            ueHealthy.ContributionMarginRate.Should().Be(0.3333m);
+            ueHealthy.ValidationStatus.Should().Be("Supported");
+
+            // Cost State: Explicit Zero (IsVariableCostConfigured = true, VC = 0)
+            var ueExplicitZero = engine.CalculateUnitEconomics(29m, 0m, null, configuredCtx, MarginTargetType.Percentage, 0.20m);
+            ueExplicitZero.CostBasisState.Should().Be("ExplicitZero");
+            ueExplicitZero.ContributionMargin.Should().Be(29m);
+            ueExplicitZero.ContributionMarginRate.Should().Be(1.0m);
+            ueExplicitZero.MinimumPriceFloor.Should().Be(0m);
+            ueExplicitZero.ValidationStatus.Should().Be("Supported");
+
+            // Cost State: Unknown or Incomplete (IsVariableCostConfigured = false)
+            var unconfiguredCtx = new PricingContext
+            {
+                CostStructure = new PricingCostStructureContext
+                {
+                    IsVariableCostConfigured = false,
+                    EstimatedVariableCostPerUnit = 0m
+                }
+            };
+            var ueIncomplete = engine.CalculateUnitEconomics(29m, 0m, null, unconfiguredCtx, MarginTargetType.Percentage, 0.20m);
+            ueIncomplete.CostBasisState.Should().Be("UnknownOrIncomplete");
+            ueIncomplete.ValidationStatus.Should().Be("IncompleteCostBasis");
+            ueIncomplete.MinimumPriceFloor.Should().BeNull();
+
+            // Cost State: Invalid Negative (VC < 0)
+            var ueNegative = engine.CalculateUnitEconomics(29m, -15m, null, configuredCtx, MarginTargetType.Percentage, 0.20m);
+            ueNegative.CostBasisState.Should().Be("InvalidNegative");
+            ueNegative.ValidationStatus.Should().Be("InvalidCostInput");
+            ueNegative.MinimumPriceFloor.Should().BeNull();
+
+            // Zero-Price Edge Case: Price = 0 does not cause division by zero
+            var ueZeroPrice = engine.CalculateUnitEconomics(0m, 10m, null, configuredCtx, MarginTargetType.Percentage, 0.20m);
+            ueZeroPrice.ContributionMargin.Should().Be(-10m);
+            ueZeroPrice.ContributionMarginRate.Should().Be(0m);
+        }
+
+        [Fact]
+        public async Task UpdatePricingOffer_FeedbackAndCommitments_DoNotElevatePaidValidation()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            var initial = await service.GeneratePricingStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+            var offerKey = initial.Strategy!.Offers.First().Key;
+
+            // Feedback with mentioned amount
+            var feedbackRecord = new PricingEvidenceRecord
+            {
+                Type = PricingEvidenceRecordType.Feedback,
+                Amount = 199m,
+                Currency = "EUR",
+                ParticipantOrCustomer = "Interviewee Corp",
+                Notes = "Mentioned they might pay €199/mo in future",
+                IsPaid = false
+            };
+
+            var updateReq = new UpdatePricingOfferRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                NewEvidenceRecord = feedbackRecord
+            };
+
+            var updated = await service.UpdatePricingOfferAsync(journey.UserId, offerKey, updateReq);
+            var targetOffer = updated.Strategy!.Offers.First(o => o.Key == offerKey);
+
+            targetOffer.RecordedEvidence.Should().HaveCount(1);
+            targetOffer.RecordedEvidence[0].IsPaid.Should().BeFalse();
+            // Feedback MUST NOT elevate ValidatedMarketPrice or set validation to Supported/EmpiricallyValidated
+            targetOffer.ValidatedMarketPrice.Should().BeNull();
+            targetOffer.MarketPriceValidationLevel.Should().NotBe(MarketPriceValidationLevel.EmpiricallyValidated);
+            targetOffer.MarketPriceValidationLevel.Should().NotBe(MarketPriceValidationLevel.Supported);
         }
     }
 }

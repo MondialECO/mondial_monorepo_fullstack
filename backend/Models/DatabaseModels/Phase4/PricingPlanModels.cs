@@ -109,6 +109,8 @@ namespace WebApp.Models.DatabaseModels.Phase4
     public enum PricingRiskType
     {
         BelowCost,
+        BelowTargetMarginFloor,
+        IncompleteCostBasis,
         MarginTooThin,
         ForecastMismatch,
         UnsupportedPremium,
@@ -117,6 +119,51 @@ namespace WebApp.Models.DatabaseModels.Phase4
         CustomerSegmentMismatch,
         DiscountRisk,
         UnvalidatedWillingnessToPay
+    }
+
+    public enum PricingEvidenceRecordType
+    {
+        Feedback,
+        PreOrder,
+        Sale,
+        Commitment
+    }
+
+    public class PricingEvidenceRecord
+    {
+        [BsonElement("Id")]
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+
+        [BsonElement("Type")]
+        [BsonRepresentation(BsonType.String)]
+        public PricingEvidenceRecordType Type { get; set; } = PricingEvidenceRecordType.Feedback;
+
+        [BsonElement("Amount")]
+        public decimal? Amount { get; set; }
+
+        [BsonElement("Currency")]
+        public string Currency { get; set; } = "EUR";
+
+        [BsonElement("ParticipantOrCustomer")]
+        public string ParticipantOrCustomer { get; set; } = string.Empty;
+
+        [BsonElement("Channel")]
+        public string Channel { get; set; } = string.Empty;
+
+        [BsonElement("Notes")]
+        public string Notes { get; set; } = string.Empty;
+
+        [BsonElement("IsPaid")]
+        public bool IsPaid { get; set; }
+
+        /// <summary>
+        /// Founder-reported evidence is distinct from third-party verified transactions.
+        /// </summary>
+        [BsonElement("IsFounderReported")]
+        public bool IsFounderReported { get; set; } = true;
+
+        [BsonElement("RecordedAt")]
+        public DateTime RecordedAt { get; set; } = DateTime.UtcNow;
     }
 
     public enum PricingRiskSeverity
@@ -246,10 +293,19 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public double? PaybackPeriod { get; set; }
 
         /// <summary>
-        /// Validated | Supported | NeedsReview
+        /// Validated | Supported | BelowCostWarning | BelowTargetMarginWarning | ZeroContributionWarning | IncompleteCostBasis | InvalidCostInput
         /// </summary>
         [BsonElement("ValidationStatus")]
         public string ValidationStatus { get; set; } = "Supported";
+
+        [BsonElement("IsCostBasisConfigured")]
+        public bool IsCostBasisConfigured { get; set; } = true;
+
+        /// <summary>
+        /// UnknownOrIncomplete | ExplicitZero | ValidPositive | InvalidNegative
+        /// </summary>
+        [BsonElement("CostBasisState")]
+        public string CostBasisState { get; set; } = "ValidPositive";
     }
 
     public class ForecastAlignmentDto
@@ -434,6 +490,9 @@ namespace WebApp.Models.DatabaseModels.Phase4
 
         [BsonElement("Notes")]
         public string? Notes { get; set; }
+
+        [BsonElement("RecordedEvidence")]
+        public List<PricingEvidenceRecord> RecordedEvidence { get; set; } = new();
     }
 
     public class DiscountPolicy
@@ -659,5 +718,7 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public string? Notes { get; set; }
         public string? FounderNotes { get; set; }
         public bool? ResetToRecommendation { get; set; }
+        public PricingEvidenceRecord? NewEvidenceRecord { get; set; }
+        public List<PricingEvidenceRecord>? RecordedEvidence { get; set; }
     }
 }

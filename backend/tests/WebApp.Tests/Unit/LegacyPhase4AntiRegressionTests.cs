@@ -74,8 +74,9 @@ namespace WebApp.Tests.Unit
             p4Props.Should().Contain("SupportPlan");
             p4Props.Should().Contain("PricingStrategy");
             p4Props.Should().Contain("GtmStrategy");
+            p4Props.Should().Contain("LaunchAssets");
             p4Props.Should().Contain("SourceVersions");
-            p4Props.Count.Should().Be(8);
+            p4Props.Count.Should().Be(9);
         }
     }
 }

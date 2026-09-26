@@ -83,6 +83,7 @@ namespace WebApp.Models.Phase4
         public List<string> RawCostItems { get; set; } = new();
         public decimal EstimatedMonthlyFixedCosts { get; set; }
         public decimal EstimatedVariableCostPerUnit { get; set; }
+        public bool IsVariableCostConfigured { get; set; } = true;
         public decimal DefaultRequiredMarginRate { get; set; } = 0.40m; // 40% target contribution margin
         public decimal DefaultRequiredMarginAmount { get; set; } = 20.0m;
         public MarginTargetType MarginTargetType { get; set; } = MarginTargetType.Percentage;

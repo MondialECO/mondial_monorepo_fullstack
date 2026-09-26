@@ -223,6 +223,34 @@ namespace WebApp.Services.Implementations
                 }
             }
 
+            // Apply evidence records if submitted
+            if (request?.NewEvidenceRecord != null)
+            {
+                var ev = request.NewEvidenceRecord;
+                if (string.IsNullOrWhiteSpace(ev.Id)) ev.Id = Guid.NewGuid().ToString();
+                if (ev.RecordedAt == default) ev.RecordedAt = DateTime.UtcNow;
+                ev.IsFounderReported = true; // Provenance invariant: founder-reported payment is distinct from 3rd-party verified
+
+                targetOffer.RecordedEvidence.Add(ev);
+                targetOffer.FounderEdited = true;
+
+                // Requirement 4: ONLY paid preorders and completed sales elevate empirical market price validation
+                // Qualitative feedback and unpaid commitments do NOT become paid-sale evidence.
+                if (ev.IsPaid && (ev.Type == PricingEvidenceRecordType.PreOrder || ev.Type == PricingEvidenceRecordType.Sale) && ev.Amount.HasValue && ev.Amount.Value > 0)
+                {
+                    targetOffer.ValidatedMarketPrice = ev.Amount.Value;
+                    targetOffer.MarketPriceEvidenceType = ev.Type == PricingEvidenceRecordType.PreOrder
+                        ? MarketPriceEvidenceType.PreOrder
+                        : MarketPriceEvidenceType.HistoricalSale;
+                    targetOffer.MarketPriceValidationLevel = MarketPriceValidationLevel.Supported;
+                }
+            }
+            if (request?.RecordedEvidence != null)
+            {
+                targetOffer.RecordedEvidence = request.RecordedEvidence;
+                targetOffer.FounderEdited = true;
+            }
+
             // Correction #6: Recalculate economics, forecast alignment, and risks immediately!
             _policyEngine.RecalculateOfferEconomics(targetOffer, context);
 
@@ -273,17 +301,36 @@ namespace WebApp.Services.Implementations
                 foreach (var offer in offers)
                 {
                     var prior = existing.Offers.FirstOrDefault(o => string.Equals(o.Key, offer.Key, StringComparison.OrdinalIgnoreCase));
-                    if (prior != null && prior.FounderEdited)
+                    if (prior != null)
                     {
-                        offer.FounderPrice = prior.FounderPrice;
-                        offer.FounderEdited = true;
-                        offer.Notes = prior.Notes;
-                        if (prior.IncludedFeatures.Count > 0)
+                        // Preserve recorded evidence across refreshes
+                        if (prior.RecordedEvidence != null && prior.RecordedEvidence.Count > 0)
                         {
-                            offer.IncludedFeatures = prior.IncludedFeatures;
+                            offer.RecordedEvidence = prior.RecordedEvidence;
                         }
-                        // Recalculate based on preserved founder price
-                        _policyEngine.RecalculateOfferEconomics(offer, context);
+                        if (prior.ValidatedMarketPrice.HasValue)
+                        {
+                            offer.ValidatedMarketPrice = prior.ValidatedMarketPrice;
+                            offer.MarketPriceEvidenceType = prior.MarketPriceEvidenceType;
+                            offer.MarketPriceValidationLevel = prior.MarketPriceValidationLevel;
+                        }
+
+                        if (prior.FounderEdited)
+                        {
+                            offer.FounderPrice = prior.FounderPrice;
+                            offer.FounderEdited = true;
+                            offer.Notes = prior.Notes;
+                            if (prior.IncludedFeatures.Count > 0)
+                            {
+                                offer.IncludedFeatures = prior.IncludedFeatures;
+                            }
+                            if (prior.SetupFee.HasValue)
+                            {
+                                offer.SetupFee = prior.SetupFee;
+                            }
+                            // Recalculate based on preserved founder price
+                            _policyEngine.RecalculateOfferEconomics(offer, context);
+                        }
                     }
                 }
             }

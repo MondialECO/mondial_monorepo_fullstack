@@ -1447,6 +1447,10 @@ namespace WebApp.Controllers
                 }
                 return Ok(ApiResponse.Ok("Pricing strategy retrieved", result));
             }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
             catch (UnauthorizedAccessException ex)
             {
                 return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
@@ -1494,6 +1498,10 @@ namespace WebApp.Controllers
                     Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
                 }
                 return Ok(ApiResponse.Ok("Pricing strategy generated", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -1543,6 +1551,10 @@ namespace WebApp.Controllers
                 }
                 return Ok(ApiResponse.Ok("Pricing strategy refreshed", result));
             }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
             catch (UnauthorizedAccessException ex)
             {
                 return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
@@ -1590,6 +1602,10 @@ namespace WebApp.Controllers
                     Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
                 }
                 return Ok(ApiResponse.Ok("Pricing offer updated and economics recalculated", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (UnauthorizedAccessException ex)
             {
