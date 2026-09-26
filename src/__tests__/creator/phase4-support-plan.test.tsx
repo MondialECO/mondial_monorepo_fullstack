@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { SupportPlanView } from '@/components/creator/phase4/SupportPlanView';
 import type {
   SupportPlan,
@@ -325,8 +324,8 @@ describe('SupportPlanView', () => {
     expect(screen.getByText(/via ServicePublicAdapter/i)).toBeInTheDocument();
   });
 
-  it('allows answering missing eligibility facts inline', () => {
-    const handleAnswerFact = vi.fn();
+  it('allows answering missing eligibility facts inline', async () => {
+    const handleAnswerFact = vi.fn().mockResolvedValue(undefined);
     render(
       <SupportPlanView
         ideaId="idea-1"
@@ -344,7 +343,9 @@ describe('SupportPlanView', () => {
 
     expect(screen.getByText(/Are you currently registered with France Travail/i)).toBeInTheDocument();
     const yesBtn = screen.getByRole('button', { name: /^Yes$/i });
-    fireEvent.click(yesBtn);
+    await act(async () => {
+      fireEvent.click(yesBtn);
+    });
     expect(handleAnswerFact).toHaveBeenCalledWith('fact.france-travail-registered', 'true');
   });
 

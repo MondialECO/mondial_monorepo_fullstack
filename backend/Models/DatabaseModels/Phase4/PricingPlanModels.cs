@@ -630,27 +630,34 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public bool UpdateAvailable { get; set; }
         public List<string> ChangedSources { get; set; } = new();
         public PrerequisiteGateDto? PrerequisiteGate { get; set; }
+        public long IdeaVersion { get; set; }
     }
 
     public class GeneratePricingRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
     }
 
     public class RefreshPricingRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
     }
 
     public class UpdatePricingOfferRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
         public decimal? FounderPrice { get; set; }
         public string? Name { get; set; }
         public string? BillingFrequency { get; set; }
         public List<string>? IncludedFeatures { get; set; }
+        public List<string>? FeaturesIncluded { get; set; }
         public decimal? SetupFee { get; set; }
+        public decimal? LaunchDiscountPercentage { get; set; }
         public string? Notes { get; set; }
+        public string? FounderNotes { get; set; }
         public bool? ResetToRecommendation { get; set; }
     }
 }

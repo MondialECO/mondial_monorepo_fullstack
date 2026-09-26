@@ -75,7 +75,8 @@ namespace WebApp.Services.Implementations
                     Strategy = null,
                     UpdateAvailable = false,
                     ChangedSources = new List<string>(),
-                    PrerequisiteGate = gateResult
+                    PrerequisiteGate = gateResult,
+                    IdeaVersion = journey.IdeaVersion
                 };
             }
 
@@ -87,7 +88,8 @@ namespace WebApp.Services.Implementations
                 Strategy = existing,
                 UpdateAvailable = isStale,
                 ChangedSources = changed,
-                PrerequisiteGate = gateResult
+                PrerequisiteGate = gateResult,
+                IdeaVersion = journey.IdeaVersion
             };
         }
 
@@ -108,7 +110,8 @@ namespace WebApp.Services.Implementations
                     Strategy = existing,
                     UpdateAvailable = false,
                     ChangedSources = new List<string>(),
-                    PrerequisiteGate = gateResult
+                    PrerequisiteGate = gateResult,
+                    IdeaVersion = journey.IdeaVersion
                 };
             }
 
@@ -124,7 +127,8 @@ namespace WebApp.Services.Implementations
                 Strategy = strategy,
                 UpdateAvailable = false,
                 ChangedSources = new List<string>(),
-                PrerequisiteGate = gateResult
+                PrerequisiteGate = gateResult,
+                IdeaVersion = journey.IdeaVersion
             };
         }
 
@@ -149,7 +153,8 @@ namespace WebApp.Services.Implementations
                 Strategy = strategy,
                 UpdateAvailable = false,
                 ChangedSources = new List<string>(),
-                PrerequisiteGate = gateResult
+                PrerequisiteGate = gateResult,
+                IdeaVersion = journey.IdeaVersion
             };
         }
 
@@ -199,9 +204,10 @@ namespace WebApp.Services.Implementations
                     targetOffer.BillingFrequency = bf;
                     targetOffer.FounderEdited = true;
                 }
-                if (request?.IncludedFeatures != null)
+                var features = request?.IncludedFeatures ?? request?.FeaturesIncluded;
+                if (features != null)
                 {
-                    targetOffer.IncludedFeatures = request.IncludedFeatures;
+                    targetOffer.IncludedFeatures = features;
                     targetOffer.FounderEdited = true;
                 }
                 if (request?.SetupFee.HasValue == true)
@@ -209,9 +215,10 @@ namespace WebApp.Services.Implementations
                     targetOffer.SetupFee = request.SetupFee.Value;
                     targetOffer.FounderEdited = true;
                 }
-                if (request?.Notes != null)
+                var notes = request?.Notes ?? request?.FounderNotes;
+                if (notes != null)
                 {
-                    targetOffer.Notes = request.Notes;
+                    targetOffer.Notes = notes;
                     targetOffer.FounderEdited = true;
                 }
             }
@@ -243,7 +250,8 @@ namespace WebApp.Services.Implementations
                 Strategy = strategy,
                 UpdateAvailable = isStale,
                 ChangedSources = changed,
-                PrerequisiteGate = gateResult
+                PrerequisiteGate = gateResult,
+                IdeaVersion = journey.IdeaVersion
             };
         }
 
@@ -693,9 +701,6 @@ namespace WebApp.Services.Implementations
                 changed.Add("Business Model Canvas (Phase 3.2)");
             if (current.ForecastVersion > 0 && saved.ForecastVersion != current.ForecastVersion)
                 changed.Add("Financial Forecast (Phase 3.4)");
-            if (saved.ProjectUpdatedAt.HasValue && current.ProjectUpdatedAt.HasValue &&
-                current.ProjectUpdatedAt.Value > saved.ProjectUpdatedAt.Value.AddSeconds(5))
-                changed.Add("Project Core Details");
 
             // Conditional Sources: Only trigger if the strategy actually consumed them
             if (saved.ConsumedSources.Contains("NeedsAnalysis") &&

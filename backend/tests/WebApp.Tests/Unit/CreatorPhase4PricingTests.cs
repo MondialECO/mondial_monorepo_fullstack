@@ -1127,5 +1127,19 @@ namespace WebApp.Tests.Unit
             var b2cOffers = _policyEngine.StructureOffers(b2cCtx, RevenueModelType.Subscription, new List<string> { "Subscription" });
             b2cOffers.First().Presentation.TaxMode.Should().Be(TaxMode.NotApplicableOrUnknown);
         }
+
+        [Fact]
+        public async Task PricingResponse_PopulatesIdeaVersion_ForOptimisticConcurrency()
+        {
+            var journey = BuildCompleteJourney();
+            journey.IdeaVersion = 7;
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            var response = await service.GeneratePricingStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+
+            response.Should().NotBeNull();
+            response.IdeaVersion.Should().Be(7);
+        }
     }
 }

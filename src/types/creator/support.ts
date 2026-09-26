@@ -225,16 +225,19 @@ export interface SupportPlanResponse {
   founderProfileSummary?: FounderProfileSummaryDto;
   prerequisiteGate?: PrerequisiteGateDto;
   error?: string;
+  ideaVersion?: number;
 }
 
 export interface UpdateFounderSupportStateRequest {
   ideaId?: string;
+  expectedVersion?: number;
   applicationState: FounderApplicationState;
   founderNotes?: string;
 }
 
 export interface AnswerEligibilityFactRequest {
   ideaId?: string;
+  expectedVersion?: number;
   factKey: string;
   value: string;
 }

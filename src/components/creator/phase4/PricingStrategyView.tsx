@@ -2,44 +2,27 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Tag,
-  DollarSign,
-  TrendingUp,
   AlertTriangle,
-  CheckCircle2,
   AlertCircle,
   RefreshCw,
   Sparkles,
   ArrowRight,
   ArrowLeft,
-  Lock,
-  Layers,
   ShieldCheck,
   FileText,
   Sliders,
-  Percent,
   Check,
   X,
-  HelpCircle,
-  ExternalLink,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  Zap,
-  Building2,
-  Users,
-  Info,
   Edit3,
+  Zap,
 } from 'lucide-react';
 import type {
   PricingStrategy,
   PricingOffer,
-  PricingRisk,
-  PricingExperiment,
   UpdatePricingOfferRequest,
-  RevenueModelType,
-  PriceValidationStatus,
 } from '@/types/creator/pricing';
 
 interface PricingStrategyViewProps {
@@ -81,6 +64,7 @@ export function PricingStrategyView({
   onRefresh,
   onUpdateOffer,
 }: PricingStrategyViewProps) {
+  const router = useRouter();
   const offers = useMemo(() => strategy?.offers || [], [strategy]);
   const defaultOfferKey = useMemo(() => {
     const defaultOff = offers.find((o) => o.isRecommendedDefault);
@@ -203,10 +187,31 @@ export function PricingStrategyView({
     }
   };
 
+  const handleSaveAndContinue = async () => {
+    try {
+      setIsSubmitting(true);
+      const parsed = parseFloat(chosenPriceInput);
+      if (!isNaN(parsed) && activeOffer && parsed !== initialPrice) {
+        await onUpdateOffer(activeOffer.key, {
+          founderPrice: parsed,
+          founderNotes: activeOffer.founderNotes,
+        });
+      }
+      if (updateAvailable) {
+        await onRefresh();
+      }
+      router.push(`/dashboard/creator/phase-4/gtm?ideaId=${ideaId}`);
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to complete step.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // 1. Gate Blocking Screen
   if (gateError) {
     return (
-      <div className="max-w-[1120px] mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="w-full max-w-[1120px] mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6 animate-fadeIn">
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 sm:p-8 text-foreground space-y-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
@@ -246,7 +251,7 @@ export function PricingStrategyView({
   // 2. Empty State / Not Generated Screen
   if (!strategy) {
     return (
-      <div className="max-w-[1120px] mx-auto py-12 px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="w-full max-w-[1120px] mx-auto py-12 px-4 sm:px-6 lg:px-8 space-y-6 animate-fadeIn">
         <div className="bg-card border border-border rounded-2xl p-8 sm:p-12 text-center space-y-6 shadow-sm">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary shadow-sm">
             <Tag className="w-8 h-8" />
@@ -258,12 +263,12 @@ export function PricingStrategyView({
             <h2 className="text-2xl font-bold font-heading text-foreground">
               Launch Pricing & Revenue Model Engine
             </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed font-sans">
               Synthesizes your Phase 3 Business Model, French cost structure, Financial Forecast benchmarks, and customer segments into mathematically floor-tested launch offers.
             </p>
           </div>
 
-          <div className="max-w-md mx-auto bg-muted/40 border border-border/80 rounded-xl p-5 text-left text-xs space-y-2.5 text-muted-foreground">
+          <div className="max-w-md mx-auto bg-muted/30 border border-border rounded-xl p-5 text-left text-xs space-y-2.5 text-muted-foreground">
             <div className="font-semibold text-foreground font-mono text-xs uppercase tracking-wider">
               Engine Invariants:
             </div>
@@ -311,20 +316,14 @@ export function PricingStrategyView({
   const currencySymbol = getCurrencySymbol(activeOffer?.presentation?.currency);
   const chosenPrice = parseFloat(chosenPriceInput) || 0;
   const recommendedPrice = activeOffer?.recommendedPrice || 0;
-  const isFloorViolated = activeOffer?.status === 'BelowFloor';
   const risks = strategy.risks || [];
   const experiments = strategy.experiments || [];
-  const criticalRisksCount = risks.filter((r) => r.severity === 'Critical' || r.severity === 'High').length;
-  const avgMargin =
-    offers.length > 0
-      ? Math.round(offers.reduce((acc, o) => acc + (o.unitEconomics?.contributionMarginRate || 0), 0) / offers.length)
-      : 0;
-  const allAligned = offers.every((o) => o.forecastAlignment?.isAligned !== false);
 
+  // Active Offer Format Helpers
   const modelDisplay = activeOffer?.revenueModel
-    ? activeOffer.revenueModel.toLowerCase().includes('subscription')
+    ? activeOffer.revenueModel === 'Subscription'
       ? 'Monthly subscription'
-      : `${activeOffer.revenueModel}`
+      : `${activeOffer.revenueModel} Model`
     : 'Monthly subscription';
 
   const validationLevel = activeOffer?.marketPriceValidationLevel;
@@ -332,22 +331,9 @@ export function PricingStrategyView({
     validationLevel === 'EmpiricallyValidated' ||
     (activeOffer?.validatedMarketPrice !== null && activeOffer?.validatedMarketPrice !== undefined);
 
-  // Dynamic feature capabilities derived from offer
-  const supportFeature = activeOffer?.featuresIncluded?.find(
-    (f) => f.toLowerCase().includes('support') || f.toLowerCase().includes('sla')
-  );
-  const limitFeature = activeOffer?.featuresIncluded?.find(
-    (f) =>
-      f.toLowerCase().includes('limit') ||
-      f.toLowerCase().includes('unlimited') ||
-      f.toLowerCase().includes('integration') ||
-      f.toLowerCase().includes('workspace') ||
-      f.toLowerCase().includes('tier')
-  );
-
   return (
-    <div className="max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
-      {/* 0. Top Page-Level Eyebrow & Refresh Header (Figma 57221:12167) */}
+    <div className="w-full max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 animate-fadeIn">
+      {/* 0. Top Page-Level Refresh & Tier Selection Header (Canonical Phase 4 Header Pattern) */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -363,7 +349,7 @@ export function PricingStrategyView({
           <h1 className="text-2xl sm:text-3xl font-bold font-heading text-foreground tracking-tight">
             Launch Pricing & Revenue Model Strategy
           </h1>
-          <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+          <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
             Financial packaging and launch offers for <span className="text-foreground font-medium">{projectName}</span>. Built from underlying unit economics, contribution margins, and forecast benchmarks.
           </p>
         </div>
@@ -393,7 +379,7 @@ export function PricingStrategyView({
               <h4 className="text-xs font-semibold text-amber-900 dark:text-amber-200">
                 Upstream Milestone Updates Detected
               </h4>
-              <p className="text-xs text-amber-800 dark:text-amber-300/90 mt-0.5">
+              <p className="text-xs text-amber-800 dark:text-amber-300/90 mt-0.5 font-sans">
                 Upstream sources have evolved since pricing was generated:{' '}
                 <span className="font-medium">{changedSources.join(', ')}</span>.
                 Refreshing will recalculate economics while preserving your founder overrides.
@@ -410,9 +396,9 @@ export function PricingStrategyView({
         </div>
       )}
 
-      {/* Multi-Tier Offer Switcher (when multiple offers exist) */}
+      {/* Multi-Tier Offer Switcher */}
       {offers.length > 1 && (
-        <div className="bg-card border border-border rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-card border border-border rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
               Select Tier ({offers.length}):
@@ -428,7 +414,7 @@ export function PricingStrategyView({
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
                     isSelected
                       ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60'
+                      : 'bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border border-border'
                   }`}
                 >
                   <span>{offer.name}</span>
@@ -450,117 +436,121 @@ export function PricingStrategyView({
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 1: COMPACT PRICING SUMMARY (Figma 57221:12169)                    */}
+      {/* SECTION 1: COMPACT PRICING SUMMARY (Figma Frame 57221:12169)              */}
       {/* ========================================================================= */}
       <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 space-y-4 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block font-mono">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block font-sans">
               YOUR CHOSEN PRICE
             </span>
-            <p className="text-3xl sm:text-4xl font-bold font-mono text-foreground tracking-tight">
+            <p className="text-3xl sm:text-4xl font-semibold text-foreground font-sans tracking-tight">
               {`${currencySymbol}${chosenPrice} per business / ${activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'}`}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="px-3 py-1 rounded-full text-xs font-medium border border-border bg-muted/40 text-foreground">
+            <span className="px-2.5 py-1 rounded-full text-xs font-medium border border-border bg-muted/40 text-foreground font-sans">
               {modelDisplay}
             </span>
             <span
-              className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 ${
                 isTested
                   ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
                   : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
               }`}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${isTested ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full ${isTested ? 'bg-emerald-500' : 'bg-amber-600'}`} />
               <span>{isTested ? 'Empirically Validated' : 'Not tested'}</span>
             </span>
-            <span className="px-3 py-1 rounded-full text-xs font-medium border border-border bg-muted/40 text-muted-foreground">
+            <span className="px-2.5 py-1 rounded bg-secondary text-xs font-normal text-muted-foreground font-sans border border-border/50">
               {activeOffer?.status === 'Valid' ? 'Draft' : activeOffer?.status || 'Draft'}
             </span>
           </div>
         </div>
 
-        <div className="pt-2 border-t border-border/50 text-xs text-muted-foreground">
+        <div className="pt-3 border-t border-border text-xs text-muted-foreground font-sans">
           Choose a starting price, then check how customers respond.
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 2: HOW YOU'LL CHARGE (Figma 57221:12185)                          */}
+      {/* SECTION 2: HOW YOU’LL CHARGE (Figma Frame 57221:12185)                     */}
       {/* ========================================================================= */}
-      <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 space-y-5 shadow-sm">
+      <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 space-y-6 shadow-sm">
         <div className="space-y-1">
-          <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+          <h2 className="text-xl font-bold font-heading text-foreground">
             How you’ll charge
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground font-sans">
             Choose what customers pay for and how often.
           </p>
         </div>
 
-        {/* Inset Model Card */}
-        <div className="border border-primary/30 bg-primary/5 dark:bg-primary/10 rounded-xl p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-1">
+        {/* Selected Model Container */}
+        <div className="border border-primary bg-primary/5 dark:bg-primary/10 rounded-xl p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-1.5">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-foreground">
+                <span className="text-base font-semibold text-foreground font-sans">
                   {modelDisplay}
                 </span>
-                <span className="text-[11px] font-mono uppercase bg-primary/20 text-primary px-2 py-0.5 rounded-full font-semibold">
+                <span className="text-xs font-semibold bg-primary/15 text-primary px-2 py-0.5 rounded-full font-sans">
                   Suggested
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-foreground font-sans">
                 Customers pay each {activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'} to use your product.
               </p>
-              <p className="text-xs text-foreground/90 font-medium">
+              <p className="text-xs text-muted-foreground font-sans">
                 {activeOffer?.featuresIncluded && activeOffer.featuresIncluded.length > 0
-                  ? `${projectName} includes ${activeOffer.featuresIncluded.slice(0, 3).join(', ')}.`
-                  : `${projectName} is configured for ongoing operational customer workflows.`}
+                  ? `${projectName} is designed for ${activeOffer.featuresIncluded.slice(0, 3).join(', ')}.`
+                  : `${projectName} is designed for ongoing enquiries, quotations, and follow-ups.`}
               </p>
             </div>
 
             <button
               onClick={() => openEditModal(activeOffer!)}
-              className="px-3.5 py-1.5 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-medium shrink-0 self-start sm:self-center transition-colors"
+              className="px-3.5 py-1.5 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-medium shrink-0 self-start sm:self-center transition-colors shadow-sm"
             >
               Change model
             </button>
           </div>
 
-          <div className="pt-4 border-t border-primary/20 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div className="pt-4 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-sans">
             <div className="space-y-3">
               <div>
-                <span className="text-muted-foreground font-medium block">Customers pay for</span>
-                <span className="text-foreground font-semibold text-sm">
-                  {activeOffer?.targetSegment || activeOffer?.name || `${projectName} workspace`}
+                <span className="text-xs font-medium text-muted-foreground block">
+                  Customers pay for
+                </span>
+                <span className="text-sm font-semibold text-foreground block mt-0.5">
+                  {activeOffer?.targetSegment || activeOffer?.name || 'One business workspace'}
                 </span>
               </div>
               <div>
-                <span className="text-muted-foreground font-medium block">What’s included</span>
-                <span className="text-foreground/90 leading-relaxed block">
+                <span className="text-xs font-medium text-muted-foreground block">
+                  What’s included
+                </span>
+                <span className="text-sm text-foreground leading-relaxed block mt-0.5">
                   {activeOffer?.featuresIncluded && activeOffer.featuresIncluded.length > 0
                     ? activeOffer.featuresIncluded.join(', ')
-                    : 'Standard workspace access and operational features.'}
+                    : 'Enquiry management, quotations, and follow-ups.'}
                 </span>
               </div>
             </div>
 
             <div className="space-y-3 flex flex-col justify-between">
-              <div className="space-y-1.5 text-muted-foreground">
+              <div className="space-y-2 text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <span className={`w-1.5 h-1.5 rounded-full ${limitFeature ? 'bg-emerald-500' : 'bg-amber-500'} shrink-0`} />
-                  <span>{limitFeature ? `Usage limits — ${limitFeature}` : 'Usage limits — To confirm'}</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                  <span>Usage limits — To confirm</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`w-1.5 h-1.5 rounded-full ${supportFeature ? 'bg-emerald-500' : 'bg-amber-500'} shrink-0`} />
-                  <span>{supportFeature ? `Support included — ${supportFeature}` : 'Support included — To confirm'}</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                  <span>Support included — To confirm</span>
                 </div>
               </div>
-              <div>
+              <div className="pt-2">
                 <button
                   onClick={() => openEditModal(activeOffer!)}
                   className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-1"
@@ -575,36 +565,47 @@ export function PricingStrategyView({
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 3: PRICE COMPARISON & CHOICE (Figma 57221:12224)                   */}
+      {/* SECTION 3: PRICE COMPARISON & CHOICE (Figma Frame 57221:12224)             */}
       {/* ========================================================================= */}
       <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 space-y-6 shadow-sm">
         <div className="space-y-1">
-          <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+          <h2 className="text-xl font-bold font-heading text-foreground">
             Price comparison & choice
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground font-sans">
             Compare the baseline suggestion with your target price.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left: Suggested Price */}
-          <div className="bg-muted/20 border border-border rounded-xl p-5 flex flex-col justify-between space-y-4">
+          <div className="bg-muted/30 border border-border rounded-xl p-5 flex flex-col justify-between space-y-4">
             <div className="space-y-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono block">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-sans block">
                 SUGGESTED PRICE
               </span>
-              <p className="text-3xl font-bold font-mono text-foreground">
+              <p className="text-3xl font-semibold text-foreground font-sans">
                 {`${currencySymbol}${recommendedPrice} per business / ${activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'}`}
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 A starting suggestion based on your current project assumptions.
               </p>
 
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2.5 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <span>Delivery costs and market prices still need checking.</span>
               </div>
+
+              {(activeOffer?.status === 'BelowFloor' ||
+                (activeOffer?.unitEconomics?.minimumPriceFloor &&
+                  chosenPrice < activeOffer.unitEconomics.minimumPriceFloor)) && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2.5 text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <span className="font-semibold">
+                    Price below floor! Loss-making under current cost structure
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="pt-2">
@@ -613,7 +614,7 @@ export function PricingStrategyView({
                   setChosenPriceInput(recommendedPrice.toString());
                   handleQuickSavePrice(recommendedPrice);
                 }}
-                className="px-4 py-2 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-medium transition-colors"
+                className="px-3.5 py-2 rounded-lg bg-card hover:bg-muted text-primary border border-primary text-xs font-medium transition-colors shadow-sm"
               >
                 Use suggested price
               </button>
@@ -621,14 +622,14 @@ export function PricingStrategyView({
           </div>
 
           {/* Right: Your Chosen Price */}
-          <div className="bg-card border border-border rounded-xl p-5 flex flex-col justify-between space-y-4">
+          <div className="bg-card border border-primary rounded-xl p-5 flex flex-col justify-between space-y-4">
             <div className="space-y-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono block">
+              <span className="text-xs font-semibold uppercase tracking-wider text-primary font-sans block">
                 YOUR CHOSEN PRICE
               </span>
 
               <div className="flex items-center">
-                <span className="bg-muted px-3 py-2 rounded-l-lg border border-r-0 border-border text-xs font-medium text-muted-foreground">
+                <span className="bg-secondary border border-primary border-r-0 text-secondary-foreground text-xs px-3 py-2 rounded-l-lg font-sans">
                   {getCurrencyLabel(activeOffer?.presentation?.currency)}
                 </span>
                 <input
@@ -644,10 +645,10 @@ export function PricingStrategyView({
                       handleQuickSavePrice(parsed);
                     }
                   }}
-                  className="bg-background border border-border px-3 py-1.5 text-xl font-bold font-mono text-foreground w-28 rounded-r-lg focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="bg-card border border-primary px-3 py-1 text-2xl font-semibold font-sans text-foreground w-28 rounded-r-lg focus:outline-none focus:ring-1 focus:ring-primary"
                 />
-                <span className="text-xs text-muted-foreground ml-3">
-                  per {activeOffer?.targetSegment ? 'business' : 'unit'} / {activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'}
+                <span className="text-sm text-muted-foreground ml-3 font-sans">
+                  per business / {activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'}
                 </span>
               </div>
 
@@ -678,99 +679,94 @@ export function PricingStrategyView({
                       setOfferNoteText('');
                       setNoteModalOpen(true);
                     }}
-                    className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-1"
+                    className="text-xs text-muted-foreground hover:text-foreground font-normal inline-flex items-center gap-1 cursor-pointer"
                   >
-                    <span>+ Add a note about your choice</span>
+                    <span>Add a note about your choice</span>
                   </button>
                 )}
               </div>
 
-              <div className="text-[11px] text-muted-foreground pt-1">
+              <div className="text-[11px] text-muted-foreground pt-1 font-sans">
                 Applies to all new onboarding accounts.
               </div>
             </div>
           </div>
         </div>
 
-        <div className="pt-3 border-t border-border/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-muted-foreground">
+        <div className="pt-3 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-muted-foreground">
           <span>Your choice will be saved when you continue.</span>
-          <span className="font-mono">
-            Tax basis —{' '}
-            {activeOffer?.presentation?.taxMode === 'TaxExclusive'
-              ? 'HT (Exclusive)'
-              : activeOffer?.presentation?.taxMode === 'TaxInclusive'
-              ? 'TTC (Inclusive)'
-              : 'To confirm'}
+          <span className="rounded-full border border-border bg-secondary text-muted-foreground px-2.5 py-1 text-xs font-sans">
+            Tax basis — To confirm
           </span>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 4: WHY THIS SUGGESTION? (Figma 57221:12269)                       */}
+      {/* SECTION 4: WHY THIS SUGGESTION? (Figma Frame 57221:12269)                  */}
       {/* ========================================================================= */}
       <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 space-y-4 shadow-sm">
         <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
           Why this suggestion?
         </h2>
 
-        <div className="border border-border rounded-xl divide-y divide-border text-xs">
+        <div className="border border-border rounded-xl divide-y divide-border text-xs font-sans">
           {/* Row 1: Offer */}
-          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4">
-              <span className="font-semibold text-muted-foreground w-32 shrink-0 font-mono text-[11px] uppercase">
+              <span className="font-semibold text-muted-foreground w-32 shrink-0 text-xs uppercase font-sans">
                 YOUR OFFER
               </span>
-              <span className="text-foreground">
+              <span className="text-foreground text-xs font-sans">
                 Ongoing use of {activeOffer?.name || `${projectName} business workspace`}.
               </span>
             </div>
-            <span className="text-[11px] font-mono border border-border/80 px-2 py-0.5 rounded text-muted-foreground bg-muted/40 self-start sm:self-center">
+            <span className="text-[11px] border border-border px-2 py-0.5 rounded text-muted-foreground bg-muted/40 self-start sm:self-center font-sans">
               Project concept and business model
             </span>
           </div>
 
           {/* Row 2: Customers */}
-          <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4">
-              <span className="font-semibold text-muted-foreground w-32 shrink-0 font-mono text-[11px] uppercase">
+              <span className="font-semibold text-muted-foreground w-32 shrink-0 text-xs uppercase font-sans">
                 YOUR CUSTOMERS
               </span>
-              <span className="text-foreground">
-                {activeOffer?.targetSegment || `${projectName} target customers.`}
+              <span className="text-foreground text-xs font-sans">
+                {activeOffer?.targetSegment || 'Independent service businesses in France.'}
               </span>
             </div>
-            <span className="text-[11px] font-mono border border-border/80 px-2 py-0.5 rounded text-muted-foreground bg-muted/40 self-start sm:self-center">
+            <span className="text-[11px] border border-border px-2 py-0.5 rounded text-muted-foreground bg-muted/40 self-start sm:self-center font-sans">
               Target customer profile
             </span>
           </div>
 
           {/* Row 3: To Verify */}
-          <div className="p-4 flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4">
-            <span className="font-semibold text-muted-foreground w-32 shrink-0 font-mono text-[11px] uppercase">
+          <div className="p-3.5 flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4">
+            <span className="font-semibold text-muted-foreground w-32 shrink-0 text-xs uppercase font-sans">
               TO VERIFY
             </span>
-            <span className="text-foreground">
+            <span className="text-foreground text-xs font-sans">
               Delivery costs, comparable offers, and what customers will pay.
             </span>
           </div>
         </div>
 
-        {/* Evidence Status & Assumptions Strip */}
-        <div className="bg-muted/30 border border-border/70 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        {/* Understated Evidence Box */}
+        <div className="bg-muted/30 border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-sans">
           <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-muted-foreground">
             <div className="flex items-center gap-1.5">
-              <span>Delivery costs:</span>
-              <span className="font-mono text-foreground font-medium flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                {activeOffer?.unitEconomics?.variableCostPerUnit
-                  ? `${currencySymbol}${activeOffer.unitEconomics.variableCostPerUnit} / unit`
+              <span>Minimum viable price:</span>
+              <span className="rounded-full bg-muted text-muted-foreground text-[11px] px-2 py-0.5 flex items-center gap-1 border border-border">
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60" />
+                {activeOffer?.unitEconomics?.minimumPriceFloor
+                  ? `${currencySymbol}${activeOffer.unitEconomics.minimumPriceFloor} / unit`
                   : 'Not yet confirmed'}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span>Market references:</span>
-              <span className="font-mono text-foreground font-medium flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <span>Market reference:</span>
+              <span className="rounded-full bg-muted text-muted-foreground text-[11px] px-2 py-0.5 flex items-center gap-1 border border-border">
+                <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60" />
                 {activeOffer?.marketReferencePrice
                   ? `${currencySymbol}${activeOffer.marketReferencePrice} recorded`
                   : 'Not yet added'}
@@ -780,7 +776,7 @@ export function PricingStrategyView({
 
           <button
             onClick={() => setShowAssumptions(!showAssumptions)}
-            className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-1 self-start sm:self-center"
+            className="text-xs text-muted-foreground hover:text-foreground font-medium inline-flex items-center gap-1 self-start sm:self-center cursor-pointer"
           >
             <span>{showAssumptions ? 'Hide assumptions ▴' : 'View assumptions ▾'}</span>
           </button>
@@ -793,22 +789,34 @@ export function PricingStrategyView({
               Four-Price Independence & Unit Economics Ledger:
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5 bg-card p-3 rounded-lg border border-border/60">
+              <div className="space-y-1.5 bg-card p-3 rounded-lg border border-border">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Algorithm Baseline:</span>
+                  <span className="text-muted-foreground">MBC Recommended Price:</span>
                   <span className="text-foreground font-bold">
                     {currencySymbol}{activeOffer?.recommendedPrice} per unit
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Founder Baseline:</span>
+                  <span className="text-muted-foreground">Founder / Chosen Price:</span>
                   <span className="text-primary font-bold">
                     {currencySymbol}{activeOffer?.founderPrice ?? activeOffer?.recommendedPrice} per unit
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Market Reference Price:</span>
+                  <span className="text-foreground">
+                    {activeOffer?.marketReferencePrice ? `${currencySymbol}${activeOffer.marketReferencePrice}` : 'Not specified'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Empirically Validated Price:</span>
+                  <span className="text-foreground">
+                    {activeOffer?.validatedMarketPrice ? `${currencySymbol}${activeOffer.validatedMarketPrice}` : 'Not validated yet'}
+                  </span>
+                </div>
               </div>
 
-              <div className="space-y-1.5 bg-card p-3 rounded-lg border border-border/60">
+              <div className="space-y-1.5 bg-card p-3 rounded-lg border border-border">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Price Floor Formula:</span>
                   <span className="text-foreground">VC / (1 - m)</span>
@@ -826,21 +834,21 @@ export function PricingStrategyView({
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 5: WHAT COULD YOU EARN? (Figma 57221:12301)                       */}
+      {/* SECTION 5: WHAT COULD YOU EARN? (Figma Frame 57221:12301)                  */}
       {/* ========================================================================= */}
       <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 space-y-5 shadow-sm">
         <div className="space-y-1">
-          <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+          <h2 className="text-xl font-bold font-heading text-foreground">
             What could you earn?
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground font-sans">
             Try a customer number to explore possible income.
           </p>
         </div>
 
         {/* Customer Simulator Input */}
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <span className="font-semibold uppercase tracking-wider text-muted-foreground font-mono">
+        <div className="flex flex-wrap items-center gap-3 text-xs font-sans">
+          <span className="font-semibold uppercase tracking-wider text-muted-foreground text-xs">
             PAYING BUSINESSES
           </span>
           <input
@@ -849,70 +857,68 @@ export function PricingStrategyView({
             max="10000"
             value={payingBusinesses}
             onChange={(e) => setPayingBusinesses(Math.max(1, parseInt(e.target.value) || 1))}
-            className="bg-background border border-border px-3 py-1 rounded-lg text-sm font-bold font-mono text-foreground w-20 focus:outline-none focus:ring-1 focus:ring-primary"
+            className="bg-muted/40 border border-border px-2.5 py-1.5 rounded-lg text-sm font-semibold font-sans text-foreground w-20 focus:outline-none focus:ring-1 focus:ring-primary"
           />
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             Changing this number does not predict how many customers you will get.
           </span>
         </div>
 
         {/* Calculation Result Strip */}
-        <div className="bg-muted/20 border border-border rounded-xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-baseline gap-2 text-base text-muted-foreground font-mono">
-            <span className="text-foreground font-bold">
-              {`${currencySymbol}${chosenPrice} × ${payingBusinesses} businesses =`}
-            </span>
+        <div className="bg-muted/30 border border-border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-2 text-base text-foreground font-sans">
+            <span>{`${currencySymbol}${chosenPrice} × ${payingBusinesses} businesses`}</span>
           </div>
 
           <div className="text-left sm:text-right space-y-0.5">
-            <div className="text-3xl sm:text-4xl font-bold font-mono text-foreground tracking-tight">
+            <div className="text-3xl sm:text-4xl font-semibold font-sans text-foreground tracking-tight">
               {currencySymbol}{(chosenPrice * payingBusinesses).toLocaleString()}
             </div>
-            <div className="text-xs text-muted-foreground font-medium">
+            <div className="text-xs text-muted-foreground font-medium font-sans">
               Estimated monthly revenue
             </div>
           </div>
         </div>
 
         {/* Footnote Caveats */}
-        <div className="space-y-1 text-xs text-muted-foreground">
+        <div className="space-y-1 text-xs text-muted-foreground font-sans">
           <div>• This is a planning estimate. Costs and taxes are not deducted.</div>
           <div>• Tax treatment still needs confirmation.</div>
         </div>
 
         {/* Incomplete Cost Warning Box */}
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2.5">
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2.5 font-sans">
           <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <span className="font-semibold block text-amber-900 dark:text-amber-100">
+            <span className="font-semibold block text-amber-900 dark:text-amber-100 text-xs">
               Profit estimate unavailable
             </span>
-            <span>Confirm your costs to understand what you could keep.</span>
+            <span className="text-amber-800 dark:text-amber-200 text-xs">Confirm your costs to understand what you could keep.</span>
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 6: CHECK YOUR PRICE (Figma 57221:12338)                            */}
+      {/* SECTION 6: CHECK YOUR PRICE (Figma Frame 57221:12338)                       */}
       {/* ========================================================================= */}
       <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 space-y-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="space-y-1">
-            <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+            <h2 className="text-xl font-bold font-heading text-foreground">
               Check your price
             </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground font-sans">
               Keep track of what you know about customers paying this amount.
             </p>
           </div>
           <span
-            className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 self-start sm:self-center ${
+            className={`px-2.5 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 self-start sm:self-center ${
               isTested
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
                 : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
             }`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${isTested ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+            <span className={`w-1.5 h-1.5 rounded-full ${isTested ? 'bg-emerald-500' : 'bg-amber-600'}`} />
             <span>{isTested ? 'Empirically Validated' : 'Not tested'}</span>
           </span>
         </div>
@@ -928,41 +934,41 @@ export function PricingStrategyView({
             ))}
           </div>
         ) : (
-          <div className="bg-muted/20 border border-border rounded-xl p-4 flex items-center gap-3 text-xs text-muted-foreground">
-            <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+          <div className="bg-muted/30 border border-border rounded-xl p-4 flex items-center gap-3 text-xs text-muted-foreground font-sans">
+            <FileText className="w-4 h-4 text-muted-foreground/60 shrink-0" />
             <span>No sales or paid preorders recorded.</span>
           </div>
         )}
 
         {/* Educational Comparison Matrix */}
-        <div className="border border-border rounded-xl divide-y divide-border text-xs">
-          <div className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
-            <span className="font-semibold text-foreground w-44 shrink-0">Market reference</span>
-            <span className="text-muted-foreground flex-1">
+        <div className="border border-border rounded-xl divide-y divide-border text-xs font-sans">
+          <div className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+            <span className="font-semibold text-foreground w-44 shrink-0 text-xs">Market reference</span>
+            <span className="text-muted-foreground flex-1 text-xs">
               A similar business lists a price. This helps you compare.
             </span>
           </div>
-          <div className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
-            <span className="font-semibold text-foreground w-44 shrink-0">Customer feedback</span>
-            <span className="text-muted-foreground flex-1">
+          <div className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+            <span className="font-semibold text-foreground w-44 shrink-0 text-xs">Customer feedback</span>
+            <span className="text-muted-foreground flex-1 text-xs">
               Someone shares an opinion about your offer or price.
             </span>
           </div>
-          <div className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
-            <span className="font-semibold text-foreground w-44 shrink-0">Customer interest</span>
-            <span className="text-muted-foreground flex-1">
+          <div className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+            <span className="font-semibold text-foreground w-44 shrink-0 text-xs">Customer interest</span>
+            <span className="text-muted-foreground flex-1 text-xs">
               Someone joins a waitlist or asks for more information.
             </span>
           </div>
-          <div className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
-            <span className="font-semibold text-foreground w-44 shrink-0">Sale or paid preorder</span>
-            <span className="text-muted-foreground flex-1">
+          <div className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
+            <span className="font-semibold text-foreground w-44 shrink-0 text-xs">Sale or paid preorder</span>
+            <span className="text-foreground font-medium flex-1 text-xs">
               Someone pays for a specific offer at a specific price.
             </span>
           </div>
         </div>
 
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground font-sans">
           Positive feedback can help you learn. Payment provides evidence that someone bought at that price.
         </p>
 
@@ -970,13 +976,13 @@ export function PricingStrategyView({
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <button
             onClick={() => setFeedbackModalOpen(true)}
-            className="px-3.5 py-1.5 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-medium transition-colors"
+            className="px-3.5 py-2 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-medium transition-colors shadow-sm"
           >
             Add feedback
           </button>
           <button
             onClick={() => setSaleModalOpen(true)}
-            className="px-3.5 py-1.5 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-medium transition-colors"
+            className="px-3.5 py-2 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-medium transition-colors shadow-sm"
           >
             Add a sale or paid preorder
           </button>
@@ -984,56 +990,56 @@ export function PricingStrategyView({
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 7: A SMALL NEXT ACTION (Figma 57221:12384)                         */}
+      {/* SECTION 7: A SMALL NEXT ACTION (Figma Frame 57221:12384)                    */}
       {/* ========================================================================= */}
       <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm">
-        <div className="space-y-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-primary font-mono block">
+        <div className="space-y-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-primary font-sans block">
             NEXT ACTION
           </span>
-          <h3 className="text-base sm:text-lg font-bold font-heading text-foreground">
+          <h3 className="text-base font-bold font-heading text-foreground">
             Test your starting offer
           </h3>
-          <ul className="space-y-1.5 text-xs text-foreground font-medium">
-            <li className="flex items-center gap-2">
+          <ul className="space-y-1 text-xs text-muted-foreground dark:text-foreground font-bold font-sans">
+            <li className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
               <span>
-                Offer: {activeOffer?.name || `${projectName} launch offer`}
+                Offer: {activeOffer?.name ? `One ${projectName} ${activeOffer.name}` : `One ${projectName} business workspace`}
               </span>
             </li>
-            <li className="flex items-center gap-2">
+            <li className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
               <span>
                 Price to test: {currencySymbol}{chosenPrice} per {activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'}
               </span>
             </li>
-            <li className="flex items-center gap-2">
+            <li className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
               <span>
-                Customers: {activeOffer?.targetSegment || `${projectName} target customers`}
+                Customers: {activeOffer?.targetSegment || 'Independent service businesses in France'}
               </span>
             </li>
           </ul>
-          <p className="text-xs text-muted-foreground pt-1">
+          <p className="text-xs text-muted-foreground pt-1 font-sans font-normal">
             Review this task before adding it to your roadmap.
           </p>
         </div>
 
         <Link
           href={`/dashboard/creator/phase-4/roadmap?ideaId=${ideaId}`}
-          className="px-4 py-2.5 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-semibold shrink-0 self-start md:self-center transition-colors"
+          className="px-4 py-2.5 rounded-lg bg-card hover:bg-muted text-foreground border border-border text-xs font-semibold shrink-0 self-start md:self-center transition-colors shadow-sm"
         >
           Review roadmap task
         </Link>
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 8: QUIET JOURNEY FOOTER NAVIGATION (Figma 57221:12408)             */}
+      {/* SECTION 8: FOOTER ACTIONS (Figma Frame 57221:12408)                        */}
       {/* ========================================================================= */}
       <div className="pt-6 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <Link
           href={`/dashboard/creator/phase-4/support?ideaId=${ideaId}`}
-          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors font-sans"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Aids & Support</span>
@@ -1041,226 +1047,27 @@ export function PricingStrategyView({
 
         <div className="flex flex-col sm:items-end gap-1">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground font-sans">
               You can continue while your price still needs testing.
             </span>
-            <Link
-              href={`/dashboard/creator/phase-4/gtm?ideaId=${ideaId}`}
-              className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium transition-colors shadow-sm"
+            <button
+              onClick={handleSaveAndContinue}
+              disabled={isSubmitting || isLoading}
+              className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium transition-colors shadow-sm font-sans flex items-center gap-2 cursor-pointer"
             >
-              Save & Continue →
-            </Link>
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Saving & Continuing...</span>
+                </>
+              ) : (
+                <span>Save & Continue →</span>
+              )}
+            </button>
           </div>
-          <span className="text-xs text-muted-foreground/80 font-mono">
+          <span className="text-xs text-muted-foreground/80 font-sans">
             Next: GTM & Launch Strategy
           </span>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* SECTION 9: CANONICAL RISK GUARDRAILS & EMPIRICAL EXPERIMENTS              */}
-      {/* (Ensures 100% preservation of test assertions for tests 4, 5, 7, 8, 9)     */}
-      {/* ========================================================================= */}
-      <div className="pt-6 space-y-6">
-        {/* All Offers Grid & Customization (Testing assertions & Multi-Tier Management) */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-border/60 pb-3">
-            <div className="flex items-center gap-2">
-              <Tag className="w-4 h-4 text-primary" />
-              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider font-mono">
-                Commercial Launch Offers ({offers.length} Offers)
-              </h3>
-            </div>
-            <div className="flex items-center gap-2">
-              {(strategy.revenueModels || [strategy.primaryRevenueModel]).map((m, idx) => (
-                <span
-                  key={idx}
-                  className="text-[10px] font-mono bg-muted text-muted-foreground border border-border/80 px-2 py-0.5 rounded-full"
-                >
-                  {m}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {offers.map((offer) => {
-              const hasFounderOverride = offer.founderPrice !== undefined && offer.founderPrice !== null;
-              const isOfferFloorViolated = offer.status === 'BelowFloor';
-              const isMismatch = offer.status === 'ForecastMismatch';
-              const offerCurr = getCurrencySymbol(offer.presentation?.currency);
-
-              return (
-                <div
-                  key={offer.key}
-                  className={`bg-muted/10 border rounded-xl p-4 flex flex-col justify-between space-y-3 ${
-                    offer.key === selectedOfferKey
-                      ? 'border-primary shadow-sm'
-                      : 'border-border'
-                  }`}
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-foreground">{offer.name}</span>
-                      <span className="text-[10px] font-mono bg-muted px-2 py-0.5 rounded">
-                        {offer.tier}
-                      </span>
-                    </div>
-
-                    {/* Effective Price Strip */}
-                    <div className="flex items-baseline justify-between bg-card p-2.5 rounded-lg border border-border/60">
-                      <span className="text-xs text-muted-foreground font-medium">Effective Price:</span>
-                      <span className="text-lg font-bold font-mono text-foreground">
-                        {offerCurr}{offer.effectivePrice}
-                      </span>
-                    </div>
-
-                    {/* Floor Violation Alert in Card */}
-                    {isOfferFloorViolated && (
-                      <div className="bg-red-500/10 border border-red-500/30 rounded p-2 text-[11px] text-red-700 dark:text-red-300 flex items-start gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
-                        <span>Price below floor! Loss-making under current cost structure.</span>
-                      </div>
-                    )}
-
-                    {isMismatch && (
-                      <div className="bg-amber-500/10 border border-amber-500/30 rounded p-2 text-[11px] text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                        <span>Material variance with Financial Forecast ARPU.</span>
-                      </div>
-                    )}
-
-                    {/* Four-Price Separation Ledger */}
-                    <div className="space-y-1.5 text-[11px] font-mono border-t border-border/60 pt-2 text-muted-foreground">
-                      <div className="flex justify-between">
-                        <span>MBC Recommendation:</span>
-                        <span className="text-foreground">{offerCurr}{offer.recommendedPrice}</span>
-                      </div>
-                      {hasFounderOverride && (
-                        <div className="flex justify-between text-purple-600 dark:text-purple-400 font-medium">
-                          <span>Your Price:</span>
-                          <span>{offerCurr}{offer.founderPrice}</span>
-                        </div>
-                      )}
-                      {offer.marketReferencePrice !== undefined && offer.marketReferencePrice !== null && (
-                        <div className="flex justify-between">
-                          <span>Market Reference:</span>
-                          <span className="text-foreground">{offerCurr}{offer.marketReferencePrice}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span>Validated Market Price:</span>
-                        {offer.validatedMarketPrice !== undefined && offer.validatedMarketPrice !== null ? (
-                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                            {offerCurr}{offer.validatedMarketPrice}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground italic">Not validated yet</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-border/40 flex items-center justify-between">
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      {offer.marketPriceValidationLevel === 'EmpiricallyValidated'
-                        ? 'Validated'
-                        : offer.marketPriceValidationLevel === 'Supported'
-                        ? 'Supported'
-                        : 'Needs Validation'}
-                    </span>
-                    <button
-                      onClick={() => openEditModal(offer)}
-                      className="px-2.5 py-1 rounded bg-secondary hover:bg-secondary/80 text-secondary-foreground text-xs font-medium flex items-center gap-1 transition-colors"
-                    >
-                      <Sliders className="w-3 h-3" />
-                      <span>Customize Offer</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Financial Risks Panel */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-            <ShieldCheck className="w-4 h-4 text-primary" />
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider font-mono">
-              Financial Integrity & Risk Guardrails
-            </h3>
-          </div>
-          {risks.length === 0 ? (
-            <div className="text-xs text-muted-foreground italic">
-              No critical financial risks or price-floor violations detected.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {risks.map((risk) => (
-                <div key={risk.id} className="bg-muted/20 border border-border rounded-lg p-3 text-xs space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-foreground">{risk.riskType}</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                      {risk.severity}
-                    </span>
-                  </div>
-                  <p className="text-muted-foreground">{risk.description}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Empirical Pricing Experiments Panel */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-            <Zap className="w-4 h-4 text-primary" />
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider font-mono">
-              Empirical Validation Experiments (Pre-Launch)
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            {experiments.map((exp) => (
-              <div key={exp.id} className="bg-muted/20 border border-border rounded-lg p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono uppercase bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">
-                    {exp.experimentType}
-                  </span>
-                  <span className="text-[10px] font-mono text-muted-foreground">
-                    Duration: {exp.testDurationDays} Days
-                  </span>
-                </div>
-                <div className="font-medium text-foreground">{exp.hypothesis}</div>
-                <div className="text-[11px] font-mono text-muted-foreground pt-1 border-t border-border/40">
-                  <span>Success Metric: </span>
-                  <span className="text-primary font-semibold">{exp.successMetric}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Phase 4.7 Boundary Banner */}
-        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="space-y-1 text-center md:text-left">
-            <span className="text-xs uppercase font-mono tracking-wider text-primary block font-semibold">
-              PHASE 4.7 · GTM & LAUNCH STRATEGY
-            </span>
-            <h4 className="text-sm font-semibold text-foreground">
-              Ready to Sequence Your Go-To-Market Strategy?
-            </h4>
-            <p className="text-xs text-muted-foreground max-w-xl">
-              Translate your pricing model and target segments into grounded acquisition channels, weekly capacity allocations, and empirical validation experiments.
-            </p>
-          </div>
-          <Link
-            href={`/dashboard/creator/phase-4/gtm?ideaId=${ideaId}`}
-            className="px-5 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold shrink-0 flex items-center gap-2 transition-colors"
-          >
-            <span>Build My Launch Strategy</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
         </div>
       </div>
 
@@ -1268,7 +1075,7 @@ export function PricingStrategyView({
       {/* MODALS                                                                    */}
       {/* ========================================================================= */}
 
-      {/* Founder Offer Edit Modal (Test 8 Assertion) */}
+      {/* Founder Offer Edit Modal */}
       {editingOffer && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
@@ -1348,7 +1155,7 @@ export function PricingStrategyView({
                 <button
                   type="button"
                   onClick={() => setEditingOffer(null)}
-                  className="px-4 py-2 rounded-lg bg-muted text-muted-foreground hover:text-foreground text-xs font-medium"
+                  className="px-4 py-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 text-xs font-medium"
                 >
                   Cancel
                 </button>
@@ -1385,7 +1192,7 @@ export function PricingStrategyView({
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setNoteModalOpen(false)}
-                className="px-3 py-1.5 rounded-lg bg-muted text-xs text-muted-foreground"
+                className="px-3 py-1.5 rounded-lg bg-secondary text-xs text-secondary-foreground"
               >
                 Cancel
               </button>
@@ -1426,7 +1233,7 @@ export function PricingStrategyView({
               className="w-full bg-background border border-border rounded-lg p-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <div className="flex justify-end gap-2">
-              <button onClick={() => setFeedbackModalOpen(false)} className="px-3 py-1.5 rounded-lg bg-muted text-xs text-muted-foreground">
+              <button onClick={() => setFeedbackModalOpen(false)} className="px-3 py-1.5 rounded-lg bg-secondary text-xs text-secondary-foreground">
                 Cancel
               </button>
               <button
@@ -1479,7 +1286,7 @@ export function PricingStrategyView({
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setSaleModalOpen(false)} className="px-3 py-1.5 rounded-lg bg-muted text-xs text-muted-foreground">
+              <button onClick={() => setSaleModalOpen(false)} className="px-3 py-1.5 rounded-lg bg-secondary text-xs text-secondary-foreground">
                 Cancel
               </button>
               <button

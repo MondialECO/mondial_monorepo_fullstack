@@ -188,9 +188,12 @@ export interface PricingStrategyResponse {
   updateAvailable: boolean;
   changedSources: string[];
   prerequisiteGate?: any;
+  ideaVersion?: number;
 }
 
 export interface UpdatePricingOfferRequest {
+  ideaId?: string;
+  expectedVersion?: number;
   founderPrice?: number | null;
   featuresIncluded?: string[] | null;
   launchDiscountPercentage?: number | null;
