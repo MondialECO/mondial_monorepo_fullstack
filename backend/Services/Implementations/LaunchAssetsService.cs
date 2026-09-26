@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
+using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using WebApp.Models.DatabaseModels;
@@ -112,13 +112,27 @@ namespace WebApp.Services.Implementations
             }
 
             var brandName = !string.IsNullOrWhiteSpace(brandKit?.Strategy?.BusinessName)
-                ? brandKit.Strategy.BusinessName
-                : (!string.IsNullOrWhiteSpace(journey.Project?.Name) ? journey.Project.Name : "ClairDesk");
+                ? brandKit.Strategy.BusinessName.Trim()
+                : (!string.IsNullOrWhiteSpace(journey.Project?.Name) ? journey.Project.Name.Trim() : "Your Project");
 
-            var concept = brandKit?.Strategy?.Concept?.Value?.Trim() ?? string.Empty;
-            var brandAudience = brandKit?.Strategy?.TargetAudience?.Value?.Trim() ?? string.Empty;
-            var brandPositioning = brandKit?.Strategy?.Positioning?.Value?.Trim() ?? string.Empty;
-            var industry = brandKit?.Strategy?.Industry?.Value?.Trim() ?? string.Empty;
+            var concept = !string.IsNullOrWhiteSpace(brandKit?.Strategy?.Concept?.Value)
+                ? brandKit.Strategy.Concept.Value.Trim()
+                : (!string.IsNullOrWhiteSpace(journey.Project?.Concept)
+                    ? journey.Project.Concept.Trim()
+                    : (!string.IsNullOrWhiteSpace(journey.Project?.Tagline) ? journey.Project.Tagline.Trim() : string.Empty));
+
+            var brandAudience = !string.IsNullOrWhiteSpace(brandKit?.Strategy?.TargetAudience?.Value)
+                ? brandKit.Strategy.TargetAudience.Value.Trim()
+                : (!string.IsNullOrWhiteSpace(journey.Project?.TargetUser) ? journey.Project.TargetUser.Trim() : string.Empty);
+
+            var brandPositioning = !string.IsNullOrWhiteSpace(brandKit?.Strategy?.Positioning?.Value)
+                ? brandKit.Strategy.Positioning.Value.Trim()
+                : string.Empty;
+
+            var industry = !string.IsNullOrWhiteSpace(brandKit?.Strategy?.Industry?.Value)
+                ? brandKit.Strategy.Industry.Value.Trim()
+                : (!string.IsNullOrWhiteSpace(journey.Project?.TargetMarket) ? journey.Project.TargetMarket.Trim() : string.Empty);
+
             var traits = brandKit?.Strategy?.PersonalityTraits ?? new List<string>();
             var tonePosition = brandKit?.Strategy?.TonePosition ?? string.Empty;
 
@@ -146,9 +160,9 @@ namespace WebApp.Services.Implementations
             var positioning = !string.IsNullOrWhiteSpace(brandPositioning)
                 ? brandPositioning
                 : (!string.IsNullOrWhiteSpace(gtm?.PositioningStrategy?.PrimaryPromise)
-                    ? gtm.PositioningStrategy.PrimaryPromise
+                    ? gtm.PositioningStrategy.PrimaryPromise.Trim()
                     : (!string.IsNullOrWhiteSpace(gtm?.PositioningStrategy?.Differentiator)
-                        ? gtm.PositioningStrategy.Differentiator
+                        ? gtm.PositioningStrategy.Differentiator.Trim()
                         : string.Empty));
 
             var primaryColor = brandKit?.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Primary", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#3B82F6";
@@ -178,21 +192,7 @@ namespace WebApp.Services.Implementations
             var logoDescriptor = selectedConcept?.DescriptorLine ?? string.Empty;
 
             var pricing = journey.Phase4Data?.PricingStrategy;
-
-            decimal price = 15;
-            string period = "month";
-            string unit = "business";
-
-            if (pricing != null)
-            {
-                var primaryOffer = pricing.Offers?.FirstOrDefault();
-                if (primaryOffer != null)
-                {
-                    price = primaryOffer.Price > 0 ? primaryOffer.Price : (primaryOffer.RecommendedPrice > 0 ? primaryOffer.RecommendedPrice : 15);
-                    period = primaryOffer.BillingFrequency.ToString().ToLowerInvariant();
-                    unit = !string.IsNullOrWhiteSpace(primaryOffer.Name) ? primaryOffer.Name.ToLowerInvariant() : "business";
-                }
-            }
+            var pricingExclusion = ResolvePricingExclusion(pricing, ideaId);
 
             var brandStudioSummary = new LaunchBrandStudioSummary
             {
@@ -217,24 +217,59 @@ namespace WebApp.Services.Implementations
                 BodyWeight = bodyWeight
             };
 
-            // Synthesize contextual headline & descriptions based on Brand Studio information
+            // Synthesize contextual headline & descriptions based on actual Project and Brand Studio information
+            var projectProblem = !string.IsNullOrWhiteSpace(journey.Project?.Problem) ? journey.Project.Problem.Trim() : string.Empty;
+            var projectSolution = !string.IsNullOrWhiteSpace(journey.Project?.Solution) ? journey.Project.Solution.Trim() : string.Empty;
+
             var headline = !string.IsNullOrWhiteSpace(positioning)
                 ? positioning
-                : (!string.IsNullOrWhiteSpace(concept) ? concept : "A clearer way to manage enquiries and quotations.");
+                : (!string.IsNullOrWhiteSpace(concept)
+                    ? concept
+                    : (!string.IsNullOrWhiteSpace(journey.Project?.Tagline)
+                        ? journey.Project.Tagline.Trim()
+                        : $"A clearer way to organize your {(!string.IsNullOrWhiteSpace(industry) ? industry.ToLowerInvariant() : "key")} workflows."));
 
             var heroDescription = !string.IsNullOrWhiteSpace(concept) && !string.IsNullOrWhiteSpace(targetAudience)
                 ? $"{brandName} is being built for {targetAudience.TrimEnd('.')}. {concept}"
                 : (!string.IsNullOrWhiteSpace(concept)
-                    ? $"{brandName} is being built to provide {concept.ToLowerInvariant()}."
-                    : $"{brandName} is being built to help independent service businesses keep enquiries, quotations, and follow-ups together.");
+                    ? $"{brandName} is being built to provide {concept.TrimEnd('.')}."
+                    : (!string.IsNullOrWhiteSpace(targetAudience)
+                        ? $"{brandName} is being built to help {targetAudience.ToLowerInvariant().TrimEnd('.')} streamline operations and keep next steps in focus."
+                        : $"{brandName} is being built to help teams organize workflows and maintain clear operational momentum."));
 
-            var problemStatement = !string.IsNullOrWhiteSpace(targetAudience)
-                ? $"When enquiries, proposals, and communication channels are fragmented, {targetAudience.ToLowerInvariant().TrimEnd('.')} lose operational clarity and valuable momentum."
-                : "When enquiries and quotations are spread across different places, it can be harder to see what needs a reply or follow-up.";
+            var problemStatement = !string.IsNullOrWhiteSpace(projectProblem)
+                ? (!string.IsNullOrWhiteSpace(targetAudience) && !projectProblem.Contains(targetAudience, StringComparison.OrdinalIgnoreCase)
+                    ? $"For {targetAudience.ToLowerInvariant().TrimEnd('.')}, {projectProblem.TrimEnd('.')}"
+                    : projectProblem)
+                : (!string.IsNullOrWhiteSpace(targetAudience)
+                    ? $"When critical workflows and client interactions are fragmented, {targetAudience.ToLowerInvariant().TrimEnd('.')} lose operational clarity and valuable momentum."
+                    : "When key workflows and customer communication are fragmented, it can be harder to see what needs immediate attention.");
 
             var momentumStatement = !string.IsNullOrWhiteSpace(positioning)
-                ? $"{brandName} delivers {positioning.ToLowerInvariant().TrimEnd('.')}, keeping every client interaction in clear focus."
-                : $"{brandName} focuses squarely on maintaining single-view operational momentum for solo consultants and niche service providers.";
+                ? $"{brandName} delivers {positioning.ToLowerInvariant().TrimEnd('.')}, keeping every key milestone in clear focus."
+                : (!string.IsNullOrWhiteSpace(projectSolution)
+                    ? $"{brandName} focuses on {projectSolution.ToLowerInvariant().TrimEnd('.')}."
+                    : $"{brandName} focuses squarely on maintaining operational momentum and clarity for modern teams.");
+
+            List<LaunchSolutionCard> plannedSolutions;
+            if (!string.IsNullOrWhiteSpace(projectSolution))
+            {
+                plannedSolutions = new List<LaunchSolutionCard>
+                {
+                    new() { Title = "Unified Workflow", Description = projectSolution, Icon = "layers" },
+                    new() { Title = "Clear Visibility", Description = "A single place to track status, priorities, and next steps.", Icon = "file-text" },
+                    new() { Title = "Timely Follow-through", Description = "Proactive reminders ensure nothing slips through the cracks.", Icon = "bell" }
+                };
+            }
+            else
+            {
+                plannedSolutions = new List<LaunchSolutionCard>
+                {
+                    new() { Title = "Unified Intake", Description = "A clearer place to organise incoming customer requests and requirements.", Icon = "inbox" },
+                    new() { Title = "Milestones in View", Description = "A way to keep track of proposals, commitments, and their next steps.", Icon = "file-text" },
+                    new() { Title = "Follow-ups to Remember", Description = "A way to see which conversations and tasks need attention.", Icon = "bell" }
+                };
+            }
 
             var newAssets = new LaunchAssetsPlan
             {
@@ -265,22 +300,22 @@ namespace WebApp.Services.Implementations
                     new()
                     {
                         StepNumber = 1,
-                        Title = "1. Enquiry",
-                        Description = "Capture context, channels, and client requirements in one dedicated intake card.",
+                        Title = "1. Intake",
+                        Description = "Capture requirements and client context in a dedicated workspace.",
                         Tag = "Unified intake"
                     },
                     new()
                     {
                         StepNumber = 2,
-                        Title = "2. Quotation",
-                        Description = "Draft estimated scopes, convert directly into clear client proposals without duplicate entry.",
+                        Title = "2. Structure",
+                        Description = "Draft estimates and milestone plans with full continuity.",
                         Tag = "Context continuity"
                     },
                     new()
                     {
                         StepNumber = 3,
-                        Title = "3. Follow-up",
-                        Description = "Clear reminders and stage updates so no client is left waiting or dropped.",
+                        Title = "3. Follow-through",
+                        Description = "Clear stage prompts so no client or task is delayed.",
                         Tag = "Next step clarity"
                     }
                 },
@@ -293,27 +328,7 @@ namespace WebApp.Services.Implementations
                 // Section C: Planned Solution
                 SolutionHeader = "What’s being planned",
                 SolutionSubheader = "Straightforward tools designed strictly around routine project administration.",
-                PlannedSolutions = new List<LaunchSolutionCard>
-                {
-                    new()
-                    {
-                        Title = "Enquiries together",
-                        Description = "A clearer place to organise incoming customer requests.",
-                        Icon = "inbox"
-                    },
-                    new()
-                    {
-                        Title = "Quotations in view",
-                        Description = "A way to keep track of quotations and their next steps.",
-                        Icon = "file-text"
-                    },
-                    new()
-                    {
-                        Title = "Follow-ups to remember",
-                        Description = "A way to see which conversations need attention.",
-                        Icon = "bell"
-                    }
-                },
+                PlannedSolutions = plannedSolutions,
 
                 // Section D: How It Works
                 HowItWorksHeader = "A simpler flow for your work",
@@ -323,20 +338,20 @@ namespace WebApp.Services.Implementations
                     new()
                     {
                         StepNumber = 1,
-                        Title = "Organise the enquiry",
-                        Description = "Collect client briefs, deadlines, and key requirements without sorting through scattered inbox threads."
+                        Title = "Capture the initial context",
+                        Description = "Collect briefs, deadlines, and key requirements without sorting through scattered inbox threads."
                     },
                     new()
                     {
                         StepNumber = 2,
-                        Title = "Prepare and track the quotation",
-                        Description = "Generate clean, professional estimates linked directly to the original client request."
+                        Title = "Structure and track the next step",
+                        Description = "Generate clean, professional estimates and milestone schedules linked directly to original requests."
                     },
                     new()
                     {
                         StepNumber = 3,
-                        Title = "Follow up on the next action",
-                        Description = "Receive clear prompts when responses are due, making timely follow-through second nature."
+                        Title = "Follow up with complete confidence",
+                        Description = "Receive clear notifications when responses are due, making timely follow-through second nature."
                     }
                 },
 
@@ -353,7 +368,7 @@ namespace WebApp.Services.Implementations
                     new()
                     {
                         Question = "Who is it being designed for?",
-                        Answer = !string.IsNullOrWhiteSpace(targetAudience) ? targetAudience : "Independent service businesses that manage customer enquiries and quotations."
+                        Answer = !string.IsNullOrWhiteSpace(targetAudience) ? targetAudience : "Teams and independent businesses looking for streamlined project operations."
                     },
                     new()
                     {
@@ -363,7 +378,7 @@ namespace WebApp.Services.Implementations
                 },
 
                 // Section F: Final CTA
-                FinalCtaHeader = !string.IsNullOrWhiteSpace(brandName) ? $"Share how you work today" : "Share how you work today",
+                FinalCtaHeader = "Share how you work today",
                 FinalCtaSubheader = !string.IsNullOrWhiteSpace(targetAudience)
                     ? $"Your experience as {targetAudience.ToLowerInvariant().TrimEnd('.')} can directly shape what {brandName} focuses on."
                     : $"Your experience can help shape what {brandName} focuses on.",
@@ -383,17 +398,7 @@ namespace WebApp.Services.Implementations
                     new() { Key = "footer", Title = "Footer", StatusBadge = "Included · Required", IsIncluded = true, IsRequired = true }
                 },
 
-                PricingExclusion = new LaunchPricingExclusion
-                {
-                    Excluded = true,
-                    ChosenPrice = price,
-                    BillingPeriod = period,
-                    Unit = unit,
-                    Currency = "€",
-                    Reason = $"Your chosen price is €{price} per {unit} / {period}. Confirm the offer details before adding pricing to the website.",
-                    ActionLabel = "Review pricing details →",
-                    ActionRoute = "/dashboard/creator/phase-4/pricing"
-                },
+                PricingExclusion = pricingExclusion,
 
                 ProofExclusion = new LaunchProofExclusion
                 {
@@ -401,11 +406,15 @@ namespace WebApp.Services.Implementations
                     ProofNeeded = true,
                     Reason = "No supporting evidence has been added, so this section is not included.",
                     ActionLabel = "Review proof →",
-                    ActionRoute = "/dashboard/creator/phase-3/evidence"
+                    ActionRoute = $"/dashboard/creator/phase-3/evidence{(string.IsNullOrWhiteSpace(ideaId) ? "" : $"?ideaId={ideaId}")}"
                 },
 
-                SourceVersions = new Phase4SourceVersions()
+                SourceVersions = new Phase4SourceVersions(),
+                SelectedVersion = 1,
+                VersionHistory = new List<LaunchAssetsPlanSnapshot>()
             };
+
+            newAssets.VersionHistory.Add(CreateSnapshot(newAssets));
 
             var updatedJourney = await _journeys.SetPhase4LaunchAssetsAsync(userId, newAssets, ideaId);
 
@@ -419,10 +428,255 @@ namespace WebApp.Services.Implementations
             };
         }
 
+        private static LaunchPricingExclusion ResolvePricingExclusion(PricingStrategy? pricing, string? ideaId)
+        {
+            var pricingRoute = $"/dashboard/creator/phase-4/pricing{(string.IsNullOrWhiteSpace(ideaId) ? "" : $"?ideaId={ideaId}")}";
+
+            if (pricing == null || pricing.Offers == null || pricing.Offers.Count == 0)
+            {
+                return new LaunchPricingExclusion
+                {
+                    Excluded = true,
+                    ChosenPrice = null,
+                    PriceStatus = "Unconfirmed",
+                    Reason = "Pricing has not been confirmed for this project yet. Review and confirm offer details before adding pricing to the website.",
+                    ActionLabel = "Set pricing details →",
+                    ActionRoute = pricingRoute
+                };
+            }
+
+            // 1. Authoritative founder selection takes absolute precedence over system recommendations
+            var founderCustomizedOffers = pricing.Offers.Where(o => o.FounderEdited || o.FounderPrice.HasValue).ToList();
+            PricingOffer? selectedOffer = null;
+            bool isFounderConfirmed = false;
+
+            if (founderCustomizedOffers.Count == 1)
+            {
+                selectedOffer = founderCustomizedOffers[0];
+                isFounderConfirmed = true;
+            }
+            else if (founderCustomizedOffers.Count > 1)
+            {
+                // Multiple candidates exist without a single authoritative founder selection: expose needs-review state
+                return new LaunchPricingExclusion
+                {
+                    Excluded = true,
+                    ChosenPrice = null,
+                    PriceStatus = "Unconfirmed",
+                    Reason = "Multiple offers have been customized. Confirm a single primary offer before adding pricing to the website.",
+                    ActionLabel = "Review pricing details →",
+                    ActionRoute = pricingRoute
+                };
+            }
+            else
+            {
+                // 2. Fallback to system recommendation when no founder customization exists
+                if (pricing.LaunchRecommendation?.RecommendedOffers != null && pricing.LaunchRecommendation.RecommendedOffers.Count > 0)
+                {
+                    var targetKey = pricing.LaunchRecommendation.RecommendedOffers.FirstOrDefault();
+                    if (!string.IsNullOrWhiteSpace(targetKey))
+                    {
+                        selectedOffer = pricing.Offers.FirstOrDefault(o => o.Id == targetKey || o.Key == targetKey || string.Equals(o.Name, targetKey, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+
+                // If multiple candidate offers exist without an authoritative selection or recommendation, expose needs-review state
+                if (selectedOffer == null && pricing.Offers.Count > 1)
+                {
+                    return new LaunchPricingExclusion
+                    {
+                        Excluded = true,
+                        ChosenPrice = null,
+                        PriceStatus = "Unconfirmed",
+                        Reason = "Multiple candidate offers exist. Review and confirm your primary offer before adding pricing to the website.",
+                        ActionLabel = "Review pricing details →",
+                        ActionRoute = pricingRoute
+                    };
+                }
+
+                selectedOffer ??= pricing.Offers.FirstOrDefault();
+                isFounderConfirmed = false; // Fallback recommendation is distinguishable from confirmed founder choice
+            }
+
+            if (selectedOffer == null)
+            {
+                return new LaunchPricingExclusion
+                {
+                    Excluded = true,
+                    ChosenPrice = null,
+                    PriceStatus = "Unconfirmed",
+                    Reason = "Pricing has not been confirmed for this project yet. Review and confirm offer details before adding pricing to the website.",
+                    ActionLabel = "Set pricing details →",
+                    ActionRoute = pricingRoute
+                };
+            }
+
+            var period = selectedOffer.BillingFrequency.ToString().ToLowerInvariant();
+            var unit = !string.IsNullOrWhiteSpace(selectedOffer.Name) ? selectedOffer.Name.ToLowerInvariant() : "customer";
+            var currency = selectedOffer.Currency == "USD" ? "$" : (selectedOffer.Currency == "GBP" ? "£" : "€");
+
+            if (!isFounderConfirmed)
+            {
+                // Fallback recommendation: Expose unconfirmed needs-review state, keeping recommendation distinguishable
+                return new LaunchPricingExclusion
+                {
+                    Excluded = true,
+                    ChosenPrice = null,
+                    PriceStatus = "Unconfirmed",
+                    SelectedOfferId = selectedOffer.Id,
+                    SelectedOfferName = selectedOffer.Name,
+                    BillingPeriod = period,
+                    Unit = unit,
+                    Currency = currency,
+                    Reason = $"Recommended offer '{selectedOffer.Name}' has not been confirmed by the founder yet. Review and confirm offer details before adding pricing to the website.",
+                    ActionLabel = "Review pricing details →",
+                    ActionRoute = pricingRoute
+                };
+            }
+
+            // Evaluate price status for confirmed founder choice
+            decimal? effectivePrice = selectedOffer.FounderPrice ?? (selectedOffer.Price >= 0 ? selectedOffer.Price : (decimal?)null);
+
+            bool isExplicitZero = (selectedOffer.FounderPrice.HasValue && selectedOffer.FounderPrice.Value == 0)
+                               || (selectedOffer.PricingModel == RevenueModelType.Freemium)
+                               || (selectedOffer.FounderEdited && selectedOffer.Price == 0);
+
+            if (effectivePrice.HasValue && effectivePrice.Value < 0)
+            {
+                return new LaunchPricingExclusion
+                {
+                    Excluded = true,
+                    ChosenPrice = effectivePrice.Value,
+                    PriceStatus = "InvalidNegative",
+                    SelectedOfferId = selectedOffer.Id,
+                    SelectedOfferName = selectedOffer.Name,
+                    BillingPeriod = period,
+                    Unit = unit,
+                    Currency = currency,
+                    Reason = "The configured price is invalid (cannot be negative). Please review and correct the offer pricing.",
+                    ActionLabel = "Fix pricing details →",
+                    ActionRoute = pricingRoute
+                };
+            }
+
+            if (isExplicitZero || (effectivePrice.HasValue && effectivePrice.Value == 0))
+            {
+                return new LaunchPricingExclusion
+                {
+                    Excluded = true,
+                    ChosenPrice = 0m,
+                    PriceStatus = "ConfirmedZero",
+                    SelectedOfferId = selectedOffer.Id,
+                    SelectedOfferName = selectedOffer.Name,
+                    BillingPeriod = period,
+                    Unit = unit,
+                    Currency = currency,
+                    Reason = $"Your chosen plan ({selectedOffer.Name}) is explicitly free. Review and confirm offer details before adding pricing to the website.",
+                    ActionLabel = "Review pricing details →",
+                    ActionRoute = pricingRoute
+                };
+            }
+
+            if (effectivePrice.HasValue && effectivePrice.Value > 0)
+            {
+                return new LaunchPricingExclusion
+                {
+                    Excluded = true,
+                    ChosenPrice = effectivePrice.Value,
+                    PriceStatus = "ConfirmedPositive",
+                    SelectedOfferId = selectedOffer.Id,
+                    SelectedOfferName = selectedOffer.Name,
+                    BillingPeriod = period,
+                    Unit = unit,
+                    Currency = currency,
+                    Reason = $"Your chosen price is {currency}{effectivePrice.Value:0.##} per {unit} / {period}. Confirm the offer details before adding pricing to the website.",
+                    ActionLabel = "Review pricing details →",
+                    ActionRoute = pricingRoute
+                };
+            }
+
+            return new LaunchPricingExclusion
+            {
+                Excluded = true,
+                ChosenPrice = null,
+                PriceStatus = "Unconfirmed",
+                SelectedOfferId = selectedOffer.Id,
+                SelectedOfferName = selectedOffer.Name,
+                BillingPeriod = period,
+                Unit = unit,
+                Currency = currency,
+                Reason = "Pricing has not been confirmed for this project yet. Review and confirm offer details before adding pricing to the website.",
+                ActionLabel = "Set pricing details →",
+                ActionRoute = pricingRoute
+            };
+        }
+
+        private static LaunchAssetsPlanSnapshot CreateSnapshot(LaunchAssetsPlan plan)
+        {
+            return new LaunchAssetsPlanSnapshot
+            {
+                Version = plan.Version,
+                ReleaseTag = plan.ReleaseTag,
+                Status = plan.Status,
+                SavedAt = DateTime.UtcNow,
+                Headline = plan.Headline,
+                Description = plan.Description,
+                ButtonLabel = plan.ButtonLabel,
+                ButtonDestinationType = plan.ButtonDestinationType,
+                ButtonDestinationValue = plan.ButtonDestinationValue,
+                ProblemEyebrow = plan.ProblemEyebrow,
+                ProblemStatement = plan.ProblemStatement,
+                OperationalMomentumStatement = plan.OperationalMomentumStatement,
+                SolutionHeader = plan.SolutionHeader,
+                SolutionSubheader = plan.SolutionSubheader,
+                PlannedSolutions = plan.PlannedSolutions.Select(s => new LaunchSolutionCard
+                {
+                    Title = s.Title,
+                    Description = s.Description,
+                    Icon = s.Icon
+                }).ToList(),
+                HowItWorksHeader = plan.HowItWorksHeader,
+                HowItWorksSubheader = plan.HowItWorksSubheader,
+                WorkflowDetails = plan.WorkflowDetails.Select(w => new LaunchWorkflowDetailedItem
+                {
+                    StepNumber = w.StepNumber,
+                    Title = w.Title,
+                    Description = w.Description
+                }).ToList(),
+                FaqHeader = plan.FaqHeader,
+                FaqSubheader = plan.FaqSubheader,
+                Faqs = plan.Faqs.Select(f => new LaunchFaqItem
+                {
+                    Question = f.Question,
+                    Answer = f.Answer
+                }).ToList(),
+                FinalCtaHeader = plan.FinalCtaHeader,
+                FinalCtaSubheader = plan.FinalCtaSubheader,
+                BrandName = plan.BrandName,
+                FooterNotice = plan.FooterNotice,
+                Sections = plan.Sections.Select(s => new LaunchAssetSection
+                {
+                    Key = s.Key,
+                    Title = s.Title,
+                    StatusBadge = s.StatusBadge,
+                    IsIncluded = s.IsIncluded,
+                    IsRequired = s.IsRequired,
+                    Headline = s.Headline,
+                    Description = s.Description,
+                    ButtonLabel = s.ButtonLabel,
+                    ButtonDestinationType = s.ButtonDestinationType,
+                    ButtonDestinationValue = s.ButtonDestinationValue,
+                    ExclusionReason = s.ExclusionReason,
+                    ActionLabel = s.ActionLabel,
+                    ActionRoute = s.ActionRoute
+                }).ToList()
+            };
+        }
+
         private static void EnrichBrandStudioFromKit(LaunchAssetsPlan assets, BrandKit kit)
         {
             var brandName = !string.IsNullOrWhiteSpace(kit.Strategy?.BusinessName)
-                ? kit.Strategy.BusinessName
+                ? kit.Strategy.BusinessName.Trim()
                 : assets.BrandName;
 
             var concept = kit.Strategy?.Concept?.Value?.Trim() ?? string.Empty;
@@ -541,9 +795,27 @@ namespace WebApp.Services.Implementations
             if (request.Sections != null && request.Sections.Count > 0)
             {
                 existing.Sections = request.Sections;
+                var pricingSec = existing.Sections.FirstOrDefault(s => s.Key == "pricing");
+                if (pricingSec != null && existing.PricingExclusion != null)
+                {
+                    existing.PricingExclusion.Excluded = !pricingSec.IsIncluded;
+                }
             }
 
             existing.LastGeneratedAt = DateTime.UtcNow;
+
+            // Upsert snapshot into VersionHistory
+            existing.VersionHistory ??= new List<LaunchAssetsPlanSnapshot>();
+            var existingSnapshotIdx = existing.VersionHistory.FindIndex(s => s.Version == existing.Version);
+            var snapshot = CreateSnapshot(existing);
+            if (existingSnapshotIdx >= 0)
+            {
+                existing.VersionHistory[existingSnapshotIdx] = snapshot;
+            }
+            else
+            {
+                existing.VersionHistory.Add(snapshot);
+            }
 
             var updatedJourney = await _journeys.SetPhase4LaunchAssetsAsync(userId, existing, request.IdeaId);
 
@@ -562,9 +834,27 @@ namespace WebApp.Services.Implementations
             var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
             var existing = journey.Phase4Data?.LaunchAssets ?? new LaunchAssetsPlan();
 
+            // Ensure current working version has its snapshot recorded in VersionHistory
+            existing.VersionHistory ??= new List<LaunchAssetsPlanSnapshot>();
+            var currentSnapshotIdx = existing.VersionHistory.FindIndex(s => s.Version == existing.Version);
+            var currentSnapshot = CreateSnapshot(existing);
+            if (currentSnapshotIdx >= 0)
+            {
+                existing.VersionHistory[currentSnapshotIdx] = currentSnapshot;
+            }
+            else
+            {
+                existing.VersionHistory.Add(currentSnapshot);
+            }
+
+            // Increment version for new working draft
             existing.Version += 1;
             existing.ReleaseTag = $"v1.{existing.Version}-rc";
+            existing.Status = (existing.Version == existing.SelectedVersion) ? "Selected" : "Draft";
             existing.LastGeneratedAt = DateTime.UtcNow;
+
+            // Snapshot new draft
+            existing.VersionHistory.Add(CreateSnapshot(existing));
 
             var updatedJourney = await _journeys.SetPhase4LaunchAssetsAsync(userId, existing, ideaId);
 
@@ -578,13 +868,54 @@ namespace WebApp.Services.Implementations
             };
         }
 
-        public async Task<string> GetSourceCodeBundleAsync(string userId, string? ideaId = null)
+        public async Task<LaunchAssetsResponse> SelectVersionAsync(string userId, string? ideaId = null, int? versionNumber = null)
+        {
+            var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+            var existing = journey.Phase4Data?.LaunchAssets;
+            if (existing == null)
+            {
+                throw new InvalidOperationException("Launch assets have not been generated yet.");
+            }
+
+            existing.VersionHistory ??= new List<LaunchAssetsPlanSnapshot>();
+
+            int targetVersion = (versionNumber.HasValue && versionNumber.Value > 0) ? versionNumber.Value : existing.Version;
+            existing.SelectedVersion = targetVersion;
+            existing.Status = (existing.Version == targetVersion) ? "Selected" : "Draft";
+            existing.LastGeneratedAt = DateTime.UtcNow;
+
+            // Update all snapshots in VersionHistory to reflect the selected version
+            foreach (var s in existing.VersionHistory)
+            {
+                s.Status = (s.Version == targetVersion) ? "Selected" : "Draft";
+            }
+
+            var updatedJourney = await _journeys.SetPhase4LaunchAssetsAsync(userId, existing, ideaId);
+
+            return new LaunchAssetsResponse
+            {
+                IdeaId = ideaId ?? string.Empty,
+                IdeaVersion = updatedJourney.IdeaVersion,
+                Assets = existing,
+                UpdateAvailable = false,
+                ChangedSources = new List<string>()
+            };
+        }
+
+        public async Task<string> GetSourceCodeBundleAsync(string userId, string? ideaId = null, int? versionNumber = null)
         {
             var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
             var assets = journey.Phase4Data?.LaunchAssets;
             if (assets == null)
             {
                 throw new InvalidOperationException("Launch assets have not been generated yet.");
+            }
+
+            // If a specific version was requested and exists in VersionHistory, use that snapshot's content
+            LaunchAssetsPlanSnapshot? targetSnapshot = null;
+            if (versionNumber.HasValue && assets.VersionHistory != null)
+            {
+                targetSnapshot = assets.VersionHistory.FirstOrDefault(s => s.Version == versionNumber.Value);
             }
 
             var brandStudio = assets.BrandStudio ?? new LaunchBrandStudioSummary();
@@ -597,12 +928,82 @@ namespace WebApp.Services.Implementations
             var textFont = !string.IsNullOrWhiteSpace(brandStudio.TextFontFamily) ? brandStudio.TextFontFamily : "DM Sans";
             var logoUri = !string.IsNullOrWhiteSpace(brandStudio.LogoLockupUri) ? brandStudio.LogoLockupUri : brandStudio.LogoMarkUri;
 
+            var brandName = WebUtility.HtmlEncode(targetSnapshot?.BrandName ?? assets.BrandName);
+            var conceptBadge = WebUtility.HtmlEncode(assets.ConceptBadge);
+            var headline = WebUtility.HtmlEncode(targetSnapshot?.Headline ?? assets.Headline);
+            var description = WebUtility.HtmlEncode(targetSnapshot?.Description ?? assets.Description);
+            var buttonLabel = WebUtility.HtmlEncode(targetSnapshot?.ButtonLabel ?? assets.ButtonLabel);
+            var heroHelpText = WebUtility.HtmlEncode(assets.HeroHelpText);
+            var footerNotice = WebUtility.HtmlEncode(targetSnapshot?.FooterNotice ?? assets.FooterNotice);
+
+            var buttonDestValue = targetSnapshot?.ButtonDestinationValue ?? assets.ButtonDestinationValue;
+            var buttonDestType = targetSnapshot?.ButtonDestinationType ?? assets.ButtonDestinationType;
+
+            // Button URL construction & sanitization
+            string destinationHref = "#";
+            string onclickAttr = "";
+            if (!string.IsNullOrWhiteSpace(buttonDestValue))
+            {
+                if (string.Equals(buttonDestType, "Email", StringComparison.OrdinalIgnoreCase))
+                {
+                    destinationHref = "mailto:" + WebUtility.HtmlEncode(buttonDestValue.Trim());
+                }
+                else
+                {
+                    var link = buttonDestValue.Trim();
+                    if (!link.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !link.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                    {
+                        link = "https://" + link;
+                    }
+                    destinationHref = WebUtility.HtmlEncode(link);
+                }
+            }
+            else
+            {
+                onclickAttr = @" onclick=""return false;""";
+            }
+
+            var sections = targetSnapshot?.Sections ?? assets.Sections;
+            bool includeProblem = sections?.FirstOrDefault(s => s.Key == "problem")?.IsIncluded ?? true;
+            bool includeSolution = sections?.FirstOrDefault(s => s.Key == "solution")?.IsIncluded ?? true;
+            bool includeHowItWorks = sections?.FirstOrDefault(s => s.Key == "how-it-works")?.IsIncluded ?? true;
+            bool includeFaq = sections?.FirstOrDefault(s => s.Key == "faq")?.IsIncluded ?? true;
+            bool includeFinalCta = sections?.FirstOrDefault(s => s.Key == "final-cta")?.IsIncluded ?? true;
+            // Pricing section inclusion: Sections["pricing"].IsIncluded is canonical when present.
+            // Consult legacy PricingExclusion.Excluded only when pricing section is absent from Sections list.
+            var pricingSection = sections?.FirstOrDefault(s => s.Key == "pricing");
+            bool pricingSectionExplicitlyIncluded = pricingSection != null
+                ? pricingSection.IsIncluded
+                : assets.PricingExclusion?.Excluded == false;
+
+            bool pricingValidAndConfirmed = assets.PricingExclusion != null
+                && (assets.PricingExclusion.PriceStatus == "ConfirmedPositive" || assets.PricingExclusion.PriceStatus == "ConfirmedZero")
+                && assets.PricingExclusion.ChosenPrice.HasValue
+                && assets.PricingExclusion.ChosenPrice.Value >= 0;
+
+            bool includePricing = pricingSectionExplicitlyIncluded && pricingValidAndConfirmed;
+
+            var plannedSolutions = targetSnapshot?.PlannedSolutions ?? assets.PlannedSolutions;
+            var workflowDetails = targetSnapshot?.WorkflowDetails ?? assets.WorkflowDetails;
+            var faqs = targetSnapshot?.Faqs ?? assets.Faqs;
+            var problemEyebrow = targetSnapshot?.ProblemEyebrow ?? assets.ProblemEyebrow;
+            var problemStatement = targetSnapshot?.ProblemStatement ?? assets.ProblemStatement;
+            var momentumStatement = targetSnapshot?.OperationalMomentumStatement ?? assets.OperationalMomentumStatement;
+            var solutionHeader = targetSnapshot?.SolutionHeader ?? assets.SolutionHeader;
+            var solutionSubheader = targetSnapshot?.SolutionSubheader ?? assets.SolutionSubheader;
+            var howItWorksHeader = targetSnapshot?.HowItWorksHeader ?? assets.HowItWorksHeader;
+            var howItWorksSubheader = targetSnapshot?.HowItWorksSubheader ?? assets.HowItWorksSubheader;
+            var faqHeader = targetSnapshot?.FaqHeader ?? assets.FaqHeader;
+            var faqSubheader = targetSnapshot?.FaqSubheader ?? assets.FaqSubheader;
+            var finalCtaHeader = targetSnapshot?.FinalCtaHeader ?? assets.FinalCtaHeader;
+            var finalCtaSubheader = targetSnapshot?.FinalCtaSubheader ?? assets.FinalCtaSubheader;
+
             var html = $@"<!DOCTYPE html>
 <html lang=""en"">
 <head>
   <meta charset=""UTF-8"" />
   <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"" />
-  <title>{assets.BrandName} · In Preparation</title>
+  <title>{brandName} · In Preparation</title>
   <link rel=""preconnect"" href=""https://fonts.googleapis.com"">
   <link rel=""preconnect"" href=""https://fonts.gstatic.com"" crossorigin>
   <link href=""https://fonts.googleapis.com/css2?family={Uri.EscapeDataString(textFont).Replace("%20", "+")}:ital,wght@0,300..800;1,300..800&family={Uri.EscapeDataString(displayFont).Replace("%20", "+")}:wght@300..900&display=swap"" rel=""stylesheet"">
@@ -646,71 +1047,90 @@ namespace WebApp.Services.Implementations
   <div class=""container"">
     <header>
       <div class=""brand-logo"">
-        {(!string.IsNullOrWhiteSpace(logoUri) ? $@"<img src=""{logoUri}"" alt=""{assets.BrandName}"" />" : "")}
-        <span>{assets.BrandName}</span>
+        {(!string.IsNullOrWhiteSpace(logoUri) ? $@"<img src=""{WebUtility.HtmlEncode(logoUri)}"" alt=""{brandName}"" />" : "")}
+        <span>{brandName}</span>
       </div>
-      <div class=""badge"">{assets.FooterNotice}</div>
+      <div class=""badge"">{footerNotice}</div>
     </header>
 
     <main>
       <section class=""hero"">
-        <div class=""eyebrow"">{assets.ConceptBadge}</div>
-        <h1>{assets.Headline}</h1>
-        <p class=""lead"">{assets.Description}</p>
+        <div class=""eyebrow"">{conceptBadge}</div>
+        <h1>{headline}</h1>
+        <p class=""lead"">{description}</p>
         <div>
-          <a href=""{(!string.IsNullOrWhiteSpace(assets.ButtonDestinationValue) ? (assets.ButtonDestinationType == "Email" ? "mailto:" + assets.ButtonDestinationValue : assets.ButtonDestinationValue) : "#")}"" class=""cta-btn"">{assets.ButtonLabel} &rarr;</a>
+          <a href=""{destinationHref}""{onclickAttr} class=""cta-btn"">{buttonLabel} &rarr;</a>
         </div>
-        <p style=""font-size: 0.8125rem; color: var(--muted); margin-top: 0.75rem;"">{assets.HeroHelpText}</p>
+        <p style=""font-size: 0.8125rem; color: var(--muted); margin-top: 0.75rem;"">{heroHelpText}</p>
       </section>
 
       <section class=""section-wrap"">
-        <div class=""eyebrow"">{assets.PlannedWorkflowTitle}</div>
-        <p style=""color: var(--muted); margin-bottom: 1.5rem;"">{assets.PlannedWorkflowSubtitle}</p>
+        <div class=""eyebrow"">{WebUtility.HtmlEncode(assets.PlannedWorkflowTitle)}</div>
+        <p style=""color: var(--muted); margin-bottom: 1.5rem;"">{WebUtility.HtmlEncode(assets.PlannedWorkflowSubtitle)}</p>
         <div class=""card-grid"">
-          {string.Join("", assets.WorkflowSteps.Select(s => $@"<div class=""card""><div class=""card-num"">{s.StepNumber}</div><h3>{s.Title}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{s.Description}</p></div>"))}
+          {string.Join("", assets.WorkflowSteps.Select(s => $@"<div class=""card""><div class=""card-num"">{s.StepNumber}</div><h3>{WebUtility.HtmlEncode(s.Title)}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(s.Description)}</p></div>"))}
         </div>
       </section>
 
+      {(includeProblem ? $@"
       <section class=""section-wrap"">
-        <div class=""eyebrow"">{assets.ProblemEyebrow}</div>
-        <h2>{assets.ProblemStatement}</h2>
-        <p style=""color: var(--muted); max-width: 680px;"">{assets.OperationalMomentumStatement}</p>
-      </section>
+        <div class=""eyebrow"">{WebUtility.HtmlEncode(problemEyebrow)}</div>
+        <h2>{WebUtility.HtmlEncode(problemStatement)}</h2>
+        <p style=""color: var(--muted); max-width: 680px;"">{WebUtility.HtmlEncode(momentumStatement)}</p>
+      </section>" : "")}
 
+      {(includeSolution ? $@"
       <section class=""section-wrap"">
-        <h2>{assets.SolutionHeader}</h2>
-        <p style=""color: var(--muted); margin-bottom: 2rem;"">{assets.SolutionSubheader}</p>
+        <h2>{WebUtility.HtmlEncode(solutionHeader)}</h2>
+        <p style=""color: var(--muted); margin-bottom: 2rem;"">{WebUtility.HtmlEncode(solutionSubheader)}</p>
         <div class=""card-grid"">
-          {string.Join("", assets.PlannedSolutions.Select(sol => $@"<div class=""card""><h3>{sol.Title}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{sol.Description}</p></div>"))}
+          {string.Join("", plannedSolutions.Select(sol => $@"<div class=""card""><h3>{WebUtility.HtmlEncode(sol.Title)}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(sol.Description)}</p></div>"))}
         </div>
-      </section>
+      </section>" : "")}
 
+      {(includeHowItWorks ? $@"
       <section class=""section-wrap"">
-        <h2>{assets.HowItWorksHeader}</h2>
-        <p style=""color: var(--muted); margin-bottom: 2rem;"">{assets.HowItWorksSubheader}</p>
+        <h2>{WebUtility.HtmlEncode(howItWorksHeader)}</h2>
+        <p style=""color: var(--muted); margin-bottom: 2rem;"">{WebUtility.HtmlEncode(howItWorksSubheader)}</p>
         <div style=""display: flex; flex-direction: column; gap: 1rem;"">
-          {string.Join("", assets.WorkflowDetails.Select(wf => $@"<div class=""card"" style=""display: flex; gap: 1.25rem; align-items: flex-start;""><div class=""card-num"">{wf.StepNumber}</div><div><h3>{wf.Title}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{wf.Description}</p></div></div>"))}
+          {string.Join("", workflowDetails.Select(wf => $@"<div class=""card"" style=""display: flex; gap: 1.25rem; align-items: flex-start;""><div class=""card-num"">{wf.StepNumber}</div><div><h3>{WebUtility.HtmlEncode(wf.Title)}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(wf.Description)}</p></div></div>"))}
         </div>
-      </section>
+      </section>" : "")}
 
+      {(includePricing && assets.PricingExclusion != null ? $@"
+      <section class=""section-wrap"" id=""pricing-section"">
+        <h2>Transparent Pricing</h2>
+        <p style=""color: var(--muted); margin-bottom: 2rem;"">Clear, straightforward options designed for your workflows.</p>
+        <div class=""card"" style=""max-width: 360px; margin: 0 auto; text-align: center;"">
+          <h3>{WebUtility.HtmlEncode(assets.PricingExclusion.SelectedOfferName ?? "Standard Plan")}</h3>
+          <div style=""font-size: 2.25rem; font-weight: 700; margin: 1rem 0; color: #FFF;"">
+            {(assets.PricingExclusion.PriceStatus == "ConfirmedZero" ? "Free" : $"{assets.PricingExclusion.Currency}{assets.PricingExclusion.ChosenPrice ?? 0:0.##}")}
+            {(assets.PricingExclusion.PriceStatus != "ConfirmedZero" ? $@"<span style=""font-size: 0.875rem; color: var(--muted); font-weight: 400;""> / {WebUtility.HtmlEncode(assets.PricingExclusion.BillingPeriod)}</span>" : "")}
+          </div>
+          <p style=""color: var(--muted); font-size: 0.875rem;"">{WebUtility.HtmlEncode(assets.PricingExclusion.Reason)}</p>
+        </div>
+      </section>" : "")}
+
+      {(includeFaq ? $@"
       <section class=""section-wrap"">
-        <h2>{assets.FaqHeader}</h2>
-        <p style=""color: var(--muted); margin-bottom: 2rem;"">{assets.FaqSubheader}</p>
+        <h2>{WebUtility.HtmlEncode(faqHeader)}</h2>
+        <p style=""color: var(--muted); margin-bottom: 2rem;"">{WebUtility.HtmlEncode(faqSubheader)}</p>
         <div style=""display: flex; flex-direction: column; gap: 1rem;"">
-          {string.Join("", assets.Faqs.Select(faq => $@"<div class=""card""><h3>{faq.Question}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{faq.Answer}</p></div>"))}
+          {string.Join("", faqs.Select(faq => $@"<div class=""card""><h3>{WebUtility.HtmlEncode(faq.Question)}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(faq.Answer)}</p></div>"))}
         </div>
-      </section>
+      </section>" : "")}
 
+      {(includeFinalCta ? $@"
       <section class=""section-wrap"" style=""text-align: center;"">
-        <h2>{assets.FinalCtaHeader}</h2>
-        <p style=""color: var(--muted); margin-bottom: 1.5rem;"">{assets.FinalCtaSubheader}</p>
-        <a href=""{(!string.IsNullOrWhiteSpace(assets.ButtonDestinationValue) ? (assets.ButtonDestinationType == "Email" ? "mailto:" + assets.ButtonDestinationValue : assets.ButtonDestinationValue) : "#")}"" class=""cta-btn"">{assets.ButtonLabel} &rarr;</a>
-      </section>
+        <h2>{WebUtility.HtmlEncode(finalCtaHeader)}</h2>
+        <p style=""color: var(--muted); margin-bottom: 1.5rem;"">{WebUtility.HtmlEncode(finalCtaSubheader)}</p>
+        <a href=""{destinationHref}""{onclickAttr} class=""cta-btn"">{buttonLabel} &rarr;</a>
+      </section>" : "")}
     </main>
 
     <footer>
-      <div>{assets.BrandName}</div>
-      <div>{assets.FooterNotice}</div>
+      <div>{brandName}</div>
+      <div>{footerNotice}</div>
     </footer>
   </div>
 </body>

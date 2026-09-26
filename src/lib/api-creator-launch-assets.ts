@@ -172,13 +172,46 @@ export async function createNewVersion(
   return data;
 }
 
-export async function getSourceCode(ideaId: string): Promise<string> {
+export async function selectVersion(
+  ideaId: string,
+  versionNumber?: number,
+  expectedVersion?: number
+): Promise<LaunchAssetsResponse> {
+  if (!ideaId || typeof ideaId !== 'string' || ideaId.trim() === '') {
+    throw new Error('ideaId is required to select version.');
+  }
+  const cleanId = ideaId.trim();
+  const version = await resolveExpectedVersion(cleanId, expectedVersion);
+
+  const res = await api.post<ApiEnvelope<LaunchAssetsResponse> | LaunchAssetsResponse>(
+    '/creator/phase4/assets/select-version',
+    { ideaId: cleanId, versionNumber, expectedVersion: version },
+    {
+      params: {
+        ideaId: cleanId,
+        ...(versionNumber !== undefined ? { versionNumber } : {}),
+        expectedVersion: version,
+      },
+    }
+  );
+  rememberIdeaVersion(res, cleanId);
+  const data = unwrap(res.data);
+  if ((data as any)?.ideaVersion && Number.isSafeInteger((data as any).ideaVersion) && (data as any).ideaVersion > 0) {
+    setIdeaVersion(cleanId, (data as any).ideaVersion);
+  }
+  return data;
+}
+
+export async function getSourceCode(ideaId: string, versionNumber?: number): Promise<string> {
   if (!ideaId || typeof ideaId !== 'string' || ideaId.trim() === '') {
     throw new Error('ideaId is required to get source code.');
   }
   const cleanId = ideaId.trim();
   const res = await api.get<string>('/creator/phase4/assets/source', {
-    params: { ideaId: cleanId },
+    params: {
+      ideaId: cleanId,
+      ...(versionNumber !== undefined ? { version: versionNumber } : {}),
+    },
     responseType: 'text',
   });
   return res.data;

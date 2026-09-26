@@ -40,7 +40,10 @@ export interface LaunchFaqItem {
 
 export interface LaunchPricingExclusion {
   excluded: boolean;
-  chosenPrice: number;
+  chosenPrice?: number | null;
+  priceStatus?: 'Unconfirmed' | 'ConfirmedZero' | 'ConfirmedPositive' | 'InvalidNegative' | string;
+  selectedOfferId?: string;
+  selectedOfferName?: string;
   billingPeriod: string;
   unit: string;
   currency: string;
@@ -55,6 +58,35 @@ export interface LaunchProofExclusion {
   reason: string;
   actionLabel: string;
   actionRoute: string;
+}
+
+export interface LaunchAssetsPlanSnapshot {
+  version: number;
+  releaseTag: string;
+  status: string;
+  savedAt: string;
+  headline: string;
+  description: string;
+  buttonLabel: string;
+  buttonDestinationType: string;
+  buttonDestinationValue: string;
+  problemEyebrow: string;
+  problemStatement: string;
+  operationalMomentumStatement: string;
+  solutionHeader: string;
+  solutionSubheader: string;
+  plannedSolutions: LaunchSolutionCard[];
+  howItWorksHeader: string;
+  howItWorksSubheader: string;
+  workflowDetails: LaunchWorkflowDetailedItem[];
+  faqHeader: string;
+  faqSubheader: string;
+  faqs: LaunchFaqItem[];
+  finalCtaHeader: string;
+  finalCtaSubheader: string;
+  brandName: string;
+  footerNotice: string;
+  sections: LaunchAssetSection[];
 }
 
 export interface LaunchBrandStudioSummary {
@@ -88,11 +120,13 @@ export interface LaunchBrandStudioSummary {
 export interface LaunchAssetsPlan {
   assetType: string;
   version: number;
+  selectedVersion?: number;
   status: string;
   releaseTag: string;
   publishedStatus: string;
   lastGeneratedAt: string;
   activeSectionKey: string;
+  versionHistory?: LaunchAssetsPlanSnapshot[];
 
   // Brand Studio Visual & Strategic Identity
   brandStudio?: LaunchBrandStudioSummary;

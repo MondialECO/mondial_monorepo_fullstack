@@ -2208,14 +2208,76 @@ namespace WebApp.Controllers
             }
         }
 
-        // GET /api/creator/phase4/assets/source?ideaId={ideaId}
-        [HttpGet("assets/source")]
-        public async Task<IActionResult> GetSourceCode([FromQuery] string? ideaId = null)
+        // POST /api/creator/phase4/assets/select-version?ideaId={ideaId}&versionNumber={v}&expectedVersion={v}
+        [HttpPost("assets/select-version")]
+        public async Task<IActionResult> SelectVersion(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] int? versionNumber = null,
+            [FromQuery] long? expectedVersion = null,
+            [FromBody] Models.DatabaseModels.Phase4.SelectVersionRequest? request = null)
         {
             try
             {
                 var userId = GetUserId();
-                var html = await _assetsService.GetSourceCodeBundleAsync(userId, ideaId);
+                request ??= new Models.DatabaseModels.Phase4.SelectVersionRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                if (versionNumber.HasValue && !request.VersionNumber.HasValue)
+                {
+                    request.VersionNumber = versionNumber.Value;
+                }
+                if (expectedVersion.HasValue && request.ExpectedVersion.HasValue && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+                if (!string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    HttpContext.Items["CreatorIdeaId"] = request.IdeaId;
+                }
+
+                var result = await _assetsService.SelectVersionAsync(userId, request.IdeaId, request.VersionNumber);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
+                return Ok(ApiResponse.Ok("Launch assets version selected", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // GET /api/creator/phase4/assets/source?ideaId={ideaId}&version={v}
+        [HttpGet("assets/source")]
+        public async Task<IActionResult> GetSourceCode(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] int? version = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var html = await _assetsService.GetSourceCodeBundleAsync(userId, ideaId, version);
                 return Content(html, "text/html");
             }
             catch (UnauthorizedAccessException ex)

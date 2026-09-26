@@ -10,6 +10,7 @@ namespace WebApp.Services.Interface
         Task<LaunchAssetsResponse> RefreshLaunchAssetsAsync(string userId, string? ideaId = null);
         Task<LaunchAssetsResponse> UpdateLaunchAssetsAsync(string userId, UpdateLaunchAssetsRequest request);
         Task<LaunchAssetsResponse> CreateNewVersionAsync(string userId, string? ideaId = null);
-        Task<string> GetSourceCodeBundleAsync(string userId, string? ideaId = null);
+        Task<LaunchAssetsResponse> SelectVersionAsync(string userId, string? ideaId = null, int? versionNumber = null);
+        Task<string> GetSourceCodeBundleAsync(string userId, string? ideaId = null, int? versionNumber = null);
     }
 }

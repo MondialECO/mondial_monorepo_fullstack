@@ -12,6 +12,7 @@ import {
   refreshLaunchAssets,
   updateLaunchAssets,
   createNewVersion,
+  selectVersion,
   getSourceCode,
 } from '@/lib/api-creator-launch-assets';
 import type {
@@ -136,6 +137,18 @@ function AssetsPageContent({ ideaId }: { ideaId: string }) {
     }
   };
 
+  const handleSelectVersion = async () => {
+    if (!effectiveIdeaId) return;
+    try {
+      const res = await selectVersion(effectiveIdeaId);
+      setData(res);
+      await refetch(effectiveIdeaId);
+    } catch (err: any) {
+      setError(err.message || "Couldn't select version.");
+      throw err;
+    }
+  };
+
   const handleDownloadSource = async () => {
     if (!effectiveIdeaId) return;
     try {
@@ -191,6 +204,7 @@ function AssetsPageContent({ ideaId }: { ideaId: string }) {
           onRefresh={handleRefresh}
           onUpdateAssets={handleUpdateAssets}
           onNewVersion={handleNewVersion}
+          onSelectVersion={handleSelectVersion}
           onDownloadSource={handleDownloadSource}
         />
       )}

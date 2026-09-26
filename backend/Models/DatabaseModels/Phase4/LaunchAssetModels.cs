@@ -56,11 +56,14 @@ namespace WebApp.Models.DatabaseModels.Phase4
     public class LaunchPricingExclusion
     {
         public bool Excluded { get; set; } = true;
-        public decimal ChosenPrice { get; set; } = 15;
+        public decimal? ChosenPrice { get; set; } = null;
+        public string PriceStatus { get; set; } = "Unconfirmed"; // "Unconfirmed" | "ConfirmedZero" | "ConfirmedPositive" | "InvalidNegative"
+        public string? SelectedOfferId { get; set; }
+        public string? SelectedOfferName { get; set; }
         public string BillingPeriod { get; set; } = "month";
-        public string Unit { get; set; } = "business";
+        public string Unit { get; set; } = "customer";
         public string Currency { get; set; } = "€";
-        public string Reason { get; set; } = "Your chosen price is €15 per business / month. Confirm the offer details before adding pricing to the website.";
+        public string Reason { get; set; } = "Pricing has not been confirmed for this project yet. Review and confirm offer details before adding pricing to the website.";
         public string ActionLabel { get; set; } = "Review pricing details →";
         public string ActionRoute { get; set; } = "/dashboard/creator/phase-4/pricing";
     }
@@ -103,6 +106,36 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public string BodyWeight { get; set; } = "400";
     }
 
+    public class LaunchAssetsPlanSnapshot
+    {
+        public int Version { get; set; }
+        public string ReleaseTag { get; set; } = string.Empty;
+        public string Status { get; set; } = "Draft";
+        public DateTime SavedAt { get; set; } = DateTime.UtcNow;
+        public string Headline { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string ButtonLabel { get; set; } = string.Empty;
+        public string ButtonDestinationType { get; set; } = "NotSet";
+        public string ButtonDestinationValue { get; set; } = string.Empty;
+        public string ProblemEyebrow { get; set; } = string.Empty;
+        public string ProblemStatement { get; set; } = string.Empty;
+        public string OperationalMomentumStatement { get; set; } = string.Empty;
+        public string SolutionHeader { get; set; } = string.Empty;
+        public string SolutionSubheader { get; set; } = string.Empty;
+        public List<LaunchSolutionCard> PlannedSolutions { get; set; } = new();
+        public string HowItWorksHeader { get; set; } = string.Empty;
+        public string HowItWorksSubheader { get; set; } = string.Empty;
+        public List<LaunchWorkflowDetailedItem> WorkflowDetails { get; set; } = new();
+        public string FaqHeader { get; set; } = string.Empty;
+        public string FaqSubheader { get; set; } = string.Empty;
+        public List<LaunchFaqItem> Faqs { get; set; } = new();
+        public string FinalCtaHeader { get; set; } = string.Empty;
+        public string FinalCtaSubheader { get; set; } = string.Empty;
+        public string BrandName { get; set; } = string.Empty;
+        public string FooterNotice { get; set; } = string.Empty;
+        public List<LaunchAssetSection> Sections { get; set; } = new();
+    }
+
     // =========================================================================
     // ROOT LAUNCH ASSETS ENTITY (Persisted on CreatorJourney.Phase4Data.LaunchAssets)
     // =========================================================================
@@ -112,11 +145,13 @@ namespace WebApp.Models.DatabaseModels.Phase4
     {
         public string AssetType { get; set; } = "ONE-PAGE WEBSITE";
         public int Version { get; set; } = 1;
+        public int SelectedVersion { get; set; } = 1;
         public string Status { get; set; } = "Draft";
         public string ReleaseTag { get; set; } = "v1.0-rc";
         public string PublishedStatus { get; set; } = "Available to view in MBC. Not published.";
         public DateTime LastGeneratedAt { get; set; } = DateTime.UtcNow;
         public string ActiveSectionKey { get; set; } = "hero";
+        public List<LaunchAssetsPlanSnapshot> VersionHistory { get; set; } = new();
 
         // Brand Studio Visual & Strategic Identity
         public LaunchBrandStudioSummary BrandStudio { get; set; } = new();
@@ -233,6 +268,13 @@ namespace WebApp.Models.DatabaseModels.Phase4
     public class GenerateLaunchAssetsRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
+    }
+
+    public class SelectVersionRequest
+    {
+        public string? IdeaId { get; set; }
+        public int? VersionNumber { get; set; }
         public long? ExpectedVersion { get; set; }
     }
 }

@@ -57,6 +57,7 @@ interface LaunchAssetsViewProps {
   onRefresh: () => Promise<void>;
   onUpdateAssets: (req: UpdateLaunchAssetsRequest) => Promise<void>;
   onNewVersion: () => Promise<void>;
+  onSelectVersion?: () => Promise<void>;
   onDownloadSource: () => Promise<void>;
 }
 
@@ -71,6 +72,7 @@ export function LaunchAssetsView({
   onRefresh,
   onUpdateAssets,
   onNewVersion,
+  onSelectVersion,
   onDownloadSource,
 }: LaunchAssetsViewProps) {
   const router = useRouter();
@@ -82,10 +84,10 @@ export function LaunchAssetsView({
   const [selectedSectionKey, setSelectedSectionKey] = useState<string>('hero');
 
   // Section A: Hero state
-  const [headline, setHeadline] = useState(assets?.headline || 'A clearer way to manage enquiries and quotations.');
+  const [headline, setHeadline] = useState(assets?.headline || '');
   const [description, setDescription] = useState(
     assets?.description ||
-      `${projectName} is being built to help independent service businesses keep enquiries, quotations, and follow-ups together.`
+      `${projectName} is being built to help teams organize workflows and maintain clear operational momentum.`
   );
   const [buttonLabel, setButtonLabel] = useState(assets?.buttonLabel || 'Express interest');
   const [destType, setDestType] = useState<'Email' | 'Link'>(
@@ -161,6 +163,8 @@ export function LaunchAssetsView({
   const [appliedSuccess, setAppliedSuccess] = useState(false);
   const [isCreatingVersion, setIsCreatingVersion] = useState(false);
   const [versionSuccess, setVersionSuccess] = useState(false);
+  const [isSelectingVersion, setIsSelectingVersion] = useState(false);
+  const [selectVersionSuccess, setSelectVersionSuccess] = useState(false);
 
   // Fullscreen Preview Modal
   const [isFullscreenPreviewOpen, setIsFullscreenPreviewOpen] = useState(false);
@@ -257,6 +261,22 @@ export function LaunchAssetsView({
     }
   };
 
+  const handleUseThisVersion = async () => {
+    if (onSelectVersion) {
+      try {
+        setIsSelectingVersion(true);
+        await onSelectVersion();
+        setSelectVersionSuccess(true);
+        setTimeout(() => setSelectVersionSuccess(false), 3000);
+      } finally {
+        setIsSelectingVersion(false);
+      }
+    } else {
+      setSelectVersionSuccess(true);
+      setTimeout(() => setSelectVersionSuccess(false), 2500);
+    }
+  };
+
   const handleSelectSectionToEdit = (key: string) => {
     setSelectedSectionKey(key);
     const editorElem = document.getElementById('simple-content-editor');
@@ -309,26 +329,28 @@ export function LaunchAssetsView({
     displayFont
   ).replace(/%20/g, '+')}:wght@400;500;600;700;800;900&display=swap`;
 
-  // AI copy suggestions synthesized directly from Brand Studio
+  // Copy suggestions synthesized directly from Brand Studio and project context
   const wordingSuggestions = [
     {
       label: brandStudio?.positioning ? `Strategic: ${brandStudio.positioning.slice(0, 24)}...` : 'Positioning Aligned',
-      headline: brandStudio?.positioning || 'A clearer way to manage enquiries and quotations.',
+      headline: brandStudio?.positioning || headline || `A clearer way to organize your workflows.`,
       desc: brandStudio?.concept && brandStudio?.targetAudience
         ? `${brandName} is being built for ${brandStudio.targetAudience.replace(/\.+$/, '')}. ${brandStudio.concept}`
-        : `${brandName} is being built to help independent service businesses keep enquiries, quotations, and follow-ups together.`,
+        : (brandStudio?.concept
+            ? `${brandName} is being built to provide ${brandStudio.concept.replace(/\.+$/, '')}.`
+            : `${brandName} is being built to help teams organize workflows and maintain clear operational momentum.`),
       btn: 'Express interest',
     },
     {
       label: 'Target Audience Focus',
-      headline: brandStudio?.targetAudience ? `Designed for ${brandStudio.targetAudience.toLowerCase().replace(/\.+$/, '')}.` : 'Simple, unified enquiry and quotation management.',
-      desc: `${brandName} keeps your incoming inquiries, proposals, and client follow-ups in a clean single-flow workspace.`,
+      headline: brandStudio?.targetAudience ? `Designed for ${brandStudio.targetAudience.toLowerCase().replace(/\.+$/, '')}.` : `Designed specifically for ${brandName}.`,
+      desc: `${brandName} keeps your key requests, deliverables, and client follow-ups in a clean single-flow workspace.`,
       btn: 'Join Early Access',
     },
     {
       label: 'Outcome & Speed Centric',
-      headline: 'Never lose track of a client enquiry or pending quotation again.',
-      desc: `Built specifically to eliminate scattered inboxes and lost quotation follow-ups for independent businesses.`,
+      headline: `Never lose track of a project milestone or key request again.`,
+      desc: `Built specifically to eliminate scattered tools and lost follow-ups for growing teams.`,
       btn: 'Express interest',
     },
   ];
@@ -379,6 +401,21 @@ export function LaunchAssetsView({
     return sec ? sec.isIncluded : true;
   };
 
+  const pricingSection = sectionsList.find((s) => s.key === 'pricing');
+  const isPricingExplicitlyIncluded = pricingSection !== undefined
+    ? pricingSection.isIncluded
+    : assets.pricingExclusion?.excluded === false;
+
+  const isPricingValidAndConfirmed = Boolean(
+    assets.pricingExclusion &&
+    (assets.pricingExclusion.priceStatus === 'ConfirmedPositive' || assets.pricingExclusion.priceStatus === 'ConfirmedZero') &&
+    assets.pricingExclusion.chosenPrice !== null &&
+    assets.pricingExclusion.chosenPrice !== undefined &&
+    assets.pricingExclusion.chosenPrice >= 0
+  );
+
+  const isPricingRendered = isPricingExplicitlyIncluded && isPricingValidAndConfirmed;
+
   const sectionsNavTabs = [
     { key: 'hero', label: 'Hero', required: true },
     { key: 'problem', label: 'Problem', required: false },
@@ -391,6 +428,11 @@ export function LaunchAssetsView({
 
   const includedCount = sectionsList.filter((s) => s.isIncluded).length || 7;
   const excludedCount = (sectionsList.length || 7) - includedCount + 2; // + 2 for pricing and proof
+
+  const isVersionSelected =
+    assets.status === 'Selected' ||
+    (assets.selectedVersion !== undefined && assets.selectedVersion === assets.version && assets.status === 'Selected') ||
+    selectVersionSuccess;
 
   return (
     <div className="max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 pb-24">
@@ -410,8 +452,12 @@ export function LaunchAssetsView({
               <span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-wider">
                 / {assets.assetType || 'ONE-PAGE WEBSITE'}
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20">
-                {assets.status || 'Draft'}
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
+                isVersionSelected
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                  : 'bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20'
+              }`}>
+                {isVersionSelected ? 'Selected' : (assets.status || 'Draft')}
               </span>
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono text-muted-foreground border border-border">
                 {assets.releaseTag || `v1.${assets.version}-rc`}
@@ -446,14 +492,22 @@ export function LaunchAssetsView({
             </button>
 
             <button
-              onClick={() => {
-                setAppliedSuccess(true);
-                setTimeout(() => setAppliedSuccess(false), 2500);
-              }}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shadow-sm"
+              onClick={handleUseThisVersion}
+              disabled={isSelectingVersion || isVersionSelected}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-colors shadow-sm ${
+                isVersionSelected
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              }`}
             >
               <Check className="w-3.5 h-3.5" />
-              <span>Use this version</span>
+              <span>
+                {isVersionSelected
+                  ? 'Active Version'
+                  : isSelectingVersion
+                  ? 'Selecting...'
+                  : 'Use this version'}
+              </span>
             </button>
           </div>
         </div>
@@ -462,6 +516,9 @@ export function LaunchAssetsView({
         <div className="pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
             <span className="font-mono text-foreground">Current draft: Version {assets.version || 1}</span>
+            {assets.selectedVersion && assets.selectedVersion !== assets.version && (
+              <span className="text-amber-500 font-mono font-medium">(Selected: Version {assets.selectedVersion})</span>
+            )}
             <span>•</span>
             <span>Generated recently</span>
           </div>
@@ -960,6 +1017,37 @@ export function LaunchAssetsView({
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION: PRICING (IF INCLUDED AND CONFIRMED) */}
+              {isPricingRendered && assets.pricingExclusion && (
+                <div id="preview-pricing-section" className="p-6 sm:p-10 space-y-6 text-center">
+                  <div className="space-y-1">
+                    <h3
+                      className="text-lg sm:text-xl font-semibold text-foreground"
+                      style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                    >
+                      Transparent Pricing
+                    </h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Clear, straightforward options designed for your workflows.
+                    </p>
+                  </div>
+                  <div className="bg-card border border-border rounded-xl p-6 max-w-sm mx-auto space-y-3 shadow-xs">
+                    <h4 className="text-base font-semibold text-foreground">
+                      {assets.pricingExclusion.selectedOfferName || 'Standard Plan'}
+                    </h4>
+                    <div className="text-3xl font-bold text-foreground">
+                      {assets.pricingExclusion.priceStatus === 'ConfirmedZero'
+                        ? 'Free'
+                        : `${assets.pricingExclusion.currency}${assets.pricingExclusion.chosenPrice ?? 0}`}
+                      {assets.pricingExclusion.priceStatus !== 'ConfirmedZero' && (
+                        <span className="text-xs text-muted-foreground font-normal"> / {assets.pricingExclusion.billingPeriod}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{assets.pricingExclusion.reason}</p>
                   </div>
                 </div>
               )}
@@ -1715,16 +1803,24 @@ export function LaunchAssetsView({
               <div className="flex items-center gap-2">
                 <span className="text-sm font-heading font-semibold text-foreground">Pricing</span>
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-muted-foreground border border-border">
-                  Not included
+                  {isPricingRendered
+                    ? (assets.pricingExclusion?.priceStatus === 'ConfirmedZero'
+                      ? 'Confirmed Free · On site'
+                      : 'Confirmed · On site')
+                    : (assets.pricingExclusion?.priceStatus === 'ConfirmedZero'
+                      ? 'Confirmed Free · Not on site'
+                      : assets.pricingExclusion?.priceStatus === 'ConfirmedPositive'
+                      ? 'Confirmed · Not on site'
+                      : 'Not included')}
                 </span>
               </div>
               <p className="text-xs font-sans text-muted-foreground leading-relaxed">
                 {assets.pricingExclusion?.reason ||
-                  `Your chosen price is €${assets.pricingExclusion?.chosenPrice || 15} per ${assets.pricingExclusion?.unit || 'business'} / ${assets.pricingExclusion?.billingPeriod || 'month'}. Confirm the offer details before adding pricing to the website.`}
+                  'Pricing has not been confirmed for this project yet. Review and confirm offer details before adding pricing to the website.'}
               </p>
             </div>
             <Link
-              href={assets.pricingExclusion?.actionRoute || '/dashboard/creator/phase-4/pricing'}
+              href={assets.pricingExclusion?.actionRoute || `/dashboard/creator/phase-4/pricing${ideaId ? `?ideaId=${ideaId}` : ''}`}
               className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0 flex items-center gap-1"
             >
               <span>{assets.pricingExclusion?.actionLabel || 'Review pricing details →'}</span>
@@ -1748,7 +1844,7 @@ export function LaunchAssetsView({
               </p>
             </div>
             <Link
-              href={assets.proofExclusion?.actionRoute || '/dashboard/creator/phase-3/evidence'}
+              href={assets.proofExclusion?.actionRoute || `/dashboard/creator/phase-3/evidence${ideaId ? `?ideaId=${ideaId}` : ''}`}
               className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0 flex items-center gap-1"
             >
               <span>{assets.proofExclusion?.actionLabel || 'Review proof →'}</span>
@@ -1771,13 +1867,13 @@ export function LaunchAssetsView({
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <span className="text-xs font-sans text-muted-foreground">
-            Any unfinished items will be included in your readiness review.
+            Step 4.9 Construction Readiness is pending. Return to the Construction Hub to review your progress.
           </span>
           <Link
             href={`/dashboard/creator/phase-4${ideaId ? `?ideaId=${ideaId}` : ''}`}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm"
           >
-            <span>Continue to Construction Readiness</span>
+            <span>Continue to Construction Overview</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

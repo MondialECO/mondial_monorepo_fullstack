@@ -146,6 +146,7 @@ describe('LaunchAssetsView (Phase 4.8)', () => {
     onRefresh: vi.fn(),
     onUpdateAssets: vi.fn(),
     onNewVersion: vi.fn(),
+    onSelectVersion: vi.fn(),
     onDownloadSource: vi.fn(),
   };
 
@@ -155,7 +156,7 @@ describe('LaunchAssetsView (Phase 4.8)', () => {
     expect(screen.getByText(/Generate Launch Website/i)).toBeInTheDocument();
   });
 
-  it('renders Section 1: Compact Asset Summary Card', () => {
+  it('renders Section 1: Compact Asset Summary Card and handles Use this version', async () => {
     render(<LaunchAssetsView {...defaultProps} />);
     expect(screen.getAllByText('ClairDesk').length).toBeGreaterThan(0);
     expect(screen.getByText('/ ONE-PAGE WEBSITE')).toBeInTheDocument();
@@ -163,7 +164,11 @@ describe('LaunchAssetsView (Phase 4.8)', () => {
     expect(screen.getByText('Available to view in MBC. Not published.')).toBeInTheDocument();
     expect(screen.getByText('View website')).toBeInTheDocument();
     expect(screen.getByText('Download source')).toBeInTheDocument();
-    expect(screen.getByText('Use this version')).toBeInTheDocument();
+    
+    const useVersionBtn = screen.getByText('Use this version');
+    expect(useVersionBtn).toBeInTheDocument();
+    fireEvent.click(useVersionBtn);
+    expect(defaultProps.onSelectVersion).toHaveBeenCalled();
   });
 
   it('renders Section 2: Source Strip and Attention Notice', () => {
@@ -210,10 +215,25 @@ describe('LaunchAssetsView (Phase 4.8)', () => {
     expect(screen.getByText('Review proof →')).toBeInTheDocument();
   });
 
-  it('renders Section 6: Footer Actions & Navigation Progression', () => {
+  it('renders Section 5 with confirmed zero price badge and copy', () => {
+    const freeAssets: LaunchAssetsPlan = {
+      ...mockAssets,
+      pricingExclusion: {
+        ...mockAssets.pricingExclusion,
+        priceStatus: 'ConfirmedZero',
+        chosenPrice: 0,
+        reason: 'Your chosen plan (Free Tier) is explicitly free. Review and confirm offer details before adding pricing to the website.',
+      },
+    };
+    render(<LaunchAssetsView {...defaultProps} assets={freeAssets} />);
+    expect(screen.getByText('Confirmed Free · Not on site')).toBeInTheDocument();
+    expect(screen.getByText(/explicitly free/i)).toBeInTheDocument();
+  });
+
+  it('renders Section 6: Footer Actions & Navigation Progression accurately', () => {
     render(<LaunchAssetsView {...defaultProps} />);
     expect(screen.getByText(/Back to Launch Strategy/i)).toBeInTheDocument();
-    expect(screen.getByText(/Continue to Construction Readiness/i)).toBeInTheDocument();
+    expect(screen.getByText(/Continue to Construction Overview/i)).toBeInTheDocument();
   });
 
   it('toggles viewport from desktop to mobile preview', () => {
