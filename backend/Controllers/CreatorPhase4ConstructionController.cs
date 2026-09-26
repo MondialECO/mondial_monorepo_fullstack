@@ -1618,76 +1618,137 @@ namespace WebApp.Controllers
             {
                 var userId = GetUserId();
                 var result = await _gtmService.GetGtmStrategyAsync(userId, ideaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("GTM launch strategy retrieved", result));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
 
         // POST /api/creator/phase4/gtm/generate
         [HttpPost("gtm/generate")]
-        public async Task<IActionResult> GenerateGtm([FromBody] Models.DatabaseModels.Phase4.GenerateGtmRequest? request = null)
+        public async Task<IActionResult> GenerateGtm(
+            [FromBody] Models.DatabaseModels.Phase4.GenerateGtmRequest? request = null,
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null)
         {
             try
             {
+                if (!string.IsNullOrWhiteSpace(request?.IdeaId) && !string.IsNullOrWhiteSpace(ideaId) && !string.Equals(request.IdeaId.Trim(), ideaId.Trim(), StringComparison.Ordinal))
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting ideaId provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedIdeaId = !string.IsNullOrWhiteSpace(request?.IdeaId) ? request.IdeaId.Trim() : ideaId?.Trim();
+                if (expectedVersion.HasValue && request?.ExpectedVersion.HasValue == true && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request?.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+                if (!string.IsNullOrWhiteSpace(resolvedIdeaId))
+                {
+                    HttpContext.Items["CreatorIdeaId"] = resolvedIdeaId;
+                }
+
                 var userId = GetUserId();
-                var result = await _gtmService.GenerateGtmStrategyAsync(userId, request?.IdeaId);
+                var result = await _gtmService.GenerateGtmStrategyAsync(userId, resolvedIdeaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("GTM launch strategy generated", result));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
 
         // POST /api/creator/phase4/gtm/refresh
         [HttpPost("gtm/refresh")]
-        public async Task<IActionResult> RefreshGtm([FromBody] Models.DatabaseModels.Phase4.RefreshGtmRequest? request = null)
+        public async Task<IActionResult> RefreshGtm(
+            [FromBody] Models.DatabaseModels.Phase4.RefreshGtmRequest? request = null,
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null)
         {
             try
             {
+                if (!string.IsNullOrWhiteSpace(request?.IdeaId) && !string.IsNullOrWhiteSpace(ideaId) && !string.Equals(request.IdeaId.Trim(), ideaId.Trim(), StringComparison.Ordinal))
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting ideaId provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedIdeaId = !string.IsNullOrWhiteSpace(request?.IdeaId) ? request.IdeaId.Trim() : ideaId?.Trim();
+                if (expectedVersion.HasValue && request?.ExpectedVersion.HasValue == true && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request?.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+                if (!string.IsNullOrWhiteSpace(resolvedIdeaId))
+                {
+                    HttpContext.Items["CreatorIdeaId"] = resolvedIdeaId;
+                }
+
                 var userId = GetUserId();
-                var result = await _gtmService.RefreshGtmStrategyAsync(userId, request?.IdeaId);
+                var result = await _gtmService.RefreshGtmStrategyAsync(userId, resolvedIdeaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("GTM launch strategy refreshed", result));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
 
-        // PATCH /api/creator/phase4/gtm/{channelKey}?ideaId={ideaId}
+        // PATCH /api/creator/phase4/gtm/{channelKey}?ideaId={ideaId}&expectedVersion={v}
         [HttpPatch("gtm/{channelKey}")]
         public async Task<IActionResult> UpdateGtmChannel(
             [FromRoute] string channelKey,
-            [FromQuery] string? ideaId,
-            [FromBody] Models.DatabaseModels.Phase4.UpdateGtmChannelRequest request)
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            [FromBody] Models.DatabaseModels.Phase4.UpdateGtmChannelRequest? request = null)
         {
             try
             {
@@ -1697,33 +1758,53 @@ namespace WebApp.Controllers
                 {
                     request.IdeaId = ideaId;
                 }
+                if (expectedVersion.HasValue && request.ExpectedVersion.HasValue && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+                if (!string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    HttpContext.Items["CreatorIdeaId"] = request.IdeaId;
+                }
+
                 var result = await _gtmService.UpdateGtmChannelAsync(userId, channelKey, request);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("GTM channel updated", result));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (KeyNotFoundException ex)
             {
-                return StatusCode(404, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status404NotFound, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
 
-        // PATCH /api/creator/phase4/gtm/experiments/{experimentKey}?ideaId={ideaId}
+        // PATCH /api/creator/phase4/gtm/experiments/{experimentKey}?ideaId={ideaId}&expectedVersion={v}
         [HttpPatch("gtm/experiments/{experimentKey}")]
         public async Task<IActionResult> RecordExperimentRun(
             [FromRoute] string experimentKey,
-            [FromQuery] string? ideaId,
-            [FromBody] Models.DatabaseModels.Phase4.RecordExperimentRunRequest request)
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null,
+            [FromBody] Models.DatabaseModels.Phase4.RecordExperimentRunRequest? request = null)
         {
             try
             {
@@ -1733,24 +1814,43 @@ namespace WebApp.Controllers
                 {
                     request.IdeaId = ideaId;
                 }
+                if (expectedVersion.HasValue && request.ExpectedVersion.HasValue && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+                if (!string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    HttpContext.Items["CreatorIdeaId"] = request.IdeaId;
+                }
+
                 var result = await _gtmService.RecordExperimentRunAsync(userId, experimentKey, request);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
                 return Ok(ApiResponse.Ok("Experiment run recorded", result));
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(401, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (KeyNotFoundException ex)
             {
-                return StatusCode(404, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status404NotFound, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (InvalidOperationException ex)
             {
-                return StatusCode(403, ApiResponse.Error(ex.Message));
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
     }

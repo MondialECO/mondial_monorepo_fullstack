@@ -81,7 +81,8 @@ namespace WebApp.Services.Implementations
                     Strategy = null,
                     UpdateAvailable = false,
                     ChangedSources = new List<string>(),
-                    PrerequisiteGate = gateResult
+                    PrerequisiteGate = gateResult,
+                    IdeaVersion = journey.IdeaVersion
                 };
             }
 
@@ -93,7 +94,8 @@ namespace WebApp.Services.Implementations
                 Strategy = existing,
                 UpdateAvailable = isStale,
                 ChangedSources = changed,
-                PrerequisiteGate = gateResult
+                PrerequisiteGate = gateResult,
+                IdeaVersion = journey.IdeaVersion
             };
         }
 
@@ -115,7 +117,8 @@ namespace WebApp.Services.Implementations
                     Strategy = existing,
                     UpdateAvailable = false,
                     ChangedSources = new List<string>(),
-                    PrerequisiteGate = gateResult
+                    PrerequisiteGate = gateResult,
+                    IdeaVersion = journey.IdeaVersion
                 };
             }
 
@@ -123,14 +126,15 @@ namespace WebApp.Services.Implementations
             var strategy = ExecuteDerivation(context, existing: null);
 
             // Persist strictly on CreatorJourney.Phase4Data.GtmStrategy
-            await _journeys.SetPhase4GtmStrategyAsync(userId, strategy, ideaId);
+            var updatedJourney = await _journeys.SetPhase4GtmStrategyAsync(userId, strategy, ideaId);
 
             return new GtmStrategyResponse
             {
                 Strategy = strategy,
                 UpdateAvailable = false,
                 ChangedSources = new List<string>(),
-                PrerequisiteGate = gateResult
+                PrerequisiteGate = gateResult,
+                IdeaVersion = updatedJourney?.IdeaVersion ?? journey.IdeaVersion
             };
         }
 
@@ -148,14 +152,15 @@ namespace WebApp.Services.Implementations
 
             var strategy = ExecuteDerivation(context, existing);
 
-            await _journeys.SetPhase4GtmStrategyAsync(userId, strategy, ideaId);
+            var updatedJourney = await _journeys.SetPhase4GtmStrategyAsync(userId, strategy, ideaId);
 
             return new GtmStrategyResponse
             {
                 Strategy = strategy,
                 UpdateAvailable = false,
                 ChangedSources = new List<string>(),
-                PrerequisiteGate = gateResult
+                PrerequisiteGate = gateResult,
+                IdeaVersion = updatedJourney?.IdeaVersion ?? journey.IdeaVersion
             };
         }
 
@@ -192,13 +197,14 @@ namespace WebApp.Services.Implementations
             strategy.FounderExecutionPlan = capacityProfile;
             strategy.CapacityWarningActive = capacityProfile.IsOverloaded;
 
-            await _journeys.SetPhase4GtmStrategyAsync(userId, strategy, request.IdeaId);
+            var updatedJourney = await _journeys.SetPhase4GtmStrategyAsync(userId, strategy, request.IdeaId);
 
             return new GtmStrategyResponse
             {
                 Strategy = strategy,
                 UpdateAvailable = false,
-                ChangedSources = new List<string>()
+                ChangedSources = new List<string>(),
+                IdeaVersion = updatedJourney?.IdeaVersion ?? journey.IdeaVersion
             };
         }
 
@@ -242,13 +248,14 @@ namespace WebApp.Services.Implementations
 
             strategy.UpdatedAt = DateTime.UtcNow;
 
-            await _journeys.SetPhase4GtmStrategyAsync(userId, strategy, request.IdeaId);
+            var updatedJourney = await _journeys.SetPhase4GtmStrategyAsync(userId, strategy, request.IdeaId);
 
             return new GtmStrategyResponse
             {
                 Strategy = strategy,
                 UpdateAvailable = false,
-                ChangedSources = new List<string>()
+                ChangedSources = new List<string>(),
+                IdeaVersion = updatedJourney?.IdeaVersion ?? journey.IdeaVersion
             };
         }
 

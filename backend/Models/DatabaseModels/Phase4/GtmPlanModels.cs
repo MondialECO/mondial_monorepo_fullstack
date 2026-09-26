@@ -547,21 +547,25 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public bool UpdateAvailable { get; set; }
         public List<string> ChangedSources { get; set; } = new();
         public PrerequisiteGateDto? PrerequisiteGate { get; set; }
+        public long IdeaVersion { get; set; }
     }
 
     public class GenerateGtmRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
     }
 
     public class RefreshGtmRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
     }
 
     public class UpdateGtmChannelRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
         public ChannelPriority? Priority { get; set; }
         public ChannelExecutionMode? ExecutionMode { get; set; }
         public string? Owner { get; set; }
@@ -573,6 +577,7 @@ namespace WebApp.Models.DatabaseModels.Phase4
     public class RecordExperimentRunRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
         public decimal ActualSpend { get; set; }
         public string ActualEffort { get; set; } = string.Empty;
         public string Observations { get; set; } = string.Empty;
@@ -581,3 +586,4 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public string? StatusUpdate { get; set; } // e.g. "Completed", "Active"
     }
 }
+

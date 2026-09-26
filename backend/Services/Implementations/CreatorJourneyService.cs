@@ -320,6 +320,10 @@ namespace WebApp.Services.Implementations
             if (http != null)
             {
                 var submittedIdeaId = http.Request.Query["ideaId"].ToString();
+                if (string.IsNullOrWhiteSpace(submittedIdeaId) && http.Items.TryGetValue("CreatorIdeaId", out var itemIdeaId) && itemIdeaId is string sid && !string.IsNullOrWhiteSpace(sid))
+                {
+                    submittedIdeaId = sid;
+                }
                 if (string.IsNullOrWhiteSpace(submittedIdeaId))
                     throw new CreatorJourneyException(400, "ideaId is required for Creator changes.");
                 if (!string.Equals(submittedIdeaId, idea.Id, StringComparison.Ordinal))
