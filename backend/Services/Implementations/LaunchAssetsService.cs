@@ -281,9 +281,12 @@ namespace WebApp.Services.Implementations
             var journey = await _journeys.GetOrCreateComposedAsync(userId, request.IdeaId);
             var existing = journey.Phase4Data?.LaunchAssets ?? new LaunchAssetsPlan();
 
-            if (!string.IsNullOrWhiteSpace(request.Headline)) existing.Headline = request.Headline;
-            if (!string.IsNullOrWhiteSpace(request.Description)) existing.Description = request.Description;
-            if (!string.IsNullOrWhiteSpace(request.ButtonLabel)) existing.ButtonLabel = request.ButtonLabel;
+            if (!string.IsNullOrWhiteSpace(request.ActiveSectionKey)) existing.ActiveSectionKey = request.ActiveSectionKey;
+
+            // Section A: Hero
+            if (request.Headline != null) existing.Headline = request.Headline;
+            if (request.Description != null) existing.Description = request.Description;
+            if (request.ButtonLabel != null) existing.ButtonLabel = request.ButtonLabel;
             if (!string.IsNullOrWhiteSpace(request.ButtonDestinationType))
             {
                 existing.ButtonDestinationType = request.ButtonDestinationType;
@@ -294,7 +297,36 @@ namespace WebApp.Services.Implementations
                 existing.ButtonDestinationValue = request.ButtonDestinationValue;
                 existing.ButtonDestinationConfigured = existing.ButtonDestinationType != "NotSet" && !string.IsNullOrWhiteSpace(request.ButtonDestinationValue);
             }
-            if (!string.IsNullOrWhiteSpace(request.ActiveSectionKey)) existing.ActiveSectionKey = request.ActiveSectionKey;
+
+            // Section B: Problem
+            if (request.ProblemEyebrow != null) existing.ProblemEyebrow = request.ProblemEyebrow;
+            if (request.ProblemStatement != null) existing.ProblemStatement = request.ProblemStatement;
+            if (request.OperationalMomentumStatement != null) existing.OperationalMomentumStatement = request.OperationalMomentumStatement;
+
+            // Section C: Planned Solution
+            if (request.SolutionHeader != null) existing.SolutionHeader = request.SolutionHeader;
+            if (request.SolutionSubheader != null) existing.SolutionSubheader = request.SolutionSubheader;
+            if (request.PlannedSolutions != null && request.PlannedSolutions.Count > 0) existing.PlannedSolutions = request.PlannedSolutions;
+
+            // Section D: How It Works
+            if (request.HowItWorksHeader != null) existing.HowItWorksHeader = request.HowItWorksHeader;
+            if (request.HowItWorksSubheader != null) existing.HowItWorksSubheader = request.HowItWorksSubheader;
+            if (request.WorkflowDetails != null && request.WorkflowDetails.Count > 0) existing.WorkflowDetails = request.WorkflowDetails;
+
+            // Section E: FAQ
+            if (request.FaqHeader != null) existing.FaqHeader = request.FaqHeader;
+            if (request.FaqSubheader != null) existing.FaqSubheader = request.FaqSubheader;
+            if (request.Faqs != null && request.Faqs.Count > 0) existing.Faqs = request.Faqs;
+
+            // Section F: Final CTA
+            if (request.FinalCtaHeader != null) existing.FinalCtaHeader = request.FinalCtaHeader;
+            if (request.FinalCtaSubheader != null) existing.FinalCtaSubheader = request.FinalCtaSubheader;
+
+            // Section G: Footer
+            if (request.BrandName != null) existing.BrandName = request.BrandName;
+            if (request.FooterNotice != null) existing.FooterNotice = request.FooterNotice;
+
+            // Sections list (including/excluding sections)
             if (request.Sections != null && request.Sections.Count > 0)
             {
                 existing.Sections = request.Sections;

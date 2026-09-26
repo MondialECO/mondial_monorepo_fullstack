@@ -126,12 +126,43 @@ export interface LaunchAssetsResponse {
 export interface UpdateLaunchAssetsRequest {
   ideaId?: string;
   expectedVersion?: number;
+  activeSectionKey?: string;
+
+  // Section A: Hero
   headline?: string;
   description?: string;
   buttonLabel?: string;
   buttonDestinationType?: 'Email' | 'Link' | 'NotSet' | string;
   buttonDestinationValue?: string;
-  activeSectionKey?: string;
+
+  // Section B: Problem
+  problemEyebrow?: string;
+  problemStatement?: string;
+  operationalMomentumStatement?: string;
+
+  // Section C: Planned Solution
+  solutionHeader?: string;
+  solutionSubheader?: string;
+  plannedSolutions?: LaunchSolutionCard[];
+
+  // Section D: How It Works
+  howItWorksHeader?: string;
+  howItWorksSubheader?: string;
+  workflowDetails?: LaunchWorkflowDetailedItem[];
+
+  // Section E: FAQ
+  faqHeader?: string;
+  faqSubheader?: string;
+  faqs?: LaunchFaqItem[];
+
+  // Section F: Final CTA
+  finalCtaHeader?: string;
+  finalCtaSubheader?: string;
+
+  // Section G: Footer
+  brandName?: string;
+  footerNotice?: string;
+
   sections?: LaunchAssetSection[];
 }
 

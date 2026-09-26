@@ -158,12 +158,43 @@ namespace WebApp.Models.DatabaseModels.Phase4
     {
         public string? IdeaId { get; set; }
         public long? ExpectedVersion { get; set; }
+        public string? ActiveSectionKey { get; set; }
+
+        // Section A: Hero
         public string? Headline { get; set; }
         public string? Description { get; set; }
         public string? ButtonLabel { get; set; }
         public string? ButtonDestinationType { get; set; }
         public string? ButtonDestinationValue { get; set; }
-        public string? ActiveSectionKey { get; set; }
+
+        // Section B: Problem
+        public string? ProblemEyebrow { get; set; }
+        public string? ProblemStatement { get; set; }
+        public string? OperationalMomentumStatement { get; set; }
+
+        // Section C: Planned Solution
+        public string? SolutionHeader { get; set; }
+        public string? SolutionSubheader { get; set; }
+        public List<LaunchSolutionCard>? PlannedSolutions { get; set; }
+
+        // Section D: How It Works
+        public string? HowItWorksHeader { get; set; }
+        public string? HowItWorksSubheader { get; set; }
+        public List<LaunchWorkflowDetailedItem>? WorkflowDetails { get; set; }
+
+        // Section E: FAQ
+        public string? FaqHeader { get; set; }
+        public string? FaqSubheader { get; set; }
+        public List<LaunchFaqItem>? Faqs { get; set; }
+
+        // Section F: Final CTA
+        public string? FinalCtaHeader { get; set; }
+        public string? FinalCtaSubheader { get; set; }
+
+        // Section G: Footer
+        public string? BrandName { get; set; }
+        public string? FooterNotice { get; set; }
+
         public List<LaunchAssetSection>? Sections { get; set; }
     }
 

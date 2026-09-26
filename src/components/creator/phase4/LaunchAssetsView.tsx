@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -32,10 +32,16 @@ import {
   ShieldCheck,
   Eye,
   Info,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import type {
   LaunchAssetsPlan,
   LaunchAssetSection,
+  LaunchWorkflowStep,
+  LaunchSolutionCard,
+  LaunchWorkflowDetailedItem,
+  LaunchFaqItem,
   UpdateLaunchAssetsRequest,
 } from '@/types/creator/launch-assets';
 
@@ -74,7 +80,7 @@ export function LaunchAssetsView({
   // Active section selected in editor
   const [selectedSectionKey, setSelectedSectionKey] = useState<string>('hero');
 
-  // Form edit states
+  // Section A: Hero state
   const [headline, setHeadline] = useState(assets?.headline || 'A clearer way to manage enquiries and quotations.');
   const [description, setDescription] = useState(
     assets?.description ||
@@ -85,6 +91,69 @@ export function LaunchAssetsView({
     assets?.buttonDestinationType === 'Link' ? 'Link' : 'Email'
   );
   const [destValue, setDestValue] = useState(assets?.buttonDestinationValue || '');
+
+  // Section B: Problem state
+  const [problemEyebrow, setProblemEyebrow] = useState(assets?.problemEyebrow || 'KEEP TRACK OF THE NEXT STEP');
+  const [problemStatement, setProblemStatement] = useState(
+    assets?.problemStatement ||
+      'When enquiries and quotations are spread across different places, it can be harder to see what needs a reply or follow-up.'
+  );
+  const [operationalMomentumStatement, setOperationalMomentumStatement] = useState(
+    assets?.operationalMomentumStatement ||
+      `${assets?.brandName || projectName} focuses squarely on maintaining single-view operational momentum for solo consultants and niche service providers.`
+  );
+
+  // Section C: Solution state
+  const [solutionHeader, setSolutionHeader] = useState(assets?.solutionHeader || 'What’s being planned');
+  const [solutionSubheader, setSolutionSubheader] = useState(
+    assets?.solutionSubheader || 'Straightforward tools designed strictly around routine project administration.'
+  );
+  const [plannedSolutions, setPlannedSolutions] = useState<LaunchSolutionCard[]>(
+    assets?.plannedSolutions || [
+      { title: 'Enquiries together', description: 'A clearer place to organise incoming customer requests.', icon: 'mail' },
+      { title: 'Quotations in view', description: 'A way to keep track of quotations and their next steps.', icon: 'file-text' },
+      { title: 'Follow-ups to remember', description: 'A way to see which conversations need attention.', icon: 'bell' },
+    ]
+  );
+
+  // Section D: How It Works state
+  const [howItWorksHeader, setHowItWorksHeader] = useState(assets?.howItWorksHeader || 'A simpler flow for your work');
+  const [howItWorksSubheader, setHowItWorksSubheader] = useState(
+    assets?.howItWorksSubheader || 'This describes the planned workflow.'
+  );
+  const [workflowDetails, setWorkflowDetails] = useState<LaunchWorkflowDetailedItem[]>(
+    assets?.workflowDetails || [
+      { stepNumber: 1, title: 'Organise the enquiry', description: 'Collect client briefs, deadlines, and key requirements without sorting through scattered inbox threads.' },
+      { stepNumber: 2, title: 'Prepare and track the quotation', description: 'Generate clean, professional estimates linked directly to the original client request.' },
+      { stepNumber: 3, title: 'Follow up on the next action', description: 'Receive clear prompts when responses are due, making timely follow-through second nature.' },
+    ]
+  );
+
+  // Section E: FAQ state
+  const [faqHeader, setFaqHeader] = useState(assets?.faqHeader || 'Frequently Asked Questions');
+  const [faqSubheader, setFaqSubheader] = useState(
+    assets?.faqSubheader || 'Honest answers about development status and availability.'
+  );
+  const [faqs, setFaqs] = useState<LaunchFaqItem[]>(
+    assets?.faqs || [
+      { question: `Can I use ${assets?.brandName || projectName} today?`, answer: 'The product is currently in preparation.' },
+      { question: 'Who is it being designed for?', answer: 'Independent service businesses that manage customer enquiries and quotations.' },
+      { question: 'When will it launch?', answer: 'A launch date has not been confirmed.' },
+    ]
+  );
+
+  // Section F: Final CTA state
+  const [finalCtaHeader, setFinalCtaHeader] = useState(assets?.finalCtaHeader || 'Share how you work today');
+  const [finalCtaSubheader, setFinalCtaSubheader] = useState(
+    assets?.finalCtaSubheader || `Your experience can help shape what ${assets?.brandName || projectName} focuses on.`
+  );
+
+  // Section G: Footer state
+  const [brandName, setBrandName] = useState(assets?.brandName || projectName);
+  const [footerNotice, setFooterNotice] = useState(assets?.footerNotice || 'Project in preparation');
+
+  // Sections inclusion list
+  const [sectionsList, setSectionsList] = useState<LaunchAssetSection[]>(assets?.sections || []);
 
   // Live save / feedback state
   const [isApplying, setIsApplying] = useState(false);
@@ -98,27 +167,76 @@ export function LaunchAssetsView({
   // Suggest wording modal / dropdown
   const [isSuggestWordingOpen, setIsSuggestWordingOpen] = useState(false);
 
-  // Synchronize initial state when assets update
-  React.useEffect(() => {
+  // Synchronize initial state when assets update from server
+  useEffect(() => {
     if (assets) {
       setHeadline(assets.headline || '');
       setDescription(assets.description || '');
       setButtonLabel(assets.buttonLabel || 'Express interest');
       setDestType(assets.buttonDestinationType === 'Link' ? 'Link' : 'Email');
       setDestValue(assets.buttonDestinationValue || '');
+
+      setProblemEyebrow(assets.problemEyebrow || 'KEEP TRACK OF THE NEXT STEP');
+      setProblemStatement(assets.problemStatement || '');
+      setOperationalMomentumStatement(assets.operationalMomentumStatement || '');
+
+      setSolutionHeader(assets.solutionHeader || 'What’s being planned');
+      setSolutionSubheader(assets.solutionSubheader || '');
+      if (assets.plannedSolutions && assets.plannedSolutions.length > 0) {
+        setPlannedSolutions(assets.plannedSolutions);
+      }
+
+      setHowItWorksHeader(assets.howItWorksHeader || 'A simpler flow for your work');
+      setHowItWorksSubheader(assets.howItWorksSubheader || '');
+      if (assets.workflowDetails && assets.workflowDetails.length > 0) {
+        setWorkflowDetails(assets.workflowDetails);
+      }
+
+      setFaqHeader(assets.faqHeader || 'Frequently Asked Questions');
+      setFaqSubheader(assets.faqSubheader || '');
+      if (assets.faqs && assets.faqs.length > 0) {
+        setFaqs(assets.faqs);
+      }
+
+      setFinalCtaHeader(assets.finalCtaHeader || 'Share how you work today');
+      setFinalCtaSubheader(assets.finalCtaSubheader || '');
+
+      setBrandName(assets.brandName || projectName);
+      setFooterNotice(assets.footerNotice || 'Project in preparation');
+
+      if (assets.sections && assets.sections.length > 0) {
+        setSectionsList(assets.sections);
+      }
     }
-  }, [assets]);
+  }, [assets, projectName]);
 
   const handleApplyChanges = async () => {
     try {
       setIsApplying(true);
       await onUpdateAssets({
+        activeSectionKey: selectedSectionKey,
         headline,
         description,
         buttonLabel,
         buttonDestinationType: destValue.trim() ? destType : 'NotSet',
         buttonDestinationValue: destValue.trim(),
-        activeSectionKey: selectedSectionKey,
+        problemEyebrow,
+        problemStatement,
+        operationalMomentumStatement,
+        solutionHeader,
+        solutionSubheader,
+        plannedSolutions,
+        howItWorksHeader,
+        howItWorksSubheader,
+        workflowDetails,
+        faqHeader,
+        faqSubheader,
+        faqs,
+        finalCtaHeader,
+        finalCtaSubheader,
+        brandName,
+        footerNotice,
+        sections: sectionsList,
       });
       setAppliedSuccess(true);
       setTimeout(() => setAppliedSuccess(false), 3000);
@@ -140,14 +258,30 @@ export function LaunchAssetsView({
 
   const handleSelectSectionToEdit = (key: string) => {
     setSelectedSectionKey(key);
-    // Scroll smoothly to editor
     const editorElem = document.getElementById('simple-content-editor');
     if (editorElem) {
       editorElem.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
+  const handleToggleSectionInclusion = (key: string) => {
+    setSectionsList((prev) =>
+      prev.map((s) => {
+        if (s.key === key && !s.isRequired) {
+          const nextIncluded = !s.isIncluded;
+          return {
+            ...s,
+            isIncluded: nextIncluded,
+            statusBadge: nextIncluded ? 'Included' : 'Excluded',
+          };
+        }
+        return s;
+      })
+    );
+  };
+
   const handleScrollToDestination = () => {
+    setSelectedSectionKey('hero');
     const destInput = document.getElementById('button-destination-input');
     if (destInput) {
       destInput.scrollIntoView({ behavior: 'smooth' });
@@ -155,7 +289,7 @@ export function LaunchAssetsView({
     }
   };
 
-  // AI copy suggestion suggestions
+  // AI copy suggestion suggestions for Hero
   const wordingSuggestions = [
     {
       label: 'Focus on Solo Practitioners',
@@ -215,8 +349,26 @@ export function LaunchAssetsView({
   }
 
   const isDestinationConfigured = Boolean(
-    assets.buttonDestinationConfigured || (assets.buttonDestinationValue && assets.buttonDestinationValue.trim() !== '')
+    destValue && destValue.trim() !== ''
   );
+
+  const isSectionIncluded = (key: string) => {
+    const sec = sectionsList.find((s) => s.key === key);
+    return sec ? sec.isIncluded : true;
+  };
+
+  const sectionsNavTabs = [
+    { key: 'hero', label: 'Hero', required: true },
+    { key: 'problem', label: 'Problem', required: false },
+    { key: 'solution', label: 'Solution', required: false },
+    { key: 'how-it-works', label: 'How It Works', required: false },
+    { key: 'faq', label: 'FAQ', required: false },
+    { key: 'final-cta', label: 'Final CTA', required: false },
+    { key: 'footer', label: 'Footer', required: true },
+  ];
+
+  const includedCount = sectionsList.filter((s) => s.isIncluded).length || 7;
+  const excludedCount = (sectionsList.length || 7) - includedCount + 2; // + 2 for pricing and proof
 
   return (
     <div className="max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 pb-24">
@@ -228,7 +380,7 @@ export function LaunchAssetsView({
           <div className="space-y-2 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="text-xl font-heading font-bold text-foreground">
-                {assets.brandName || projectName}
+                {brandName || projectName}
               </span>
               <span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-wider">
                 / {assets.assetType || 'ONE-PAGE WEBSITE'}
@@ -338,7 +490,7 @@ export function LaunchAssetsView({
                   Add a destination for your main button
                 </h3>
                 <p className="text-xs font-sans text-muted-foreground leading-relaxed">
-                  ‘{assets.buttonLabel || 'Express interest'}’ needs a confirmed email address or existing link before visitors can interact.
+                  ‘{buttonLabel || 'Express interest'}’ needs a confirmed email address or existing link before visitors can interact.
                 </p>
               </div>
             </div>
@@ -430,7 +582,7 @@ export function LaunchAssetsView({
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
                 </div>
                 <div className="bg-background/80 border border-border/80 px-4 py-0.5 rounded-md font-mono text-[11px] text-muted-foreground/90">
-                  preview.{assets.brandName?.toLowerCase() || 'clairdesk'}.mondial.eco
+                  preview.{brandName?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'clairdesk'}.mondial.eco
                 </div>
                 <div className="w-10" />
               </div>
@@ -446,136 +598,137 @@ export function LaunchAssetsView({
             {/* Inner Website Content */}
             <div className="divide-y divide-border/60 text-foreground font-sans">
               {/* SECTION A: PREVIEW TOP BAR & HERO */}
-              <div className="p-6 sm:p-10 space-y-8">
-                {/* Header */}
-                <div className="flex items-center justify-between gap-4">
-                  <span className="font-heading font-bold text-base sm:text-lg text-foreground">
-                    {assets.brandName || projectName}
-                  </span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-                    In preparation
-                  </span>
-                </div>
-
-                {/* Hero Center */}
-                <div className="text-center max-w-2xl mx-auto space-y-4 pt-4">
-                  <span className="inline-block text-[11px] font-mono uppercase tracking-widest text-primary font-semibold">
-                    {assets.conceptBadge || 'PREVIEWING CONCEPT'}
-                  </span>
-                  <h1 className="text-2xl sm:text-4xl font-heading font-bold text-foreground leading-tight tracking-tight">
-                    {headline}
-                  </h1>
-                  <p className="text-sm sm:text-base font-sans text-muted-foreground leading-relaxed max-w-xl mx-auto">
-                    {description}
-                  </p>
-
-                  {/* Hero CTA & Disabled Link Notice */}
-                  <div className="pt-2 space-y-3">
-                    <div className="inline-flex flex-col sm:flex-row items-center gap-3">
-                      <div className="relative group">
-                        <button
-                          disabled
-                          className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm inline-flex items-center gap-2 cursor-not-allowed opacity-90 shadow-sm"
-                        >
-                          <span>{buttonLabel}</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <span className="inline-flex items-center px-2.5 py-1 rounded text-[11px] font-sans text-amber-500 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20">
-                        Interactive link disabled in preview
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {assets.heroHelpText || 'Help shape the project by sharing how you work today.'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Planned Workflow Visual Container */}
-                <div className="bg-muted/30 border border-border/80 rounded-xl p-5 sm:p-6 space-y-4 mt-8">
-                  <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-3 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-primary" />
-                      <span className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
-                        {assets.plannedWorkflowTitle || 'PLANNED WORKFLOW'}
-                      </span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {assets.plannedWorkflowSubtitle || 'High-level interface structure'}
+              {isSectionIncluded('hero') && (
+                <div className="p-6 sm:p-10 space-y-8">
+                  {/* Header */}
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="font-heading font-bold text-base sm:text-lg text-foreground">
+                      {brandName || projectName}
+                    </span>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                      In preparation
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                    {assets.workflowSteps && assets.workflowSteps.length > 0 ? (
-                      assets.workflowSteps.map((step) => (
-                        <div
-                          key={step.stepNumber}
-                          className="bg-card border border-border rounded-lg p-4 space-y-3 flex flex-col justify-between"
-                        >
-                          <div className="space-y-2">
-                            <div className="w-6 h-6 rounded-full bg-primary/10 text-primary font-mono text-xs font-bold flex items-center justify-center">
-                              {step.stepNumber}
+                  {/* Hero Center */}
+                  <div className="text-center max-w-2xl mx-auto space-y-4 pt-4">
+                    <span className="inline-block text-[11px] font-mono uppercase tracking-widest text-primary font-semibold">
+                      {assets.conceptBadge || 'PREVIEWING CONCEPT'}
+                    </span>
+                    <h1 className="text-2xl sm:text-4xl font-heading font-bold text-foreground leading-tight tracking-tight">
+                      {headline}
+                    </h1>
+                    <p className="text-sm sm:text-base font-sans text-muted-foreground leading-relaxed max-w-xl mx-auto">
+                      {description}
+                    </p>
+
+                    {/* Hero CTA & Disabled Link Notice */}
+                    <div className="pt-2 space-y-3">
+                      <div className="inline-flex flex-col sm:flex-row items-center gap-3">
+                        <div className="relative group">
+                          <button
+                            disabled
+                            className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm inline-flex items-center gap-2 cursor-not-allowed opacity-90 shadow-sm"
+                          >
+                            <span>{buttonLabel}</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <span className="inline-flex items-center px-2.5 py-1 rounded text-[11px] font-sans text-amber-500 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20">
+                          Interactive link disabled in preview
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {assets.heroHelpText || 'Help shape the project by sharing how you work today.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Planned Workflow Visual Container */}
+                  <div className="bg-muted/30 border border-border/80 rounded-xl p-5 sm:p-6 space-y-4 mt-8">
+                    <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-3 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-primary" />
+                        <span className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
+                          {assets.plannedWorkflowTitle || 'PLANNED WORKFLOW'}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {assets.plannedWorkflowSubtitle || 'High-level interface structure'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                      {assets.workflowSteps && assets.workflowSteps.length > 0 ? (
+                        assets.workflowSteps.map((step) => (
+                          <div
+                            key={step.stepNumber}
+                            className="bg-card border border-border rounded-lg p-4 space-y-3 flex flex-col justify-between"
+                          >
+                            <div className="space-y-2">
+                              <div className="w-6 h-6 rounded-full bg-primary/10 text-primary font-mono text-xs font-bold flex items-center justify-center">
+                                {step.stepNumber}
+                              </div>
+                              <h4 className="text-sm font-heading font-semibold text-foreground">{step.title}</h4>
+                              <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
                             </div>
-                            <h4 className="text-sm font-heading font-semibold text-foreground">{step.title}</h4>
-                            <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
+                            <div className="pt-2 border-t border-border/60 flex items-center gap-1.5 text-[11px] font-medium text-primary">
+                              <CheckCircle2 className="w-3 h-3 text-primary" />
+                              <span>{step.tag}</span>
+                            </div>
                           </div>
-                          <div className="pt-2 border-t border-border/60 flex items-center gap-1.5 text-[11px] font-medium text-primary">
-                            <CheckCircle2 className="w-3 h-3 text-primary" />
-                            <span>{step.tag}</span>
+                        ))
+                      ) : (
+                        <>
+                          <div className="bg-card border border-border rounded-lg p-4 space-y-2">
+                            <h4 className="text-sm font-heading font-semibold">1. Enquiry</h4>
+                            <p className="text-xs text-muted-foreground">Capture context and client requirements in one dedicated intake card.</p>
                           </div>
-                        </div>
-                      ))
-                    ) : (
-                      <>
-                        <div className="bg-card border border-border rounded-lg p-4 space-y-2">
-                          <h4 className="text-sm font-heading font-semibold">1. Enquiry</h4>
-                          <p className="text-xs text-muted-foreground">Capture context and client requirements in one dedicated intake card.</p>
-                        </div>
-                        <div className="bg-card border border-border rounded-lg p-4 space-y-2">
-                          <h4 className="text-sm font-heading font-semibold">2. Quotation</h4>
-                          <p className="text-xs text-muted-foreground">Draft estimated scopes and convert directly into clear client proposals.</p>
-                        </div>
-                        <div className="bg-card border border-border rounded-lg p-4 space-y-2">
-                          <h4 className="text-sm font-heading font-semibold">3. Follow-up</h4>
-                          <p className="text-xs text-muted-foreground">Clear reminders and stage updates so no client is left waiting.</p>
-                        </div>
-                      </>
-                    )}
+                          <div className="bg-card border border-border rounded-lg p-4 space-y-2">
+                            <h4 className="text-sm font-heading font-semibold">2. Quotation</h4>
+                            <p className="text-xs text-muted-foreground">Draft estimated scopes and convert directly into clear client proposals.</p>
+                          </div>
+                          <div className="bg-card border border-border rounded-lg p-4 space-y-2">
+                            <h4 className="text-sm font-heading font-semibold">3. Follow-up</h4>
+                            <p className="text-xs text-muted-foreground">Clear reminders and stage updates so no client is left waiting.</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* SECTION B: PROBLEM STATEMENT */}
-              <div className="p-6 sm:p-10 space-y-4 bg-muted/10">
-                <span className="text-[11px] font-mono uppercase tracking-widest text-primary font-semibold">
-                  {assets.problemEyebrow || 'KEEP TRACK OF THE NEXT STEP'}
-                </span>
-                <h3 className="text-xl sm:text-2xl font-heading font-semibold text-foreground max-w-2xl leading-snug">
-                  {assets.problemStatement ||
-                    'When enquiries and quotations are spread across different places, it can be harder to see what needs a reply or follow-up.'}
-                </h3>
-                <div className="w-12 h-0.5 bg-primary/40 my-2" />
-                <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
-                  {assets.operationalMomentumStatement ||
-                    `${assets.brandName} focuses squarely on maintaining single-view operational momentum for solo consultants and niche service providers.`}
-                </p>
-              </div>
-
-              {/* SECTION C: PLANNED SOLUTION */}
-              <div className="p-6 sm:p-10 space-y-6">
-                <div className="space-y-1">
-                  <h3 className="text-lg sm:text-xl font-heading font-semibold text-foreground">
-                    {assets.solutionHeader || 'What’s being planned'}
+              {isSectionIncluded('problem') && (
+                <div className="p-6 sm:p-10 space-y-4 bg-muted/10">
+                  <span className="text-[11px] font-mono uppercase tracking-widest text-primary font-semibold">
+                    {problemEyebrow}
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-heading font-semibold text-foreground max-w-2xl leading-snug">
+                    {problemStatement}
                   </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    {assets.solutionSubheader ||
-                      'Straightforward tools designed strictly around routine project administration.'}
+                  <div className="w-12 h-0.5 bg-primary/40 my-2" />
+                  <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+                    {operationalMomentumStatement}
                   </p>
                 </div>
+              )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {assets.plannedSolutions && assets.plannedSolutions.length > 0 ? (
-                    assets.plannedSolutions.map((sol, idx) => (
+              {/* SECTION C: PLANNED SOLUTION */}
+              {isSectionIncluded('solution') && (
+                <div className="p-6 sm:p-10 space-y-6">
+                  <div className="space-y-1">
+                    <h3 className="text-lg sm:text-xl font-heading font-semibold text-foreground">
+                      {solutionHeader}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      {solutionSubheader}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {plannedSolutions.map((sol, idx) => (
                       <div key={idx} className="bg-card border border-border rounded-xl p-5 space-y-3">
                         <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                           {idx === 0 ? (
@@ -589,27 +742,25 @@ export function LaunchAssetsView({
                         <h4 className="text-sm font-heading font-semibold text-foreground">{sol.title}</h4>
                         <p className="text-xs text-muted-foreground leading-relaxed">{sol.description}</p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-xs text-muted-foreground">Planned solutions list</div>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* SECTION D: HOW IT IS INTENDED TO WORK */}
-              <div className="p-6 sm:p-10 space-y-6 bg-muted/10">
-                <div className="space-y-1">
-                  <h3 className="text-lg sm:text-xl font-heading font-semibold text-foreground">
-                    {assets.howItWorksHeader || 'A simpler flow for your work'}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    {assets.howItWorksSubheader || 'This describes the planned workflow.'}
-                  </p>
-                </div>
+              {isSectionIncluded('how-it-works') && (
+                <div className="p-6 sm:p-10 space-y-6 bg-muted/10">
+                  <div className="space-y-1">
+                    <h3 className="text-lg sm:text-xl font-heading font-semibold text-foreground">
+                      {howItWorksHeader}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      {howItWorksSubheader}
+                    </p>
+                  </div>
 
-                <div className="space-y-3">
-                  {assets.workflowDetails && assets.workflowDetails.length > 0 ? (
-                    assets.workflowDetails.map((item) => (
+                  <div className="space-y-3">
+                    {workflowDetails.map((item) => (
                       <div
                         key={item.stepNumber}
                         className="bg-card border border-border rounded-xl p-4 sm:p-5 flex items-start gap-4"
@@ -622,71 +773,70 @@ export function LaunchAssetsView({
                           <p className="text-xs text-muted-foreground leading-relaxed">{item.description}</p>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-xs text-muted-foreground">Workflow details list</div>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* SECTION E: FAQ */}
-              <div className="p-6 sm:p-10 space-y-6">
-                <div className="space-y-1">
-                  <h3 className="text-lg sm:text-xl font-heading font-semibold text-foreground">
-                    {assets.faqHeader || 'Frequently Asked Questions'}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    {assets.faqSubheader || 'Honest answers about development status and availability.'}
-                  </p>
-                </div>
+              {isSectionIncluded('faq') && (
+                <div className="p-6 sm:p-10 space-y-6">
+                  <div className="space-y-1">
+                    <h3 className="text-lg sm:text-xl font-heading font-semibold text-foreground">
+                      {faqHeader}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      {faqSubheader}
+                    </p>
+                  </div>
 
-                <div className="space-y-3">
-                  {assets.faqs && assets.faqs.length > 0 ? (
-                    assets.faqs.map((faq, idx) => (
+                  <div className="space-y-3">
+                    {faqs.map((faq, idx) => (
                       <div key={idx} className="bg-card border border-border rounded-xl p-4 sm:p-5 space-y-1.5">
                         <h4 className="text-sm font-heading font-semibold text-foreground">{faq.question}</h4>
                         <p className="text-xs text-muted-foreground leading-relaxed">{faq.answer}</p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-xs text-muted-foreground">FAQ items</div>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* SECTION F: FINAL CALL TO ACTION */}
-              <div className="p-8 sm:p-12 text-center space-y-4 bg-muted/20">
-                <h3 className="text-xl sm:text-2xl font-heading font-bold text-foreground">
-                  {assets.finalCtaHeader || 'Share how you work today'}
-                </h3>
-                <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
-                  {assets.finalCtaSubheader ||
-                    `Your experience can help shape what ${assets.brandName || projectName} focuses on.`}
-                </p>
-                <div className="pt-2">
-                  <button
-                    disabled
-                    className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm inline-flex items-center gap-2 cursor-not-allowed opacity-90 shadow-sm"
-                  >
-                    <span>{buttonLabel}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  {!isDestinationConfigured && (
-                    <p className="text-[11px] text-amber-500 dark:text-amber-400 mt-2 flex items-center justify-center gap-1">
-                      <AlertTriangle className="w-3 h-3" />
-                      Button requires destination configuration
-                    </p>
-                  )}
+              {isSectionIncluded('final-cta') && (
+                <div className="p-8 sm:p-12 text-center space-y-4 bg-muted/20">
+                  <h3 className="text-xl sm:text-2xl font-heading font-bold text-foreground">
+                    {finalCtaHeader}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
+                    {finalCtaSubheader}
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      disabled
+                      className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm inline-flex items-center gap-2 cursor-not-allowed opacity-90 shadow-sm"
+                    >
+                      <span>{buttonLabel}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    {!isDestinationConfigured && (
+                      <p className="text-[11px] text-amber-500 dark:text-amber-400 mt-2 flex items-center justify-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Button requires destination configuration
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* SECTION G: FOOTER (INSIDE PREVIEW) */}
-              <div className="p-6 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                <span className="font-heading font-semibold text-foreground">
-                  {assets.brandName || projectName}
-                </span>
-                <span>{assets.footerNotice || 'Project in preparation'}</span>
-              </div>
+              {isSectionIncluded('footer') && (
+                <div className="p-6 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="font-heading font-semibold text-foreground">
+                    {brandName || projectName}
+                  </span>
+                  <span>{footerNotice}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -702,117 +852,470 @@ export function LaunchAssetsView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div className="space-y-1">
             <h2 className="text-base font-heading font-semibold text-foreground">Edit content</h2>
-            <p className="text-xs font-sans text-muted-foreground">Change the wording without starting again.</p>
+            <p className="text-xs font-sans text-muted-foreground">
+              Change the wording without starting again. Choose a section below to customize.
+            </p>
           </div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-muted/60 border border-border text-xs text-foreground font-sans">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 border border-primary/20 text-xs text-primary font-medium">
             <Edit3 className="w-3.5 h-3.5 text-primary" />
-            <span>Section: Hero (Headline, Description, Button)</span>
+            <span>
+              Section:{' '}
+              {selectedSectionKey === 'hero'
+                ? 'Hero (Headline, Description, Button)'
+                : selectedSectionKey === 'problem'
+                ? 'Problem Statement'
+                : selectedSectionKey === 'solution'
+                ? 'Planned Solution'
+                : selectedSectionKey === 'how-it-works'
+                ? 'How It Works'
+                : selectedSectionKey === 'faq'
+                ? 'FAQ'
+                : selectedSectionKey === 'final-cta'
+                ? 'Final Call to Action'
+                : 'Footer'}
+            </span>
           </div>
         </div>
 
-        {/* Editing Form Elements */}
+        {/* Section Selector Tab Pills */}
+        <div className="flex flex-wrap gap-1.5 p-1 bg-muted/40 rounded-xl border border-border text-xs">
+          {sectionsNavTabs.map((tab) => {
+            const isCurrent = selectedSectionKey === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setSelectedSectionKey(tab.key)}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+                  isCurrent
+                    ? 'bg-background text-foreground shadow-xs border border-border/80'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Dynamic Editing Form Elements for selected section */}
         <div className="space-y-5">
-          {/* Headline */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-              HEADLINE
-            </label>
-            <input
-              type="text"
-              value={headline}
-              onChange={(e) => setHeadline(e.target.value)}
-              className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-              placeholder="Enter headline..."
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-              DESCRIPTION
-            </label>
-            <textarea
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans resize-y"
-              placeholder="Enter project description..."
-            />
-          </div>
-
-          {/* 2-Column Row: Button Label + Button Destination */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Button Label */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                BUTTON LABEL
-              </label>
-              <input
-                type="text"
-                value={buttonLabel}
-                onChange={(e) => setButtonLabel(e.target.value)}
-                className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                placeholder="Express interest"
-              />
-            </div>
-
-            {/* Button Destination */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
+          {/* SECTION: HERO */}
+          {selectedSectionKey === 'hero' && (
+            <>
+              {/* Headline */}
+              <div className="space-y-1.5">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  BUTTON DESTINATION
+                  HEADLINE
                 </label>
-                {destValue.trim() ? (
-                  <span className="text-[11px] font-sans font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    Configured
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-sans font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                    Not set
-                  </span>
-                )}
-              </div>
-
-              <div className="bg-muted/30 border border-border rounded-lg p-3 space-y-3">
-                {/* Radio Selector */}
-                <div className="flex items-center gap-4 text-xs">
-                  <label className="inline-flex items-center gap-2 cursor-pointer text-foreground">
-                    <input
-                      type="radio"
-                      name="destType"
-                      checked={destType === 'Email'}
-                      onChange={() => setDestType('Email')}
-                      className="text-primary focus:ring-primary"
-                    />
-                    <span>Email address</span>
-                  </label>
-                  <label className="inline-flex items-center gap-2 cursor-pointer text-foreground">
-                    <input
-                      type="radio"
-                      name="destType"
-                      checked={destType === 'Link'}
-                      onChange={() => setDestType('Link')}
-                      className="text-primary focus:ring-primary"
-                    />
-                    <span>Existing link</span>
-                  </label>
-                </div>
-
-                <p className="text-[11px] text-muted-foreground">
-                  Choose where visitors should go when they click.
-                </p>
-
                 <input
-                  id="button-destination-input"
                   type="text"
-                  value={destValue}
-                  onChange={(e) => setDestValue(e.target.value)}
-                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
-                  placeholder={destType === 'Email' ? 'e.g. hello@clairdesk.com' : 'e.g. https://tally.so/r/your-form'}
+                  value={headline}
+                  onChange={(e) => setHeadline(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                  placeholder="Enter headline..."
                 />
               </div>
-            </div>
-          </div>
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                  DESCRIPTION
+                </label>
+                <textarea
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans resize-y"
+                  placeholder="Enter project description..."
+                />
+              </div>
+
+              {/* 2-Column Row: Button Label + Button Destination */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Button Label */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                    BUTTON LABEL
+                  </label>
+                  <input
+                    type="text"
+                    value={buttonLabel}
+                    onChange={(e) => setButtonLabel(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                    placeholder="Express interest"
+                  />
+                </div>
+
+                {/* Button Destination */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                      BUTTON DESTINATION
+                    </label>
+                    {destValue.trim() ? (
+                      <span className="text-[11px] font-sans font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                        Configured
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-sans font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                        Not set
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="bg-muted/30 border border-border rounded-lg p-3 space-y-3">
+                    {/* Radio Selector */}
+                    <div className="flex items-center gap-4 text-xs">
+                      <label className="inline-flex items-center gap-2 cursor-pointer text-foreground">
+                        <input
+                          type="radio"
+                          name="destType"
+                          checked={destType === 'Email'}
+                          onChange={() => setDestType('Email')}
+                          className="text-primary focus:ring-primary"
+                        />
+                        <span>Email address</span>
+                      </label>
+                      <label className="inline-flex items-center gap-2 cursor-pointer text-foreground">
+                        <input
+                          type="radio"
+                          name="destType"
+                          checked={destType === 'Link'}
+                          onChange={() => setDestType('Link')}
+                          className="text-primary focus:ring-primary"
+                        />
+                        <span>Existing link</span>
+                      </label>
+                    </div>
+
+                    <p className="text-[11px] text-muted-foreground">
+                      Choose where visitors should go when they click.
+                    </p>
+
+                    <input
+                      id="button-destination-input"
+                      type="text"
+                      value={destValue}
+                      onChange={(e) => setDestValue(e.target.value)}
+                      className="w-full bg-background border border-border rounded-md px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                      placeholder={destType === 'Email' ? 'e.g. hello@clairdesk.com' : 'e.g. https://tally.so/r/your-form'}
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* SECTION: PROBLEM */}
+          {selectedSectionKey === 'problem' && (
+            <>
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                  PROBLEM EYEBROW
+                </label>
+                <input
+                  type="text"
+                  value={problemEyebrow}
+                  onChange={(e) => setProblemEyebrow(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                  placeholder="KEEP TRACK OF THE NEXT STEP"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                  PROBLEM STATEMENT
+                </label>
+                <textarea
+                  rows={3}
+                  value={problemStatement}
+                  onChange={(e) => setProblemStatement(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans resize-y"
+                  placeholder="Describe the primary friction..."
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                  OPERATIONAL MOMENTUM STATEMENT
+                </label>
+                <textarea
+                  rows={2}
+                  value={operationalMomentumStatement}
+                  onChange={(e) => setOperationalMomentumStatement(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans resize-y"
+                  placeholder="How your product maintains momentum..."
+                />
+              </div>
+            </>
+          )}
+
+          {/* SECTION: SOLUTION */}
+          {selectedSectionKey === 'solution' && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                    SOLUTION HEADER
+                  </label>
+                  <input
+                    type="text"
+                    value={solutionHeader}
+                    onChange={(e) => setSolutionHeader(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                    placeholder="What’s being planned"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                    SOLUTION SUBHEADER
+                  </label>
+                  <input
+                    type="text"
+                    value={solutionSubheader}
+                    onChange={(e) => setSolutionSubheader(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                    placeholder="Short summary of planned tools..."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                  SOLUTION CARDS (3 ITEMS)
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {plannedSolutions.map((sol, index) => (
+                    <div key={index} className="bg-muted/30 border border-border rounded-lg p-3 space-y-2">
+                      <input
+                        type="text"
+                        value={sol.title}
+                        onChange={(e) => {
+                          const updated = [...plannedSolutions];
+                          updated[index] = { ...updated[index], title: e.target.value };
+                          setPlannedSolutions(updated);
+                        }}
+                        className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs font-semibold text-foreground"
+                        placeholder="Card title"
+                      />
+                      <textarea
+                        rows={2}
+                        value={sol.description}
+                        onChange={(e) => {
+                          const updated = [...plannedSolutions];
+                          updated[index] = { ...updated[index], description: e.target.value };
+                          setPlannedSolutions(updated);
+                        }}
+                        className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-muted-foreground"
+                        placeholder="Card description"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* SECTION: HOW IT WORKS */}
+          {selectedSectionKey === 'how-it-works' && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                    HEADER
+                  </label>
+                  <input
+                    type="text"
+                    value={howItWorksHeader}
+                    onChange={(e) => setHowItWorksHeader(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                    placeholder="A simpler flow for your work"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                    SUBHEADER
+                  </label>
+                  <input
+                    type="text"
+                    value={howItWorksSubheader}
+                    onChange={(e) => setHowItWorksSubheader(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                    placeholder="This describes the planned workflow."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                  WORKFLOW STEPS
+                </label>
+                <div className="space-y-2">
+                  {workflowDetails.map((item, index) => (
+                    <div key={index} className="bg-muted/30 border border-border rounded-lg p-3 flex gap-3 items-start">
+                      <span className="w-6 h-6 rounded-full bg-primary/10 text-primary font-mono text-xs font-bold flex items-center justify-center shrink-0 mt-1">
+                        {item.stepNumber}
+                      </span>
+                      <div className="flex-1 space-y-1.5">
+                        <input
+                          type="text"
+                          value={item.title}
+                          onChange={(e) => {
+                            const updated = [...workflowDetails];
+                            updated[index] = { ...updated[index], title: e.target.value };
+                            setWorkflowDetails(updated);
+                          }}
+                          className="w-full bg-background border border-border rounded px-2.5 py-1 text-xs font-semibold text-foreground"
+                          placeholder="Step title"
+                        />
+                        <textarea
+                          rows={2}
+                          value={item.description}
+                          onChange={(e) => {
+                            const updated = [...workflowDetails];
+                            updated[index] = { ...updated[index], description: e.target.value };
+                            setWorkflowDetails(updated);
+                          }}
+                          className="w-full bg-background border border-border rounded px-2.5 py-1 text-xs text-muted-foreground"
+                          placeholder="Step description"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* SECTION: FAQ */}
+          {selectedSectionKey === 'faq' && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                    FAQ HEADER
+                  </label>
+                  <input
+                    type="text"
+                    value={faqHeader}
+                    onChange={(e) => setFaqHeader(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                    placeholder="Frequently Asked Questions"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                    FAQ SUBHEADER
+                  </label>
+                  <input
+                    type="text"
+                    value={faqSubheader}
+                    onChange={(e) => setFaqSubheader(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                    placeholder="Honest answers about development status..."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                  FAQ QUESTIONS & ANSWERS
+                </label>
+                <div className="space-y-3">
+                  {faqs.map((faq, index) => (
+                    <div key={index} className="bg-muted/30 border border-border rounded-lg p-3 space-y-2">
+                      <input
+                        type="text"
+                        value={faq.question}
+                        onChange={(e) => {
+                          const updated = [...faqs];
+                          updated[index] = { ...updated[index], question: e.target.value };
+                          setFaqs(updated);
+                        }}
+                        className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs font-semibold text-foreground"
+                        placeholder="Question"
+                      />
+                      <textarea
+                        rows={2}
+                        value={faq.answer}
+                        onChange={(e) => {
+                          const updated = [...faqs];
+                          updated[index] = { ...updated[index], answer: e.target.value };
+                          setFaqs(updated);
+                        }}
+                        className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-muted-foreground"
+                        placeholder="Answer"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* SECTION: FINAL CTA */}
+          {selectedSectionKey === 'final-cta' && (
+            <>
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                  FINAL CTA HEADER
+                </label>
+                <input
+                  type="text"
+                  value={finalCtaHeader}
+                  onChange={(e) => setFinalCtaHeader(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                  placeholder="Share how you work today"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                  FINAL CTA SUBHEADER
+                </label>
+                <textarea
+                  rows={2}
+                  value={finalCtaSubheader}
+                  onChange={(e) => setFinalCtaSubheader(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans resize-y"
+                  placeholder="Your experience can help shape..."
+                />
+              </div>
+            </>
+          )}
+
+          {/* SECTION: FOOTER */}
+          {selectedSectionKey === 'footer' && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                    BRAND NAME
+                  </label>
+                  <input
+                    type="text"
+                    value={brandName}
+                    onChange={(e) => setBrandName(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                    placeholder="ClairDesk"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+                    FOOTER NOTICE
+                  </label>
+                  <input
+                    type="text"
+                    value={footerNotice}
+                    onChange={(e) => setFooterNotice(e.target.value)}
+                    className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+                    placeholder="Project in preparation"
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Form Action Controls */}
@@ -821,7 +1324,7 @@ export function LaunchAssetsView({
             <button
               onClick={handleApplyChanges}
               disabled={isApplying}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
             >
               {appliedSuccess ? (
                 <>
@@ -837,17 +1340,19 @@ export function LaunchAssetsView({
             </button>
           </div>
 
-          <button
-            onClick={() => setIsSuggestWordingOpen(!isSuggestWordingOpen)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span>Suggest new wording</span>
-          </button>
+          {selectedSectionKey === 'hero' && (
+            <button
+              onClick={() => setIsSuggestWordingOpen(!isSuggestWordingOpen)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <span>Suggest new wording</span>
+            </button>
+          )}
         </div>
 
-        {/* AI Wording Suggestion Box */}
-        {isSuggestWordingOpen && (
+        {/* AI Wording Suggestion Box (for Hero) */}
+        {isSuggestWordingOpen && selectedSectionKey === 'hero' && (
           <div className="bg-muted/40 border border-primary/20 rounded-xl p-4 space-y-3 mt-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-heading font-semibold text-foreground flex items-center gap-1.5">
@@ -890,36 +1395,76 @@ export function LaunchAssetsView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div className="space-y-1">
             <h2 className="text-base font-heading font-semibold text-foreground">Website sections</h2>
-            <p className="text-xs font-sans text-muted-foreground">Keep the sections that help explain your project.</p>
+            <p className="text-xs font-sans text-muted-foreground">
+              Keep the sections that help explain your project. Click <strong>Edit</strong> to customize any section.
+            </p>
           </div>
           <span className="inline-flex items-center px-3 py-1 rounded-md bg-muted/60 border border-border text-xs font-mono text-muted-foreground">
-            7 Included · 2 Excluded
+            {includedCount} Included · {excludedCount} Excluded
           </span>
         </div>
 
         {/* Included Sections List */}
         <div className="space-y-2">
-          {assets.sections && assets.sections.length > 0 ? (
-            assets.sections.map((sec) => (
-              <div
-                key={sec.key}
-                className="bg-background border border-border rounded-lg px-4 py-3 flex items-center justify-between gap-4"
-              >
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span className="text-sm font-heading font-medium text-foreground">{sec.title}</span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-sans font-medium bg-muted text-muted-foreground border border-border/80">
-                    {sec.statusBadge || 'Included'}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleSelectSectionToEdit(sec.key)}
-                  className="text-xs font-medium text-primary hover:text-primary/80 transition-colors px-2 py-1 rounded hover:bg-muted"
+          {sectionsList && sectionsList.length > 0 ? (
+            sectionsList.map((sec) => {
+              const isActiveInEditor = selectedSectionKey === sec.key;
+              return (
+                <div
+                  key={sec.key}
+                  className={`bg-background border rounded-lg px-4 py-3 flex items-center justify-between gap-4 transition-colors ${
+                    isActiveInEditor ? 'border-primary/60 bg-primary/5' : 'border-border'
+                  }`}
                 >
-                  Edit
-                </button>
-              </div>
-            ))
+                  <div className="flex items-center gap-3">
+                    {sec.isRequired ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSectionInclusion(sec.key)}
+                        title={sec.isIncluded ? 'Click to exclude' : 'Click to include'}
+                        className="cursor-pointer"
+                      >
+                        {sec.isIncluded ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 hover:opacity-80" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border border-muted-foreground/40 shrink-0 hover:border-primary" />
+                        )}
+                      </button>
+                    )}
+                    <span className="text-sm font-heading font-medium text-foreground">{sec.title}</span>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-sans font-medium border ${
+                        sec.isIncluded
+                          ? 'bg-muted text-muted-foreground border-border/80'
+                          : 'bg-muted/40 text-muted-foreground/60 border-border/40'
+                      }`}
+                    >
+                      {sec.isIncluded ? sec.statusBadge || 'Included' : 'Excluded'}
+                    </span>
+                    {isActiveInEditor && (
+                      <span className="text-[11px] font-medium text-primary font-mono">
+                        (Editing now)
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectSectionToEdit(sec.key)}
+                      className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+                        isActiveInEditor
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-primary hover:text-primary/80 hover:bg-muted bg-primary/10'
+                      }`}
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              );
+            })
           ) : (
             <div className="text-xs text-muted-foreground">Sections list</div>
           )}
@@ -1014,7 +1559,7 @@ export function LaunchAssetsView({
             <div className="flex items-center gap-2">
               <Globe className="w-5 h-5 text-primary" />
               <span className="text-sm font-heading font-semibold text-foreground">
-                {assets.brandName || projectName} · Launch Preview
+                {brandName || projectName} · Launch Preview
               </span>
             </div>
             <button
@@ -1045,9 +1590,9 @@ export function LaunchAssetsView({
 
             <div className="border-t border-border pt-8 space-y-4">
               <h3 className="text-lg font-heading font-semibold text-foreground">
-                {assets.problemEyebrow}
+                {problemEyebrow}
               </h3>
-              <p className="text-sm text-muted-foreground">{assets.problemStatement}</p>
+              <p className="text-sm text-muted-foreground">{problemStatement}</p>
             </div>
           </div>
         </div>
