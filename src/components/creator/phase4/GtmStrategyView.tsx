@@ -342,7 +342,9 @@ export function GtmStrategyView({
             {strategy.overallMotion || 'Start with customer conversations'}
           </h2>
           <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
-            Learn how service businesses manage enquiries before introducing your planned solution.
+            {strategy.primarySegment?.problem
+              ? `Learn how target customers currently manage ${strategy.primarySegment.problem.toLowerCase()} before introducing your planned solution.`
+              : `Learn how customers manage enquiries before introducing your planned solution.`}
           </p>
         </div>
 
@@ -374,6 +376,8 @@ export function GtmStrategyView({
               <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-xs font-medium">
                 {strategy.budgetPlan?.totalAvailableBudget
                   ? `€${strategy.budgetPlan.totalAvailableBudget.toLocaleString()}`
+                  : strategy.budgetPlan?.validationStatus === 'Supported'
+                  ? 'Supported'
                   : 'Needs validation'}
               </span>
             </div>
@@ -414,6 +418,7 @@ export function GtmStrategyView({
             <h3 className="text-sm sm:text-base font-semibold text-foreground leading-snug">
               {customGroup ||
                 strategy.primarySegment?.problem ||
+                strategy.primarySegment?.segmentName ||
                 'Independent service businesses in France that manage enquiries and quotations manually.'}
             </h3>
             <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[11px] font-mono font-medium shrink-0">
@@ -462,6 +467,11 @@ export function GtmStrategyView({
                 {strategy.primarySegment?.estimatedSalesCycle ||
                   '1–3 weeks for initial trial conversation and evaluation.'}
               </p>
+              {strategy.primarySegment?.revenueModel && (
+                <p>
+                  <strong>Aligned Revenue Model:</strong> {strategy.primarySegment.revenueModel}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -581,7 +591,9 @@ export function GtmStrategyView({
               WHO DECIDES?
             </span>
             <p className="text-xs text-foreground leading-snug">
-              Likely the business owner. Confirm during conversations.
+              {strategy.primarySegment?.buyingComplexity
+                ? `Likely the ${strategy.primarySegment.buyingComplexity.toLowerCase()}. Confirm during conversations.`
+                : 'Likely the business owner. Confirm during conversations.'}
             </p>
           </div>
 
@@ -590,7 +602,9 @@ export function GtmStrategyView({
               WHAT NEEDS EXPLAINING?
             </span>
             <p className="text-xs text-foreground leading-snug">
-              How enquiries, quotations, and follow-ups would work in {projectName}.
+              {strategy.primarySegment?.problem
+                ? `How ${strategy.primarySegment.problem.toLowerCase()} would be addressed in ${projectName}.`
+                : `How enquiries, quotations, and follow-ups would work in ${projectName}.`}
             </p>
           </div>
 
@@ -599,7 +613,9 @@ export function GtmStrategyView({
               WHAT COULD BUILD TRUST?
             </span>
             <p className="text-xs text-foreground leading-snug">
-              A usable demo and clear answers about setup and business information.
+              {strategy.primarySegment?.primaryMessage
+                ? `A usable demo demonstrating: "${strategy.primarySegment.primaryMessage}".`
+                : 'A usable demo and clear answers about setup and business information.'}
             </p>
           </div>
         </div>
@@ -628,7 +644,7 @@ export function GtmStrategyView({
               €{strategy.primarySegment?.selectedPrice || 15} per business / month
             </strong>
             <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[10px] font-mono font-medium">
-              Not tested
+              {strategy.pricingValidationRequired ? 'Needs validation' : 'From Phase 4.6'}
             </span>
           </div>
           <Link
@@ -742,14 +758,17 @@ export function GtmStrategyView({
                 {strategy.founderExecutionPlan?.weeklyHoursAvailable || 4} hours / week
               </div>
               <p className="text-xs text-muted-foreground">
-                This time also covers your existing roadmap.
+                Allocated to GTM: {strategy.founderExecutionPlan?.weeklyHoursAllocated || 2}h (
+                {strategy.founderExecutionPlan?.remainingWeeklyHours || 2}h remaining for product).
               </p>
             </div>
 
             <div className="space-y-2 pt-2 border-t border-border/50">
               <div className="text-xs text-muted-foreground">
-                Launch time allocation —{' '}
-                <strong className="text-foreground font-medium">To review</strong>
+                Capacity band:{' '}
+                <strong className="text-foreground font-medium">
+                  {strategy.founderExecutionPlan?.capacityBand || 'Moderate'}
+                </strong>
               </div>
               <button
                 onClick={() => {
@@ -775,7 +794,8 @@ export function GtmStrategyView({
                   : 'Needs validation'}
               </div>
               <p className="text-xs text-muted-foreground">
-                Confirm what you can spend before planning paid activities.
+                Source: {strategy.budgetPlan?.budgetSource || 'FounderDeclared'} · Status:{' '}
+                {strategy.budgetPlan?.spendableStatus || 'Planned'}
               </p>
             </div>
 
@@ -821,14 +841,16 @@ export function GtmStrategyView({
                   1
                 </span>
                 <h3 className="text-sm sm:text-base font-bold text-foreground font-heading">
-                  Prepare customer conversations
+                  {strategy.launchPlan?.phases?.[0]?.phaseName ||
+                    strategy.experiments?.[0]?.hypothesis ||
+                    'Prepare customer conversations'}
                 </h3>
                 <span className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-[10px] font-mono font-semibold">
-                  Proposed
+                  {strategy.experiments?.[0]?.status || 'Proposed'}
                 </span>
               </div>
               <span className="text-xs text-muted-foreground font-mono">
-                Timing: Before product completion
+                Timing: {strategy.launchPlan?.phases?.[0]?.timeframe || 'Before product completion'}
               </span>
             </div>
 
@@ -837,35 +859,44 @@ export function GtmStrategyView({
               <div className="space-y-1">
                 <span className="font-semibold text-foreground">What to do:</span>
                 <p className="text-muted-foreground">
-                  Define the businesses you want to speak with and prepare a short introduction.
+                  {primaryChannel?.firstStep ||
+                    strategy.experiments?.[0]?.evidenceRequired ||
+                    'Define the businesses you want to speak with and prepare a short introduction.'}
                 </p>
               </div>
 
               <div className="space-y-1">
                 <span className="font-semibold text-foreground">Expected output:</span>
                 <p className="text-muted-foreground">
-                  A focused contact shortlist and a message ready to adapt.
+                  {strategy.experiments?.[0]?.primaryMetric
+                    ? `Target: ${strategy.experiments[0].primaryMetric} (${strategy.experiments[0].targetValue ?? 'Baseline'})`
+                    : 'A focused contact shortlist and a message ready to adapt.'}
                 </p>
               </div>
 
               <div className="space-y-1">
                 <span className="font-semibold text-foreground">Why it matters:</span>
                 <p className="text-muted-foreground">
-                  Learn how potential customers currently handle the problem.
+                  {primaryChannel?.rationale ||
+                    strategy.primarySegment?.rationale ||
+                    'Learn how potential customers currently handle the problem.'}
                 </p>
               </div>
 
               <div className="space-y-1">
                 <span className="font-semibold text-foreground">Time & Capacity:</span>
                 <p className="text-muted-foreground">
-                  Estimate needed · Review roadmap capacity first
+                  {primaryChannel?.estimatedWeeklyHours
+                    ? `${primaryChannel.estimatedWeeklyHours} hours / week allocated`
+                    : `${strategy.founderExecutionPlan?.weeklyHoursAllocated || 2} hours / week allocated`}
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
               <span className="text-[11px] text-muted-foreground">
-                Sourced from: Target customer profile, Selected outreach approach
+                Sourced from: {strategy.primarySegment?.segmentName || 'Target customer profile'},{' '}
+                {primaryChannel?.channelName || 'Selected outreach approach'}
               </span>
               <Link
                 href={`/dashboard/creator/phase-4/roadmap?ideaId=${ideaId}`}
@@ -883,8 +914,12 @@ export function GtmStrategyView({
               <span className="w-5 h-5 rounded-full bg-muted text-muted-foreground text-xs font-mono font-bold flex items-center justify-center">
                 2
               </span>
-              <span className="text-sm font-semibold text-foreground">Show a working demo</span>
-              <span className="text-xs text-muted-foreground">· When a demo is ready</span>
+              <span className="text-sm font-semibold text-foreground">
+                {strategy.launchPlan?.phases?.[1]?.phaseName || 'Show a working demo'}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                · {strategy.launchPlan?.phases?.[1]?.timeframe || 'When a demo is ready'}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/50 self-start sm:self-auto">
               <Lock className="w-3 h-3 text-muted-foreground" />
@@ -900,9 +935,11 @@ export function GtmStrategyView({
                   3
                 </span>
                 <span className="text-sm font-semibold text-foreground">
-                  Review your launch website
+                  {strategy.launchPlan?.phases?.[2]?.phaseName || 'Review your launch website'}
                 </span>
-                <span className="text-xs text-muted-foreground">· Before public launch</span>
+                <span className="text-xs text-muted-foreground">
+                  · {strategy.launchPlan?.phases?.[2]?.timeframe || 'Before public launch'}
+                </span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/50 self-start sm:self-auto">
                 <Lock className="w-3 h-3 text-muted-foreground" />
@@ -910,7 +947,8 @@ export function GtmStrategyView({
               </div>
             </div>
             <p className="text-xs text-muted-foreground pl-7">
-              Check that the message, offer, and call to action match your plan.
+              {strategy.launchPlan?.phases?.[2]?.objective ||
+                'Check that the message, offer, and call to action match your plan.'}
             </p>
           </div>
 
@@ -922,10 +960,10 @@ export function GtmStrategyView({
                   4
                 </span>
                 <span className="text-sm font-semibold text-foreground">
-                  Review your launch results
+                  {strategy.launchPlan?.phases?.[3]?.phaseName || 'Review your launch results'}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  · After outreach or launch activity
+                  · {strategy.launchPlan?.phases?.[3]?.timeframe || 'After outreach activity'}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/50 self-start sm:self-auto">
@@ -934,7 +972,8 @@ export function GtmStrategyView({
               </div>
             </div>
             <p className="text-xs text-muted-foreground pl-7">
-              Compare what you tried with replies, demonstrations, and purchases.
+              {strategy.launchPlan?.phases?.[3]?.objective ||
+                'Compare what you tried with replies, demonstrations, and purchases.'}
             </p>
           </div>
         </div>
@@ -953,59 +992,91 @@ export function GtmStrategyView({
           </p>
         </div>
 
-        {/* Funnel Data Table */}
-        <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs">
-          <div className="grid grid-cols-12 bg-muted/50 px-4 py-2.5 text-[11px] font-mono font-bold text-muted-foreground uppercase border-b border-border">
-            <div className="col-span-6">MEASURE</div>
-            <div className="col-span-3">TARGET</div>
-            <div className="col-span-3 text-right">ACTUAL</div>
-          </div>
+        {/* Dynamic Funnel Data Table */}
+        {(() => {
+          const getMetricTotal = (key: string): number | null => {
+            if (!strategy.experiments?.length) return null;
+            let total = 0;
+            let hasData = false;
+            for (const exp of strategy.experiments) {
+              for (const run of exp.runs || []) {
+                const found = run.metricsObserved?.find(
+                  (m) => m.metricKey?.toLowerCase() === key.toLowerCase() || m.metricName?.toLowerCase().includes(key.toLowerCase())
+                );
+                if (found && typeof found.value === 'number') {
+                  total += found.value;
+                  hasData = true;
+                }
+              }
+            }
+            return hasData ? total : null;
+          };
 
-          <div className="divide-y divide-border/60 text-xs sm:text-sm">
-            <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
-              <div className="col-span-6 font-medium text-foreground">Businesses contacted</div>
-              <div className="col-span-3 text-muted-foreground font-mono text-xs">
-                {targetContacted ? `${targetContacted}` : 'Not set'}
+          const totalRunsCount = strategy.experiments?.reduce((acc, exp) => acc + (exp.runs?.length || 0), 0) || 0;
+          const actualContacted = getMetricTotal('contacted');
+          const actualReplies = getMetricTotal('replies');
+          const actualDemos = getMetricTotal('demos');
+          const actualPurchases = getMetricTotal('purchases');
+
+          return (
+            <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs">
+              <div className="grid grid-cols-12 bg-muted/50 px-4 py-2.5 text-[11px] font-mono font-bold text-muted-foreground uppercase border-b border-border">
+                <div className="col-span-6">MEASURE</div>
+                <div className="col-span-3">TARGET</div>
+                <div className="col-span-3 text-right">ACTUAL</div>
               </div>
-              <div className="col-span-3 text-right font-mono text-muted-foreground">
-                {strategy.experiments?.[0]?.runs?.length ? '12' : '—'}
+
+              <div className="divide-y divide-border/60 text-xs sm:text-sm">
+                <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
+                  <div className="col-span-6 font-medium text-foreground">Businesses contacted</div>
+                  <div className="col-span-3 text-muted-foreground font-mono text-xs">
+                    {targetContacted ? `${targetContacted}` : 'Not set'}
+                  </div>
+                  <div className="col-span-3 text-right font-mono text-muted-foreground">
+                    {actualContacted !== null ? actualContacted : totalRunsCount > 0 ? totalRunsCount : '—'}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
+                  <div className="col-span-6 font-medium text-foreground">Replies received</div>
+                  <div className="col-span-3 text-muted-foreground font-mono text-xs">
+                    {targetReplies ? `${targetReplies}` : 'Not set'}
+                  </div>
+                  <div className="col-span-3 text-right font-mono text-muted-foreground">
+                    {actualReplies !== null ? actualReplies : '—'}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
+                  <div className="col-span-6 font-medium text-foreground">Demo requests</div>
+                  <div className="col-span-3 text-muted-foreground font-mono text-xs">
+                    {targetDemos ? `${targetDemos}` : 'Not set'}
+                  </div>
+                  <div className="col-span-3 text-right font-mono text-muted-foreground">
+                    {actualDemos !== null ? actualDemos : '—'}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
+                  <div className="col-span-6 font-medium text-foreground">Purchases</div>
+                  <div className="col-span-3 text-muted-foreground font-mono text-xs">
+                    {targetPurchases ? `${targetPurchases}` : 'Not set'}
+                  </div>
+                  <div className="col-span-3 text-right font-mono text-muted-foreground">
+                    {actualPurchases !== null ? actualPurchases : '—'}
+                  </div>
+                </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
-              <div className="col-span-6 font-medium text-foreground">Replies received</div>
-              <div className="col-span-3 text-muted-foreground font-mono text-xs">
-                {targetReplies ? `${targetReplies}` : 'Not set'}
-              </div>
-              <div className="col-span-3 text-right font-mono text-muted-foreground">
-                {strategy.experiments?.[0]?.runs?.length ? '3' : '—'}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
-              <div className="col-span-6 font-medium text-foreground">Demo requests</div>
-              <div className="col-span-3 text-muted-foreground font-mono text-xs">
-                {targetDemos ? `${targetDemos}` : 'Not set'}
-              </div>
-              <div className="col-span-3 text-right font-mono text-muted-foreground">
-                {strategy.experiments?.[0]?.runs?.length ? '1' : '—'}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
-              <div className="col-span-6 font-medium text-foreground">Purchases</div>
-              <div className="col-span-3 text-muted-foreground font-mono text-xs">
-                {targetPurchases ? `${targetPurchases}` : 'Not set'}
-              </div>
-              <div className="col-span-3 text-right font-mono text-muted-foreground">—</div>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Empty State Notice & Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
           <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
-            No results recorded yet. Replies and demo requests show interest; purchases show someone bought.
+            {strategy.experiments?.[0]?.runs?.length
+              ? `Recorded ${strategy.experiments[0].runs.length} validation runs. Replies and demo requests show interest; purchases show someone bought.`
+              : 'No results recorded yet. Replies and demo requests show interest; purchases show someone bought.'}
           </p>
 
           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
@@ -1052,7 +1123,12 @@ export function GtmStrategyView({
           </div>
 
           <div className="px-3 py-1.5 rounded-lg bg-muted/40 border border-border/70 text-xs font-medium text-foreground">
-            Proposed CTA: <strong className="font-semibold">Express interest (Proposal to review in Step 4.8)</strong>
+            Proposed CTA:{' '}
+            <strong className="font-semibold">
+              {strategy.experiments?.[0]?.offer
+                ? `Express interest in ${strategy.experiments[0].offer}`
+                : 'Express interest (Proposal to review in Step 4.8)'}
+            </strong>
           </div>
         </div>
 
