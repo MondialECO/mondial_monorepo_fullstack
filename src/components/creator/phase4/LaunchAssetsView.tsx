@@ -289,24 +289,33 @@ export function LaunchAssetsView({
     }
   };
 
-  // AI copy suggestion suggestions for Hero
+  const brandStudio = assets?.brandStudio;
+  const brandPrimary = brandStudio?.primaryColorHex || '#3B82F6';
+  const brandSecondary = brandStudio?.secondaryColorHex || '#10B981';
+  const brandAccent = brandStudio?.accentColorHex || '#F59E0B';
+  const displayFont = brandStudio?.displayFontFamily || 'inherit';
+  const textFont = brandStudio?.textFontFamily || 'inherit';
+
+  // AI copy suggestions synthesized directly from Brand Studio
   const wordingSuggestions = [
     {
-      label: 'Focus on Solo Practitioners',
-      headline: 'Simple, unified enquiry and quotation management for solo practitioners.',
-      desc: `${projectName} keeps your incoming inquiries, proposals, and client follow-ups in a clean single-flow workspace.`,
+      label: brandStudio?.positioning ? `Strategic: ${brandStudio.positioning.slice(0, 24)}...` : 'Positioning Aligned',
+      headline: brandStudio?.positioning || 'A clearer way to manage enquiries and quotations.',
+      desc: brandStudio?.concept && brandStudio?.targetAudience
+        ? `${brandName} is being built for ${brandStudio.targetAudience.replace(/\.+$/, '')}. ${brandStudio.concept}`
+        : `${brandName} is being built to help independent service businesses keep enquiries, quotations, and follow-ups together.`,
+      btn: 'Express interest',
+    },
+    {
+      label: 'Target Audience Focus',
+      headline: brandStudio?.targetAudience ? `Designed for ${brandStudio.targetAudience.toLowerCase().replace(/\.+$/, '')}.` : 'Simple, unified enquiry and quotation management.',
+      desc: `${brandName} keeps your incoming inquiries, proposals, and client follow-ups in a clean single-flow workspace.`,
       btn: 'Join Early Access',
     },
     {
       label: 'Outcome & Speed Centric',
       headline: 'Never lose track of a client enquiry or pending quotation again.',
       desc: `Built specifically to eliminate scattered inboxes and lost quotation follow-ups for independent businesses.`,
-      btn: 'Express interest',
-    },
-    {
-      label: 'Clarity & Modern Minimalism',
-      headline: 'A clearer way to manage enquiries and quotations.',
-      desc: `${projectName} is being built to help independent service businesses keep enquiries, quotations, and follow-ups together.`,
       btn: 'Express interest',
     },
   ];
@@ -453,31 +462,114 @@ export function LaunchAssetsView({
       </section>
 
       {/* ------------------------------------------------------------------------- */}
-      {/* SECTION 2: SOURCE STRIP & BUTTON DESTINATION NOTICE */}
+      {/* SECTION 2: BRAND STUDIO SOURCE STRIP & BUTTON DESTINATION NOTICE */}
       {/* ------------------------------------------------------------------------- */}
       <section className="space-y-3">
-        {/* Built From Strip */}
-        <div className="bg-card border border-border rounded-xl px-4 py-3 flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs">
-          <span className="font-mono font-semibold text-muted-foreground text-[11px] uppercase tracking-wider shrink-0 flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-muted-foreground/70" />
-            BUILT FROM:
-          </span>
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-muted/60 text-foreground border border-border/80 font-sans">
-            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-            Your Brand Kit
-          </span>
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-muted/60 text-foreground border border-border/80 font-sans">
-            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-            Project information
-          </span>
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-muted/60 text-foreground border border-border/80 font-sans">
-            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-            Chosen offer
-          </span>
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-muted/60 text-foreground border border-border/80 font-sans">
-            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-            Launch strategy
-          </span>
+        {/* Built From Strip & Brand Studio Intelligence Summary */}
+        <div className="bg-card border border-border rounded-xl p-4 sm:p-5 space-y-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/60">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono font-semibold text-muted-foreground text-[11px] uppercase tracking-wider shrink-0 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-primary" />
+                BUILT FROM:
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/60 text-foreground border border-border/80 font-sans text-xs">
+                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                Your Brand Kit
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/60 text-foreground border border-border/80 font-sans text-xs">
+                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                Chosen offer
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/60 text-foreground border border-border/80 font-sans text-xs">
+                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                Launch strategy
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-sans text-xs font-medium">
+                <Sparkles className="w-3 h-3" />
+                {assets?.brandStudio?.brandName || brandName || projectName}
+              </span>
+            </div>
+            <Link
+              href={`/dashboard/creator/brand-kit${ideaId ? `?ideaId=${ideaId}` : ''}`}
+              className="inline-flex items-center gap-1 text-xs font-sans text-primary hover:underline font-medium"
+            >
+              <span>Edit Brand Studio</span>
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {/* Detailed Brand Studio Tokens */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            {/* Color Palette */}
+            <div className="bg-muted/30 border border-border/80 rounded-lg p-2.5 space-y-1.5">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
+                Brand Palette
+              </span>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="w-4 h-4 rounded-full border border-white/20 shadow-sm"
+                    style={{ backgroundColor: assets?.brandStudio?.primaryColorHex || '#3B82F6' }}
+                    title={`Primary: ${assets?.brandStudio?.primaryColorHex || '#3B82F6'}`}
+                  />
+                  <div
+                    className="w-4 h-4 rounded-full border border-white/20 shadow-sm"
+                    style={{ backgroundColor: assets?.brandStudio?.secondaryColorHex || '#10B981' }}
+                    title={`Secondary: ${assets?.brandStudio?.secondaryColorHex || '#10B981'}`}
+                  />
+                  <div
+                    className="w-4 h-4 rounded-full border border-white/20 shadow-sm"
+                    style={{ backgroundColor: assets?.brandStudio?.accentColorHex || '#F59E0B' }}
+                    title={`Accent: ${assets?.brandStudio?.accentColorHex || '#F59E0B'}`}
+                  />
+                </div>
+                <span className="font-mono text-[11px] text-foreground font-medium">
+                  {assets?.brandStudio?.primaryColorHex || '#3B82F6'}
+                </span>
+              </div>
+            </div>
+
+            {/* Typography */}
+            <div className="bg-muted/30 border border-border/80 rounded-lg p-2.5 space-y-1.5">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
+                Typography
+              </span>
+              <div className="flex items-center gap-1.5 text-foreground font-medium truncate">
+                <span className="truncate">{assets?.brandStudio?.displayFontFamily || 'Inter'}</span>
+                <span className="text-muted-foreground">/</span>
+                <span className="truncate text-muted-foreground">{assets?.brandStudio?.textFontFamily || 'DM Sans'}</span>
+              </div>
+            </div>
+
+            {/* Target Audience */}
+            <div className="bg-muted/30 border border-border/80 rounded-lg p-2.5 space-y-1.5">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
+                Target Audience
+              </span>
+              <p className="text-foreground text-[11px] font-sans truncate" title={assets?.brandStudio?.targetAudience || 'Independent businesses'}>
+                {assets?.brandStudio?.targetAudience || 'Independent service businesses'}
+              </p>
+            </div>
+
+            {/* Personality Traits */}
+            <div className="bg-muted/30 border border-border/80 rounded-lg p-2.5 space-y-1.5">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
+                Brand Personality
+              </span>
+              <div className="flex items-center gap-1 flex-wrap">
+                {assets?.brandStudio?.personalityTraits && assets.brandStudio.personalityTraits.length > 0 ? (
+                  assets.brandStudio.personalityTraits.slice(0, 2).map((t, i) => (
+                    <span key={i} className="px-1.5 py-0.5 rounded bg-muted/80 text-[10px] font-sans text-foreground">
+                      {t}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-muted-foreground text-[11px]">Clear, Straightforward</span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Amber / Success Attention Notice Card */}
@@ -602,23 +694,52 @@ export function LaunchAssetsView({
                 <div className="p-6 sm:p-10 space-y-8">
                   {/* Header */}
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-heading font-bold text-base sm:text-lg text-foreground">
-                      {brandName || projectName}
-                    </span>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                    <div className="flex items-center gap-2">
+                      {brandStudio?.logoMarkUri && (
+                        <div
+                          className="w-6 h-6 rounded-md flex items-center justify-center font-bold text-xs text-white"
+                          style={{ backgroundColor: brandPrimary }}
+                        >
+                          {brandName.slice(0, 1)}
+                        </div>
+                      )}
+                      <span
+                        className="font-bold text-base sm:text-lg text-foreground"
+                        style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                      >
+                        {brandName || projectName}
+                      </span>
+                    </div>
+                    <span
+                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                      style={{
+                        borderColor: `${brandPrimary}40`,
+                        color: brandPrimary,
+                        backgroundColor: `${brandPrimary}15`,
+                      }}
+                    >
                       In preparation
                     </span>
                   </div>
 
                   {/* Hero Center */}
                   <div className="text-center max-w-2xl mx-auto space-y-4 pt-4">
-                    <span className="inline-block text-[11px] font-mono uppercase tracking-widest text-primary font-semibold">
+                    <span
+                      className="inline-block text-[11px] font-mono uppercase tracking-widest font-semibold"
+                      style={{ color: brandPrimary }}
+                    >
                       {assets.conceptBadge || 'PREVIEWING CONCEPT'}
                     </span>
-                    <h1 className="text-2xl sm:text-4xl font-heading font-bold text-foreground leading-tight tracking-tight">
+                    <h1
+                      className="text-2xl sm:text-4xl font-bold text-foreground leading-tight tracking-tight"
+                      style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                    >
                       {headline}
                     </h1>
-                    <p className="text-sm sm:text-base font-sans text-muted-foreground leading-relaxed max-w-xl mx-auto">
+                    <p
+                      className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl mx-auto"
+                      style={{ fontFamily: textFont !== 'inherit' ? textFont : undefined }}
+                    >
                       {description}
                     </p>
 
@@ -628,7 +749,8 @@ export function LaunchAssetsView({
                         <div className="relative group">
                           <button
                             disabled
-                            className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm inline-flex items-center gap-2 cursor-not-allowed opacity-90 shadow-sm"
+                            className="px-6 py-2.5 rounded-lg text-white font-medium text-sm inline-flex items-center gap-2 cursor-not-allowed opacity-95 shadow-sm transition-transform"
+                            style={{ backgroundColor: brandPrimary }}
                           >
                             <span>{buttonLabel}</span>
                             <ArrowRight className="w-4 h-4" />
@@ -648,7 +770,7 @@ export function LaunchAssetsView({
                   <div className="bg-muted/30 border border-border/80 rounded-xl p-5 sm:p-6 space-y-4 mt-8">
                     <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-3 flex-wrap">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-primary" />
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: brandPrimary }} />
                         <span className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
                           {assets.plannedWorkflowTitle || 'PLANNED WORKFLOW'}
                         </span>
@@ -666,14 +788,25 @@ export function LaunchAssetsView({
                             className="bg-card border border-border rounded-lg p-4 space-y-3 flex flex-col justify-between"
                           >
                             <div className="space-y-2">
-                              <div className="w-6 h-6 rounded-full bg-primary/10 text-primary font-mono text-xs font-bold flex items-center justify-center">
+                              <div
+                                className="w-6 h-6 rounded-full font-mono text-xs font-bold flex items-center justify-center"
+                                style={{ backgroundColor: `${brandPrimary}15`, color: brandPrimary }}
+                              >
                                 {step.stepNumber}
                               </div>
-                              <h4 className="text-sm font-heading font-semibold text-foreground">{step.title}</h4>
+                              <h4
+                                className="text-sm font-semibold text-foreground"
+                                style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                              >
+                                {step.title}
+                              </h4>
                               <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
                             </div>
-                            <div className="pt-2 border-t border-border/60 flex items-center gap-1.5 text-[11px] font-medium text-primary">
-                              <CheckCircle2 className="w-3 h-3 text-primary" />
+                            <div
+                              className="pt-2 border-t border-border/60 flex items-center gap-1.5 text-[11px] font-medium"
+                              style={{ color: brandPrimary }}
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
                               <span>{step.tag}</span>
                             </div>
                           </div>
@@ -681,15 +814,15 @@ export function LaunchAssetsView({
                       ) : (
                         <>
                           <div className="bg-card border border-border rounded-lg p-4 space-y-2">
-                            <h4 className="text-sm font-heading font-semibold">1. Enquiry</h4>
+                            <h4 className="text-sm font-semibold">1. Enquiry</h4>
                             <p className="text-xs text-muted-foreground">Capture context and client requirements in one dedicated intake card.</p>
                           </div>
                           <div className="bg-card border border-border rounded-lg p-4 space-y-2">
-                            <h4 className="text-sm font-heading font-semibold">2. Quotation</h4>
+                            <h4 className="text-sm font-semibold">2. Quotation</h4>
                             <p className="text-xs text-muted-foreground">Draft estimated scopes and convert directly into clear client proposals.</p>
                           </div>
                           <div className="bg-card border border-border rounded-lg p-4 space-y-2">
-                            <h4 className="text-sm font-heading font-semibold">3. Follow-up</h4>
+                            <h4 className="text-sm font-semibold">3. Follow-up</h4>
                             <p className="text-xs text-muted-foreground">Clear reminders and stage updates so no client is left waiting.</p>
                           </div>
                         </>
@@ -702,14 +835,23 @@ export function LaunchAssetsView({
               {/* SECTION B: PROBLEM STATEMENT */}
               {isSectionIncluded('problem') && (
                 <div className="p-6 sm:p-10 space-y-4 bg-muted/10">
-                  <span className="text-[11px] font-mono uppercase tracking-widest text-primary font-semibold">
+                  <span
+                    className="text-[11px] font-mono uppercase tracking-widest font-semibold"
+                    style={{ color: brandPrimary }}
+                  >
                     {problemEyebrow}
                   </span>
-                  <h3 className="text-xl sm:text-2xl font-heading font-semibold text-foreground max-w-2xl leading-snug">
+                  <h3
+                    className="text-xl sm:text-2xl font-semibold text-foreground max-w-2xl leading-snug"
+                    style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                  >
                     {problemStatement}
                   </h3>
-                  <div className="w-12 h-0.5 bg-primary/40 my-2" />
-                  <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+                  <div className="w-12 h-0.5 my-2" style={{ backgroundColor: `${brandPrimary}70` }} />
+                  <p
+                    className="text-sm text-muted-foreground max-w-2xl leading-relaxed"
+                    style={{ fontFamily: textFont !== 'inherit' ? textFont : undefined }}
+                  >
                     {operationalMomentumStatement}
                   </p>
                 </div>
@@ -719,7 +861,10 @@ export function LaunchAssetsView({
               {isSectionIncluded('solution') && (
                 <div className="p-6 sm:p-10 space-y-6">
                   <div className="space-y-1">
-                    <h3 className="text-lg sm:text-xl font-heading font-semibold text-foreground">
+                    <h3
+                      className="text-lg sm:text-xl font-semibold text-foreground"
+                      style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                    >
                       {solutionHeader}
                     </h3>
                     <p className="text-xs sm:text-sm text-muted-foreground">
@@ -730,7 +875,10 @@ export function LaunchAssetsView({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {plannedSolutions.map((sol, idx) => (
                       <div key={idx} className="bg-card border border-border rounded-xl p-5 space-y-3">
-                        <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: `${brandPrimary}15`, color: brandPrimary }}
+                        >
                           {idx === 0 ? (
                             <Mail className="w-4 h-4" />
                           ) : idx === 1 ? (
@@ -739,7 +887,12 @@ export function LaunchAssetsView({
                             <Bell className="w-4 h-4" />
                           )}
                         </div>
-                        <h4 className="text-sm font-heading font-semibold text-foreground">{sol.title}</h4>
+                        <h4
+                          className="text-sm font-semibold text-foreground"
+                          style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                        >
+                          {sol.title}
+                        </h4>
                         <p className="text-xs text-muted-foreground leading-relaxed">{sol.description}</p>
                       </div>
                     ))}
@@ -751,7 +904,10 @@ export function LaunchAssetsView({
               {isSectionIncluded('how-it-works') && (
                 <div className="p-6 sm:p-10 space-y-6 bg-muted/10">
                   <div className="space-y-1">
-                    <h3 className="text-lg sm:text-xl font-heading font-semibold text-foreground">
+                    <h3
+                      className="text-lg sm:text-xl font-semibold text-foreground"
+                      style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                    >
                       {howItWorksHeader}
                     </h3>
                     <p className="text-xs sm:text-sm text-muted-foreground">
@@ -765,11 +921,19 @@ export function LaunchAssetsView({
                         key={item.stepNumber}
                         className="bg-card border border-border rounded-xl p-4 sm:p-5 flex items-start gap-4"
                       >
-                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary font-mono text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        <div
+                          className="w-7 h-7 rounded-full font-mono text-xs font-bold flex items-center justify-center shrink-0 mt-0.5"
+                          style={{ backgroundColor: `${brandPrimary}15`, color: brandPrimary }}
+                        >
                           {item.stepNumber}
                         </div>
                         <div className="space-y-1">
-                          <h4 className="text-sm font-heading font-semibold text-foreground">{item.title}</h4>
+                          <h4
+                            className="text-sm font-semibold text-foreground"
+                            style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                          >
+                            {item.title}
+                          </h4>
                           <p className="text-xs text-muted-foreground leading-relaxed">{item.description}</p>
                         </div>
                       </div>
@@ -782,7 +946,10 @@ export function LaunchAssetsView({
               {isSectionIncluded('faq') && (
                 <div className="p-6 sm:p-10 space-y-6">
                   <div className="space-y-1">
-                    <h3 className="text-lg sm:text-xl font-heading font-semibold text-foreground">
+                    <h3
+                      className="text-lg sm:text-xl font-semibold text-foreground"
+                      style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                    >
                       {faqHeader}
                     </h3>
                     <p className="text-xs sm:text-sm text-muted-foreground">
@@ -793,7 +960,12 @@ export function LaunchAssetsView({
                   <div className="space-y-3">
                     {faqs.map((faq, idx) => (
                       <div key={idx} className="bg-card border border-border rounded-xl p-4 sm:p-5 space-y-1.5">
-                        <h4 className="text-sm font-heading font-semibold text-foreground">{faq.question}</h4>
+                        <h4
+                          className="text-sm font-semibold text-foreground"
+                          style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                        >
+                          {faq.question}
+                        </h4>
                         <p className="text-xs text-muted-foreground leading-relaxed">{faq.answer}</p>
                       </div>
                     ))}
@@ -804,7 +976,10 @@ export function LaunchAssetsView({
               {/* SECTION F: FINAL CALL TO ACTION */}
               {isSectionIncluded('final-cta') && (
                 <div className="p-8 sm:p-12 text-center space-y-4 bg-muted/20">
-                  <h3 className="text-xl sm:text-2xl font-heading font-bold text-foreground">
+                  <h3
+                    className="text-xl sm:text-2xl font-bold text-foreground"
+                    style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                  >
                     {finalCtaHeader}
                   </h3>
                   <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
@@ -813,7 +988,8 @@ export function LaunchAssetsView({
                   <div className="pt-2">
                     <button
                       disabled
-                      className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm inline-flex items-center gap-2 cursor-not-allowed opacity-90 shadow-sm"
+                      className="px-6 py-2.5 rounded-lg text-white font-medium text-sm inline-flex items-center gap-2 cursor-not-allowed opacity-95 shadow-sm"
+                      style={{ backgroundColor: brandPrimary }}
                     >
                       <span>{buttonLabel}</span>
                       <ArrowRight className="w-4 h-4" />
@@ -831,7 +1007,10 @@ export function LaunchAssetsView({
               {/* SECTION G: FOOTER (INSIDE PREVIEW) */}
               {isSectionIncluded('footer') && (
                 <div className="p-6 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="font-heading font-semibold text-foreground">
+                  <span
+                    className="font-semibold text-foreground"
+                    style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
+                  >
                     {brandName || projectName}
                   </span>
                   <span>{footerNotice}</span>
@@ -903,6 +1082,22 @@ export function LaunchAssetsView({
           {/* SECTION: HERO */}
           {selectedSectionKey === 'hero' && (
             <>
+              {/* Brand Studio Alignment Guidance */}
+              {brandStudio?.positioning && (
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-start gap-2.5 text-xs text-muted-foreground">
+                  <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-semibold text-foreground">Brand Studio Alignment:</span>
+                    <p className="text-[11px] leading-relaxed">
+                      Positioning: <span className="text-foreground font-medium">{brandStudio.positioning}</span>
+                      {brandStudio.targetAudience && (
+                        <> · Audience: <span className="text-foreground font-medium">{brandStudio.targetAudience}</span></>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Headline */}
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">

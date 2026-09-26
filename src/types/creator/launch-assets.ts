@@ -57,6 +57,34 @@ export interface LaunchProofExclusion {
   actionRoute: string;
 }
 
+export interface LaunchBrandStudioSummary {
+  brandName: string;
+  concept: string;
+  targetAudience: string;
+  industry: string;
+  positioning: string;
+  personalityTraits: string[];
+  tonePosition: string;
+
+  // Logo Assets
+  logoMarkUri: string;
+  logoLockupUri: string;
+  logoDescriptorLine: string;
+
+  // Color Palette Hex Roles
+  primaryColorHex: string;
+  secondaryColorHex: string;
+  accentColorHex: string;
+  backgroundColorHex: string;
+  textColorHex: string;
+
+  // Typography
+  displayFontFamily: string;
+  textFontFamily: string;
+  headingWeight: string;
+  bodyWeight: string;
+}
+
 export interface LaunchAssetsPlan {
   assetType: string;
   version: number;
@@ -65,6 +93,9 @@ export interface LaunchAssetsPlan {
   publishedStatus: string;
   lastGeneratedAt: string;
   activeSectionKey: string;
+
+  // Brand Studio Visual & Strategic Identity
+  brandStudio?: LaunchBrandStudioSummary;
 
   // Section A: Hero
   brandName: string;

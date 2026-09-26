@@ -74,6 +74,35 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public string ActionRoute { get; set; } = "/dashboard/creator/phase-3/evidence";
     }
 
+    public class LaunchBrandStudioSummary
+    {
+        public string BrandName { get; set; } = string.Empty;
+        public string Concept { get; set; } = string.Empty;
+        public string TargetAudience { get; set; } = string.Empty;
+        public string Industry { get; set; } = string.Empty;
+        public string Positioning { get; set; } = string.Empty;
+        public List<string> PersonalityTraits { get; set; } = new();
+        public string TonePosition { get; set; } = string.Empty;
+
+        // Logo Assets
+        public string LogoMarkUri { get; set; } = string.Empty;
+        public string LogoLockupUri { get; set; } = string.Empty;
+        public string LogoDescriptorLine { get; set; } = string.Empty;
+
+        // Color Palette Hex Roles
+        public string PrimaryColorHex { get; set; } = "#3B82F6";
+        public string SecondaryColorHex { get; set; } = "#10B981";
+        public string AccentColorHex { get; set; } = "#F59E0B";
+        public string BackgroundColorHex { get; set; } = "#090A0C";
+        public string TextColorHex { get; set; } = "#F3F4F6";
+
+        // Typography
+        public string DisplayFontFamily { get; set; } = "Inter";
+        public string TextFontFamily { get; set; } = "DM Sans";
+        public string HeadingWeight { get; set; } = "700";
+        public string BodyWeight { get; set; } = "400";
+    }
+
     // =========================================================================
     // ROOT LAUNCH ASSETS ENTITY (Persisted on CreatorJourney.Phase4Data.LaunchAssets)
     // =========================================================================
@@ -88,6 +117,9 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public string PublishedStatus { get; set; } = "Available to view in MBC. Not published.";
         public DateTime LastGeneratedAt { get; set; } = DateTime.UtcNow;
         public string ActiveSectionKey { get; set; } = "hero";
+
+        // Brand Studio Visual & Strategic Identity
+        public LaunchBrandStudioSummary BrandStudio { get; set; } = new();
 
         // Section A: Hero
         public string BrandName { get; set; } = string.Empty;

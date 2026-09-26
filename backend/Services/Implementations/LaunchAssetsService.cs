@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Phase4;
 using WebApp.Services.Interface;
+using WebApp.Services.Repository;
 
 namespace WebApp.Services.Implementations
 {
@@ -15,17 +16,20 @@ namespace WebApp.Services.Implementations
         private readonly ICreatorJourneyService _journeys;
         private readonly IPricingStrategyService _pricingService;
         private readonly IGtmStrategyService _gtmService;
+        private readonly IBrandKitStore _brandKits;
         private readonly ILogger<LaunchAssetsService> _logger;
 
         public LaunchAssetsService(
             ICreatorJourneyService journeys,
             IPricingStrategyService pricingService,
             IGtmStrategyService gtmService,
+            IBrandKitStore brandKits,
             ILogger<LaunchAssetsService> logger)
         {
             _journeys = journeys;
             _pricingService = pricingService;
             _gtmService = gtmService;
+            _brandKits = brandKits;
             _logger = logger;
         }
 
@@ -46,6 +50,16 @@ namespace WebApp.Services.Implementations
                 };
             }
 
+            // If BrandStudio summary wasn't populated yet, attempt to enrich it on the fly
+            if (string.IsNullOrWhiteSpace(existing.BrandStudio?.BrandName) && !string.IsNullOrWhiteSpace(ideaId))
+            {
+                var kit = await _brandKits.GetByIdeaIdAsync(ideaId, userId);
+                if (kit != null)
+                {
+                    EnrichBrandStudioFromKit(existing, kit);
+                }
+            }
+
             return new LaunchAssetsResponse
             {
                 IdeaId = ideaId ?? string.Empty,
@@ -62,6 +76,17 @@ namespace WebApp.Services.Implementations
             var existing = journey.Phase4Data?.LaunchAssets;
             if (existing != null)
             {
+                // Ensure BrandStudio is enriched if it was previously empty
+                if (string.IsNullOrWhiteSpace(existing.BrandStudio?.BrandName) && !string.IsNullOrWhiteSpace(ideaId))
+                {
+                    var kit = await _brandKits.GetByIdeaIdAsync(ideaId, userId);
+                    if (kit != null)
+                    {
+                        EnrichBrandStudioFromKit(existing, kit);
+                        await _journeys.SetPhase4LaunchAssetsAsync(userId, existing, ideaId);
+                    }
+                }
+
                 return new LaunchAssetsResponse
                 {
                     IdeaId = ideaId ?? string.Empty,
@@ -72,7 +97,47 @@ namespace WebApp.Services.Implementations
                 };
             }
 
-            var brandName = !string.IsNullOrWhiteSpace(journey.Project?.Name) ? journey.Project.Name : "ClairDesk";
+            // Retrieve BrandKit if ideaId is available
+            BrandKit? brandKit = null;
+            if (!string.IsNullOrWhiteSpace(ideaId))
+            {
+                try
+                {
+                    brandKit = await _brandKits.GetByIdeaIdAsync(ideaId, userId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to load BrandKit for idea {IdeaId}", ideaId);
+                }
+            }
+
+            var brandName = !string.IsNullOrWhiteSpace(brandKit?.Strategy?.BusinessName)
+                ? brandKit.Strategy.BusinessName
+                : (!string.IsNullOrWhiteSpace(journey.Project?.Name) ? journey.Project.Name : "ClairDesk");
+
+            var concept = brandKit?.Strategy?.Concept?.Value?.Trim() ?? string.Empty;
+            var targetAudience = brandKit?.Strategy?.TargetAudience?.Value?.Trim() ?? string.Empty;
+            var positioning = brandKit?.Strategy?.Positioning?.Value?.Trim() ?? string.Empty;
+            var industry = brandKit?.Strategy?.Industry?.Value?.Trim() ?? string.Empty;
+            var traits = brandKit?.Strategy?.PersonalityTraits ?? new List<string>();
+            var tonePosition = brandKit?.Strategy?.TonePosition ?? string.Empty;
+
+            var primaryColor = brandKit?.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Primary", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#3B82F6";
+            var secondaryColor = brandKit?.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Secondary", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#10B981";
+            var accentColor = brandKit?.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Accent", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#F59E0B";
+            var backgroundColor = brandKit?.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Background", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#090A0C";
+            var textColor = brandKit?.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Text", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#F3F4F6";
+
+            var displayFont = brandKit?.Typography?.Families?.DisplayFamily?.Name ?? "Inter";
+            var textFont = brandKit?.Typography?.Families?.TextFamily?.Name ?? "DM Sans";
+            var headingWeight = brandKit?.Typography?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Heading", StringComparison.OrdinalIgnoreCase))?.Weight ?? "700";
+            var bodyWeight = brandKit?.Typography?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Body", StringComparison.OrdinalIgnoreCase))?.Weight ?? "400";
+
+            var selectedConcept = brandKit?.Logo?.Concepts?.FirstOrDefault(c => c.Key == brandKit.Logo.SelectedConceptKey) ?? brandKit?.Logo?.Concepts?.FirstOrDefault();
+            var logoMarkUri = selectedConcept?.MarkAssetUri ?? string.Empty;
+            var logoLockupUri = selectedConcept?.LockupAssetUri ?? string.Empty;
+            var logoDescriptor = selectedConcept?.DescriptorLine ?? string.Empty;
+
             var pricing = journey.Phase4Data?.PricingStrategy;
             var gtm = journey.Phase4Data?.GtmStrategy;
 
@@ -91,6 +156,48 @@ namespace WebApp.Services.Implementations
                 }
             }
 
+            var brandStudioSummary = new LaunchBrandStudioSummary
+            {
+                BrandName = brandName,
+                Concept = concept,
+                TargetAudience = targetAudience,
+                Industry = industry,
+                Positioning = positioning,
+                PersonalityTraits = traits,
+                TonePosition = tonePosition,
+                LogoMarkUri = logoMarkUri,
+                LogoLockupUri = logoLockupUri,
+                LogoDescriptorLine = logoDescriptor,
+                PrimaryColorHex = primaryColor,
+                SecondaryColorHex = secondaryColor,
+                AccentColorHex = accentColor,
+                BackgroundColorHex = backgroundColor,
+                TextColorHex = textColor,
+                DisplayFontFamily = displayFont,
+                TextFontFamily = textFont,
+                HeadingWeight = headingWeight,
+                BodyWeight = bodyWeight
+            };
+
+            // Synthesize contextual headline & descriptions based on Brand Studio information
+            var headline = !string.IsNullOrWhiteSpace(positioning)
+                ? positioning
+                : (!string.IsNullOrWhiteSpace(concept) ? concept : "A clearer way to manage enquiries and quotations.");
+
+            var heroDescription = !string.IsNullOrWhiteSpace(concept) && !string.IsNullOrWhiteSpace(targetAudience)
+                ? $"{brandName} is being built for {targetAudience.TrimEnd('.')}. {concept}"
+                : (!string.IsNullOrWhiteSpace(concept)
+                    ? $"{brandName} is being built to provide {concept.ToLowerInvariant()}."
+                    : $"{brandName} is being built to help independent service businesses keep enquiries, quotations, and follow-ups together.");
+
+            var problemStatement = !string.IsNullOrWhiteSpace(targetAudience)
+                ? $"When enquiries, proposals, and communication channels are fragmented, {targetAudience.ToLowerInvariant().TrimEnd('.')} lose operational clarity and valuable momentum."
+                : "When enquiries and quotations are spread across different places, it can be harder to see what needs a reply or follow-up.";
+
+            var momentumStatement = !string.IsNullOrWhiteSpace(positioning)
+                ? $"{brandName} delivers {positioning.ToLowerInvariant().TrimEnd('.')}, keeping every client interaction in clear focus."
+                : $"{brandName} focuses squarely on maintaining single-view operational momentum for solo consultants and niche service providers.";
+
             var newAssets = new LaunchAssetsPlan
             {
                 AssetType = "ONE-PAGE WEBSITE",
@@ -100,12 +207,13 @@ namespace WebApp.Services.Implementations
                 PublishedStatus = "Available to view in MBC. Not published.",
                 LastGeneratedAt = DateTime.UtcNow,
                 ActiveSectionKey = "hero",
+                BrandStudio = brandStudioSummary,
 
                 // Section A: Hero
                 BrandName = brandName,
                 ConceptBadge = "PREVIEWING CONCEPT",
-                Headline = "A clearer way to manage enquiries and quotations.",
-                Description = $"{brandName} is being built to help independent service businesses keep enquiries, quotations, and follow-ups together.",
+                Headline = headline,
+                Description = heroDescription,
                 ButtonLabel = "Express interest",
                 ButtonDestinationType = "NotSet",
                 ButtonDestinationValue = string.Empty,
@@ -141,8 +249,8 @@ namespace WebApp.Services.Implementations
 
                 // Section B: Problem
                 ProblemEyebrow = "KEEP TRACK OF THE NEXT STEP",
-                ProblemStatement = "When enquiries and quotations are spread across different places, it can be harder to see what needs a reply or follow-up.",
-                OperationalMomentumStatement = $"{brandName} focuses squarely on maintaining single-view operational momentum for solo consultants and niche service providers.",
+                ProblemStatement = problemStatement,
+                OperationalMomentumStatement = momentumStatement,
 
                 // Section C: Planned Solution
                 SolutionHeader = "What’s being planned",
@@ -207,7 +315,7 @@ namespace WebApp.Services.Implementations
                     new()
                     {
                         Question = "Who is it being designed for?",
-                        Answer = "Independent service businesses that manage customer enquiries and quotations."
+                        Answer = !string.IsNullOrWhiteSpace(targetAudience) ? targetAudience : "Independent service businesses that manage customer enquiries and quotations."
                     },
                     new()
                     {
@@ -217,8 +325,10 @@ namespace WebApp.Services.Implementations
                 },
 
                 // Section F: Final CTA
-                FinalCtaHeader = "Share how you work today",
-                FinalCtaSubheader = $"Your experience can help shape what {brandName} focuses on.",
+                FinalCtaHeader = !string.IsNullOrWhiteSpace(brandName) ? $"Share how you work today" : "Share how you work today",
+                FinalCtaSubheader = !string.IsNullOrWhiteSpace(targetAudience)
+                    ? $"Your experience as {targetAudience.ToLowerInvariant().TrimEnd('.')} can directly shape what {brandName} focuses on."
+                    : $"Your experience can help shape what {brandName} focuses on.",
 
                 // Section G: Footer
                 FooterNotice = "Project in preparation",
@@ -268,6 +378,59 @@ namespace WebApp.Services.Implementations
                 Assets = newAssets,
                 UpdateAvailable = false,
                 ChangedSources = new List<string>()
+            };
+        }
+
+        private static void EnrichBrandStudioFromKit(LaunchAssetsPlan assets, BrandKit kit)
+        {
+            var brandName = !string.IsNullOrWhiteSpace(kit.Strategy?.BusinessName)
+                ? kit.Strategy.BusinessName
+                : assets.BrandName;
+
+            var concept = kit.Strategy?.Concept?.Value?.Trim() ?? string.Empty;
+            var targetAudience = kit.Strategy?.TargetAudience?.Value?.Trim() ?? string.Empty;
+            var positioning = kit.Strategy?.Positioning?.Value?.Trim() ?? string.Empty;
+            var industry = kit.Strategy?.Industry?.Value?.Trim() ?? string.Empty;
+            var traits = kit.Strategy?.PersonalityTraits ?? new List<string>();
+            var tonePosition = kit.Strategy?.TonePosition ?? string.Empty;
+
+            var primaryColor = kit.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Primary", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#3B82F6";
+            var secondaryColor = kit.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Secondary", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#10B981";
+            var accentColor = kit.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Accent", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#F59E0B";
+            var backgroundColor = kit.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Background", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#090A0C";
+            var textColor = kit.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Text", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#F3F4F6";
+
+            var displayFont = kit.Typography?.Families?.DisplayFamily?.Name ?? "Inter";
+            var textFont = kit.Typography?.Families?.TextFamily?.Name ?? "DM Sans";
+            var headingWeight = kit.Typography?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Heading", StringComparison.OrdinalIgnoreCase))?.Weight ?? "700";
+            var bodyWeight = kit.Typography?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Body", StringComparison.OrdinalIgnoreCase))?.Weight ?? "400";
+
+            var selectedConcept = kit.Logo?.Concepts?.FirstOrDefault(c => c.Key == kit.Logo.SelectedConceptKey) ?? kit.Logo?.Concepts?.FirstOrDefault();
+            var logoMarkUri = selectedConcept?.MarkAssetUri ?? string.Empty;
+            var logoLockupUri = selectedConcept?.LockupAssetUri ?? string.Empty;
+            var logoDescriptor = selectedConcept?.DescriptorLine ?? string.Empty;
+
+            assets.BrandStudio = new LaunchBrandStudioSummary
+            {
+                BrandName = brandName,
+                Concept = concept,
+                TargetAudience = targetAudience,
+                Industry = industry,
+                Positioning = positioning,
+                PersonalityTraits = traits,
+                TonePosition = tonePosition,
+                LogoMarkUri = logoMarkUri,
+                LogoLockupUri = logoLockupUri,
+                LogoDescriptorLine = logoDescriptor,
+                PrimaryColorHex = primaryColor,
+                SecondaryColorHex = secondaryColor,
+                AccentColorHex = accentColor,
+                BackgroundColorHex = backgroundColor,
+                TextColorHex = textColor,
+                DisplayFontFamily = displayFont,
+                TextFontFamily = textFont,
+                HeadingWeight = headingWeight,
+                BodyWeight = bodyWeight
             };
         }
 
@@ -376,6 +539,15 @@ namespace WebApp.Services.Implementations
                 throw new InvalidOperationException("Launch assets have not been generated yet.");
             }
 
+            var brandStudio = assets.BrandStudio ?? new LaunchBrandStudioSummary();
+            var primaryColor = !string.IsNullOrWhiteSpace(brandStudio.PrimaryColorHex) ? brandStudio.PrimaryColorHex : "#3B82F6";
+            var secondaryColor = !string.IsNullOrWhiteSpace(brandStudio.SecondaryColorHex) ? brandStudio.SecondaryColorHex : "#10B981";
+            var accentColor = !string.IsNullOrWhiteSpace(brandStudio.AccentColorHex) ? brandStudio.AccentColorHex : "#F59E0B";
+            var bgColor = !string.IsNullOrWhiteSpace(brandStudio.BackgroundColorHex) ? brandStudio.BackgroundColorHex : "#090A0C";
+            var textColor = !string.IsNullOrWhiteSpace(brandStudio.TextColorHex) ? brandStudio.TextColorHex : "#F3F4F6";
+            var displayFont = !string.IsNullOrWhiteSpace(brandStudio.DisplayFontFamily) ? brandStudio.DisplayFontFamily : "Inter";
+            var textFont = !string.IsNullOrWhiteSpace(brandStudio.TextFontFamily) ? brandStudio.TextFontFamily : "DM Sans";
+
             var html = $@"<!DOCTYPE html>
 <html lang=""en"">
 <head>
@@ -384,30 +556,33 @@ namespace WebApp.Services.Implementations
   <title>{assets.BrandName} · In Preparation</title>
   <link rel=""preconnect"" href=""https://fonts.googleapis.com"">
   <link rel=""preconnect"" href=""https://fonts.gstatic.com"" crossorigin>
-  <link href=""https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:wght@100..900&display=swap"" rel=""stylesheet"">
+  <link href=""https://fonts.googleapis.com/css2?family={Uri.EscapeDataString(textFont)}:ital,wght@0,300..800;1,300..800&family={Uri.EscapeDataString(displayFont)}:wght@300..900&display=swap"" rel=""stylesheet"">
   <style>
     :root {{
-      --bg: #090A0C;
+      --bg: {bgColor};
       --card: #121316;
       --border: #22242A;
-      --text: #F3F4F6;
+      --text: {textColor};
       --muted: #9CA3AF;
-      --primary: #3B82F6;
-      --primary-hover: #2563EB;
-      --font-sans: 'DM Sans', sans-serif;
-      --font-heading: 'Inter', sans-serif;
+      --primary: {primaryColor};
+      --secondary: {secondaryColor};
+      --accent: {accentColor};
+      --primary-hover: {primaryColor}DD;
+      --font-sans: '{textFont}', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-heading: '{displayFont}', -apple-system, BlinkMacSystemFont, sans-serif;
     }}
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{ background: var(--bg); color: var(--text); font-family: var(--font-sans); line-height: 1.6; padding: 0 1.5rem; }}
     .container {{ max-width: 1040px; margin: 0 auto; }}
     header {{ display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 0; border-bottom: 1px solid var(--border); }}
+    .brand-logo {{ display: flex; items-center; gap: 0.625rem; font-family: var(--font-heading); font-weight: 700; font-size: 1.25rem; color: #FFFFFF; }}
     .badge {{ background: rgba(59, 130, 246, 0.1); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 9999px; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }}
     .hero {{ padding: 5rem 0 3rem; text-align: center; max-width: 760px; margin: 0 auto; }}
     .eyebrow {{ color: var(--primary); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }}
     h1 {{ font-family: var(--font-heading); font-size: 2.75rem; line-height: 1.15; font-weight: 700; margin-bottom: 1.25rem; color: #FFFFFF; }}
     p.lead {{ font-size: 1.125rem; color: var(--muted); margin-bottom: 2rem; }}
-    .cta-btn {{ display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary); color: #fff; text-decoration: none; padding: 0.875rem 2rem; border-radius: 0.5rem; font-weight: 600; transition: background 0.15s ease; }}
-    .cta-btn:hover {{ background: var(--primary-hover); }}
+    .cta-btn {{ display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary); color: #fff; text-decoration: none; padding: 0.875rem 2rem; border-radius: 0.5rem; font-weight: 600; transition: opacity 0.15s ease; }}
+    .cta-btn:hover {{ opacity: 0.9; }}
     .card-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 3rem; }}
     .card {{ background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.5rem; }}
     .card-num {{ width: 28px; height: 28px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 1rem; }}
@@ -420,7 +595,7 @@ namespace WebApp.Services.Implementations
 <body>
   <div class=""container"">
     <header>
-      <div style=""font-weight: 700; font-size: 1.25rem;"">{assets.BrandName}</div>
+      <div class=""brand-logo"">{assets.BrandName}</div>
       <div class=""badge"">{assets.FooterNotice}</div>
     </header>
 
