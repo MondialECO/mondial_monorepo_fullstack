@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-25 (Creator Phase 4.6 Pricing & Revenue Model Exact Figma 57221:12167 and Phase 4.7 GTM & Launch Strategy Exact Figma 57221:12464 Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-26 (Creator Phase 4.5 Aids, Grants & Public Support Exact Figma 57221:11932, Phase 4.6 Pricing & Revenue Model Exact Figma 57221:12167, and Phase 4.7 GTM & Launch Strategy Exact Figma 57221:12464 Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -1359,9 +1359,7 @@ Stage 4.5 enforces a strict deterministic readiness gate via `SupportPlanService
    - Subtitle: *"This helps us check local support."*
    - MapPin icon input prefilled with recorded location fact (or city fallback).
    - `"Save location"` action dispatching `onAnswerFact('project_location', location)` to persist into `RecordedEligibilityFacts` and automatically trigger re-evaluation without modifying backend schemas.
-4. **Component 3: Metric Strip (Evaluated / Eligible / Potential / Missing / Ready / Tracking):**
-   - Quantitative counts for catalog schemes, authoritative matches, pending minor facts, requires input, MBC docs ready, and in-preparation founder tracking.
-5. **Component 4: Opportunity Cards List & Rich Inset Panels:**
+4. **Component 3: Opportunity Cards List & Rich Inset Panels (Figma 57221:11932):**
    - *Badges:* Category pill badge (`Advice & mentoring`, `Social Contribution Exemption`, `Grant`, `Allowance`, `InnovationSupport`, `Financing & Loan`, `Training support`, `EuropeanFunding`) + Status badge (`● A few details to check`, `● May fit your project`, `● Eligible to Apply`, `● Eligible (Statutory)`, `● Awarded`).
    - Card Headline, Value Subtitle, Description, and Official source provenance line (`Official details: {programmeOwner} via {catalogueSource}`).
    - Collapsed State Actions: `"Save this option"` (with toggleable bookmark icon) + `"View details ⌄"` chevron action.
@@ -1376,12 +1374,10 @@ Stage 4.5 enforces a strict deterministic readiness gate via `SupportPlanService
        - `OFFICIAL SOURCE`: Verified official authority links (`legifrance.gouv.fr`, `service-public.fr`, `urssaf.fr`, etc.) with `"Official portal verified ↗"`.
      - **Blue Callout Box (`BEFORE YOU APPLY`):** Info icon + *"When an official source is verified, you can prepare required documents and propose preparation tasks to your Operational Roadmap."*.
      - **Action Buttons Bar:** `"Check my details"`, `"Audit Details"` (opens Audit Provenance modal), `"Save this option"`, `"Track Application"`, and primary `"Open official website ↗"`.
-6. **Component 5: Quiet Journey Footer Navigation:**
+5. **Component 4: Quiet Journey Footer Navigation:**
    - Left: `"← Back to Skills & Training"` linking to Step 4.4 `/dashboard/creator/phase-4/skills?ideaId={ideaId}`.
    - Center: Reassurance text *"You can return to your saved support options later."*.
    - Right: Primary CTA `"Continue to Pricing & Revenue →"` linking to Step 4.6 `/dashboard/creator/phase-4/pricing?ideaId={ideaId}`.
-7. **Component 6: Milestone Banner:**
-   - Operational readiness banner (`"PHASE 4.6 READY · NEXT OPERATIONAL MILESTONE"`, `"Pricing & Revenue Model Engine"`, `"Build My Pricing Strategy →"`).
 
 #### Audit Details Modal
 Surfaces complete regulatory and computational provenance:
@@ -1866,6 +1862,20 @@ RC1 Freeze
   - Automated Unit Tests: 6 / 6 PASS (`src/__tests__/creator/phase4-gtm-strategy.test.tsx`).
   - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
   - Backend Tests (C#): 179 / 179 PASS (`WebApp.Tests.dll`).
+**2026-09-26 — Creator Phase 4.5 Aids, Grants & Public Support: Exact Figma 57221:11932 Alignment, Zero Mock Data & Verification Delivery.**
+- **Figma Reference & Layout (§6.5):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:11932` "Aids, Grants & Support · Step 4.5 Content"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
+- **Canonical Route:** `/dashboard/creator/phase-4/support`
+- **Canonical UI Components (Figma 57221:11932):**
+  1. *Compact Page-Level Header:* Eyebrow `"PHASE 4 · STEP 4.5"`, Title `"Aids, Grants & Public Support"`, Subtitle `"Explore funding schemes, training support, and institutional backing for your venture."`.
+  2. *Summary Card:* Total options count, live profile chips (Country, Situation, Formation phase), `"Update my details ↗"` deep link, and legal disclaimer.
+  3. *Location Card:* Location inquiry card with MapPin input prefilled with recorded fact, and `"Save location"` action dispatching `onAnswerFact('project_location', location)`.
+  4. *Opportunity Cards List & Rich Inset Panels:* Category pill badge, status badge, card headline, value subtitle, description, official details provenance, expandable 2-column breakdown (`WHAT YOU COULD GET`, `WHY THIS MAY FIT`, `WHAT WE ALREADY KNOW`, `WHEN TO APPLY`, `WHAT TO CHECK`, `WHAT YOU MAY NEED`, `OFFICIAL SOURCE`), `BEFORE YOU APPLY` callout box, and action buttons (`Check my details`, `Audit Details`, `Save this option`, `Track Application`, `Open official website ↗`). Removed non-canonical metric strip and milestone banner.
+  5. *Quiet Journey Footer Navigation:* Left `"← Back to Skills & Training"`, reassurance text, and primary CTA `"Continue to Pricing & Revenue →"`.
+- **Modals:**
+  - *Audit Details Modal:* Complete regulatory and computational provenance, criteria met checks, and Phase 3 artifact reuse mappings.
+- **Verification Evidence:**
+  - Automated Unit Tests: 8 / 8 PASS (`src/__tests__/creator/phase4-support-plan.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
   - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
 
 ---
