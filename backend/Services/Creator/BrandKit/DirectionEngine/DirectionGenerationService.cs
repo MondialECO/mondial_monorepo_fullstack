@@ -94,13 +94,17 @@ namespace WebApp.Services.Creator.BrandKit.DirectionEngine
                 throw new InvalidOperationException("AI generation did not return exactly 4 visual direction proposals.");
             }
 
-            if (!ValidateDistinctness(aiCandidates, out var validationErr))
+            // 1. Enforce avoid-list on AI candidates
+            var processed = EnforceAvoidList(aiCandidates, avoidList, isFallback: false);
+
+            // 2. Ensure distinctness across motifs, typefaces, and primary hues
+            processed = EnsureDistinctness(processed, avoidList);
+
+            if (!ValidateDistinctness(processed, out var validationErr))
             {
-                throw new InvalidOperationException($"AI generated candidates failed distinctness validation: {validationErr}");
+                _logger.LogWarning("Distinctness validation check warning: {ValidationErr}. Ensuring distinctness applied.", validationErr);
             }
 
-            // Enforce avoid-list on AI candidates
-            var processed = EnforceAvoidList(aiCandidates, avoidList, isFallback: false);
             return processed;
         }
 
@@ -245,9 +249,15 @@ Requirements:
 4. "display_typeface": Must be selected strictly from: "Cinzel", "Space Grotesk", "Plus Jakarta Sans", "Syne", "JetBrains Mono".
 5. "text_typeface": Must be selected strictly from: "Cinzel", "Space Grotesk", "Plus Jakarta Sans", "Syne", "JetBrains Mono".
 6. "motif_key": Must be selected strictly from: "geometric_structure", "organic_growth", "minimal_monogram", "technical_lattice", "editorial_classic", "bold_abstract".
-7. All 4 candidates must have different motif_keys, different display_typefaces, and divergent color palettes.
-8. "rationale": Provide 1-2 sentences explaining specifically why this direction fits this business and its positioning.
-9. Avoid list: Never include colors, words, or motifs that conflict with the avoid list.
+7. Primary Hue Diversity (MANDATORY): All 4 candidates must have divergent primary colors (the first color in "color_palette") belonging to completely distinct color families with at least 30° separation on the color wheel:
+   - Candidate 1: Blue / Indigo / Cyan (~200°-240°)
+   - Candidate 2: Emerald / Forest Green / Sage (~140°-175°)
+   - Candidate 3: Ochre / Gold / Warm Amber / Terracotta (~30°-55°)
+   - Candidate 4: Plum / Violet / Rose / Slate (~270°-330° or neutral dark)
+   NEVER use similar primary hues across multiple candidates (e.g., do not return two blue candidates or two green candidates).
+8. Motif Key & Typeface Uniqueness: All 4 candidates must have different motif_keys and at least 3 different display_typefaces.
+9. "rationale": Provide 1-2 sentences explaining specifically why this direction fits this business and its positioning.
+10. Avoid list: Never include colors, words, or motifs that conflict with the avoid list.
 
 Return strict JSON:
 {
@@ -320,16 +330,144 @@ Return strict JSON:
             return true;
         }
 
+        public static List<BrandDirectionCandidate> EnsureDistinctness(
+            List<BrandDirectionCandidate> candidates,
+            List<string> avoidList)
+        {
+            if (candidates == null || candidates.Count != 4)
+                return candidates ?? new List<BrandDirectionCandidate>();
+
+            var avoidKeywords = avoidList.Select(a => a.Trim().ToLowerInvariant()).Where(a => !string.IsNullOrEmpty(a)).ToList();
+
+            // 1. Harmonize Motif Keys (ensure 4 unique)
+            var usedMotifs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var c = candidates[i];
+                var motif = c.MotifKey;
+                if (string.IsNullOrEmpty(motif) || !ValidMotifKeys.Contains(motif, StringComparer.OrdinalIgnoreCase) || usedMotifs.Contains(motif))
+                {
+                    var alt = ValidMotifKeys.FirstOrDefault(m => !usedMotifs.Contains(m) && !IsMotifViolatingAvoidList(m, avoidKeywords))
+                              ?? ValidMotifKeys.FirstOrDefault(m => !usedMotifs.Contains(m))
+                              ?? ValidMotifKeys[i % ValidMotifKeys.Count];
+                    motif = alt;
+                }
+                usedMotifs.Add(motif);
+                c.MotifKey = motif;
+            }
+
+            // 2. Harmonize Display Typefaces (ensure at least 3 distinct)
+            var distinctFonts = candidates.Select(c => c.DisplayTypeface).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (distinctFonts.Count < 3)
+            {
+                var usedFonts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < candidates.Count; i++)
+                {
+                    var font = candidates[i].DisplayTypeface;
+                    if (usedFonts.Contains(font))
+                    {
+                        var alt = ValidBundledFonts.FirstOrDefault(f => !usedFonts.Contains(f))
+                                  ?? ValidBundledFonts[i % ValidBundledFonts.Count];
+                        candidates[i].DisplayTypeface = alt;
+                        usedFonts.Add(alt);
+                    }
+                    else
+                    {
+                        usedFonts.Add(font);
+                    }
+                }
+            }
+
+            // 3. Harmonize Primary Palette Hues (ensure >= 20° separation)
+            var existingHues = new List<double>();
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var c = candidates[i];
+                if (c.ColorPalette == null || c.ColorPalette.Count == 0)
+                {
+                    c.ColorPalette = GetDefaultPaletteForArchetype(i + 1);
+                }
+
+                var currentHex = c.ColorPalette[0];
+                var currentHue = GetHueFromHex(currentHex);
+
+                bool hasCollision = false;
+                foreach (var prevHue in existingHues)
+                {
+                    var diff = Math.Abs(currentHue - prevHue);
+                    if (diff > 180) diff = 360 - diff;
+                    if (diff < 20)
+                    {
+                        hasCollision = true;
+                        break;
+                    }
+                }
+
+                if (hasCollision)
+                {
+                    string? safeHex = null;
+                    var defaultPalette = GetDefaultPaletteForArchetype(i + 1);
+                    var defaultHue = GetHueFromHex(defaultPalette[0]);
+
+                    bool defaultOk = !IsColorViolatingAvoidList(defaultPalette[0], avoidKeywords);
+                    if (defaultOk)
+                    {
+                        foreach (var prevHue in existingHues)
+                        {
+                            var diff = Math.Abs(defaultHue - prevHue);
+                            if (diff > 180) diff = 360 - diff;
+                            if (diff < 20) { defaultOk = false; break; }
+                        }
+                    }
+
+                    if (defaultOk)
+                    {
+                        safeHex = defaultPalette[0];
+                        c.ColorPalette = defaultPalette;
+                        currentHue = defaultHue;
+                    }
+                    else
+                    {
+                        foreach (var poolHex in UniversalSafeHexPool)
+                        {
+                            if (IsColorViolatingAvoidList(poolHex, avoidKeywords)) continue;
+                            var poolHue = GetHueFromHex(poolHex);
+                            bool poolOk = true;
+                            foreach (var prevHue in existingHues)
+                            {
+                                var diff = Math.Abs(poolHue - prevHue);
+                                if (diff > 180) diff = 360 - diff;
+                                if (diff < 20) { poolOk = false; break; }
+                            }
+                            if (poolOk)
+                            {
+                                safeHex = poolHex;
+                                currentHue = poolHue;
+                                c.ColorPalette[0] = safeHex;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                existingHues.Add(currentHue);
+            }
+
+            return candidates;
+        }
+
         private static readonly string[] UniversalSafeHexPool = new[]
         {
-            "#0052FF", // Electric Tech Blue
-            "#2D6A4F", // Forest Green
-            "#B38E5D", // Warm Ochre / Gold
-            "#4F46E5", // Deep Indigo
-            "#0EA5E9", // Sky Cyan
-            "#D97706", // Amber
-            "#64748B", // Slate
-            "#059669"  // Emerald
+            "#0052FF", // Electric Tech Blue (~221°)
+            "#2D6A4F", // Forest Green (~152°)
+            "#B38E5D", // Warm Ochre / Gold (~35°)
+            "#8B5CF6", // Royal Violet (~258°)
+            "#D97706", // Amber (~38°)
+            "#059669", // Emerald (~160°)
+            "#E11D48", // Crimson Rose (~347°)
+            "#0D9488", // Deep Teal (~174°)
+            "#4F46E5", // Deep Indigo (~244°)
+            "#334155"  // Slate Neutral (~215°)
         };
 
         public static List<BrandDirectionCandidate> EnforceAvoidList(

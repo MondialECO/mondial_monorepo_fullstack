@@ -140,6 +140,87 @@ namespace WebApp.Tests.Creator.Unit
         }
 
         [Fact]
+        public async Task Ai_generation_with_colliding_hues_is_auto_harmonized_and_succeeds()
+        {
+            var mockAi = new Mock<IAiProvider>();
+            var mockRouter = new Mock<IModelRouter>();
+            mockRouter.Setup(r => r.Resolve(It.IsAny<string>())).Returns("google/gemini-3.8-flash");
+
+            // Candidate 1 (#2563EB hue 221.1°) and Candidate 2 (#1D4ED8 hue 223.3°) have only 2.2° difference
+            var fakeJsonResponse = @"{
+              ""candidates"": [
+                {
+                  ""name"": ""Modern Precision"",
+                  ""feel_line"": ""Clean technological posture"",
+                  ""rationale"": ""Built for modern developers."",
+                  ""color_palette"": [""#2563EB"", ""#0F172A"", ""#38BDF8"", ""#F8FAFC""],
+                  ""display_typeface"": ""Space Grotesk"",
+                  ""text_typeface"": ""Plus Jakarta Sans"",
+                  ""motif_key"": ""geometric_structure""
+                },
+                {
+                  ""name"": ""Impact Bold"",
+                  ""feel_line"": ""Bold and dynamic posture"",
+                  ""rationale"": ""Designed for high energy brands."",
+                  ""color_palette"": [""#1D4ED8"", ""#1E293B"", ""#60A5FA"", ""#F1F5F9""],
+                  ""display_typeface"": ""Syne"",
+                  ""text_typeface"": ""Plus Jakarta Sans"",
+                  ""motif_key"": ""bold_abstract""
+                },
+                {
+                  ""name"": ""Editorial Elegance"",
+                  ""feel_line"": ""Timeless and refined craft"",
+                  ""rationale"": ""Appeals to discerning buyers."",
+                  ""color_palette"": [""#D97706"", ""#451A03"", ""#FCD34D"", ""#FFFBEB""],
+                  ""display_typeface"": ""Cinzel"",
+                  ""text_typeface"": ""Plus Jakarta Sans"",
+                  ""motif_key"": ""editorial_classic""
+                },
+                {
+                  ""name"": ""Organic Modern"",
+                  ""feel_line"": ""Natural growth and harmony"",
+                  ""rationale"": ""Reflects vitality and renewal."",
+                  ""color_palette"": [""#10B981"", ""#064E3B"", ""#6EE7B7"", ""#F0FDF4""],
+                  ""display_typeface"": ""Plus Jakarta Sans"",
+                  ""text_typeface"": ""JetBrains Mono"",
+                  ""motif_key"": ""organic_growth""
+                }
+              ]
+            }";
+
+            mockAi.Setup(ai => ai.CompleteAsync(It.IsAny<AiCompletionRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AiCompletion
+                {
+                    Text = fakeJsonResponse,
+                    Model = "google/gemini-3.8-flash",
+                    Usage = new AiTokenUsage(500, 350, 850),
+                    EstimatedCost = 0.00014m
+                });
+
+            var service = new DirectionGenerationService(mockAi.Object, mockRouter.Object, NullLogger<DirectionGenerationService>.Instance);
+
+            var idea = new CreatorIdea { Id = "idea_test", Project = new CreatorJourneyProject { Name = "Mondial Venture" } };
+            var kit = new BrandKitModel
+            {
+                IdeaId = "idea_test",
+                Strategy = new BrandStrategy
+                {
+                    BusinessName = "Mondial Venture",
+                    Industry = new BrandProvenancedText { Value = "Technology" },
+                    ConfirmedAt = DateTime.UtcNow
+                }
+            };
+
+            var candidates = await service.GenerateCandidatesAsync(idea, kit);
+
+            candidates.Should().NotBeNull();
+            candidates.Should().HaveCount(4);
+
+            // Must pass distinctness validation after harmonization
+            DirectionGenerationService.ValidateDistinctness(candidates, out var err).Should().BeTrue(err);
+        }
+
+        [Fact]
         public void Avoid_list_filter_substitutes_conflicting_colors_and_motifs_and_sets_flag()
         {
             var rawCandidates = new List<BrandDirectionCandidate>
