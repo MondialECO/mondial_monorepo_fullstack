@@ -13,6 +13,7 @@
 | **4.4** | Skills & Training Plan | `57221:11470` | 1120px (`max-w-[1120px]`) | 3 Resolution Cards, Mode Switcher, Briefs | **100% Aligned** |
 | **4.5** | Aids, Grants & Public Support | `57221:11932` | 1120px (`max-w-[1120px]`) | Summary Card, Location Card, Inset Breakdown List | **100% Aligned** |
 | **4.6** | Pricing & Revenue Model | `57221:12167` | 1120px (`max-w-[1120px]`) | 8 Sections, Scenario Simulator, Verification Log | **100% Aligned** |
+| **4.7** | GTM & Launch Strategy | `57221:12464` | 1120px (`max-w-[1120px]`) | 10 Canonical Sections, Outreach Message Draft, Modals | **100% Aligned** |
 
 ---
 
@@ -67,6 +68,22 @@
   - **Section 7 (Next action):** Action card with roadmap task link.
   - **Section 8 (Journey footer):** `← Back to Aids & Support` and `Save & Continue →`.
 - **Audit Verdict:** 100% compliant with Figma node `57221:12167`.
+
+---
+
+### 2.5 Step 4.7 — GTM & Launch Strategy (Figma Node `57221:12464`)
+- **Layout & Structure:**
+  - **Section 1 (Plan Summary Card):** Eyebrow `"YOUR LAUNCH PLAN"`, `"Draft"` badge, project chip `"Project: {projectName}"`, overall motion heading, subtitle, 3 compact facts (`First customers`, `Main channel`, `Budget`), and next-action reminder line.
+  - **Section 2 (Your First Customers):** Target customer card with highlighted problem description, `Suggested` badge, decision-maker status (`Likely decision-maker: Business owner — To confirm`), expandable `Why this group?` explanation, and `Adjust customer group` modal trigger.
+  - **Section 3 (What You'll Say):** `POSITIONING` badge with core value proposition, `INITIAL OUTREACH MESSAGE DRAFT` quote card with `Ready for testing` badge, copy action (`Copy message`), and `Edit message` modal.
+  - **Section 4 (How Customers Will Buy):** `Talk first, demonstrate when ready` header, 3 decision cards (`WHO DECIDES?`, `WHAT NEEDS EXPLAINING?`, `WHAT COULD BUILD TRUST?`), stage progression preview (`Now: Customer conversations` → `Later: Product demo`), and small pricing reference card (`Review pricing →`).
+  - **Section 5 (Where To Reach Them):** Primary channel card with `Main channel` badge, description, 3 structured details (`WHY START HERE?`, `WHAT YOU’LL DO`, `WHAT NEEDS CHECKING`), and `Change channel` modal.
+  - **Section 6 (What You Can Commit):** 2-column capacity breakdown for `PROJECT TIME` (`Review available time` modal) and `MARKETING BUDGET` (`Set budget` modal).
+  - **Section 7 (Your Launch Actions):** Action 1 expanded with 4-quadrant breakdown (`What to do`, `Expected output`, `Why it matters`, `Time & Capacity`) + roadmap task link; Actions 2–4 compact with condition locks (`Needs a usable product demo`, `Needs launch assets`, `Needs recorded activity`).
+  - **Section 8 (What To Track):** Funnel measure table (`Businesses contacted`, `Replies received`, `Demo requests`, `Purchases` with target vs actual columns), empty state note, and modal triggers (`Set targets`, `Record results`).
+  - **Section 9 (Connection To Launch Assets):** `NEXT STEP PREVIEW` eyebrow, 3 mini preview pills (`For: {segment}`, `Message: {message}`, `Proposed CTA: Express interest`), and launch asset boundary notice.
+  - **Section 10 (Journey Footer):** Left `← Back to Pricing`, reassurance label, and primary CTA `Activate plan & continue` with `Next: Launch Assets`.
+- **Audit Verdict:** 100% compliant with Figma node `57221:12464`.
 
 ---
 *End of Phase 4 Figma UI Audit.*

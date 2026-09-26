@@ -8,75 +8,74 @@ const mockStrategy: GtmStrategy = {
   generatedAt: '2026-09-21T10:00:00Z',
   updatedAt: '2026-09-21T10:00:00Z',
   status: 'Active',
-  overallMotion: 'ConsultativePilot',
+  overallMotion: 'Start with customer conversations',
   primarySegment: {
-    segmentName: 'B2B SMBs',
+    segmentName: 'Independent service businesses',
     isPrimary: true,
-    rationale: 'High immediate operational bottleneck in financial reconciliation.',
-    problem: 'Manual multi-bank reconciliation',
-    primaryMessage: 'Eliminate reconciliation bottlenecks in 48 hours.',
+    rationale: 'High immediate operational bottleneck in managing customer enquiries.',
+    problem: 'Independent service businesses in France that manage enquiries and quotations manually.',
+    primaryMessage: 'Keep customer enquiries, quotations, and follow-ups in one place.',
     offerKey: 'pricing.starter',
     offerName: 'Starter Tier',
-    selectedPrice: 99,
+    selectedPrice: 15,
     revenueModel: 'Subscription',
-    buyingComplexity: 'Medium',
-    estimatedSalesCycle: '2-4 weeks',
-    relevanceScore: 92
+    buyingComplexity: 'Business owner',
+    estimatedSalesCycle: '1-3 weeks',
+    relevanceScore: 92,
   },
   secondarySegments: [],
   channelStrategy: [
     {
-      key: 'gtm.channel.founder-led-sales',
-      channel: 'FounderLedSales',
-      channelName: 'Founder-Led Direct Sales',
+      key: 'gtm.channel.direct-outreach',
+      channel: 'ColdOutreach',
+      channelName: 'Direct outreach',
       category: 'Direct Outbound',
       priority: 'Primary',
       recommendedPriority: 'Primary',
       effortLevel: 'High',
-      estimatedWeeklyHours: 6,
+      estimatedWeeklyHours: 4,
       capacityScore: 4,
       setupCostEstimate: 0,
       monthlySpendEstimate: 0,
       reasonCodes: ['FOUNDER_CAPABILITY_MATCH', 'SALES_MOTION_MATCH', 'SEGMENT_REACHABLE'],
-      rationale: 'Direct founder outreach is the most reliable way to validate willingness-to-pay.',
-      whyNow: 'Initial pilots require founder credibility and rapid customer feedback.',
-      evidenceGrounded: 'Matches high consultative sales motion.',
-      firstStep: 'Reach out to 15 warm network contacts matching target criteria.',
+      rationale: 'It supports direct conversations about the workflow your product will address.',
+      whyNow: 'Identify relevant businesses and invite them to discuss how they manage enquiries and quotations.',
+      evidenceGrounded: 'Which businesses fit, how to reach them, and the time required.',
+      firstStep: 'Prepare a relevant contact shortlist and adapt your introduction.',
       founderEdited: false,
-      founderNotes: null
+      founderNotes: null,
     },
     {
-      key: 'gtm.channel.organic-social',
-      channel: 'OrganicSocial',
-      channelName: 'Organic Social & Thought Leadership',
+      key: 'gtm.channel.inbound-content',
+      channel: 'InboundContent',
+      channelName: 'Inbound content',
       category: 'Inbound',
       priority: 'Secondary',
       recommendedPriority: 'Secondary',
       effortLevel: 'Medium',
-      estimatedWeeklyHours: 3,
+      estimatedWeeklyHours: 2,
       capacityScore: 2,
       setupCostEstimate: 0,
       monthlySpendEstimate: 0,
       reasonCodes: ['BUDGET_COMPATIBLE', 'FOUNDER_CAPABILITY_MATCH'],
-      rationale: 'Builds authority in modern financial operations.',
+      rationale: 'Builds authority in modern service operations.',
       whyNow: 'Complements direct conversations by sharing lessons learned.',
       evidenceGrounded: 'Zero cash requirement fits bootstrapped stage.',
-      firstStep: 'Publish 2 breakdowns per week of common reconciliation pitfalls.',
+      firstStep: 'Publish 2 breakdowns per week of common quotation pitfalls.',
       founderEdited: false,
-      founderNotes: null
-    }
+      founderNotes: null,
+    },
   ],
   founderExecutionPlan: {
-    weeklyHoursAvailable: 15,
-    weeklyHoursAllocated: 9,
-    remainingWeeklyHours: 6,
+    weeklyHoursAvailable: 4,
+    weeklyHoursAllocated: 4,
+    remainingWeeklyHours: 0,
     capacityBand: 'PartTimeFocused',
     isOverloaded: false,
     overloadMitigationNotice: null,
     channelEffortPoints: {
-      'FounderLedSales': 4,
-      'OrganicSocial': 2
-    }
+      DirectOutreach: 4,
+    },
   },
   delegationPlan: [],
   funnelStrategy: ['Awareness', 'Discovery', 'Pilot', 'Conversion', 'Activation'],
@@ -86,79 +85,79 @@ const mockStrategy: GtmStrategy = {
     phases: [
       {
         phaseNumber: 1,
-        phaseName: 'Founder Pilot Validation',
-        objective: 'Secure 3 paying pilot customers.',
+        phaseName: 'Customer Discovery Conversations',
+        objective: 'Conduct 15 customer discovery calls.',
         timeframe: 'Weeks 1-4',
-        keyMilestones: ['Finalize pilot offer deck', 'Conduct 15 discovery calls'],
-        exitCriteria: ['3 signed pilot commitments', 'Objection log documented'],
-        contingencyTrigger: 'Zero commitments after 10 calls',
-        fallbackAction: 'Adjust value proposition framing'
-      }
-    ]
+        keyMilestones: ['Shortlist 20 contacts', 'Conduct 15 discovery calls'],
+        exitCriteria: ['3 signed pilot commitments'],
+        contingencyTrigger: 'Zero replies after 10 calls',
+        fallbackAction: 'Adjust value proposition framing',
+      },
+    ],
   },
   experiments: [
     {
       key: 'gtm.experiment.willingness-to-pay-validation',
-      hypothesis: 'Target B2B SMBs will commit to an exploratory pilot at €99 when presented with our core solution.',
-      segment: 'B2B SMBs',
-      channel: 'FounderLedSales',
+      hypothesis: 'Independent service businesses will agree to exploratory discovery conversations.',
+      segment: 'Independent service businesses',
+      channel: 'ColdOutreach',
       offer: 'pricing.starter',
-      messageAngle: 'Eliminate reconciliation bottlenecks in 48 hours.',
-      budgetCap: 150,
+      messageAngle: 'Keep customer enquiries, quotations, and follow-ups in one place.',
+      budgetCap: 0,
       timebox: '3 weeks',
-      primaryMetric: 'Qualified Pilot Commitments',
-      targetValue: null,
+      primaryMetric: 'Businesses contacted',
+      targetValue: 50,
       targetStatus: 'NeedsBaseline',
-      successCondition: 'Secure 3 paid pilot letters of intent.',
-      stopCondition: '5 consecutive prospects reject the price floor.',
-      evidenceRequired: 'Call notes and qualification scores.',
+      successCondition: 'Secure 10 discovery call replies.',
+      stopCondition: 'Zero interest after 20 contacts.',
+      evidenceRequired: 'Call notes and workflow feedback.',
       status: 'Draft',
-      runs: []
-    }
+      runs: [],
+    },
   ],
   metricsFramework: [
     {
       key: 'metric.awareness.reach',
-      name: 'Qualified Account Reach',
+      name: 'Businesses contacted',
       funnelStage: 'Awareness',
-      definition: 'Unique target accounts contacted or engaged.',
-      numerator: 'Count of unique ICP prospects contacted',
+      definition: 'Unique prospects contacted.',
+      numerator: 'Count of prospects contacted',
       denominator: 'Total target list',
-      dataSource: 'Outreach Log / CRM',
+      dataSource: 'Outreach Log',
       baseline: '0',
-      target: 'NeedsBaseline',
+      target: '50',
       targetStatus: 'NeedsBaseline',
-      measurementFrequency: 'Weekly'
-    }
+      measurementFrequency: 'Weekly',
+    },
   ],
   budgetPlan: {
     currency: 'EUR',
-    totalAvailableBudget: 1500,
-    forecastCacAssumption: 45,
+    totalAvailableBudget: null,
+    forecastCacAssumption: null,
     observedCac: null,
     validatedCac: null,
-    budgetSource: 'ForecastAssumption',
-    spendableStatus: 'Planned',
-    validationStatus: 'Supported',
-    provenanceExplanation: 'Forecast assumption from Phase 3.4 Financial Forecast (€1,500 planned).'
+    budgetSource: 'Unknown',
+    spendableStatus: 'Unknown',
+    validationStatus: 'NeedsValidation',
+    provenanceExplanation: 'No budget confirmed yet. Not assumed as €0.',
   },
   risks: ['Longer sales cycles than anticipated.'],
-  assumptions: ['Target SMBs have discretionary authority up to €200/mo.'],
+  assumptions: ['Service businesses handle quotations manually.'],
   sourceVersions: {
     marketStudyVersion: 1,
     businessModelVersion: 1,
     forecastVersion: 1,
     roadmapVersion: 1,
-    consumedWeeklyAvailability: '10–20 hours/week',
-    supportPlanConsumed: false
+    consumedWeeklyAvailability: '4 hours/week',
+    supportPlanConsumed: false,
   },
   founderOverrides: {},
   pricingValidationRequired: false,
-  capacityWarningActive: false
+  capacityWarningActive: false,
 };
 
-describe('GtmStrategyView Component', () => {
-  it('renders prerequisite gate blocker when gateError is present', () => {
+describe('GtmStrategyView Component — Figma 57221:12464 Canon', () => {
+  it('1. Renders prerequisite gate blocker when gateError is present', () => {
     render(
       <GtmStrategyView
         ideaId="test-idea"
@@ -167,7 +166,10 @@ describe('GtmStrategyView Component', () => {
         updateAvailable={false}
         changedSources={[]}
         isLoading={false}
-        gateError={{ code: 'PREREQUISITE_GATE_FAILED', message: 'PricingStrategy is required before GTM.' }}
+        gateError={{
+          code: 'PREREQUISITE_GATE_FAILED',
+          message: 'PricingStrategy is required before GTM.',
+        }}
         onGenerate={vi.fn()}
         onRefresh={vi.fn()}
         onUpdateChannel={vi.fn()}
@@ -178,10 +180,12 @@ describe('GtmStrategyView Component', () => {
     expect(screen.getByText(/PREREQUISITE GATE ACTIVE/i)).toBeInTheDocument();
     expect(screen.getByText(/Phase 4.6 Pricing Strategy Required First/i)).toBeInTheDocument();
     expect(screen.getByText(/PricingStrategy is required before GTM/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Complete Step 4.6 Pricing Strategy/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Complete Step 4.6 Pricing Strategy/i })
+    ).toBeInTheDocument();
   });
 
-  it('renders ungenerated state with generate button when strategy is null and no gate error', () => {
+  it('2. Renders ungenerated state with generate button when strategy is null and no gate error', () => {
     const handleGenerate = vi.fn();
     render(
       <GtmStrategyView
@@ -199,15 +203,17 @@ describe('GtmStrategyView Component', () => {
       />
     );
 
-    expect(screen.getByText(/Convert Pricing & Market Intelligence into a Sequenced Launch/i)).toBeInTheDocument();
-    const btn = screen.getByRole('button', { name: /Generate Go-To-Market Strategy/i });
+    expect(
+      screen.getByText(/Convert Pricing & Market Intelligence into a Sequenced Launch/i)
+    ).toBeInTheDocument();
+    const btn = screen.getByRole('button', { name: /Build My Launch Strategy/i });
     expect(btn).toBeInTheDocument();
 
     fireEvent.click(btn);
     expect(handleGenerate).toHaveBeenCalledTimes(1);
   });
 
-  it('renders complete GTM strategy dashboard with primary segment, capacity, and channels', () => {
+  it('3. Renders complete Figma 57221:12464 GTM strategy dashboard with 10 canonical sections', () => {
     render(
       <GtmStrategyView
         ideaId="test-idea"
@@ -224,39 +230,88 @@ describe('GtmStrategyView Component', () => {
       />
     );
 
-    // Header checks
-    expect(screen.getByText(/Test Venture Go-To-Market Strategy/i)).toBeInTheDocument();
-    expect(screen.getByText(/ConsultativePilot/i)).toBeInTheDocument();
+    // Header & Section 1: Summary Card
+    expect(screen.getByText(/PHASE 4 · STEP 4.7/i)).toBeInTheDocument();
+    expect(screen.getByText(/YOUR LAUNCH PLAN/i)).toBeInTheDocument();
+    expect(screen.getByText(/Start with customer conversations/i)).toBeInTheDocument();
+    expect(screen.getByText(/Project: Test Venture/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Independent service businesses/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Direct outreach/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Needs validation/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/Next launch action: Prepare customer conversations/i)
+    ).toBeInTheDocument();
 
-    // Capacity reconciliation
-    expect(screen.getByText(/9h \/ 15h/i)).toBeInTheDocument();
-    expect(screen.getByText(/6h buffer/i)).toBeInTheDocument();
+    // Section 2: Your First Customers
+    expect(screen.getByText(/Your first customers/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Adjust customer group/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/Suggested/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Likely decision-maker:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Why this group\?/i)).toBeInTheDocument();
 
-    // Budget provenance
-    expect(screen.getByText(/€1,500/i)).toBeInTheDocument();
-    expect(screen.getByText(/Planned/i)).toBeInTheDocument();
-    expect(screen.getByText(/ForecastAssumption/i)).toBeInTheDocument();
+    // Section 3: What You'll Say
+    expect(screen.getByText(/What you’ll say/i)).toBeInTheDocument();
+    expect(screen.getByText(/POSITIONING/i)).toBeInTheDocument();
+    expect(screen.getByText(/INITIAL OUTREACH MESSAGE DRAFT/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Edit message/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Copy message/i })).toBeInTheDocument();
 
-    // Primary Segment
-    expect(screen.getByText(/Primary Launch Segment & Positioning/i)).toBeInTheDocument();
-    expect(screen.getByText(/Eliminate reconciliation bottlenecks in 48 hours/i)).toBeInTheDocument();
+    // Section 4: How Customers Will Buy
+    expect(screen.getByText(/How customers will buy/i)).toBeInTheDocument();
+    expect(screen.getByText(/Talk first, demonstrate when ready/i)).toBeInTheDocument();
+    expect(screen.getByText(/WHO DECIDES\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/WHAT NEEDS EXPLAINING\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/WHAT COULD BUILD TRUST\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/Now: Customer conversations/i)).toBeInTheDocument();
+    expect(screen.getByText(/Later: Product demo/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Review pricing/i })).toBeInTheDocument();
 
-    // Channels & deterministic reason codes
-    expect(screen.getByText(/Founder-Led Direct Sales/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/FOUNDER_CAPABILITY_MATCH/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/SALES_MOTION_MATCH/i)).toBeInTheDocument();
+    // Section 5: Where To Reach Them
+    expect(screen.getByText(/Where to reach them/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Change channel/i })).toBeInTheDocument();
+    expect(screen.getByText(/Primary focus/i)).toBeInTheDocument();
+    expect(screen.getByText(/WHY START HERE\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/WHAT YOU’LL DO/i)).toBeInTheDocument();
+    expect(screen.getByText(/WHAT NEEDS CHECKING/i)).toBeInTheDocument();
 
-    // Experiments with NeedsBaseline
-    expect(screen.getByText(/GTM Validation Experiments/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/NeedsBaseline/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Qualified Pilot Commitments/i)).toBeInTheDocument();
+    // Section 6: What You Can Commit
+    expect(screen.getByText(/What you can commit/i)).toBeInTheDocument();
+    expect(screen.getByText(/PROJECT TIME/i)).toBeInTheDocument();
+    expect(screen.getByText(/MARKETING BUDGET/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Review available time/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Set budget/i })).toBeInTheDocument();
 
-    // Strict Phase 4.8 boundary banner
-    expect(screen.getByText(/PHASE 4.8 BOUNDARY · COMING NEXT/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Generate Launch Assets \(Phase 4.8 Coming Next\)/i })).toBeDisabled();
+    // Section 7: Your Launch Actions
+    expect(screen.getByText(/Your launch actions/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/Prepare customer conversations/i).length
+    ).toBeGreaterThan(0);
+    expect(screen.getByText(/Show a working demo/i)).toBeInTheDocument();
+    expect(screen.getByText(/Review your launch website/i)).toBeInTheDocument();
+    expect(screen.getByText(/Review your launch results/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Review roadmap task/i })).toBeInTheDocument();
+
+    // Section 8: What To Track
+    expect(screen.getByText(/What to track/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Businesses contacted/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Replies received/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Demo requests/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Purchases/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /Set targets/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Record results/i })).toBeInTheDocument();
+
+    // Section 9: Next Step Preview
+    expect(screen.getByText(/Your plan will guide your launch assets/i)).toBeInTheDocument();
+    expect(screen.getByText(/Proposed CTA:/i)).toBeInTheDocument();
+
+    // Section 10: Journey Footer
+    expect(screen.getByRole('link', { name: /Back to Pricing/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Activate plan & continue/i })
+    ).toBeInTheDocument();
   });
 
-  it('shows staleness banner with changed sources when updateAvailable is true', () => {
+  it('4. Shows staleness banner with changed sources when updateAvailable is true', () => {
     const handleRefresh = vi.fn();
     render(
       <GtmStrategyView
@@ -274,15 +329,15 @@ describe('GtmStrategyView Component', () => {
       />
     );
 
-    expect(screen.getByText(/GTM Strategy Has Upstream Dependency Updates/i)).toBeInTheDocument();
+    expect(screen.getByText(/Update available:/i)).toBeInTheDocument();
     expect(screen.getByText(/Pricing & Revenue Model \(Phase 4.6\)/i)).toBeInTheDocument();
 
-    const refreshBtn = screen.getByRole('button', { name: /Refresh Now/i });
+    const refreshBtn = screen.getByRole('button', { name: /Refresh Launch Plan/i });
     fireEvent.click(refreshBtn);
     expect(handleRefresh).toHaveBeenCalledTimes(1);
   });
 
-  it('allows founder to adjust channel priority in modal', async () => {
+  it('5. Allows founder to change channel in modal', async () => {
     const handleUpdateChannel = vi.fn().mockResolvedValue(undefined);
     render(
       <GtmStrategyView
@@ -300,27 +355,27 @@ describe('GtmStrategyView Component', () => {
       />
     );
 
-    const adjustBtns = screen.getAllByRole('button', { name: /Adjust Priority/i });
-    fireEvent.click(adjustBtns[0]);
+    const changeBtn = screen.getByRole('button', { name: /Change channel/i });
+    fireEvent.click(changeBtn);
 
-    expect(screen.getByText(/Select Channel Priority/i)).toBeInTheDocument();
+    expect(screen.getByText(/Select Starting Outreach Channel/i)).toBeInTheDocument();
 
-    const saveBtn = screen.getByRole('button', { name: /Save Override/i });
-    fireEvent.click(saveBtn);
+    const setPrimaryBtns = screen.getAllByRole('button', { name: /Set as Primary/i });
+    fireEvent.click(setPrimaryBtns[0]);
 
     await waitFor(() => {
       expect(handleUpdateChannel).toHaveBeenCalledTimes(1);
       expect(handleUpdateChannel).toHaveBeenCalledWith(
-        'gtm.channel.founder-led-sales',
+        'gtm.channel.direct-outreach',
         expect.objectContaining({
           ideaId: 'test-idea',
-          priority: 'Primary'
+          priority: 'Primary',
         })
       );
     });
   });
 
-  it('allows logging an immutable experiment run with observations', async () => {
+  it('6. Allows recording launch results in modal', async () => {
     const handleRecordRun = vi.fn().mockResolvedValue(undefined);
     render(
       <GtmStrategyView
@@ -338,16 +393,18 @@ describe('GtmStrategyView Component', () => {
       />
     );
 
-    const logBtn = screen.getByRole('button', { name: /Log Completed Run/i });
-    fireEvent.click(logBtn);
+    const recordBtn = screen.getByRole('button', { name: /Record results/i });
+    fireEvent.click(recordBtn);
 
-    expect(screen.getByText(/Record Historical Evidence/i)).toBeInTheDocument();
+    expect(screen.getByText(/Record Launch Outreach Activity/i)).toBeInTheDocument();
 
-    const obsTextarea = screen.getByPlaceholderText(/Record qualitative customer quotes/i);
-    fireEvent.change(obsTextarea, { target: { value: 'Customer loved the pilot offer at €99' } });
+    const obsTextarea = screen.getByPlaceholderText(/Contacted 10 local electricians/i);
+    fireEvent.change(obsTextarea, {
+      target: { value: 'Contacted 10 businesses, 3 replied positively.' },
+    });
 
-    const commitBtn = screen.getByRole('button', { name: /Commit Immutable Run/i });
-    fireEvent.click(commitBtn);
+    const saveBtn = screen.getByRole('button', { name: /Save Results/i });
+    fireEvent.click(saveBtn);
 
     await waitFor(() => {
       expect(handleRecordRun).toHaveBeenCalledTimes(1);
@@ -355,8 +412,8 @@ describe('GtmStrategyView Component', () => {
         'gtm.experiment.willingness-to-pay-validation',
         expect.objectContaining({
           ideaId: 'test-idea',
-          observations: 'Customer loved the pilot offer at €99',
-          outcome: 'Validated'
+          observations: 'Contacted 10 businesses, 3 replied positively.',
+          outcome: 'Validated',
         })
       );
     });

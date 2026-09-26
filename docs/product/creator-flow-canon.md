@@ -1847,21 +1847,25 @@ RC1 Freeze
   - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
   - Live Browser E2E: Playwright verified 1440px desktop, 1920px widescreen, and live database strategy generation with 0 DOM errors, 0 layout overflows, and responsive scaling.
 **2026-09-25 — Creator Phase 4.7 GTM & Launch Strategy: Exact Figma 57221-12464 Alignment, Deterministic Prioritization, Capacity Guardrails & Verification Delivery.**
+**2026-09-26 — Creator Phase 4.7 GTM & Launch Strategy: Exact Figma 57221:12464 10-Section Redesign, Outreach Draft & Interactive Decision Modals.**
 - **Figma Reference & Layout (§6.7):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:12464` "GTM & Launch Strategy · Step 4.7"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
 - **Canonical Route:** `/dashboard/creator/phase-4/gtm`
-- **Canonical UI Components:**
-  1. *Header & Motion Badge:* Eyebrow `"PHASE 4 · STEP 4.7"`, Title `"{projectName} Go-To-Market Strategy"`, Subtitle `"Deterministic channel prioritization grounded in founder availability, offer economics, and empirical validation gates."`.
-  2. *Top Provenance & Capacity Metric Cards (4 Cards):* Weekly founder capacity (`{allocated}h / {available}h`, band, buffer), spendable marketing cash, CAC provenance (`Observed` vs `Assumed` vs `Needs Baseline`), and primary launch segment.
-  3. *Primary Launch Segment & Positioning:* Target Segment name, match relevance score, core problem, value proposition message angle, buying complexity, and sales cycle basis.
-  4. *Prioritized Acquisition Channels:* Channel cards with priority badges (`Primary`, `Secondary`, `Later`, `NotRecommended`), effort levels, estimated weekly hours, deterministic reason codes (`FOUNDER_CAPABILITY_MATCH`, `SALES_MOTION_MATCH`, etc.), why now, first step, and `Adjust Priority` modal.
-  5. *GTM Validation Experiments & Empirical Evidence Log:* Timeboxed hypotheses, budget caps, primary metric threshold status (`NeedsBaseline`, `EvidenceBased`), success/stop conditions, `Log Completed Run` modal, and expandable immutable run history.
-  6. *Standardized Measurement Contract:* Funnel stage matrix (Awareness, Discovery, Pilot, Conversion, Activation), metric names, formulas, data sources, and targets.
-  7. *Sequenced Launch Timeline & Phasing:* Phased milestones with timeframes, objectives, and exit criteria.
-  8. *Phase 4.8 Boundary Banner & Quiet Footer Navigation:* Phase 4.8 boundary card + `← Back to Step 4.6 Pricing Strategy` and `Review Construction Snapshot →`.
+- **Ten Canonical Figma UI Sections:**
+  1. *Section 1: Plan Summary Card:* Eyebrow `"YOUR LAUNCH PLAN"`, `"Draft"` badge, project chip `"Project: {projectName}"`, overall motion heading, subtitle, 3 compact facts (`First customers`, `Main channel`, `Budget`), and next-action reminder line.
+  2. *Section 2: Your First Customers:* Target customer card with highlighted problem description, `Suggested` badge, decision-maker status (`Likely decision-maker: Business owner — To confirm`), expandable `Why this group?` explanation, and `Adjust customer group` modal trigger.
+  3. *Section 3: What You'll Say:* `POSITIONING` badge with core value proposition, `INITIAL OUTREACH MESSAGE DRAFT` quote card with `Ready for testing` badge, copy action (`Copy message`), and `Edit message` modal.
+  4. *Section 4: How Customers Will Buy:* `Talk first, demonstrate when ready` header, 3 decision cards (`WHO DECIDES?`, `WHAT NEEDS EXPLAINING?`, `WHAT COULD BUILD TRUST?`), stage progression preview (`Now: Customer conversations` → `Later: Product demo`), and small pricing reference card (`Review pricing →`).
+  5. *Section 5: Where To Reach Them:* Primary channel card with `Main channel` badge, description, 3 structured details (`WHY START HERE?`, `WHAT YOU’LL DO`, `WHAT NEEDS CHECKING`), and `Change channel` modal.
+  6. *Section 6: What You Can Commit:* 2-column capacity breakdown for `PROJECT TIME` (`Review available time` modal) and `MARKETING BUDGET` (`Set budget` modal).
+  7. *Section 7: Your Launch Actions:* Action 1 expanded with 4-quadrant breakdown (`What to do`, `Expected output`, `Why it matters`, `Time & Capacity`) + roadmap task link; Actions 2–4 compact with condition locks (`Needs a usable product demo`, `Needs launch assets`, `Needs recorded activity`).
+  8. *Section 8: What To Track:* Funnel measure table (`Businesses contacted`, `Replies received`, `Demo requests`, `Purchases` with target vs actual columns), empty state note, and modal triggers (`Set targets`, `Record results`).
+  9. *Section 9: Connection To Launch Assets:* `NEXT STEP PREVIEW` eyebrow, 3 mini preview pills (`For: {segment}`, `Message: {message}`, `Proposed CTA: Express interest`), and launch asset boundary notice.
+  10. *Section 10: Journey Footer:* Left `← Back to Pricing`, reassurance label, and primary CTA `Activate plan & continue` with `Next: Launch Assets`.
 - **Verification Evidence:**
   - Automated Unit Tests: 6 / 6 PASS (`src/__tests__/creator/phase4-gtm-strategy.test.tsx`).
   - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
   - Backend Tests (C#): 179 / 179 PASS (`WebApp.Tests.dll`).
+  - TypeScript Typecheck: 0 errors (`tsc --noEmit`).
 **2026-09-26 — Creator Phase 4.6 Pricing Strategy: Exact Figma 57221:12167 8-Section Redesign, Multi-Idea Atomic Persistence & Gate Resolution.**
 - **Figma Reference & Layout (§6.6):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:12167` "Pricing & Revenue Model · Step 4.6"). Max content width 1120px (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with full dark/light semantic design token compliance.
 - **Canonical Route:** `/dashboard/creator/phase-4/pricing`

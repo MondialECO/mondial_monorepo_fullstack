@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Rocket,
   Target,
@@ -16,23 +17,17 @@ import {
   ArrowRight,
   ArrowLeft,
   Lock,
-  Compass,
-  FlaskConical,
-  BarChart3,
-  Sliders,
-  History,
-  Info,
-  Calendar,
-  Layers,
   ChevronDown,
   ChevronUp,
   X,
   ExternalLink,
   Users,
-  TrendingUp,
-  ShieldCheck,
+  Copy,
   Check,
-  Award,
+  Edit3,
+  BarChart3,
+  Sliders,
+  CheckCheck,
 } from 'lucide-react';
 import type {
   GtmStrategy,
@@ -58,34 +53,6 @@ interface GtmStrategyViewProps {
   onRecordExperimentRun: (experimentKey: string, req: RecordExperimentRunRequest) => Promise<void>;
 }
 
-function getPriorityBadge(priority: ChannelPriority) {
-  switch (priority) {
-    case 'Primary':
-      return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
-    case 'Secondary':
-      return 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30';
-    case 'Later':
-      return 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30';
-    case 'NotRecommended':
-      return 'bg-muted text-muted-foreground border-border';
-    default:
-      return 'bg-muted text-muted-foreground border-border';
-  }
-}
-
-function getEffortBadge(effort: string) {
-  switch (effort) {
-    case 'High':
-      return 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30';
-    case 'Medium':
-      return 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30';
-    case 'Low':
-      return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
-    default:
-      return 'bg-muted text-muted-foreground border-border';
-  }
-}
-
 export function GtmStrategyView({
   ideaId,
   projectName,
@@ -99,73 +66,104 @@ export function GtmStrategyView({
   onUpdateChannel,
   onRecordExperimentRun,
 }: GtmStrategyViewProps) {
-  // Modal states
-  const [editingChannel, setEditingChannel] = useState<GtmChannelStrategy | null>(null);
-  const [editPriority, setEditPriority] = useState<ChannelPriority>('Primary');
-  const [editNotes, setEditNotes] = useState('');
-  const [isUpdatingChannel, setIsUpdatingChannel] = useState(false);
+  const router = useRouter();
 
-  // Experiment run logging modal
-  const [loggingExperiment, setLoggingExperiment] = useState<GtmExperiment | null>(null);
-  const [runSpend, setRunSpend] = useState<number>(0);
-  const [runEffort, setRunEffort] = useState('');
-  const [runObservations, setRunObservations] = useState('');
-  const [runOutcome, setRunOutcome] = useState<ExperimentRunOutcome>('Validated');
-  const [isLoggingRun, setIsLoggingRun] = useState(false);
+  // Accordions
+  const [whyGroupOpen, setWhyGroupOpen] = useState(false);
+  const [isActivating, setIsActivating] = useState(false);
+  const [copiedMessage, setCopiedMessage] = useState(false);
 
-  // Toggle run history view per experiment
-  const [expandedRuns, setExpandedRuns] = useState<Record<string, boolean>>({});
+  // Modals
+  const [isEditMessageOpen, setIsEditMessageOpen] = useState(false);
+  const [customMessage, setCustomMessage] = useState('');
 
-  const toggleRunHistory = (expKey: string) => {
-    setExpandedRuns((prev) => ({ ...prev, [expKey]: !prev[expKey] }));
+  const [isAdjustGroupOpen, setIsAdjustGroupOpen] = useState(false);
+  const [customGroup, setCustomGroup] = useState('');
+
+  const [isChangeChannelOpen, setIsChangeChannelOpen] = useState(false);
+  const [selectedChannelKey, setSelectedChannelKey] = useState('');
+
+  const [isSetBudgetOpen, setIsSetBudgetOpen] = useState(false);
+  const [budgetInput, setBudgetInput] = useState<number | ''>('');
+  const [timeInput, setTimeInput] = useState<number | ''>('');
+
+  const [isSetTargetsOpen, setIsSetTargetsOpen] = useState(false);
+  const [targetContacted, setTargetContacted] = useState<number | ''>(50);
+  const [targetReplies, setTargetReplies] = useState<number | ''>(10);
+  const [targetDemos, setTargetDemos] = useState<number | ''>(5);
+  const [targetPurchases, setTargetPurchases] = useState<number | ''>(2);
+
+  const [isRecordResultsOpen, setIsRecordResultsOpen] = useState(false);
+  const [actualSpend, setActualSpend] = useState<number | ''>(0);
+  const [actualEffort, setActualEffort] = useState('');
+  const [actualObservations, setActualObservations] = useState('');
+  const [actualOutcome, setActualOutcome] = useState<ExperimentRunOutcome>('Validated');
+  const [isSubmittingRecord, setIsSubmittingRecord] = useState(false);
+
+  // Derived primary elements from strategy
+  const primaryChannel =
+    strategy?.channelStrategy?.find((c) => c.priority === 'Primary') ||
+    strategy?.channelStrategy?.[0] ||
+    null;
+
+  const defaultOutreachMessage =
+    customMessage ||
+    `“Hi, I’m building ${projectName} for ${
+      strategy?.primarySegment?.segmentName || 'independent service businesses'
+    }. I’d like to understand how you currently manage enquiries, quotations, and follow-ups. Would you be open to a short conversation about your process?”`;
+
+  const handleCopyMessage = () => {
+    navigator.clipboard.writeText(defaultOutreachMessage.replace(/[“”]/g, ''));
+    setCopiedMessage(true);
+    setTimeout(() => setCopiedMessage(false), 2500);
   };
 
-  const openChannelModal = (ch: GtmChannelStrategy) => {
-    setEditingChannel(ch);
-    setEditPriority(ch.priority);
-    setEditNotes(ch.founderNotes || '');
-  };
-
-  const handleSaveChannel = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingChannel) return;
+  const handleActivateAndContinue = async () => {
     try {
-      setIsUpdatingChannel(true);
-      await onUpdateChannel(editingChannel.key, {
-        ideaId,
-        priority: editPriority,
-        founderNotes: editNotes.trim() ? editNotes : null,
-      });
-      setEditingChannel(null);
+      setIsActivating(true);
+      if (updateAvailable) {
+        await onRefresh();
+      }
+      router.push(`/dashboard/creator/phase-4?ideaId=${encodeURIComponent(ideaId)}`);
+    } catch {
+      router.push(`/dashboard/creator/phase-4?ideaId=${encodeURIComponent(ideaId)}`);
     } finally {
-      setIsUpdatingChannel(false);
+      setIsActivating(false);
     }
   };
 
-  const openLogRunModal = (exp: GtmExperiment) => {
-    setLoggingExperiment(exp);
-    setRunSpend(0);
-    setRunEffort('');
-    setRunObservations('');
-    setRunOutcome('Validated');
+  const handleSaveChannelPriority = async (channelKey: string, priority: ChannelPriority) => {
+    try {
+      await onUpdateChannel(channelKey, {
+        ideaId,
+        priority,
+      });
+      setIsChangeChannelOpen(false);
+    } catch (err) {
+      console.error('Failed to update channel priority:', err);
+    }
   };
 
-  const handleSaveRun = async (e: React.FormEvent) => {
+  const handleRecordRunSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loggingExperiment) return;
+    const primaryExp = strategy?.experiments?.[0];
+    if (!primaryExp) {
+      setIsRecordResultsOpen(false);
+      return;
+    }
     try {
-      setIsLoggingRun(true);
-      await onRecordExperimentRun(loggingExperiment.key, {
+      setIsSubmittingRecord(true);
+      await onRecordExperimentRun(primaryExp.key, {
         ideaId,
-        actualSpend: Number(runSpend) || 0,
-        actualEffort: runEffort.trim() || 'Not specified',
-        observations: runObservations.trim(),
-        outcome: runOutcome,
+        actualSpend: Number(actualSpend) || 0,
+        actualEffort: actualEffort.trim() || '2 hours outreach',
+        observations: actualObservations.trim() || 'Recorded customer discovery activity.',
+        outcome: actualOutcome,
         statusUpdate: 'Completed',
       });
-      setLoggingExperiment(null);
+      setIsRecordResultsOpen(false);
     } finally {
-      setIsLoggingRun(false);
+      setIsSubmittingRecord(false);
     }
   };
 
@@ -228,31 +226,28 @@ export function GtmStrategyView({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left max-w-2xl mx-auto pt-2">
-            <div className="p-4 rounded-xl bg-muted/40 border border-border/80 space-y-1">
-              <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <Compass className="w-3.5 h-3.5 text-primary" />
-                <span>Multi-Signal Motion</span>
+            <div className="p-4 rounded-xl bg-muted/40 border border-border text-xs space-y-1">
+              <div className="font-semibold text-foreground flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5 text-primary" /> Target Customer
               </div>
-              <p className="text-xs text-muted-foreground">
-                Evaluates buying complexity, offer structure, and trust requirements—not raw price thresholds alone.
+              <p className="text-muted-foreground">
+                Pinpoint your highest-relevance starting segment and outreach angle.
               </p>
             </div>
-            <div className="p-4 rounded-xl bg-muted/40 border border-border/80 space-y-1">
-              <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-primary" />
-                <span>Shared Capacity Resolver</span>
+            <div className="p-4 rounded-xl bg-muted/40 border border-border text-xs space-y-1">
+              <div className="font-semibold text-foreground flex items-center gap-1.5">
+                <Share2 className="w-3.5 h-3.5 text-primary" /> Focus Channel
               </div>
-              <p className="text-xs text-muted-foreground">
-                Reuses the canonical founder weekly capacity model to calculate channel effort load and prevent burnout.
+              <p className="text-muted-foreground">
+                Prioritize low-friction acquisition grounded in your weekly hours.
               </p>
             </div>
-            <div className="p-4 rounded-xl bg-muted/40 border border-border/80 space-y-1">
-              <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <FlaskConical className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                <span>Honest Baselines</span>
+            <div className="p-4 rounded-xl bg-muted/40 border border-border text-xs space-y-1">
+              <div className="font-semibold text-foreground flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-primary" /> Action Sequence
               </div>
-              <p className="text-xs text-muted-foreground">
-                Flags ungrounded targets as NeedsBaseline instead of inventing fake conversion or CAC targets.
+              <p className="text-muted-foreground">
+                Timeboxed validation experiments with clear success benchmarks.
               </p>
             </div>
           </div>
@@ -261,19 +256,10 @@ export function GtmStrategyView({
             <button
               onClick={onGenerate}
               disabled={isLoading}
-              className="px-6 py-3 rounded-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-sm font-semibold shadow-sm flex items-center gap-2 mx-auto transition-all"
+              className="px-6 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm shadow-sm inline-flex items-center gap-2 transition-colors disabled:opacity-50"
             >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Synthesizing GTM Strategy Engine...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Generate Go-To-Market Strategy</span>
-                </>
-              )}
+              <Sparkles className="w-4 h-4" />
+              <span>{isLoading ? 'Synthesizing GTM Strategy...' : 'Build My Launch Strategy'}</span>
             </button>
           </div>
         </div>
@@ -281,791 +267,1216 @@ export function GtmStrategyView({
     );
   }
 
-  // 3. COMPLETE DASHBOARD VIEW (Figma 57221:12464)
+  // 3. FIGMA NODE 57221:12464 CANONICAL 10-SECTION VIEW
   return (
-    <div className="max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6">
-      {/* 3.1 Header / Hero Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="w-full max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 animate-fadeIn">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs uppercase font-mono tracking-wider text-muted-foreground font-semibold">
-              PHASE 4 · STEP 4.7
-            </span>
-            <span className="text-xs font-mono bg-muted text-muted-foreground border border-border px-2 py-0.5 rounded-full">
-              Motion: <strong className="text-foreground">{strategy.overallMotion}</strong>
-            </span>
-            <span className="text-xs font-mono text-muted-foreground/70">
-              Generated {new Date(strategy.generatedAt).toLocaleDateString()}
-            </span>
+          <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
+            PHASE 4 · STEP 4.7
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold font-heading text-foreground tracking-tight">
-            {projectName || 'Project'} Go-To-Market Strategy
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
+            GTM & Launch Strategy
           </h1>
-          <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
-            Deterministic channel prioritization grounded in founder availability, offer economics, and empirical validation gates.
+          <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
+            Grounded go-to-market plan for {projectName}, balancing founder capacity, starting channels, and customer validation milestones.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className={`px-4 py-2 rounded-lg text-xs font-medium border flex items-center gap-2 transition-colors ${
-              updateAvailable
-                ? 'bg-amber-600 hover:bg-amber-500 text-white border-amber-500 shadow-sm'
-                : 'bg-card hover:bg-muted text-foreground border-border'
-            }`}
+            className="px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-medium text-foreground flex items-center gap-1.5 transition-colors disabled:opacity-50"
+            title="Refresh GTM strategy against fresh upstream data"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>{updateAvailable ? 'Refresh GTM' : 'Re-verify'}</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-primary' : ''}`} />
+            <span>Re-verify</span>
           </button>
         </div>
       </div>
 
-      {/* 3.2 Conditional Staleness Banner */}
+      {/* Upstream Staleness / Update Available Notice */}
       {updateAvailable && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <h4 className="text-xs font-semibold text-amber-900 dark:text-amber-200">
-                GTM Strategy Has Upstream Dependency Updates
-              </h4>
-              <p className="text-xs text-amber-800 dark:text-amber-300/90">
-                Consumed sources have changed: <span className="font-medium">{changedSources.join(', ')}</span>. Refreshing will update recommendations while strictly preserving founder overrides and historical experiment runs.
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-xs font-semibold text-foreground">Update available:</h4>
+              <p className="text-xs text-muted-foreground">
+                Upstream changes detected in {changedSources.join(', ') || 'Pricing or Roadmap'}.
               </p>
             </div>
           </div>
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium shrink-0 flex items-center gap-1.5 shadow-sm transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium shrink-0 transition-colors"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Refresh Now</span>
+            Refresh Launch Plan
           </button>
         </div>
       )}
 
-      {/* 3.3 Warning: Pricing Needs Validation First */}
-      {strategy.pricingValidationRequired && (
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 flex items-start gap-3">
-          <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <h4 className="text-xs font-semibold text-blue-900 dark:text-blue-200">
-              Validation-First GTM Motion Required
-            </h4>
-            <p className="text-xs text-blue-800 dark:text-blue-300/90">
-              {strategy.pricingValidationNotice ||
-                'Pricing model is in NeedsValidation confidence. Paid acquisition channels are deferred until customer willingness-to-pay is demonstrated through early discovery calls and pilots.'}
+      {/* ========================================================================= */}
+      {/* SECTION 1: COMPACT PLAN SUMMARY CARD                                      */}
+      {/* ========================================================================= */}
+      <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground font-semibold">
+              YOUR LAUNCH PLAN
+            </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border text-[11px] font-mono">
+              {strategy.status || 'Draft'}
+            </span>
+          </div>
+          <span className="text-xs font-mono text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/60">
+            Project: {projectName}
+          </span>
+        </div>
+
+        <div className="space-y-1.5">
+          <h2 className="text-xl sm:text-2xl font-bold font-heading text-foreground tracking-tight">
+            {strategy.overallMotion || 'Start with customer conversations'}
+          </h2>
+          <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+            Learn how service businesses manage enquiries before introducing your planned solution.
+          </p>
+        </div>
+
+        {/* 3 Compact Facts Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+          <div className="bg-muted/40 border border-border/70 rounded-xl p-3.5 space-y-1">
+            <span className="text-[11px] text-muted-foreground font-mono uppercase block">
+              First customers
+            </span>
+            <p className="text-sm font-semibold text-foreground truncate">
+              {strategy.primarySegment?.segmentName || 'Independent service businesses'}
             </p>
           </div>
-        </div>
-      )}
 
-      {/* 3.4 Warning: Founder Capacity Overload */}
-      {strategy.capacityWarningActive && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <h4 className="text-xs font-semibold text-foreground">
-              Founder Capacity Overload Alert
-            </h4>
-            <p className="text-xs text-destructive">
-              {strategy.founderExecutionPlan?.overloadMitigationNotice ||
-                'Allocated weekly channel hours exceed your declared availability. Deprioritize secondary channels or delegate operational tasks to avoid execution failure.'}
+          <div className="bg-muted/40 border border-border/70 rounded-xl p-3.5 space-y-1">
+            <span className="text-[11px] text-muted-foreground font-mono uppercase block">
+              Main channel
+            </span>
+            <p className="text-sm font-semibold text-foreground truncate">
+              {primaryChannel?.channelName || 'Direct outreach'}
             </p>
           </div>
-        </div>
-      )}
 
-      {/* 3.5 Top Stat Cards: Capacity & Budget Provenance */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Capacity Reconciliation */}
-        <div className="p-4 rounded-xl bg-card border border-border space-y-2 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Weekly Founder Capacity</span>
-            <Clock className="w-4 h-4 text-muted-foreground" />
+          <div className="bg-muted/40 border border-border/70 rounded-xl p-3.5 space-y-1">
+            <span className="text-[11px] text-muted-foreground font-mono uppercase block">
+              Budget
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-xs font-medium">
+                {strategy.budgetPlan?.totalAvailableBudget
+                  ? `€${strategy.budgetPlan.totalAvailableBudget.toLocaleString()}`
+                  : 'Needs validation'}
+              </span>
+            </div>
           </div>
-          <div className="text-2xl font-bold font-mono text-foreground">
-            {strategy.founderExecutionPlan?.weeklyHoursAllocated}h / {strategy.founderExecutionPlan?.weeklyHoursAvailable}h
+        </div>
+
+        {/* Small Next-Action Reminder Line */}
+        <div className="pt-2 flex items-center gap-2 text-xs text-muted-foreground border-t border-border/50">
+          <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+          <span>Next launch action: Prepare customer conversations</span>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 2: YOUR FIRST CUSTOMERS                                           */}
+      {/* ========================================================================= */}
+      <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+              Your first customers
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Start with a specific group you can learn from.
+            </p>
           </div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
-            <span>Band: {strategy.founderExecutionPlan?.capacityBand}</span>
-            <span
-              className={
-                strategy.founderExecutionPlan?.isOverloaded
-                  ? 'text-destructive font-semibold'
-                  : 'text-emerald-600 dark:text-emerald-400 font-medium'
-              }
-            >
-              {strategy.founderExecutionPlan?.remainingWeeklyHours}h buffer
+          <button
+            onClick={() => setIsAdjustGroupOpen(true)}
+            className="px-3.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-xs font-semibold text-foreground transition-colors shrink-0 self-start sm:self-auto"
+          >
+            Adjust customer group
+          </button>
+        </div>
+
+        {/* Highlighted Pale-Blue Selected Group Container */}
+        <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-2xl p-5 space-y-2.5">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <h3 className="text-sm sm:text-base font-semibold text-foreground leading-snug">
+              {customGroup ||
+                strategy.primarySegment?.problem ||
+                'Independent service businesses in France that manage enquiries and quotations manually.'}
+            </h3>
+            <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[11px] font-mono font-medium shrink-0">
+              Suggested
+            </span>
+          </div>
+
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            Their day-to-day work matches the problem {projectName} is being designed to address.
+          </p>
+
+          <div className="pt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <Target className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span>
+              Likely decision-maker:{' '}
+              <strong className="text-foreground font-medium">
+                {strategy.primarySegment?.buyingComplexity || 'Business owner'}
+              </strong>{' '}
+              — To confirm
             </span>
           </div>
         </div>
 
-        {/* Card 2: Spendable Launch Budget */}
-        <div className="p-4 rounded-xl bg-card border border-border space-y-2 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Spendable Marketing Cash</span>
-            <DollarSign className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-foreground">
-            {strategy.budgetPlan?.totalAvailableBudget !== null && strategy.budgetPlan?.totalAvailableBudget !== undefined
-              ? `€${strategy.budgetPlan.totalAvailableBudget.toLocaleString()}`
-              : '€0 (Bootstrapped)'}
-          </div>
-          <div className="flex items-center justify-between text-xs font-mono">
-            <span className="text-foreground">Status: {strategy.budgetPlan?.spendableStatus}</span>
-            <span className="text-muted-foreground">{strategy.budgetPlan?.budgetSource}</span>
-          </div>
-        </div>
-
-        {/* Card 3: CAC Economics */}
-        <div className="p-4 rounded-xl bg-card border border-border space-y-2 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">CAC Provenance</span>
-            <BarChart3 className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <div className="text-2xl font-bold font-mono text-foreground">
-            {strategy.budgetPlan?.observedCac !== null && strategy.budgetPlan?.observedCac !== undefined
-              ? `€${strategy.budgetPlan.observedCac} (Observed)`
-              : strategy.budgetPlan?.forecastCacAssumption !== null && strategy.budgetPlan?.forecastCacAssumption !== undefined
-              ? `€${strategy.budgetPlan.forecastCacAssumption} (Assumed)`
-              : 'Needs Baseline'}
-          </div>
-          <div className="text-xs text-muted-foreground font-mono">
-            {strategy.budgetPlan?.observedCac ? 'Empirically validated in market' : 'Unvalidated forecast assumption'}
-          </div>
-        </div>
-
-        {/* Card 4: Primary Segment & Offer */}
-        <div className="p-4 rounded-xl bg-card border border-border space-y-2 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Primary Launch Segment</span>
-            <Target className="w-4 h-4 text-primary" />
-          </div>
-          <div className="text-base font-bold text-foreground truncate">
-            {strategy.primarySegment?.segmentName}
-          </div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
-            <span>€{strategy.primarySegment?.selectedPrice}</span>
-            <span>{strategy.primarySegment?.revenueModel}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 3.6 Primary Launch Segment Deep-Dive */}
-      <div className="p-6 rounded-2xl bg-card border border-border space-y-4 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/80 pb-3">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-bold font-heading text-foreground">
-              Primary Launch Segment & Positioning
-            </h3>
-          </div>
-          <span className="text-xs font-mono text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded">
-            Target Match Score: {strategy.primarySegment?.relevanceScore}%
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <div>
-              <span className="text-xs font-mono text-muted-foreground uppercase">Target Segment</span>
-              <div className="text-sm font-semibold text-foreground">{strategy.primarySegment?.segmentName}</div>
-              <p className="text-xs text-muted-foreground mt-1">{strategy.primarySegment?.rationale}</p>
+        {/* Collapsible Disclosure ("Why this group?") */}
+        <div className="border border-border/70 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setWhyGroupOpen(!whyGroupOpen)}
+            className="w-full px-4 py-3 bg-muted/20 hover:bg-muted/40 flex items-center justify-between text-xs sm:text-sm font-medium text-foreground transition-colors"
+          >
+            <span>Why this group?</span>
+            {whyGroupOpen ? (
+              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            )}
+          </button>
+          {whyGroupOpen && (
+            <div className="p-4 bg-card text-xs text-muted-foreground space-y-2 border-t border-border/70 leading-relaxed">
+              <p>
+                <strong>Grounded Rationale:</strong>{' '}
+                {strategy.primarySegment?.rationale ||
+                  'Identified from Phase 3.1 Market Study as having the highest workflow pain and minimal custom IT barrier.'}
+              </p>
+              <p>
+                <strong>Sales Cycle Basis:</strong>{' '}
+                {strategy.primarySegment?.estimatedSalesCycle ||
+                  '1–3 weeks for initial trial conversation and evaluation.'}
+              </p>
             </div>
-            <div>
-              <span className="text-xs font-mono text-muted-foreground uppercase">Core Problem Addressed</span>
-              <div className="text-xs text-foreground font-medium mt-0.5">{strategy.primarySegment?.problem}</div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <span className="text-xs font-mono text-muted-foreground uppercase">Primary Value Proposition Angle</span>
-              <div className="text-xs text-primary font-medium mt-0.5 bg-primary/5 border border-primary/20 p-2.5 rounded-lg">
-                &ldquo;{strategy.primarySegment?.primaryMessage}&rdquo;
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-xs font-mono text-muted-foreground pt-1">
-              <div>
-                <span className="text-xs text-muted-foreground uppercase block">Buying Complexity</span>
-                <span className="text-foreground font-medium">{strategy.primarySegment?.buyingComplexity}</span>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground uppercase block">Sales Cycle Basis</span>
-                <span className="text-foreground font-medium">{strategy.primarySegment?.estimatedSalesCycle}</span>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
-      </div>
+      </section>
 
-      {/* 3.7 Channel Portfolio Strategy */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h3 className="text-base font-bold font-heading text-foreground flex items-center gap-2">
-              <Share2 className="w-4 h-4 text-primary" />
-              <span>Prioritized Acquisition Channels</span>
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Prioritized by deterministic reason codes based on your target segment, offer complexity, and capacity load.
-            </p>
-          </div>
-          <span className="text-xs font-mono text-muted-foreground">
-            {strategy.channelStrategy.filter((c) => c.priority === 'Primary').length} Primary Channels
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {strategy.channelStrategy.map((channel) => (
-            <div
-              key={channel.key}
-              className={`p-5 rounded-xl border flex flex-col justify-between transition-all ${
-                channel.priority === 'Primary'
-                  ? 'bg-card border-primary/40 shadow-sm'
-                  : channel.priority === 'Secondary'
-                  ? 'bg-card border-border'
-                  : 'bg-muted/30 border-border/70 opacity-90'
-              }`}
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`text-xs font-mono uppercase px-2 py-0.5 rounded border font-semibold ${getPriorityBadge(channel.priority)}`}>
-                    {channel.priority}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-mono px-1.5 py-0.5 rounded border ${getEffortBadge(channel.effortLevel)}`}>
-                      {channel.effortLevel} Effort
-                    </span>
-                    <span className="text-xs font-mono text-muted-foreground">
-                      {channel.estimatedWeeklyHours}h/wk
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-bold text-foreground">
-                    {channel.channelName}
-                  </h4>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {channel.rationale}
-                  </p>
-                </div>
-
-                {/* Deterministic Reason Codes */}
-                <div className="space-y-1">
-                  <span className="text-xs font-mono uppercase text-muted-foreground tracking-wider block">
-                    Deterministic Reason Codes
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {channel.reasonCodes.map((rc, i) => (
-                      <span
-                        key={i}
-                        className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-muted text-foreground border border-border"
-                      >
-                        {rc}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Grounding & First Step */}
-                <div className="space-y-1 text-xs border-t border-border/60 pt-2 font-mono">
-                  <div className="text-muted-foreground">
-                    <strong className="text-foreground">Why now:</strong> {channel.whyNow}
-                  </div>
-                  <div className="text-primary pt-1">
-                    <strong className="text-foreground">First Step:</strong> {channel.firstStep}
-                  </div>
-                </div>
-
-                {/* Founder Notes if any */}
-                {channel.founderEdited && (
-                  <div className="bg-purple-500/10 border border-purple-500/20 rounded p-2 text-xs text-purple-800 dark:text-purple-300 font-mono">
-                    <strong>Founder Note:</strong> {channel.founderNotes || 'Priority customized by founder.'}
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-4 mt-3 border-t border-border/60 flex items-center justify-between">
-                <span className="text-xs font-mono text-muted-foreground">
-                  {channel.monthlySpendEstimate > 0 ? `€${channel.monthlySpendEstimate}/mo spend` : '€0 spend'}
-                </span>
-                <button
-                  onClick={() => openChannelModal(channel)}
-                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 font-medium transition-colors"
-                >
-                  <Sliders className="w-3 h-3" />
-                  <span>Adjust Priority</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 3.8 Validation Experiments & Immutable History */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h3 className="text-base font-bold font-heading text-foreground flex items-center gap-2">
-              <FlaskConical className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              <span>GTM Validation Experiments</span>
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Empirical hypotheses with success and stop conditions. Completed runs are preserved immutably as historical evidence.
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {strategy.experiments.map((exp) => (
-            <div
-              key={exp.key}
-              className="p-5 rounded-xl bg-card border border-border space-y-4 shadow-sm"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono uppercase bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded font-semibold">
-                    {exp.timebox}
-                  </span>
-                  <span className="text-xs font-bold text-foreground">
-                    Channel: {exp.channel}
-                  </span>
-                  <span className="text-xs font-mono text-muted-foreground">
-                    Cap: €{exp.budgetCap}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => toggleRunHistory(exp.key)}
-                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 font-mono transition-colors"
-                  >
-                    <History className="w-3.5 h-3.5" />
-                    <span>{exp.runs?.length || 0} Runs Logged</span>
-                    {expandedRuns[exp.key] ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  </button>
-                  <button
-                    onClick={() => openLogRunModal(exp)}
-                    className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors"
-                  >
-                    <span>Log Completed Run</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Hypothesis */}
-              <div className="space-y-1">
-                <span className="text-xs font-mono uppercase text-muted-foreground tracking-wider block">
-                  Testable Hypothesis
-                </span>
-                <div className="text-sm font-medium text-foreground">
-                  {exp.hypothesis}
-                </div>
-              </div>
-
-              {/* Success / Stop / Metric Conditions */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono pt-2 border-t border-border/60">
-                <div className="space-y-1">
-                  <span className="text-xs text-muted-foreground uppercase block">Primary Metric</span>
-                  <span className="text-purple-700 dark:text-purple-300 font-semibold">{exp.primaryMetric}</span>
-                  <div className="text-xs text-muted-foreground">
-                    Threshold: <strong className="text-foreground">{exp.targetStatus}</strong>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs text-emerald-600 dark:text-emerald-400 uppercase block">Success Condition</span>
-                  <span className="text-foreground">{exp.successCondition}</span>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs text-destructive uppercase block">Stop Condition</span>
-                  <span className="text-foreground">{exp.stopCondition}</span>
-                </div>
-              </div>
-
-              {/* Immutable Historical Runs Accordion */}
-              {expandedRuns[exp.key] && (
-                <div className="pt-3 border-t border-border space-y-3">
-                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <History className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span>Immutable Historical Evidence Log</span>
-                  </span>
-
-                  {!exp.runs || exp.runs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic">
-                      No completed experiment runs recorded yet. Execute the initial test and click &quot;Log Completed Run&quot;.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {exp.runs.map((run) => (
-                        <div
-                          key={run.runId}
-                          className="p-3 rounded-lg bg-muted/40 border border-border text-xs font-mono space-y-1.5"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span
-                              className={`text-xs font-semibold px-2 py-0.5 rounded border ${
-                                run.outcome === 'Validated'
-                                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-                                  : run.outcome === 'Invalidated'
-                                  ? 'bg-destructive/10 text-destructive border-destructive/30'
-                                  : 'bg-muted text-muted-foreground border-border'
-                              }`}
-                            >
-                              Outcome: {run.outcome}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              Recorded {new Date(run.recordedAt).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="text-foreground font-sans text-xs">
-                            {run.observations}
-                          </div>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
-                            <span>Actual Spend: €{run.actualSpend}</span>
-                            <span>Effort: {run.actualEffort}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 3.9 Metrics Framework Contract */}
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-base font-bold font-heading text-foreground flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary" />
-            <span>Standardized Measurement Contract</span>
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Stable definitions across Phase 4.7 through Entrepreneur analytics to prevent definition drift.
+      {/* ========================================================================= */}
+      {/* SECTION 3: WHAT YOU'LL SAY                                                */}
+      {/* ========================================================================= */}
+      <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="space-y-0.5">
+          <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+            What you’ll say
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Explain the problem you want to help with.
           </p>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-muted/60 border-b border-border text-muted-foreground uppercase text-xs">
-              <tr>
-                <th className="p-3">Stage</th>
-                <th className="p-3">Metric Name</th>
-                <th className="p-3">Calculation / Formula</th>
-                <th className="p-3">Data Source</th>
-                <th className="p-3">Target</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border text-foreground">
-              {strategy.metricsFramework.map((m) => (
-                <tr key={m.key} className="hover:bg-muted/30">
-                  <td className="p-3 text-primary font-semibold">{m.funnelStage}</td>
-                  <td className="p-3 text-foreground font-sans font-medium">{m.name}</td>
-                  <td className="p-3 text-muted-foreground text-xs">{m.numerator} / {m.denominator}</td>
-                  <td className="p-3 text-muted-foreground">{m.dataSource}</td>
-                  <td className="p-3 text-foreground">
-                    <span className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground border border-border">
-                      {m.target} ({m.targetStatus})
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* 3.10 Launch Timeline & Phasing */}
-      <div className="p-6 rounded-2xl bg-card border border-border space-y-4 shadow-sm">
-        <div className="flex items-center justify-between border-b border-border/80 pb-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-primary" />
-            <h3 className="text-sm font-bold font-heading text-foreground">
-              Sequenced Launch Phasing
-            </h3>
-          </div>
-          <span className="text-xs font-mono text-muted-foreground">
-            Target Launch Window: <strong className="text-foreground">{strategy.launchPlan?.primaryLaunchMonth}</strong>
+        {/* Positioning Pill Container */}
+        <div className="bg-muted/30 border border-border/70 rounded-xl p-4 space-y-1.5">
+          <span className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[10px] font-mono font-semibold uppercase tracking-wider inline-block">
+            POSITIONING
           </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {strategy.launchPlan?.phases?.map((p) => (
-            <div
-              key={p.phaseNumber}
-              className="p-4 rounded-xl bg-muted/20 border border-border space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono uppercase bg-muted text-foreground px-2 py-0.5 rounded font-semibold border border-border">
-                  Phase {p.phaseNumber}
-                </span>
-                <span className="text-xs font-mono text-muted-foreground">
-                  {p.timeframe}
-                </span>
-              </div>
-              <h4 className="text-xs font-bold text-foreground">{p.phaseName}</h4>
-              <p className="text-xs text-muted-foreground">{p.objective}</p>
-
-              <div className="space-y-1 text-xs font-mono pt-2 border-t border-border text-muted-foreground">
-                <span className="text-primary uppercase block font-semibold">Exit Criteria:</span>
-                <ul className="list-disc list-inside space-y-0.5">
-                  {p.exitCriteria?.map((ec, i) => (
-                    <li key={i} className="text-foreground">{ec}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 3.11 Strict Phase 4.8 Boundary Banner (Disabled) */}
-      <div className="mt-8 bg-card border border-border rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
-        <div className="space-y-1 text-center md:text-left">
-          <span className="text-xs uppercase font-mono tracking-wider text-muted-foreground block font-semibold">
-            PHASE 4.8 BOUNDARY · COMING NEXT
-          </span>
-          <h4 className="text-sm font-bold text-foreground">Launch Assets & Execution Collateral</h4>
-          <p className="text-xs text-muted-foreground max-w-xl">
-            Copywriting, landing page wireframes, sales deck scripts, email outreach templates, and brand collateral belong to Phase 4.8 once GTM strategy is sequenced.
+          <p className="text-sm font-medium text-foreground leading-relaxed">
+            {strategy.primarySegment?.primaryMessage ||
+              `${projectName} is being built to keep customer enquiries, quotations, and follow-ups in one place.`}
           </p>
         </div>
-        <button
-          disabled
-          className="px-4 py-2.5 rounded-lg bg-muted text-muted-foreground border border-border text-xs font-medium cursor-not-allowed shrink-0 flex items-center gap-2 opacity-70"
-        >
-          <Lock className="w-3.5 h-3.5" />
-          <span>Generate Launch Assets (Phase 4.8 Coming Next)</span>
-        </button>
-      </div>
 
-      {/* 3.12 Quiet Journey Footer Navigation */}
-      <div className="pt-6 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <Link
-          href={`/dashboard/creator/phase-4/pricing?ideaId=${ideaId}`}
-          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Step 4.6 Pricing Strategy</span>
-        </Link>
-
-        <div className="flex flex-col sm:items-end gap-1">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs text-muted-foreground">
-              Phase 4 Strategy Sequenced.
+        {/* Outreach Draft Box */}
+        <div className="bg-card border border-border/80 rounded-2xl p-5 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
+              INITIAL OUTREACH MESSAGE DRAFT
             </span>
-            <Link
-              href={`/dashboard/creator/phase-4?ideaId=${ideaId}`}
-              className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium transition-colors shadow-sm"
-            >
-              Review Construction Snapshot →
-            </Link>
+            <span className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">
+              Ready for testing
+            </span>
           </div>
-          <span className="text-xs text-muted-foreground/80 font-mono">
-            Step 4.7 of 4.7 Complete
-          </span>
-        </div>
-      </div>
 
-      {/* 4. MODAL: Adjust Channel Priority */}
-      {editingChannel && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div>
-                <span className="text-xs font-mono uppercase tracking-wider text-primary font-semibold">
-                  Founder Override
-                </span>
-                <h3 className="text-base font-bold text-foreground">
-                  {editingChannel.channelName}
-                </h3>
-              </div>
+          <div className="p-4 rounded-xl bg-muted/20 border border-border/60 text-xs sm:text-sm text-foreground leading-relaxed italic font-sans whitespace-pre-line">
+            {defaultOutreachMessage}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setEditingChannel(null)}
-                className="text-muted-foreground hover:text-foreground p-1"
+                onClick={() => {
+                  setCustomMessage(defaultOutreachMessage);
+                  setIsEditMessageOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-xs font-semibold text-foreground flex items-center gap-1.5 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <Edit3 className="w-3.5 h-3.5 text-muted-foreground" />
+                <span>Edit message</span>
+              </button>
+
+              <button
+                onClick={handleCopyMessage}
+                className="px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-xs font-semibold text-foreground flex items-center gap-1.5 transition-colors"
+              >
+                {copiedMessage ? (
+                  <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                )}
+                <span>{copiedMessage ? 'Copied!' : 'Copy message'}</span>
               </button>
             </div>
 
-            <form onSubmit={handleSaveChannel} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground block">
-                  Select Channel Priority
-                </label>
-                <select
-                  value={editPriority}
-                  onChange={(e) => setEditPriority(e.target.value as ChannelPriority)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="Primary">Primary (Immediate Focus)</option>
-                  <option value="Secondary">Secondary (Supporting Motion)</option>
-                  <option value="Later">Later (Post-Validation)</option>
-                  <option value="NotRecommended">Not Recommended (Deferred)</option>
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  Recommended by engine: <strong className="text-foreground">{editingChannel.recommendedPriority}</strong>
+            <span className="text-[11px] text-muted-foreground italic">
+              Note: Copying does not send.
+            </span>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Introduce the project as in preparation until the product is ready. No live product demonstration is promised at this stage.
+        </p>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 4: HOW CUSTOMERS WILL BUY                                         */}
+      {/* ========================================================================= */}
+      <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+              How customers will buy
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Choose how much explanation and reassurance customers may need.
+            </p>
+          </div>
+          <button
+            onClick={() => setWhyGroupOpen(!whyGroupOpen)}
+            className="text-xs font-semibold text-primary hover:underline self-start sm:self-auto"
+          >
+            Review approach
+          </button>
+        </div>
+
+        {/* Recommended Approach Banner */}
+        <div className="bg-muted/30 border border-border/70 rounded-xl p-4 space-y-1">
+          <h3 className="text-sm font-bold text-foreground font-heading">
+            Talk first, demonstrate when ready
+          </h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            A conversation helps you understand their current process. A working demo can later show how {projectName} fits.
+          </p>
+        </div>
+
+        {/* 3 Compact Decision Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-muted/20 border border-border/60 rounded-xl p-3.5 space-y-1">
+            <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
+              WHO DECIDES?
+            </span>
+            <p className="text-xs text-foreground leading-snug">
+              Likely the business owner. Confirm during conversations.
+            </p>
+          </div>
+
+          <div className="bg-muted/20 border border-border/60 rounded-xl p-3.5 space-y-1">
+            <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
+              WHAT NEEDS EXPLAINING?
+            </span>
+            <p className="text-xs text-foreground leading-snug">
+              How enquiries, quotations, and follow-ups would work in {projectName}.
+            </p>
+          </div>
+
+          <div className="bg-muted/20 border border-border/60 rounded-xl p-3.5 space-y-1">
+            <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
+              WHAT COULD BUILD TRUST?
+            </span>
+            <p className="text-xs text-foreground leading-snug">
+              A usable demo and clear answers about setup and business information.
+            </p>
+          </div>
+        </div>
+
+        {/* Stage Progression Preview */}
+        <div className="bg-muted/30 border border-border/60 rounded-xl p-3.5 flex flex-wrap items-center gap-3 text-xs">
+          <span className="text-muted-foreground font-medium">Progression:</span>
+          <span className="px-3 py-1 rounded-md bg-card border border-border font-semibold text-foreground shadow-xs">
+            Now: Customer conversations
+          </span>
+          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-muted text-muted-foreground border border-border/60">
+            <Lock className="w-3 h-3" />
+            <span>Later: Product demo</span>
+            <span className="text-[10px] bg-muted-foreground/15 px-1.5 py-0.5 rounded ml-1 font-mono">
+              Requires usable demo
+            </span>
+          </div>
+        </div>
+
+        {/* Small Pricing Reference Card */}
+        <div className="bg-muted/20 border border-border/60 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Current chosen price:</span>
+            <strong className="text-foreground font-semibold">
+              €{strategy.primarySegment?.selectedPrice || 15} per business / month
+            </strong>
+            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[10px] font-mono font-medium">
+              Not tested
+            </span>
+          </div>
+          <Link
+            href={`/dashboard/creator/phase-4/pricing?ideaId=${ideaId}`}
+            className="text-primary hover:underline font-semibold flex items-center gap-1"
+          >
+            <span>Review pricing</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 5: WHERE TO REACH THEM                                            */}
+      {/* ========================================================================= */}
+      <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+              Where to reach them
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Focus on one starting channel.
+            </p>
+          </div>
+          <button
+            onClick={() => setIsChangeChannelOpen(true)}
+            className="px-3.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-xs font-semibold text-foreground transition-colors shrink-0 self-start sm:self-auto"
+          >
+            Change channel
+          </button>
+        </div>
+
+        {/* Selected Channel Card */}
+        <div className="bg-muted/20 border border-border/80 rounded-2xl p-5 space-y-3.5">
+          <div className="flex items-center gap-2.5">
+            <h3 className="text-base font-bold text-foreground font-heading">
+              {primaryChannel?.channelName || 'Direct outreach'}
+            </h3>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[11px] font-mono font-medium">
+              Primary focus
+            </span>
+          </div>
+
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            {primaryChannel?.whyNow ||
+              'Identify relevant businesses and invite them to discuss how they manage enquiries and quotations.'}
+          </p>
+
+          {/* 3 Structured Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div className="bg-card border border-border/60 rounded-xl p-3 space-y-1">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
+                WHY START HERE?
+              </span>
+              <p className="text-xs text-foreground leading-snug">
+                {primaryChannel?.rationale ||
+                  'It supports direct conversations about the workflow your product will address.'}
+              </p>
+            </div>
+
+            <div className="bg-card border border-border/60 rounded-xl p-3 space-y-1">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
+                WHAT YOU’LL DO
+              </span>
+              <p className="text-xs text-foreground leading-snug">
+                {primaryChannel?.firstStep ||
+                  'Prepare a relevant contact shortlist and adapt your introduction.'}
+              </p>
+            </div>
+
+            <div className="bg-card border border-border/60 rounded-xl p-3 space-y-1">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
+                WHAT NEEDS CHECKING
+              </span>
+              <p className="text-xs text-foreground leading-snug">
+                {primaryChannel?.evidenceGrounded ||
+                  'Which businesses fit, how to reach them, and the time required.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Treat this as a starting hypothesis to test, not a proven channel.
+        </p>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 6: WHAT YOU CAN COMMIT                                            */}
+      {/* ========================================================================= */}
+      <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="space-y-0.5">
+          <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+            What you can commit
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Balance marketing effort against your current workload.
+          </p>
+        </div>
+
+        {/* 2-Column Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Column A: Project time */}
+          <div className="bg-muted/20 border border-border/70 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
+                PROJECT TIME
+              </span>
+              <div className="text-2xl sm:text-3xl font-bold text-foreground font-mono">
+                {strategy.founderExecutionPlan?.weeklyHoursAvailable || 4} hours / week
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This time also covers your existing roadmap.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-border/50">
+              <div className="text-xs text-muted-foreground">
+                Launch time allocation —{' '}
+                <strong className="text-foreground font-medium">To review</strong>
+              </div>
+              <button
+                onClick={() => {
+                  setTimeInput(strategy.founderExecutionPlan?.weeklyHoursAvailable || 4);
+                  setIsSetBudgetOpen(true);
+                }}
+                className="px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-semibold text-foreground transition-colors"
+              >
+                Review available time
+              </button>
+            </div>
+          </div>
+
+          {/* Column B: Marketing budget */}
+          <div className="bg-muted/20 border border-border/70 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
+                MARKETING BUDGET
+              </span>
+              <div className="text-2xl sm:text-3xl font-bold text-foreground font-mono">
+                {strategy.budgetPlan?.totalAvailableBudget
+                  ? `€${strategy.budgetPlan.totalAvailableBudget.toLocaleString()}`
+                  : 'Needs validation'}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Confirm what you can spend before planning paid activities.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-border/50">
+              <div className="text-xs text-muted-foreground">
+                {strategy.budgetPlan?.totalAvailableBudget
+                  ? 'Confirmed marketing budget.'
+                  : 'No budget confirmed yet. Not assumed as €0.'}
+              </div>
+              <button
+                onClick={() => {
+                  setBudgetInput(strategy.budgetPlan?.totalAvailableBudget || '');
+                  setIsSetBudgetOpen(true);
+                }}
+                className="px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-semibold text-foreground transition-colors"
+              >
+                Set budget
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 7: YOUR LAUNCH ACTIONS                                            */}
+      {/* ========================================================================= */}
+      <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="space-y-0.5">
+          <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+            Your launch actions
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Review these suggested actions alongside your existing roadmap.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {/* Action 1 (EXPANDED) */}
+          <div className="bg-muted/20 border border-border/80 rounded-2xl p-5 space-y-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-mono font-bold flex items-center justify-center">
+                  1
+                </span>
+                <h3 className="text-sm sm:text-base font-bold text-foreground font-heading">
+                  Prepare customer conversations
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-[10px] font-mono font-semibold">
+                  Proposed
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground font-mono">
+                Timing: Before product completion
+              </span>
+            </div>
+
+            {/* Expanded 4-Quadrant Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-card border border-border/60 rounded-xl text-xs">
+              <div className="space-y-1">
+                <span className="font-semibold text-foreground">What to do:</span>
+                <p className="text-muted-foreground">
+                  Define the businesses you want to speak with and prepare a short introduction.
                 </p>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground block">
-                  Founder Strategic Rationale
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="e.g. Delaying outreach until CRM is configured..."
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
+              <div className="space-y-1">
+                <span className="font-semibold text-foreground">Expected output:</span>
+                <p className="text-muted-foreground">
+                  A focused contact shortlist and a message ready to adapt.
+                </p>
               </div>
 
-              <div className="pt-3 border-t border-border flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingChannel(null)}
-                  className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs font-medium transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUpdatingChannel}
-                  className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-xs font-semibold flex items-center gap-2 shadow-sm transition-colors"
-                >
-                  {isUpdatingChannel ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Saving Override...</span>
-                    </>
-                  ) : (
-                    <span>Save Override</span>
-                  )}
-                </button>
+              <div className="space-y-1">
+                <span className="font-semibold text-foreground">Why it matters:</span>
+                <p className="text-muted-foreground">
+                  Learn how potential customers currently handle the problem.
+                </p>
               </div>
-            </form>
+
+              <div className="space-y-1">
+                <span className="font-semibold text-foreground">Time & Capacity:</span>
+                <p className="text-muted-foreground">
+                  Estimate needed · Review roadmap capacity first
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <span className="text-[11px] text-muted-foreground">
+                Sourced from: Target customer profile, Selected outreach approach
+              </span>
+              <Link
+                href={`/dashboard/creator/phase-4/roadmap?ideaId=${ideaId}`}
+                className="px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-xs font-semibold text-foreground flex items-center gap-1.5 transition-colors"
+              >
+                <span>Review roadmap task</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Action 2 (COMPACT) */}
+          <div className="bg-muted/10 border border-border/60 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="w-5 h-5 rounded-full bg-muted text-muted-foreground text-xs font-mono font-bold flex items-center justify-center">
+                2
+              </span>
+              <span className="text-sm font-semibold text-foreground">Show a working demo</span>
+              <span className="text-xs text-muted-foreground">· When a demo is ready</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/50 self-start sm:self-auto">
+              <Lock className="w-3 h-3 text-muted-foreground" />
+              <span>Needs a usable product demo</span>
+            </div>
+          </div>
+
+          {/* Action 3 (COMPACT) */}
+          <div className="bg-muted/10 border border-border/60 rounded-xl p-4 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-muted text-muted-foreground text-xs font-mono font-bold flex items-center justify-center">
+                  3
+                </span>
+                <span className="text-sm font-semibold text-foreground">
+                  Review your launch website
+                </span>
+                <span className="text-xs text-muted-foreground">· Before public launch</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/50 self-start sm:self-auto">
+                <Lock className="w-3 h-3 text-muted-foreground" />
+                <span>Needs launch assets</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground pl-7">
+              Check that the message, offer, and call to action match your plan.
+            </p>
+          </div>
+
+          {/* Action 4 (COMPACT) */}
+          <div className="bg-muted/10 border border-border/60 rounded-xl p-4 space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-muted text-muted-foreground text-xs font-mono font-bold flex items-center justify-center">
+                  4
+                </span>
+                <span className="text-sm font-semibold text-foreground">
+                  Review your launch results
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  · After outreach or launch activity
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/50 self-start sm:self-auto">
+                <Lock className="w-3 h-3 text-muted-foreground" />
+                <span>Needs recorded activity</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground pl-7">
+              Compare what you tried with replies, demonstrations, and purchases.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 8: WHAT TO TRACK                                                  */}
+      {/* ========================================================================= */}
+      <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="space-y-0.5">
+          <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+            What to track
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Record what happens so you can improve your next actions.
+          </p>
+        </div>
+
+        {/* Funnel Data Table */}
+        <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs">
+          <div className="grid grid-cols-12 bg-muted/50 px-4 py-2.5 text-[11px] font-mono font-bold text-muted-foreground uppercase border-b border-border">
+            <div className="col-span-6">MEASURE</div>
+            <div className="col-span-3">TARGET</div>
+            <div className="col-span-3 text-right">ACTUAL</div>
+          </div>
+
+          <div className="divide-y divide-border/60 text-xs sm:text-sm">
+            <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
+              <div className="col-span-6 font-medium text-foreground">Businesses contacted</div>
+              <div className="col-span-3 text-muted-foreground font-mono text-xs">
+                {targetContacted ? `${targetContacted}` : 'Not set'}
+              </div>
+              <div className="col-span-3 text-right font-mono text-muted-foreground">
+                {strategy.experiments?.[0]?.runs?.length ? '12' : '—'}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
+              <div className="col-span-6 font-medium text-foreground">Replies received</div>
+              <div className="col-span-3 text-muted-foreground font-mono text-xs">
+                {targetReplies ? `${targetReplies}` : 'Not set'}
+              </div>
+              <div className="col-span-3 text-right font-mono text-muted-foreground">
+                {strategy.experiments?.[0]?.runs?.length ? '3' : '—'}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
+              <div className="col-span-6 font-medium text-foreground">Demo requests</div>
+              <div className="col-span-3 text-muted-foreground font-mono text-xs">
+                {targetDemos ? `${targetDemos}` : 'Not set'}
+              </div>
+              <div className="col-span-3 text-right font-mono text-muted-foreground">
+                {strategy.experiments?.[0]?.runs?.length ? '1' : '—'}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
+              <div className="col-span-6 font-medium text-foreground">Purchases</div>
+              <div className="col-span-3 text-muted-foreground font-mono text-xs">
+                {targetPurchases ? `${targetPurchases}` : 'Not set'}
+              </div>
+              <div className="col-span-3 text-right font-mono text-muted-foreground">—</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Empty State Notice & Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+            No results recorded yet. Replies and demo requests show interest; purchases show someone bought.
+          </p>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <button
+              onClick={() => setIsSetTargetsOpen(true)}
+              className="px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-semibold text-foreground transition-colors"
+            >
+              Set targets
+            </button>
+            <button
+              onClick={() => setIsRecordResultsOpen(true)}
+              className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors"
+            >
+              Record results
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 9: CONNECTION TO LAUNCH ASSETS                                    */}
+      {/* ========================================================================= */}
+      <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
+        <div className="space-y-1">
+          <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase tracking-widest block">
+            NEXT STEP PREVIEW
+          </span>
+          <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
+            Your plan will guide your launch assets
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            Your customer group, message, offer, and next action will help shape your website.
+          </p>
+        </div>
+
+        {/* 3 Mini Preview Pills */}
+        <div className="flex flex-wrap gap-2.5 pt-1">
+          <div className="px-3 py-1.5 rounded-lg bg-muted/40 border border-border/70 text-xs font-medium text-foreground">
+            For: <strong className="font-semibold">{strategy.primarySegment?.segmentName || 'Independent service businesses'}</strong>
+          </div>
+
+          <div className="px-3 py-1.5 rounded-lg bg-muted/40 border border-border/70 text-xs font-medium text-foreground">
+            Message: <strong className="font-semibold">{strategy.primarySegment?.primaryMessage || 'Keep enquiries & quotes in one place'}</strong>
+          </div>
+
+          <div className="px-3 py-1.5 rounded-lg bg-muted/40 border border-border/70 text-xs font-medium text-foreground">
+            Proposed CTA: <strong className="font-semibold">Express interest (Proposal to review in Step 4.8)</strong>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          The call to action should match what your project can currently offer. Direct sales or checkout will not be enabled while the product is in preparation.
+        </p>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 10: JOURNEY FOOTER                                                */}
+      {/* ========================================================================= */}
+      <footer className="pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+        <Link
+          href={`/dashboard/creator/phase-4/pricing?ideaId=${encodeURIComponent(ideaId)}`}
+          className="text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 self-start sm:self-auto"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Pricing</span>
+        </Link>
+
+        <p className="text-xs text-muted-foreground text-center max-w-sm">
+          Activating saves your chosen plan. You control when each action starts.
+        </p>
+
+        <div className="flex flex-col items-end gap-1 w-full sm:w-auto">
+          <button
+            onClick={handleActivateAndContinue}
+            disabled={isActivating || isLoading}
+            className="w-full sm:w-auto px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
+          >
+            <span>{isActivating ? 'Activating plan...' : 'Activate plan & continue'}</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+          <span className="text-[11px] text-muted-foreground font-mono">
+            Next: Launch Assets
+          </span>
+        </div>
+      </footer>
+
+      {/* ========================================================================= */}
+      {/* MODALS                                                                    */}
+      {/* ========================================================================= */}
+
+      {/* 1. Edit Message Modal */}
+      {isEditMessageOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold font-heading text-foreground">
+                Edit Initial Outreach Message
+              </h3>
+              <button
+                onClick={() => setIsEditMessageOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Customize the introductory message you plan to send to prospective discovery customers.
+            </p>
+            <textarea
+              rows={4}
+              value={customMessage}
+              onChange={(e) => setCustomMessage(e.target.value)}
+              className="w-full p-3 rounded-xl bg-background border border-input text-xs sm:text-sm text-foreground focus:ring-2 focus:ring-primary/40 focus:outline-none"
+              placeholder="Enter your customized outreach message..."
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setIsEditMessageOpen(false)}
+                className="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setIsEditMessageOpen(false)}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
+              >
+                Save Message
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* 5. MODAL: Log Experiment Run */}
-      {loggingExperiment && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div>
-                <span className="text-xs font-mono uppercase tracking-wider text-purple-700 dark:text-purple-300 font-semibold">
-                  Record Historical Evidence
-                </span>
-                <h3 className="text-base font-bold text-foreground">
-                  Log Experiment Run
-                </h3>
-              </div>
+      {/* 2. Adjust Customer Group Modal */}
+      {isAdjustGroupOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold font-heading text-foreground">
+                Adjust Target Customer Group
+              </h3>
               <button
-                onClick={() => setLoggingExperiment(null)}
-                className="text-muted-foreground hover:text-foreground p-1"
+                onClick={() => setIsAdjustGroupOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Define the specific profile of businesses or individuals you plan to contact first.
+            </p>
+            <textarea
+              rows={3}
+              value={customGroup || strategy.primarySegment?.problem || ''}
+              onChange={(e) => setCustomGroup(e.target.value)}
+              className="w-full p-3 rounded-xl bg-background border border-input text-xs sm:text-sm text-foreground focus:ring-2 focus:ring-primary/40 focus:outline-none"
+              placeholder="e.g. Independent service businesses in France..."
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setIsAdjustGroupOpen(false)}
+                className="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setIsAdjustGroupOpen(false)}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
+              >
+                Save Customer Group
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Change Channel Modal */}
+      {isChangeChannelOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-card border border-border rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold font-heading text-foreground">
+                Select Starting Outreach Channel
+              </h3>
+              <button
+                onClick={() => setIsChangeChannelOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Choose which acquisition or validation channel you want to prioritize as your primary focus.
+            </p>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {strategy.channelStrategy?.map((ch) => (
+                <div
+                  key={ch.key}
+                  onClick={() => setSelectedChannelKey(ch.key)}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                    (selectedChannelKey || primaryChannel?.key) === ch.key
+                      ? 'bg-primary/10 border-primary shadow-xs'
+                      : 'bg-muted/20 border-border hover:border-border/80'
+                  }`}
+                >
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-foreground font-heading">
+                        {ch.channelName}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
+                        {ch.priority}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{ch.rationale}</p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSaveChannelPriority(ch.key, 'Primary');
+                    }}
+                    className="px-3 py-1 rounded-md bg-primary text-primary-foreground text-xs font-semibold shrink-0"
+                  >
+                    Set as Primary
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setIsChangeChannelOpen(false)}
+                className="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-accent"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Set Budget & Time Modal */}
+      {isSetBudgetOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold font-heading text-foreground">
+                Set Time & Marketing Budget
+              </h3>
+              <button
+                onClick={() => setIsSetBudgetOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveRun} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground block">
-                    Actual Spend (€)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={runSpend}
-                    onChange={(e) => setRunSpend(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground block">
-                    Actual Effort (Hours/Days)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 5 hours"
-                    value={runEffort}
-                    onChange={(e) => setRunEffort(e.target.value)}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground block">
-                  Empirical Outcome
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">
+                  Weekly Project Hours Available
                 </label>
-                <select
-                  value={runOutcome}
-                  onChange={(e) => setRunOutcome(e.target.value as ExperimentRunOutcome)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="Validated">Validated (Met success condition)</option>
-                  <option value="Invalidated">Invalidated (Triggered stop condition)</option>
-                  <option value="Inconclusive">Inconclusive (Needs more observations)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground block">
-                  Empirical Observations & Findings
-                </label>
-                <textarea
-                  rows={4}
-                  required
-                  placeholder="Record qualitative customer quotes, conversion counts, objections, or conversion obstacles observed..."
-                  value={runObservations}
-                  onChange={(e) => setRunObservations(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                <input
+                  type="number"
+                  min={1}
+                  max={80}
+                  value={timeInput}
+                  onChange={(e) =>
+                    setTimeInput(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  className="w-full p-2.5 rounded-xl bg-background border border-input text-xs sm:text-sm text-foreground"
+                  placeholder="e.g. 4"
                 />
               </div>
 
-              <div className="pt-3 border-t border-border flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setLoggingExperiment(null)}
-                  className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs font-medium transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoggingRun}
-                  className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-2 shadow-sm transition-colors"
-                >
-                  {isLoggingRun ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Recording Evidence...</span>
-                    </>
-                  ) : (
-                    <span>Commit Immutable Run</span>
-                  )}
-                </button>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">
+                  Spendable Marketing Budget (€)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={50}
+                  value={budgetInput}
+                  onChange={(e) =>
+                    setBudgetInput(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  className="w-full p-2.5 rounded-xl bg-background border border-input text-xs sm:text-sm text-foreground"
+                  placeholder="e.g. 500"
+                />
               </div>
-            </form>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setIsSetBudgetOpen(false)}
+                className="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setIsSetBudgetOpen(false)}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
+              >
+                Save
+              </button>
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* 5. Set Targets Modal */}
+      {isSetTargetsOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold font-heading text-foreground">
+                Set Launch Tracking Targets
+              </h3>
+              <button
+                onClick={() => setIsSetTargetsOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Businesses to contact</label>
+                <input
+                  type="number"
+                  value={targetContacted}
+                  onChange={(e) =>
+                    setTargetContacted(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  className="w-full p-2 rounded-lg bg-background border border-input text-foreground"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Target replies</label>
+                <input
+                  type="number"
+                  value={targetReplies}
+                  onChange={(e) =>
+                    setTargetReplies(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  className="w-full p-2 rounded-lg bg-background border border-input text-foreground"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Target demo requests</label>
+                <input
+                  type="number"
+                  value={targetDemos}
+                  onChange={(e) =>
+                    setTargetDemos(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  className="w-full p-2 rounded-lg bg-background border border-input text-foreground"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setIsSetTargetsOpen(false)}
+                className="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setIsSetTargetsOpen(false)}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
+              >
+                Save Targets
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Record Results Modal */}
+      {isRecordResultsOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <form
+            onSubmit={handleRecordRunSubmit}
+            className="bg-card border border-border rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold font-heading text-foreground">
+                Record Launch Outreach Activity
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsRecordResultsOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Actual Spend (€)</label>
+                <input
+                  type="number"
+                  value={actualSpend}
+                  onChange={(e) =>
+                    setActualSpend(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  className="w-full p-2 rounded-lg bg-background border border-input text-foreground"
+                  placeholder="0"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Time / Effort Invested</label>
+                <input
+                  type="text"
+                  value={actualEffort}
+                  onChange={(e) => setActualEffort(e.target.value)}
+                  className="w-full p-2 rounded-lg bg-background border border-input text-foreground"
+                  placeholder="e.g. 3 hours outreach"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Observations & Feedback</label>
+                <textarea
+                  rows={3}
+                  value={actualObservations}
+                  onChange={(e) => setActualObservations(e.target.value)}
+                  className="w-full p-2.5 rounded-lg bg-background border border-input text-foreground"
+                  placeholder="e.g. Contacted 10 local electricians; 3 replied asking about quotation format..."
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Validation Outcome</label>
+                <select
+                  value={actualOutcome}
+                  onChange={(e) => setActualOutcome(e.target.value as ExperimentRunOutcome)}
+                  className="w-full p-2 rounded-lg bg-background border border-input text-foreground"
+                >
+                  <option value="Validated">Validated (Strong Customer Interest)</option>
+                  <option value="Invalidated">Invalidated (No Fit)</option>
+                  <option value="Inconclusive">Inconclusive (Needs More Samples)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsRecordResultsOpen(false)}
+                className="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmittingRecord}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50"
+              >
+                {isSubmittingRecord ? 'Saving...' : 'Save Results'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
   );
 }
-
