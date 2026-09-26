@@ -124,9 +124,9 @@ export function GtmStrategyView({
       if (updateAvailable) {
         await onRefresh();
       }
-      router.push(`/dashboard/creator/phase-4?ideaId=${encodeURIComponent(ideaId)}`);
+      router.push(`/dashboard/creator/phase-4/assets?ideaId=${encodeURIComponent(ideaId)}`);
     } catch {
-      router.push(`/dashboard/creator/phase-4?ideaId=${encodeURIComponent(ideaId)}`);
+      router.push(`/dashboard/creator/phase-4/assets?ideaId=${encodeURIComponent(ideaId)}`);
     } finally {
       setIsActivating(false);
     }
