@@ -14,6 +14,7 @@ using WebApp.Models.Dtos;
 using WebApp.Models.Phase4;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
+using WebApp.Services.Repository;
 using WebApp.Services.Repository.Ai;
 using Xunit;
 
@@ -727,6 +728,349 @@ namespace WebApp.Tests.Unit
             res.Strategy.MetricsFramework.Should().Contain(m => m.Key == "metric.interest.discovery-calls");
             res.Strategy.MetricsFramework.Should().Contain(m => m.Key == "metric.conversion.paid-contracts");
             res.Strategy.MetricsFramework.Should().Contain(m => m.Key == "metric.economics.observed-cac");
+        }
+
+        // =========================================================================
+        // PHASE 4.7 OVERRIDES & ACTIVATION REGRESSION TESTS
+        // =========================================================================
+
+        [Fact]
+        public async Task UpdateGtmStrategy_PersistsAllFourOverrides_AndPreservesUnmodifiedFields()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            var init = await service.GenerateGtmStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+
+            // 1. Partial update: Outreach Message
+            var res1 = await service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                CustomOutreachMessage = "Hello from customized founder outreach!"
+            });
+
+            res1.Strategy.FounderOverrides.Should().ContainKey("CustomOutreachMessage");
+            res1.Strategy.FounderOverrides["CustomOutreachMessage"].Should().Be("Hello from customized founder outreach!");
+            res1.Strategy.PositioningStrategy.PrimaryPromise.Should().Be("Hello from customized founder outreach!");
+
+            // 2. Partial update: Customer Group (should NOT wipe message)
+            var res2 = await service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                CustomCustomerGroup = "B2B SaaS Founders in Germany"
+            });
+
+            res2.Strategy.FounderOverrides.Should().ContainKey("CustomOutreachMessage");
+            res2.Strategy.FounderOverrides["CustomOutreachMessage"].Should().Be("Hello from customized founder outreach!");
+            res2.Strategy.FounderOverrides.Should().ContainKey("CustomCustomerGroup");
+            res2.Strategy.FounderOverrides["CustomCustomerGroup"].Should().Be("B2B SaaS Founders in Germany");
+            res2.Strategy.PrimaryLaunchSegment.Should().Be("B2B SaaS Founders in Germany");
+
+            // 3. Partial update: Budget & Time (should NOT wipe message or customer group)
+            var res3 = await service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                SpendableBudget = 750m,
+                WeeklyHoursAvailable = 8
+            });
+
+            res3.Strategy.FounderOverrides["SpendableBudget"].Should().Be("750");
+            res3.Strategy.FounderOverrides["WeeklyHoursAvailable"].Should().Be("8");
+            res3.Strategy.BudgetPlan.TotalAvailableBudget.Should().Be(750m);
+            res3.Strategy.FounderExecutionPlan.EstimatedWeeklyHours.Should().Be(8);
+
+            // 4. Partial update: Targets (should NOT wipe previous overrides)
+            var res4 = await service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                TargetContacted = 100,
+                TargetReplies = 25,
+                TargetDemos = 10,
+                TargetPurchases = 4
+            });
+
+            res4.Strategy.FounderOverrides["Target_Contacted"].Should().Be("100");
+            res4.Strategy.FounderOverrides["Target_Replies"].Should().Be("25");
+            res4.Strategy.FounderOverrides["Target_Demos"].Should().Be("10");
+            res4.Strategy.FounderOverrides["Target_Purchases"].Should().Be("4");
+
+            // Verify all 4 overrides coexist cleanly
+            res4.Strategy.FounderOverrides["CustomOutreachMessage"].Should().Be("Hello from customized founder outreach!");
+            res4.Strategy.FounderOverrides["CustomCustomerGroup"].Should().Be("B2B SaaS Founders in Germany");
+            res4.Strategy.FounderOverrides["SpendableBudget"].Should().Be("750");
+            res4.Strategy.FounderOverrides["WeeklyHoursAvailable"].Should().Be("8");
+        }
+
+        [Fact]
+        public async Task UpdateGtmStrategy_ThrowsConcurrencyConflict_WhenVersionMismatches()
+        {
+            var journey = BuildCompleteJourney();
+            journey.Project.CurrentVersion = 5;
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            await service.GenerateGtmStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+
+            var act = () => service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                ExpectedVersion = 3, // Stale version
+                CustomCustomerGroup = "Conflict Attempt"
+            });
+
+            var ex = await act.Should().ThrowAsync<CreatorJourneyException>();
+            ex.Subject.Single().StatusCode.Should().Be(409);
+        }
+
+        [Fact]
+        public async Task UpdateGtmStrategy_PlanActivation_PersistsStatusAndTimestamp()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            await service.GenerateGtmStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+
+            var res = await service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                Status = "Active"
+            });
+
+            res.Strategy.Status.Should().Be("Active");
+            res.Strategy.FounderOverrides.Should().ContainKey("PlanActivated");
+            res.Strategy.FounderOverrides["PlanActivated"].Should().Be("true");
+            res.Strategy.FounderOverrides.Should().ContainKey("ActivatedAt");
+        }
+
+        [Fact]
+        public async Task Refresh_Preserves_AllFounderOverrides_AndActiveStatus()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            await service.GenerateGtmStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+
+            // Apply overrides & activation
+            await service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                CustomCustomerGroup = "Specialized Agencies",
+                CustomOutreachMessage = "Tailored value prop",
+                SpendableBudget = 1200m,
+                WeeklyHoursAvailable = 15,
+                Status = "Active"
+            });
+
+            // Trigger refresh
+            var refreshed = await service.RefreshGtmStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+
+            refreshed.Strategy.Status.Should().Be("Active");
+            refreshed.Strategy.FounderOverrides["CustomCustomerGroup"].Should().Be("Specialized Agencies");
+            refreshed.Strategy.FounderOverrides["CustomOutreachMessage"].Should().Be("Tailored value prop");
+            refreshed.Strategy.FounderOverrides["SpendableBudget"].Should().Be("1200");
+            refreshed.Strategy.FounderOverrides["WeeklyHoursAvailable"].Should().Be("15");
+            refreshed.Strategy.PrimaryLaunchSegment.Should().Be("Specialized Agencies");
+            refreshed.Strategy.PositioningStrategy.PrimaryPromise.Should().Be("Tailored value prop");
+            refreshed.Strategy.BudgetPlan.TotalAvailableBudget.Should().Be(1200m);
+            refreshed.Strategy.FounderExecutionPlan.EstimatedWeeklyHours.Should().Be(15);
+        }
+
+        // =========================================================================
+        // CONTROLLER REGRESSION TESTS (CREATOR JOURNEY EXCEPTION -> SAFE HTTP CODES)
+        // =========================================================================
+
+        private WebApp.Controllers.CreatorPhase4ConstructionController CreateController(
+            IGtmStrategyService gtmService)
+        {
+            var controller = new WebApp.Controllers.CreatorPhase4ConstructionController(
+                _snapshotServiceMock.Object,
+                _roadmapServiceMock.Object,
+                _needsServiceMock.Object,
+                _skillsServiceMock.Object,
+                _supportServiceMock.Object,
+                _pricingServiceMock.Object,
+                gtmService,
+                new Mock<ILaunchAssetsService>().Object
+            );
+
+            controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext
+            {
+                HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext
+                {
+                    User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(
+                        new[] { new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "user-1") },
+                        "TestAuth"))
+                }
+            };
+
+            return controller;
+        }
+
+        [Fact]
+        public async Task UpdateStrategy_Rejects_InvalidLifecycleStatus_With_400()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            await service.GenerateGtmStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+
+            var act = () => service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                Status = "InvalidArbitraryStatus"
+            });
+
+            var ex = await act.Should().ThrowAsync<CreatorJourneyException>();
+            ex.Subject.Single().StatusCode.Should().Be(400);
+            ex.Subject.Single().Message.Should().Contain("Invalid GTM strategy status");
+        }
+
+        [Fact]
+        public async Task UpdateStrategy_RepeatActivation_IsIdempotent_PreservesActivatedAt()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            await service.GenerateGtmStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+
+            var first = await service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                Status = "Active"
+            });
+
+            var initialActivatedAt = first.Strategy.FounderOverrides["ActivatedAt"];
+            initialActivatedAt.Should().NotBeNullOrWhiteSpace();
+
+            // Wait a few milliseconds and repeat activation
+            await Task.Delay(20);
+            var second = await service.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                Status = "Active"
+            });
+
+            second.Strategy.Status.Should().Be("Active");
+            second.Strategy.FounderOverrides["ActivatedAt"].Should().Be(initialActivatedAt);
+        }
+
+        [Fact]
+        public async Task LaunchAssets_FieldPrecedence_Preserves_ConfirmedLaunchGroup_And_DistinctPositioning()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var gtmService = CreateService();
+            await gtmService.GenerateGtmStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+
+            // Founder confirms a specific launch customer group and an outreach message in Step 4.7
+            await gtmService.UpdateGtmStrategyAsync(journey.UserId, new UpdateGtmStrategyRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                CustomCustomerGroup = "Specialized Agencies",
+                CustomOutreachMessage = "Hi founder, notice how manual your quotes are? Let us help."
+            });
+
+            // Set up BrandKit with general audience and distinct brand positioning
+            var mockBrandKitStore = new Mock<IBrandKitStore>();
+            var brandKit = new BrandKit
+            {
+                Id = "bk-1",
+                IdeaId = journey.ActiveIdeaId,
+                UserId = journey.UserId,
+                Strategy = new BrandStrategy
+                {
+                    BusinessName = "ClairDesk Test",
+                    Concept = new BrandProvenancedText { Value = "A unified client quote workspace" },
+                    TargetAudience = new BrandProvenancedText { Value = "General Freelancers & Solopreneurs" },
+                    Positioning = new BrandProvenancedText { Value = "Unified Client Pipeline & Proposal Management" },
+                    Industry = new BrandProvenancedText { Value = "Professional Services" }
+                }
+            };
+            mockBrandKitStore.Setup(b => b.GetByIdeaIdAsync(journey.ActiveIdeaId, journey.UserId))
+                .ReturnsAsync(brandKit);
+
+            _journeysMock.Setup(j => j.SetPhase4LaunchAssetsAsync(It.IsAny<string>(), It.IsAny<LaunchAssetsPlan>(), It.IsAny<string>()))
+                .ReturnsAsync(journey);
+
+            var launchAssetsService = new LaunchAssetsService(
+                _journeysMock.Object,
+                _pricingServiceMock.Object,
+                gtmService,
+                mockBrandKitStore.Object,
+                new Mock<Microsoft.Extensions.Logging.ILogger<LaunchAssetsService>>().Object
+            );
+
+            var launchAssetsRes = await launchAssetsService.GenerateLaunchAssetsAsync(journey.UserId, journey.ActiveIdeaId);
+
+            launchAssetsRes.Should().NotBeNull();
+            var assets = launchAssetsRes.Assets;
+            assets.Should().NotBeNull();
+
+            // 1. Target Audience for launch assets inherits confirmed Step 4.7 customer group ("Specialized Agencies")
+            assets.BrandStudio.TargetAudience.Should().Be("Specialized Agencies");
+            assets.ProblemStatement.Should().Contain("specialized agencies");
+
+            // 2. Headline/Positioning uses BrandKit strategic positioning ("Unified Client Pipeline & Proposal Management")
+            // and NOT the direct outreach message copy
+            assets.BrandStudio.Positioning.Should().Be("Unified Client Pipeline & Proposal Management");
+            assets.Headline.Should().Be("Unified Client Pipeline & Proposal Management");
+            assets.Headline.Should().NotContain("Hi founder");
+
+            // 3. CTA uses default non-transacting launch CTA
+            assets.ButtonLabel.Should().Be("Express interest");
+
+            // 4. BrandKit in MongoDB was not overwritten
+            brandKit.Strategy.TargetAudience.Value.Should().Be("General Freelancers & Solopreneurs");
+            brandKit.Strategy.Positioning.Value.Should().Be("Unified Client Pipeline & Proposal Management");
+        }
+
+        [Fact]
+        public async Task Controller_UpdateGtmStrategy_DomainConflict_Returns_409()
+        {
+            var mockGtm = new Mock<IGtmStrategyService>();
+            mockGtm.Setup(g => g.UpdateGtmStrategyAsync("user-1", It.IsAny<UpdateGtmStrategyRequest>()))
+                .ThrowsAsync(new CreatorJourneyException(409, "Version mismatch: idea was modified concurrently."));
+
+            var controller = CreateController(mockGtm.Object);
+
+            var result = await controller.UpdateGtmStrategy(
+                ideaId: "idea-1",
+                expectedVersion: 1,
+                request: new UpdateGtmStrategyRequest
+                {
+                    IdeaId = "idea-1",
+                    ExpectedVersion = 1,
+                    CustomCustomerGroup = "Test Group"
+                }
+            );
+
+            var objResult = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.ObjectResult>().Subject;
+            objResult.StatusCode.Should().Be(409);
+            var apiRes = objResult.Value.Should().BeOfType<WebApp.Models.ApiResponse>().Subject;
+            apiRes.Message.Should().Contain("Version mismatch");
+        }
+
+        [Fact]
+        public async Task Controller_GetGtm_DomainError_Returns_CorrectStatusCode()
+        {
+            var mockGtm = new Mock<IGtmStrategyService>();
+            mockGtm.Setup(g => g.GetGtmStrategyAsync("user-1", "idea-forbidden"))
+                .ThrowsAsync(new CreatorJourneyException(403, "You do not own this project."));
+
+            var controller = CreateController(mockGtm.Object);
+
+            var result = await controller.GetGtm(ideaId: "idea-forbidden");
+
+            var objResult = result.Should().BeOfType<Microsoft.AspNetCore.Mvc.ObjectResult>().Subject;
+            objResult.StatusCode.Should().Be(403);
+            var apiRes = objResult.Value.Should().BeOfType<WebApp.Models.ApiResponse>().Subject;
+            apiRes.Message.Should().Contain("do not own");
         }
     }
 }

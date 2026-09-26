@@ -13,6 +13,7 @@ import type {
   GtmStrategyResponse,
   UpdateGtmChannelRequest,
   RecordExperimentRunRequest,
+  UpdateGtmStrategyRequest,
 } from '@/types/creator/gtm';
 
 export interface ApiEnvelope<T> {
@@ -156,6 +157,32 @@ export async function recordExperimentRun(
 
   const res = await api.patch<ApiEnvelope<GtmStrategyResponse> | GtmStrategyResponse>(
     `/creator/phase4/gtm/experiments/${encodeURIComponent(experimentKey)}`,
+    { ...req, ideaId: effectiveIdeaId, expectedVersion: version },
+    {
+      params: { ideaId: effectiveIdeaId, expectedVersion: version },
+    }
+  );
+  rememberIdeaVersion(res, effectiveIdeaId);
+  const data = unwrap(res.data);
+  if ((data as any)?.ideaVersion && Number.isSafeInteger((data as any).ideaVersion) && (data as any).ideaVersion > 0) {
+    setIdeaVersion(effectiveIdeaId, (data as any).ideaVersion);
+  }
+  return data;
+}
+
+export async function updateGtmStrategy(
+  req: UpdateGtmStrategyRequest,
+  ideaId?: string,
+  expectedVersion?: number
+): Promise<GtmStrategyResponse> {
+  const effectiveIdeaId = (ideaId || req.ideaId || '').trim();
+  if (!effectiveIdeaId) {
+    throw new Error('ideaId is required to update GTM strategy.');
+  }
+  const version = await resolveExpectedVersion(effectiveIdeaId, expectedVersion ?? (req as any)?.expectedVersion);
+
+  const res = await api.patch<ApiEnvelope<GtmStrategyResponse> | GtmStrategyResponse>(
+    '/creator/phase4/gtm',
     { ...req, ideaId: effectiveIdeaId, expectedVersion: version },
     {
       params: { ideaId: effectiveIdeaId, expectedVersion: version },

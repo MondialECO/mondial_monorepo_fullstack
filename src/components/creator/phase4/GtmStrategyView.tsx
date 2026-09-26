@@ -37,6 +37,7 @@ import type {
   ExperimentRunOutcome,
   UpdateGtmChannelRequest,
   RecordExperimentRunRequest,
+  UpdateGtmStrategyRequest,
 } from '@/types/creator/gtm';
 
 interface GtmStrategyViewProps {
@@ -50,6 +51,7 @@ interface GtmStrategyViewProps {
   onGenerate: () => Promise<void>;
   onRefresh: () => Promise<void>;
   onUpdateChannel: (channelKey: string, req: UpdateGtmChannelRequest) => Promise<void>;
+  onUpdateStrategy?: (req: UpdateGtmStrategyRequest) => Promise<void>;
   onRecordExperimentRun: (experimentKey: string, req: RecordExperimentRunRequest) => Promise<void>;
 }
 
@@ -64,6 +66,7 @@ export function GtmStrategyView({
   onGenerate,
   onRefresh,
   onUpdateChannel,
+  onUpdateStrategy,
   onRecordExperimentRun,
 }: GtmStrategyViewProps) {
   const router = useRouter();
@@ -73,12 +76,14 @@ export function GtmStrategyView({
   const [isActivating, setIsActivating] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
 
-  // Modals
+  // Modals & Drafts
   const [isEditMessageOpen, setIsEditMessageOpen] = useState(false);
   const [customMessage, setCustomMessage] = useState('');
+  const [isSavingMessage, setIsSavingMessage] = useState(false);
 
   const [isAdjustGroupOpen, setIsAdjustGroupOpen] = useState(false);
   const [customGroup, setCustomGroup] = useState('');
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
 
   const [isChangeChannelOpen, setIsChangeChannelOpen] = useState(false);
   const [selectedChannelKey, setSelectedChannelKey] = useState('');
@@ -86,12 +91,14 @@ export function GtmStrategyView({
   const [isSetBudgetOpen, setIsSetBudgetOpen] = useState(false);
   const [budgetInput, setBudgetInput] = useState<number | ''>('');
   const [timeInput, setTimeInput] = useState<number | ''>('');
+  const [isSavingBudget, setIsSavingBudget] = useState(false);
 
   const [isSetTargetsOpen, setIsSetTargetsOpen] = useState(false);
   const [targetContacted, setTargetContacted] = useState<number | ''>(50);
   const [targetReplies, setTargetReplies] = useState<number | ''>(10);
   const [targetDemos, setTargetDemos] = useState<number | ''>(5);
   const [targetPurchases, setTargetPurchases] = useState<number | ''>(2);
+  const [isSavingTargets, setIsSavingTargets] = useState(false);
 
   const [isRecordResultsOpen, setIsRecordResultsOpen] = useState(false);
   const [actualSpend, setActualSpend] = useState<number | ''>(0);
@@ -100,20 +107,47 @@ export function GtmStrategyView({
   const [actualOutcome, setActualOutcome] = useState<ExperimentRunOutcome>('Validated');
   const [isSubmittingRecord, setIsSubmittingRecord] = useState(false);
 
-  // Derived primary elements from strategy
+  // Derived primary elements from strategy & effective overrides
   const primaryChannel =
     strategy?.channelStrategy?.find((c) => c.priority === 'Primary') ||
     strategy?.channelStrategy?.[0] ||
     null;
 
+  const effectiveCustomerGroup =
+    strategy?.founderOverrides?.['CustomCustomerGroup'] ||
+    strategy?.primarySegment?.segmentName ||
+    'Independent service businesses';
+
   const defaultOutreachMessage =
-    customMessage ||
-    `“Hi, I’m building ${projectName} for ${
-      strategy?.primarySegment?.segmentName || 'independent service businesses'
-    }. I’d like to understand how you currently manage enquiries, quotations, and follow-ups. Would you be open to a short conversation about your process?”`;
+    strategy?.founderOverrides?.['CustomOutreachMessage'] ||
+    `“Hi, I’m building ${projectName} for ${effectiveCustomerGroup}. I’d like to understand how you currently manage enquiries, quotations, and follow-ups. Would you be open to a short conversation about your process?”`;
+
+  const effectiveBudget = strategy?.founderOverrides?.['SpendableBudget']
+    ? Number(strategy.founderOverrides['SpendableBudget'])
+    : strategy?.budgetPlan?.totalAvailableBudget;
+
+  const effectiveHours = strategy?.founderOverrides?.['WeeklyHoursAvailable']
+    ? Number(strategy.founderOverrides['WeeklyHoursAvailable'])
+    : (strategy?.founderExecutionPlan?.weeklyHoursAvailable || 4);
+
+  const effectiveTargetContacted = strategy?.founderOverrides?.['Target_Contacted']
+    ? Number(strategy.founderOverrides['Target_Contacted'])
+    : targetContacted;
+
+  const effectiveTargetReplies = strategy?.founderOverrides?.['Target_Replies']
+    ? Number(strategy.founderOverrides['Target_Replies'])
+    : targetReplies;
+
+  const effectiveTargetDemos = strategy?.founderOverrides?.['Target_Demos']
+    ? Number(strategy.founderOverrides['Target_Demos'])
+    : targetDemos;
+
+  const effectiveTargetPurchases = strategy?.founderOverrides?.['Target_Purchases']
+    ? Number(strategy.founderOverrides['Target_Purchases'])
+    : targetPurchases;
 
   const handleCopyMessage = () => {
-    navigator.clipboard.writeText(defaultOutreachMessage.replace(/[“”]/g, ''));
+    navigator.clipboard.writeText((customMessage || defaultOutreachMessage).replace(/[“”]/g, ''));
     setCopiedMessage(true);
     setTimeout(() => setCopiedMessage(false), 2500);
   };
@@ -121,14 +155,70 @@ export function GtmStrategyView({
   const handleActivateAndContinue = async () => {
     try {
       setIsActivating(true);
-      if (updateAvailable) {
-        await onRefresh();
+      if (onUpdateStrategy) {
+        await onUpdateStrategy({ status: 'Active' });
       }
-      router.push(`/dashboard/creator/phase-4/assets?ideaId=${encodeURIComponent(ideaId)}`);
-    } catch {
-      router.push(`/dashboard/creator/phase-4/assets?ideaId=${encodeURIComponent(ideaId)}`);
+      router.push(`/dashboard/creator/phase-4/launch-assets?ideaId=${encodeURIComponent(ideaId)}`);
+    } catch (err) {
+      console.error('Failed to activate plan:', err);
     } finally {
       setIsActivating(false);
+    }
+  };
+
+  const handleSaveMessage = async () => {
+    try {
+      setIsSavingMessage(true);
+      await onUpdateStrategy?.({ customOutreachMessage: customMessage.trim() });
+      setIsEditMessageOpen(false);
+    } catch (err) {
+      console.error('Failed to save message:', err);
+    } finally {
+      setIsSavingMessage(false);
+    }
+  };
+
+  const handleSaveCustomerGroup = async () => {
+    try {
+      setIsSavingGroup(true);
+      await onUpdateStrategy?.({ customCustomerGroup: customGroup.trim() });
+      setIsAdjustGroupOpen(false);
+    } catch (err) {
+      console.error('Failed to save customer group:', err);
+    } finally {
+      setIsSavingGroup(false);
+    }
+  };
+
+  const handleSaveBudgetAndTime = async () => {
+    try {
+      setIsSavingBudget(true);
+      await onUpdateStrategy?.({
+        weeklyHoursAvailable: typeof timeInput === 'number' ? timeInput : null,
+        spendableBudget: typeof budgetInput === 'number' ? budgetInput : null,
+      });
+      setIsSetBudgetOpen(false);
+    } catch (err) {
+      console.error('Failed to save budget & time:', err);
+    } finally {
+      setIsSavingBudget(false);
+    }
+  };
+
+  const handleSaveTargets = async () => {
+    try {
+      setIsSavingTargets(true);
+      await onUpdateStrategy?.({
+        targetContacted: typeof targetContacted === 'number' ? targetContacted : null,
+        targetReplies: typeof targetReplies === 'number' ? targetReplies : null,
+        targetDemos: typeof targetDemos === 'number' ? targetDemos : null,
+        targetPurchases: typeof targetPurchases === 'number' ? targetPurchases : null,
+      });
+      setIsSetTargetsOpen(false);
+    } catch (err) {
+      console.error('Failed to save targets:', err);
+    } finally {
+      setIsSavingTargets(false);
     }
   };
 
@@ -355,7 +445,7 @@ export function GtmStrategyView({
               First customers
             </span>
             <p className="text-sm font-semibold text-foreground truncate">
-              {strategy.primarySegment?.segmentName || 'Independent service businesses'}
+              {effectiveCustomerGroup}
             </p>
           </div>
 
@@ -373,9 +463,9 @@ export function GtmStrategyView({
               Budget
             </span>
             <div className="flex items-center gap-1.5">
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-xs font-medium">
-                {strategy.budgetPlan?.totalAvailableBudget
-                  ? `€${strategy.budgetPlan.totalAvailableBudget.toLocaleString()}`
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 text-xs font-medium font-mono tabular-nums">
+                {effectiveBudget !== undefined && effectiveBudget !== null
+                  ? `€${effectiveBudget.toLocaleString()}`
                   : strategy.budgetPlan?.validationStatus === 'Supported'
                   ? 'Supported'
                   : 'Needs validation'}
@@ -405,7 +495,10 @@ export function GtmStrategyView({
             </p>
           </div>
           <button
-            onClick={() => setIsAdjustGroupOpen(true)}
+            onClick={() => {
+              setCustomGroup(effectiveCustomerGroup);
+              setIsAdjustGroupOpen(true);
+            }}
             className="px-3.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-xs font-semibold text-foreground transition-colors shrink-0 self-start sm:self-auto"
           >
             Adjust customer group
@@ -416,13 +509,10 @@ export function GtmStrategyView({
         <div className="bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-2xl p-5 space-y-2.5">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <h3 className="text-sm sm:text-base font-semibold text-foreground leading-snug">
-              {customGroup ||
-                strategy.primarySegment?.problem ||
-                strategy.primarySegment?.segmentName ||
-                'Independent service businesses in France that manage enquiries and quotations manually.'}
+              {effectiveCustomerGroup}
             </h3>
             <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[11px] font-mono font-medium shrink-0">
-              Suggested
+              {strategy.founderOverrides?.['CustomCustomerGroup'] ? 'Founder Decision' : 'Suggested'}
             </span>
           </div>
 
@@ -754,12 +844,12 @@ export function GtmStrategyView({
               <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
                 PROJECT TIME
               </span>
-              <div className="text-2xl sm:text-3xl font-bold text-foreground font-mono">
-                {strategy.founderExecutionPlan?.weeklyHoursAvailable || 4} hours / week
+              <div className="text-2xl sm:text-3xl font-bold text-foreground font-mono tabular-nums">
+                {effectiveHours} hours / week
               </div>
               <p className="text-xs text-muted-foreground">
-                Allocated to GTM: {strategy.founderExecutionPlan?.weeklyHoursAllocated || 2}h (
-                {strategy.founderExecutionPlan?.remainingWeeklyHours || 2}h remaining for product).
+                Allocated to GTM: {strategy.founderExecutionPlan?.weeklyHoursAllocated || Math.min(2, effectiveHours)}h (
+                {Math.max(0, effectiveHours - (strategy.founderExecutionPlan?.weeklyHoursAllocated || Math.min(2, effectiveHours)))}h remaining for product).
               </p>
             </div>
 
@@ -772,7 +862,8 @@ export function GtmStrategyView({
               </div>
               <button
                 onClick={() => {
-                  setTimeInput(strategy.founderExecutionPlan?.weeklyHoursAvailable || 4);
+                  setTimeInput(effectiveHours);
+                  setBudgetInput(effectiveBudget !== undefined && effectiveBudget !== null ? effectiveBudget : '');
                   setIsSetBudgetOpen(true);
                 }}
                 className="px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-semibold text-foreground transition-colors"
@@ -788,26 +879,27 @@ export function GtmStrategyView({
               <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
                 MARKETING BUDGET
               </span>
-              <div className="text-2xl sm:text-3xl font-bold text-foreground font-mono">
-                {strategy.budgetPlan?.totalAvailableBudget
-                  ? `€${strategy.budgetPlan.totalAvailableBudget.toLocaleString()}`
+              <div className="text-2xl sm:text-3xl font-bold text-foreground font-mono tabular-nums">
+                {effectiveBudget !== undefined && effectiveBudget !== null
+                  ? `€${effectiveBudget.toLocaleString()}`
                   : 'Needs validation'}
               </div>
               <p className="text-xs text-muted-foreground">
-                Source: {strategy.budgetPlan?.budgetSource || 'FounderDeclared'} · Status:{' '}
+                Source: {strategy.founderOverrides?.['SpendableBudget'] ? 'FounderOverride' : (strategy.budgetPlan?.budgetSource || 'FounderDeclared')} · Status:{' '}
                 {strategy.budgetPlan?.spendableStatus || 'Planned'}
               </p>
             </div>
 
             <div className="space-y-2 pt-2 border-t border-border/50">
               <div className="text-xs text-muted-foreground">
-                {strategy.budgetPlan?.totalAvailableBudget
+                {effectiveBudget !== undefined && effectiveBudget !== null
                   ? 'Confirmed marketing budget.'
                   : 'No budget confirmed yet. Not assumed as €0.'}
               </div>
               <button
                 onClick={() => {
-                  setBudgetInput(strategy.budgetPlan?.totalAvailableBudget || '');
+                  setBudgetInput(effectiveBudget !== undefined && effectiveBudget !== null ? effectiveBudget : '');
+                  setTimeInput(effectiveHours);
                   setIsSetBudgetOpen(true);
                 }}
                 className="px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-semibold text-foreground transition-colors"
@@ -895,7 +987,7 @@ export function GtmStrategyView({
 
             <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
               <span className="text-[11px] text-muted-foreground">
-                Sourced from: {strategy.primarySegment?.segmentName || 'Target customer profile'},{' '}
+                Sourced from: {effectiveCustomerGroup},{' '}
                 {primaryChannel?.channelName || 'Selected outreach approach'}
               </span>
               <Link
@@ -1029,40 +1121,40 @@ export function GtmStrategyView({
               <div className="divide-y divide-border/60 text-xs sm:text-sm">
                 <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
                   <div className="col-span-6 font-medium text-foreground">Businesses contacted</div>
-                  <div className="col-span-3 text-muted-foreground font-mono text-xs">
-                    {targetContacted ? `${targetContacted}` : 'Not set'}
+                  <div className="col-span-3 text-muted-foreground font-mono tabular-nums text-xs">
+                    {effectiveTargetContacted ? `${effectiveTargetContacted}` : 'Not set'}
                   </div>
-                  <div className="col-span-3 text-right font-mono text-muted-foreground">
+                  <div className="col-span-3 text-right font-mono tabular-nums text-muted-foreground">
                     {actualContacted !== null ? actualContacted : totalRunsCount > 0 ? totalRunsCount : '—'}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
                   <div className="col-span-6 font-medium text-foreground">Replies received</div>
-                  <div className="col-span-3 text-muted-foreground font-mono text-xs">
-                    {targetReplies ? `${targetReplies}` : 'Not set'}
+                  <div className="col-span-3 text-muted-foreground font-mono tabular-nums text-xs">
+                    {effectiveTargetReplies ? `${effectiveTargetReplies}` : 'Not set'}
                   </div>
-                  <div className="col-span-3 text-right font-mono text-muted-foreground">
+                  <div className="col-span-3 text-right font-mono tabular-nums text-muted-foreground">
                     {actualReplies !== null ? actualReplies : '—'}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
                   <div className="col-span-6 font-medium text-foreground">Demo requests</div>
-                  <div className="col-span-3 text-muted-foreground font-mono text-xs">
-                    {targetDemos ? `${targetDemos}` : 'Not set'}
+                  <div className="col-span-3 text-muted-foreground font-mono tabular-nums text-xs">
+                    {effectiveTargetDemos ? `${effectiveTargetDemos}` : 'Not set'}
                   </div>
-                  <div className="col-span-3 text-right font-mono text-muted-foreground">
+                  <div className="col-span-3 text-right font-mono tabular-nums text-muted-foreground">
                     {actualDemos !== null ? actualDemos : '—'}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
                   <div className="col-span-6 font-medium text-foreground">Purchases</div>
-                  <div className="col-span-3 text-muted-foreground font-mono text-xs">
-                    {targetPurchases ? `${targetPurchases}` : 'Not set'}
+                  <div className="col-span-3 text-muted-foreground font-mono tabular-nums text-xs">
+                    {effectiveTargetPurchases ? `${effectiveTargetPurchases}` : 'Not set'}
                   </div>
-                  <div className="col-span-3 text-right font-mono text-muted-foreground">
+                  <div className="col-span-3 text-right font-mono tabular-nums text-muted-foreground">
                     {actualPurchases !== null ? actualPurchases : '—'}
                   </div>
                 </div>
@@ -1081,7 +1173,13 @@ export function GtmStrategyView({
 
           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
             <button
-              onClick={() => setIsSetTargetsOpen(true)}
+              onClick={() => {
+                setTargetContacted(effectiveTargetContacted ?? '');
+                setTargetReplies(effectiveTargetReplies ?? '');
+                setTargetDemos(effectiveTargetDemos ?? '');
+                setTargetPurchases(effectiveTargetPurchases ?? '');
+                setIsSetTargetsOpen(true);
+              }}
               className="px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-semibold text-foreground transition-colors"
             >
               Set targets
@@ -1115,11 +1213,11 @@ export function GtmStrategyView({
         {/* 3 Mini Preview Pills */}
         <div className="flex flex-wrap gap-2.5 pt-1">
           <div className="px-3 py-1.5 rounded-lg bg-muted/40 border border-border/70 text-xs font-medium text-foreground">
-            For: <strong className="font-semibold">{strategy.primarySegment?.segmentName || 'Independent service businesses'}</strong>
+            For: <strong className="font-semibold">{effectiveCustomerGroup}</strong>
           </div>
 
           <div className="px-3 py-1.5 rounded-lg bg-muted/40 border border-border/70 text-xs font-medium text-foreground">
-            Message: <strong className="font-semibold">{strategy.primarySegment?.primaryMessage || 'Keep enquiries & quotes in one place'}</strong>
+            Message: <strong className="font-semibold">{strategy.founderOverrides?.['CustomOutreachMessage'] || strategy.primarySegment?.primaryMessage || 'Keep enquiries & quotes in one place'}</strong>
           </div>
 
           <div className="px-3 py-1.5 rounded-lg bg-muted/40 border border-border/70 text-xs font-medium text-foreground">
@@ -1200,15 +1298,17 @@ export function GtmStrategyView({
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setIsEditMessageOpen(false)}
+                disabled={isSavingMessage}
                 className="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-accent"
               >
                 Cancel
               </button>
               <button
-                onClick={() => setIsEditMessageOpen(false)}
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
+                onClick={handleSaveMessage}
+                disabled={isSavingMessage}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50"
               >
-                Save Message
+                {isSavingMessage ? 'Saving...' : 'Save Message'}
               </button>
             </div>
           </div>
@@ -1235,7 +1335,7 @@ export function GtmStrategyView({
             </p>
             <textarea
               rows={3}
-              value={customGroup || strategy.primarySegment?.problem || ''}
+              value={customGroup || effectiveCustomerGroup}
               onChange={(e) => setCustomGroup(e.target.value)}
               className="w-full p-3 rounded-xl bg-background border border-input text-xs sm:text-sm text-foreground focus:ring-2 focus:ring-primary/40 focus:outline-none"
               placeholder="e.g. Independent service businesses in France..."
@@ -1243,15 +1343,17 @@ export function GtmStrategyView({
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setIsAdjustGroupOpen(false)}
+                disabled={isSavingGroup}
                 className="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-accent"
               >
                 Cancel
               </button>
               <button
-                onClick={() => setIsAdjustGroupOpen(false)}
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
+                onClick={handleSaveCustomerGroup}
+                disabled={isSavingGroup}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50"
               >
-                Save Customer Group
+                {isSavingGroup ? 'Saving...' : 'Save Customer Group'}
               </button>
             </div>
           </div>
@@ -1379,15 +1481,17 @@ export function GtmStrategyView({
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setIsSetBudgetOpen(false)}
+                disabled={isSavingBudget}
                 className="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-accent"
               >
                 Cancel
               </button>
               <button
-                onClick={() => setIsSetBudgetOpen(false)}
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
+                onClick={handleSaveBudgetAndTime}
+                disabled={isSavingBudget}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50"
               >
-                Save
+                {isSavingBudget ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -1444,20 +1548,33 @@ export function GtmStrategyView({
                   className="w-full p-2 rounded-lg bg-background border border-input text-foreground"
                 />
               </div>
+              <div className="space-y-1">
+                <label className="font-semibold text-foreground">Target purchases</label>
+                <input
+                  type="number"
+                  value={targetPurchases}
+                  onChange={(e) =>
+                    setTargetPurchases(e.target.value === '' ? '' : Number(e.target.value))
+                  }
+                  className="w-full p-2 rounded-lg bg-background border border-input text-foreground"
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setIsSetTargetsOpen(false)}
+                disabled={isSavingTargets}
                 className="px-4 py-2 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-accent"
               >
                 Cancel
               </button>
               <button
-                onClick={() => setIsSetTargetsOpen(false)}
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90"
+                onClick={handleSaveTargets}
+                disabled={isSavingTargets}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50"
               >
-                Save Targets
+                {isSavingTargets ? 'Saving...' : 'Save Targets'}
               </button>
             </div>
           </div>

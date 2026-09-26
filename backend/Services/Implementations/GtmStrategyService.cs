@@ -259,6 +259,192 @@ namespace WebApp.Services.Implementations
             };
         }
 
+        public async Task<GtmStrategyResponse> UpdateGtmStrategyAsync(string userId, UpdateGtmStrategyRequest request)
+        {
+            var journey = await _journeys.GetOrCreateComposedAsync(userId, request.IdeaId);
+
+            if (request.ExpectedVersion.HasValue && journey.IdeaVersion != request.ExpectedVersion.Value)
+            {
+                throw new CreatorJourneyException(
+                    409,
+                    $"Concurrency conflict: expected ideaVersion {request.ExpectedVersion.Value} but found {journey.IdeaVersion}.");
+            }
+
+            var strategy = journey.Phase4Data?.GtmStrategy;
+            if (strategy == null)
+            {
+                throw new KeyNotFoundException("GTM Strategy has not been generated yet.");
+            }
+
+            strategy.FounderOverrides ??= new Dictionary<string, string>();
+
+            // 1. Edit outreach message override
+            if (request.CustomOutreachMessage != null)
+            {
+                strategy.FounderOverrides["CustomOutreachMessage"] = request.CustomOutreachMessage;
+                if (!string.IsNullOrWhiteSpace(request.CustomOutreachMessage))
+                {
+                    strategy.PositioningStrategy.PrimaryPromise = request.CustomOutreachMessage;
+                }
+            }
+
+            // 2. Adjust customer group override
+            if (request.CustomCustomerGroup != null)
+            {
+                strategy.FounderOverrides["CustomCustomerGroup"] = request.CustomCustomerGroup;
+                if (!string.IsNullOrWhiteSpace(request.CustomCustomerGroup))
+                {
+                    strategy.PrimaryLaunchSegment = request.CustomCustomerGroup;
+                    if (strategy.SegmentStrategies.Count > 0)
+                    {
+                        strategy.SegmentStrategies[0].SegmentName = request.CustomCustomerGroup;
+                    }
+                }
+            }
+
+            // 3. Set time and marketing budget override
+            if (request.WeeklyHoursAvailable.HasValue)
+            {
+                strategy.FounderOverrides["WeeklyHoursAvailable"] = request.WeeklyHoursAvailable.Value.ToString();
+                var capacityProfile = _capacityResolver.ResolveCapacityProfile($"{request.WeeklyHoursAvailable.Value} hours/week", strategy.ChannelStrategy);
+                strategy.FounderExecutionPlan = capacityProfile;
+                strategy.CapacityWarningActive = capacityProfile.IsOverloaded;
+            }
+
+            if (request.SpendableBudget.HasValue)
+            {
+                strategy.FounderOverrides["SpendableBudget"] = request.SpendableBudget.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                strategy.BudgetPlan ??= new GtmBudgetPlan();
+                strategy.BudgetPlan.TotalAvailableBudget = request.SpendableBudget.Value;
+                strategy.BudgetPlan.BudgetSource = GtmBudgetSourceType.FounderDeclared;
+                strategy.BudgetPlan.SpendableStatus = SpendableStatus.ConfirmedAvailable;
+                strategy.BudgetPlan.ValidationStatus = GtmBudgetStatus.Confirmed;
+            }
+
+            // 4. Set tracking targets override
+            strategy.MetricsFramework ??= new List<GtmMetricDefinition>();
+
+            if (request.TargetContacted.HasValue)
+            {
+                strategy.FounderOverrides["Target_Contacted"] = request.TargetContacted.Value.ToString();
+                var m = strategy.MetricsFramework.FirstOrDefault(x => x.Key == "outreach_volume" || x.Name.Contains("Outreach", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Contacted", StringComparison.OrdinalIgnoreCase));
+                if (m != null)
+                {
+                    m.Target = request.TargetContacted.Value;
+                    m.TargetStatus = ExperimentThresholdStatus.FounderDefined;
+                }
+                else
+                {
+                    strategy.MetricsFramework.Add(new GtmMetricDefinition
+                    {
+                        Key = "outreach_volume",
+                        Name = "Target Contacts",
+                        Target = request.TargetContacted.Value,
+                        TargetStatus = ExperimentThresholdStatus.FounderDefined
+                    });
+                }
+            }
+
+            if (request.TargetReplies.HasValue)
+            {
+                strategy.FounderOverrides["Target_Replies"] = request.TargetReplies.Value.ToString();
+                var m = strategy.MetricsFramework.FirstOrDefault(x => x.Key == "reply_rate" || x.Name.Contains("Reply", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Replies", StringComparison.OrdinalIgnoreCase));
+                if (m != null)
+                {
+                    m.Target = request.TargetReplies.Value;
+                    m.TargetStatus = ExperimentThresholdStatus.FounderDefined;
+                }
+                else
+                {
+                    strategy.MetricsFramework.Add(new GtmMetricDefinition
+                    {
+                        Key = "reply_rate",
+                        Name = "Target Replies",
+                        Target = request.TargetReplies.Value,
+                        TargetStatus = ExperimentThresholdStatus.FounderDefined
+                    });
+                }
+            }
+
+            if (request.TargetDemos.HasValue)
+            {
+                strategy.FounderOverrides["Target_Demos"] = request.TargetDemos.Value.ToString();
+                var m = strategy.MetricsFramework.FirstOrDefault(x => x.Key == "discovery_calls" || x.Name.Contains("Demo", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Discovery", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Call", StringComparison.OrdinalIgnoreCase));
+                if (m != null)
+                {
+                    m.Target = request.TargetDemos.Value;
+                    m.TargetStatus = ExperimentThresholdStatus.FounderDefined;
+                }
+                else
+                {
+                    strategy.MetricsFramework.Add(new GtmMetricDefinition
+                    {
+                        Key = "discovery_calls",
+                        Name = "Target Demos / Discovery",
+                        Target = request.TargetDemos.Value,
+                        TargetStatus = ExperimentThresholdStatus.FounderDefined
+                    });
+                }
+            }
+
+            if (request.TargetPurchases.HasValue)
+            {
+                strategy.FounderOverrides["Target_Purchases"] = request.TargetPurchases.Value.ToString();
+                var m = strategy.MetricsFramework.FirstOrDefault(x => x.Key == "closed_deals" || x.Name.Contains("Purchase", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Deal", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Customer", StringComparison.OrdinalIgnoreCase));
+                if (m != null)
+                {
+                    m.Target = request.TargetPurchases.Value;
+                    m.TargetStatus = ExperimentThresholdStatus.FounderDefined;
+                }
+                else
+                {
+                    strategy.MetricsFramework.Add(new GtmMetricDefinition
+                    {
+                        Key = "closed_deals",
+                        Name = "Target Purchases",
+                        Target = request.TargetPurchases.Value,
+                        TargetStatus = ExperimentThresholdStatus.FounderDefined
+                    });
+                }
+            }
+
+            // 5. Activation Lifecycle
+            if (!string.IsNullOrWhiteSpace(request.Status))
+            {
+                var validStatuses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "Draft", "Review", "Active", "Archived", "Completed"
+                };
+
+                if (!validStatuses.Contains(request.Status))
+                {
+                    throw new CreatorJourneyException(400, $"Invalid GTM strategy status '{request.Status}'. Valid statuses are: Draft, Review, Active, Archived, Completed.");
+                }
+
+                strategy.Status = request.Status;
+                if (request.Status.Equals("Active", StringComparison.OrdinalIgnoreCase))
+                {
+                    strategy.FounderOverrides["PlanActivated"] = "true";
+                    if (!strategy.FounderOverrides.ContainsKey("ActivatedAt") || string.IsNullOrWhiteSpace(strategy.FounderOverrides["ActivatedAt"]))
+                    {
+                        strategy.FounderOverrides["ActivatedAt"] = DateTime.UtcNow.ToString("o");
+                    }
+                }
+            }
+
+            strategy.UpdatedAt = DateTime.UtcNow;
+
+            var updatedJourney = await _journeys.SetPhase4GtmStrategyAsync(userId, strategy, request.IdeaId);
+
+            return new GtmStrategyResponse
+            {
+                Strategy = strategy,
+                UpdateAvailable = false,
+                ChangedSources = new List<string>(),
+                IdeaVersion = updatedJourney?.IdeaVersion ?? journey.IdeaVersion
+            };
+        }
+
         // =========================================================================
         // DERIVATION ORCHESTRATION & RECONCILIATION
         // =========================================================================
@@ -299,6 +485,8 @@ namespace WebApp.Services.Implementations
 
             // 11. Stable-Key Reconciliation with Existing Strategy
             var founderOverrides = new Dictionary<string, string>();
+            string resolvedStatus = "Valid";
+
             if (existing != null)
             {
                 // Preserve founder channel overrides
@@ -363,11 +551,74 @@ namespace WebApp.Services.Implementations
                     }
                 }
 
-                founderOverrides = existing.FounderOverrides;
+                founderOverrides = new Dictionary<string, string>(existing.FounderOverrides);
+
+                // Reapply Customer Group override
+                if (founderOverrides.TryGetValue("CustomCustomerGroup", out var customGroup) && !string.IsNullOrWhiteSpace(customGroup))
+                {
+                    primarySegment.SegmentName = customGroup;
+                    primarySegmentName = customGroup;
+                }
+
+                // Reapply Outreach Message override
+                if (founderOverrides.TryGetValue("CustomOutreachMessage", out var customMessage) && !string.IsNullOrWhiteSpace(customMessage))
+                {
+                    positioning.PrimaryPromise = customMessage;
+                }
+
+                // Reapply Spendable Budget override
+                if (founderOverrides.TryGetValue("SpendableBudget", out var budgetStr) && decimal.TryParse(budgetStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var customBudget))
+                {
+                    budgetPlan.TotalAvailableBudget = customBudget;
+                    budgetPlan.BudgetSource = GtmBudgetSourceType.FounderDeclared;
+                    budgetPlan.SpendableStatus = SpendableStatus.ConfirmedAvailable;
+                    budgetPlan.ValidationStatus = GtmBudgetStatus.Confirmed;
+                }
+
+                // Reapply Target Overrides
+                if (metrics != null)
+                {
+                    if (founderOverrides.TryGetValue("Target_Contacted", out var contStr) && decimal.TryParse(contStr, out var contVal))
+                    {
+                        var m = metrics.FirstOrDefault(x => x.Key == "outreach_volume" || x.Name.Contains("Outreach", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Contacted", StringComparison.OrdinalIgnoreCase));
+                        if (m != null) { m.Target = contVal; m.TargetStatus = ExperimentThresholdStatus.FounderDefined; }
+                    }
+                    if (founderOverrides.TryGetValue("Target_Replies", out var repStr) && decimal.TryParse(repStr, out var repVal))
+                    {
+                        var m = metrics.FirstOrDefault(x => x.Key == "reply_rate" || x.Name.Contains("Reply", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Replies", StringComparison.OrdinalIgnoreCase));
+                        if (m != null) { m.Target = repVal; m.TargetStatus = ExperimentThresholdStatus.FounderDefined; }
+                    }
+                    if (founderOverrides.TryGetValue("Target_Demos", out var demStr) && decimal.TryParse(demStr, out var demVal))
+                    {
+                        var m = metrics.FirstOrDefault(x => x.Key == "discovery_calls" || x.Name.Contains("Demo", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Discovery", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Call", StringComparison.OrdinalIgnoreCase));
+                        if (m != null) { m.Target = demVal; m.TargetStatus = ExperimentThresholdStatus.FounderDefined; }
+                    }
+                    if (founderOverrides.TryGetValue("Target_Purchases", out var purStr) && decimal.TryParse(purStr, out var purVal))
+                    {
+                        var m = metrics.FirstOrDefault(x => x.Key == "closed_deals" || x.Name.Contains("Purchase", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Deal", StringComparison.OrdinalIgnoreCase) || x.Name.Contains("Customer", StringComparison.OrdinalIgnoreCase));
+                        if (m != null) { m.Target = purVal; m.TargetStatus = ExperimentThresholdStatus.FounderDefined; }
+                    }
+                }
+
+                // Reapply weekly hours availability override if present
+                if (founderOverrides.TryGetValue("WeeklyHoursAvailable", out var hoursStr) && !string.IsNullOrWhiteSpace(hoursStr))
+                {
+                    capacityProfile = _capacityResolver.ResolveCapacityProfile($"{hoursStr} hours/week", channels);
+                }
+
+                // Preserve plan status if active
+                if (existing.Status == "Active" || founderOverrides.ContainsKey("PlanActivated"))
+                {
+                    resolvedStatus = "Active";
+                }
             }
 
             // Recalculate capacity load after reconciliation
-            var reconciledCapacity = _capacityResolver.ResolveCapacityProfile(context.WeeklyAvailability, channels);
+            var reconciledCapacity = _capacityResolver.ResolveCapacityProfile(
+                founderOverrides.TryGetValue("WeeklyHoursAvailable", out var explicitHours) && !string.IsNullOrWhiteSpace(explicitHours)
+                    ? $"{explicitHours} hours/week"
+                    : context.WeeklyAvailability,
+                channels);
 
             bool pricingNeedsValidation = context.PricingValidationStatus == PricingConfidence.NeedsValidation;
             string pricingNotice = pricingNeedsValidation
@@ -377,7 +628,7 @@ namespace WebApp.Services.Implementations
             var strategy = new GtmStrategy
             {
                 Id = existing?.Id,
-                Status = "Valid",
+                Status = resolvedStatus,
                 GeneratedAt = existing?.GeneratedAt ?? DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 ExecutiveSummary = $"A sequenced customer acquisition plan for {context.Project.Name}, leading with {primarySegment.SegmentName} through {channels.FirstOrDefault(c => c.Priority == ChannelPriority.Now)?.ChannelName ?? "Founder-Led Sales"}.",

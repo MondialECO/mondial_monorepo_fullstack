@@ -116,11 +116,40 @@ namespace WebApp.Services.Implementations
                 : (!string.IsNullOrWhiteSpace(journey.Project?.Name) ? journey.Project.Name : "ClairDesk");
 
             var concept = brandKit?.Strategy?.Concept?.Value?.Trim() ?? string.Empty;
-            var targetAudience = brandKit?.Strategy?.TargetAudience?.Value?.Trim() ?? string.Empty;
-            var positioning = brandKit?.Strategy?.Positioning?.Value?.Trim() ?? string.Empty;
+            var brandAudience = brandKit?.Strategy?.TargetAudience?.Value?.Trim() ?? string.Empty;
+            var brandPositioning = brandKit?.Strategy?.Positioning?.Value?.Trim() ?? string.Empty;
             var industry = brandKit?.Strategy?.Industry?.Value?.Trim() ?? string.Empty;
             var traits = brandKit?.Strategy?.PersonalityTraits ?? new List<string>();
             var tonePosition = brandKit?.Strategy?.TonePosition ?? string.Empty;
+
+            var gtm = journey.Phase4Data?.GtmStrategy;
+
+            // 1. Launch Customer Group: Priority is founder override > primary launch segment > brand audience
+            string launchCustomerGroup = string.Empty;
+            if (gtm != null)
+            {
+                if (gtm.FounderOverrides.TryGetValue("CustomCustomerGroup", out var customGroup) && !string.IsNullOrWhiteSpace(customGroup))
+                {
+                    launchCustomerGroup = customGroup.Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(gtm.PrimaryLaunchSegment))
+                {
+                    launchCustomerGroup = gtm.PrimaryLaunchSegment.Trim();
+                }
+            }
+
+            var targetAudience = !string.IsNullOrWhiteSpace(launchCustomerGroup)
+                ? launchCustomerGroup
+                : brandAudience;
+
+            // 2. Brand Positioning: Priority is BrandKit positioning > GTM strategic PrimaryPromise / Differentiator (distinct from outreach copy)
+            var positioning = !string.IsNullOrWhiteSpace(brandPositioning)
+                ? brandPositioning
+                : (!string.IsNullOrWhiteSpace(gtm?.PositioningStrategy?.PrimaryPromise)
+                    ? gtm.PositioningStrategy.PrimaryPromise
+                    : (!string.IsNullOrWhiteSpace(gtm?.PositioningStrategy?.Differentiator)
+                        ? gtm.PositioningStrategy.Differentiator
+                        : string.Empty));
 
             var primaryColor = brandKit?.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Primary", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#3B82F6";
             var secondaryColor = brandKit?.Colors?.Roles?.FirstOrDefault(r => string.Equals(r.RoleName, "Secondary", StringComparison.OrdinalIgnoreCase))?.Hex ?? "#10B981";
@@ -149,7 +178,6 @@ namespace WebApp.Services.Implementations
             var logoDescriptor = selectedConcept?.DescriptorLine ?? string.Empty;
 
             var pricing = journey.Phase4Data?.PricingStrategy;
-            var gtm = journey.Phase4Data?.GtmStrategy;
 
             decimal price = 15;
             string period = "month";
@@ -384,7 +412,7 @@ namespace WebApp.Services.Implementations
             return new LaunchAssetsResponse
             {
                 IdeaId = ideaId ?? string.Empty,
-                IdeaVersion = updatedJourney.IdeaVersion,
+                IdeaVersion = updatedJourney?.IdeaVersion ?? journey.IdeaVersion,
                 Assets = newAssets,
                 UpdateAvailable = false,
                 ChangedSources = new List<string>()

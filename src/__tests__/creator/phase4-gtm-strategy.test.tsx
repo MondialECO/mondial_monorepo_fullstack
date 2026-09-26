@@ -418,4 +418,195 @@ describe('GtmStrategyView Component — Figma 57221:12464 Canon', () => {
       );
     });
   });
+
+  it('7. Allows founder to edit outreach message in modal and calls onUpdateStrategy', async () => {
+    const handleUpdateStrategy = vi.fn().mockResolvedValue(undefined);
+    render(
+      <GtmStrategyView
+        ideaId="test-idea"
+        projectName="Test Venture"
+        strategy={mockStrategy}
+        updateAvailable={false}
+        changedSources={[]}
+        isLoading={false}
+        gateError={null}
+        onGenerate={vi.fn()}
+        onRefresh={vi.fn()}
+        onUpdateChannel={vi.fn()}
+        onUpdateStrategy={handleUpdateStrategy}
+        onRecordExperimentRun={vi.fn()}
+      />
+    );
+
+    const editMsgBtn = screen.getByRole('button', { name: /Edit message/i });
+    fireEvent.click(editMsgBtn);
+
+    expect(screen.getByText(/Edit Initial Outreach Message/i)).toBeInTheDocument();
+
+    const textarea = screen.getByRole('textbox');
+    fireEvent.change(textarea, {
+      target: { value: '“Customized outreach message for early feedback.”' },
+    });
+
+    const saveBtn = screen.getByRole('button', { name: /Save Message/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(handleUpdateStrategy).toHaveBeenCalledTimes(1);
+      expect(handleUpdateStrategy).toHaveBeenCalledWith({
+        customOutreachMessage: '“Customized outreach message for early feedback.”',
+      });
+    });
+  });
+
+  it('8. Allows founder to adjust customer group in modal and calls onUpdateStrategy', async () => {
+    const handleUpdateStrategy = vi.fn().mockResolvedValue(undefined);
+    render(
+      <GtmStrategyView
+        ideaId="test-idea"
+        projectName="Test Venture"
+        strategy={mockStrategy}
+        updateAvailable={false}
+        changedSources={[]}
+        isLoading={false}
+        gateError={null}
+        onGenerate={vi.fn()}
+        onRefresh={vi.fn()}
+        onUpdateChannel={vi.fn()}
+        onUpdateStrategy={handleUpdateStrategy}
+        onRecordExperimentRun={vi.fn()}
+      />
+    );
+
+    const adjustBtn = screen.getByRole('button', { name: /Adjust customer group/i });
+    fireEvent.click(adjustBtn);
+
+    expect(screen.getByText(/Adjust Target Customer Group/i)).toBeInTheDocument();
+
+    const textarea = screen.getByRole('textbox');
+    fireEvent.change(textarea, {
+      target: { value: 'B2B boutique consulting agencies in Paris' },
+    });
+
+    const saveBtn = screen.getByRole('button', { name: /Save Customer Group/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(handleUpdateStrategy).toHaveBeenCalledTimes(1);
+      expect(handleUpdateStrategy).toHaveBeenCalledWith({
+        customCustomerGroup: 'B2B boutique consulting agencies in Paris',
+      });
+    });
+  });
+
+  it('9. Allows founder to set budget and time in modal and calls onUpdateStrategy', async () => {
+    const handleUpdateStrategy = vi.fn().mockResolvedValue(undefined);
+    render(
+      <GtmStrategyView
+        ideaId="test-idea"
+        projectName="Test Venture"
+        strategy={mockStrategy}
+        updateAvailable={false}
+        changedSources={[]}
+        isLoading={false}
+        gateError={null}
+        onGenerate={vi.fn()}
+        onRefresh={vi.fn()}
+        onUpdateChannel={vi.fn()}
+        onUpdateStrategy={handleUpdateStrategy}
+        onRecordExperimentRun={vi.fn()}
+      />
+    );
+
+    const setBudgetBtn = screen.getByRole('button', { name: /Set budget/i });
+    fireEvent.click(setBudgetBtn);
+
+    expect(screen.getByText(/Set Time & Marketing Budget/i)).toBeInTheDocument();
+
+    const inputs = screen.getAllByRole('spinbutton');
+    // inputs[0] is timeInput, inputs[1] is budgetInput
+    fireEvent.change(inputs[0], { target: { value: '6' } });
+    fireEvent.change(inputs[1], { target: { value: '500' } });
+
+    const saveBtn = screen.getByRole('button', { name: /^Save$/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(handleUpdateStrategy).toHaveBeenCalledTimes(1);
+      expect(handleUpdateStrategy).toHaveBeenCalledWith({
+        weeklyHoursAvailable: 6,
+        spendableBudget: 500,
+      });
+    });
+  });
+
+  it('10. Allows founder to set tracking targets in modal and calls onUpdateStrategy', async () => {
+    const handleUpdateStrategy = vi.fn().mockResolvedValue(undefined);
+    render(
+      <GtmStrategyView
+        ideaId="test-idea"
+        projectName="Test Venture"
+        strategy={mockStrategy}
+        updateAvailable={false}
+        changedSources={[]}
+        isLoading={false}
+        gateError={null}
+        onGenerate={vi.fn()}
+        onRefresh={vi.fn()}
+        onUpdateChannel={vi.fn()}
+        onUpdateStrategy={handleUpdateStrategy}
+        onRecordExperimentRun={vi.fn()}
+      />
+    );
+
+    const setTargetsBtn = screen.getByRole('button', { name: /Set targets/i });
+    fireEvent.click(setTargetsBtn);
+
+    expect(screen.getByText(/Set Launch Tracking Targets/i)).toBeInTheDocument();
+
+    const saveBtn = screen.getByRole('button', { name: /Save Targets/i });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(handleUpdateStrategy).toHaveBeenCalledTimes(1);
+      expect(handleUpdateStrategy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          targetContacted: 50,
+          targetReplies: 10,
+          targetDemos: 5,
+          targetPurchases: 2,
+        })
+      );
+    });
+  });
+
+  it('11. Activates plan and triggers strategy update on footer action', async () => {
+    const handleUpdateStrategy = vi.fn().mockResolvedValue(undefined);
+    render(
+      <GtmStrategyView
+        ideaId="test-idea"
+        projectName="Test Venture"
+        strategy={mockStrategy}
+        updateAvailable={false}
+        changedSources={[]}
+        isLoading={false}
+        gateError={null}
+        onGenerate={vi.fn()}
+        onRefresh={vi.fn()}
+        onUpdateChannel={vi.fn()}
+        onUpdateStrategy={handleUpdateStrategy}
+        onRecordExperimentRun={vi.fn()}
+      />
+    );
+
+    const activateBtn = screen.getByRole('button', { name: /Activate plan & continue/i });
+    fireEvent.click(activateBtn);
+
+    await waitFor(() => {
+      expect(handleUpdateStrategy).toHaveBeenCalledTimes(1);
+      expect(handleUpdateStrategy).toHaveBeenCalledWith({
+        status: 'Active',
+      });
+    });
+  });
 });

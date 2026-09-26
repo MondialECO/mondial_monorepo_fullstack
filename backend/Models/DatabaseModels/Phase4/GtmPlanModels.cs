@@ -585,5 +585,21 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public ExperimentRunOutcome Outcome { get; set; } = ExperimentRunOutcome.Inconclusive;
         public string? StatusUpdate { get; set; } // e.g. "Completed", "Active"
     }
+
+    public class UpdateGtmStrategyRequest
+    {
+        public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
+        public string? CustomOutreachMessage { get; set; }
+        public string? CustomCustomerGroup { get; set; }
+        public int? WeeklyHoursAvailable { get; set; }
+        public decimal? SpendableBudget { get; set; }
+        public int? TargetContacted { get; set; }
+        public int? TargetReplies { get; set; }
+        public int? TargetDemos { get; set; }
+        public int? TargetPurchases { get; set; }
+        public string? Status { get; set; } // e.g. "Active", "Draft", "Valid"
+    }
 }
+
 
