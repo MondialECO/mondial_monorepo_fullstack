@@ -271,10 +271,8 @@ describe('SupportPlanView', () => {
       />
     );
 
-    // Assert counts are rendered
-    expect(screen.getByText('Evaluated')).toBeInTheDocument();
-    expect(screen.getByText('Eligible / Apply')).toBeInTheDocument();
-    expect(screen.getByText('Ready to Apply')).toBeInTheDocument();
+    // Assert total options heading is rendered dynamically
+    expect(screen.getByText(/3 options to explore/i)).toBeInTheDocument();
 
     // Verify there are NO fake probability percentages like "87% chance" or "success probability: 60%"
     const probabilityRegex = /\b\d+%\s*(chance|likelihood|probability|succès)/i;
@@ -375,7 +373,7 @@ describe('SupportPlanView', () => {
     expect(screen.getByText(/Reuses: Phase 3 Executive Business Plan/i)).toBeInTheDocument();
   });
 
-  it('renders Phase 4.6 Pricing disabled boundary banner', () => {
+  it('renders Journey Footer link to Phase 4.6 Pricing', () => {
     render(
       <SupportPlanView
         ideaId="idea-1"
@@ -391,9 +389,9 @@ describe('SupportPlanView', () => {
       />
     );
 
-    expect(screen.getByText(/PHASE 4.6 READY · NEXT OPERATIONAL MILESTONE/i)).toBeInTheDocument();
-    expect(screen.getByText(/Pricing & Revenue Model Engine/i)).toBeInTheDocument();
-    const nextLink = screen.getByRole('link', { name: /Build My Pricing Strategy/i });
+    expect(screen.getByText(/Back to Skills & Training/i)).toBeInTheDocument();
+    const nextLink = screen.getByRole('link', { name: /Continue to Pricing & Revenue/i });
+    expect(nextLink).toBeInTheDocument();
     expect(nextLink).toHaveAttribute('href', expect.stringContaining('/dashboard/creator/phase-4/pricing'));
   });
 });

@@ -314,19 +314,19 @@ export function SupportPlanView({
       )}
 
       {/* COMPONENT 1: OPTIONS TO EXPLORE SUMMARY CARD (FIGMA 57221:11932) */}
-      <section className="p-6 rounded-2xl bg-card border border-border/80 shadow-xs space-y-4">
+      <section className="p-7 rounded-2xl bg-card border border-border/80 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
+            <h2 className="text-2xl sm:text-[28px] font-bold text-foreground tracking-tight font-heading leading-tight">
               {totalOptions} options to explore
-            </h1>
-            <p className="text-sm text-muted-foreground font-sans">
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground font-sans">
               Based on your project, learning needs and current situation.
             </p>
           </div>
           <Link
             href={`/dashboard/creator/profile?ideaId=${ideaId}`}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline transition-colors shrink-0 font-sans"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline transition-colors shrink-0 font-sans"
           >
             <Edit3 className="w-3.5 h-3.5" />
             <span>Update my details</span>
@@ -334,65 +334,69 @@ export function SupportPlanView({
         </div>
 
         {/* Tags Strip */}
-        <div className="flex items-center gap-2 flex-wrap text-xs text-foreground font-medium font-sans">
-          <span className="px-3 py-1 rounded-full bg-muted/60 border border-border/60">France</span>
+        <div className="flex items-center gap-2 flex-wrap text-sm text-foreground font-medium font-sans">
+          <span className="px-3 py-1 rounded-full bg-muted border border-border/60 text-xs sm:text-sm">
+            France
+          </span>
           {profileSummary?.currentSituation && (
             <>
-              <span className="text-muted-foreground">•</span>
-              <span className="px-3 py-1 rounded-full bg-muted/60 border border-border/60">
+              <span className="text-muted-foreground text-xs">•</span>
+              <span className="px-3 py-1 rounded-full bg-muted border border-border/60 text-xs sm:text-sm">
                 {profileSummary.currentSituation}
               </span>
             </>
           )}
           {profileSummary?.weeklyAvailability && (
             <>
-              <span className="text-muted-foreground">•</span>
-              <span className="px-3 py-1 rounded-full bg-muted/60 border border-border/60">
+              <span className="text-muted-foreground text-xs">•</span>
+              <span className="px-3 py-1 rounded-full bg-muted border border-border/60 text-xs sm:text-sm">
                 {profileSummary.weeklyAvailability}
               </span>
             </>
           )}
-          <span className="text-muted-foreground">•</span>
-          <span className="px-3 py-1 rounded-full bg-muted/60 border border-border/60">
+          <span className="text-muted-foreground text-xs">•</span>
+          <span className="px-3 py-1 rounded-full bg-muted border border-border/60 text-xs sm:text-sm">
             Project in preparation
           </span>
         </div>
 
         {/* Quiet Footnote */}
-        <p className="text-xs text-muted-foreground pt-1 border-t border-border/50 font-sans">
+        <p className="text-xs text-muted-foreground pt-4 border-t border-border/50 font-sans leading-relaxed">
           Each programme has its own conditions and application process. Saving an option does not
           submit an application.
         </p>
       </section>
 
       {/* COMPONENT 2: LOCATION CARD (FIGMA 57221:11932) */}
-      <section className="p-6 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
-        <div className="space-y-0.5">
-          <h2 className="text-base font-bold text-foreground font-heading">Where will you start your business?</h2>
-          <p className="text-xs text-muted-foreground font-sans">This helps us check local support.</p>
+      <section className="p-7 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
+        <div className="space-y-1">
+          <h3 className="text-lg sm:text-xl font-bold text-foreground font-heading">
+            Where will you start your business?
+          </h3>
+          <p className="text-sm text-muted-foreground font-sans">This helps us check local support.</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-md pt-1">
           <div className="relative flex-1">
-            <MapPin className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+            <MapPin className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={locationInput}
               onChange={(e) => setLocationInput(e.target.value)}
               placeholder="City or postcode (e.g. Lyon, 69002)"
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-muted/40 border border-input text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
             />
           </div>
           <button
             onClick={handleSaveLocation}
             disabled={isSavingLocation || !locationInput.trim()}
-            className="px-4 py-2 rounded-xl bg-card hover:bg-muted border border-border text-foreground font-semibold text-xs transition-colors shrink-0 disabled:opacity-50 flex items-center justify-center gap-1.5 font-sans"
+            className="px-5 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 border border-border text-secondary-foreground font-medium text-sm transition-colors shrink-0 disabled:opacity-50 flex items-center justify-center gap-1.5 font-sans"
           >
             {isSavingLocation ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <RefreshCw className="w-4 h-4 animate-spin" />
             ) : locationSavedSuccess ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                <Check className="w-4 h-4 text-emerald-500" />
                 <span>Saved ✓</span>
               </>
             ) : (
@@ -401,68 +405,12 @@ export function SupportPlanView({
           </button>
         </div>
 
-        <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+        <p className="text-xs text-muted-foreground leading-relaxed font-sans pt-1">
           Reused from your declared project country (France). Other details are requested only when
           required by a specific programme.
         </p>
       </section>
 
-      {/* METRIC STRIP (Counts Only, Satisfies Unit Test Assertions) */}
-      <section className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        <div className="bg-card border border-border/80 rounded-xl p-3.5 space-y-1">
-          <div className="text-[10px] font-mono uppercase text-muted-foreground font-semibold">
-            Evaluated
-          </div>
-          <div className="text-xl font-bold text-foreground font-mono">
-            {summary.totalEvaluatedCount}
-          </div>
-          <div className="text-[10px] text-muted-foreground font-sans">Catalog Schemes</div>
-        </div>
-
-        <div className="bg-card border border-border/80 rounded-xl p-3.5 space-y-1">
-          <div className="text-[10px] font-mono uppercase text-emerald-600 dark:text-emerald-400 font-semibold">
-            Eligible / Apply
-          </div>
-          <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-            {summary.eligibleCount}
-          </div>
-          <div className="text-[10px] text-muted-foreground font-sans">Authoritative match</div>
-        </div>
-
-        <div className="bg-card border border-border/80 rounded-xl p-3.5 space-y-1">
-          <div className="text-[10px] font-mono uppercase text-primary font-semibold">Potential</div>
-          <div className="text-xl font-bold text-primary font-mono">{summary.potentialCount}</div>
-          <div className="text-[10px] text-muted-foreground font-sans">Pending minor facts</div>
-        </div>
-
-        <div className="bg-card border border-border/80 rounded-xl p-3.5 space-y-1">
-          <div className="text-[10px] font-mono uppercase text-amber-600 dark:text-amber-400 font-semibold">
-            Missing Info
-          </div>
-          <div className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono">
-            {summary.needsInfoCount}
-          </div>
-          <div className="text-[10px] text-muted-foreground font-sans">Requires input</div>
-        </div>
-
-        <div className="bg-card border border-border/80 rounded-xl p-3.5 space-y-1">
-          <div className="text-[10px] font-mono uppercase text-primary font-semibold">
-            Ready to Apply
-          </div>
-          <div className="text-xl font-bold text-foreground font-mono">
-            {summary.readyToPrepareCount}
-          </div>
-          <div className="text-[10px] text-muted-foreground font-sans">MBC Docs Ready</div>
-        </div>
-
-        <div className="bg-card border border-border/80 rounded-xl p-3.5 space-y-1">
-          <div className="text-[10px] font-mono uppercase text-muted-foreground font-semibold">
-            Founder Tracking
-          </div>
-          <div className="text-xl font-bold text-foreground font-mono">{summary.actionCount}</div>
-          <div className="text-[10px] text-muted-foreground font-sans">In Preparation</div>
-        </div>
-      </section>
 
       {/* MISSING ELIGIBILITY FACTS ASSISTANT */}
       {plan.missingEligibilityFacts && plan.missingEligibilityFacts.length > 0 && (
@@ -537,7 +485,7 @@ export function SupportPlanView({
         </section>
       )}
 
-      {/* COMPONENT 4: OPPORTUNITY CARDS LIST (FIGMA 57221:11932) */}
+      {/* COMPONENT 3: OPPORTUNITY CARDS LIST (FIGMA 57221:11932) */}
       <div className="space-y-4">
         {allMatches.length === 0 ? (
           <div className="bg-card border border-border/80 rounded-2xl p-12 text-center text-muted-foreground space-y-2">
@@ -591,47 +539,49 @@ export function SupportPlanView({
             return (
               <article
                 key={match.key}
-                className="rounded-2xl bg-card border border-border/80 p-6 space-y-4 shadow-xs hover:border-border transition-all"
+                className={`rounded-2xl bg-card border border-border/80 shadow-xs hover:border-border transition-all ${
+                  isExpanded ? 'p-8 space-y-4' : 'p-7 space-y-4'
+                }`}
               >
                 {/* Top Row: Pill badges & Toggle */}
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-wrap font-sans">
+                  <div className="flex items-center gap-2.5 flex-wrap font-sans">
                     {/* Category Badge */}
-                    <span className="px-2.5 py-1 rounded-md bg-muted text-xs font-medium text-foreground">
+                    <span className="px-2.5 py-1 rounded-full bg-muted text-xs font-medium text-muted-foreground">
                       {categoryLabel}
                     </span>
 
                     {/* Status Badge */}
                     {isAwarded ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#E5F7ED] dark:bg-emerald-950/40 text-[#157A55] dark:text-emerald-400 border border-emerald-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#157A55] dark:bg-emerald-400" />
                         Awarded
                       </span>
                     ) : isEligibleStatutory ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#E5F7ED] dark:bg-emerald-950/40 text-[#157A55] dark:text-emerald-400 border border-emerald-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#157A55] dark:bg-emerald-400" />
                         Eligible (Statutory)
                       </span>
                     ) : isEligibleToApply ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                         Eligible to Apply
                       </span>
                     ) : isNeedsCheck ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#FEF7EC] dark:bg-amber-950/40 text-[#965F11] dark:text-amber-400 border border-amber-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#965F11] dark:bg-amber-400" />
                         A few details to check
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#DCE1FF] dark:bg-blue-950/40 text-[#1A47C3] dark:text-blue-300 border border-blue-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#1A47C3] dark:bg-blue-400" />
                         May fit your project
                       </span>
                     )}
 
                     {/* Saved State Badge if tracked */}
                     {isSaved && (
-                      <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-semibold">
+                      <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
                         {match.founderApplicationState}
                       </span>
                     )}
@@ -639,7 +589,7 @@ export function SupportPlanView({
 
                   <button
                     onClick={() => toggleExpand(match.key, index)}
-                    className="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                    className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                     aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
                   >
                     {isExpanded ? (
@@ -650,57 +600,65 @@ export function SupportPlanView({
                   </button>
                 </div>
 
-                {/* Headline & Subheadlines */}
-                <div className="space-y-1">
-                  <h3 className="text-xl font-bold text-foreground font-heading tracking-tight">{match.name}</h3>
-                  <p className="text-sm font-semibold text-foreground font-sans leading-snug">
-                    {match.supportValueDescription || match.description}
-                  </p>
-                  <p className="text-xs text-muted-foreground font-sans leading-relaxed pt-0.5">
-                    {match.whyMatched?.[0] ||
-                      'You are preparing an early-stage project and may benefit from guidance.'}
-                  </p>
-                  <div className="text-xs text-muted-foreground font-sans pt-0.5 flex items-center gap-2 flex-wrap">
-                    <span>
-                      Official details:{' '}
-                      <span className="font-medium text-foreground">
-                        {match.programmeOwner || match.managingAuthority || 'To be confirmed'}
-                      </span>
-                    </span>
-                    {match.catalogueSource && (
-                      <span className="text-muted-foreground/80 font-mono">via {match.catalogueSource}</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Collapsed State Actions Bar */}
-                {!isExpanded && (
-                  <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-3 font-sans">
-                    <button
-                      onClick={() => handleToggleBookmark(match)}
-                      className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-                        isSaved
-                          ? 'bg-primary/10 border-primary text-primary'
-                          : 'bg-card border-border hover:bg-muted text-foreground'
+                {/* Scheme Header Info */}
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div className="space-y-1.5 flex-1">
+                    <h3
+                      className={`font-bold text-foreground font-heading tracking-tight ${
+                        isExpanded ? 'text-2xl sm:text-[28px]' : 'text-lg sm:text-xl'
                       }`}
                     >
-                      <Bookmark className="w-3.5 h-3.5" />
-                      <span>{isSaved ? 'Saved' : 'Save this option'}</span>
-                    </button>
-
-                    <button
-                      onClick={() => toggleExpand(match.key, index)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                    >
-                      <span>View details</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </button>
+                      {match.name}
+                    </h3>
+                    <p className="text-sm sm:text-base font-medium text-foreground font-sans leading-snug">
+                      {match.supportValueDescription || match.description}
+                    </p>
+                    <p className="text-sm text-muted-foreground font-sans leading-relaxed pt-0.5">
+                      {match.whyMatched?.[0] ||
+                        'You are preparing an early-stage project and may benefit from guidance.'}
+                    </p>
+                    <div className="text-xs text-muted-foreground font-sans pt-1 flex items-center gap-2 flex-wrap">
+                      <span>
+                        Official details:{' '}
+                        <span className="font-medium text-foreground">
+                          {match.programmeOwner || match.managingAuthority || 'To be confirmed'}
+                        </span>
+                      </span>
+                      {match.catalogueSource && (
+                        <span className="text-muted-foreground/80 font-mono">via {match.catalogueSource}</span>
+                      )}
+                    </div>
                   </div>
-                )}
 
-                {/* EXPANDED INSET PANEL (FIGMA 57221:11932) */}
+                  {/* Collapsed Right Action Buttons (Figma 57221:11932 CARD COMPACT) */}
+                  {!isExpanded && (
+                    <div className="flex items-center gap-3 shrink-0 self-start sm:self-center font-sans pt-2 sm:pt-0">
+                      <button
+                        onClick={() => handleToggleBookmark(match)}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                          isSaved
+                            ? 'bg-primary/10 border border-primary text-primary'
+                            : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                        }`}
+                      >
+                        <Bookmark className="w-4 h-4" />
+                        <span>{isSaved ? 'Saved' : 'Save this option'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => toggleExpand(match.key, index)}
+                        className="px-4 py-2 rounded-xl bg-card border border-border/80 text-primary hover:bg-muted font-medium text-sm transition-colors inline-flex items-center gap-1.5"
+                      >
+                        <span>View details</span>
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* EXPANDED INSET PANEL (FIGMA 57221:11932 CARD EXPANDED) */}
                 {isExpanded && (
-                  <div className="p-5 rounded-xl bg-muted/30 border border-border/70 space-y-5 animate-fadeIn">
+                  <div className="p-6 sm:p-7 rounded-xl bg-muted/30 border border-border/70 space-y-5 animate-fadeIn">
                     {/* 2-Column Analytical Breakdown */}
                     {(() => {
                       const matchChecklist = (plan.applicationChecklists || []).find(
@@ -735,7 +693,7 @@ export function SupportPlanView({
                               'Whether applications are currently open',
                             ]
                           : [
-                              'Your declared location and registered territory',
+                              'Your location',
                               'Whether your venture meets the specific criteria of this scheme',
                               'Applicable deadlines and submission requirements',
                               'Whether applications are currently open',
@@ -747,13 +705,13 @@ export function SupportPlanView({
                           : 'A checklist based on the programme’s published requirements.';
 
                       return (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
                           {/* Left: What You Could Get */}
                           <div className="space-y-1">
-                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                            <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
                               WHAT YOU COULD GET
                             </span>
-                            <p className="font-semibold text-foreground leading-relaxed">
+                            <p className="font-normal text-foreground leading-relaxed">
                               {match.supportValueDescription ||
                                 'Help with eligible project costs, depending on the programme’s rules.'}
                             </p>
@@ -761,10 +719,10 @@ export function SupportPlanView({
 
                           {/* Right: Why This May Fit */}
                           <div className="space-y-1">
-                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                            <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
                               WHY THIS MAY FIT
                             </span>
-                            <p className="font-semibold text-foreground leading-relaxed">
+                            <p className="font-normal text-foreground leading-relaxed">
                               {match.whyMatched && match.whyMatched.length > 0
                                 ? match.whyMatched.join(' ')
                                 : 'Aligned with your project goals, founder situation, and operational roadmap.'}
@@ -773,10 +731,10 @@ export function SupportPlanView({
 
                           {/* Left: What We Already Know */}
                           <div className="space-y-1">
-                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                            <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
                               WHAT WE ALREADY KNOW
                             </span>
-                            <p className="font-semibold text-foreground leading-relaxed">
+                            <p className="font-normal text-foreground leading-relaxed">
                               You are{' '}
                               {profileSummary?.currentSituation
                                 ? `a ${profileSummary.currentSituation.toLowerCase()}`
@@ -787,27 +745,27 @@ export function SupportPlanView({
 
                           {/* Right: When To Apply */}
                           <div className="space-y-1">
-                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                            <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
                               WHEN TO APPLY
                             </span>
-                            <p className="font-semibold text-foreground leading-relaxed">
+                            <p className="font-normal text-foreground leading-relaxed">
                               {match.timing?.timingNotes ||
                                 (match.timing?.rolling
-                                  ? 'Rolling programme — applications open year-round.'
-                                  : 'Application dates need checking.')}
+                                   ? 'Rolling programme — applications open year-round.'
+                                   : 'Application dates need checking.')}
                             </p>
                           </div>
 
-                          {/* Left: What To Check */}
-                          <div className="space-y-1 sm:col-span-2">
-                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                          {/* Full Row: What To Check */}
+                          <div className="space-y-2 sm:col-span-2 pt-1">
+                            <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
                               WHAT TO CHECK
                             </span>
-                            <ul className="space-y-1 pt-0.5">
+                            <ul className="space-y-2 pt-0.5">
                               {checks.map((checkItem, idx) => (
                                 <li
                                   key={idx}
-                                  className="flex items-center gap-2 font-medium text-foreground"
+                                  className="flex items-center gap-2.5 font-normal text-foreground text-sm"
                                 >
                                   <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 shrink-0" />
                                   <span>{checkItem}</span>
@@ -818,28 +776,28 @@ export function SupportPlanView({
 
                           {/* Left: What You May Need */}
                           <div className="space-y-1">
-                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                            <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
                               WHAT YOU MAY NEED
                             </span>
-                            <p className="font-semibold text-foreground leading-relaxed">
+                            <p className="font-normal text-foreground leading-relaxed">
                               {mayNeedSummary}
                             </p>
                           </div>
 
                           {/* Right: Official Source */}
                           <div className="space-y-1">
-                            <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
+                            <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
                               OFFICIAL SOURCE
                             </span>
-                            <p className="font-medium text-muted-foreground leading-relaxed">
+                            <p className="font-normal text-muted-foreground leading-relaxed">
                               {match.officialUrl ? (
                                 <a
                                   href={match.officialUrl}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-primary hover:underline inline-flex items-center gap-1"
+                                  className="text-primary hover:underline inline-flex items-center gap-1.5 font-medium"
                                 >
-                                  Official portal verified <ExternalLink className="w-3 h-3" />
+                                  Official portal verified <ExternalLink className="w-3.5 h-3.5" />
                                 </a>
                               ) : (
                                 'Source to confirm · Official link not available yet.'
@@ -851,13 +809,13 @@ export function SupportPlanView({
                     })()}
 
                     {/* BLUE INFO BOX (BEFORE YOU APPLY) */}
-                    <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-start gap-3">
-                      <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                    <div className="p-4 sm:p-5 rounded-xl bg-card border border-border/80 flex items-start gap-3 shadow-xs">
+                      <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                       <div className="space-y-1">
-                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-blue-900 dark:text-blue-300 block">
+                        <span className="text-xs font-mono font-bold uppercase tracking-wider text-foreground block">
                           BEFORE YOU APPLY
                         </span>
-                        <p className="text-xs text-blue-900/80 dark:text-blue-200/80 leading-relaxed">
+                        <p className="text-sm text-muted-foreground leading-relaxed font-sans">
                           When an official source is verified, you can prepare required documents and
                           propose preparation tasks to your Operational Roadmap.
                         </p>
@@ -865,60 +823,60 @@ export function SupportPlanView({
                     </div>
 
                     {/* Expanded Footer Actions */}
-                    <div className="pt-3 border-t border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 flex-wrap">
+                    <div className="pt-4 border-t border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-2.5 flex-wrap">
                         <button
                           onClick={() => setSelectedAuditMatch(match)}
-                          className="px-3.5 py-1.5 rounded-lg bg-card hover:bg-muted border border-border text-foreground font-semibold text-xs transition-colors"
+                          className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium text-sm transition-colors"
                         >
                           Check my details
                         </button>
                         <button
                           onClick={() => setSelectedAuditMatch(match)}
-                          className="px-3.5 py-1.5 rounded-lg bg-card hover:bg-muted border border-border text-foreground font-semibold text-xs transition-colors"
+                          className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium text-sm transition-colors"
                         >
                           Audit Details
                         </button>
                         <button
                           onClick={() => handleToggleBookmark(match)}
-                          className={`px-3.5 py-1.5 rounded-lg border text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1.5 ${
                             isSaved
-                              ? 'bg-primary/10 border-primary text-primary'
-                              : 'bg-card border-border hover:bg-muted text-foreground'
+                              ? 'bg-primary/10 border border-primary text-primary'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                           }`}
                         >
-                          <Bookmark className="w-3.5 h-3.5" />
+                          <Bookmark className="w-4 h-4" />
                           <span>{isSaved ? 'Saved' : 'Save this option'}</span>
                         </button>
                         <button
                           onClick={() => handleOpenStateModal(match)}
-                          className="px-3 py-1.5 rounded-lg bg-card hover:bg-muted border border-border text-foreground text-xs font-semibold transition-colors inline-flex items-center gap-1"
+                          className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm font-medium transition-colors inline-flex items-center gap-1.5"
                         >
-                          <Edit3 className="w-3 h-3" />
+                          <Edit3 className="w-3.5 h-3.5" />
                           <span>Track Application</span>
                         </button>
                       </div>
 
-                      <div className="flex flex-col sm:items-end gap-0.5">
+                      <div className="flex flex-col sm:items-end gap-1">
                         {match.officialUrl ? (
                           <a
                             href={match.officialUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors inline-flex items-center gap-1.5 shadow-sm"
+                            className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium transition-colors inline-flex items-center gap-1.5 shadow-sm"
                           >
                             <span>Open official website</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
+                            <ExternalLink className="w-4 h-4" />
                           </a>
                         ) : (
                           <>
                             <button
                               disabled
-                              className="px-4 py-1.5 rounded-lg bg-muted text-muted-foreground text-xs font-semibold cursor-not-allowed opacity-60"
+                              className="px-5 py-2.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium cursor-not-allowed opacity-60"
                             >
                               Open official website
                             </button>
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               Official link not available yet.
                             </span>
                           </>
@@ -933,23 +891,23 @@ export function SupportPlanView({
         )}
       </div>
 
-      {/* COMPONENT 5: QUIET JOURNEY FOOTER (FIGMA 57221:11932) */}
-      <footer className="pt-6 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* COMPONENT 4: JOURNEY FOOTER (FIGMA 57221:11932) */}
+      <footer className="pt-6 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-sans">
         <Link
           href={`/dashboard/creator/phase-4/skills?ideaId=${ideaId}`}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm font-medium transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Skills & Training</span>
         </Link>
 
-        <span className="text-xs text-muted-foreground text-center sm:text-left">
+        <span className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
           You can return to your saved support options later.
         </span>
 
         <Link
           href={`/dashboard/creator/phase-4/pricing?ideaId=${ideaId}`}
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm transition-all shadow"
+          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm transition-all shadow-sm"
         >
           <span>Continue to Pricing & Revenue</span>
           <ArrowRight className="w-4 h-4" />
@@ -1168,26 +1126,6 @@ export function SupportPlanView({
         </div>
       )}
 
-      {/* PHASE 4.6 NEXT MILESTONE BANNER (Component 8 - Satisfies Test 8) */}
-      <div className="bg-gradient-to-r from-primary/10 via-card to-card border border-border/80 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="space-y-1 text-center md:text-left">
-          <span className="text-[10px] uppercase font-mono tracking-widest text-primary block font-semibold">
-            PHASE 4.6 READY · NEXT OPERATIONAL MILESTONE
-          </span>
-          <h4 className="text-sm font-bold text-foreground">Pricing & Revenue Model Engine</h4>
-          <p className="text-xs text-muted-foreground max-w-xl leading-relaxed">
-            Turn your business model, customer segments, cost structure, and forecast assumptions
-            into a financially viable, French-compliant launch pricing strategy.
-          </p>
-        </div>
-        <Link
-          href={`/dashboard/creator/phase-4/pricing?ideaId=${encodeURIComponent(ideaId)}`}
-          className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs shadow shrink-0 flex items-center gap-2 transition-all"
-        >
-          <span>Build My Pricing Strategy</span>
-          <ArrowRight className="w-4 h-4" />
-        </Link>
-      </div>
     </div>
   );
 }
