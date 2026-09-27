@@ -69,7 +69,8 @@ namespace WebApp.Services.Implementations
                 ChangedSources = changedSources,
                 Summary = plan.Summary ?? _matchingService.ComputeSummary(plan.Matches),
                 FounderProfileSummary = BuildProfileSummary(profile),
-                PrerequisiteGate = gate
+                PrerequisiteGate = gate,
+                IdeaVersion = journey.IdeaVersion
             };
         }
 
@@ -93,7 +94,8 @@ namespace WebApp.Services.Implementations
                     ChangedSources = changed,
                     Summary = existing.Summary ?? _matchingService.ComputeSummary(existing.Matches),
                     FounderProfileSummary = BuildProfileSummary(profile),
-                    PrerequisiteGate = gate
+                    PrerequisiteGate = gate,
+                    IdeaVersion = journey.IdeaVersion
                 };
             }
 
@@ -142,7 +144,8 @@ namespace WebApp.Services.Implementations
                 ChangedSources = new List<string>(),
                 Summary = newPlan.Summary,
                 FounderProfileSummary = BuildProfileSummary(profile),
-                PrerequisiteGate = gate
+                PrerequisiteGate = gate,
+                IdeaVersion = journey.IdeaVersion
             };
         }
 
@@ -212,7 +215,8 @@ namespace WebApp.Services.Implementations
                 ChangedSources = new List<string>(),
                 Summary = refreshedPlan.Summary,
                 FounderProfileSummary = BuildProfileSummary(profile),
-                PrerequisiteGate = gate
+                PrerequisiteGate = gate,
+                IdeaVersion = journey.IdeaVersion
             };
         }
 
@@ -272,7 +276,8 @@ namespace WebApp.Services.Implementations
                 ChangedSources = new List<string>(),
                 Summary = plan.Summary ?? _matchingService.ComputeSummary(plan.Matches),
                 FounderProfileSummary = BuildProfileSummary(profile),
-                PrerequisiteGate = gate
+                PrerequisiteGate = gate,
+                IdeaVersion = journey.IdeaVersion
             };
         }
 
@@ -323,7 +328,8 @@ namespace WebApp.Services.Implementations
                 ChangedSources = new List<string>(),
                 Summary = plan.Summary,
                 FounderProfileSummary = BuildProfileSummary(profile),
-                PrerequisiteGate = gate
+                PrerequisiteGate = gate,
+                IdeaVersion = journey.IdeaVersion
             };
         }
 

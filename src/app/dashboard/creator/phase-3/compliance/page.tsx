@@ -7,7 +7,8 @@ import {
   AlertTriangle,
   ArrowRight,
   ArrowLeft,
-  Loader2,
+  RotateCw,
+  RefreshCw,
   CheckCircle2,
   ExternalLink,
   Scale,
@@ -18,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
+import { cn } from '@/lib/utils';
 import {
   creatorJourneyApi,
   getCreatorWorkspaceIdea,
@@ -83,6 +85,8 @@ export default function ComplianceWorkspacePage() {
   const effectiveIdeaId = queryIdeaId || state?.activeIdeaId || getCreatorWorkspaceIdea() || null;
   const queryClient = useQueryClient();
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   // Active Stage Tab in Figma Section 5
   const [activeStageTab, setActiveStageTab] = useState<FigmaStageTabKey>(() => {
     if (initialStageParam === 'company_creation' || initialStageParam === 'before_launch' || initialStageParam === 'before_sale') {
@@ -111,11 +115,20 @@ export default function ComplianceWorkspacePage() {
   // Evaluate / Refresh mutation
   const evaluateMutation = useMutation({
     mutationFn: () => creatorJourneyApi.evaluateLegalCompliance(effectiveIdeaId),
-    onSuccess: (data) => {
-      queryClient.setQueryData(['creator', 'legalOverview', effectiveIdeaId], data);
+    onMutate: () => {
+      setIsGenerating(true);
+    },
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['creator', 'legalOverview', effectiveIdeaId] });
       queryClient.invalidateQueries({ queryKey: ['creator', 'dashboardRefs', effectiveIdeaId] });
+      setIsGenerating(false);
+    },
+    onError: () => {
+      setIsGenerating(false);
     },
   });
+
+  const isGeneratingActive = isGenerating || evaluateMutation.isPending;
 
   // Status update mutation
   const statusMutation = useMutation({
@@ -192,7 +205,7 @@ export default function ComplianceWorkspacePage() {
       description="Personalized statutory roadmap and evidence tracking based on your verified France business classification."
     >
       {/* 1. Loading State */}
-      {overviewLoading && (
+      {overviewLoading && !isGeneratingActive && (
         <div className="w-full space-y-6">
           <Skeleton className="h-6 w-72 rounded-lg" />
           <Skeleton className="h-32 w-full rounded-2xl" />
@@ -203,7 +216,7 @@ export default function ComplianceWorkspacePage() {
       )}
 
       {/* 2. Error State */}
-      {!overviewLoading && overviewError && (
+      {!overviewLoading && !isGeneratingActive && overviewError && (
         <Card className="p-8 border-dashed border-destructive/40 bg-destructive/5 rounded-2xl text-center space-y-3 max-w-lg mx-auto">
           <AlertTriangle className="size-8 text-destructive mx-auto" />
           <h3 className="text-sm font-bold text-foreground">We couldn&apos;t load your legal roadmap</h3>
@@ -221,54 +234,55 @@ export default function ComplianceWorkspacePage() {
         </Card>
       )}
 
-      {/* 3. Generating State (When AI is synthesizing legal roadmap) */}
-      {!overviewLoading && !overviewError && evaluateMutation.isPending && (
-        <div className="space-y-6 max-w-2xl mx-auto py-12">
-          <Card className="rounded-2xl border border-border bg-card p-8 text-center space-y-4 shadow-sm">
-            <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="font-heading font-bold text-base text-foreground">
-                Generating Legal Roadmap…
-              </h3>
-              <p className="text-caption text-muted-foreground">
-                Classifying your business model, customer types, and revenue tiers to build your personalized statutory roadmap for France.
-              </p>
-            </div>
-            <div className="h-2 w-48 mx-auto bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-primary animate-pulse w-2/3" />
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* 4. Empty State (No Assessment) */}
-      {!overviewLoading && !overviewError && !evaluateMutation.isPending && (!overview?.hasAssessment || !assessment) && (
-        <Card className="p-10 border border-border rounded-2xl bg-card shadow-sm text-center space-y-4 max-w-xl mx-auto">
+      {/* 3. Empty & Generating Pre-Assessment State */}
+      {!overviewLoading && !overviewError && (!overview?.hasAssessment || !assessment) && (
+        <Card className="p-10 border border-border rounded-2xl bg-card shadow-sm text-center space-y-5 max-w-xl mx-auto" role="status" aria-live="polite">
           <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
-            <Scale className="size-6" />
+            {isGeneratingActive ? (
+              <RotateCw className="size-6 animate-spin text-primary" />
+            ) : (
+              <Scale className="size-6" />
+            )}
           </div>
           <div className="space-y-1.5">
-            <h3 className="text-base font-bold text-foreground">Build Your France Legal Roadmap</h3>
+            <h3 className="text-base font-bold text-foreground">
+              {isGeneratingActive ? 'Generating Your France Legal Roadmap…' : 'Build Your France Legal Roadmap'}
+            </h3>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-md mx-auto">
-              MBC will classify your current business model, customer types, and revenue tiers to synthesize
-              a deterministic statutory roadmap for France.
+              {isGeneratingActive
+                ? 'Classifying your business model, customer types, and revenue tiers to synthesize a deterministic statutory roadmap for France. This may take a moment…'
+                : 'MBC will classify your current business model, customer types, and revenue tiers to synthesize a deterministic statutory roadmap for France.'}
             </p>
           </div>
+
+          {isGeneratingActive && (
+            <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">
+              <div className="h-full bg-primary rounded-full animate-indeterminate" />
+            </div>
+          )}
+
           <Button
             onClick={() => evaluateMutation.mutate()}
-            disabled={evaluateMutation.isPending}
+            disabled={isGeneratingActive}
             className="rounded-xl text-xs px-5 h-9 bg-primary hover:bg-primary/95 text-primary-foreground font-medium shadow-none gap-2"
           >
-            Analyse My Business
-            <ArrowRight className="size-4" />
+            {isGeneratingActive ? (
+              <>
+                <RotateCw className="size-4 animate-spin" />
+                Analyzing Business…
+              </>
+            ) : (
+              <>
+                Analyse My Business
+                <ArrowRight className="size-4" />
+              </>
+            )}
           </Button>
         </Card>
       )}
 
-      {/* 5. Active Workspace Content: Full Screen Responsive Flow */}
-      {!overviewLoading && !overviewError && !evaluateMutation.isPending && overview?.hasAssessment && assessment && (
+      {/* 4. Active Workspace Content: Full Screen Responsive Flow */}
+      {!overviewLoading && !overviewError && !isGeneratingActive && overview?.hasAssessment && assessment && (
         <div className="w-full space-y-6 text-foreground">
           {/* SECTION 1: SHORT INTRODUCTION (Figma 57156:9158) */}
           <div className="pb-1">
@@ -279,12 +293,26 @@ export default function ComplianceWorkspacePage() {
 
           {/* SECTION 2: ROADMAP SUMMARY CARD (Figma 57156:9158) */}
           <Card className="p-6 rounded-lg border border-border/80 bg-card shadow-xs space-y-2">
-            <h2 className="text-page-heading sm:text-2xl font-semibold tracking-tight text-foreground font-heading">
-              Your legal roadmap is ready.
-            </h2>
-            <p className="text-body text-muted-foreground leading-relaxed font-sans">
-              Here’s what to prepare before registration, launch and day-to-day operations — based on your project.
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h2 className="text-page-heading sm:text-2xl font-semibold tracking-tight text-foreground font-heading">
+                  Your legal roadmap is ready.
+                </h2>
+                <p className="text-body text-muted-foreground leading-relaxed font-sans">
+                  Here’s what to prepare before registration, launch and day-to-day operations — based on your project.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => evaluateMutation.mutate()}
+                disabled={isGeneratingActive}
+                className="gap-1.5 text-xs rounded-lg border-border font-sans shrink-0"
+              >
+                <RotateCw className={cn("size-3.5", isGeneratingActive && "animate-spin")} />
+                Re-evaluate
+              </Button>
+            </div>
           </Card>
 
           {/* SECTION 3: RECOMMENDED NEXT ACTION CARD (Figma 57156:9158) */}

@@ -342,6 +342,7 @@ namespace WebApp.Models.DatabaseModels
         public Phase4.SupportPlan? SupportPlan { get; set; }
         public Phase4.PricingStrategy? PricingStrategy { get; set; }
         public Phase4.GtmStrategy? GtmStrategy { get; set; }
+        public Phase4.LaunchAssetsPlan? LaunchAssets { get; set; }
         public Phase4.Phase4SourceVersions? SourceVersions { get; set; }
     }
 

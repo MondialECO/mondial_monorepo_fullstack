@@ -839,5 +839,21 @@ namespace WebApp.Tests.Unit
             confirmedMatch.FounderApplicationState.Should().Be(FounderApplicationState.Awarded);
             confirmedMatch.RecommendedNextStep.Should().Contain("Awarded:");
         }
+
+        [Fact]
+        public async Task SupportResponse_PopulatesIdeaVersion_ForOptimisticConcurrency()
+        {
+            var journey = BuildCompleteJourney();
+            journey.IdeaVersion = 9;
+            SetupValidPhaseStatus(journey);
+            _catalogueServiceMock.Setup(c => c.GetActiveOpportunitiesAsync(It.IsAny<string>(), It.IsAny<string>()))
+                .ReturnsAsync(new List<SupportOpportunity>());
+
+            var service = CreateService();
+            var response = await service.GenerateSupportPlanAsync(journey.UserId, journey.ActiveIdeaId);
+
+            response.Should().NotBeNull();
+            response.IdeaVersion.Should().Be(9);
+        }
     }
 }

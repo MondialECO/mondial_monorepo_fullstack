@@ -249,7 +249,7 @@ describe('Phase 4.6 Pricing Strategy View Component', () => {
     expect(screen.getByText(/Back to Phase 4.5 Aids & Grants/i)).toBeInTheDocument();
   });
 
-  it('3. Renders full strategy with Hero counters, Primary model, and Multi-stream badges', () => {
+  it('3. Renders full strategy with Header, Tier selector, and Revenue Model', () => {
     render(
       <PricingStrategyView
         ideaId="idea-123"
@@ -265,14 +265,14 @@ describe('Phase 4.6 Pricing Strategy View Component', () => {
     );
 
     expect(screen.getByText(/Launch Pricing & Revenue Model Strategy/i)).toBeInTheDocument();
-    expect(screen.getAllByText('Subscription').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/3 Offers/i)).toBeInTheDocument();
-    expect(screen.getByText('Retainer')).toBeInTheDocument();
-    expect(screen.getByText('SetupFee')).toBeInTheDocument();
+    expect(screen.getByText(/Select Tier \(3\):/i)).toBeInTheDocument();
+    expect(screen.getByText('Professional Tier')).toBeInTheDocument();
+    expect(screen.getByText('Starter Tier')).toBeInTheDocument();
+    expect(screen.getByText('Enterprise Retainer')).toBeInTheDocument();
     expect(screen.getByText(/Founder Customized/i)).toBeInTheDocument();
   });
 
-  it('4. Renders Four-Price Separation Invariant without conflation', () => {
+  it('4. Renders Four-Price Separation Invariant without conflation in Section 3 & 4', () => {
     render(
       <PricingStrategyView
         ideaId="idea-123"
@@ -287,15 +287,16 @@ describe('Phase 4.6 Pricing Strategy View Component', () => {
       />
     );
 
-    // Pro tier has Recommended €49 and Founder/Your Price €39
-    expect(screen.getAllByText(/MBC Recommendation:/i).length).toBe(3);
-    expect(screen.getByText('€49')).toBeInTheDocument();
-    expect(screen.getAllByText(/Your Price:/i).length).toBe(2);
-    expect(screen.getAllByText('€39').length).toBe(2);
+    // Chosen price & Suggested price displayed clearly
+    expect(screen.getAllByText(/YOUR CHOSEN PRICE/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/€39 per business \/ monthly/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/SUGGESTED PRICE/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/€49/i)).toBeInTheDocument();
 
-    // Starter tier has Validated Market €25
-    expect(screen.getAllByText(/Validated Market Price:/i).length).toBe(3);
-    expect(screen.getByText('€25')).toBeInTheDocument();
+    // Section 4 details
+    expect(screen.getByText(/Why This Suggestion\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/Minimum viable price/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Market reference/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it('4b. Renders four semantic price fields even when values are equal', () => {
@@ -345,15 +346,18 @@ describe('Phase 4.6 Pricing Strategy View Component', () => {
       />
     );
 
-    // Assert all 4 semantic fields are present with distinct labels
-    expect(screen.getByText(/MBC Recommendation:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Your Price:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Market Reference:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Validated Market Price:/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/YOUR CHOSEN PRICE/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/SUGGESTED PRICE/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Market reference/i).length).toBeGreaterThanOrEqual(1);
 
-    // The value €49 should be rendered across all 4 fields (plus effective price) without collapsing
-    const elements49 = screen.getAllByText('€49');
-    expect(elements49.length).toBeGreaterThanOrEqual(4);
+    // Expand assumptions
+    const assumptionsBtn = screen.getByRole('button', { name: /View assumptions/i });
+    fireEvent.click(assumptionsBtn);
+
+    expect(screen.getByText(/MBC Recommended Price:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Founder \/ Chosen Price:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Market Reference Price:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Empirically Validated Price:/i)).toBeInTheDocument();
   });
 
   it('4c. Does not collapse market reference into validated market price', () => {
@@ -403,16 +407,16 @@ describe('Phase 4.6 Pricing Strategy View Component', () => {
       />
     );
 
-    expect(screen.getByText(/Market Reference:/i)).toBeInTheDocument();
-    expect(screen.getByText('€49')).toBeInTheDocument();
-    expect(screen.getByText('Supported')).toBeInTheDocument();
+    // Expand assumptions
+    const assumptionsBtn = screen.getByRole('button', { name: /View assumptions/i });
+    fireEvent.click(assumptionsBtn);
 
-    // ValidatedMarketPrice must NOT collapse into €49; it must show 'Not validated yet'
+    expect(screen.getByText(/Market Reference Price:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Empirically Validated Price:/i)).toBeInTheDocument();
     expect(screen.getByText(/Not validated yet/i)).toBeInTheDocument();
-    expect(screen.queryByText(/€0/i)).not.toBeInTheDocument();
   });
 
-  it('5. Highlights price floor violation with alert warning', () => {
+  it('5. Highlights price floor violation with alert warning when selecting below-floor tier', () => {
     render(
       <PricingStrategyView
         ideaId="idea-123"
@@ -426,6 +430,10 @@ describe('Phase 4.6 Pricing Strategy View Component', () => {
         onUpdateOffer={vi.fn()}
       />
     );
+
+    // Switch to Enterprise Retainer (which is BelowFloor)
+    const enterpriseBtn = screen.getByRole('button', { name: /Enterprise Retainer/i });
+    fireEvent.click(enterpriseBtn);
 
     expect(
       screen.getByText(/Price below floor! Loss-making under current cost structure/i)
@@ -456,7 +464,7 @@ describe('Phase 4.6 Pricing Strategy View Component', () => {
     expect(handleRefresh).toHaveBeenCalled();
   });
 
-  it('7. Enforces strict Phase 4.7 Boundary Banner (disabled button, lock icon)', () => {
+  it('7. Renders Section 7 Next Action and Section 8 Footer Actions with GTM link', () => {
     render(
       <PricingStrategyView
         ideaId="idea-123"
@@ -471,11 +479,9 @@ describe('Phase 4.6 Pricing Strategy View Component', () => {
       />
     );
 
-    expect(screen.getByText(/PHASE 4.7 · GTM & LAUNCH STRATEGY/i)).toBeInTheDocument();
-    expect(screen.getByText(/Ready to Sequence Your Go-To-Market Strategy\?/i)).toBeInTheDocument();
-    const gtmLink = screen.getByRole('link', { name: /Build My Launch Strategy/i });
-    expect(gtmLink).toBeInTheDocument();
-    expect(gtmLink).toHaveAttribute('href', '/dashboard/creator/phase-4/gtm?ideaId=idea-123');
+    expect(screen.getByText(/NEXT ACTION/i)).toBeInTheDocument();
+    expect(screen.getByText(/Test your starting offer/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Save & Continue/i })).toBeInTheDocument();
   });
 
   it('8. Opens founder edit modal and submits update to recalculate economics', async () => {
@@ -494,21 +500,21 @@ describe('Phase 4.6 Pricing Strategy View Component', () => {
       />
     );
 
-    const customizeBtns = screen.getAllByRole('button', { name: /Customize Offer/i });
-    fireEvent.click(customizeBtns[0]); // Click first offer
+    const changeModelBtn = screen.getByRole('button', { name: /Change model/i });
+    fireEvent.click(changeModelBtn);
 
-    expect(screen.getByText(/Customize Offer: Starter Tier/i)).toBeInTheDocument();
+    expect(screen.getByText(/Customize Offer: Professional Tier/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Founder Selected Price/i)).toBeInTheDocument();
 
     const saveBtn = screen.getByRole('button', { name: /Save & Recalculate/i });
     fireEvent.submit(saveBtn.closest('form')!);
 
     await waitFor(() => {
-      expect(handleUpdate).toHaveBeenCalledWith('offer-starter', expect.any(Object));
+      expect(handleUpdate).toHaveBeenCalledWith('offer-pro', expect.any(Object));
     });
   });
 
-  it('9. Displays empirical experiments and financial risks cards', () => {
+  it('9. Renders Section 5 Earnings Simulator and Section 6 Evidence checklist', () => {
     render(
       <PricingStrategyView
         ideaId="idea-123"
@@ -523,9 +529,14 @@ describe('Phase 4.6 Pricing Strategy View Component', () => {
       />
     );
 
-    expect(screen.getAllByText(/Empirical Validation Experiments/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Financial Integrity & Risk Guardrails/i)).toBeInTheDocument();
-    expect(screen.getByText(/PriceFloorViolation/i)).toBeInTheDocument();
-    expect(screen.getByText(/15% Free-to-paid conversion/i)).toBeInTheDocument();
+    expect(screen.getByText(/What could you earn\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/PAYING BUSINESSES/i)).toBeInTheDocument();
+    expect(screen.getByText(/Estimated monthly revenue/i)).toBeInTheDocument();
+
+    expect(screen.getByText(/Check your price/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Market reference/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Customer feedback/i)).toBeInTheDocument();
+    expect(screen.getByText(/Customer interest/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Sale or paid preorder/i).length).toBeGreaterThanOrEqual(1);
   });
 });

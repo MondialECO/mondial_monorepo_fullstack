@@ -20,6 +20,16 @@ namespace WebApp.Services.Implementations
             if (wa.Contains("20–30") || wa.Contains("20-30") || wa.Contains("20to30")) return CapacityTier.Accelerated;
             if (wa.Contains("30+") || wa.Contains("30 +") || wa.Contains("full-time") || wa.Contains("full time") || wa.Contains("fulltime")) return CapacityTier.Intensive;
 
+            var digits = new string(wa.TakeWhile(char.IsDigit).ToArray());
+            if (int.TryParse(digits, out var hours) && hours > 0)
+            {
+                if (hours < 5) return CapacityTier.VeryLight;
+                if (hours <= 10) return CapacityTier.Light;
+                if (hours <= 20) return CapacityTier.Standard;
+                if (hours <= 30) return CapacityTier.Accelerated;
+                return CapacityTier.Intensive;
+            }
+
             return CapacityTier.Conservative;
         }
 

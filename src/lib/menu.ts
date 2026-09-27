@@ -398,6 +398,10 @@ export const menu: Record<UserRole, MenuSection[]> = {
               href: "/dashboard/creator/phase-4",
             },
             {
+              label: "Launch Assets",
+              href: "/dashboard/creator/phase-4/assets",
+            },
+            {
               label: "Launch to Market",
               href: "/dashboard/creator/crossroads",
             },

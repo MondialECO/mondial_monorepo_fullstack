@@ -175,7 +175,7 @@ namespace WebApp.Services.Implementations
                     else if (variableCost > 0)
                     {
                         // Cost-plus fallback floor
-                        price = CalculateFloorPrice(variableCost, context.CostStructure.MarginTargetType, context.CostStructure.DefaultRequiredMarginRate, context.CostStructure.DefaultRequiredMarginAmount);
+                        price = CalculateFloorPrice(variableCost, context.CostStructure.MarginTargetType, context.CostStructure.DefaultRequiredMarginRate, context.CostStructure.DefaultRequiredMarginAmount) ?? variableCost;
                         confidence = PricingConfidence.Provisional;
                         evidenceType = PriceEvidenceType.CostBased;
                         evidenceRef = $"Cost-based minimum price floor (€{variableCost:N2} variable cost + target contribution margin)";
@@ -311,21 +311,64 @@ namespace WebApp.Services.Implementations
             MarginTargetType marginTargetType,
             decimal targetMargin)
         {
+            var isCostConfigured = context.CostStructure.IsVariableCostConfigured;
             var ue = new UnitEconomics
             {
                 PricePerUnit = price,
                 VariableCostPerUnit = variableCost,
-                MarginTargetType = marginTargetType
+                MarginTargetType = marginTargetType,
+                IsCostBasisConfigured = isCostConfigured
             };
 
-            // Calculate floor
-            ue.MinimumPriceFloor = CalculateFloorPrice(variableCost, marginTargetType, targetMargin, targetMargin);
+            // 1. Cost State Classification & Floor Calculation
+            if (variableCost < 0m)
+            {
+                ue.CostBasisState = "InvalidNegative";
+                ue.ValidationStatus = "InvalidCostInput";
+                ue.ContributionMargin = price - variableCost;
+                ue.ContributionMarginRate = price > 0 ? Math.Round(ue.ContributionMargin / price, 4) : 0m;
+                ue.MinimumPriceFloor = null;
+            }
+            else if (!isCostConfigured)
+            {
+                ue.CostBasisState = "UnknownOrIncomplete";
+                ue.ValidationStatus = "IncompleteCostBasis";
+                ue.ContributionMargin = price;
+                ue.ContributionMarginRate = price > 0 ? 1.0m : 0m;
+                ue.MinimumPriceFloor = null;
+            }
+            else if (variableCost == 0m)
+            {
+                ue.CostBasisState = "ExplicitZero";
+                ue.ContributionMargin = price;
+                ue.ContributionMarginRate = price > 0 ? 1.0m : 0m;
+                ue.MinimumPriceFloor = 0m;
+                ue.ValidationStatus = "Supported";
+            }
+            else
+            {
+                ue.CostBasisState = "ValidPositive";
+                ue.ContributionMargin = price - variableCost;
+                ue.ContributionMarginRate = price > 0 ? Math.Round(ue.ContributionMargin / price, 4) : 0m;
+                ue.MinimumPriceFloor = CalculateFloorPrice(variableCost, marginTargetType, targetMargin, targetMargin);
 
-            // Contribution Margin = SellingPrice - VariableCost
-            ue.ContributionMargin = price - variableCost;
-
-            // Contribution Margin Rate = ContributionMargin / SellingPrice
-            ue.ContributionMarginRate = price > 0 ? Math.Round(ue.ContributionMargin / price, 4) : 0m;
+                if (price < variableCost)
+                {
+                    ue.ValidationStatus = "BelowCostWarning";
+                }
+                else if (price == variableCost)
+                {
+                    ue.ValidationStatus = "ZeroContributionWarning";
+                }
+                else if (ue.MinimumPriceFloor.HasValue && price < ue.MinimumPriceFloor.Value)
+                {
+                    ue.ValidationStatus = "BelowTargetMarginWarning";
+                }
+                else
+                {
+                    ue.ValidationStatus = "Supported";
+                }
+            }
 
             // Gross Margin if direct delivery cost available
             if (directCost.HasValue && directCost.Value > 0)
@@ -334,7 +377,7 @@ namespace WebApp.Services.Implementations
                 ue.GrossMarginRate = price > 0 ? Math.Round(ue.GrossMargin.Value / price, 4) : null;
             }
 
-            // Break-Even Volume
+            // Break-Even Volume (only if positive contribution margin)
             if (ue.ContributionMargin > 0 && context.CostStructure.EstimatedMonthlyFixedCosts > 0)
             {
                 ue.BreakEvenVolume = (int)Math.Ceiling(context.CostStructure.EstimatedMonthlyFixedCosts / ue.ContributionMargin);
@@ -343,7 +386,6 @@ namespace WebApp.Services.Implementations
             // Reference LTV and CAC only if authoritative forecast data exists
             if (context.Forecast.Arpu.HasValue && context.Forecast.MonthlyChurnPct.HasValue && context.Forecast.MonthlyChurnPct.Value > 0)
             {
-                // LTV = ARPU / (ChurnRate / 100)
                 var churnRate = context.Forecast.MonthlyChurnPct.Value / 100m;
                 var arpu = price > 0 ? price : context.Forecast.Arpu.Value;
                 ue.LTVReference = Math.Round(arpu / churnRate, 2);
@@ -351,15 +393,12 @@ namespace WebApp.Services.Implementations
 
             if (context.Forecast.MonthlyOpex.HasValue && context.Forecast.MonthlyGrowthPct.HasValue && context.Forecast.MonthlyGrowthPct.Value > 0)
             {
-                // Indicative CAC reference only if modelled
                 ue.CACReference = Math.Round(context.Forecast.MonthlyOpex.Value * 0.3m, 2);
                 if (ue.LTVReference.HasValue && ue.CACReference.Value > 0)
                 {
                     ue.LtvCacRatio = Math.Round((double)(ue.LTVReference.Value / ue.CACReference.Value), 2);
                 }
             }
-
-            ue.ValidationStatus = ue.ContributionMargin < 0 ? "BelowCostWarning" : "Supported";
 
             return ue;
         }
@@ -404,7 +443,6 @@ namespace WebApp.Services.Implementations
                     {
                         alignment.Basis = ForecastAlignmentBasis.RevenuePerProject;
                         alignment.ProposedEquivalentValue = offer.Price;
-                        // If forecast only has monthly ARPU, flag NeedsReview rather than false variance
                         alignment.Status = ForecastAlignmentStatus.NeedsReview;
                         alignment.VariancePercentage = 0m;
                         alignment.Explanation = $"Offer is packaged as a one-time project fee (€{offer.Price:N0}) while the forecast models monthly recurring ARPU (€{forecastArpu:N0}/mo). Normalized project duration assumptions are required for direct mathematical variance.";
@@ -437,7 +475,6 @@ namespace WebApp.Services.Implementations
             }
             alignment.VariancePercentage = variancePct;
 
-            // Correction #4: Use Configurable Materiality Policy (no hardcoded 20%)
             var relativeThreshold = policy.RelativeVarianceThreshold > 0 ? policy.RelativeVarianceThreshold : 0.20m;
 
             if (variancePct <= 0.05m)
@@ -468,46 +505,109 @@ namespace WebApp.Services.Implementations
 
             foreach (var offer in offers)
             {
-                // Risk 1: BelowCost (Negative contribution margin)
-                if (offer.UnitEconomics.ContributionMargin < 0)
+                var ue = offer.UnitEconomics;
+                var vc = ue.VariableCostPerUnit;
+                var price = offer.Price;
+                var floor = ue.MinimumPriceFloor;
+
+                // 1. Invalid Negative Cost
+                if (ue.CostBasisState == "InvalidNegative" || vc < 0)
                 {
                     risks.Add(new PricingRisk
                     {
-                        Key = $"risk.below_cost.{offer.Key}",
-                        Type = PricingRiskType.BelowCost,
+                        Key = $"risk.invalid_cost.{offer.Key}",
+                        Type = PricingRiskType.IncompleteCostBasis,
                         Severity = PricingRiskSeverity.Critical,
-                        Description = $"Offer '{offer.Name}' selling price (€{offer.Price:N2}) is below estimated variable cost (€{offer.UnitEconomics.VariableCostPerUnit:N2}), resulting in a negative contribution margin (€{offer.UnitEconomics.ContributionMargin:N2}).",
-                        Evidence = $"Variable cost per unit: €{offer.UnitEconomics.VariableCostPerUnit:N2}, Selling price: €{offer.Price:N2}.",
-                        Recommendation = "Increase the offer price above the variable cost floor or optimize direct delivery expenses to achieve a sustainable unit margin.",
+                        Description = $"Offer '{offer.Name}' has an invalid negative variable unit cost (-€{Math.Abs(vc):N2}).",
+                        Evidence = $"Variable cost cannot be negative (€{vc:N2}).",
+                        Recommendation = "Provide a valid non-negative variable cost.",
                         NeedsValidation = false
                     });
                 }
-                // Risk 2: MarginTooThin
-                else if (offer.Price > 0 && offer.UnitEconomics.ContributionMarginRate < 0.15m)
+                // 2. Incomplete / Unknown Cost Basis
+                else if (ue.CostBasisState == "UnknownOrIncomplete" || !ue.IsCostBasisConfigured)
+                {
+                    risks.Add(new PricingRisk
+                    {
+                        Key = $"risk.incomplete_cost.{offer.Key}",
+                        Type = PricingRiskType.IncompleteCostBasis,
+                        Severity = PricingRiskSeverity.Low,
+                        Description = $"Offer '{offer.Name}' has an unconfigured or incomplete variable cost basis. Target contribution margin floor cannot be calculated.",
+                        Evidence = "Variable delivery cost per unit is unconfigured in cost structure.",
+                        Recommendation = "Provide variable unit delivery costs in Phase 3 or cost setup to verify price floor.",
+                        NeedsValidation = true
+                    });
+                }
+                // 3. Valid Positive Variable Cost ($vc > 0$)
+                else if (ue.CostBasisState == "ValidPositive")
+                {
+                    if (price < vc)
+                    {
+                        risks.Add(new PricingRisk
+                        {
+                            Key = $"risk.below_cost.{offer.Key}",
+                            Type = PricingRiskType.BelowCost,
+                            Severity = PricingRiskSeverity.Critical,
+                            Description = $"Offer '{offer.Name}' selling price (€{price:N2}) is below estimated variable unit cost (€{vc:N2}), resulting in a negative contribution margin per unit (-€{Math.Abs(ue.ContributionMargin):N2}).",
+                            Evidence = $"Variable cost per unit: €{vc:N2}, Selling price: €{price:N2}.",
+                            Recommendation = "Increase the offer price above variable unit cost or optimize direct delivery expenses to avoid cash loss on each sale.",
+                            NeedsValidation = false
+                        });
+                    }
+                    else if (price == vc)
+                    {
+                        risks.Add(new PricingRisk
+                        {
+                            Key = $"risk.zero_contribution.{offer.Key}",
+                            Type = PricingRiskType.BelowTargetMarginFloor,
+                            Severity = PricingRiskSeverity.Medium,
+                            Description = $"Offer '{offer.Name}' selling price (€{price:N2}) exactly equals variable unit cost (€{vc:N2}), yielding zero unit contribution (€0.00). Fixed costs and acquisition expenses cannot be recovered.",
+                            Evidence = $"Selling price: €{price:N2}, Variable cost: €{vc:N2}.",
+                            Recommendation = "Set price above variable unit cost to produce a positive contribution margin.",
+                            NeedsValidation = true
+                        });
+                    }
+                    else if (floor.HasValue && price < floor.Value)
+                    {
+                        risks.Add(new PricingRisk
+                        {
+                            Key = $"risk.below_floor.{offer.Key}",
+                            Type = PricingRiskType.BelowTargetMarginFloor,
+                            Severity = PricingRiskSeverity.Medium,
+                            Description = $"Offer '{offer.Name}' selling price (€{price:N2}) covers variable cost (€{vc:N2}) with positive contribution (+€{ue.ContributionMargin:N2}), but sits below the target contribution margin floor (€{floor.Value:N2}). Contribution margin rate is {ue.ContributionMarginRate * 100:N1}%.",
+                            Evidence = $"Selling price: €{price:N2}, Target floor: €{floor.Value:N2}, Variable cost: €{vc:N2}.",
+                            Recommendation = "Review whether this introductory price point is an intentional launch trade-off to accelerate initial adoption.",
+                            NeedsValidation = true
+                        });
+                    }
+                }
+
+                // 4. Margin Too Thin (Positive contribution margin rate < 15% when price > 0 and above floor)
+                if (price > 0 && ue.ContributionMargin > 0 && ue.ContributionMarginRate < 0.15m && (!floor.HasValue || price >= floor.Value))
                 {
                     risks.Add(new PricingRisk
                     {
                         Key = $"risk.margin_thin.{offer.Key}",
                         Type = PricingRiskType.MarginTooThin,
-                        Severity = PricingRiskSeverity.Medium,
-                        Description = $"Offer '{offer.Name}' has a slim contribution margin of {offer.UnitEconomics.ContributionMarginRate * 100:N1}%, leaving limited cushion for overhead and customer acquisition.",
-                        Evidence = $"Contribution margin rate is below the recommended 15% minimum buffer.",
+                        Severity = PricingRiskSeverity.Low,
+                        Description = $"Offer '{offer.Name}' has a slim contribution margin of {ue.ContributionMarginRate * 100:N1}%, leaving limited cushion for overhead and customer acquisition.",
+                        Evidence = "Contribution margin rate is below the recommended 15% buffer.",
                         Recommendation = "Consider tightening included feature scope or testing a modest price increase.",
                         NeedsValidation = true
                     });
                 }
 
-                // Risk 3: NoPriceEvidence / UnvalidatedWillingnessToPay
-                if (offer.Confidence == PricingConfidence.NeedsValidation)
+                // 5. NoPriceEvidence / UnvalidatedWillingnessToPay
+                if (offer.Confidence == PricingConfidence.NeedsValidation && offer.MarketPriceValidationLevel == MarketPriceValidationLevel.Unvalidated)
                 {
                     risks.Add(new PricingRisk
                     {
                         Key = $"risk.no_evidence.{offer.Key}",
                         Type = PricingRiskType.NoPriceEvidence,
                         Severity = PricingRiskSeverity.Low,
-                        Description = $"Offer '{offer.Name}' price currently lacks direct customer willingness-to-pay validation.",
+                        Description = $"Offer '{offer.Name}' price currently lacks direct customer willingness-to-pay validation or recorded pre-order evidence.",
                         Evidence = offer.PriceEvidence.SourceReference,
-                        Recommendation = "Validate this price point through customer discovery interviews or pre-order discovery before scaling acquisition spend.",
+                        Recommendation = "Validate this price point through customer discovery interviews, pre-orders, or paid pilots before scaling acquisition spend.",
                         NeedsValidation = true
                     });
                 }
@@ -628,20 +728,23 @@ namespace WebApp.Services.Implementations
         // PRIVATE HELPERS
         // =========================================================================
 
-        private static decimal CalculateFloorPrice(decimal variableCost, MarginTargetType marginType, decimal targetMarginRate, decimal targetMarginAmount)
+        private static decimal? CalculateFloorPrice(decimal variableCost, MarginTargetType marginType, decimal targetMarginRate, decimal targetMarginAmount)
         {
+            if (variableCost <= 0) return null;
+
             if (marginType == MarginTargetType.Percentage)
             {
                 // MinimumPrice = VariableCost / (1 - m)
                 var m = targetMarginRate;
-                if (m >= 0.95m) m = 0.90m; // Safety cap
-                if (m <= 0m) m = 0.20m;
+                if (m >= 1.0m || (1.0m - m) <= 0.05m) m = 0.90m; // Safety cap against division by zero or negative denominator
+                if (m < 0m) m = 0.20m;
                 return Math.Round(variableCost / (1.0m - m), 2);
             }
             else
             {
                 // MinimumPrice = VariableCost + RequiredContributionAmount
-                return Math.Round(variableCost + targetMarginAmount, 2);
+                var amount = targetMarginAmount >= 0m ? targetMarginAmount : 0m;
+                return Math.Round(variableCost + amount, 2);
             }
         }
 

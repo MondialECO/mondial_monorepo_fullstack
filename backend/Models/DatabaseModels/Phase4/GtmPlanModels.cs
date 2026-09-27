@@ -547,21 +547,25 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public bool UpdateAvailable { get; set; }
         public List<string> ChangedSources { get; set; } = new();
         public PrerequisiteGateDto? PrerequisiteGate { get; set; }
+        public long IdeaVersion { get; set; }
     }
 
     public class GenerateGtmRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
     }
 
     public class RefreshGtmRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
     }
 
     public class UpdateGtmChannelRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
         public ChannelPriority? Priority { get; set; }
         public ChannelExecutionMode? ExecutionMode { get; set; }
         public string? Owner { get; set; }
@@ -573,6 +577,7 @@ namespace WebApp.Models.DatabaseModels.Phase4
     public class RecordExperimentRunRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
         public decimal ActualSpend { get; set; }
         public string ActualEffort { get; set; } = string.Empty;
         public string Observations { get; set; } = string.Empty;
@@ -580,4 +585,21 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public ExperimentRunOutcome Outcome { get; set; } = ExperimentRunOutcome.Inconclusive;
         public string? StatusUpdate { get; set; } // e.g. "Completed", "Active"
     }
+
+    public class UpdateGtmStrategyRequest
+    {
+        public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
+        public string? CustomOutreachMessage { get; set; }
+        public string? CustomCustomerGroup { get; set; }
+        public int? WeeklyHoursAvailable { get; set; }
+        public decimal? SpendableBudget { get; set; }
+        public int? TargetContacted { get; set; }
+        public int? TargetReplies { get; set; }
+        public int? TargetDemos { get; set; }
+        public int? TargetPurchases { get; set; }
+        public string? Status { get; set; } // e.g. "Active", "Draft", "Valid"
+    }
 }
+
+

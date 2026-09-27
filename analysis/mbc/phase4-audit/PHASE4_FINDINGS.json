@@ -1,0 +1,165 @@
+{
+  "audit": "MBC Creator Phase 4 Full-Stack Implementation Audit",
+  "generatedAt": "2026-09-26T17:50:00Z",
+  "resolvedAt": "2026-09-26T18:20:00Z",
+  "summary": {
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 2,
+    "total": 5
+  },
+  "resolvedSummary": {
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 2,
+    "total": 5
+  },
+  "stepStatus": {
+    "4.1": "Stable",
+    "4.2": "Stable",
+    "4.3": "Stable",
+    "4.4": "Stable",
+    "4.5": "Stable",
+    "4.6": "Stable"
+  },
+  "findings": [
+    {
+      "id": "P4-001",
+      "severity": "HIGH",
+      "step": "4.6",
+      "category": "API / Concurrency / Backend",
+      "title": "Missing expectedVersion Concurrency Contract in Step 4.6 Pricing Strategy",
+      "description": "POST /api/creator/phase4/pricing/generate, POST /api/creator/phase4/pricing/refresh, and PATCH /api/creator/phase4/pricing/{offerKey} do not accept an expectedVersion query parameter, do not populate HttpContext.Items[\"CreatorIdeaVersion\"], and do not publish the canonical X-Creator-Idea-Version response header. The frontend API client (src/lib/api-creator-pricing.ts) does not participate in optimistic concurrency caching.",
+      "evidence": [
+        "backend/Controllers/CreatorPhase4ConstructionController.cs:1345-1450",
+        "backend/Services/Implementations/PricingStrategyService.cs:94,131,156",
+        "src/lib/api-creator-pricing.ts:21-61"
+      ],
+      "impact": "Concurrent multi-tab edits or simultaneous generation requests risk silent overwrites without optimistic locking conflict detection (HTTP 409).",
+      "recommendedFix": "Add [FromQuery] long? expectedVersion = null to pricing endpoints, populate HttpContext.Items[\"CreatorIdeaVersion\"], emit Response.Headers[\"X-Creator-Idea-Version\"], and update api-creator-pricing.ts to use resolveExpectedVersion(), rememberIdeaVersion(), and setIdeaVersion().",
+      "files": [
+        "backend/Controllers/CreatorPhase4ConstructionController.cs",
+        "src/lib/api-creator-pricing.ts"
+      ],
+      "status": "FIXED",
+      "fixSummary": "Added [FromQuery] long? expectedVersion = null to all Pricing controller actions (GetPricing, GeneratePricing, RefreshPricing, UpdatePricingOffer) with optimistic locking conflict checks. Populated HttpContext.Items['CreatorIdeaVersion'] and X-Creator-Idea-Version response header. Set IdeaVersion on PricingStrategyResponse from journey.IdeaVersion in PricingStrategyService. Updated src/types/creator/pricing.ts and src/lib/api-creator-pricing.ts to cache, track, and send expectedVersion across all pricing API requests.",
+      "modifiedFiles": [
+        "backend/Models/DatabaseModels/Phase4/PricingPlanModels.cs",
+        "backend/Services/Implementations/PricingStrategyService.cs",
+        "backend/Controllers/CreatorPhase4ConstructionController.cs",
+        "src/types/creator/pricing.ts",
+        "src/lib/api-creator-pricing.ts"
+      ],
+      "testsAddedOrUpdated": [
+        "backend/tests/WebApp.Tests/Unit/CreatorPhase4PricingTests.cs",
+        "src/__tests__/creator/phase4-pricing-strategy.test.tsx"
+      ]
+    },
+    {
+      "id": "P4-002",
+      "severity": "MEDIUM",
+      "step": "4.5",
+      "category": "API / Concurrency / Backend",
+      "title": "Missing expectedVersion Concurrency Contract in Step 4.5 Aids & Grants",
+      "description": "POST /api/creator/phase4/support/generate, POST /api/creator/phase4/support/refresh, and PATCH /api/creator/phase4/support/{matchKey} do not validate expectedVersion or emit X-Creator-Idea-Version response headers, leading to inconsistent concurrency protection relative to Steps 4.1–4.4.",
+      "evidence": [
+        "backend/Controllers/CreatorPhase4ConstructionController.cs:1223-1339",
+        "src/lib/api-creator-support.ts:32-83"
+      ],
+      "impact": "Potential for stale state overrides when saving eligibility facts or support options during concurrent tab sessions.",
+      "recommendedFix": "Add expectedVersion query parameter and header publishing to Step 4.5 endpoints and API client.",
+      "files": [
+        "backend/Controllers/CreatorPhase4ConstructionController.cs",
+        "src/lib/api-creator-support.ts"
+      ],
+      "status": "FIXED",
+      "fixSummary": "Added [FromQuery] long? expectedVersion = null to GetSupportPlan, GenerateSupportPlan, RefreshSupportPlan, UpdateFounderSupportState, and AnswerEligibilityFact with optimistic concurrency validation. Attached HttpContext.Items['CreatorIdeaVersion'] and Response.Headers['X-Creator-Idea-Version']. Updated SupportPlanService to return IdeaVersion from journey.IdeaVersion. Updated src/types/creator/support.ts and src/lib/api-creator-support.ts to handle version resolution and caching.",
+      "modifiedFiles": [
+        "backend/Models/DatabaseModels/Phase4/SupportPlanModels.cs",
+        "backend/Services/Implementations/SupportPlanService.cs",
+        "backend/Controllers/CreatorPhase4ConstructionController.cs",
+        "src/types/creator/support.ts",
+        "src/lib/api-creator-support.ts"
+      ],
+      "testsAddedOrUpdated": [
+        "backend/tests/WebApp.Tests/Unit/CreatorPhase4SupportTests.cs",
+        "src/__tests__/creator/phase4-support-plan.test.tsx"
+      ]
+    },
+    {
+      "id": "P4-003",
+      "severity": "MEDIUM",
+      "step": "CROSS-PHASE",
+      "category": "API / Observability / Error Handling",
+      "title": "Inconsistent TraceIdentifier in Step 4.5 and 4.6 Controller Error Responses",
+      "description": "Catch blocks in Step 4.5 and Step 4.6 endpoints invoke ApiResponse.Error(ex.Message) without passing HttpContext.TraceIdentifier, whereas Steps 4.1–4.4 consistently pass the active trace identifier.",
+      "evidence": [
+        "backend/Controllers/CreatorPhase4ConstructionController.cs:1211,1324,1356,1404,1436"
+      ],
+      "impact": "Production client error logs cannot be correlated with backend APM server trace identifiers.",
+      "recommendedFix": "Pass HttpContext.TraceIdentifier as second argument to all ApiResponse.Error(...) calls in controller catch handlers.",
+      "files": [
+        "backend/Controllers/CreatorPhase4ConstructionController.cs"
+      ],
+      "status": "FIXED",
+      "fixSummary": "Updated all catch blocks and error paths across Step 4.5 Support Plan and Step 4.6 Pricing Strategy controller endpoints in CreatorPhase4ConstructionController.cs to pass HttpContext.TraceIdentifier in ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier).",
+      "modifiedFiles": [
+        "backend/Controllers/CreatorPhase4ConstructionController.cs"
+      ],
+      "testsAddedOrUpdated": [
+        "backend/tests/WebApp.Tests/Unit/CreatorPhase4SupportTests.cs",
+        "backend/tests/WebApp.Tests/Unit/CreatorPhase4PricingTests.cs"
+      ]
+    },
+    {
+      "id": "P4-004",
+      "severity": "LOW",
+      "step": "4.5",
+      "category": "Testing",
+      "title": "Unwrapped Asynchronous State Update Warning in Support Plan Unit Test",
+      "description": "Vitest test run emits non-fatal console warning 'An update to SupportPlanView inside a test was not wrapped in act(...)' during the inline location fact submission test case.",
+      "evidence": [
+        "src/__tests__/creator/phase4-support-plan.test.tsx:95"
+      ],
+      "impact": "Zero production runtime impact; test harness console noise.",
+      "recommendedFix": "Wrap the async fact dispatch in act(async () => { ... }) in phase4-support-plan.test.tsx.",
+      "files": [
+        "src/__tests__/creator/phase4-support-plan.test.tsx"
+      ],
+      "status": "FIXED",
+      "fixSummary": "Imported act from @testing-library/react and wrapped the async onAnswerFact dispatch in act(async () => { ... }) inside src/__tests__/creator/phase4-support-plan.test.tsx.",
+      "modifiedFiles": [
+        "src/__tests__/creator/phase4-support-plan.test.tsx"
+      ],
+      "testsAddedOrUpdated": [
+        "src/__tests__/creator/phase4-support-plan.test.tsx"
+      ]
+    },
+    {
+      "id": "P4-005",
+      "severity": "LOW",
+      "step": "4.5",
+      "category": "TypeScript / Types",
+      "title": "Implicit Generic Return Type on Support API Helper",
+      "description": "src/lib/api-creator-support.ts defines unwrap helper without explicit generic constraint annotations.",
+      "evidence": [
+        "src/lib/api-creator-support.ts:14-19"
+      ],
+      "impact": "Minor code style inconsistency.",
+      "recommendedFix": "Add explicit <T> generic constraint and return type annotation.",
+      "files": [
+        "src/lib/api-creator-support.ts"
+      ],
+      "status": "FIXED",
+      "fixSummary": "Added explicit generic signature async function unwrap<T>(promise: Promise<{ data?: T; success?: boolean; error?: string }>): Promise<T> in src/lib/api-creator-support.ts.",
+      "modifiedFiles": [
+        "src/lib/api-creator-support.ts"
+      ],
+      "testsAddedOrUpdated": [
+        "src/__tests__/creator/phase4-support-plan.test.tsx"
+      ]
+    }
+  ]
+}

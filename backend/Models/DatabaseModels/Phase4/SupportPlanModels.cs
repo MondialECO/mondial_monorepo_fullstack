@@ -461,11 +461,25 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public SupportPlanSummary Summary { get; set; } = new();
         public FounderProfileSummaryDto? FounderProfileSummary { get; set; }
         public PrerequisiteGateDto? PrerequisiteGate { get; set; }
+        public long IdeaVersion { get; set; }
+    }
+
+    public class GenerateSupportPlanRequest
+    {
+        public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
+    }
+
+    public class RefreshSupportPlanRequest
+    {
+        public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
     }
 
     public class UpdateFounderSupportStateRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
         public string ApplicationState { get; set; } = Phase4.FounderApplicationState.NotStarted;
         public string? FounderNotes { get; set; }
     }
@@ -473,6 +487,7 @@ namespace WebApp.Models.DatabaseModels.Phase4
     public class AnswerEligibilityFactRequest
     {
         public string? IdeaId { get; set; }
+        public long? ExpectedVersion { get; set; }
         public string FactKey { get; set; } = string.Empty;
         public string Value { get; set; } = string.Empty;
     }

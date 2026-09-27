@@ -256,3 +256,17 @@ export interface RecordExperimentRunRequest {
   outcome: ExperimentRunOutcome;
   statusUpdate?: string | null;
 }
+
+export interface UpdateGtmStrategyRequest {
+  ideaId?: string | null;
+  expectedVersion?: number | null;
+  customOutreachMessage?: string | null;
+  customCustomerGroup?: string | null;
+  weeklyHoursAvailable?: number | null;
+  spendableBudget?: number | null;
+  targetContacted?: number | null;
+  targetReplies?: number | null;
+  targetDemos?: number | null;
+  targetPurchases?: number | null;
+  status?: string | null;
+}

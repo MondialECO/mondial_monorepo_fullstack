@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-25 (Creator Phase 4.6 Pricing & Revenue Model Exact Figma 57221:12167 and Phase 4.7 GTM & Launch Strategy Exact Figma 57221:12464 Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-09-26 (Creator Phase 4.5 Aids, Grants & Public Support Exact Figma 57221:11932, Phase 4.6 Pricing & Revenue Model Exact Figma 57221:12167, and Phase 4.7 GTM & Launch Strategy Exact Figma 57221:12464 Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -1067,20 +1067,19 @@ CANONICAL PHASE 4 ARCHITECTURE (4.1 → 4.7 LIVE & FROZEN):
 7. **Phase 3 → Phase 4 Access Gate & HumainX Continuation (`Phase4ProfileGuard`):**
    - **Canonical Entry Sequence:**
      1. *Phase 3 Completion:* `state.journeyState.phase3.status === 'completed'` (incomplete $\to$ existing "Phase 3 Must Be Completed First" screen).
-     2. *Quick Start / Core Profile Readiness:* `completeness.phase4Ready` (missing core fields $\to$ Phase 4 Personalization checklist card).
-     3. *Full HumainX Profile Completion:* `completeness.profileCompletion >= 100`.
-        - If `profileCompletion < 100`: seamlessly resumes in existing HumainX Full Profile Builder (`/dashboard/creator/profile`) preserving all previous answers, binding to the same `ideaId`, and setting `returnTo` back to Phase 4 (`/dashboard/creator/phase-4?ideaId=<ideaId>`).
-        - If `profileCompletion >= 100`: unlocks and renders Phase 4 main flow (`ConstructionSnapshotView`).
+     2. *Core Profile Readiness:* `completeness.phase4Ready` (all 5 core dimensions: Skills, CurrentSituation, WeeklyAvailability, Region, ProgressPreference).
+        - If `phase4Ready === false`: displays the Phase 4 Personalization checklist card and links directly to `/dashboard/creator/humainx` to fill missing fields in one focused step.
+        - If `phase4Ready === true`: immediately unlocks and renders the Phase 4 main flow (`ConstructionSnapshotView`) without redundant secondary redirect loops or forcing repeated 10-step form entry.
    - **Canonical Authorities:**
      - Phase 3 Completion: `state.journeyState.phase3.status === 'completed'` via `useCreatorProgress()`.
      - Quick Start / Core Readiness: `completeness.phase4Ready` from `GET /api/profile/me/completeness`.
-     - Full HumainX Completion: `completeness.profileCompletion >= 100` from `GET /api/profile/me/completeness`.
      - Profile Completeness Backend Authority: `ProfileCompletenessResolver` via `GET /api/profile/me/completeness`.
      - HumainX Profile SSoT: `ProfessionalProfileRecord` in MongoDB (`ProfessionalProfiles` collection).
    - **Canonical Phase 4 API Client:**
      - Phase 4 client (`src/lib/api-creator-phase4.ts`) strictly uses the canonical Axios client (`api` from `@/lib/axios`) with relative endpoints (`/creator/phase4/...`), eliminating manual `NEXT_PUBLIC_API_URL` interpolation and duplicate `/api/api` path risks.
    - **Important Invariants:**
      - Phase 3 completion and HumainX profile readiness are strictly separate checks.
+     - `Phase4ProfileGuard` allows immediate Phase 4 access once `phase4Ready` is true, avoiding duplicate form-filling loops.
      - `Phase4ProfileGuard` no longer depends on deprecated `GET /api/creator/offer/readiness`.
      - UI layout, cards, styling, and copy remain completely frozen.
 
@@ -1360,9 +1359,7 @@ Stage 4.5 enforces a strict deterministic readiness gate via `SupportPlanService
    - Subtitle: *"This helps us check local support."*
    - MapPin icon input prefilled with recorded location fact (or city fallback).
    - `"Save location"` action dispatching `onAnswerFact('project_location', location)` to persist into `RecordedEligibilityFacts` and automatically trigger re-evaluation without modifying backend schemas.
-4. **Component 3: Metric Strip (Evaluated / Eligible / Potential / Missing / Ready / Tracking):**
-   - Quantitative counts for catalog schemes, authoritative matches, pending minor facts, requires input, MBC docs ready, and in-preparation founder tracking.
-5. **Component 4: Opportunity Cards List & Rich Inset Panels:**
+4. **Component 3: Opportunity Cards List & Rich Inset Panels (Figma 57221:11932):**
    - *Badges:* Category pill badge (`Advice & mentoring`, `Social Contribution Exemption`, `Grant`, `Allowance`, `InnovationSupport`, `Financing & Loan`, `Training support`, `EuropeanFunding`) + Status badge (`● A few details to check`, `● May fit your project`, `● Eligible to Apply`, `● Eligible (Statutory)`, `● Awarded`).
    - Card Headline, Value Subtitle, Description, and Official source provenance line (`Official details: {programmeOwner} via {catalogueSource}`).
    - Collapsed State Actions: `"Save this option"` (with toggleable bookmark icon) + `"View details ⌄"` chevron action.
@@ -1377,12 +1374,10 @@ Stage 4.5 enforces a strict deterministic readiness gate via `SupportPlanService
        - `OFFICIAL SOURCE`: Verified official authority links (`legifrance.gouv.fr`, `service-public.fr`, `urssaf.fr`, etc.) with `"Official portal verified ↗"`.
      - **Blue Callout Box (`BEFORE YOU APPLY`):** Info icon + *"When an official source is verified, you can prepare required documents and propose preparation tasks to your Operational Roadmap."*.
      - **Action Buttons Bar:** `"Check my details"`, `"Audit Details"` (opens Audit Provenance modal), `"Save this option"`, `"Track Application"`, and primary `"Open official website ↗"`.
-6. **Component 5: Quiet Journey Footer Navigation:**
+5. **Component 4: Quiet Journey Footer Navigation:**
    - Left: `"← Back to Skills & Training"` linking to Step 4.4 `/dashboard/creator/phase-4/skills?ideaId={ideaId}`.
    - Center: Reassurance text *"You can return to your saved support options later."*.
    - Right: Primary CTA `"Continue to Pricing & Revenue →"` linking to Step 4.6 `/dashboard/creator/phase-4/pricing?ideaId={ideaId}`.
-7. **Component 6: Milestone Banner:**
-   - Operational readiness banner (`"PHASE 4.6 READY · NEXT OPERATIONAL MILESTONE"`, `"Pricing & Revenue Model Engine"`, `"Build My Pricing Strategy →"`).
 
 #### Audit Details Modal
 Surfaces complete regulatory and computational provenance:
@@ -1436,30 +1431,56 @@ Surfaces complete regulatory and computational provenance:
 - **Multi-Signal Sales Motion:** Considers price, founder capacity, sales cycle, and buyer persona.
 - **Budget Provenance:** Distinguishes `ForecastCacAssumption`, `ObservedCac`, and `ValidatedCac`. If pricing is `NeedsValidation`, GTM enforces validation-first testing before paid scaling.
 - **Immutable Experiment Evidence:** Completed validation runs and evidence are never deleted during refreshes.
-- **Canonical UI Components (Figma 57221:12464):**
-  1. *Header & Motion Badge:* Eyebrow `PHASE 4 · STEP 4.7`, dynamic venture title, motion badge (`ConsultativePilot`, `ProductLed`, etc.), and `Refresh GTM` CTA.
-  2. *Top Provenance & Capacity Metric Cards (4 Cards):*
-     - *Weekly Founder Capacity:* `{allocated}h / {available}h`, band status, remaining weekly buffer.
-     - *Spendable Marketing Cash:* Spendable total, status (`Planned`, `ConfirmedAvailable`), budget source.
-     - *CAC Provenance:* Observed CAC vs Forecast CAC Assumption vs `Needs Baseline`.
-     - *Primary Launch Segment:* Segment title, selected unit price, and revenue model.
-  3. *Primary Launch Segment & Positioning:* Target Segment name, match relevance score, core problem, value proposition message angle, buying complexity, and sales cycle basis.
-  4. *Prioritized Acquisition Channels:* Channel cards with priority badges (`Primary`, `Secondary`, `Later`, `NotRecommended`), effort levels, estimated weekly hours, deterministic reason codes (`FOUNDER_CAPABILITY_MATCH`, `SALES_MOTION_MATCH`, etc.), why now, first step, and `Adjust Priority` modal.
-  5. *GTM Validation Experiments & Empirical Evidence Log:* Timeboxed hypotheses, budget caps, primary metric threshold status (`NeedsBaseline`, `EvidenceBased`), success/stop conditions, `Log Completed Run` modal, and expandable immutable run history.
-  6. *Standardized Measurement Contract:* Funnel stage matrix (Awareness, Discovery, Pilot, Conversion, Activation), metric names, formulas, data sources, and targets.
-  7. *Sequenced Launch Timeline & Phasing:* Phased milestones with timeframes, objectives, and exit criteria.
-  8. *Phase 4.8 Boundary Banner & Quiet Footer Navigation:* Phase 4.8 boundary card + `← Back to Step 4.6 Pricing Strategy` and `Review Construction Snapshot →`.
+- **Ten Canonical Figma UI Sections (Figma Node 57221:12464):**
+  1. *Section 1: Plan Summary Card (`YOUR LAUNCH PLAN`):* Eyebrow `"YOUR LAUNCH PLAN"`, `"Draft"` badge, project chip `"Project: {projectName}"`, overall motion heading, dynamic problem subtitle, 3 compact facts (`First customers`, `Main channel`, `Budget`), and next-action reminder line (`"Next launch action: Prepare customer conversations"`).
+  2. *Section 2: Your First Customers:* Target customer card with highlighted problem description, `Suggested` badge, decision-maker status (`Likely decision-maker: Business owner — To confirm`), expandable `Why this group?` explanation (grounded rationale, sales cycle basis, aligned revenue model), and `Adjust customer group` modal trigger.
+  3. *Section 3: What You'll Say:* `POSITIONING` badge with core value proposition, `INITIAL OUTREACH MESSAGE DRAFT` quote card with `Ready for testing` badge, copy action (`Copy message`), and `Edit message` modal.
+  4. *Section 4: How Customers Will Buy:* `Talk first, demonstrate when ready` strategy header, 3 decision cards (`WHO DECIDES?`, `WHAT NEEDS EXPLAINING?`, `WHAT COULD BUILD TRUST?`), stage progression preview (`Now: Customer conversations` → `Later: Product demo`), and small pricing reference card (`Review pricing →`).
+  5. *Section 5: Where To Reach Them:* Primary channel card with `Main channel` badge, description, 3 structured details (`WHY START HERE?`, `WHAT YOU’LL DO`, `WHAT NEEDS CHECKING`), and `Change channel` modal.
+  6. *Section 6: What You Can Commit:* 2-column capacity breakdown for `PROJECT TIME` (weekly available/allocated hours, capacity band, `Review available time` modal) and `MARKETING BUDGET` (validation status, budget source, spendable status, `Set budget` modal).
+  7. *Section 7: Your Launch Actions:* Action 1 expanded with 4-quadrant breakdown (`What to do`, `Expected output`, `Why it matters`, `Time & Capacity`) + roadmap task link; Actions 2–4 compact with condition locks (`Needs a usable product demo`, `Needs launch assets`, `Needs recorded activity`).
+  8. *Section 8: What To Track:* Funnel measure table (`Businesses contacted`, `Replies received`, `Demo requests`, `Purchases` with target vs actual columns calculated dynamically from `experiments.runs.metricsObserved`), empty state note, and modal triggers (`Set targets`, `Record results`).
+  9. *Section 9: Connection To Launch Assets:* `NEXT STEP PREVIEW` eyebrow, 3 mini preview pills (`For: {segment}`, `Message: {message}`, `Proposed CTA: Express interest`), and launch asset boundary notice.
+  10. *Section 10: Journey Footer:* Left `← Back to Pricing`, reassurance label, and primary CTA `Activate plan & continue` with `Next: Launch Assets`.
+- **Interactive Modals:**
+  - *Edit Message Modal:* Customizes initial outreach introductory draft.
+  - *Adjust Customer Group Modal:* Modifies target customer segment problem description.
+  - *Change Channel Modal:* Allows switching primary acquisition channel priority.
+  - *Set Budget & Time Modal:* Configures weekly project hours and spendable marketing budget.
+  - *Set Targets Modal:* Configures numerical goals for funnel tracking.
+  - *Record Results Modal:* Records actual spend, invested effort, observations, and validation outcome for empirical runs.
 - **Verification Evidence:**
   - Automated Unit Tests: 6 / 6 PASS (`src/__tests__/creator/phase4-gtm-strategy.test.tsx`).
   - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
   - Backend Tests (C#): 179 / 179 PASS (`WebApp.Tests.dll`).
+  - TypeScript Typecheck: 0 errors (`tsc --noEmit`).
   - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
 
 
-### 6.8 Stage 4.8 — Launch Assets (Next Approved Stage)
-- **Approved Direction:** **One-Page Professional Launch Website** (responsive, branded, component-based, section families: Hero, Problem, Solution, Features, How It Works, Offer/Pricing, Social Proof, FAQ, Final CTA).
-- **Storage Decision:** Active configuration in `CreatorJourney.Phase4Data.LaunchAssets`. Historical generated revisions stored in dedicated `LaunchAssetVersions` to avoid unbounded MongoDB documents.
-- **Current Status:** **APPROVED ARCHITECTURE / NOT PART OF CURRENT COMMIT**.
+### 6.8 Stage 4.8 — Launch Assets (One-Page Launch Website)
+- **Approved Direction & Canonical Specification:**
+  - **Figma Source of Truth:** `https://www.figma.com/design/yLDPLB9hIAIqfYY9uHuJom/Mondial-Dashboard-EDU?node-id=57221-12861&m=dev` (Node `57221:12861`).
+  - **Component Structure (6 Canonical Sections):**
+    1. *Section 1: Compact Asset Summary Card:* Project Name, `/ ONE-PAGE WEBSITE`, `Draft` badge, `v1.0-rc` badge, description, status badge (`Available to view in MBC. Not published.`), 3 primary actions (`View website` modal, `Download source` static bundle exporter, `Use this version`), and Version meta footer (`Current draft: Version {n}`, `Create a new version` trigger).
+    2. *Section 2: Source Strip & Attention Notice Card:* Built From strip (`Your Brand Kit`, `Project information`, `Chosen offer`, `Launch strategy`) and Amber Attention Notice (`Add a destination for your main button` with `Set button destination` action).
+    3. *Section 3: Website Preview Controls & Responsive Device Frame:* Viewport selector toggle (`Desktop` vs `Mobile`), clean honest preview envelope containing:
+       - *Top Bar & Hero:* Brand name, `In preparation` badge, Headline, Description, `Express interest` CTA, `Interactive link disabled in preview` badge.
+       - *Planned Workflow Visual Container:* 3 clean step cards (`1. Enquiry` - Unified intake, `2. Quotation` - Context continuity, `3. Follow-up` - Next step clarity).
+       - *Section B (Problem Statement):* Eyebrow `KEEP TRACK OF THE NEXT STEP`, problem statement, divider, operational momentum statement.
+       - *Section C (Planned Solution):* `What’s being planned` + 3 cards (`Enquiries together`, `Quotations in view`, `Follow-ups to remember`).
+       - *Section D (How It Is Intended To Work):* `A simpler flow for your work` + 3 numbered workflow steps (`Organise the enquiry`, `Prepare and track the quotation`, `Follow up on the next action`).
+       - *Section E (FAQ):* `Frequently Asked Questions` + 3 honest Q&A cards (`Can I use {projectName} today?`, `Who is it being designed for?`, `When will it launch?`).
+       - *Section F (Final Call to Action):* `Share how you work today` + `Express interest` button with destination warning note.
+       - *Section G (Footer):* Project name + `Project in preparation`.
+    4. *Section 4: Simple Content Editing Card:* Headline input, Description textarea, Button label input, Button destination radio choice (`Email address` vs `Existing link`) with destination input, `Apply changes` action, and `Suggest new wording` AI copy generator.
+    5. *Section 5: Website Sections Card:* 7 Included sections (`Hero`, `Problem`, `Planned solution`, `How it works`, `FAQ`, `Final call to action`, `Footer`) with inline `Edit` navigation; 2 Excluded sections (`Pricing` with link to Step 4.6 and `Testimonials and customer proof` with link to Proof).
+    6. *Section 6: Footer Actions & Progression:* `← Back to Launch Strategy` and `Continue to Construction Readiness →`.
+- **Storage Decision:** Active configuration in `CreatorJourney.Phase4Data.LaunchAssets` with deterministic versioning.
+- **Verification Evidence:**
+  - Automated Unit Tests: 9 / 9 PASS (`src/__tests__/creator/phase4-launch-assets.test.tsx`).
+  - Full Creator Vitest Suite: 159 / 159 PASS across 13 test files.
+  - TypeScript Compilation: `npx tsc --noEmit` 0 errors.
+- **Current Status:** **LIVE & FULLY IMPLEMENTED (MATCHING FIGMA NODE 57221:12861)**.
 
 ### 6.9 Stage 4.9 — Construction Readiness
 - Final deterministic assessment synthesizing all 8 stages into launch certification.
@@ -1502,7 +1523,7 @@ Legacy compatibility surfaces:
 Retained intentionally where needed for backward compatibility (1 BSON field, 1 command adapter, 2 HTTP endpoints)
 
 Phase 4.8:
-NOT IMPLEMENTED (Next approved stage)
+LaunchAssets (Live, deterministic, matching Figma Node 57221:12861)
 
 Phase 4.9:
 RESERVED (Construction readiness)
@@ -1852,26 +1873,50 @@ RC1 Freeze
   - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
   - Live Browser E2E: Playwright verified 1440px desktop, 1920px widescreen, and live database strategy generation with 0 DOM errors, 0 layout overflows, and responsive scaling.
 **2026-09-25 — Creator Phase 4.7 GTM & Launch Strategy: Exact Figma 57221-12464 Alignment, Deterministic Prioritization, Capacity Guardrails & Verification Delivery.**
+**2026-09-26 — Creator Phase 4.7 GTM & Launch Strategy: Exact Figma 57221:12464 10-Section Redesign, Outreach Draft & Interactive Decision Modals.**
 - **Figma Reference & Layout (§6.7):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:12464` "GTM & Launch Strategy · Step 4.7"). 1120px max content width (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with strict semantic token compliance (`globals.css`).
 - **Canonical Route:** `/dashboard/creator/phase-4/gtm`
-- **Canonical UI Components:**
-  1. *Header & Motion Badge:* Eyebrow `"PHASE 4 · STEP 4.7"`, Title `"{projectName} Go-To-Market Strategy"`, Subtitle `"Deterministic channel prioritization grounded in founder availability, offer economics, and empirical validation gates."`.
-  2. *Top Provenance & Capacity Metric Cards (4 Cards):* Weekly founder capacity (`{allocated}h / {available}h`, band, buffer), spendable marketing cash, CAC provenance (`Observed` vs `Assumed` vs `Needs Baseline`), and primary launch segment.
-  3. *Primary Launch Segment & Positioning:* Target Segment name, match relevance score, core problem, value proposition message angle, buying complexity, and sales cycle basis.
-  4. *Prioritized Acquisition Channels:* Channel cards with priority badges (`Primary`, `Secondary`, `Later`, `NotRecommended`), effort levels, estimated weekly hours, deterministic reason codes (`FOUNDER_CAPABILITY_MATCH`, `SALES_MOTION_MATCH`, etc.), why now, first step, and `Adjust Priority` modal.
-  5. *GTM Validation Experiments & Empirical Evidence Log:* Timeboxed hypotheses, budget caps, primary metric threshold status (`NeedsBaseline`, `EvidenceBased`), success/stop conditions, `Log Completed Run` modal, and expandable immutable run history.
-  6. *Standardized Measurement Contract:* Funnel stage matrix (Awareness, Discovery, Pilot, Conversion, Activation), metric names, formulas, data sources, and targets.
-  7. *Sequenced Launch Timeline & Phasing:* Phased milestones with timeframes, objectives, and exit criteria.
-  8. *Phase 4.8 Boundary Banner & Quiet Footer Navigation:* Phase 4.8 boundary card + `← Back to Step 4.6 Pricing Strategy` and `Review Construction Snapshot →`.
+- **Ten Canonical Figma UI Sections:**
+  1. *Section 1: Plan Summary Card:* Eyebrow `"YOUR LAUNCH PLAN"`, `"Draft"` badge, project chip `"Project: {projectName}"`, overall motion heading, subtitle, 3 compact facts (`First customers`, `Main channel`, `Budget`), and next-action reminder line.
+  2. *Section 2: Your First Customers:* Target customer card with highlighted problem description, `Suggested` badge, decision-maker status (`Likely decision-maker: Business owner — To confirm`), expandable `Why this group?` explanation, and `Adjust customer group` modal trigger.
+  3. *Section 3: What You'll Say:* `POSITIONING` badge with core value proposition, `INITIAL OUTREACH MESSAGE DRAFT` quote card with `Ready for testing` badge, copy action (`Copy message`), and `Edit message` modal.
+  4. *Section 4: How Customers Will Buy:* `Talk first, demonstrate when ready` header, 3 decision cards (`WHO DECIDES?`, `WHAT NEEDS EXPLAINING?`, `WHAT COULD BUILD TRUST?`), stage progression preview (`Now: Customer conversations` → `Later: Product demo`), and small pricing reference card (`Review pricing →`).
+  5. *Section 5: Where To Reach Them:* Primary channel card with `Main channel` badge, description, 3 structured details (`WHY START HERE?`, `WHAT YOU’LL DO`, `WHAT NEEDS CHECKING`), and `Change channel` modal.
+  6. *Section 6: What You Can Commit:* 2-column capacity breakdown for `PROJECT TIME` (`Review available time` modal) and `MARKETING BUDGET` (`Set budget` modal).
+  7. *Section 7: Your Launch Actions:* Action 1 expanded with 4-quadrant breakdown (`What to do`, `Expected output`, `Why it matters`, `Time & Capacity`) + roadmap task link; Actions 2–4 compact with condition locks (`Needs a usable product demo`, `Needs launch assets`, `Needs recorded activity`).
+  8. *Section 8: What To Track:* Funnel measure table (`Businesses contacted`, `Replies received`, `Demo requests`, `Purchases` with target vs actual columns), empty state note, and modal triggers (`Set targets`, `Record results`).
+  9. *Section 9: Connection To Launch Assets:* `NEXT STEP PREVIEW` eyebrow, 3 mini preview pills (`For: {segment}`, `Message: {message}`, `Proposed CTA: Express interest`), and launch asset boundary notice.
+  10. *Section 10: Journey Footer:* Left `← Back to Pricing`, reassurance label, and primary CTA `Activate plan & continue` with `Next: Launch Assets`.
 - **Verification Evidence:**
   - Automated Unit Tests: 6 / 6 PASS (`src/__tests__/creator/phase4-gtm-strategy.test.tsx`).
   - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
   - Backend Tests (C#): 179 / 179 PASS (`WebApp.Tests.dll`).
-  - TypeScript Compilation: `npx tsc --noEmit` 0 errors (Exit 0).
+  - TypeScript Typecheck: 0 errors (`tsc --noEmit`).
+**2026-09-26 — Creator Phase 4.6 Pricing Strategy: Exact Figma 57221:12167 8-Section Redesign, Multi-Idea Atomic Persistence & Gate Resolution.**
+- **Figma Reference & Layout (§6.6):** 100% verified against approved Figma design (File key `yLDPLB9hIAIqfYY9uHuJom`, Frame `57221:12167` "Pricing & Revenue Model · Step 4.6"). Max content width 1120px (`max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6`), responsive across 1440px desktop, 1920px widescreen, and 375px mobile viewports with full dark/light semantic design token compliance.
+- **Canonical Route:** `/dashboard/creator/phase-4/pricing`
+- **Eight Canonical Figma UI Sections:**
+  1. *Section 1: Compact Pricing Summary:* `YOUR CHOSEN PRICE`, large price display (`€{chosenPrice} per business / month`), billing mode badge, validation status badge (`Empirically Validated` / `Needs Validation`), and reassurance text.
+  2. *Section 2: How you'll charge:* Inset packaging card with `Suggested` badge, `Change model` trigger, 2-column breakdown of deliverables, usage limits, and support inclusions.
+  3. *Section 3: Price comparison & choice:* Split comparison between MBC algorithm `SUGGESTED PRICE` and interactive `YOUR CHOSEN PRICE` input with currency prefix and tax basis indicator.
+  4. *Section 4: Why this suggestion?:* Analytical breakdown of value drivers, target customer profile, and cost assumptions with expandable technical ledger.
+  5. *Section 5: What could you earn?:* Interactive Scenario Simulator with paying business input, real-time monthly revenue formula, and cost caveat alerts.
+  6. *Section 6: Check your price:* Status badge, empty state alert, validation matrix (Market reference, Feedback, Interest, Preorder), and live entry modals (`Add feedback`, `Add a sale or paid preorder`).
+  7. *Section 7: Next action:* `Test your starting offer` action card linking to operational roadmap task.
+  8. *Section 8: Quiet Journey Footer Navigation:* Left `"← Back to Aids & Support"`, reassurance label, and smart primary CTA `"Save & Continue →"` that persists changes, re-evaluates freshness, and transitions directly to Step 4.7 GTM Strategy.
+- **Multi-Idea Persistence & Gate Integration:**
+  - Persists Step 4.6 outputs atomically into active `CreatorIdea` via `WriteIdeaAsync(idea, ...)` in `CreatorJourneyService.cs`, eliminating multi-idea overlay wipeouts.
+  - Resolves circular `ProjectUpdatedAt` staleness checks in `PricingStrategyService.cs`, unblocking Phase 4.7 prerequisite validation seamlessly.
+- **Verification Evidence:**
+  - Automated Unit Tests: 11 / 11 PASS (`src/__tests__/creator/phase4-pricing-strategy.test.tsx`).
+  - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
+  - Backend Tests (C#): 268 / 268 PASS (`WebApp.Tests.dll --filter Phase4`).
+  - Next.js Production Build: 100% clean compilation of all Creator Phase 4 routes.
 
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
+
 
 
 

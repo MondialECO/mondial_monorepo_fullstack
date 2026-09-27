@@ -147,6 +147,20 @@ function GtmPageContent({ ideaId }: { ideaId: string }) {
     }
   };
 
+  const handleUpdateStrategy = async (req: any) => {
+    if (!effectiveIdeaId) return;
+    try {
+      const res = await import('@/lib/api-creator-gtm').then((m) =>
+        m.updateGtmStrategy(req, effectiveIdeaId)
+      );
+      setData(res);
+      await refetch(effectiveIdeaId);
+    } catch (err: any) {
+      setError(err.message || "Couldn't update GTM strategy.");
+      throw err;
+    }
+  };
+
   const handleRecordExperimentRun = async (experimentKey: string, req: RecordExperimentRunRequest) => {
     if (!effectiveIdeaId) return;
     try {
@@ -200,6 +214,7 @@ function GtmPageContent({ ideaId }: { ideaId: string }) {
         onGenerate={handleGenerate}
         onRefresh={handleRefresh}
         onUpdateChannel={handleUpdateChannel}
+        onUpdateStrategy={handleUpdateStrategy}
         onRecordExperimentRun={handleRecordExperimentRun}
       />
     </div>

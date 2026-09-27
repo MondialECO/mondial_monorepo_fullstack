@@ -1,0 +1,19 @@
+using System.Threading.Tasks;
+using WebApp.Models.DatabaseModels.Phase4;
+
+namespace WebApp.Services.Interface
+{
+    public interface ILaunchAssetsService
+    {
+        Task<LaunchAssetsResponse> GetLaunchAssetsAsync(string userId, string? ideaId = null);
+        Task<LaunchAssetsResponse> GenerateLaunchAssetsAsync(string userId, string? ideaId = null);
+        Task<LaunchAssetsResponse> RefreshLaunchAssetsAsync(string userId, string? ideaId = null);
+        Task<LaunchAssetsResponse> UpdateLaunchAssetsAsync(string userId, UpdateLaunchAssetsRequest request);
+        Task<LaunchAssetsResponse> CreateNewVersionAsync(string userId, string? ideaId = null);
+        Task<LaunchAssetsResponse> SelectVersionAsync(string userId, string? ideaId = null, int? versionNumber = null);
+        Task<string> GetSourceCodeBundleAsync(string userId, string? ideaId = null, int? versionNumber = null);
+        Task<ShareLaunchAssetResponse> ShareLaunchAssetsAsync(string userId, string? ideaId = null, int? versionNumber = null);
+        Task<PublicLaunchAssetResponse> GetPublicLaunchAssetAsync(string shareToken);
+        Task<string> GetPublicSourceCodeBundleAsync(string shareToken);
+    }
+}

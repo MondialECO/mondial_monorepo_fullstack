@@ -511,6 +511,7 @@ namespace WebApp.Tests.Unit
         private readonly Mock<ISupportPlanService> _supportMock = new();
         private readonly Mock<IPricingStrategyService> _pricingMock = new();
         private readonly Mock<IGtmStrategyService> _gtmMock = new();
+        private readonly Mock<ILaunchAssetsService> _assetsMock = new();
 
         private CreatorPhase4ConstructionController CreateController()
         {
@@ -521,7 +522,8 @@ namespace WebApp.Tests.Unit
                 _skillsMock.Object,
                 _supportMock.Object,
                 _pricingMock.Object,
-                _gtmMock.Object
+                _gtmMock.Object,
+                _assetsMock.Object
             );
 
             controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext

@@ -46,21 +46,8 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
   // Gate 1: Phase 3 completion
   const isPhase3Done = state.journeyState.phase3.status === 'completed';
 
-  // Gate 2: Quick Start / core profile readiness
+  // Gate 2: Core HumainX profile readiness for Phase 4 (Skills, Situation, Availability, Region, Preferences)
   const isProfileReady = completeness?.phase4Ready ?? false;
-
-  // Gate 3: Full HumainX completion check
-  const isHumainXComplete = (completeness?.profileCompletion ?? 0) >= 100;
-
-  useEffect(() => {
-    if (!isLoading && isPhase3Done && isProfileReady && !isHumainXComplete) {
-      const returnToUrl = `/dashboard/creator/phase-4${activeIdeaId ? `?ideaId=${encodeURIComponent(activeIdeaId)}` : ''}`;
-      const profileUrl = `/dashboard/creator/profile?returnTo=${encodeURIComponent(returnToUrl)}${
-        activeIdeaId ? `&ideaId=${encodeURIComponent(activeIdeaId)}` : ''
-      }`;
-      router.replace(profileUrl);
-    }
-  }, [isLoading, isPhase3Done, isProfileReady, isHumainXComplete, activeIdeaId, router]);
 
   if (isLoading) {
     return (
@@ -177,20 +164,6 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
             </Button>
           </div>
         </Card>
-      </div>
-    );
-  }
-
-  // Gate 3: Full HumainX completion (renders skeleton while useEffect redirects to profile builder)
-  if (!isHumainXComplete) {
-    return (
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        <Skeleton className="h-8 w-64 rounded-xl" />
-        <Skeleton className="h-4 w-96 rounded-lg" />
-        <div className="grid gap-4 sm:grid-cols-2 pt-4">
-          <Skeleton className="h-32 rounded-2xl" />
-          <Skeleton className="h-32 rounded-2xl" />
-        </div>
       </div>
     );
   }

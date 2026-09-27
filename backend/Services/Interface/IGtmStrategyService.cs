@@ -9,6 +9,7 @@ namespace WebApp.Services.Interface
         Task<GtmStrategyResponse> GenerateGtmStrategyAsync(string userId, string? ideaId = null);
         Task<GtmStrategyResponse> RefreshGtmStrategyAsync(string userId, string? ideaId = null);
         Task<GtmStrategyResponse> UpdateGtmChannelAsync(string userId, string channelKey, UpdateGtmChannelRequest request);
+        Task<GtmStrategyResponse> UpdateGtmStrategyAsync(string userId, UpdateGtmStrategyRequest request);
         Task<GtmStrategyResponse> RecordExperimentRunAsync(string userId, string experimentKey, RecordExperimentRunRequest request);
     }
 }

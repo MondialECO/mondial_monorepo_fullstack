@@ -320,6 +320,10 @@ namespace WebApp.Services.Implementations
             if (http != null)
             {
                 var submittedIdeaId = http.Request.Query["ideaId"].ToString();
+                if (string.IsNullOrWhiteSpace(submittedIdeaId) && http.Items.TryGetValue("CreatorIdeaId", out var itemIdeaId) && itemIdeaId is string sid && !string.IsNullOrWhiteSpace(sid))
+                {
+                    submittedIdeaId = sid;
+                }
                 if (string.IsNullOrWhiteSpace(submittedIdeaId))
                     throw new CreatorJourneyException(400, "ideaId is required for Creator changes.");
                 if (!string.Equals(submittedIdeaId, idea.Id, StringComparison.Ordinal))
@@ -1419,45 +1423,56 @@ namespace WebApp.Services.Implementations
         public async Task<CreatorJourney> SetPhase4SupportPlanAsync(string userId, Models.DatabaseModels.Phase4.SupportPlan supportPlan, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var p4 = j.Phase4Data ??= new CreatorPhase4Data();
             p4.SupportPlan = supportPlan;
 
-            // Single source of truth: Persisted on CreatorJourney, NO dual write to CreatorIdea
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update
-                    .Set(x => x.Phase4Data.SupportPlan, supportPlan)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase4Data.SupportPlan, supportPlan));
+            j.IdeaVersion = idea.Version;
             return j;
         }
 
         public async Task<CreatorJourney> SetPhase4PricingStrategyAsync(string userId, Models.DatabaseModels.Phase4.PricingStrategy pricingStrategy, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var p4 = j.Phase4Data ??= new CreatorPhase4Data();
             p4.PricingStrategy = pricingStrategy;
 
-            // Single source of truth: Persisted on CreatorJourney, NO dual write to CreatorIdea
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update
-                    .Set(x => x.Phase4Data.PricingStrategy, pricingStrategy)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase4Data.PricingStrategy, pricingStrategy));
+            j.IdeaVersion = idea.Version;
             return j;
         }
 
         public async Task<CreatorJourney> SetPhase4GtmStrategyAsync(string userId, Models.DatabaseModels.Phase4.GtmStrategy gtmStrategy, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
             var p4 = j.Phase4Data ??= new CreatorPhase4Data();
             p4.GtmStrategy = gtmStrategy;
 
-            // Single source of truth: Persisted on CreatorJourney, NO dual write to CreatorIdea
-            await _context.CreatorJourneys.UpdateOneAsync(
-                f => f.Id == j.Id,
-                Builders<CreatorJourney>.Update
-                    .Set(x => x.Phase4Data.GtmStrategy, gtmStrategy)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase4Data.GtmStrategy, gtmStrategy));
+            j.IdeaVersion = idea.Version;
+            return j;
+        }
+
+        public async Task<CreatorJourney> SetPhase4LaunchAssetsAsync(string userId, Models.DatabaseModels.Phase4.LaunchAssetsPlan launchAssets, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+            var p4 = j.Phase4Data ??= new CreatorPhase4Data();
+            p4.LaunchAssets = launchAssets;
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase4Data.LaunchAssets, launchAssets));
+            j.IdeaVersion = idea.Version;
             return j;
         }
 

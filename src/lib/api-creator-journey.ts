@@ -240,10 +240,10 @@ export const creatorJourneyApi = {
     return unwrap<LegalComplianceOverview>(res.data);
   },
 
-  evaluateLegalCompliance: async (ideaId?: string | null): Promise<LegalComplianceOverview> => {
+  evaluateLegalCompliance: async (ideaId?: string | null): Promise<CreatorLegalAssessmentDto> => {
     const res = await api.post('/creator/legal-compliance/evaluate', {}, withIdeaWrite(ideaId));
     rememberIdeaVersion(res, ideaId);
-    return unwrap<LegalComplianceOverview>(res.data);
+    return unwrap<CreatorLegalAssessmentDto>(res.data);
   },
 
   updateLegalItemStatus: async (itemId: string, status: ChecklistStatus, ideaId?: string | null): Promise<{ itemId: string; status: ChecklistStatus; planningReadinessPct: number }> => {
