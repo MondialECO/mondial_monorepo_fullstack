@@ -1,0 +1,211 @@
+{
+  "auditMetadata": {
+    "title": "MBC Creator Phase 4 Full End-to-End Construction & Launch Preparation Audit",
+    "date": "2026-09-27",
+    "gitBranch": "dev-hafiz",
+    "gitHeadSha": "1e03c9a6b73030f71b5c7abfbe460af2cedc6fe5",
+    "applicationSourceState": "Corrected (Minimal Phase 4.6 pricing-evidence classification applied)",
+    "auditArtifactsState": "Reconciled and updated against authoritative source",
+    "phaseScope": "Step 4.1 through Step 4.9 (Creator Journey Phase 1 to Phase 5 scope)",
+    "verdict": "Verified within tested scope — zero blocking application defects; pricing evidence classification corrected"
+  },
+  "summary": {
+    "totalStepsAudited": 9,
+    "totalControllerActions": 47,
+    "authenticatedEndpoints": 45,
+    "anonymousEndpoints": 2,
+    "backendTestsPassed": 243,
+    "backendTestsTotal": 243,
+    "frontendPhase4TestsPassed": 95,
+    "frontendPhase4TestsTotal": 95,
+    "frontendFullCreatorTestsPassed": 178,
+    "frontendFullCreatorTestsTotal": 178,
+    "typescriptErrors": 0
+  },
+  "stepAudits": [
+    {
+      "step": "4.1",
+      "name": "Construction Snapshot",
+      "canonicalRoute": "/dashboard/creator/phase-4",
+      "figmaNode": "Not verified (canonical root reference without explicit node ID)",
+      "controller": "CreatorPhase4ConstructionController",
+      "controllerFile": "backend/Controllers/CreatorPhase4ConstructionController.cs:60-217",
+      "service": "ConstructionSnapshotService",
+      "persistence": "CreatorJourney.Phase4Data.Snapshot",
+      "verdict": "Verified within tested scope",
+      "keyFindings": "Reads actual project needs, resources, and evidence; does not introduce competing numeric scores; explains findings through source lineage."
+    },
+    {
+      "step": "4.2",
+      "name": "Operational Roadmap",
+      "canonicalRoute": "/dashboard/creator/phase-4/roadmap",
+      "figmaNode": "57221:10450",
+      "controller": "CreatorPhase4ConstructionController",
+      "controllerFile": "backend/Controllers/CreatorPhase4ConstructionController.cs:220-614",
+      "service": "OperationalRoadmapService",
+      "persistence": "CreatorJourney.Phase4Data.Roadmap",
+      "verdict": "Verified within tested scope",
+      "keyFindings": "Enforces 6 canonical persisted stages (NOW, NEXT_30_DAYS, DAYS_30_TO_60, DAYS_60_TO_90, BEFORE_LAUNCH, POST_LAUNCH) matching OperationalRoadmapModels.cs and STAGE_CONFIG; preserves task IDs, completion states, and effort estimates across regeneration; handles dependencies without fabricated delivery dates."
+    },
+    {
+      "step": "4.3",
+      "name": "Needs & Requirements",
+      "canonicalRoute": "/dashboard/creator/phase-4/needs",
+      "figmaNode": "57221:11163",
+      "controller": "CreatorPhase4ConstructionController",
+      "controllerFile": "backend/Controllers/CreatorPhase4ConstructionController.cs:630-915",
+      "service": "NeedsAnalysisService",
+      "persistence": "CreatorJourney.Phase4Data.NeedsAnalysis",
+      "verdict": "Verified within tested scope",
+      "keyFindings": "Distinguishes system findings from founder decisions (Confirmed/Deferred); optional requirements do not act as universal blockers."
+    },
+    {
+      "step": "4.4",
+      "name": "Skills & Training",
+      "canonicalRoute": "/dashboard/creator/phase-4/skills",
+      "figmaNode": "57221:11470",
+      "controller": "CreatorPhase4ConstructionController",
+      "controllerFile": "backend/Controllers/CreatorPhase4ConstructionController.cs:918-1196",
+      "service": "SkillsResolutionService",
+      "persistence": "CreatorJourney.Phase4Data.SkillsPlan",
+      "verdict": "Verified within tested scope",
+      "keyFindings": "Separates Learn/Delegate/Verify recommendations from founder decisions; enforces delegation as an unresolved delivery dependency until hired/delivered."
+    },
+    {
+      "step": "4.5",
+      "name": "Aids, Grants & Support",
+      "canonicalRoute": "/dashboard/creator/phase-4/support",
+      "figmaNode": "57221:11932",
+      "controller": "CreatorPhase4ConstructionController",
+      "controllerFile": "backend/Controllers/CreatorPhase4ConstructionController.cs:1212-1425",
+      "service": "SupportPlanService",
+      "persistence": "CreatorJourney.Phase4Data.SupportPlan",
+      "verdict": "Verified within tested scope",
+      "keyFindings": "Distinguishes 'Eligible to apply' from awarded capital; potential support is not added to spendable budget."
+    },
+    {
+      "step": "4.6",
+      "name": "Pricing & Revenue Model",
+      "canonicalRoute": "/dashboard/creator/phase-4/pricing",
+      "figmaNode": "57221:12167",
+      "controller": "CreatorPhase4ConstructionController",
+      "controllerFile": "backend/Controllers/CreatorPhase4ConstructionController.cs:1441-1621",
+      "service": "PricingStrategyService",
+      "persistence": "CreatorJourney.Phase4Data.PricingStrategy",
+      "verdict": "Verified within tested scope",
+      "keyFindings": "Consistently models 4 distinct pricing fields (RecommendedPrice, FounderPrice, MarketReferencePrice, ValidatedMarketPrice) plus effective Price; PricingPolicyEngine treats only confirmed paid sales/pilots (HistoricalSale, PaidPilot) with confirmed Price > 0 and EmpiricallyValidated level as empirical proof of market price; quote accepted and preorders without proof of payment act as reference/indicative evidence; founder-reported paid sales/preorders remain Supported with IsFounderReported=true; filtering precedes record selection so an invalid first record cannot hide later qualifying evidence."
+    },
+    {
+      "step": "4.7",
+      "name": "GTM & Launch Strategy",
+      "canonicalRoute": "/dashboard/creator/phase-4/gtm",
+      "figmaNode": "57221:12464",
+      "controller": "CreatorPhase4ConstructionController",
+      "controllerFile": "backend/Controllers/CreatorPhase4ConstructionController.cs:1637-1948",
+      "service": "GtmStrategyService",
+      "persistence": "CreatorJourney.Phase4Data.GtmStrategy",
+      "verdict": "Verified within tested scope",
+      "keyFindings": "Sales motion adapts to buyer complexity; activation executes via PATCH /api/creator/phase4/gtm setting Status='Active', PlanActivated='true', and ActivatedAt timestamp; preserves founder overrides and budget status (Unknown vs Confirmed Zero)."
+    },
+    {
+      "step": "4.8",
+      "name": "Launch Assets",
+      "canonicalRoute": "/dashboard/creator/phase-4/launch-assets",
+      "aliasRoute": "/dashboard/creator/phase-4/assets",
+      "apiRoutePrefix": "/api/creator/phase4/assets",
+      "figmaNode": "57221:12861",
+      "controller": "CreatorPhase4ConstructionController",
+      "controllerFile": "backend/Controllers/CreatorPhase4ConstructionController.cs:1964-2417",
+      "service": "LaunchAssetsService",
+      "persistence": "CreatorJourney.Phase4Data.LaunchAssets",
+      "verdict": "Verified within tested scope",
+      "keyFindings": "Synthesizes BrandKit/Pricing/GTM; Sections['pricing'].IsIncluded is authoritative; immutable public share snapshots via GET /api/creator/phase4/assets/public/{shareToken} ([AllowAnonymous]); source export produces standalone HTML with embedded styles and logo assets; external Google Fonts require internet access, with fallback fonts available."
+    },
+    {
+      "step": "4.9",
+      "name": "Construction Readiness",
+      "canonicalRoute": "/dashboard/creator/phase-4/readiness",
+      "figmaNode": "57221:13332",
+      "controller": "CreatorPhase4ConstructionController",
+      "controllerFile": "backend/Controllers/CreatorPhase4ConstructionController.cs:2420-2504",
+      "service": "ConstructionReadinessService",
+      "persistence": "CreatorJourney.Phase4Data.ConstructionReadiness",
+      "verdict": "Verified within tested scope",
+      "keyFindings": "7 canonical sections; nullable score discipline ('Score not yet calculated'); honest next-action task binding with no synthetic IDs or fabricated effort; saving review via POST /api/creator/phase4/readiness/save performs SHA-256 SourceFingerprint check and records founder readiness assessment."
+    }
+  ],
+  "reconciledFindings": [
+    {
+      "id": "FINDING-CODE-01",
+      "category": "Source Correction & Verification",
+      "subject": "Step 4.6 Pricing Evidence Qualification & Predicate Filter",
+      "description": "Corrected PricingPolicyEngine.cs:235-255 and PricingStrategyService.cs:226-253. PricingPolicyEngine strictly requires HistoricalSale/PaidPilot with Price > 0 and EmpiricallyValidated level for empirical validation; QuoteAccepted and PreOrder without proof of payment are routed to MarketReferencePrice (Supported/Indicative). PricingStrategyService filters qualifying evidence across all recorded items using LastOrDefault(r => r.IsPaid && (r.Type == PreOrder || r.Type == Sale) && r.Amount > 0), ensuring invalid/unpaid earlier records do not mask subsequent qualifying records, and preserves IsFounderReported=true provenance and Supported validation level across refreshes.",
+      "sourceEvidence": "backend/Services/Implementations/PricingPolicyEngine.cs:235-295; backend/Services/Implementations/PricingStrategyService.cs:226-260,307-317; backend/tests/WebApp.Tests/Unit/CreatorPhase4PricingTests.cs:1426-1548",
+      "status": "Applied and verified with 51/51 passing pricing unit tests"
+    },
+    {
+      "id": "FINDING-DOC-02",
+      "category": "Documentation Inconsistency",
+      "subject": "Step 4.2 Roadmap Canonical Stages",
+      "description": "Previous audit incorrectly described a 3-stage Now/Next/Later pipeline. OperationalRoadmapModels.cs:6-35 and OperationalRoadmapView.tsx:60-103 define exactly 6 persisted canonical stages: NOW, NEXT_30_DAYS, DAYS_30_TO_60, DAYS_60_TO_90, BEFORE_LAUNCH, and POST_LAUNCH.",
+      "sourceEvidence": "backend/Models/DatabaseModels/Phase4/OperationalRoadmapModels.cs:8-23; src/components/creator/phase4/OperationalRoadmapView.tsx:60-103",
+      "status": "Resolved in documentation"
+    },
+    {
+      "id": "FINDING-DOC-03",
+      "category": "Documentation Inconsistency",
+      "subject": "Step 4.7 GTM Activation Endpoint & Contract",
+      "description": "Previous audit described a POST /activate endpoint with IsActive boolean. Verified backend controller and API client use PATCH /api/creator/phase4/gtm with { status: 'Active', founderOverrides: { PlanActivated: 'true' } }, setting Strategy.Status = 'Active' and recording ActivatedAt timestamp.",
+      "sourceEvidence": "backend/Controllers/CreatorPhase4ConstructionController.cs:1781-1837; backend/Services/Implementations/GtmStrategyService.cs:441-450; src/components/creator/phase4/GtmStrategyView.tsx:155-165",
+      "status": "Resolved in documentation"
+    },
+    {
+      "id": "FINDING-DOC-04",
+      "category": "Documentation Inconsistency",
+      "subject": "Step 4.8 Launch Assets Download Format & Dependencies",
+      "description": "Verified controller action GetSourceCode and client handler handleDownloadSource deliver a standalone HTML file named [safeSlug]-launch-page-v[version].html (Content-Type text/html). BuildStandaloneHtml embeds styles and base64 logo assets inline; external Google Fonts require internet access, with system fallback fonts available in CSS.",
+      "sourceEvidence": "backend/Controllers/CreatorPhase4ConstructionController.cs:2276-2286; backend/Services/Implementations/LaunchAssetsService.cs:1204-1231,1324-1345; src/app/dashboard/creator/phase-4/assets/page.tsx:201-223",
+      "status": "Resolved in documentation"
+    },
+    {
+      "id": "FINDING-DOC-05",
+      "category": "Documentation Inconsistency",
+      "subject": "Controller Endpoint Inventory Reconciliation",
+      "description": "Reconciled controller endpoint inventory: CreatorPhase4ConstructionController contains exactly 47 endpoints (45 authenticated endpoints under [Authorize] and 2 public endpoints with [AllowAnonymous]: GET assets/public/{shareToken} and GET assets/public/{shareToken}/html). All 47 endpoints are fully enumerated in the API contract table.",
+      "sourceEvidence": "backend/Controllers/CreatorPhase4ConstructionController.cs:60-2504",
+      "status": "Resolved in documentation"
+    },
+    {
+      "id": "FINDING-DOC-06",
+      "category": "Documentation Inconsistency",
+      "subject": "Concurrency & Rollback Mechanism Scope",
+      "description": "Previous audit claimed every mutation uses SHA-256 fingerprint validation and atomic transaction rollbacks. Verified source uses MongoDB conditional updates (Builders.Filter.Eq(x => x.Version, expectedVersion)) in CreatorIdeaRepository.cs:133-155. If version conflicts occur, MatchedCount is 0 (no write occurs, 409 thrown). SHA-256 SourceFingerprint validation is exclusively implemented in Step 4.9 Construction Readiness Save.",
+      "sourceEvidence": "backend/Services/Repository/CreatorIdeaRepository.cs:133-155; backend/Services/Implementations/ConstructionReadinessService.cs:330-360",
+      "status": "Resolved in documentation"
+    },
+    {
+      "id": "FINDING-DOC-07",
+      "category": "Documentation Inconsistency",
+      "subject": "Sold / Read-Only Status Error Code Mapping",
+      "description": "Previous documentation had conflicting references to HTTP 422 vs HTTP 403 for sold project mutations. Verified CreatorPhase4ConstructionController catches InvalidOperationException from sold-idea checks (ResolveIdeaAsync) and returns StatusCodes.Status403Forbidden.",
+      "sourceEvidence": "backend/Controllers/CreatorPhase4ConstructionController.cs:1770-1773,1829-1832",
+      "status": "Resolved in documentation"
+    },
+    {
+      "id": "FINDING-DOC-08",
+      "category": "Documentation Inconsistency",
+      "subject": "Product Scope & Readiness Save Scope",
+      "description": "Removed unsupported Phase 6 mentions (Creator journey scope is Phase 1 to Phase 5). Clarified that Step 4.9 OverallScore is a nullable domain model field currently returning null ('Score not yet calculated') pending formal algorithmic policy, and saving a readiness review records the review state rather than completing unfinished project construction tasks.",
+      "sourceEvidence": "backend/Models/DatabaseModels/Phase4/ConstructionReadinessModels.cs:18; backend/Services/Implementations/ConstructionReadinessService.cs:98",
+      "status": "Resolved in documentation"
+    }
+  ],
+  "verificationBoundaries": {
+    "staticSourceInspection": "Verified across all 9 step controllers (47 total action methods), services, models, and React views",
+    "automatedBackendTests": "243 passed / 0 failed (verified by parsing TRX execution outcomes mapped to TestDefinitions)",
+    "automatedFrontendTests": "95 passed / 0 failed for Phase 4; 178 passed / 0 failed for full Creator suite (vitest)",
+    "staticTypecheck": "0 errors (tsc --noEmit)",
+    "renderedBrowserScreenshotCapture": "Not verified in headless subagent environment (jsdom DOM accessibility checks passed)",
+    "liveCloudMultiTenantCluster": "Not verified (tested via in-memory concurrency collision simulations with ExpectedVersion and SHA-256 fingerprint checks)"
+  }
+}

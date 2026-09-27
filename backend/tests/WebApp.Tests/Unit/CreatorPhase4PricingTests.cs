@@ -1423,5 +1423,127 @@ namespace WebApp.Tests.Unit
             targetOffer.MarketPriceValidationLevel.Should().NotBe(MarketPriceValidationLevel.EmpiricallyValidated);
             targetOffer.MarketPriceValidationLevel.Should().NotBe(MarketPriceValidationLevel.Supported);
         }
+
+        [Fact]
+        public void PricingPolicyEngine_UnpaidQuoteOrPreOrder_DoesNotSetEmpiricallyValidated()
+        {
+            var ctx = new PricingContext
+            {
+                Project = new PricingProjectContext { Sector = "B2B SaaS" },
+                CustomerSegments = new List<PricingCustomerSegmentItem> { new() { Segment = "Enterprise" } },
+                MarketEvidence = new List<PricingMarketEvidenceItem>
+                {
+                    new() { Price = 500m, EvidenceType = MarketPriceEvidenceType.QuoteAccepted, ValidationLevel = MarketPriceValidationLevel.Indicative },
+                    new() { Price = 300m, EvidenceType = MarketPriceEvidenceType.PreOrder, ValidationLevel = MarketPriceValidationLevel.Indicative }
+                }
+            };
+
+            var offers = _policyEngine.StructureOffers(ctx, RevenueModelType.Subscription, new List<string> { "Subscription" });
+            offers.Should().NotBeEmpty();
+            var offer = offers.First();
+
+            // Unpaid quote / preorder evidence alone must NOT set ValidatedMarketPrice or EmpiricallyValidated level
+            offer.ValidatedMarketPrice.Should().BeNull();
+            offer.MarketPriceValidationLevel.Should().NotBe(MarketPriceValidationLevel.EmpiricallyValidated);
+            // It acts as reference pricing instead
+            offer.MarketReferencePrice.Should().Be(500m);
+            offer.MarketPriceValidationLevel.Should().Be(MarketPriceValidationLevel.Indicative);
+        }
+
+        [Fact]
+        public async Task UpdatePricingOffer_InvalidFirstRecord_DoesNotHideValidSubsequentPaidRecord()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            var initial = await service.GeneratePricingStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+            var offerKey = initial.Strategy!.Offers.First().Key;
+
+            // Submit list with invalid/unpaid first record, followed by a valid paid record
+            var updateReq = new UpdatePricingOfferRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                RecordedEvidence = new List<PricingEvidenceRecord>
+                {
+                    new()
+                    {
+                        Type = PricingEvidenceRecordType.PreOrder,
+                        Amount = 250m,
+                        IsPaid = false, // UNPAID -> invalid for empirical validation
+                        Notes = "Unpaid promise"
+                    },
+                    new()
+                    {
+                        Type = PricingEvidenceRecordType.Sale,
+                        Amount = 199m,
+                        IsPaid = true, // PAID -> valid
+                        Notes = "First paid customer transaction"
+                    }
+                }
+            };
+
+            var updated = await service.UpdatePricingOfferAsync(journey.UserId, offerKey, updateReq);
+            var targetOffer = updated.Strategy!.Offers.First(o => o.Key == offerKey);
+
+            targetOffer.RecordedEvidence.Should().HaveCount(2);
+            // The valid second record must be recognized and elevate ValidatedMarketPrice
+            targetOffer.ValidatedMarketPrice.Should().Be(199m);
+            targetOffer.MarketPriceEvidenceType.Should().Be(MarketPriceEvidenceType.HistoricalSale);
+            targetOffer.MarketPriceValidationLevel.Should().Be(MarketPriceValidationLevel.Supported);
+        }
+
+        [Fact]
+        public async Task UpdatePricingOffer_SubsequentFeedback_PreservesPriorQualifyingPaidEvidenceAndProvenance()
+        {
+            var journey = BuildCompleteJourney();
+            SetupValidGates(journey);
+
+            var service = CreateService();
+            var initial = await service.GeneratePricingStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+            var offerKey = initial.Strategy!.Offers.First().Key;
+
+            // 1. Add qualifying paid preorder
+            await service.UpdatePricingOfferAsync(journey.UserId, offerKey, new UpdatePricingOfferRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                NewEvidenceRecord = new PricingEvidenceRecord
+                {
+                    Type = PricingEvidenceRecordType.PreOrder,
+                    Amount = 129m,
+                    IsPaid = true,
+                    ParticipantOrCustomer = "Paying Pilot 1"
+                }
+            });
+
+            // 2. Add subsequent unpaid feedback
+            var afterFeedback = await service.UpdatePricingOfferAsync(journey.UserId, offerKey, new UpdatePricingOfferRequest
+            {
+                IdeaId = journey.ActiveIdeaId,
+                NewEvidenceRecord = new PricingEvidenceRecord
+                {
+                    Type = PricingEvidenceRecordType.Feedback,
+                    Amount = 99m,
+                    IsPaid = false,
+                    ParticipantOrCustomer = "Survey Participant"
+                }
+            });
+
+            var offerAfterFeedback = afterFeedback.Strategy!.Offers.First(o => o.Key == offerKey);
+            offerAfterFeedback.RecordedEvidence.Should().HaveCount(2);
+            // Prior valid evidence continues to support ValidatedMarketPrice
+            offerAfterFeedback.ValidatedMarketPrice.Should().Be(129m);
+            offerAfterFeedback.MarketPriceEvidenceType.Should().Be(MarketPriceEvidenceType.PreOrder);
+            offerAfterFeedback.MarketPriceValidationLevel.Should().Be(MarketPriceValidationLevel.Supported);
+
+            // 3. Refresh preserves evidence and validation level
+            var refreshed = await service.RefreshPricingStrategyAsync(journey.UserId, journey.ActiveIdeaId);
+            var offerAfterRefresh = refreshed.Strategy!.Offers.First(o => o.Key == offerKey);
+            offerAfterRefresh.RecordedEvidence.Should().HaveCount(2);
+            offerAfterRefresh.ValidatedMarketPrice.Should().Be(129m);
+            offerAfterRefresh.MarketPriceEvidenceType.Should().Be(MarketPriceEvidenceType.PreOrder);
+            offerAfterRefresh.MarketPriceValidationLevel.Should().Be(MarketPriceValidationLevel.Supported);
+            offerAfterRefresh.RecordedEvidence.All(e => e.IsFounderReported).Should().BeTrue();
+        }
     }
 }

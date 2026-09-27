@@ -234,14 +234,15 @@ namespace WebApp.Services.Implementations
             // Invariant: Verify market price evidence (never conflate market reference with validated market price!)
             foreach (var offer in offers)
             {
-                // 1. Check strong empirical validation first (HistoricalSale, PaidPilot, PreOrder, QuoteAccepted)
+                // 1. Check strong empirical validation first: ONLY HistoricalSale or PaidPilot with confirmed Price > 0
+                // and validation level EmpiricallyValidated qualify as independent empirical validation.
+                // QuoteAccepted, PreOrder, or positive quoted prices alone do NOT establish paid empirical validation.
                 var empirical = context.MarketEvidence.FirstOrDefault(e =>
-                    e.EvidenceType == MarketPriceEvidenceType.HistoricalSale ||
-                    e.EvidenceType == MarketPriceEvidenceType.PaidPilot ||
-                    e.EvidenceType == MarketPriceEvidenceType.PreOrder ||
-                    e.EvidenceType == MarketPriceEvidenceType.QuoteAccepted);
+                    (e.EvidenceType == MarketPriceEvidenceType.HistoricalSale || e.EvidenceType == MarketPriceEvidenceType.PaidPilot) &&
+                    e.Price > 0 &&
+                    e.ValidationLevel == MarketPriceValidationLevel.EmpiricallyValidated);
 
-                if (empirical != null && empirical.Price > 0)
+                if (empirical != null)
                 {
                     offer.ValidatedMarketPrice = empirical.Price;
                     offer.MarketPriceEvidenceType = empirical.EvidenceType;
@@ -253,9 +254,9 @@ namespace WebApp.Services.Implementations
                     // No empirical evidence -> ValidatedMarketPrice remains null!
                     offer.ValidatedMarketPrice = null;
 
-                    // 2. Check for Market Reference Price (CompetitorObserved, MarketStudyEstimate, ModelEstimate)
+                    // 2. Check for Market Reference Price (CompetitorObserved, MarketStudyEstimate, ModelEstimate, QuoteAccepted, PreOrder, CustomerInterview, CustomerSurvey)
                     var matchedComp = context.CompetitorEvidence.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c.EstimatedPrice));
-                    if (matchedComp != null && decimal.TryParse(System.Text.RegularExpressions.Regex.Match(matchedComp.EstimatedPrice, @"\d+([.,]\d+)?").Value.Replace(",", "."), out var compP))
+                    if (matchedComp != null && decimal.TryParse(System.Text.RegularExpressions.Regex.Match(matchedComp.EstimatedPrice, @"\d+([.,]\d+)?").Value.Replace(",", "."), out var compP) && compP > 0)
                     {
                         offer.MarketReferencePrice = compP;
                         offer.MarketPriceEvidenceType = MarketPriceEvidenceType.CompetitorObserved;
@@ -269,13 +270,16 @@ namespace WebApp.Services.Implementations
                     else
                     {
                         var nonEmpiricalEvidence = context.MarketEvidence.FirstOrDefault(e =>
-                            e.EvidenceType == MarketPriceEvidenceType.CompetitorObserved ||
-                            e.EvidenceType == MarketPriceEvidenceType.MarketStudyEstimate ||
-                            e.EvidenceType == MarketPriceEvidenceType.ModelEstimate ||
-                            e.EvidenceType == MarketPriceEvidenceType.CustomerInterview ||
-                            e.EvidenceType == MarketPriceEvidenceType.CustomerSurvey);
+                            (e.EvidenceType == MarketPriceEvidenceType.CompetitorObserved ||
+                             e.EvidenceType == MarketPriceEvidenceType.MarketStudyEstimate ||
+                             e.EvidenceType == MarketPriceEvidenceType.ModelEstimate ||
+                             e.EvidenceType == MarketPriceEvidenceType.CustomerInterview ||
+                             e.EvidenceType == MarketPriceEvidenceType.CustomerSurvey ||
+                             e.EvidenceType == MarketPriceEvidenceType.QuoteAccepted ||
+                             e.EvidenceType == MarketPriceEvidenceType.PreOrder) &&
+                            e.Price > 0);
 
-                        if (nonEmpiricalEvidence != null && nonEmpiricalEvidence.Price > 0)
+                        if (nonEmpiricalEvidence != null)
                         {
                             offer.MarketReferencePrice = nonEmpiricalEvidence.Price;
                             offer.MarketPriceEvidenceType = nonEmpiricalEvidence.EvidenceType;
