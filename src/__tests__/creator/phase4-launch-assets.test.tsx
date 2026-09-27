@@ -4,12 +4,24 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { LaunchAssetsView } from '@/components/creator/phase4/LaunchAssetsView';
 import type { LaunchAssetsPlan } from '@/types/creator/launch-assets';
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  useSearchParams: () => new URLSearchParams(''),
+  useParams: () => ({ token: 'test-token-456' }),
+  usePathname: () => '/p/launch/test-token-456',
+}));
+
 const mockAssets: LaunchAssetsPlan = {
   assetType: 'ONE-PAGE WEBSITE',
   version: 1,
   status: 'Draft',
   releaseTag: 'v1.0-rc',
-  publishedStatus: 'Available to view in MBC. Not published.',
+  publishedStatus: 'Anyone with the link can view this website.',
+  shareToken: 'share-tok-123',
   lastGeneratedAt: '2026-09-26T12:00:00Z',
   activeSectionKey: 'hero',
   brandName: 'ClairDesk',
@@ -144,10 +156,11 @@ describe('LaunchAssetsView (Phase 4.8)', () => {
     isLoading: false,
     onGenerate: vi.fn(),
     onRefresh: vi.fn(),
-    onUpdateAssets: vi.fn(),
-    onNewVersion: vi.fn(),
-    onSelectVersion: vi.fn(),
-    onDownloadSource: vi.fn(),
+    onUpdateAssets: vi.fn().mockResolvedValue(undefined),
+    onNewVersion: vi.fn().mockResolvedValue(undefined),
+    onSelectVersion: vi.fn().mockResolvedValue(undefined),
+    onDownloadSource: vi.fn().mockResolvedValue(undefined),
+    onShareWebsite: vi.fn().mockResolvedValue('test-share-token-123'),
   };
 
   it('renders ungenerated empty state when assets is null', () => {
@@ -161,14 +174,84 @@ describe('LaunchAssetsView (Phase 4.8)', () => {
     expect(screen.getAllByText('ClairDesk').length).toBeGreaterThan(0);
     expect(screen.getByText('/ ONE-PAGE WEBSITE')).toBeInTheDocument();
     expect(screen.getByText('v1.0-rc')).toBeInTheDocument();
-    expect(screen.getByText('Available to view in MBC. Not published.')).toBeInTheDocument();
+    expect(screen.getByText('Anyone with the link can view this website.')).toBeInTheDocument();
     expect(screen.getByText('View website')).toBeInTheDocument();
+    expect(screen.getByText('Copy link')).toBeInTheDocument();
     expect(screen.getByText('Download source')).toBeInTheDocument();
     
     const useVersionBtn = screen.getByText('Use this version');
     expect(useVersionBtn).toBeInTheDocument();
     fireEvent.click(useVersionBtn);
     expect(defaultProps.onSelectVersion).toHaveBeenCalled();
+  });
+
+  it('handles View website by saving editor state and opening public URL in a new tab when dirty', async () => {
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<LaunchAssetsView {...defaultProps} />);
+
+    // Modify a field to make the editor dirty
+    const headlineInput = screen.getByDisplayValue('A clearer way to manage enquiries and quotations.');
+    fireEvent.change(headlineInput, { target: { value: 'New dirty headline' } });
+
+    const viewWebsiteBtn = screen.getByText('View website');
+    fireEvent.click(viewWebsiteBtn);
+
+    await waitFor(() => {
+      expect(defaultProps.onUpdateAssets).toHaveBeenCalled();
+      expect(defaultProps.onShareWebsite).toHaveBeenCalledWith(1);
+      expect(windowOpenSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/p/launch/test-share-token-123'),
+        '_blank',
+        'noopener,noreferrer'
+      );
+    });
+    windowOpenSpy.mockRestore();
+  });
+
+  it('reopens existing public URL directly without saving or re-sharing when clean on repeat clicks', async () => {
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const onUpdateMock = vi.fn().mockResolvedValue(undefined);
+    const onShareMock = vi.fn().mockResolvedValue('share-tok-123');
+    render(<LaunchAssetsView {...defaultProps} onUpdateAssets={onUpdateMock} onShareWebsite={onShareMock} />);
+
+    const viewWebsiteBtn = screen.getByText('View website');
+    // First click
+    fireEvent.click(viewWebsiteBtn);
+    // Second click (repeated click without changes)
+    fireEvent.click(viewWebsiteBtn);
+
+    await waitFor(() => {
+      expect(onUpdateMock).not.toHaveBeenCalled();
+      expect(onShareMock).not.toHaveBeenCalled();
+      expect(windowOpenSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/p/launch/share-tok-123'),
+        '_blank',
+        'noopener,noreferrer'
+      );
+    });
+    windowOpenSpy.mockRestore();
+  });
+
+  it('handles Copy link by copying durable public URL to clipboard', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: writeTextMock,
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    render(<LaunchAssetsView {...defaultProps} />);
+    const copyLinkBtn = screen.getByText('Copy link');
+    fireEvent.click(copyLinkBtn);
+
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledWith(
+        expect.stringContaining('/p/launch/share-tok-123')
+      );
+      expect(screen.getByText('Link copied!')).toBeInTheDocument();
+    });
   });
 
   it('renders Section 2: Source Strip and Attention Notice', () => {
@@ -251,6 +334,99 @@ describe('LaunchAssetsView (Phase 4.8)', () => {
 
     const downloadBtn = screen.getByText('Download source');
     fireEvent.click(downloadBtn);
-    expect(defaultProps.onDownloadSource).toHaveBeenCalled();
+    expect(defaultProps.onDownloadSource).toHaveBeenCalledWith(1);
+  });
+});
+
+describe('PublicLaunchWebsitePage', () => {
+  const mockPublicAsset = {
+    shareToken: 'test-token-456',
+    version: 1,
+    releaseTag: 'v1.0-rc',
+    sharedAt: '2026-09-27T12:00:00Z',
+    publishedStatus: 'Anyone with the link can view this website.',
+    brandName: 'AuraCall',
+    conceptBadge: 'PREVIEWING CONCEPT',
+    headline: 'A clearer way to manage enquiries and quotations.',
+    description: 'AuraCall is being built to help independent service businesses.',
+    buttonLabel: 'Express interest',
+    buttonDestinationType: 'Email',
+    buttonDestinationValue: 'hello@auracall.ai',
+    buttonDestinationConfigured: true,
+    heroHelpText: 'Help shape the project by sharing how you work today.',
+    plannedWorkflowTitle: 'PLANNED WORKFLOW',
+    plannedWorkflowSubtitle: 'High-level interface structure',
+    workflowSteps: [
+      { stepNumber: 1, title: '1. Enquiry', description: 'Intake card.', tag: 'Unified intake' },
+    ],
+    problemEyebrow: 'KEEP TRACK OF THE NEXT STEP',
+    problemStatement: 'Problem statement text.',
+    operationalMomentumStatement: 'Momentum text.',
+    solutionHeader: 'Planned solution',
+    solutionSubheader: 'Solution tools.',
+    plannedSolutions: [
+      { title: 'Enquiries together', description: 'Clear place.', icon: 'mail' },
+    ],
+    howItWorksHeader: 'How it works',
+    howItWorksSubheader: 'Flow description.',
+    workflowDetails: [
+      { stepNumber: 1, title: 'Organise enquiry', description: 'Collect briefs.' },
+    ],
+    faqHeader: 'FAQ',
+    faqSubheader: 'Honest answers.',
+    faqs: [
+      { question: 'When will it launch?', answer: 'Soon.' },
+    ],
+    finalCtaHeader: 'Share how you work today',
+    finalCtaSubheader: 'Your experience shapes AuraCall.',
+    footerNotice: 'Project in preparation',
+    sections: [
+      { key: 'hero', isIncluded: true, isRequired: true },
+      { key: 'problem', isIncluded: true, isRequired: false },
+      { key: 'solution', isIncluded: true, isRequired: false },
+      { key: 'how-it-works', isIncluded: true, isRequired: false },
+      { key: 'faq', isIncluded: true, isRequired: false },
+      { key: 'final-cta', isIncluded: true, isRequired: false },
+      { key: 'footer', isIncluded: true, isRequired: true },
+    ],
+    brandStudio: {
+      brandName: 'AuraCall',
+      concept: 'AI Voice Receptionist',
+      targetAudience: 'Local service businesses',
+      primaryColorHex: '#1A1A24',
+      secondaryColorHex: '#3C61DD',
+      accentColorHex: '#00D084',
+      backgroundColorHex: '#FFFFFF',
+      textColorHex: '#0F172A',
+      displayFontFamily: 'Syne',
+      textFontFamily: 'DM Sans',
+      headingWeight: '700',
+      bodyWeight: '400',
+      logoMarkUri: '/brand-assets/logos/auracall/mark.svg',
+      logoLockupUri: '/brand-assets/logos/auracall/lockup.svg',
+    },
+  };
+
+  it('renders the public launch page with logo lockup image without duplicate text', async () => {
+    const apiLaunchAssets = await import('@/lib/api-creator-launch-assets');
+    vi.spyOn(apiLaunchAssets, 'getPublicLaunchAsset').mockResolvedValue(mockPublicAsset as any);
+
+    const PublicPage = (await import('@/app/p/launch/[token]/page')).default;
+    render(<PublicPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('A clearer way to manage enquiries and quotations.')).toBeInTheDocument();
+    });
+
+    // Logo image should be present with alt text
+    const logoImgs = screen.getAllByAltText(/AuraCall logo/i);
+    expect(logoImgs.length).toBeGreaterThan(0);
+    expect(logoImgs[0]).toHaveAttribute('src', expect.stringContaining('/brand-assets/logos/auracall/lockup.svg'));
+
+    // Configured CTA link
+    const ctaLinks = screen.getAllByRole('link', { name: /Express interest/i });
+    expect(ctaLinks.length).toBe(2);
+    expect(ctaLinks[0]).toHaveAttribute('href', 'mailto:hello@auracall.ai');
+    expect(ctaLinks[1]).toHaveAttribute('href', 'mailto:hello@auracall.ai');
   });
 });

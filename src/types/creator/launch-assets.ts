@@ -87,6 +87,8 @@ export interface LaunchAssetsPlanSnapshot {
   brandName: string;
   footerNotice: string;
   sections: LaunchAssetSection[];
+  shareToken?: string;
+  sharedAt?: string;
 }
 
 export interface LaunchBrandStudioSummary {
@@ -126,6 +128,9 @@ export interface LaunchAssetsPlan {
   publishedStatus: string;
   lastGeneratedAt: string;
   activeSectionKey: string;
+  shareToken?: string;
+  sharedAt?: string;
+  sharedVersion?: number;
   versionHistory?: LaunchAssetsPlanSnapshot[];
 
   // Brand Studio Visual & Strategic Identity
@@ -234,4 +239,67 @@ export interface UpdateLaunchAssetsRequest {
 export interface GenerateLaunchAssetsRequest {
   ideaId?: string;
   expectedVersion?: number;
+}
+
+export interface ShareLaunchAssetRequest {
+  ideaId?: string;
+  versionNumber?: number;
+  expectedVersion?: number;
+}
+
+export interface ShareLaunchAssetResponse {
+  shareToken: string;
+  shareUrl: string;
+  version: number;
+  sharedAt: string;
+  publishedStatus: string;
+  ideaVersion?: number;
+}
+
+export interface PublicLaunchAssetResponse {
+  shareToken: string;
+  version: number;
+  releaseTag: string;
+  sharedAt: string;
+  publishedStatus: string;
+
+  brandStudio: LaunchBrandStudioSummary;
+
+  brandName: string;
+  conceptBadge: string;
+  headline: string;
+  description: string;
+  buttonLabel: string;
+  buttonDestinationType: 'Email' | 'Link' | 'NotSet' | string;
+  buttonDestinationValue: string;
+  buttonDestinationConfigured: boolean;
+  heroHelpText: string;
+
+  plannedWorkflowTitle: string;
+  plannedWorkflowSubtitle: string;
+  workflowSteps: LaunchWorkflowStep[];
+
+  problemEyebrow: string;
+  problemStatement: string;
+  operationalMomentumStatement: string;
+
+  solutionHeader: string;
+  solutionSubheader: string;
+  plannedSolutions: LaunchSolutionCard[];
+
+  howItWorksHeader: string;
+  howItWorksSubheader: string;
+  workflowDetails: LaunchWorkflowDetailedItem[];
+
+  faqHeader: string;
+  faqSubheader: string;
+  faqs: LaunchFaqItem[];
+
+  finalCtaHeader: string;
+  finalCtaSubheader: string;
+
+  footerNotice: string;
+
+  sections: LaunchAssetSection[];
+  pricingExclusion: LaunchPricingExclusion;
 }

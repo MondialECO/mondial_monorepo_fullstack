@@ -2293,6 +2293,124 @@ namespace WebApp.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
         }
+
+        // POST /api/creator/phase4/assets/share?ideaId={ideaId}&versionNumber={v}&expectedVersion={v}
+        [HttpPost("assets/share")]
+        public async Task<IActionResult> ShareLaunchAssets(
+            [FromQuery] string? ideaId = null,
+            [FromQuery] int? versionNumber = null,
+            [FromQuery] long? expectedVersion = null,
+            [FromBody] Models.DatabaseModels.Phase4.ShareLaunchAssetRequest? request = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new Models.DatabaseModels.Phase4.ShareLaunchAssetRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId) && string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    request.IdeaId = ideaId;
+                }
+                if (versionNumber.HasValue && !request.VersionNumber.HasValue)
+                {
+                    request.VersionNumber = versionNumber.Value;
+                }
+                if (expectedVersion.HasValue && request.ExpectedVersion.HasValue && expectedVersion.Value != request.ExpectedVersion.Value)
+                {
+                    return BadRequest(ApiResponse.Error("Conflicting expectedVersion provided in request URL query and request body.", HttpContext.TraceIdentifier));
+                }
+
+                var resolvedVersion = expectedVersion ?? request.ExpectedVersion;
+                if (resolvedVersion.HasValue && resolvedVersion.Value > 0)
+                {
+                    HttpContext.Items["CreatorIdeaVersion"] = resolvedVersion.Value;
+                }
+                if (!string.IsNullOrWhiteSpace(request.IdeaId))
+                {
+                    HttpContext.Items["CreatorIdeaId"] = request.IdeaId;
+                }
+
+                var result = await _assetsService.ShareLaunchAssetsAsync(userId, request.IdeaId, request.VersionNumber);
+                if (result.IdeaVersion.HasValue && result.IdeaVersion.Value > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.Value.ToString();
+                }
+                return Ok(ApiResponse.Ok("Launch assets shared", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // GET /api/creator/phase4/assets/public/{shareToken}
+        [HttpGet("assets/public/{shareToken}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicLaunchAsset([FromRoute] string shareToken)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(shareToken))
+                {
+                    return BadRequest(ApiResponse.Error("shareToken is required.", HttpContext.TraceIdentifier));
+                }
+
+                var result = await _assetsService.GetPublicLaunchAssetAsync(shareToken);
+                return Ok(ApiResponse.Ok("Public launch asset retrieved", result));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(StatusCodes.Status404NotFound, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // GET /api/creator/phase4/assets/public/{shareToken}/html
+        [HttpGet("assets/public/{shareToken}/html")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicSourceCode([FromRoute] string shareToken)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(shareToken))
+                {
+                    return BadRequest(ApiResponse.Error("shareToken is required.", HttpContext.TraceIdentifier));
+                }
+
+                var html = await _assetsService.GetPublicSourceCodeBundleAsync(shareToken);
+                return Content(html, "text/html");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(StatusCodes.Status404NotFound, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
     }
 
     public class GenerateSnapshotRequest

@@ -216,3 +216,57 @@ export async function getSourceCode(ideaId: string, versionNumber?: number): Pro
   });
   return res.data;
 }
+
+export async function shareLaunchAssets(
+  ideaId: string,
+  versionNumber?: number,
+  expectedVersion?: number
+): Promise<import('@/types/creator/launch-assets').ShareLaunchAssetResponse> {
+  if (!ideaId || typeof ideaId !== 'string' || ideaId.trim() === '') {
+    throw new Error('ideaId is required to share Launch Assets.');
+  }
+  const cleanId = ideaId.trim();
+  const version = await resolveExpectedVersion(cleanId, expectedVersion);
+
+  const res = await api.post<ApiEnvelope<import('@/types/creator/launch-assets').ShareLaunchAssetResponse> | import('@/types/creator/launch-assets').ShareLaunchAssetResponse>(
+    '/creator/phase4/assets/share',
+    { ideaId: cleanId, versionNumber, expectedVersion: version },
+    {
+      params: {
+        ideaId: cleanId,
+        ...(versionNumber !== undefined ? { versionNumber } : {}),
+        expectedVersion: version,
+      },
+    }
+  );
+  rememberIdeaVersion(res, cleanId);
+  const data = unwrap(res.data);
+  if ((data as any)?.ideaVersion && Number.isSafeInteger((data as any).ideaVersion) && (data as any).ideaVersion > 0) {
+    setIdeaVersion(cleanId, (data as any).ideaVersion);
+  }
+  return data;
+}
+
+export async function getPublicLaunchAsset(
+  shareToken: string
+): Promise<import('@/types/creator/launch-assets').PublicLaunchAssetResponse> {
+  if (!shareToken || typeof shareToken !== 'string' || shareToken.trim() === '') {
+    throw new Error('shareToken is required.');
+  }
+  const cleanToken = shareToken.trim();
+  const res = await api.get<ApiEnvelope<import('@/types/creator/launch-assets').PublicLaunchAssetResponse> | import('@/types/creator/launch-assets').PublicLaunchAssetResponse>(
+    `/creator/phase4/assets/public/${cleanToken}`
+  );
+  return unwrap(res.data);
+}
+
+export async function getPublicSourceCode(shareToken: string): Promise<string> {
+  if (!shareToken || typeof shareToken !== 'string' || shareToken.trim() === '') {
+    throw new Error('shareToken is required.');
+  }
+  const cleanToken = shareToken.trim();
+  const res = await api.get<string>(`/creator/phase4/assets/public/${cleanToken}/html`, {
+    responseType: 'text',
+  });
+  return res.data;
+}

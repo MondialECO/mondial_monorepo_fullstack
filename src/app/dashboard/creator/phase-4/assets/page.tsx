@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, Suspense } from 'react';
+import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
 import { Phase4ProfileGuard } from '@/components/creator/phase4/Phase4ProfileGuard';
@@ -14,6 +14,7 @@ import {
   createNewVersion,
   selectVersion,
   getSourceCode,
+  shareLaunchAssets,
 } from '@/lib/api-creator-launch-assets';
 import type {
   LaunchAssetsResponse,
@@ -113,16 +114,27 @@ function AssetsPageContent({ ideaId }: { ideaId: string }) {
     }
   };
 
-  const handleUpdateAssets = async (req: UpdateLaunchAssetsRequest) => {
+  const inFlightUpdateRef = useRef<Promise<void> | null>(null);
+
+  const handleUpdateAssets = async (req: UpdateLaunchAssetsRequest): Promise<void> => {
     if (!effectiveIdeaId) return;
-    try {
-      const res = await updateLaunchAssets(effectiveIdeaId, req);
-      setData(res);
-      await refetch(effectiveIdeaId);
-    } catch (err: any) {
-      setError(err.message || "Couldn't update launch assets.");
-      throw err;
+    if (inFlightUpdateRef.current) {
+      return inFlightUpdateRef.current;
     }
+    const updatePromise = (async () => {
+      try {
+        const res = await updateLaunchAssets(effectiveIdeaId, req);
+        setData(res);
+        await refetch(effectiveIdeaId);
+      } catch (err: any) {
+        setError(err.message || "Couldn't update launch assets.");
+        throw err;
+      } finally {
+        inFlightUpdateRef.current = null;
+      }
+    })();
+    inFlightUpdateRef.current = updatePromise;
+    return updatePromise;
   };
 
   const handleNewVersion = async () => {
@@ -149,21 +161,64 @@ function AssetsPageContent({ ideaId }: { ideaId: string }) {
     }
   };
 
-  const handleDownloadSource = async () => {
+  const inFlightShareRef = useRef<Promise<string> | null>(null);
+
+  const handleShareWebsite = async (version?: number): Promise<string> => {
+    if (!effectiveIdeaId) throw new Error('ideaId is required to share website.');
+    if (inFlightShareRef.current) {
+      return inFlightShareRef.current;
+    }
+    const sharePromise = (async () => {
+      try {
+        const res = await shareLaunchAssets(effectiveIdeaId, version);
+        setData((prev) => {
+          if (!prev) return prev;
+          const currentAssets = prev.assets;
+          if (!currentAssets) return prev;
+          return {
+            ...prev,
+            ideaVersion: res.ideaVersion ?? prev.ideaVersion,
+            assets: {
+              ...currentAssets,
+              shareToken: res.shareToken,
+              sharedAt: res.sharedAt,
+              publishedStatus: res.publishedStatus || 'Anyone with the link can view this website.',
+            },
+          };
+        });
+        return res.shareToken;
+      } catch (err: any) {
+        setError(err.message || "Couldn't create shareable link for website.");
+        throw err;
+      } finally {
+        inFlightShareRef.current = null;
+      }
+    })();
+    inFlightShareRef.current = sharePromise;
+    return sharePromise;
+  };
+
+  const handleDownloadSource = async (version?: number) => {
     if (!effectiveIdeaId) return;
     try {
-      const html = await getSourceCode(effectiveIdeaId);
-      const blob = new Blob([html], { type: 'text/html' });
+      const targetVersion = version || data?.assets?.version || 1;
+      const html = await getSourceCode(effectiveIdeaId, targetVersion);
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${projectName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-launch-page.html`;
+      const safeSlug = (projectName || 'project')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      a.download = `${safeSlug}-launch-page-v${targetVersion}.html`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err: any) {
       setError(err.message || "Couldn't download source code.");
+      throw err;
     }
   };
 
@@ -206,6 +261,7 @@ function AssetsPageContent({ ideaId }: { ideaId: string }) {
           onNewVersion={handleNewVersion}
           onSelectVersion={handleSelectVersion}
           onDownloadSource={handleDownloadSource}
+          onShareWebsite={handleShareWebsite}
         />
       )}
     </div>

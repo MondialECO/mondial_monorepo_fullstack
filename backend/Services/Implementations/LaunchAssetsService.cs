@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
+using WebApp.DbContext;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Phase4;
 using WebApp.Services.Interface;
@@ -18,19 +21,25 @@ namespace WebApp.Services.Implementations
         private readonly IGtmStrategyService _gtmService;
         private readonly IBrandKitStore _brandKits;
         private readonly ILogger<LaunchAssetsService> _logger;
+        private readonly MongoDbContext? _context;
+
+        // In-memory public share registry for fast resolution & mock test isolation
+        private static readonly ConcurrentDictionary<string, (LaunchAssetsPlanSnapshot Snapshot, LaunchBrandStudioSummary BrandStudio, LaunchPricingExclusion PricingExclusion, LaunchAssetsPlan Plan)> _publicShareCache = new();
 
         public LaunchAssetsService(
             ICreatorJourneyService journeys,
             IPricingStrategyService pricingService,
             IGtmStrategyService gtmService,
             IBrandKitStore brandKits,
-            ILogger<LaunchAssetsService> logger)
+            ILogger<LaunchAssetsService> logger,
+            MongoDbContext? context = null)
         {
             _journeys = journeys;
             _pricingService = pricingService;
             _gtmService = gtmService;
             _brandKits = brandKits;
             _logger = logger;
+            _context = context;
         }
 
         public async Task<LaunchAssetsResponse> GetLaunchAssetsAsync(string userId, string? ideaId = null)
@@ -669,7 +678,9 @@ namespace WebApp.Services.Implementations
                     ExclusionReason = s.ExclusionReason,
                     ActionLabel = s.ActionLabel,
                     ActionRoute = s.ActionRoute
-                }).ToList()
+                }).ToList(),
+                ShareToken = plan.ShareToken,
+                SharedAt = plan.SharedAt
             };
         }
 
@@ -902,6 +913,196 @@ namespace WebApp.Services.Implementations
             };
         }
 
+        public async Task<ShareLaunchAssetResponse> ShareLaunchAssetsAsync(string userId, string? ideaId = null, int? versionNumber = null)
+        {
+            var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+            var assets = journey.Phase4Data?.LaunchAssets;
+            if (assets == null)
+            {
+                throw new InvalidOperationException("Launch assets have not been generated yet.");
+            }
+
+            int targetVersion = (versionNumber.HasValue && versionNumber.Value > 0) ? versionNumber.Value : assets.Version;
+            assets.VersionHistory ??= new List<LaunchAssetsPlanSnapshot>();
+
+            var snapshot = assets.VersionHistory.FirstOrDefault(s => s.Version == targetVersion);
+            bool needsPersist = false;
+
+            if (snapshot == null)
+            {
+                snapshot = CreateSnapshot(assets);
+                snapshot.Version = targetVersion;
+                assets.VersionHistory.Add(snapshot);
+                needsPersist = true;
+            }
+
+            // Reuse existing durable token if already shared, or generate a new URL-safe token
+            if (string.IsNullOrWhiteSpace(snapshot.ShareToken))
+            {
+                snapshot.ShareToken = Guid.NewGuid().ToString("n");
+                snapshot.SharedAt = DateTime.UtcNow;
+                needsPersist = true;
+            }
+
+            if (targetVersion == assets.Version || string.IsNullOrWhiteSpace(assets.ShareToken))
+            {
+                if (assets.ShareToken != snapshot.ShareToken || assets.SharedVersion != targetVersion)
+                {
+                    assets.ShareToken = snapshot.ShareToken;
+                    assets.SharedAt = snapshot.SharedAt;
+                    assets.SharedVersion = targetVersion;
+                    needsPersist = true;
+                }
+            }
+
+            if (assets.PublishedStatus != "Anyone with the link can view this website.")
+            {
+                assets.PublishedStatus = "Anyone with the link can view this website.";
+                needsPersist = true;
+            }
+
+            // Ensure BrandStudio is populated
+            if (string.IsNullOrWhiteSpace(assets.BrandStudio?.BrandName) && !string.IsNullOrWhiteSpace(ideaId))
+            {
+                var kit = await _brandKits.GetByIdeaIdAsync(ideaId, userId);
+                if (kit != null)
+                {
+                    EnrichBrandStudioFromKit(assets, kit);
+                    needsPersist = true;
+                }
+            }
+
+            var brandStudio = assets.BrandStudio ?? new LaunchBrandStudioSummary();
+            var pricingExclusion = assets.PricingExclusion ?? new LaunchPricingExclusion();
+
+            // Cache in-memory for immediate, reliable resolution across restarts and tests
+            _publicShareCache[snapshot.ShareToken] = (snapshot, brandStudio, pricingExclusion, assets);
+
+            long authoritativeVersion = journey.IdeaVersion;
+            if (needsPersist)
+            {
+                var updatedJourney = await _journeys.SetPhase4LaunchAssetsAsync(userId, assets, ideaId);
+                authoritativeVersion = updatedJourney.IdeaVersion;
+            }
+
+            return new ShareLaunchAssetResponse
+            {
+                ShareToken = snapshot.ShareToken,
+                ShareUrl = $"/p/launch/{snapshot.ShareToken}",
+                Version = snapshot.Version,
+                SharedAt = snapshot.SharedAt ?? DateTime.UtcNow,
+                PublishedStatus = "Anyone with the link can view this website.",
+                IdeaVersion = authoritativeVersion
+            };
+        }
+
+        public async Task<PublicLaunchAssetResponse> GetPublicLaunchAssetAsync(string shareToken)
+        {
+            if (string.IsNullOrWhiteSpace(shareToken))
+            {
+                throw new ArgumentException("shareToken is required.", nameof(shareToken));
+            }
+
+            var cleanToken = shareToken.Trim();
+
+            // 1. Check in-memory fast registry first
+            if (_publicShareCache.TryGetValue(cleanToken, out var cached))
+            {
+                return MapToPublicResponse(cleanToken, cached.Snapshot, cached.BrandStudio, cached.PricingExclusion, cached.Plan);
+            }
+
+            // 2. Query MongoDB if context is available
+            if (_context != null)
+            {
+                try
+                {
+                    var ideaFilter = Builders<CreatorIdea>.Filter.Or(
+                        Builders<CreatorIdea>.Filter.Eq("Phase4Data.LaunchAssets.ShareToken", cleanToken),
+                        Builders<CreatorIdea>.Filter.ElemMatch("Phase4Data.LaunchAssets.VersionHistory", Builders<LaunchAssetsPlanSnapshot>.Filter.Eq(s => s.ShareToken, cleanToken))
+                    );
+                    var idea = await _context.Database.GetCollection<CreatorIdea>("CreatorIdeas").Find(ideaFilter).FirstOrDefaultAsync();
+                    var assets = idea?.Phase4Data?.LaunchAssets;
+
+                    if (assets == null)
+                    {
+                        var journeyFilter = Builders<CreatorJourney>.Filter.Or(
+                            Builders<CreatorJourney>.Filter.Eq("Phase4Data.LaunchAssets.ShareToken", cleanToken),
+                            Builders<CreatorJourney>.Filter.ElemMatch("Phase4Data.LaunchAssets.VersionHistory", Builders<LaunchAssetsPlanSnapshot>.Filter.Eq(s => s.ShareToken, cleanToken))
+                        );
+                        var journey = await _context.Database.GetCollection<CreatorJourney>("CreatorJourneys").Find(journeyFilter).FirstOrDefaultAsync();
+                        assets = journey?.Phase4Data?.LaunchAssets;
+                    }
+
+                    if (assets != null)
+                    {
+                        var matchingSnapshot = assets.VersionHistory?.FirstOrDefault(s => string.Equals(s.ShareToken, cleanToken, StringComparison.OrdinalIgnoreCase))
+                                               ?? (string.Equals(assets.ShareToken, cleanToken, StringComparison.OrdinalIgnoreCase) ? CreateSnapshot(assets) : null);
+
+                        if (matchingSnapshot != null)
+                        {
+                            var bs = assets.BrandStudio ?? new LaunchBrandStudioSummary();
+                            var pe = assets.PricingExclusion ?? new LaunchPricingExclusion();
+                            _publicShareCache[cleanToken] = (matchingSnapshot, bs, pe, assets);
+                            return MapToPublicResponse(cleanToken, matchingSnapshot, bs, pe, assets);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to resolve public share from database for token {ShareToken}", cleanToken);
+                }
+            }
+
+            throw new KeyNotFoundException($"Shared launch website snapshot '{cleanToken}' was not found or is no longer available.");
+        }
+
+        public async Task<string> GetPublicSourceCodeBundleAsync(string shareToken)
+        {
+            var publicAsset = await GetPublicLaunchAssetAsync(shareToken);
+
+            var snapshot = new LaunchAssetsPlanSnapshot
+            {
+                Version = publicAsset.Version,
+                ReleaseTag = publicAsset.ReleaseTag,
+                Status = "Public",
+                SavedAt = publicAsset.SharedAt,
+                Headline = publicAsset.Headline,
+                Description = publicAsset.Description,
+                ButtonLabel = publicAsset.ButtonLabel,
+                ButtonDestinationType = publicAsset.ButtonDestinationType,
+                ButtonDestinationValue = publicAsset.ButtonDestinationValue,
+                ProblemEyebrow = publicAsset.ProblemEyebrow,
+                ProblemStatement = publicAsset.ProblemStatement,
+                OperationalMomentumStatement = publicAsset.OperationalMomentumStatement,
+                SolutionHeader = publicAsset.SolutionHeader,
+                SolutionSubheader = publicAsset.SolutionSubheader,
+                PlannedSolutions = publicAsset.PlannedSolutions,
+                HowItWorksHeader = publicAsset.HowItWorksHeader,
+                HowItWorksSubheader = publicAsset.HowItWorksSubheader,
+                WorkflowDetails = publicAsset.WorkflowDetails,
+                FaqHeader = publicAsset.FaqHeader,
+                FaqSubheader = publicAsset.FaqSubheader,
+                Faqs = publicAsset.Faqs,
+                FinalCtaHeader = publicAsset.FinalCtaHeader,
+                FinalCtaSubheader = publicAsset.FinalCtaSubheader,
+                BrandName = publicAsset.BrandName,
+                FooterNotice = publicAsset.FooterNotice,
+                Sections = publicAsset.Sections,
+                ShareToken = publicAsset.ShareToken,
+                SharedAt = publicAsset.SharedAt
+            };
+
+            return BuildStandaloneHtml(
+                snapshot,
+                publicAsset.BrandStudio,
+                publicAsset.PricingExclusion,
+                publicAsset.ConceptBadge,
+                publicAsset.HeroHelpText,
+                publicAsset.PlannedWorkflowTitle,
+                publicAsset.PlannedWorkflowSubtitle,
+                publicAsset.WorkflowSteps);
+        }
+
         public async Task<string> GetSourceCodeBundleAsync(string userId, string? ideaId = null, int? versionNumber = null)
         {
             var journey = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
@@ -917,8 +1118,79 @@ namespace WebApp.Services.Implementations
             {
                 targetSnapshot = assets.VersionHistory.FirstOrDefault(s => s.Version == versionNumber.Value);
             }
+            targetSnapshot ??= CreateSnapshot(assets);
 
             var brandStudio = assets.BrandStudio ?? new LaunchBrandStudioSummary();
+            var pricingExclusion = assets.PricingExclusion ?? new LaunchPricingExclusion();
+
+            return BuildStandaloneHtml(
+                targetSnapshot,
+                brandStudio,
+                pricingExclusion,
+                assets.ConceptBadge,
+                assets.HeroHelpText,
+                assets.PlannedWorkflowTitle,
+                assets.PlannedWorkflowSubtitle,
+                assets.WorkflowSteps);
+        }
+
+        private static PublicLaunchAssetResponse MapToPublicResponse(
+            string shareToken,
+            LaunchAssetsPlanSnapshot snapshot,
+            LaunchBrandStudioSummary brandStudio,
+            LaunchPricingExclusion pricingExclusion,
+            LaunchAssetsPlan plan)
+        {
+            return new PublicLaunchAssetResponse
+            {
+                ShareToken = shareToken,
+                Version = snapshot.Version,
+                ReleaseTag = snapshot.ReleaseTag,
+                SharedAt = snapshot.SharedAt ?? snapshot.SavedAt,
+                PublishedStatus = "Anyone with the link can view this website.",
+                BrandStudio = brandStudio,
+                BrandName = !string.IsNullOrWhiteSpace(snapshot.BrandName) ? snapshot.BrandName : plan.BrandName,
+                ConceptBadge = plan.ConceptBadge,
+                Headline = snapshot.Headline,
+                Description = snapshot.Description,
+                ButtonLabel = snapshot.ButtonLabel,
+                ButtonDestinationType = snapshot.ButtonDestinationType,
+                ButtonDestinationValue = snapshot.ButtonDestinationValue,
+                ButtonDestinationConfigured = snapshot.ButtonDestinationType != "NotSet" && !string.IsNullOrWhiteSpace(snapshot.ButtonDestinationValue),
+                HeroHelpText = plan.HeroHelpText,
+                PlannedWorkflowTitle = plan.PlannedWorkflowTitle,
+                PlannedWorkflowSubtitle = plan.PlannedWorkflowSubtitle,
+                WorkflowSteps = plan.WorkflowSteps ?? new List<LaunchWorkflowStep>(),
+                ProblemEyebrow = snapshot.ProblemEyebrow,
+                ProblemStatement = snapshot.ProblemStatement,
+                OperationalMomentumStatement = snapshot.OperationalMomentumStatement,
+                SolutionHeader = snapshot.SolutionHeader,
+                SolutionSubheader = snapshot.SolutionSubheader,
+                PlannedSolutions = snapshot.PlannedSolutions ?? new List<LaunchSolutionCard>(),
+                HowItWorksHeader = snapshot.HowItWorksHeader,
+                HowItWorksSubheader = snapshot.HowItWorksSubheader,
+                WorkflowDetails = snapshot.WorkflowDetails ?? new List<LaunchWorkflowDetailedItem>(),
+                FaqHeader = snapshot.FaqHeader,
+                FaqSubheader = snapshot.FaqSubheader,
+                Faqs = snapshot.Faqs ?? new List<LaunchFaqItem>(),
+                FinalCtaHeader = snapshot.FinalCtaHeader,
+                FinalCtaSubheader = snapshot.FinalCtaSubheader,
+                FooterNotice = !string.IsNullOrWhiteSpace(snapshot.FooterNotice) ? snapshot.FooterNotice : plan.FooterNotice,
+                Sections = snapshot.Sections ?? plan.Sections ?? new List<LaunchAssetSection>(),
+                PricingExclusion = pricingExclusion
+            };
+        }
+
+        private static string BuildStandaloneHtml(
+            LaunchAssetsPlanSnapshot snapshot,
+            LaunchBrandStudioSummary brandStudio,
+            LaunchPricingExclusion pricingExclusion,
+            string conceptBadgeStr,
+            string heroHelpTextStr,
+            string plannedWorkflowTitleStr,
+            string plannedWorkflowSubtitleStr,
+            List<LaunchWorkflowStep> workflowStepsList)
+        {
             var primaryColor = !string.IsNullOrWhiteSpace(brandStudio.PrimaryColorHex) ? brandStudio.PrimaryColorHex : "#3B82F6";
             var secondaryColor = !string.IsNullOrWhiteSpace(brandStudio.SecondaryColorHex) ? brandStudio.SecondaryColorHex : "#10B981";
             var accentColor = !string.IsNullOrWhiteSpace(brandStudio.AccentColorHex) ? brandStudio.AccentColorHex : "#F59E0B";
@@ -926,18 +1198,48 @@ namespace WebApp.Services.Implementations
             var textColor = !string.IsNullOrWhiteSpace(brandStudio.TextColorHex) ? brandStudio.TextColorHex : "#F3F4F6";
             var displayFont = !string.IsNullOrWhiteSpace(brandStudio.DisplayFontFamily) ? brandStudio.DisplayFontFamily : "Inter";
             var textFont = !string.IsNullOrWhiteSpace(brandStudio.TextFontFamily) ? brandStudio.TextFontFamily : "DM Sans";
-            var logoUri = !string.IsNullOrWhiteSpace(brandStudio.LogoLockupUri) ? brandStudio.LogoLockupUri : brandStudio.LogoMarkUri;
+            var rawLogoUri = !string.IsNullOrWhiteSpace(brandStudio.LogoLockupUri) ? brandStudio.LogoLockupUri : brandStudio.LogoMarkUri;
+            bool isLockup = !string.IsNullOrWhiteSpace(brandStudio.LogoLockupUri) && (rawLogoUri == brandStudio.LogoLockupUri);
 
-            var brandName = WebUtility.HtmlEncode(targetSnapshot?.BrandName ?? assets.BrandName);
-            var conceptBadge = WebUtility.HtmlEncode(assets.ConceptBadge);
-            var headline = WebUtility.HtmlEncode(targetSnapshot?.Headline ?? assets.Headline);
-            var description = WebUtility.HtmlEncode(targetSnapshot?.Description ?? assets.Description);
-            var buttonLabel = WebUtility.HtmlEncode(targetSnapshot?.ButtonLabel ?? assets.ButtonLabel);
-            var heroHelpText = WebUtility.HtmlEncode(assets.HeroHelpText);
-            var footerNotice = WebUtility.HtmlEncode(targetSnapshot?.FooterNotice ?? assets.FooterNotice);
+            // Resolve logo asset: If it's a relative path in wwwroot, convert to data URI so offline/downloaded file displays logo reliably
+            string embeddedLogoSrc = rawLogoUri ?? "";
+            if (!string.IsNullOrWhiteSpace(rawLogoUri) &&
+                !rawLogoUri.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+                !rawLogoUri.StartsWith("https://", StringComparison.OrdinalIgnoreCase) &&
+                !rawLogoUri.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var relPath = rawLogoUri.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                    var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relPath);
+                    if (!File.Exists(fullPath))
+                    {
+                        fullPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", relPath);
+                    }
+                    if (File.Exists(fullPath))
+                    {
+                        var bytes = File.ReadAllBytes(fullPath);
+                        var isSvg = fullPath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase);
+                        var mime = isSvg ? "image/svg+xml" : "image/png";
+                        embeddedLogoSrc = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
+                    }
+                }
+                catch
+                {
+                    // Fallback to original URI
+                }
+            }
 
-            var buttonDestValue = targetSnapshot?.ButtonDestinationValue ?? assets.ButtonDestinationValue;
-            var buttonDestType = targetSnapshot?.ButtonDestinationType ?? assets.ButtonDestinationType;
+            var brandName = WebUtility.HtmlEncode(snapshot.BrandName);
+            var conceptBadge = WebUtility.HtmlEncode(conceptBadgeStr);
+            var headline = WebUtility.HtmlEncode(snapshot.Headline);
+            var description = WebUtility.HtmlEncode(snapshot.Description);
+            var buttonLabel = WebUtility.HtmlEncode(snapshot.ButtonLabel);
+            var heroHelpText = WebUtility.HtmlEncode(heroHelpTextStr);
+            var footerNotice = WebUtility.HtmlEncode(snapshot.FooterNotice);
+
+            var buttonDestValue = snapshot.ButtonDestinationValue;
+            var buttonDestType = snapshot.ButtonDestinationType;
 
             // Button URL construction & sanitization
             string destinationHref = "#";
@@ -963,40 +1265,55 @@ namespace WebApp.Services.Implementations
                 onclickAttr = @" onclick=""return false;""";
             }
 
-            var sections = targetSnapshot?.Sections ?? assets.Sections;
+            var sections = snapshot.Sections;
             bool includeProblem = sections?.FirstOrDefault(s => s.Key == "problem")?.IsIncluded ?? true;
             bool includeSolution = sections?.FirstOrDefault(s => s.Key == "solution")?.IsIncluded ?? true;
             bool includeHowItWorks = sections?.FirstOrDefault(s => s.Key == "how-it-works")?.IsIncluded ?? true;
             bool includeFaq = sections?.FirstOrDefault(s => s.Key == "faq")?.IsIncluded ?? true;
             bool includeFinalCta = sections?.FirstOrDefault(s => s.Key == "final-cta")?.IsIncluded ?? true;
+
             // Pricing section inclusion: Sections["pricing"].IsIncluded is canonical when present.
             // Consult legacy PricingExclusion.Excluded only when pricing section is absent from Sections list.
             var pricingSection = sections?.FirstOrDefault(s => s.Key == "pricing");
             bool pricingSectionExplicitlyIncluded = pricingSection != null
                 ? pricingSection.IsIncluded
-                : assets.PricingExclusion?.Excluded == false;
+                : pricingExclusion?.Excluded == false;
 
-            bool pricingValidAndConfirmed = assets.PricingExclusion != null
-                && (assets.PricingExclusion.PriceStatus == "ConfirmedPositive" || assets.PricingExclusion.PriceStatus == "ConfirmedZero")
-                && assets.PricingExclusion.ChosenPrice.HasValue
-                && assets.PricingExclusion.ChosenPrice.Value >= 0;
+            bool pricingValidAndConfirmed = pricingExclusion != null
+                && (pricingExclusion.PriceStatus == "ConfirmedPositive" || pricingExclusion.PriceStatus == "ConfirmedZero")
+                && pricingExclusion.ChosenPrice.HasValue
+                && pricingExclusion.ChosenPrice.Value >= 0;
 
             bool includePricing = pricingSectionExplicitlyIncluded && pricingValidAndConfirmed;
 
-            var plannedSolutions = targetSnapshot?.PlannedSolutions ?? assets.PlannedSolutions;
-            var workflowDetails = targetSnapshot?.WorkflowDetails ?? assets.WorkflowDetails;
-            var faqs = targetSnapshot?.Faqs ?? assets.Faqs;
-            var problemEyebrow = targetSnapshot?.ProblemEyebrow ?? assets.ProblemEyebrow;
-            var problemStatement = targetSnapshot?.ProblemStatement ?? assets.ProblemStatement;
-            var momentumStatement = targetSnapshot?.OperationalMomentumStatement ?? assets.OperationalMomentumStatement;
-            var solutionHeader = targetSnapshot?.SolutionHeader ?? assets.SolutionHeader;
-            var solutionSubheader = targetSnapshot?.SolutionSubheader ?? assets.SolutionSubheader;
-            var howItWorksHeader = targetSnapshot?.HowItWorksHeader ?? assets.HowItWorksHeader;
-            var howItWorksSubheader = targetSnapshot?.HowItWorksSubheader ?? assets.HowItWorksSubheader;
-            var faqHeader = targetSnapshot?.FaqHeader ?? assets.FaqHeader;
-            var faqSubheader = targetSnapshot?.FaqSubheader ?? assets.FaqSubheader;
-            var finalCtaHeader = targetSnapshot?.FinalCtaHeader ?? assets.FinalCtaHeader;
-            var finalCtaSubheader = targetSnapshot?.FinalCtaSubheader ?? assets.FinalCtaSubheader;
+            var plannedSolutions = snapshot.PlannedSolutions ?? new List<LaunchSolutionCard>();
+            var workflowDetails = snapshot.WorkflowDetails ?? new List<LaunchWorkflowDetailedItem>();
+            var faqs = snapshot.Faqs ?? new List<LaunchFaqItem>();
+            var problemEyebrow = snapshot.ProblemEyebrow;
+            var problemStatement = snapshot.ProblemStatement;
+            var momentumStatement = snapshot.OperationalMomentumStatement;
+            var solutionHeader = snapshot.SolutionHeader;
+            var solutionSubheader = snapshot.SolutionSubheader;
+            var howItWorksHeader = snapshot.HowItWorksHeader;
+            var howItWorksSubheader = snapshot.HowItWorksSubheader;
+            var faqHeader = snapshot.FaqHeader;
+            var faqSubheader = snapshot.FaqSubheader;
+            var finalCtaHeader = snapshot.FinalCtaHeader;
+            var finalCtaSubheader = snapshot.FinalCtaSubheader;
+
+            var steps = workflowStepsList ?? new List<LaunchWorkflowStep>();
+
+            bool isLightBg = IsLightColorHex(bgColor);
+            string headingColor = isLightBg ? (!IsLightColorHex(textColor) ? textColor : "#0F172A") : (IsLightColorHex(textColor) ? textColor : "#FFFFFF");
+            string bodyColor = isLightBg ? "rgba(15, 23, 42, 0.8)" : "rgba(255, 255, 255, 0.75)";
+            string mutedColor = isLightBg ? "rgba(15, 23, 42, 0.55)" : "rgba(255, 255, 255, 0.5)";
+            string cardBg = isLightBg ? (string.Equals(bgColor, "#FFFFFF", StringComparison.OrdinalIgnoreCase) ? "#F8FAFC" : "#FFFFFF") : "rgba(255, 255, 255, 0.04)";
+            string cardBorder = isLightBg ? "rgba(15, 23, 42, 0.08)" : "rgba(255, 255, 255, 0.1)";
+            string sectionBorder = isLightBg ? "rgba(15, 23, 42, 0.08)" : "rgba(255, 255, 255, 0.1)";
+            string btnText = IsLightColorHex(primaryColor) ? "#0F172A" : "#FFFFFF";
+            string badgeBg = isLightBg ? HexToRgba(secondaryColor, 0.1) : HexToRgba(secondaryColor, 0.18);
+            string badgeColor = secondaryColor;
+            string badgeBorder = isLightBg ? HexToRgba(secondaryColor, 0.25) : HexToRgba(secondaryColor, 0.35);
 
             var html = $@"<!DOCTYPE html>
 <html lang=""en"">
@@ -1010,45 +1327,50 @@ namespace WebApp.Services.Implementations
   <style>
     :root {{
       --bg: {bgColor};
-      --card: #121316;
-      --border: #22242A;
-      --text: {textColor};
-      --muted: #9CA3AF;
+      --card: {cardBg};
+      --border: {cardBorder};
+      --section-border: {sectionBorder};
+      --heading: {headingColor};
+      --text: {bodyColor};
+      --muted: {mutedColor};
       --primary: {primaryColor};
+      --primary-btn-text: {btnText};
       --secondary: {secondaryColor};
       --accent: {accentColor};
-      --primary-hover: {primaryColor}DD;
+      --badge-bg: {badgeBg};
+      --badge-color: {badgeColor};
+      --badge-border: {badgeBorder};
       --font-sans: '{textFont}', -apple-system, BlinkMacSystemFont, sans-serif;
       --font-heading: '{displayFont}', -apple-system, BlinkMacSystemFont, sans-serif;
     }}
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{ background: var(--bg); color: var(--text); font-family: var(--font-sans); line-height: 1.6; padding: 0 1.5rem; }}
     .container {{ max-width: 1040px; margin: 0 auto; }}
-    header {{ display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 0; border-bottom: 1px solid var(--border); }}
-    .brand-logo {{ display: flex; align-items: center; gap: 0.75rem; font-family: var(--font-heading); font-weight: 700; font-size: 1.25rem; color: #FFFFFF; }}
-    .brand-logo img {{ height: 32px; width: auto; max-width: 160px; object-fit: contain; }}
-    .badge {{ background: rgba(59, 130, 246, 0.1); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 9999px; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }}
+    header {{ display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 0; border-bottom: 1px solid var(--section-border); }}
+    .brand-logo {{ display: flex; align-items: center; gap: 0.75rem; font-family: var(--font-heading); font-weight: 700; font-size: 1.25rem; color: var(--heading); }}
+    .brand-logo img {{ height: 34px; width: auto; max-width: 200px; object-fit: contain; }}
+    .badge {{ background: var(--badge-bg); color: var(--badge-color); border: 1px solid var(--badge-border); border-radius: 9999px; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }}
     .hero {{ padding: 5rem 0 3rem; text-align: center; max-width: 760px; margin: 0 auto; }}
-    .eyebrow {{ color: var(--primary); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }}
-    h1 {{ font-family: var(--font-heading); font-size: 2.75rem; line-height: 1.15; font-weight: 700; margin-bottom: 1.25rem; color: #FFFFFF; }}
-    p.lead {{ font-size: 1.125rem; color: var(--muted); margin-bottom: 2rem; }}
-    .cta-btn {{ display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary); color: #fff; text-decoration: none; padding: 0.875rem 2rem; border-radius: 0.5rem; font-weight: 600; transition: opacity 0.15s ease; }}
+    .eyebrow {{ color: var(--secondary); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1rem; }}
+    h1 {{ font-family: var(--font-heading); font-size: 2.75rem; line-height: 1.15; font-weight: 700; margin-bottom: 1.25rem; color: var(--heading); }}
+    p.lead {{ font-size: 1.125rem; color: var(--text); margin-bottom: 2rem; }}
+    .cta-btn {{ display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary); color: var(--primary-btn-text); text-decoration: none; padding: 0.875rem 2rem; border-radius: 0.75rem; font-weight: 600; transition: opacity 0.15s ease; }}
     .cta-btn:hover {{ opacity: 0.9; }}
-    .card-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 3rem; }}
+    .card-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 2rem; }}
     .card {{ background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.5rem; }}
-    .card-num {{ width: 28px; height: 28px; border-radius: 50%; background: rgba(59, 130, 246, 0.15); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 1rem; }}
-    h2 {{ font-family: var(--font-heading); font-size: 1.75rem; margin-bottom: 1rem; color: #FFF; }}
-    h3 {{ font-family: var(--font-heading); font-size: 1.125rem; margin-bottom: 0.5rem; color: #FFF; }}
-    .section-wrap {{ padding: 4rem 0; border-top: 1px solid var(--border); }}
-    footer {{ border-top: 1px solid var(--border); padding: 2rem 0; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 0.875rem; }}
+    .card-num {{ width: 28px; height: 28px; border-radius: 50%; background: var(--badge-bg); color: var(--badge-color); display: flex; align-items: center; justify-content: center; font-weight: bold; margin-bottom: 1rem; font-size: 0.75rem; }}
+    h2 {{ font-family: var(--font-heading); font-size: 1.75rem; margin-bottom: 1rem; color: var(--heading); }}
+    h3 {{ font-family: var(--font-heading); font-size: 1.125rem; margin-bottom: 0.5rem; color: var(--heading); }}
+    .section-wrap {{ padding: 3.5rem 0; border-top: 1px solid var(--section-border); }}
+    footer {{ border-top: 1px solid var(--section-border); padding: 2rem 0; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 0.875rem; }}
   </style>
 </head>
 <body>
   <div class=""container"">
     <header>
       <div class=""brand-logo"">
-        {(!string.IsNullOrWhiteSpace(logoUri) ? $@"<img src=""{WebUtility.HtmlEncode(logoUri)}"" alt=""{brandName}"" />" : "")}
-        <span>{brandName}</span>
+        {(!string.IsNullOrWhiteSpace(embeddedLogoSrc) ? $@"<img src=""{WebUtility.HtmlEncode(embeddedLogoSrc)}"" alt=""{brandName}"" />" : "")}
+        {(!isLockup || string.IsNullOrWhiteSpace(embeddedLogoSrc) ? $@"<span>{brandName}</span>" : "")}
       </div>
       <div class=""badge"">{footerNotice}</div>
     </header>
@@ -1065,10 +1387,10 @@ namespace WebApp.Services.Implementations
       </section>
 
       <section class=""section-wrap"">
-        <div class=""eyebrow"">{WebUtility.HtmlEncode(assets.PlannedWorkflowTitle)}</div>
-        <p style=""color: var(--muted); margin-bottom: 1.5rem;"">{WebUtility.HtmlEncode(assets.PlannedWorkflowSubtitle)}</p>
+        <div class=""eyebrow"">{WebUtility.HtmlEncode(plannedWorkflowTitleStr)}</div>
+        <p style=""color: var(--muted); margin-bottom: 1.5rem;"">{WebUtility.HtmlEncode(plannedWorkflowSubtitleStr)}</p>
         <div class=""card-grid"">
-          {string.Join("", assets.WorkflowSteps.Select(s => $@"<div class=""card""><div class=""card-num"">{s.StepNumber}</div><h3>{WebUtility.HtmlEncode(s.Title)}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(s.Description)}</p></div>"))}
+          {string.Join("", steps.Select(s => $@"<div class=""card""><div class=""card-num"">{s.StepNumber}</div><h3>{WebUtility.HtmlEncode(s.Title)}</h3><p style=""color: var(--text); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(s.Description)}</p></div>"))}
         </div>
       </section>
 
@@ -1076,7 +1398,7 @@ namespace WebApp.Services.Implementations
       <section class=""section-wrap"">
         <div class=""eyebrow"">{WebUtility.HtmlEncode(problemEyebrow)}</div>
         <h2>{WebUtility.HtmlEncode(problemStatement)}</h2>
-        <p style=""color: var(--muted); max-width: 680px;"">{WebUtility.HtmlEncode(momentumStatement)}</p>
+        <p style=""color: var(--text); max-width: 680px;"">{WebUtility.HtmlEncode(momentumStatement)}</p>
       </section>" : "")}
 
       {(includeSolution ? $@"
@@ -1084,7 +1406,7 @@ namespace WebApp.Services.Implementations
         <h2>{WebUtility.HtmlEncode(solutionHeader)}</h2>
         <p style=""color: var(--muted); margin-bottom: 2rem;"">{WebUtility.HtmlEncode(solutionSubheader)}</p>
         <div class=""card-grid"">
-          {string.Join("", plannedSolutions.Select(sol => $@"<div class=""card""><h3>{WebUtility.HtmlEncode(sol.Title)}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(sol.Description)}</p></div>"))}
+          {string.Join("", plannedSolutions.Select(sol => $@"<div class=""card""><h3>{WebUtility.HtmlEncode(sol.Title)}</h3><p style=""color: var(--text); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(sol.Description)}</p></div>"))}
         </div>
       </section>" : "")}
 
@@ -1093,21 +1415,21 @@ namespace WebApp.Services.Implementations
         <h2>{WebUtility.HtmlEncode(howItWorksHeader)}</h2>
         <p style=""color: var(--muted); margin-bottom: 2rem;"">{WebUtility.HtmlEncode(howItWorksSubheader)}</p>
         <div style=""display: flex; flex-direction: column; gap: 1rem;"">
-          {string.Join("", workflowDetails.Select(wf => $@"<div class=""card"" style=""display: flex; gap: 1.25rem; align-items: flex-start;""><div class=""card-num"">{wf.StepNumber}</div><div><h3>{WebUtility.HtmlEncode(wf.Title)}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(wf.Description)}</p></div></div>"))}
+          {string.Join("", workflowDetails.Select(wf => $@"<div class=""card"" style=""display: flex; gap: 1.25rem; align-items: flex-start;""><div class=""card-num"">{wf.StepNumber}</div><div><h3>{WebUtility.HtmlEncode(wf.Title)}</h3><p style=""color: var(--text); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(wf.Description)}</p></div></div>"))}
         </div>
       </section>" : "")}
 
-      {(includePricing && assets.PricingExclusion != null ? $@"
+      {(includePricing && pricingExclusion != null ? $@"
       <section class=""section-wrap"" id=""pricing-section"">
         <h2>Transparent Pricing</h2>
         <p style=""color: var(--muted); margin-bottom: 2rem;"">Clear, straightforward options designed for your workflows.</p>
         <div class=""card"" style=""max-width: 360px; margin: 0 auto; text-align: center;"">
-          <h3>{WebUtility.HtmlEncode(assets.PricingExclusion.SelectedOfferName ?? "Standard Plan")}</h3>
-          <div style=""font-size: 2.25rem; font-weight: 700; margin: 1rem 0; color: #FFF;"">
-            {(assets.PricingExclusion.PriceStatus == "ConfirmedZero" ? "Free" : $"{assets.PricingExclusion.Currency}{assets.PricingExclusion.ChosenPrice ?? 0:0.##}")}
-            {(assets.PricingExclusion.PriceStatus != "ConfirmedZero" ? $@"<span style=""font-size: 0.875rem; color: var(--muted); font-weight: 400;""> / {WebUtility.HtmlEncode(assets.PricingExclusion.BillingPeriod)}</span>" : "")}
+          <h3>{WebUtility.HtmlEncode(pricingExclusion.SelectedOfferName ?? "Standard Plan")}</h3>
+          <div style=""font-size: 2.25rem; font-weight: 700; margin: 1rem 0; color: var(--heading);"">
+            {(pricingExclusion.PriceStatus == "ConfirmedZero" ? "Free" : $"{pricingExclusion.Currency}{pricingExclusion.ChosenPrice ?? 0:0.##}")}
+            {(pricingExclusion.PriceStatus != "ConfirmedZero" ? $@"<span style=""font-size: 0.875rem; color: var(--muted); font-weight: 400;""> / {WebUtility.HtmlEncode(pricingExclusion.BillingPeriod)}</span>" : "")}
           </div>
-          <p style=""color: var(--muted); font-size: 0.875rem;"">{WebUtility.HtmlEncode(assets.PricingExclusion.Reason)}</p>
+          <p style=""color: var(--text); font-size: 0.875rem;"">{WebUtility.HtmlEncode(pricingExclusion.Reason)}</p>
         </div>
       </section>" : "")}
 
@@ -1116,26 +1438,66 @@ namespace WebApp.Services.Implementations
         <h2>{WebUtility.HtmlEncode(faqHeader)}</h2>
         <p style=""color: var(--muted); margin-bottom: 2rem;"">{WebUtility.HtmlEncode(faqSubheader)}</p>
         <div style=""display: flex; flex-direction: column; gap: 1rem;"">
-          {string.Join("", faqs.Select(faq => $@"<div class=""card""><h3>{WebUtility.HtmlEncode(faq.Question)}</h3><p style=""color: var(--muted); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(faq.Answer)}</p></div>"))}
+          {string.Join("", faqs.Select(faq => $@"<div class=""card""><h3>{WebUtility.HtmlEncode(faq.Question)}</h3><p style=""color: var(--text); font-size: 0.9375rem;"">{WebUtility.HtmlEncode(faq.Answer)}</p></div>"))}
         </div>
       </section>" : "")}
 
       {(includeFinalCta ? $@"
       <section class=""section-wrap"" style=""text-align: center;"">
         <h2>{WebUtility.HtmlEncode(finalCtaHeader)}</h2>
-        <p style=""color: var(--muted); margin-bottom: 1.5rem;"">{WebUtility.HtmlEncode(finalCtaSubheader)}</p>
+        <p style=""color: var(--text); margin-bottom: 1.5rem;"">{WebUtility.HtmlEncode(finalCtaSubheader)}</p>
         <a href=""{destinationHref}""{onclickAttr} class=""cta-btn"">{buttonLabel} &rarr;</a>
       </section>" : "")}
     </main>
 
     <footer>
-      <div>{brandName}</div>
+      <div class=""brand-logo"">
+        {(!string.IsNullOrWhiteSpace(embeddedLogoSrc) ? $@"<img src=""{WebUtility.HtmlEncode(embeddedLogoSrc)}"" alt=""{brandName}"" style=""height: 22px; opacity: 0.85;"" />" : "")}
+        {(!isLockup || string.IsNullOrWhiteSpace(embeddedLogoSrc) ? $@"<span>{brandName}</span>" : "")}
+      </div>
       <div>{footerNotice}</div>
     </footer>
   </div>
 </body>
 </html>";
             return html;
+        }
+
+        private static bool IsLightColorHex(string? hex)
+        {
+            if (string.IsNullOrWhiteSpace(hex)) return false;
+            var clean = hex.Trim().TrimStart('#');
+            if (clean.Length == 3)
+            {
+                clean = $"{clean[0]}{clean[0]}{clean[1]}{clean[1]}{clean[2]}{clean[2]}";
+            }
+            if (clean.Length != 6) return false;
+            if (int.TryParse(clean.Substring(0, 2), System.Globalization.NumberStyles.HexNumber, null, out int r) &&
+                int.TryParse(clean.Substring(2, 2), System.Globalization.NumberStyles.HexNumber, null, out int g) &&
+                int.TryParse(clean.Substring(4, 2), System.Globalization.NumberStyles.HexNumber, null, out int b))
+            {
+                var yiq = (r * 299 + g * 587 + b * 114) / 1000;
+                return yiq >= 140;
+            }
+            return false;
+        }
+
+        private static string HexToRgba(string? hex, double alpha)
+        {
+            if (string.IsNullOrWhiteSpace(hex)) return $"rgba(59, 130, 246, {alpha})";
+            var clean = hex.Trim().TrimStart('#');
+            if (clean.Length == 3)
+            {
+                clean = $"{clean[0]}{clean[0]}{clean[1]}{clean[1]}{clean[2]}{clean[2]}";
+            }
+            if (clean.Length == 6 &&
+                int.TryParse(clean.Substring(0, 2), System.Globalization.NumberStyles.HexNumber, null, out int r) &&
+                int.TryParse(clean.Substring(2, 2), System.Globalization.NumberStyles.HexNumber, null, out int g) &&
+                int.TryParse(clean.Substring(4, 2), System.Globalization.NumberStyles.HexNumber, null, out int b))
+            {
+                return $"rgba({r}, {g}, {b}, {alpha.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)})";
+            }
+            return $"rgba(59, 130, 246, {alpha})";
         }
     }
 }

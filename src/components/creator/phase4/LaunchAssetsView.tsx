@@ -58,7 +58,8 @@ interface LaunchAssetsViewProps {
   onUpdateAssets: (req: UpdateLaunchAssetsRequest) => Promise<void>;
   onNewVersion: () => Promise<void>;
   onSelectVersion?: () => Promise<void>;
-  onDownloadSource: () => Promise<void>;
+  onDownloadSource: (version?: number) => Promise<void>;
+  onShareWebsite: (version?: number) => Promise<string>;
 }
 
 export function LaunchAssetsView({
@@ -74,6 +75,7 @@ export function LaunchAssetsView({
   onNewVersion,
   onSelectVersion,
   onDownloadSource,
+  onShareWebsite,
 }: LaunchAssetsViewProps) {
   const router = useRouter();
 
@@ -166,6 +168,11 @@ export function LaunchAssetsView({
   const [isSelectingVersion, setIsSelectingVersion] = useState(false);
   const [selectVersionSuccess, setSelectVersionSuccess] = useState(false);
 
+  // Public sharing state
+  const [isViewingWebsite, setIsViewingWebsite] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+
   // Fullscreen Preview Modal
   const [isFullscreenPreviewOpen, setIsFullscreenPreviewOpen] = useState(false);
 
@@ -215,6 +222,62 @@ export function LaunchAssetsView({
     }
   }, [assets, projectName]);
 
+  const isEditorDirty = React.useMemo(() => {
+    if (!assets) return false;
+    const destTypeToCompare = destValue.trim() ? destType : 'NotSet';
+    const destValueToCompare = destValue.trim();
+
+    if ((headline || '') !== (assets.headline || '')) return true;
+    if ((description || '') !== (assets.description || '')) return true;
+    if ((buttonLabel || '') !== (assets.buttonLabel || '')) return true;
+    if (destTypeToCompare !== (assets.buttonDestinationType || 'NotSet')) return true;
+    if (destValueToCompare !== (assets.buttonDestinationValue || '')) return true;
+    if ((problemEyebrow || '') !== (assets.problemEyebrow || '')) return true;
+    if ((problemStatement || '') !== (assets.problemStatement || '')) return true;
+    if ((operationalMomentumStatement || '') !== (assets.operationalMomentumStatement || '')) return true;
+    if ((solutionHeader || '') !== (assets.solutionHeader || '')) return true;
+    if ((solutionSubheader || '') !== (assets.solutionSubheader || '')) return true;
+    if ((howItWorksHeader || '') !== (assets.howItWorksHeader || '')) return true;
+    if ((howItWorksSubheader || '') !== (assets.howItWorksSubheader || '')) return true;
+    if ((faqHeader || '') !== (assets.faqHeader || '')) return true;
+    if ((faqSubheader || '') !== (assets.faqSubheader || '')) return true;
+    if ((finalCtaHeader || '') !== (assets.finalCtaHeader || '')) return true;
+    if ((finalCtaSubheader || '') !== (assets.finalCtaSubheader || '')) return true;
+    if ((brandName || '') !== (assets.brandName || projectName || '')) return true;
+    if ((footerNotice || '') !== (assets.footerNotice || '')) return true;
+    if (JSON.stringify(plannedSolutions) !== JSON.stringify(assets.plannedSolutions || [])) return true;
+    if (JSON.stringify(workflowDetails) !== JSON.stringify(assets.workflowDetails || [])) return true;
+    if (JSON.stringify(faqs) !== JSON.stringify(assets.faqs || [])) return true;
+    if (JSON.stringify(sectionsList) !== JSON.stringify(assets.sections || [])) return true;
+
+    return false;
+  }, [
+    assets,
+    headline,
+    description,
+    buttonLabel,
+    destType,
+    destValue,
+    problemEyebrow,
+    problemStatement,
+    operationalMomentumStatement,
+    solutionHeader,
+    solutionSubheader,
+    howItWorksHeader,
+    howItWorksSubheader,
+    faqHeader,
+    faqSubheader,
+    finalCtaHeader,
+    finalCtaSubheader,
+    brandName,
+    projectName,
+    footerNotice,
+    plannedSolutions,
+    workflowDetails,
+    faqs,
+    sectionsList,
+  ]);
+
   const handleApplyChanges = async () => {
     try {
       setIsApplying(true);
@@ -247,6 +310,73 @@ export function LaunchAssetsView({
       setTimeout(() => setAppliedSuccess(false), 3000);
     } finally {
       setIsApplying(false);
+    }
+  };
+
+  const handleViewWebsite = async () => {
+    if (isViewingWebsite) return;
+    try {
+      setIsViewingWebsite(true);
+      setShareError(null);
+
+      // 1. If editor has unsaved changes, save them first
+      if (isEditorDirty) {
+        await onUpdateAssets({
+          activeSectionKey: selectedSectionKey,
+          headline,
+          description,
+          buttonLabel,
+          buttonDestinationType: destValue.trim() ? destType : 'NotSet',
+          buttonDestinationValue: destValue.trim(),
+          problemEyebrow,
+          problemStatement,
+          operationalMomentumStatement,
+          solutionHeader,
+          solutionSubheader,
+          plannedSolutions,
+          howItWorksHeader,
+          howItWorksSubheader,
+          workflowDetails,
+          faqHeader,
+          faqSubheader,
+          faqs,
+          finalCtaHeader,
+          finalCtaSubheader,
+          brandName,
+          footerNotice,
+          sections: sectionsList,
+        });
+      }
+
+      // 2. Share and retrieve durable token for this exact version (or reuse existing token)
+      let token = assets?.shareToken;
+      if (!token || isEditorDirty) {
+        token = await onShareWebsite(assets?.version);
+      }
+      const publicUrl = `${window.location.origin}/p/launch/${token}`;
+
+      // 3. Open in a new tab
+      window.open(publicUrl, '_blank', 'noopener,noreferrer');
+    } catch (err: any) {
+      setShareError(err.message || "Couldn't open public website. Draft retained.");
+    } finally {
+      setIsViewingWebsite(false);
+    }
+  };
+
+  const handleCopyPublicLink = async () => {
+    try {
+      setShareError(null);
+      let token = assets?.shareToken;
+      if (!token || isEditorDirty) {
+        token = await onShareWebsite(assets?.version);
+      }
+      const publicUrl = `${window.location.origin}/p/launch/${token}`;
+      await navigator.clipboard.writeText(publicUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+    } catch (err: any) {
+      setShareError(err.message || "Couldn't copy public link.");
     }
   };
 
@@ -323,6 +453,7 @@ export function LaunchAssetsView({
 
   const logoUri = brandStudio?.logoLockupUri || brandStudio?.logoMarkUri;
   const resolvedLogoUrl = logoUri ? resolveMediaUrl(logoUri) : '';
+  const isLockup = Boolean(brandStudio?.logoLockupUri && (logoUri === brandStudio.logoLockupUri));
   const googleFontsUrl = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
     textFont
   ).replace(/%20/g, '+')}:wght@300;400;500;600;700;800&family=${encodeURIComponent(
@@ -470,22 +601,46 @@ export function LaunchAssetsView({
 
             <div className="flex items-center gap-2 text-xs font-sans text-muted-foreground">
               <Globe className="w-3.5 h-3.5 text-muted-foreground/80 shrink-0" />
-              <span>{assets.publishedStatus || 'Available to view in MBC. Not published.'}</span>
+              <span>
+                {assets.shareToken
+                  ? 'Anyone with the link can view this website.'
+                  : (assets.publishedStatus || 'Anyone with the link can view this website.')}
+              </span>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
-              onClick={() => setIsFullscreenPreviewOpen(true)}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors"
+              onClick={handleViewWebsite}
+              disabled={isViewingWebsite}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-colors disabled:opacity-50"
+              title="Open public website in a new tab"
             >
-              <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-              <span>View website</span>
+              {isViewingWebsite ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Eye className="w-3.5 h-3.5" />
+              )}
+              <span>{isViewingWebsite ? 'Opening...' : 'View website'}</span>
             </button>
 
             <button
-              onClick={onDownloadSource}
+              onClick={handleCopyPublicLink}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors"
+              title="Copy public link to share"
+            >
+              {copiedLink ? (
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+              ) : (
+                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+              )}
+              <span>{copiedLink ? 'Link copied!' : 'Copy link'}</span>
+            </button>
+
+            <button
+              onClick={() => onDownloadSource(assets.version)}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors"
+              title="Download standalone HTML source file"
             >
               <Download className="w-3.5 h-3.5 text-muted-foreground" />
               <span>Download source</span>
@@ -511,6 +666,19 @@ export function LaunchAssetsView({
             </button>
           </div>
         </div>
+
+        {shareError && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2.5 text-xs">
+            <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <span className="text-destructive font-medium flex-1">{shareError}</span>
+            <button
+              onClick={() => setShareError(null)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Version Meta Footer */}
         <div className="pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-muted-foreground">
@@ -772,7 +940,7 @@ export function LaunchAssetsView({
                         <img
                           src={resolvedLogoUrl}
                           alt={brandName || projectName}
-                          className="h-8 w-auto max-w-[150px] object-contain"
+                          className="h-8 w-auto max-w-[200px] object-contain"
                         />
                       ) : (
                         <div
@@ -782,12 +950,14 @@ export function LaunchAssetsView({
                           {(brandName || projectName || 'M').slice(0, 1).toUpperCase()}
                         </div>
                       )}
-                      <span
-                        className="font-bold text-base sm:text-lg text-foreground tracking-tight"
-                        style={{ fontFamily: `'${displayFont}', sans-serif`, fontWeight: headingWeight }}
-                      >
-                        {brandName || projectName}
-                      </span>
+                      {!isLockup && (
+                        <span
+                          className="font-bold text-base sm:text-lg text-foreground tracking-tight"
+                          style={{ fontFamily: `'${displayFont}', sans-serif`, fontWeight: headingWeight }}
+                        >
+                          {brandName || projectName}
+                        </span>
+                      )}
                     </div>
                     <span
                       className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
@@ -1122,7 +1292,7 @@ export function LaunchAssetsView({
                       <img
                         src={resolvedLogoUrl}
                         alt={brandName || projectName}
-                        className="h-5 w-auto max-w-[100px] object-contain opacity-80"
+                        className="h-5 w-auto max-w-[140px] object-contain opacity-80"
                       />
                     ) : (
                       <div
@@ -1132,12 +1302,14 @@ export function LaunchAssetsView({
                         {(brandName || projectName || 'M').slice(0, 1).toUpperCase()}
                       </div>
                     )}
-                    <span
-                      className="font-semibold text-foreground"
-                      style={{ fontFamily: `'${displayFont}', sans-serif` }}
-                    >
-                      {brandName || projectName}
-                    </span>
+                    {!isLockup && (
+                      <span
+                        className="font-semibold text-foreground"
+                        style={{ fontFamily: `'${displayFont}', sans-serif` }}
+                      >
+                        {brandName || projectName}
+                      </span>
+                    )}
                   </div>
                   <span>{footerNotice}</span>
                 </div>

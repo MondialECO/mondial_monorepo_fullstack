@@ -134,6 +134,8 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public string BrandName { get; set; } = string.Empty;
         public string FooterNotice { get; set; } = string.Empty;
         public List<LaunchAssetSection> Sections { get; set; } = new();
+        public string? ShareToken { get; set; }
+        public DateTime? SharedAt { get; set; }
     }
 
     // =========================================================================
@@ -151,6 +153,9 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public string PublishedStatus { get; set; } = "Available to view in MBC. Not published.";
         public DateTime LastGeneratedAt { get; set; } = DateTime.UtcNow;
         public string ActiveSectionKey { get; set; } = "hero";
+        public string? ShareToken { get; set; }
+        public DateTime? SharedAt { get; set; }
+        public int? SharedVersion { get; set; }
         public List<LaunchAssetsPlanSnapshot> VersionHistory { get; set; } = new();
 
         // Brand Studio Visual & Strategic Identity
@@ -276,5 +281,73 @@ namespace WebApp.Models.DatabaseModels.Phase4
         public string? IdeaId { get; set; }
         public int? VersionNumber { get; set; }
         public long? ExpectedVersion { get; set; }
+    }
+
+    public class ShareLaunchAssetRequest
+    {
+        public string? IdeaId { get; set; }
+        public int? VersionNumber { get; set; }
+        public long? ExpectedVersion { get; set; }
+    }
+
+    public class ShareLaunchAssetResponse
+    {
+        public string ShareToken { get; set; } = string.Empty;
+        public string ShareUrl { get; set; } = string.Empty;
+        public int Version { get; set; }
+        public DateTime SharedAt { get; set; }
+        public string PublishedStatus { get; set; } = "Anyone with the link can view this website.";
+        public long? IdeaVersion { get; set; }
+    }
+
+    public class PublicLaunchAssetResponse
+    {
+        public string ShareToken { get; set; } = string.Empty;
+        public int Version { get; set; }
+        public string ReleaseTag { get; set; } = string.Empty;
+        public DateTime SharedAt { get; set; }
+        public string PublishedStatus { get; set; } = "Anyone with the link can view this website.";
+
+        // Brand Studio (safe public branding without private keys)
+        public LaunchBrandStudioSummary BrandStudio { get; set; } = new();
+
+        // Content Snapshot
+        public string BrandName { get; set; } = string.Empty;
+        public string ConceptBadge { get; set; } = "PREVIEWING CONCEPT";
+        public string Headline { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string ButtonLabel { get; set; } = "Express interest";
+        public string ButtonDestinationType { get; set; } = "NotSet";
+        public string ButtonDestinationValue { get; set; } = string.Empty;
+        public bool ButtonDestinationConfigured { get; set; } = false;
+        public string HeroHelpText { get; set; } = "Help shape the project by sharing how you work today.";
+
+        public string PlannedWorkflowTitle { get; set; } = "PLANNED WORKFLOW";
+        public string PlannedWorkflowSubtitle { get; set; } = "High-level interface structure";
+        public List<LaunchWorkflowStep> WorkflowSteps { get; set; } = new();
+
+        public string ProblemEyebrow { get; set; } = "KEEP TRACK OF THE NEXT STEP";
+        public string ProblemStatement { get; set; } = string.Empty;
+        public string OperationalMomentumStatement { get; set; } = string.Empty;
+
+        public string SolutionHeader { get; set; } = "What’s being planned";
+        public string SolutionSubheader { get; set; } = "Straightforward tools designed strictly around routine project administration.";
+        public List<LaunchSolutionCard> PlannedSolutions { get; set; } = new();
+
+        public string HowItWorksHeader { get; set; } = "A simpler flow for your work";
+        public string HowItWorksSubheader { get; set; } = "This describes the planned workflow.";
+        public List<LaunchWorkflowDetailedItem> WorkflowDetails { get; set; } = new();
+
+        public string FaqHeader { get; set; } = "Frequently Asked Questions";
+        public string FaqSubheader { get; set; } = "Honest answers about development status and availability.";
+        public List<LaunchFaqItem> Faqs { get; set; } = new();
+
+        public string FinalCtaHeader { get; set; } = "Share how you work today";
+        public string FinalCtaSubheader { get; set; } = "Your experience can help shape what this project focuses on.";
+
+        public string FooterNotice { get; set; } = "Project in preparation";
+
+        public List<LaunchAssetSection> Sections { get; set; } = new();
+        public LaunchPricingExclusion PricingExclusion { get; set; } = new();
     }
 }

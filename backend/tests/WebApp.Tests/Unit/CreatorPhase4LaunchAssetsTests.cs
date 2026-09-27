@@ -960,5 +960,186 @@ namespace WebApp.Tests.Unit
             Assert.Equal(2, selectBRes.Assets!.SelectedVersion);
             Assert.Equal("Selected", selectBRes.Assets.Status);
         }
+
+        [Fact]
+        public async Task ShareLaunchAssetsAsync_GeneratesUniqueShareTokenAndPersistsToSnapshotAndPlan()
+        {
+            // Arrange
+            var plan = new LaunchAssetsPlan
+            {
+                Version = 1,
+                SelectedVersion = 1,
+                Status = "Draft",
+                Headline = "Public Shared Headline",
+                BrandName = "TestBrand",
+                PublishedStatus = "Available to view in MBC. Not published."
+            };
+            var journey = new CreatorJourney
+            {
+                UserId = "user-123",
+                ActiveIdeaId = "idea-abc",
+                IdeaVersion = 1,
+                Phase4Data = new CreatorPhase4Data { LaunchAssets = plan }
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync("user-123", "idea-abc"))
+                .ReturnsAsync(journey);
+            _journeysMock.Setup(j => j.SetPhase4LaunchAssetsAsync("user-123", It.IsAny<LaunchAssetsPlan>(), "idea-abc"))
+                .Callback<string, LaunchAssetsPlan, string?>((u, p, i) => journey.Phase4Data.LaunchAssets = p)
+                .ReturnsAsync(journey);
+
+            var service = CreateService();
+
+            // Act
+            var res = await service.ShareLaunchAssetsAsync("user-123", "idea-abc", 1);
+
+            // Assert
+            Assert.False(string.IsNullOrWhiteSpace(res.ShareToken));
+            Assert.Equal($"/p/launch/{res.ShareToken}", res.ShareUrl);
+            Assert.Equal(1, res.Version);
+            Assert.Equal("Anyone with the link can view this website.", res.PublishedStatus);
+
+            // Assert persisted on plan & snapshot
+            Assert.Equal(res.ShareToken, journey.Phase4Data.LaunchAssets.ShareToken);
+            Assert.Equal("Anyone with the link can view this website.", journey.Phase4Data.LaunchAssets.PublishedStatus);
+            var snap = journey.Phase4Data.LaunchAssets.VersionHistory.FirstOrDefault(s => s.Version == 1);
+            Assert.NotNull(snap);
+            Assert.Equal(res.ShareToken, snap.ShareToken);
+        }
+
+        [Fact]
+        public async Task ShareLaunchAssetsAsync_ReusesExistingTokenForSameVersion()
+        {
+            // Arrange
+            var plan = new LaunchAssetsPlan
+            {
+                Version = 1,
+                SelectedVersion = 1,
+                Status = "Draft",
+                Headline = "Stable Token Headline"
+            };
+            var journey = new CreatorJourney
+            {
+                UserId = "user-123",
+                ActiveIdeaId = "idea-abc",
+                IdeaVersion = 1,
+                Phase4Data = new CreatorPhase4Data { LaunchAssets = plan }
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync("user-123", "idea-abc"))
+                .ReturnsAsync(journey);
+            _journeysMock.Setup(j => j.SetPhase4LaunchAssetsAsync("user-123", It.IsAny<LaunchAssetsPlan>(), "idea-abc"))
+                .Callback<string, LaunchAssetsPlan, string?>((u, p, i) => journey.Phase4Data.LaunchAssets = p)
+                .ReturnsAsync(journey);
+
+            var service = CreateService();
+
+            // Act 1
+            var res1 = await service.ShareLaunchAssetsAsync("user-123", "idea-abc", 1);
+            // Act 2
+            var res2 = await service.ShareLaunchAssetsAsync("user-123", "idea-abc", 1);
+
+            // Assert
+            Assert.Equal(res1.ShareToken, res2.ShareToken);
+            Assert.Equal(res1.ShareUrl, res2.ShareUrl);
+        }
+
+        [Fact]
+        public async Task GetPublicLaunchAssetAsync_ResolvesSnapshotWithoutAuthentication()
+        {
+            // Arrange
+            var plan = new LaunchAssetsPlan
+            {
+                Version = 1,
+                SelectedVersion = 1,
+                Status = "Draft",
+                BrandName = "PublicVenture",
+                Headline = "Public Venture Headline",
+                Description = "A publicly visible description.",
+                Sections = new List<LaunchAssetSection>
+                {
+                    new() { Key = "hero", Title = "Hero", IsIncluded = true, IsRequired = true },
+                    new() { Key = "problem", Title = "Problem", IsIncluded = true }
+                }
+            };
+            var journey = new CreatorJourney
+            {
+                UserId = "user-123",
+                ActiveIdeaId = "idea-abc",
+                IdeaVersion = 1,
+                Phase4Data = new CreatorPhase4Data { LaunchAssets = plan }
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync("user-123", "idea-abc"))
+                .ReturnsAsync(journey);
+            _journeysMock.Setup(j => j.SetPhase4LaunchAssetsAsync("user-123", It.IsAny<LaunchAssetsPlan>(), "idea-abc"))
+                .Callback<string, LaunchAssetsPlan, string?>((u, p, i) => journey.Phase4Data.LaunchAssets = p)
+                .ReturnsAsync(journey);
+
+            var service = CreateService();
+            var shareRes = await service.ShareLaunchAssetsAsync("user-123", "idea-abc", 1);
+
+            // Act: Public resolution by shareToken (no userId or ideaId required)
+            var publicRes = await service.GetPublicLaunchAssetAsync(shareRes.ShareToken);
+
+            // Assert
+            Assert.NotNull(publicRes);
+            Assert.Equal(shareRes.ShareToken, publicRes.ShareToken);
+            Assert.Equal("PublicVenture", publicRes.BrandName);
+            Assert.Equal("Public Venture Headline", publicRes.Headline);
+            Assert.Equal("A publicly visible description.", publicRes.Description);
+            Assert.Equal("Anyone with the link can view this website.", publicRes.PublishedStatus);
+            Assert.Equal(2, publicRes.Sections.Count);
+        }
+
+        [Fact]
+        public async Task GetPublicSourceCodeBundleAsync_GeneratesStandaloneHtmlForPublicToken()
+        {
+            // Arrange
+            var plan = new LaunchAssetsPlan
+            {
+                Version = 1,
+                SelectedVersion = 1,
+                Status = "Draft",
+                BrandName = "HtmlPublicBrand",
+                Headline = "Standalone Html Headline",
+                FooterNotice = "Project in preparation"
+            };
+            var journey = new CreatorJourney
+            {
+                UserId = "user-123",
+                ActiveIdeaId = "idea-abc",
+                IdeaVersion = 1,
+                Phase4Data = new CreatorPhase4Data { LaunchAssets = plan }
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync("user-123", "idea-abc"))
+                .ReturnsAsync(journey);
+            _journeysMock.Setup(j => j.SetPhase4LaunchAssetsAsync("user-123", It.IsAny<LaunchAssetsPlan>(), "idea-abc"))
+                .Callback<string, LaunchAssetsPlan, string?>((u, p, i) => journey.Phase4Data.LaunchAssets = p)
+                .ReturnsAsync(journey);
+
+            var service = CreateService();
+            var shareRes = await service.ShareLaunchAssetsAsync("user-123", "idea-abc", 1);
+
+            // Act
+            var html = await service.GetPublicSourceCodeBundleAsync(shareRes.ShareToken);
+
+            // Assert
+            Assert.Contains("<!DOCTYPE html>", html);
+            Assert.Contains("HtmlPublicBrand", html);
+            Assert.Contains("Standalone Html Headline", html);
+            Assert.Contains("Project in preparation", html);
+        }
+
+        [Fact]
+        public async Task GetPublicLaunchAssetAsync_InvalidToken_ThrowsKeyNotFoundException()
+        {
+            // Arrange
+            var service = CreateService();
+
+            // Act & Assert
+            await Assert.ThrowsAsync<KeyNotFoundException>(() => service.GetPublicLaunchAssetAsync("non-existent-token"));
+        }
     }
 }

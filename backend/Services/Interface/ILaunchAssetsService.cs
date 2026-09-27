@@ -12,5 +12,8 @@ namespace WebApp.Services.Interface
         Task<LaunchAssetsResponse> CreateNewVersionAsync(string userId, string? ideaId = null);
         Task<LaunchAssetsResponse> SelectVersionAsync(string userId, string? ideaId = null, int? versionNumber = null);
         Task<string> GetSourceCodeBundleAsync(string userId, string? ideaId = null, int? versionNumber = null);
+        Task<ShareLaunchAssetResponse> ShareLaunchAssetsAsync(string userId, string? ideaId = null, int? versionNumber = null);
+        Task<PublicLaunchAssetResponse> GetPublicLaunchAssetAsync(string shareToken);
+        Task<string> GetPublicSourceCodeBundleAsync(string shareToken);
     }
 }
