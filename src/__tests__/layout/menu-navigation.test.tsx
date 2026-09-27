@@ -460,4 +460,146 @@ describe("Menu Navigation & Submenu Interaction Suite", () => {
       }
     });
   });
+
+  describe("Phase 4 Dedicated Sidebar Navigation Suite", () => {
+    it("exports PHASE_4_CREATOR_MENU_SECTION with all 9 canonical steps in exact order", async () => {
+      const { PHASE_4_CREATOR_MENU_SECTION } = await import("@/lib/menu");
+      expect(PHASE_4_CREATOR_MENU_SECTION.title).toBe("Phase 4");
+      expect(PHASE_4_CREATOR_MENU_SECTION.items).toHaveLength(1);
+
+      const parentItem = PHASE_4_CREATOR_MENU_SECTION.items[0];
+      expect(parentItem.label).toBe("Launch Preparation");
+      expect(parentItem.href).toBe("/dashboard/creator/phase-4");
+      expect(parentItem.children).toHaveLength(9);
+
+      const expectedSubmenus = [
+        { label: "Construction Snapshot", href: "/dashboard/creator/phase-4" },
+        { label: "Operational Roadmap", href: "/dashboard/creator/phase-4/roadmap" },
+        { label: "Needs & Requirements", href: "/dashboard/creator/phase-4/needs" },
+        { label: "Skills & Training", href: "/dashboard/creator/phase-4/skills" },
+        { label: "Aids, Grants & Support", href: "/dashboard/creator/phase-4/support" },
+        { label: "Pricing & Revenue Model", href: "/dashboard/creator/phase-4/pricing" },
+        { label: "GTM & Launch Strategy", href: "/dashboard/creator/phase-4/gtm" },
+        { label: "Launch Assets", href: "/dashboard/creator/phase-4/launch-assets" },
+        { label: "Construction Readiness", href: "/dashboard/creator/phase-4/readiness" },
+      ];
+
+      expectedSubmenus.forEach((expected, index) => {
+        const child = parentItem.children![index];
+        expect(child.label).toBe(expected.label);
+        expect(child.href).toBe(expected.href);
+      });
+    });
+
+    it("correctly identifies Phase 4 routes via isPhase4Route", async () => {
+      const { isPhase4Route } = await import("@/lib/menu-navigation");
+      expect(isPhase4Route("/dashboard/creator/phase-4")).toBe(true);
+      expect(isPhase4Route("/dashboard/creator/phase-4/roadmap")).toBe(true);
+      expect(isPhase4Route("/dashboard/creator/phase-4/launch-assets")).toBe(true);
+      expect(isPhase4Route("/dashboard/creator/phase-4/assets")).toBe(true);
+      expect(isPhase4Route("/dashboard/creator/phase-4/readiness")).toBe(true);
+
+      // Outside Phase 4
+      expect(isPhase4Route("/dashboard/creator")).toBe(false);
+      expect(isPhase4Route("/dashboard/creator/phase-3")).toBe(false);
+      expect(isPhase4Route("/dashboard/creator/phase-2")).toBe(false);
+      expect(isPhase4Route("/dashboard/creator/myideas")).toBe(false);
+      expect(isPhase4Route("/dashboard/profile")).toBe(false);
+    });
+
+    it("highlights exactly one active step and supports /assets alias to 4.8", async () => {
+      const { PHASE_4_CREATOR_MENU_SECTION } = await import("@/lib/menu");
+      const allHrefs = getAllMenuHrefs([PHASE_4_CREATOR_MENU_SECTION]);
+
+      // 4.1 is active only on exact root
+      expect(isMenuHrefActive("/dashboard/creator/phase-4", "/dashboard/creator/phase-4", new URLSearchParams(), allHrefs)).toBe(true);
+      expect(isMenuHrefActive("/dashboard/creator/phase-4", "/dashboard/creator/phase-4/roadmap", new URLSearchParams(), allHrefs)).toBe(false);
+      expect(isMenuHrefActive("/dashboard/creator/phase-4", "/dashboard/creator/phase-4/needs", new URLSearchParams(), allHrefs)).toBe(false);
+
+      // 4.2 on roadmap
+      expect(isMenuHrefActive("/dashboard/creator/phase-4/roadmap", "/dashboard/creator/phase-4/roadmap", new URLSearchParams(), allHrefs)).toBe(true);
+      expect(isMenuHrefActive("/dashboard/creator/phase-4/roadmap", "/dashboard/creator/phase-4", new URLSearchParams(), allHrefs)).toBe(false);
+
+      // 4.8 canonical route & /assets alias
+      expect(isMenuHrefActive("/dashboard/creator/phase-4/launch-assets", "/dashboard/creator/phase-4/launch-assets", new URLSearchParams(), allHrefs)).toBe(true);
+      expect(isMenuHrefActive("/dashboard/creator/phase-4/launch-assets", "/dashboard/creator/phase-4/assets", new URLSearchParams(), allHrefs)).toBe(true);
+      expect(isMenuHrefActive("/dashboard/creator/phase-4/launch-assets", "/dashboard/creator/phase-4/gtm", new URLSearchParams(), allHrefs)).toBe(false);
+
+      // 4.9 on readiness
+      expect(isMenuHrefActive("/dashboard/creator/phase-4/readiness", "/dashboard/creator/phase-4/readiness", new URLSearchParams(), allHrefs)).toBe(true);
+    });
+
+    it("renders full Creator menu including Phase 4 submenus and preserves ideaId query across links", () => {
+      mockUser = { id: "u1", name: "Creator Founder", role: UserRole.CREATOR };
+      mockPathname = "/dashboard/creator/phase-4/roadmap";
+      mockSearchParams = new URLSearchParams("ideaId=project-999");
+
+      render(
+        <SidebarProvider>
+          <AppSidebar />
+        </SidebarProvider>
+      );
+
+      // Standard Creator sections are rendered
+      expect(screen.getByText("Overview")).toBeDefined();
+      expect(screen.getByText("My Ideas")).toBeDefined();
+      expect(screen.getByText("Project Workspace")).toBeDefined();
+      expect(screen.getByText("Launch Preparation")).toBeDefined();
+
+      // All 9 submenus rendered with ideaId preserved
+      const expectedSteps = [
+        { label: "Construction Snapshot", href: "/dashboard/creator/phase-4?ideaId=project-999" },
+        { label: "Operational Roadmap", href: "/dashboard/creator/phase-4/roadmap?ideaId=project-999" },
+        { label: "Needs & Requirements", href: "/dashboard/creator/phase-4/needs?ideaId=project-999" },
+        { label: "Skills & Training", href: "/dashboard/creator/phase-4/skills?ideaId=project-999" },
+        { label: "Aids, Grants & Support", href: "/dashboard/creator/phase-4/support?ideaId=project-999" },
+        { label: "Pricing & Revenue Model", href: "/dashboard/creator/phase-4/pricing?ideaId=project-999" },
+        { label: "GTM & Launch Strategy", href: "/dashboard/creator/phase-4/gtm?ideaId=project-999" },
+        { label: "Launch Assets", href: "/dashboard/creator/phase-4/launch-assets?ideaId=project-999" },
+        { label: "Construction Readiness", href: "/dashboard/creator/phase-4/readiness?ideaId=project-999" },
+      ];
+
+      for (const step of expectedSteps) {
+        const link = screen.getByText(step.label).closest("a");
+        expect(link).not.toBeNull();
+        expect(link?.getAttribute("href")).toBe(step.href);
+      }
+    });
+
+    it("renders clean links without ideaId when ideaId is not present", () => {
+      mockUser = { id: "u1", name: "Creator Founder", role: UserRole.CREATOR };
+      mockPathname = "/dashboard/creator/phase-4";
+      mockSearchParams = new URLSearchParams();
+
+      render(
+        <SidebarProvider>
+          <AppSidebar />
+        </SidebarProvider>
+      );
+
+      const link41 = screen.getByText("Construction Snapshot").closest("a");
+      expect(link41?.getAttribute("href")).toBe("/dashboard/creator/phase-4");
+
+      const link48 = screen.getByText("Launch Assets").closest("a");
+      expect(link48?.getAttribute("href")).toBe("/dashboard/creator/phase-4/launch-assets");
+    });
+
+    it("navigates with preserved ideaId upon clicking a Phase 4 step", () => {
+      mockIsMobile = false;
+      mockUser = { id: "u1", name: "Creator Founder", role: UserRole.CREATOR };
+      mockPathname = "/dashboard/creator/phase-4";
+      mockSearchParams = new URLSearchParams("ideaId=project-123");
+
+      render(
+        <SidebarProvider>
+          <AppSidebar />
+        </SidebarProvider>
+      );
+
+      const link42 = screen.getByText("Operational Roadmap");
+      fireEvent.click(link42);
+
+      expect(mockPush).toHaveBeenCalledWith("/dashboard/creator/phase-4/roadmap?ideaId=project-123");
+    });
+  });
 });

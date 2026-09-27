@@ -233,22 +233,26 @@ namespace WebApp.Services.Implementations
 
                 targetOffer.RecordedEvidence.Add(ev);
                 targetOffer.FounderEdited = true;
-
-                // Requirement 4: ONLY paid preorders and completed sales elevate empirical market price validation
-                // Qualitative feedback and unpaid commitments do NOT become paid-sale evidence.
-                if (ev.IsPaid && (ev.Type == PricingEvidenceRecordType.PreOrder || ev.Type == PricingEvidenceRecordType.Sale) && ev.Amount.HasValue && ev.Amount.Value > 0)
-                {
-                    targetOffer.ValidatedMarketPrice = ev.Amount.Value;
-                    targetOffer.MarketPriceEvidenceType = ev.Type == PricingEvidenceRecordType.PreOrder
-                        ? MarketPriceEvidenceType.PreOrder
-                        : MarketPriceEvidenceType.HistoricalSale;
-                    targetOffer.MarketPriceValidationLevel = MarketPriceValidationLevel.Supported;
-                }
             }
             if (request?.RecordedEvidence != null)
             {
                 targetOffer.RecordedEvidence = request.RecordedEvidence;
                 targetOffer.FounderEdited = true;
+            }
+
+            // Invariant: Filter qualifying evidence before selecting a record, so an invalid first record cannot hide a later qualifying record.
+            // ONLY qualifying paid preorders and completed sales with Amount > 0 elevate empirical market price validation to Supported with IsFounderReported=true.
+            // Qualitative feedback, unpaid commitments, or unpaid preorders do NOT become paid-sale evidence.
+            var qualifyingEvidence = targetOffer.RecordedEvidence?
+                .LastOrDefault(r => r.IsPaid && (r.Type == PricingEvidenceRecordType.PreOrder || r.Type == PricingEvidenceRecordType.Sale) && r.Amount.HasValue && r.Amount.Value > 0);
+
+            if (qualifyingEvidence != null)
+            {
+                targetOffer.ValidatedMarketPrice = qualifyingEvidence.Amount.Value;
+                targetOffer.MarketPriceEvidenceType = qualifyingEvidence.Type == PricingEvidenceRecordType.PreOrder
+                    ? MarketPriceEvidenceType.PreOrder
+                    : MarketPriceEvidenceType.HistoricalSale;
+                targetOffer.MarketPriceValidationLevel = MarketPriceValidationLevel.Supported;
             }
 
             // Correction #6: Recalculate economics, forecast alignment, and risks immediately!

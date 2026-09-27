@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/app/_providers/AuthProvider";
-import { menu, type MenuSection, type MenuItem } from "@/lib/menu";
+import { menu, PHASE_4_CREATOR_MENU_SECTION, type MenuSection, type MenuItem } from "@/lib/menu";
 import { UserRole, isSuperAdmin, getRoleDashboardRoute } from "@/lib/roles";
 import { useProviderOverview } from "@/hooks/queries/analytics";
 import { useProviderAvailabilityControl } from "@/hooks/useProviderAvailabilityControl";
@@ -15,6 +15,7 @@ import {
   isMenuHrefActive,
   isMenuParentActive,
   isParentItemExpanded,
+  isPhase4Route,
 } from "@/lib/menu-navigation";
 
 export { isMenuHrefActive, isMenuParentActive, isParentItemExpanded };
@@ -90,6 +91,16 @@ function StandardRoleSidebar({
   const [manualExpanded, setManualExpanded] = useState<Record<string, boolean>>({});
 
   const allHrefs = useMemo(() => getAllMenuHrefs(sections), [sections]);
+  const ideaId = searchParams?.get("ideaId");
+
+  const formatHref = (href: string) => {
+    if (!ideaId || href.startsWith("#") || href.includes("?ideaId=") || href.includes("&ideaId=")) {
+      return href;
+    }
+    return href.includes("?")
+      ? `${href}&ideaId=${encodeURIComponent(ideaId)}`
+      : `${href}?ideaId=${encodeURIComponent(ideaId)}`;
+  };
 
   // Reset manual expansion on role change
   useEffect(() => {
@@ -164,6 +175,7 @@ function StandardRoleSidebar({
                         <SidebarMenuButton
                           type="button"
                           isActive={active}
+                          tooltip={item.label}
                           onClick={() => toggleExpand(item.label, isExpanded)}
                           aria-expanded={isExpanded}
                           aria-controls={submenuId}
@@ -190,10 +202,11 @@ function StandardRoleSidebar({
                         <SidebarMenuButton
                           asChild
                           isActive={active && !hasChildren}
+                          tooltip={item.label}
                           className="py-6"
                         >
                           <Link
-                            href={item.href}
+                            href={formatHref(item.href)}
                             onClick={handleLinkClick}
                             className="flex items-center gap-3"
                           >
@@ -227,7 +240,7 @@ function StandardRoleSidebar({
                                   isActive={childActive}
                                   className="data-[active=true]:font-medium data-[active=true]:text-primary"
                                 >
-                                  <Link href={child.href} onClick={handleLinkClick}>
+                                  <Link href={formatHref(child.href)} onClick={handleLinkClick}>
                                     {child.label}
                                   </Link>
                                 </SidebarMenuSubButton>

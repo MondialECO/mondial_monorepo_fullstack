@@ -495,7 +495,7 @@ export function LaunchAssetsView({
 
   if (!assets) {
     return (
-      <div className="max-w-[1120px] mx-auto py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full min-w-0 space-y-6">
         <div className="bg-card border border-border rounded-2xl p-8 sm:p-12 text-center space-y-6 shadow-sm">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
             <Globe className="w-8 h-8" />
@@ -566,7 +566,7 @@ export function LaunchAssetsView({
     selectVersionSuccess;
 
   return (
-    <div className="max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 pb-24">
+    <div className="w-full min-w-0 space-y-6 pb-24 animate-fadeIn">
       {/* Inject Brand Studio Google Fonts */}
       {googleFontsUrl && <link rel="stylesheet" href={googleFontsUrl} />}
 
@@ -2039,13 +2039,13 @@ export function LaunchAssetsView({
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <span className="text-xs font-sans text-muted-foreground">
-            Step 4.9 Construction Readiness is pending. Return to the Construction Hub to review your progress.
+            Review your prepared assets and unresolved delivery requirements in Step 4.9.
           </span>
           <Link
-            href={`/dashboard/creator/phase-4${ideaId ? `?ideaId=${ideaId}` : ''}`}
+            href={`/dashboard/creator/phase-4/readiness${ideaId ? `?ideaId=${ideaId}` : ''}`}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm"
           >
-            <span>Continue to Construction Overview</span>
+            <span>Continue to Construction Readiness</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

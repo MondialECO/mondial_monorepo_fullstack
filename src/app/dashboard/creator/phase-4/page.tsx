@@ -129,16 +129,16 @@ function Phase4Content({ ideaId }: { ideaId: string }) {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto py-6 px-4 sm:px-6 lg:px-8 animate-fadeIn">
+    <div className="w-full min-w-0 space-y-6 animate-fadeIn">
       {/* Compact Page Header */}
-      <div className="mb-6 space-y-1">
-        <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+      <div className="space-y-1">
+        <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
           PHASE 4 · STEP 4.1
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
           Construction Snapshot
         </h1>
-        <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+        <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
           See what’s ready, what needs attention, and where to go next.
         </p>
       </div>

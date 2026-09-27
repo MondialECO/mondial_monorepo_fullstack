@@ -893,7 +893,8 @@ namespace WebApp.Tests.Unit
                 _supportServiceMock.Object,
                 _pricingServiceMock.Object,
                 gtmService,
-                new Mock<ILaunchAssetsService>().Object
+                new Mock<ILaunchAssetsService>().Object,
+                new Mock<IConstructionReadinessService>().Object
             );
 
             controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext

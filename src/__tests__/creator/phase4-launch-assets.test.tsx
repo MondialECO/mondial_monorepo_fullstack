@@ -316,7 +316,7 @@ describe('LaunchAssetsView (Phase 4.8)', () => {
   it('renders Section 6: Footer Actions & Navigation Progression accurately', () => {
     render(<LaunchAssetsView {...defaultProps} />);
     expect(screen.getByText(/Back to Launch Strategy/i)).toBeInTheDocument();
-    expect(screen.getByText(/Continue to Construction Overview/i)).toBeInTheDocument();
+    expect(screen.getByText(/Continue to Construction Readiness/i)).toBeInTheDocument();
   });
 
   it('toggles viewport from desktop to mobile preview', () => {

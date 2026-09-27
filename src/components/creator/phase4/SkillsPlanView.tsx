@@ -78,7 +78,7 @@ export function SkillsPlanView({
   // 1. Gate Error State (Prerequisites blocked)
   if (gateError) {
     return (
-      <div className="w-full max-w-[1120px] mx-auto py-8 px-4 sm:px-6">
+      <div className="w-full min-w-0 space-y-6">
         <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-8 text-center space-y-4 shadow-sm">
           <div className="inline-flex p-3 rounded-full bg-destructive/15 text-destructive">
             <AlertTriangle className="w-8 h-8" />
@@ -98,7 +98,7 @@ export function SkillsPlanView({
               </Link>
             ) : (
               <Link
-                href={`/dashboard/creator/phase-3?ideaId=${ideaId}`}
+                href={`/dashboard/creator/phase-4/phase-3?ideaId=${ideaId}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground font-semibold text-sm transition-all"
               >
                 Review Prior Steps
@@ -113,15 +113,15 @@ export function SkillsPlanView({
   // 2. Uninitialized State (Ready to Build Skills Plan)
   if (!plan) {
     return (
-      <div className="w-full max-w-[1120px] mx-auto py-8 px-4 sm:px-6 space-y-8 animate-fadeIn">
+      <div className="w-full min-w-0 space-y-8 animate-fadeIn">
         <div className="text-center space-y-3 pt-4">
           <span className="text-xs uppercase tracking-widest text-primary font-mono font-semibold">
             STEP 4.4 · SKILLS & TRAINING
           </span>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground font-serif">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground font-heading">
             Learn · Delegate · Verify Engine
           </h1>
-          <p className="text-muted-foreground max-w-xl mx-auto text-sm leading-relaxed">
+          <p className="text-muted-foreground max-w-xl mx-auto text-sm leading-relaxed font-sans">
             Determines the optimal resolution path for every capability requirement for{' '}
             <span className="text-foreground font-medium">{projectName}</span> — balancing your skills,
             weekly availability, and statutory compliance.

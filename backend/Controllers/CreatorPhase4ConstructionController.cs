@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using WebApp.Models;
+using WebApp.Models.DatabaseModels.Phase4;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
 
@@ -27,6 +28,7 @@ namespace WebApp.Controllers
         private readonly IPricingStrategyService _pricingService;
         private readonly IGtmStrategyService _gtmService;
         private readonly ILaunchAssetsService _assetsService;
+        private readonly IConstructionReadinessService _readinessService;
 
         public CreatorPhase4ConstructionController(
             IConstructionSnapshotService snapshotService,
@@ -36,7 +38,8 @@ namespace WebApp.Controllers
             ISupportPlanService supportService,
             IPricingStrategyService pricingService,
             IGtmStrategyService gtmService,
-            ILaunchAssetsService assetsService)
+            ILaunchAssetsService assetsService,
+            IConstructionReadinessService readinessService)
         {
             _snapshotService = snapshotService;
             _roadmapService = roadmapService;
@@ -46,6 +49,7 @@ namespace WebApp.Controllers
             _pricingService = pricingService;
             _gtmService = gtmService;
             _assetsService = assetsService;
+            _readinessService = readinessService;
         }
 
         private string GetUserId() =>
@@ -2397,6 +2401,93 @@ namespace WebApp.Controllers
 
                 var html = await _assetsService.GetPublicSourceCodeBundleAsync(shareToken);
                 return Content(html, "text/html");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(StatusCodes.Status404NotFound, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // GET /api/creator/phase4/readiness?ideaId={ideaId}
+        [HttpGet("readiness")]
+        public async Task<IActionResult> GetReadinessAssessment([FromQuery] string? ideaId = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var result = await _readinessService.GetReadinessAssessmentAsync(userId, ideaId);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
+                return Ok(ApiResponse.Ok("Construction readiness assessment retrieved", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return StatusCode(StatusCodes.Status404NotFound, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+        }
+
+        // POST /api/creator/phase4/readiness/save
+        [HttpPost("readiness/save")]
+        public async Task<IActionResult> SaveReadinessReview(
+            [FromBody] SaveConstructionReadinessRequest? request,
+            [FromQuery] string? ideaId = null,
+            [FromQuery] long? expectedVersion = null)
+        {
+            try
+            {
+                var userId = GetUserId();
+                request ??= new SaveConstructionReadinessRequest();
+                if (!string.IsNullOrWhiteSpace(ideaId)) request.IdeaId = ideaId;
+                if (expectedVersion.HasValue) request.ExpectedVersion = expectedVersion;
+
+                var result = await _readinessService.SaveReadinessReviewAsync(userId, request);
+                if (result.IdeaVersion > 0)
+                {
+                    Response.Headers["X-Creator-Idea-Version"] = result.IdeaVersion.ToString();
+                }
+                return Ok(ApiResponse.Ok("Construction readiness review saved", result));
+            }
+            catch (CreatorJourneyException ex)
+            {
+                return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status401Unauthorized, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
             }
             catch (KeyNotFoundException ex)
             {

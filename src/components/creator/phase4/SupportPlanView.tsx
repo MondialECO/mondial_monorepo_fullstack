@@ -94,13 +94,13 @@ export function SupportPlanView({
     const isPhase3Gate = gateError.message.includes('Phase 3');
 
     return (
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="w-full min-w-0 space-y-6">
         <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-8 text-center space-y-4 shadow-sm">
           <div className="inline-flex p-3 rounded-full bg-destructive/15 text-destructive">
             <AlertCircle className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">Support Engine Unavailable</h2>
-          <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
+          <h2 className="text-xl font-bold text-foreground font-heading">Support Engine Unavailable</h2>
+          <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed font-sans">
             {gateError.message}
           </p>
           <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
@@ -124,7 +124,7 @@ export function SupportPlanView({
             )}
             {isPhase3Gate && (
               <Link
-                href={`/dashboard/creator/phase-3?ideaId=${ideaId}`}
+                href={`/dashboard/creator/phase-4/phase-3?ideaId=${ideaId}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-semibold text-sm transition-colors"
               >
                 Review Prior Steps
@@ -139,16 +139,16 @@ export function SupportPlanView({
   // Not generated state
   if (!plan) {
     return (
-      <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fadeIn">
+      <div className="w-full min-w-0 space-y-8 animate-fadeIn">
         <div className="bg-card border border-border/80 rounded-2xl p-10 text-center space-y-6 shadow-sm relative overflow-hidden">
           <div className="inline-flex p-4 rounded-2xl bg-primary/10 border border-primary/20 text-primary">
             <Landmark className="w-12 h-12" />
           </div>
           <div className="space-y-2 max-w-xl mx-auto">
-            <h2 className="text-2xl font-bold tracking-tight text-foreground">
+            <h2 className="text-2xl font-bold tracking-tight text-foreground font-heading">
               Aids, Grants & Public Support Engine
             </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed font-sans">
               Match{' '}
               <span className="text-foreground font-semibold">
                 {projectName || 'your venture'}
@@ -553,13 +553,13 @@ export function SupportPlanView({
 
                     {/* Status Badge */}
                     {isAwarded ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#E5F7ED] dark:bg-emerald-950/40 text-[#157A55] dark:text-emerald-400 border border-emerald-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#157A55] dark:bg-emerald-400" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-light dark:bg-emerald-950/40 text-success-strong dark:text-emerald-400 border border-emerald-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success-strong dark:bg-emerald-400" />
                         Awarded
                       </span>
                     ) : isEligibleStatutory ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#E5F7ED] dark:bg-emerald-950/40 text-[#157A55] dark:text-emerald-400 border border-emerald-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#157A55] dark:bg-emerald-400" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-light dark:bg-emerald-950/40 text-success-strong dark:text-emerald-400 border border-emerald-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success-strong dark:bg-emerald-400" />
                         Eligible (Statutory)
                       </span>
                     ) : isEligibleToApply ? (
@@ -568,13 +568,13 @@ export function SupportPlanView({
                         Eligible to Apply
                       </span>
                     ) : isNeedsCheck ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#FEF7EC] dark:bg-amber-950/40 text-[#965F11] dark:text-amber-400 border border-amber-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#965F11] dark:bg-amber-400" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 dark:bg-amber-950/40 text-warning dark:text-amber-400 border border-amber-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-warning dark:bg-amber-400" />
                         A few details to check
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#DCE1FF] dark:bg-blue-950/40 text-[#1A47C3] dark:text-blue-300 border border-blue-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#1A47C3] dark:bg-blue-400" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/15 dark:bg-blue-950/40 text-info dark:text-blue-300 border border-blue-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-info dark:bg-blue-400" />
                         May fit your project
                       </span>
                     )}

@@ -411,3 +411,29 @@ Following Figma Node `57157:9297` (`Financial Forecast · Creator Phase 3.3`), S
 - `CREATOR BRAND STUDIO ENTRY, VIEW MODE & EDITING ARCHITECTURE — COMPLETE & FROZEN`
 - `CREATOR BRAND STUDIO LEGACY PROGRESS TOPBAR — REMOVED & FROZEN`
 
+---
+
+## 9. Creator Phase 4 Full-Width Layout & Launch Preparation Architecture — FINAL / FROZEN
+
+### A. Phase 4 Full-Width Architecture
+All 9 Creator Phase 4 pages (`/dashboard/creator/phase-4/**` and views) have been normalized to use the full available dashboard main width without artificial letterboxing clamps (`w-full max-w-none min-w-0 flex-1 flex flex-col`).
+
+1. **Step 4.1 Construction Snapshot** (`/dashboard/creator/phase-4`): Full-width 9-step timeline overview, dynamic metrics, and readiness scorecard.
+2. **Step 4.2 Operational Roadmap** (`/dashboard/creator/phase-4/roadmap`): Multi-track Gantt/kanban execution timeline with task drawers.
+3. **Step 4.3 Needs & Requirements** (`/dashboard/creator/phase-4/needs`): Categorized requirement grid with inline confirmation and deferral.
+4. **Step 4.4 Skills & Training** (`/dashboard/creator/phase-4/skills`): Skills matrix, resolution modes (Hire, Train, AI Agent), and training resource library.
+5. **Step 4.5 Aids, Grants & Support** (`/dashboard/creator/phase-4/support`): Grant and subsidy directory, eligibility match filters, and application tracking.
+6. **Step 4.6 Pricing & Revenue Model** (`/dashboard/creator/phase-4/pricing`): Pricing tier builder, market validation evidence provenance, and simulation engine.
+7. **Step 4.7 GTM & Launch Strategy** (`/dashboard/creator/phase-4/gtm`): Go-to-market funnel builder, channel selection, and launch budget allocation.
+8. **Step 4.8 Launch Assets** (`/dashboard/creator/phase-4/launch-assets` & `/assets`): Asset gallery, version history, and desktop/mobile responsive preview envelopes.
+9. **Step 4.9 Construction Readiness** (`/dashboard/creator/phase-4/readiness`): Final readiness audit, milestone gating, and handoff to Phase 5.
+
+### B. Creator Sidebar & Launch Preparation Navigation
+- **Single Source of Truth**: Menu structure defined in [`src/lib/menu.ts`](file:///e:/17-07-2026/mondial_monorepo_fullstack/src/lib/menu.ts).
+- **Group Labeling**:
+  - `Launch Preparation`: Houses all 9 canonical submenus (4.1–4.9) under `Project Workspace`.
+  - `Launch to Market`: Houses market crossroads, marketplace listings, partnerships, sales/buyouts, and investor relations.
+- **Dynamic Context Preservation**: `AppSidebar.tsx` dynamically preserves `ideaId` across all links via `searchParams` without fabricating fallback IDs.
+- **Mutual Exclusivity & Exact Matching**: Exact route matching on root `/dashboard/creator/phase-4` ensures nested subpaths highlight strictly their corresponding active step.
+- **Route Aliasing**: Both `/dashboard/creator/phase-4/launch-assets` and `/dashboard/creator/phase-4/assets` resolve and highlight Step 4.8.
+
