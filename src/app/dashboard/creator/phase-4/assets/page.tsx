@@ -226,7 +226,7 @@ function AssetsPageContent({ ideaId }: { ideaId: string }) {
     <div className="min-h-screen bg-background text-foreground">
       {/* Global Error Banner */}
       {error && (
-        <div className="max-w-7xl mx-auto p-6">
+        <div className="w-full min-w-0 pb-6">
           <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
             <div className="flex-1">

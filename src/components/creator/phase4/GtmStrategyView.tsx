@@ -260,7 +260,7 @@ export function GtmStrategyView({
   // 1. GATE BLOCKER VIEW
   if (gateError) {
     return (
-      <div className="max-w-[1120px] mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="w-full min-w-0 space-y-6">
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 sm:p-8 text-foreground space-y-4 shadow-sm">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
@@ -298,7 +298,7 @@ export function GtmStrategyView({
   // 2. EMPTY / UNGENERATED VIEW
   if (!strategy) {
     return (
-      <div className="max-w-[1120px] mx-auto py-12 px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="w-full min-w-0 space-y-6 animate-fadeIn">
         <div className="bg-card border border-border rounded-2xl p-8 sm:p-12 text-center space-y-6 shadow-sm">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary shadow-sm">
             <Rocket className="w-8 h-8" />
@@ -359,7 +359,7 @@ export function GtmStrategyView({
 
   // 3. FIGMA NODE 57221:12464 CANONICAL 10-SECTION VIEW
   return (
-    <div className="w-full max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 animate-fadeIn">
+    <div className="w-full min-w-0 space-y-6 animate-fadeIn">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">

@@ -36,12 +36,25 @@ export const CREATOR_ROUTE_ALIASES: Record<string, string> = {
   // Phase 3 root redirect -> Market Study
   "/dashboard/creator/phase-3": "/dashboard/creator/phase-3/market-study",
 
+  // Phase 4.8 alias: /assets -> /launch-assets
+  "/dashboard/creator/phase-4/assets": "/dashboard/creator/phase-4/launch-assets",
+
   // Canonical redirect aliases
   "/dashboard/creator/ip-vault": "/dashboard/creator/documents",
   "/dashboard/creator/hire-providers": "/marketplace/services",
   "/dashboard/creator/marketplace": "/marketplace/projects",
   "/dashboard/creator/profile": "/dashboard/profile",
 };
+
+/**
+ * Checks if a pathname belongs to Creator Phase 4 (Construction & Launch Preparation).
+ */
+export function isPhase4Route(pathname: string): boolean {
+  return (
+    pathname === "/dashboard/creator/phase-4" ||
+    pathname.startsWith("/dashboard/creator/phase-4/")
+  );
+}
 
 /**
  * Internal Creator workflow routes that keep the "Build My Project" parent active/expanded
@@ -111,12 +124,14 @@ export function isMenuHrefActive(
   }
 
   // 3. Sub-path / Prefix match (e.g., /dashboard/creator/partnerships/deal-123)
+  // Roots that require exact match only to avoid false-positive child highlighting
   const isDashboardRoot =
     itemPath === "/dashboard/creator" ||
     itemPath === "/dashboard/investor" ||
     itemPath === "/dashboard/entrepreneur" ||
     itemPath === "/dashboard/serviceprovider" ||
-    itemPath === "/dashboard/admin";
+    itemPath === "/dashboard/admin" ||
+    itemPath === "/dashboard/creator/phase-4";
 
   if (!isDashboardRoot && effectivePathname.startsWith(itemPath + "/")) {
     // Check if another sibling menu item has a longer matching prefix (avoid collision)
@@ -149,6 +164,15 @@ export function isMenuParentActive(
       return true;
     }
 
+    if (
+      (item.label === "Launch Preparation" ||
+        item.label === "Construction & Launch Preparation" ||
+        item.label === "Construction & Launch") &&
+      isPhase4Route(pathname)
+    ) {
+      return true;
+    }
+
     const [parentPath] = item.href.split("?");
     return (
       (parentPath !== "#" && !parentPath.startsWith("#") && pathname === parentPath) ||
@@ -172,6 +196,20 @@ export function isParentItemExpanded(
   allSectionHrefs: string[] = []
 ): boolean {
   if (!item.children || item.children.length === 0) return false;
+
+  // Auto-expand if on Phase 4
+  if (
+    isPhase4Route(pathname) &&
+    (item.label === "Launch Preparation" ||
+      item.label === "Construction & Launch Preparation" ||
+      item.label === "Construction & Launch" ||
+      item.href === "/dashboard/creator/phase-4")
+  ) {
+    if (manuallyExpanded !== undefined) {
+      return manuallyExpanded;
+    }
+    return true;
+  }
 
   // URL-derived active child check
   const hasActiveChild = item.children.some((child) =>

@@ -389,20 +389,55 @@ export const menu: Record<UserRole, MenuSection[]> = {
           ],
         },
         {
-          label: "Construction & Launch",
+          label: "Launch Preparation",
           href: "/dashboard/creator/phase-4",
           icon: Store,
           children: [
             {
-              label: "Construction Engine",
+              label: "Construction Snapshot",
               href: "/dashboard/creator/phase-4",
             },
             {
-              label: "Launch Assets",
-              href: "/dashboard/creator/phase-4/assets",
+              label: "Operational Roadmap",
+              href: "/dashboard/creator/phase-4/roadmap",
             },
             {
-              label: "Launch to Market",
+              label: "Needs & Requirements",
+              href: "/dashboard/creator/phase-4/needs",
+            },
+            {
+              label: "Skills & Training",
+              href: "/dashboard/creator/phase-4/skills",
+            },
+            {
+              label: "Aids, Grants & Support",
+              href: "/dashboard/creator/phase-4/support",
+            },
+            {
+              label: "Pricing & Revenue Model",
+              href: "/dashboard/creator/phase-4/pricing",
+            },
+            {
+              label: "GTM & Launch Strategy",
+              href: "/dashboard/creator/phase-4/gtm",
+            },
+            {
+              label: "Launch Assets",
+              href: "/dashboard/creator/phase-4/launch-assets",
+            },
+            {
+              label: "Construction Readiness",
+              href: "/dashboard/creator/phase-4/readiness",
+            },
+          ],
+        },
+        {
+          label: "Launch to Market",
+          href: "/dashboard/creator/crossroads",
+          icon: TrendingUp,
+          children: [
+            {
+              label: "Market Crossroads",
               href: "/dashboard/creator/crossroads",
             },
             {
@@ -771,6 +806,59 @@ export const menu: Record<UserRole, MenuSection[]> = {
           label: "Profile",
           href: "/dashboard/profile",
           icon: User,
+        },
+      ],
+    },
+  ],
+};
+
+/**
+ * Dedicated Creator Phase 4 Menu Section
+ * Active only when viewing Phase 4 routes (/dashboard/creator/phase-4/*).
+ */
+export const PHASE_4_CREATOR_MENU_SECTION: MenuSection = {
+  title: "Phase 4",
+  items: [
+    {
+      label: "Launch Preparation",
+      href: "/dashboard/creator/phase-4",
+      icon: Store,
+      children: [
+        {
+          label: "Construction Snapshot",
+          href: "/dashboard/creator/phase-4",
+        },
+        {
+          label: "Operational Roadmap",
+          href: "/dashboard/creator/phase-4/roadmap",
+        },
+        {
+          label: "Needs & Requirements",
+          href: "/dashboard/creator/phase-4/needs",
+        },
+        {
+          label: "Skills & Training",
+          href: "/dashboard/creator/phase-4/skills",
+        },
+        {
+          label: "Aids, Grants & Support",
+          href: "/dashboard/creator/phase-4/support",
+        },
+        {
+          label: "Pricing & Revenue Model",
+          href: "/dashboard/creator/phase-4/pricing",
+        },
+        {
+          label: "GTM & Launch Strategy",
+          href: "/dashboard/creator/phase-4/gtm",
+        },
+        {
+          label: "Launch Assets",
+          href: "/dashboard/creator/phase-4/launch-assets",
+        },
+        {
+          label: "Construction Readiness",
+          href: "/dashboard/creator/phase-4/readiness",
         },
       ],
     },

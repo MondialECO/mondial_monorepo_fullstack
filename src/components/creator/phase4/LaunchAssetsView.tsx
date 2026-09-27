@@ -495,7 +495,7 @@ export function LaunchAssetsView({
 
   if (!assets) {
     return (
-      <div className="max-w-[1120px] mx-auto py-12 px-4 sm:px-6 lg:px-8">
+      <div className="w-full min-w-0 space-y-6">
         <div className="bg-card border border-border rounded-2xl p-8 sm:p-12 text-center space-y-6 shadow-sm">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
             <Globe className="w-8 h-8" />
@@ -566,7 +566,7 @@ export function LaunchAssetsView({
     selectVersionSuccess;
 
   return (
-    <div className="max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 pb-24">
+    <div className="w-full min-w-0 space-y-6 pb-24 animate-fadeIn">
       {/* Inject Brand Studio Google Fonts */}
       {googleFontsUrl && <link rel="stylesheet" href={googleFontsUrl} />}
 

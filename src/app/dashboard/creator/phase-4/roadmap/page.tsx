@@ -212,16 +212,16 @@ function RoadmapPageContent({ ideaId }: { ideaId: string }) {
   };
 
   return (
-    <div className="w-full max-w-[1120px] mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-6 animate-fadeIn">
+    <div className="w-full min-w-0 space-y-6 animate-fadeIn">
       {/* Compact Page Header (Aligned with 4.1 Canon) */}
       <div className="space-y-1">
-        <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+        <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
           PHASE 4 · STEP 4.2
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
           Operational Roadmap
         </h1>
-        <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
+        <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
           Turn your project requirements into a practical plan that fits your availability.
         </p>
       </div>

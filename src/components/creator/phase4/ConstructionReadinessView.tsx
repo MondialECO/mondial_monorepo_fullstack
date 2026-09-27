@@ -75,7 +75,7 @@ export function ConstructionReadinessView({
   const secondaryIssues = review?.issues?.filter((i) => i.priority !== 'critical') || [];
 
   return (
-    <div className="w-full max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8 animate-fadeIn font-sans text-foreground">
+    <div className="w-full min-w-0 space-y-8 animate-fadeIn font-sans text-foreground">
       {/* Update Available Banner if upstream data changed */}
       {updateAvailable && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between gap-4">
