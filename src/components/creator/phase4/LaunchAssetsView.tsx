@@ -2039,13 +2039,13 @@ export function LaunchAssetsView({
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <span className="text-xs font-sans text-muted-foreground">
-            Step 4.9 Construction Readiness is pending. Return to the Construction Hub to review your progress.
+            Review your prepared assets and unresolved delivery requirements in Step 4.9.
           </span>
           <Link
-            href={`/dashboard/creator/phase-4${ideaId ? `?ideaId=${ideaId}` : ''}`}
+            href={`/dashboard/creator/phase-4/readiness${ideaId ? `?ideaId=${ideaId}` : ''}`}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm"
           >
-            <span>Continue to Construction Overview</span>
+            <span>Continue to Construction Readiness</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

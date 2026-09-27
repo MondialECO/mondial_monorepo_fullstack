@@ -431,6 +431,7 @@ builder.Services.AddSingleton<IFounderCapacityResolver, FounderCapacityResolver>
 builder.Services.AddScoped<IGtmPolicyEngine, GtmPolicyEngine>();
 builder.Services.AddScoped<IGtmStrategyService, GtmStrategyService>();
 builder.Services.AddScoped<ILaunchAssetsService, LaunchAssetsService>();
+builder.Services.AddScoped<IConstructionReadinessService, ConstructionReadinessService>();
 
 // Service Provider data split (approved SP-only migration): three root
 // collections behind thin stores, a dual-read aggregate reader, and the

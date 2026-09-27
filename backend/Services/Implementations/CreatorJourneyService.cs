@@ -1476,6 +1476,20 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
+        public async Task<CreatorJourney> SetPhase4ConstructionReadinessAsync(string userId, Models.DatabaseModels.Phase4.ConstructionReadinessReview readiness, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+            var p4 = j.Phase4Data ??= new CreatorPhase4Data();
+            p4.ConstructionReadiness = readiness;
+
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase4Data.ConstructionReadiness, readiness));
+            j.IdeaVersion = idea.Version;
+            return j;
+        }
+
         // ---- Phase 5 ----
 
         public async Task<CreatorJourney> SetIpValuationAsync(string userId, CreatorIpValuation valuation, string ideaId = null)

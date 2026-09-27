@@ -523,7 +523,8 @@ namespace WebApp.Tests.Unit
                 _supportMock.Object,
                 _pricingMock.Object,
                 _gtmMock.Object,
-                _assetsMock.Object
+                _assetsMock.Object,
+                new Mock<IConstructionReadinessService>().Object
             );
 
             controller.ControllerContext = new Microsoft.AspNetCore.Mvc.ControllerContext

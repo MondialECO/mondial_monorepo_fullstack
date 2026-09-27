@@ -133,6 +133,7 @@ namespace WebApp.Services.Interface
         Task<CreatorJourney> SetPhase4PricingStrategyAsync(string userId, Models.DatabaseModels.Phase4.PricingStrategy pricingStrategy, string ideaId = null);
         Task<CreatorJourney> SetPhase4GtmStrategyAsync(string userId, Models.DatabaseModels.Phase4.GtmStrategy gtmStrategy, string ideaId = null);
         Task<CreatorJourney> SetPhase4LaunchAssetsAsync(string userId, Models.DatabaseModels.Phase4.LaunchAssetsPlan launchAssets, string ideaId = null);
+        Task<CreatorJourney> SetPhase4ConstructionReadinessAsync(string userId, Models.DatabaseModels.Phase4.ConstructionReadinessReview readiness, string ideaId = null);
 
         // ---- Phase 5 (deterministic) — every version carries phase: 5 ----
 
