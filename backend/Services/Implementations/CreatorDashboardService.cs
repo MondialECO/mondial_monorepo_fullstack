@@ -81,15 +81,16 @@ namespace WebApp.Services.Implementations
             var p4Eval = Phase4CompletionResolver.Resolve(p4);
 
             // Build DTO
+            var effectiveIdeaId = idea?.Id ?? activeIdeaId;
             var summary = new CreatorDashboardSummaryDto
             {
                 UpdatedAt = journey.UpdatedAt,
                 Project = BuildProjectSummary(idea, journey, brandKit),
-                Journey = BuildJourneyOverview(computedStatus, journey, p4Eval),
-                NextAction = ResolveNextAction(computedStatus, journey, p4, p4Eval, idea?.Id),
-                AttentionItems = ResolveAttentionItems(journey, p4, profile, idea?.Id),
-                Results = BuildResultsList(journey, brandKit, p4),
-                Phase5 = BuildPhase5Summary(computedStatus, journey, p4Eval, idea?.Id)
+                Journey = BuildJourneyOverview(computedStatus, journey, p4Eval, effectiveIdeaId),
+                NextAction = ResolveNextAction(computedStatus, journey, p4, p4Eval, effectiveIdeaId),
+                AttentionItems = ResolveAttentionItems(journey, p4, profile, effectiveIdeaId),
+                Results = BuildResultsList(journey, brandKit, p4, effectiveIdeaId),
+                Phase5 = BuildPhase5Summary(computedStatus, journey, p4Eval, effectiveIdeaId)
             };
 
             return summary;
@@ -408,7 +409,7 @@ namespace WebApp.Services.Implementations
                         Title = "Generate Construction Snapshot",
                         Description = "Synthesize readiness signals across brand, market, forecast, and legal foundations.",
                         Reason = "Identifies critical gaps and resource prerequisites before launching operational workflows.",
-                        Href = Route("/dashboard/creator/phase-4/construction-snapshot"),
+                        Href = Route("/dashboard/creator/phase-4"),
                         Priority = "high",
                         ButtonLabel = "Generate Snapshot"
                     };
@@ -523,9 +524,40 @@ namespace WebApp.Services.Implementations
                         ButtonLabel = "Build GTM Strategy"
                     };
                 }
+                if (!p4Eval.LaunchAssetsResolved)
+                {
+                    return new DashboardNextActionDto
+                    {
+                        Type = "phase_4_launch_assets",
+                        Phase = 4,
+                        Stage = "4.8",
+                        Title = "Build Launch Website & Assets",
+                        Description = "Generate, configure, and review your one-page launch website and brand assets.",
+                        Reason = "Provides the public conversion vehicle for testing buyer and user interest.",
+                        Href = Route("/dashboard/creator/phase-4/launch-assets"),
+                        Priority = "high",
+                        ButtonLabel = p4.LaunchAssets != null && p4.LaunchAssets.LastGeneratedAt != default ? "Continue Launch Assets" : "Generate Launch Assets"
+                    };
+                }
+                if (!p4Eval.ReadinessResolved)
+                {
+                    return new DashboardNextActionDto
+                    {
+                        Type = "phase_4_readiness",
+                        Phase = 4,
+                        Stage = "4.9",
+                        Title = "Complete Construction Readiness Review",
+                        Description = "Review cross-stage construction consistency, dependencies, and save your final readiness sign-off.",
+                        Reason = "Authoritative sign-off is required across all upstream assets before advancing to Crossroads.",
+                        Href = Route("/dashboard/creator/phase-4/readiness"),
+                        Priority = "high",
+                        ButtonLabel = p4.ConstructionReadiness != null && p4.ConstructionReadiness.ReviewedAt.HasValue ? "Review Readiness" : "Complete Readiness Review"
+                    };
+                }
             }
 
-            // 4. Phase 5
+            // 4. Phase 5 / Completed (Creator MVP: Crossroads deferred — retain for future reactivation)
+            /*
             if (computed.Phase5.Status != "completed")
             {
                 return new DashboardNextActionDto
@@ -541,19 +573,19 @@ namespace WebApp.Services.Implementations
                     ButtonLabel = "Open Crossroads Decision"
                 };
             }
+            */
 
-            // 5. Phase 6 / Completed
             return new DashboardNextActionDto
             {
-                Type = "phase_6_matching",
-                Phase = 6,
-                Stage = "6.1",
-                Title = "Enter Smart Matchmaking",
-                Description = "Your venture is prepared and packaged. Engage with interested buyers and partners.",
-                Reason = "Review deal progress and active investor conversations.",
-                Href = Route("/dashboard/creator/investors"),
+                Type = "phase_4_review",
+                Phase = 4,
+                Stage = "4.9",
+                Title = "Review your launch preparation",
+                Description = "All Phase 4 construction preparation is resolved. Review your operational foundations and launch assets.",
+                Reason = "Launch preparation is complete and ready for review.",
+                Href = Route("/dashboard/creator/phase-4"),
                 Priority = "normal",
-                ButtonLabel = "View Opportunities"
+                ButtonLabel = "Review Launch Preparation"
             };
         }
 
@@ -632,6 +664,32 @@ namespace WebApp.Services.Implementations
                     Severity = "warning"
                 });
             }
+            if (p4.LaunchAssets != null && string.Equals(p4.LaunchAssets.Status, "Stale", StringComparison.OrdinalIgnoreCase))
+            {
+                items.Add(new DashboardAttentionItemDto
+                {
+                    Id = "launch-assets-stale",
+                    Type = "STALE_BLOCKING_DEPENDENCY",
+                    Phase = 4,
+                    Title = "Launch Assets Update Available",
+                    Description = "Brand identity or offer messaging updated upstream. Review and refresh launch assets.",
+                    Href = Route("/dashboard/creator/phase-4/launch-assets"),
+                    Severity = "warning"
+                });
+            }
+            if (p4.ConstructionReadiness != null && p4.ConstructionReadiness.UpdateAvailable)
+            {
+                items.Add(new DashboardAttentionItemDto
+                {
+                    Id = "readiness-update-available",
+                    Type = "STALE_BLOCKING_DEPENDENCY",
+                    Phase = 4,
+                    Title = "Readiness Assessment Update Available",
+                    Description = "Upstream construction stages updated since last review. Re-evaluate and save readiness.",
+                    Href = Route("/dashboard/creator/phase-4/readiness"),
+                    Severity = "warning"
+                });
+            }
             if (string.Equals(p4.Roadmap?.Status, "Stale", StringComparison.OrdinalIgnoreCase))
             {
                 items.Add(new DashboardAttentionItemDto
@@ -654,7 +712,7 @@ namespace WebApp.Services.Implementations
                     Phase = 4,
                     Title = "Snapshot Update Available",
                     Description = "New venture outputs generated since your last construction assessment.",
-                    Href = Route("/dashboard/creator/phase-4/construction-snapshot"),
+                    Href = Route("/dashboard/creator/phase-4"),
                     Severity = "info"
                 });
             }
@@ -669,7 +727,7 @@ namespace WebApp.Services.Implementations
                     Phase = 4,
                     Title = $"{p4.ConstructionSnapshot.CriticalItems.Count} Critical Gaps in Construction",
                     Description = "Key statutory, financial, or technical prerequisites are missing.",
-                    Href = Route("/dashboard/creator/phase-4/construction-snapshot"),
+                    Href = Route("/dashboard/creator/phase-4"),
                     Severity = "warning"
                 });
             }
@@ -722,8 +780,12 @@ namespace WebApp.Services.Implementations
         private static DashboardJourneyOverviewDto BuildJourneyOverview(
             ComputedJourneyStatus computed,
             CreatorJourney journey,
-            Phase4CompletionResult p4Eval)
+            Phase4CompletionResult p4Eval,
+            string? ideaId = null)
         {
+            string Route(string path) =>
+                string.IsNullOrEmpty(ideaId) ? path : $"{path}?ideaId={ideaId}";
+
             var p3 = journey.Phase3Data;
             var p4 = journey.Phase4Data ?? new CreatorPhase4Data();
 
@@ -751,19 +813,19 @@ namespace WebApp.Services.Implementations
                 Status = computed.Phase2.Status,
                 CurrentStep = computed.Phase2.CurrentStep,
                 TotalSteps = 7,
-                Href = "/dashboard/creator/phase-2"
+                Href = Route("/dashboard/creator/phase-2")
             });
 
             // Phase 3 with 7 substages
             var p3Substages = new List<DashboardSubstageDto>
             {
-                new() { Key = "3.1", Label = "Market Study", Status = !string.IsNullOrEmpty(p3?.MarketStudySessionId) ? "complete" : "in_progress", Href = "/dashboard/creator/phase-3/market-study" },
-                new() { Key = "3.2", Label = "Business Model", Status = !string.IsNullOrEmpty(p3?.BusinessModelSessionId) ? "complete" : (!string.IsNullOrEmpty(p3?.MarketStudySessionId) ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-3/business-model" },
-                new() { Key = "3.3", Label = "Financial Forecast", Status = !string.IsNullOrEmpty(p3?.ForecastSessionId) ? "complete" : (!string.IsNullOrEmpty(p3?.BusinessModelSessionId) ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-3/forecast" },
-                new() { Key = "3.4", Label = "Legal & Compliance", Status = p3?.LegalAssessment != null ? (p3.LegalAssessment.IsPotentiallyOutdated ? "needs_review" : "complete") : (!string.IsNullOrEmpty(p3?.ForecastSessionId) ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-3/compliance" },
-                new() { Key = "3.5", Label = "Formation & Team", Status = p3?.FormationGenerator != null ? "complete" : (p3?.LegalAssessment != null ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-3/formation" },
-                new() { Key = "3.6", Label = "Business Plan", Status = !string.IsNullOrEmpty(p3?.BusinessPlanSessionId) ? "complete" : (p3?.FormationGenerator != null ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-3/business-plan" },
-                new() { Key = "3.7", Label = "Investor Readiness", Status = p3?.InvestorReadinessScore != null ? "complete" : (!string.IsNullOrEmpty(p3?.BusinessPlanSessionId) ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-3/complete" },
+                new() { Key = "3.1", Label = "Market Study", Status = !string.IsNullOrEmpty(p3?.MarketStudySessionId) ? "complete" : "in_progress", Href = Route("/dashboard/creator/phase-3/market-study") },
+                new() { Key = "3.2", Label = "Business Model", Status = !string.IsNullOrEmpty(p3?.BusinessModelSessionId) ? "complete" : (!string.IsNullOrEmpty(p3?.MarketStudySessionId) ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-3/business-model") },
+                new() { Key = "3.3", Label = "Financial Forecast", Status = !string.IsNullOrEmpty(p3?.ForecastSessionId) ? "complete" : (!string.IsNullOrEmpty(p3?.BusinessModelSessionId) ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-3/forecast") },
+                new() { Key = "3.4", Label = "Legal & Compliance", Status = p3?.LegalAssessment != null ? (p3.LegalAssessment.IsPotentiallyOutdated ? "needs_review" : "complete") : (!string.IsNullOrEmpty(p3?.ForecastSessionId) ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-3/compliance") },
+                new() { Key = "3.5", Label = "Formation & Team", Status = p3?.FormationGenerator != null ? "complete" : (p3?.LegalAssessment != null ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-3/formation") },
+                new() { Key = "3.6", Label = "Business Plan", Status = !string.IsNullOrEmpty(p3?.BusinessPlanSessionId) ? "complete" : (p3?.FormationGenerator != null ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-3/business-plan") },
+                new() { Key = "3.7", Label = "Investor Readiness", Status = p3?.InvestorReadinessScore != null ? "complete" : (!string.IsNullOrEmpty(p3?.BusinessPlanSessionId) ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-3/complete") },
             };
 
             phases.Add(new DashboardPhaseMilestoneDto
@@ -774,20 +836,22 @@ namespace WebApp.Services.Implementations
                 Status = computed.Phase3.Status,
                 CurrentStep = computed.Phase3.CurrentStep,
                 TotalSteps = 7,
-                Href = "/dashboard/creator/phase-3",
+                Href = Route("/dashboard/creator/phase-3"),
                 SubstageProgress = p3Substages
             });
 
-            // Phase 4 with 7 substages
+            // Phase 4 with 9 substages
             var p4Substages = new List<DashboardSubstageDto>
             {
-                new() { Key = "4.1", Label = "Snapshot", Status = p4Eval.SnapshotResolved ? "complete" : (computed.Phase3.Status == "completed" ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-4/construction-snapshot" },
-                new() { Key = "4.2", Label = "Roadmap", Status = p4Eval.RoadmapResolved ? "complete" : (p4Eval.SnapshotResolved ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-4/roadmap" },
-                new() { Key = "4.3", Label = "Needs", Status = p4Eval.NeedsResolved ? "complete" : (p4Eval.SnapshotResolved ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-4/needs" },
-                new() { Key = "4.4", Label = "Skills", Status = p4Eval.SkillsResolved ? "complete" : (p4Eval.NeedsResolved ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-4/skills" },
-                new() { Key = "4.5", Label = "Support", Status = p4Eval.SupportResolved ? "complete" : (p4Eval.SkillsResolved ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-4/support" },
-                new() { Key = "4.6", Label = "Pricing", Status = p4Eval.PricingResolved ? "complete" : (p4Eval.SupportResolved ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-4/pricing" },
-                new() { Key = "4.7", Label = "GTM", Status = p4Eval.GtmResolved ? "complete" : (p4Eval.PricingResolved ? "in_progress" : "locked"), Href = "/dashboard/creator/phase-4/gtm" },
+                new() { Key = "4.1", Label = "Snapshot", Status = p4Eval.SnapshotResolved ? "complete" : (computed.Phase3.Status == "completed" ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-4") },
+                new() { Key = "4.2", Label = "Roadmap", Status = p4Eval.RoadmapResolved ? "complete" : (p4Eval.SnapshotResolved ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-4/roadmap") },
+                new() { Key = "4.3", Label = "Needs", Status = p4Eval.NeedsResolved ? "complete" : (p4Eval.SnapshotResolved ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-4/needs") },
+                new() { Key = "4.4", Label = "Skills", Status = p4Eval.SkillsResolved ? "complete" : (p4Eval.NeedsResolved ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-4/skills") },
+                new() { Key = "4.5", Label = "Support", Status = p4Eval.SupportResolved ? "complete" : (p4Eval.SkillsResolved ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-4/support") },
+                new() { Key = "4.6", Label = "Pricing", Status = p4Eval.PricingResolved ? "complete" : (p4Eval.SupportResolved ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-4/pricing") },
+                new() { Key = "4.7", Label = "GTM", Status = p4Eval.GtmResolved ? "complete" : (p4Eval.PricingResolved ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-4/gtm") },
+                new() { Key = "4.8", Label = "Launch Assets", Status = p4Eval.LaunchAssetsResolved ? "complete" : (p4Eval.GtmResolved ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-4/launch-assets") },
+                new() { Key = "4.9", Label = "Readiness", Status = p4Eval.ReadinessResolved ? "complete" : (p4Eval.LaunchAssetsResolved ? "in_progress" : "locked"), Href = Route("/dashboard/creator/phase-4/readiness") },
             };
 
             phases.Add(new DashboardPhaseMilestoneDto
@@ -797,8 +861,8 @@ namespace WebApp.Services.Implementations
                 ShortName = "Construction",
                 Status = computed.Phase4.Status,
                 CurrentStep = computed.Phase4.CurrentStep,
-                TotalSteps = 7,
-                Href = "/dashboard/creator/phase-4",
+                TotalSteps = 9,
+                Href = Route("/dashboard/creator/phase-4"),
                 SubstageProgress = p4Substages
             });
 
@@ -811,7 +875,7 @@ namespace WebApp.Services.Implementations
                 Status = computed.Phase5.Status,
                 CurrentStep = 1,
                 TotalSteps = 1,
-                Href = "/dashboard/creator/crossroads"
+                Href = Route("/dashboard/creator/crossroads")
             });
 
             return new DashboardJourneyOverviewDto
@@ -826,8 +890,12 @@ namespace WebApp.Services.Implementations
         private static List<DashboardResultItemDto> BuildResultsList(
             CreatorJourney journey,
             BrandKit? brandKit,
-            CreatorPhase4Data p4)
+            CreatorPhase4Data p4,
+            string? ideaId = null)
         {
+            string Route(string path) =>
+                string.IsNullOrEmpty(ideaId) ? path : $"{path}?ideaId={ideaId}";
+
             var results = new List<DashboardResultItemDto>();
             var p3 = journey.Phase3Data;
 
@@ -844,7 +912,7 @@ namespace WebApp.Services.Implementations
                     Status = isCommitted ? "Ready" : "Draft",
                     UpdatedAt = brandKit.UpdatedAt,
                     IsStale = false,
-                    Href = "/dashboard/creator/phase-2/brand-studio",
+                    Href = Route("/dashboard/creator/phase-2/brand-studio"),
                     Downloadable = isCommitted,
                     ExportType = "svg"
                 });
@@ -861,7 +929,7 @@ namespace WebApp.Services.Implementations
                     Status = "Ready",
                     UpdatedAt = journey.UpdatedAt,
                     IsStale = false,
-                    Href = "/dashboard/creator/phase-3/market-study",
+                    Href = Route("/dashboard/creator/phase-3/market-study"),
                     Downloadable = true,
                     ExportType = "view"
                 });
@@ -878,7 +946,7 @@ namespace WebApp.Services.Implementations
                     Status = "Ready",
                     UpdatedAt = journey.UpdatedAt,
                     IsStale = false,
-                    Href = "/dashboard/creator/phase-3/business-model",
+                    Href = Route("/dashboard/creator/phase-3/business-model"),
                     Downloadable = true,
                     ExportType = "view"
                 });
@@ -895,7 +963,7 @@ namespace WebApp.Services.Implementations
                     Status = "Ready",
                     UpdatedAt = journey.UpdatedAt,
                     IsStale = false,
-                    Href = "/dashboard/creator/phase-3/forecast",
+                    Href = Route("/dashboard/creator/phase-3/forecast"),
                     Downloadable = true,
                     ExportType = "pdf"
                 });
@@ -913,7 +981,7 @@ namespace WebApp.Services.Implementations
                     Status = isStale ? "Update Available" : "Ready",
                     UpdatedAt = p3.LegalAssessment.EvaluatedAt,
                     IsStale = isStale,
-                    Href = "/dashboard/creator/phase-3/compliance",
+                    Href = Route("/dashboard/creator/phase-3/compliance"),
                     Downloadable = true,
                     ExportType = "view"
                 });
@@ -930,7 +998,7 @@ namespace WebApp.Services.Implementations
                     Status = "Ready",
                     UpdatedAt = journey.UpdatedAt,
                     IsStale = false,
-                    Href = "/dashboard/creator/phase-3/business-plan",
+                    Href = Route("/dashboard/creator/phase-3/business-plan"),
                     Downloadable = true,
                     ExportType = "pdf"
                 });
@@ -953,7 +1021,7 @@ namespace WebApp.Services.Implementations
                     Status = status,
                     UpdatedAt = p4.ConstructionSnapshot.UpdatedAt,
                     IsStale = isStale,
-                    Href = "/dashboard/creator/phase-4/construction-snapshot",
+                    Href = Route("/dashboard/creator/phase-4"),
                     Downloadable = false,
                     ExportType = "view"
                 });
@@ -976,7 +1044,7 @@ namespace WebApp.Services.Implementations
                     Status = status,
                     UpdatedAt = p4.Roadmap.UpdatedAt,
                     IsStale = isStale,
-                    Href = "/dashboard/creator/phase-4/roadmap",
+                    Href = Route("/dashboard/creator/phase-4/roadmap"),
                     Downloadable = false,
                     ExportType = "view"
                 });
@@ -998,7 +1066,7 @@ namespace WebApp.Services.Implementations
                     Status = status,
                     UpdatedAt = p4.NeedsAnalysis.UpdatedAt,
                     IsStale = isStale,
-                    Href = "/dashboard/creator/phase-4/needs",
+                    Href = Route("/dashboard/creator/phase-4/needs"),
                     Downloadable = false,
                     ExportType = "view"
                 });
@@ -1020,7 +1088,7 @@ namespace WebApp.Services.Implementations
                     Status = status,
                     UpdatedAt = p4.SkillsPlan.UpdatedAt,
                     IsStale = isStale,
-                    Href = "/dashboard/creator/phase-4/skills",
+                    Href = Route("/dashboard/creator/phase-4/skills"),
                     Downloadable = false,
                     ExportType = "view"
                 });
@@ -1043,7 +1111,7 @@ namespace WebApp.Services.Implementations
                     Status = status,
                     UpdatedAt = p4.SupportPlan.UpdatedAt,
                     IsStale = isStale,
-                    Href = "/dashboard/creator/phase-4/support",
+                    Href = Route("/dashboard/creator/phase-4/support"),
                     Downloadable = false,
                     ExportType = "view"
                 });
@@ -1067,7 +1135,7 @@ namespace WebApp.Services.Implementations
                     Status = status,
                     UpdatedAt = p4.PricingStrategy.UpdatedAt,
                     IsStale = isStale,
-                    Href = "/dashboard/creator/phase-4/pricing",
+                    Href = Route("/dashboard/creator/phase-4/pricing"),
                     Downloadable = false,
                     ExportType = "view"
                 });
@@ -1093,7 +1161,51 @@ namespace WebApp.Services.Implementations
                     Status = status,
                     UpdatedAt = p4.GtmStrategy.UpdatedAt,
                     IsStale = isStale,
-                    Href = "/dashboard/creator/phase-4/gtm",
+                    Href = Route("/dashboard/creator/phase-4/gtm"),
+                    Downloadable = false,
+                    ExportType = "view"
+                });
+            }
+
+            // Phase 4.8 Launch Assets (One-Page Launch Website)
+            if (p4.LaunchAssets != null
+                && p4.LaunchAssets.LastGeneratedAt != default
+                && p4.LaunchAssets.Version >= 1)
+            {
+                bool isStale = string.Equals(p4.LaunchAssets.Status, "Stale", StringComparison.OrdinalIgnoreCase);
+                string status = isStale ? "Update Available" : (string.Equals(p4.LaunchAssets.Status, "Draft", StringComparison.OrdinalIgnoreCase) ? "Draft" : "Ready");
+
+                results.Add(new DashboardResultItemDto
+                {
+                    Key = "launch_assets",
+                    Title = "One-Page Launch Website",
+                    Phase = 4,
+                    Status = status,
+                    UpdatedAt = p4.LaunchAssets.LastGeneratedAt,
+                    IsStale = isStale,
+                    Href = Route("/dashboard/creator/phase-4/launch-assets"),
+                    Downloadable = false,
+                    ExportType = "view"
+                });
+            }
+
+            // Phase 4.9 Construction Readiness Review
+            if (p4.ConstructionReadiness != null
+                && p4.ConstructionReadiness.ReviewedAt.HasValue
+                && p4.ConstructionReadiness.ReviewedAt.Value != default)
+            {
+                bool isStale = p4.ConstructionReadiness.UpdateAvailable;
+                string status = isStale ? "Update Available" : "Ready";
+
+                results.Add(new DashboardResultItemDto
+                {
+                    Key = "construction_readiness",
+                    Title = "Construction Readiness Review",
+                    Phase = 4,
+                    Status = status,
+                    UpdatedAt = p4.ConstructionReadiness.ReviewedAt.Value,
+                    IsStale = isStale,
+                    Href = Route("/dashboard/creator/phase-4/readiness"),
                     Downloadable = false,
                     ExportType = "view"
                 });
@@ -1121,7 +1233,7 @@ namespace WebApp.Services.Implementations
                 Href = href,
                 GuidanceText = isUnlocked 
                     ? "Construction stages complete. Proceed to Crossroads to select your venture launch path."
-                    : "Complete all 7 Construction stages to unlock Phase 5 Crossroads."
+                    : "Complete all 9 Construction stages to unlock Phase 5 Crossroads."
             };
         }
     }

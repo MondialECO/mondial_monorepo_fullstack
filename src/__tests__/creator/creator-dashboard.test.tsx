@@ -230,7 +230,7 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
         title: 'Review Legal & Regulatory Assessment',
         description: 'Complete mandatory compliance checks in Phase 3.4.',
         buttonLabel: 'Open Legal Center',
-        href: '/dashboard/creator/phase-3/legal',
+        href: '/dashboard/creator/phase-3/compliance',
       },
       attentionItems: [],
       journey: {
@@ -255,7 +255,7 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
 
     expect(screen.getByText('Review Legal & Regulatory Assessment')).toBeInTheDocument();
     const legalLink = screen.getByRole('link', { name: /Open Legal Center/i });
-    expect(legalLink).toHaveAttribute('href', '/dashboard/creator/phase-3/legal');
+    expect(legalLink).toHaveAttribute('href', '/dashboard/creator/phase-3/compliance');
   });
 
   it('4. Attention Items: displays prioritized attention panel when items exist', () => {
@@ -302,17 +302,17 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
     mockSummaryData = {
       project: { id: 'idea-123', name: 'AgriSense' },
       nextAction: {
-        key: 'skills',
+        key: 'launch_assets',
         phase: 4,
-        title: 'Review Founder Skills Plan',
-        description: 'Resolve capability gaps in Phase 4.4.',
-        buttonLabel: 'Open Skills Plan',
-        href: '/dashboard/creator/phase-4/skills',
+        title: 'Build Launch Website & Assets',
+        description: 'Generate, configure, and review your one-page launch website.',
+        buttonLabel: 'Open Launch Assets',
+        href: '/dashboard/creator/phase-4/launch-assets',
       },
       attentionItems: [],
       journey: {
         currentPhase: 4,
-        overallProgress: 70,
+        overallProgress: 77,
         phases: [
           { phase: 2, title: 'Identity & Brand', status: 'Completed', href: '/dashboard/creator/phase-2' },
           { phase: 3, title: 'Business Intelligence', status: 'Completed', href: '/dashboard/creator/phase-3' },
@@ -320,20 +320,22 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
           { phase: 5, title: 'The Crossroads', status: 'Locked', href: '/dashboard/creator/crossroads' },
         ],
         activeSubstages: [
-          { id: 'snapshot', title: 'Construction Snapshot', isCompleted: true, status: 'Completed', href: '/dashboard/creator/phase-4/snapshot' },
+          { id: 'snapshot', title: 'Construction Snapshot', isCompleted: true, status: 'Completed', href: '/dashboard/creator/phase-4' },
           { id: 'roadmap', title: 'Execution Roadmap', isCompleted: true, status: 'Completed', href: '/dashboard/creator/phase-4/roadmap' },
           { id: 'needs', title: 'Operational Needs', isCompleted: true, status: 'Completed', href: '/dashboard/creator/phase-4/needs' },
-          { id: 'skills', title: 'Founder Skills Plan', isCompleted: false, status: 'In Progress', href: '/dashboard/creator/phase-4/skills' },
-          { id: 'support', title: 'Public Support Matrix', isCompleted: false, status: 'Pending', href: '/dashboard/creator/phase-4/support' },
-          { id: 'pricing', title: 'Pricing Strategy', isCompleted: false, status: 'Pending', href: '/dashboard/creator/phase-4/pricing' },
-          { id: 'gtm', title: 'GTM Strategy', isCompleted: false, status: 'Pending', href: '/dashboard/creator/phase-4/gtm' },
+          { id: 'skills', title: 'Founder Skills Plan', isCompleted: true, status: 'Completed', href: '/dashboard/creator/phase-4/skills' },
+          { id: 'support', title: 'Public Support Matrix', isCompleted: true, status: 'Completed', href: '/dashboard/creator/phase-4/support' },
+          { id: 'pricing', title: 'Pricing Strategy', isCompleted: true, status: 'Completed', href: '/dashboard/creator/phase-4/pricing' },
+          { id: 'gtm', title: 'GTM Strategy', isCompleted: true, status: 'Completed', href: '/dashboard/creator/phase-4/gtm' },
+          { id: 'launch_assets', title: 'Launch Assets', isCompleted: false, status: 'In Progress', href: '/dashboard/creator/phase-4/launch-assets' },
+          { id: 'readiness', title: 'Construction Readiness', isCompleted: false, status: 'Pending', href: '/dashboard/creator/phase-4/readiness' },
         ],
       },
       results: [],
       phase5: {
         isUnlocked: false,
         href: '/dashboard/creator/crossroads',
-        guidanceText: 'Complete Phase 4 Construction milestones (Snapshot, Roadmap, Needs, Skills, Support, Pricing, GTM) to unlock Phase 5 Crossroads.',
+        guidanceText: 'Complete Phase 4 Construction milestones (Snapshot, Roadmap, Needs, Skills, Support, Pricing, GTM, Launch Assets, Construction Readiness) to unlock Phase 5 Crossroads.',
       },
     };
 
@@ -341,17 +343,15 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
 
     // Locked status badge (appears in Phase 5 milestone card and Crossroads banner)
     expect(screen.getAllByText('Locked').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Complete Phase 4 Construction milestones \(Snapshot, Roadmap, Needs, Skills, Support, Pricing, GTM\) to unlock Phase 5 Crossroads\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Complete Phase 4 Construction milestones \(Snapshot, Roadmap, Needs, Skills, Support, Pricing, GTM, Launch Assets, Construction Readiness\) to unlock Phase 5 Crossroads\./i)).toBeInTheDocument();
 
     // Button is disabled
     const lockedBtn = screen.getByRole('button', { name: /Crossroads Locked/i });
     expect(lockedBtn).toBeDisabled();
 
-    // Verify ABSOLUTELY NO Phase 4.8 or 4.9 substages exist
-    expect(screen.queryByText(/Launch Assets/i)).toBeNull();
-    expect(screen.queryByText(/Construction Readiness/i)).toBeNull();
-    expect(screen.queryByText(/4\.8/i)).toBeNull();
-    expect(screen.queryByText(/4\.9/i)).toBeNull();
+    // Verify all 9 Phase 4 substages are present
+    expect(screen.getByText('Launch Assets')).toBeInTheDocument();
+    expect(screen.getByText('Construction Readiness')).toBeInTheDocument();
   });
 
   it('6. Phase 4 Complete Enables Phase 5: Crossroads banner is unlocked and actionable', () => {
@@ -395,5 +395,42 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
     crossroadsLinks.forEach((link) => {
       expect(link).toHaveAttribute('href', '/dashboard/creator/crossroads');
     });
+  });
+
+  it('7. Completed Phase 4 receives MVP Next Action "Review your launch preparation"', () => {
+    mockSummaryData = {
+      project: { id: 'idea-123', name: 'AgriSense' },
+      nextAction: {
+        key: 'phase_4_review',
+        phase: 4,
+        title: 'Review your launch preparation',
+        description: 'All Phase 4 construction preparation is resolved. Review your operational foundations and launch assets.',
+        buttonLabel: 'Review Launch Preparation',
+        href: '/dashboard/creator/phase-4?ideaId=idea-123',
+      },
+      attentionItems: [],
+      journey: {
+        currentPhase: 4,
+        overallProgress: 100,
+        phases: [
+          { phase: 2, title: 'Identity & Brand', status: 'Completed', href: '/dashboard/creator/phase-2' },
+          { phase: 3, title: 'Business Intelligence', status: 'Completed', href: '/dashboard/creator/phase-3' },
+          { phase: 4, title: 'Construction', status: 'Completed', href: '/dashboard/creator/phase-4' },
+          { phase: 5, title: 'The Crossroads', status: 'Available', href: '/dashboard/creator/crossroads' },
+        ],
+      },
+      results: [],
+      phase5: {
+        isUnlocked: true,
+        href: '/dashboard/creator/crossroads',
+        guidanceText: 'All Phase 4 Construction milestones are complete.',
+      },
+    };
+
+    render(<CreatorDashboard />);
+
+    expect(screen.getByText('Review your launch preparation')).toBeInTheDocument();
+    const actionBtn = screen.getByRole('link', { name: /Review Launch Preparation/i });
+    expect(actionBtn).toHaveAttribute('href', '/dashboard/creator/phase-4?ideaId=idea-123');
   });
 });

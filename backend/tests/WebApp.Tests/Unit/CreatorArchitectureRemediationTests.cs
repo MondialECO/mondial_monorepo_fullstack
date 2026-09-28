@@ -105,6 +105,20 @@ namespace WebApp.Tests.Unit
                         new() { SegmentKey = "smb", SegmentName = "SMB" }
                     },
                     LaunchPlan = new GtmLaunchPlan()
+                },
+                // 4.8 Launch Assets: Generated v1
+                LaunchAssets = new LaunchAssetsPlan
+                {
+                    Version = 1,
+                    Status = "Draft",
+                    Headline = "EcoPackaging - Sustainable Logistics",
+                    LastGeneratedAt = DateTime.UtcNow
+                },
+                // 4.9 Construction Readiness: Saved review
+                ConstructionReadiness = new ConstructionReadinessReview
+                {
+                    Status = "Preparation in progress",
+                    ReviewedAt = DateTime.UtcNow
                 }
             };
         }
@@ -289,7 +303,33 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
-        public void Phase4_Complete_WhenAllSevenStagesResolved()
+        public void Phase4_NotComplete_WhenLaunchAssetsUnresolved()
+        {
+            var p4 = CreateAllResolvedPhase4();
+            p4.LaunchAssets = null;
+
+            var result = Phase4CompletionResolver.Resolve(p4);
+
+            result.IsComplete.Should().BeFalse();
+            result.LaunchAssetsResolved.Should().BeFalse();
+            result.UnresolvedStages.Should().Contain("4.8 Launch Assets");
+        }
+
+        [Fact]
+        public void Phase4_NotComplete_WhenReadinessUnresolved()
+        {
+            var p4 = CreateAllResolvedPhase4();
+            p4.ConstructionReadiness.ReviewedAt = null;
+
+            var result = Phase4CompletionResolver.Resolve(p4);
+
+            result.IsComplete.Should().BeFalse();
+            result.ReadinessResolved.Should().BeFalse();
+            result.UnresolvedStages.Should().Contain("4.9 Construction Readiness");
+        }
+
+        [Fact]
+        public void Phase4_Complete_WhenAllNineStagesResolved()
         {
             var p4 = CreateAllResolvedPhase4();
 
@@ -297,7 +337,7 @@ namespace WebApp.Tests.Unit
 
             result.IsComplete.Should().BeTrue();
             result.UnresolvedStages.Should().BeEmpty();
-            result.ResolvedCount.Should().Be(7);
+            result.ResolvedCount.Should().Be(9);
         }
 
         [Fact]
@@ -314,7 +354,7 @@ namespace WebApp.Tests.Unit
 
             result.IsComplete.Should().BeTrue();
             result.SupportResolved.Should().BeTrue();
-            result.ResolvedCount.Should().Be(7);
+            result.ResolvedCount.Should().Be(9);
         }
 
         [Fact]
@@ -333,7 +373,7 @@ namespace WebApp.Tests.Unit
 
             result.IsComplete.Should().BeTrue();
             result.SkillsResolved.Should().BeTrue();
-            result.ResolvedCount.Should().Be(7);
+            result.ResolvedCount.Should().Be(9);
         }
 
         [Fact]
@@ -362,7 +402,7 @@ namespace WebApp.Tests.Unit
 
             result.IsComplete.Should().BeTrue();
             result.UnresolvedStages.Should().BeEmpty();
-            result.ResolvedCount.Should().Be(7);
+            result.ResolvedCount.Should().Be(9);
 
             // Prove Phase5Data.ChosenPath is settable when resolver passes
             var p5 = new CreatorPhase5Data { ChosenPath = "build", PathSelectedAt = DateTime.UtcNow };

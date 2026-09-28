@@ -257,7 +257,8 @@ namespace WebApp.Tests.Unit
             summary.NextAction.Phase.Should().Be(4);
             summary.NextAction.Stage.Should().Be("4.1");
             summary.NextAction.Title.Should().Contain("Construction Snapshot");
-            summary.NextAction.Href.Should().Contain("/phase-4/construction-snapshot");
+            summary.NextAction.Href.Should().Be($"/dashboard/creator/phase-4?ideaId={TestIdeaId}");
+            summary.NextAction.Href.Should().NotContain("construction-snapshot");
         }
 
         [Fact]
@@ -411,6 +412,17 @@ namespace WebApp.Tests.Unit
                 SegmentStrategies = new List<GtmSegmentStrategy>(),
                 LaunchPlan = new GtmLaunchPlan()
             };
+            journey.Phase4Data.LaunchAssets = new LaunchAssetsPlan
+            {
+                Version = 1,
+                Status = "Draft",
+                LastGeneratedAt = DateTime.UtcNow
+            };
+            journey.Phase4Data.ConstructionReadiness = new ConstructionReadinessReview
+            {
+                Status = "Ready for construction",
+                ReviewedAt = DateTime.UtcNow
+            };
 
             var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
 
@@ -424,7 +436,7 @@ namespace WebApp.Tests.Unit
                 Phase1 = new ComputedPhaseStatus { Status = "completed" },
                 Phase2 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 4 },
                 Phase3 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 7 },
-                Phase4 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 7 },
+                Phase4 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 10 },
                 Phase5 = new ComputedPhaseStatus { Status = "available", CurrentStep = 1 }
             };
             _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
@@ -436,12 +448,14 @@ namespace WebApp.Tests.Unit
             // Assert
             summary.Phase5.IsUnlocked.Should().BeTrue();
             summary.Phase5.Href.Should().Contain("/dashboard/creator/crossroads");
-            summary.NextAction.Phase.Should().Be(5);
-            summary.NextAction.Href.Should().Contain("/dashboard/creator/crossroads");
+            // Creator MVP: When Phase 4 is complete, next action promotes review of launch preparation
+            summary.NextAction.Phase.Should().Be(4);
+            summary.NextAction.Title.Should().Be("Review your launch preparation");
+            summary.NextAction.Href.Should().Be($"/dashboard/creator/phase-4?ideaId={TestIdeaId}");
         }
 
         [Fact]
-        public async Task Dashboard_DoesNotDisplayPhase48Or49()
+        public async Task Dashboard_DisplaysAllNineStepsInPhase4()
         {
             // Arrange
             var journey = CreateBaseJourney();
@@ -465,9 +479,9 @@ namespace WebApp.Tests.Unit
             // Assert
             var p4Milestone = summary.Journey.Phases.Find(p => p.PhaseNumber == 4);
             p4Milestone.Should().NotBeNull();
-            p4Milestone.TotalSteps.Should().Be(7);
-            p4Milestone.SubstageProgress.Should().NotContain(s => s.Key == "4.8" || s.Key == "4.9");
-            summary.Results.Should().NotContain(r => r.Key.Contains("4.8") || r.Key.Contains("4.9") || r.Title.Contains("Readiness %"));
+            p4Milestone.TotalSteps.Should().Be(9);
+            p4Milestone.SubstageProgress.Should().Contain(s => s.Key == "4.8");
+            p4Milestone.SubstageProgress.Should().Contain(s => s.Key == "4.9");
         }
 
         [Fact]
@@ -838,6 +852,360 @@ namespace WebApp.Tests.Unit
             summary.Results.Should().Contain(r => r.Key == "operational_roadmap" && r.Status == "Ready");
             // Phase 5 is locked because overall Phase 4 is incomplete
             summary.Phase5.IsUnlocked.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task Phase4JourneyOverview_ContainsAllNineCanonicalSubstages_WithTotalStepsNine()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus
+                {
+                    Phase1 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase2 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase3 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase4 = new ComputedPhaseStatus { Status = "in_progress", CurrentStep = 1 }
+                });
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            var p4Phase = summary.Journey.Phases.Should().ContainSingle(p => p.PhaseNumber == 4).Subject;
+            p4Phase.TotalSteps.Should().Be(9);
+            p4Phase.SubstageProgress.Should().HaveCount(9);
+            p4Phase.SubstageProgress.Select(s => s.Key).Should().Equal(new[]
+            {
+                "4.1", "4.2", "4.3", "4.4", "4.5", "4.6", "4.7", "4.8", "4.9"
+            });
+            p4Phase.SubstageProgress.Select(s => s.Label).Should().Equal(new[]
+            {
+                "Snapshot", "Roadmap", "Needs", "Skills", "Support", "Pricing", "GTM", "Launch Assets", "Readiness"
+            });
+            // Verify Snapshot substage uses canonical /phase-4 href with idea context
+            p4Phase.SubstageProgress.First(s => s.Key == "4.1").Href.Should().Be($"/dashboard/creator/phase-4?ideaId={TestIdeaId}");
+            p4Phase.SubstageProgress.First(s => s.Key == "4.8").Href.Should().Be($"/dashboard/creator/phase-4/launch-assets?ideaId={TestIdeaId}");
+            p4Phase.SubstageProgress.First(s => s.Key == "4.9").Href.Should().Be($"/dashboard/creator/phase-4/readiness?ideaId={TestIdeaId}");
+        }
+
+        [Fact]
+        public async Task GtmComplete_WithLaunchAssetsAndReadinessUnfinished_GuidesToLaunchAssets()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            // Stages 1 through 7 resolved, 8 and 9 unresolved
+            journey.Phase4Data.ConstructionSnapshot = new ConstructionSnapshot { Status = "Completed", GeneratedAt = DateTime.UtcNow, Categories = new List<string> { "all" } };
+            journey.Phase4Data.Roadmap = new OperationalRoadmap { Status = "Active", GeneratedAt = DateTime.UtcNow, Stages = new List<RoadmapStageGroup>() };
+            journey.Phase4Data.NeedsAnalysis = new NeedsAnalysis { Status = "Completed", GeneratedAt = DateTime.UtcNow, CountsByCategory = new Dictionary<string, int> { { "ops", 1 } } };
+            journey.Phase4Data.SkillsPlan = new SkillsPlan { Status = "Completed", GeneratedAt = DateTime.UtcNow, Resolutions = new List<CapabilityResolution>(), CoveredCapabilities = new List<CoveredCapability>() };
+            journey.Phase4Data.SupportPlan = new SupportPlan { Status = "Generated", GeneratedAt = DateTime.UtcNow, Summary = new SupportPlanSummary() };
+            journey.Phase4Data.PricingStrategy = new PricingStrategy { Status = PricingStatus.Generated, GeneratedAt = DateTime.UtcNow, Offers = new List<PricingOffer> { new() } };
+            journey.Phase4Data.GtmStrategy = new GtmStrategy { Status = "Valid", GeneratedAt = DateTime.UtcNow, SegmentStrategies = new List<GtmSegmentStrategy>(), LaunchPlan = new GtmLaunchPlan() };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus
+                {
+                    Phase1 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase2 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase3 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase4 = new ComputedPhaseStatus { Status = "in_progress", CurrentStep = 8 }
+                });
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.NextAction.Should().NotBeNull();
+            summary.NextAction.Phase.Should().Be(4);
+            summary.NextAction.Stage.Should().Be("4.8");
+            summary.NextAction.Type.Should().Be("phase_4_launch_assets");
+            summary.NextAction.Href.Should().Be($"/dashboard/creator/phase-4/launch-assets?ideaId={TestIdeaId}");
+            summary.Phase5.IsUnlocked.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task LaunchAssetsComplete_WithReadinessUnfinished_GuidesToReadiness()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            // Stages 1 through 8 resolved, 9 unresolved
+            journey.Phase4Data.ConstructionSnapshot = new ConstructionSnapshot { Status = "Completed", GeneratedAt = DateTime.UtcNow, Categories = new List<string> { "all" } };
+            journey.Phase4Data.Roadmap = new OperationalRoadmap { Status = "Active", GeneratedAt = DateTime.UtcNow, Stages = new List<RoadmapStageGroup>() };
+            journey.Phase4Data.NeedsAnalysis = new NeedsAnalysis { Status = "Completed", GeneratedAt = DateTime.UtcNow, CountsByCategory = new Dictionary<string, int> { { "ops", 1 } } };
+            journey.Phase4Data.SkillsPlan = new SkillsPlan { Status = "Completed", GeneratedAt = DateTime.UtcNow, Resolutions = new List<CapabilityResolution>(), CoveredCapabilities = new List<CoveredCapability>() };
+            journey.Phase4Data.SupportPlan = new SupportPlan { Status = "Generated", GeneratedAt = DateTime.UtcNow, Summary = new SupportPlanSummary() };
+            journey.Phase4Data.PricingStrategy = new PricingStrategy { Status = PricingStatus.Generated, GeneratedAt = DateTime.UtcNow, Offers = new List<PricingOffer> { new() } };
+            journey.Phase4Data.GtmStrategy = new GtmStrategy { Status = "Valid", GeneratedAt = DateTime.UtcNow, SegmentStrategies = new List<GtmSegmentStrategy>(), LaunchPlan = new GtmLaunchPlan() };
+            journey.Phase4Data.LaunchAssets = new LaunchAssetsPlan { Version = 1, Status = "Draft", LastGeneratedAt = DateTime.UtcNow };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus
+                {
+                    Phase1 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase2 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase3 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase4 = new ComputedPhaseStatus { Status = "in_progress", CurrentStep = 9 }
+                });
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.NextAction.Should().NotBeNull();
+            summary.NextAction.Phase.Should().Be(4);
+            summary.NextAction.Stage.Should().Be("4.9");
+            summary.NextAction.Type.Should().Be("phase_4_readiness");
+            summary.NextAction.Href.Should().Be($"/dashboard/creator/phase-4/readiness?ideaId={TestIdeaId}");
+            summary.Phase5.IsUnlocked.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task SavedReadinessReview_DoesNotCompleteOpenTasksOrDraftStages()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            // Readiness review is saved, but Pricing is in Draft
+            journey.Phase4Data.ConstructionSnapshot = new ConstructionSnapshot { Status = "Completed", GeneratedAt = DateTime.UtcNow, Categories = new List<string> { "all" } };
+            journey.Phase4Data.Roadmap = new OperationalRoadmap
+            {
+                Status = "Active",
+                GeneratedAt = DateTime.UtcNow,
+                Stages = new List<RoadmapStageGroup>(),
+                Tasks = new List<RoadmapTask>
+                {
+                    new() { Key = "task-blocked", Title = "Obtain Manufacturer License", Status = "Blocked", FounderNotes = "Pending supplier callback" }
+                }
+            };
+            journey.Phase4Data.NeedsAnalysis = new NeedsAnalysis { Status = "Completed", GeneratedAt = DateTime.UtcNow, CountsByCategory = new Dictionary<string, int> { { "ops", 1 } } };
+            journey.Phase4Data.SkillsPlan = new SkillsPlan { Status = "Completed", GeneratedAt = DateTime.UtcNow, Resolutions = new List<CapabilityResolution>(), CoveredCapabilities = new List<CoveredCapability>() };
+            journey.Phase4Data.SupportPlan = new SupportPlan { Status = "Generated", GeneratedAt = DateTime.UtcNow, Summary = new SupportPlanSummary() };
+            journey.Phase4Data.PricingStrategy = new PricingStrategy { Status = PricingStatus.Draft }; // Incomplete!
+            journey.Phase4Data.GtmStrategy = new GtmStrategy { Status = "Valid", GeneratedAt = DateTime.UtcNow, SegmentStrategies = new List<GtmSegmentStrategy>(), LaunchPlan = new GtmLaunchPlan() };
+            journey.Phase4Data.LaunchAssets = new LaunchAssetsPlan { Version = 1, Status = "Draft", LastGeneratedAt = DateTime.UtcNow };
+            journey.Phase4Data.ConstructionReadiness = new ConstructionReadinessReview { Status = "Ready for construction", ReviewedAt = DateTime.UtcNow };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus
+                {
+                    Phase1 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase2 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase3 = new ComputedPhaseStatus { Status = "completed" },
+                    Phase4 = new ComputedPhaseStatus { Status = "in_progress", CurrentStep = 6 }
+                });
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            // 1. Saved readiness review does NOT unlock Phase 5 when pricing is draft
+            summary.Phase5.IsUnlocked.Should().BeFalse();
+            // 2. NextAction still points to the incomplete Pricing stage
+            summary.NextAction.Stage.Should().Be("4.6");
+            // 3. Blocked task from roadmap appears in attention items
+            summary.AttentionItems.Should().Contain(a => a.Type == "BLOCKED" && a.Title.Contains("Obtain Manufacturer License"));
+        }
+
+        [Fact]
+        public async Task SavedResults_IncludesLaunchWebsiteAndReadiness_OnlyWhenGenerated()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            // Launch assets generated and readiness review saved
+            journey.Phase4Data.LaunchAssets = new LaunchAssetsPlan
+            {
+                Version = 2,
+                Status = "Customized",
+                LastGeneratedAt = DateTime.UtcNow
+            };
+            journey.Phase4Data.ConstructionReadiness = new ConstructionReadinessReview
+            {
+                Status = "Ready for construction",
+                ReviewedAt = DateTime.UtcNow
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            var websiteResult = summary.Results.Should().ContainSingle(r => r.Key == "launch_assets").Subject;
+            websiteResult.Title.Should().Be("One-Page Launch Website");
+            websiteResult.Status.Should().Be("Ready");
+            websiteResult.Href.Should().Be($"/dashboard/creator/phase-4/launch-assets?ideaId={TestIdeaId}");
+
+            var readinessResult = summary.Results.Should().ContainSingle(r => r.Key == "construction_readiness").Subject;
+            readinessResult.Title.Should().Be("Construction Readiness Review");
+            readinessResult.Status.Should().Be("Ready");
+            readinessResult.Href.Should().Be($"/dashboard/creator/phase-4/readiness?ideaId={TestIdeaId}");
+        }
+
+        [Fact]
+        public async Task ProjectContext_PreservesIdeaIdAcrossAllSubstagesAndResults_WhenSwitchingIdeas()
+        {
+            // Arrange: Idea B
+            const string switchedIdeaId = "idea-xyz-789";
+            var journey = CreateBaseJourney(TestUserId, switchedIdeaId);
+            var idea = new CreatorIdea { Id = switchedIdeaId, UserId = TestUserId, Project = new CreatorJourneyProject { Name = "Switched Venture" } };
+
+            journey.Phase3Data.MarketStudySessionId = "session-1";
+            journey.Phase4Data.ConstructionSnapshot = new ConstructionSnapshot { Status = "Completed", GeneratedAt = DateTime.UtcNow, Categories = new List<string> { "legal" } };
+            journey.Phase4Data.LaunchAssets = new LaunchAssetsPlan { Version = 1, Status = "Draft", LastGeneratedAt = DateTime.UtcNow };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, switchedIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(switchedIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, switchedIdeaId);
+
+            // Assert
+            summary.Project.Id.Should().Be(switchedIdeaId);
+            summary.Project.Name.Should().Be("Switched Venture");
+
+            // All substages in journey overview preserve switchedIdeaId
+            var p3Phase = summary.Journey.Phases.First(p => p.PhaseNumber == 3);
+            p3Phase.SubstageProgress.Should().OnlyContain(s => s.Href.Contains($"ideaId={switchedIdeaId}"));
+
+            var p4Phase = summary.Journey.Phases.First(p => p.PhaseNumber == 4);
+            p4Phase.SubstageProgress.Should().OnlyContain(s => s.Href.Contains($"ideaId={switchedIdeaId}"));
+
+            // All results preserve switchedIdeaId
+            summary.Results.Should().OnlyContain(r => r.Href.Contains($"ideaId={switchedIdeaId}"));
+            summary.Results.Should().NotContain(r => r.Href.Contains(TestIdeaId));
+        }
+
+        [Fact]
+        public async Task Phase4_CurrentStep10_TreatedAsCompletionSentinel_NeverConstructsStep10Link()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+
+            // Set all 9 Phase 4 steps to completed
+            journey.Phase4Data.ConstructionSnapshot = new ConstructionSnapshot { Status = "Completed", GeneratedAt = DateTime.UtcNow, Categories = new List<string> { "all" } };
+            journey.Phase4Data.Roadmap = new OperationalRoadmap { Status = "Active", GeneratedAt = DateTime.UtcNow, Stages = new List<RoadmapStageGroup>() };
+            journey.Phase4Data.NeedsAnalysis = new NeedsAnalysis { Status = "Completed", GeneratedAt = DateTime.UtcNow, CountsByCategory = new Dictionary<string, int>() };
+            journey.Phase4Data.SkillsPlan = new SkillsPlan { Status = "Completed", GeneratedAt = DateTime.UtcNow, Resolutions = new List<CapabilityResolution>(), CoveredCapabilities = new List<CoveredCapability>() };
+            journey.Phase4Data.SupportPlan = new SupportPlan { Status = "Confirmed", GeneratedAt = DateTime.UtcNow, Summary = new SupportPlanSummary() };
+            journey.Phase4Data.PricingStrategy = new PricingStrategy { Status = PricingStatus.Generated, GeneratedAt = DateTime.UtcNow, Offers = new List<PricingOffer>() };
+            journey.Phase4Data.GtmStrategy = new GtmStrategy { Status = "Valid", GeneratedAt = DateTime.UtcNow, SegmentStrategies = new List<GtmSegmentStrategy>(), LaunchPlan = new GtmLaunchPlan() };
+            journey.Phase4Data.LaunchAssets = new LaunchAssetsPlan { Version = 1, Status = "Draft", LastGeneratedAt = DateTime.UtcNow };
+            journey.Phase4Data.ConstructionReadiness = new ConstructionReadinessReview { Status = "Ready for construction", ReviewedAt = DateTime.UtcNow };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+
+            var computed = new ComputedJourneyStatus
+            {
+                Phase1 = new ComputedPhaseStatus { Status = "completed" },
+                Phase2 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 4 },
+                Phase3 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 7 },
+                Phase4 = new ComputedPhaseStatus { Status = "completed", CurrentStep = 10 }, // Sentinel step 10
+                Phase5 = new ComputedPhaseStatus { Status = "available", CurrentStep = 1 }
+            };
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(computed);
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            // 1. Next action returns the MVP launch preparation review action
+            summary.NextAction.Phase.Should().Be(4);
+            summary.NextAction.Title.Should().Be("Review your launch preparation");
+            summary.NextAction.Href.Should().Be($"/dashboard/creator/phase-4?ideaId={TestIdeaId}");
+            summary.NextAction.Stage.Should().Be("4.9");
+
+            // 2. Substage list has exactly 9 steps, none with 4.10 or step-10
+            var p4 = summary.Journey.Phases.Find(p => p.PhaseNumber == 4);
+            p4.Should().NotBeNull();
+            p4!.TotalSteps.Should().Be(9);
+            p4.SubstageProgress.Should().HaveCount(9);
+            p4.SubstageProgress.Should().NotContain(s => s.Key == "4.10" || s.Href.Contains("4.10") || s.Href.Contains("step-10"));
+
+            // 3. Phase 5 is properly unlocked
+            summary.Phase5.IsUnlocked.Should().BeTrue();
+            summary.Phase5.Href.Should().Be($"/dashboard/creator/crossroads?ideaId={TestIdeaId}");
+        }
+
+        [Fact]
+        public async Task LaunchAssetsDraft_RemainsDistinguishableFromCustomizedSelectedWebsite()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+
+            // 1. Initially Draft
+            journey.Phase4Data.LaunchAssets = new LaunchAssetsPlan
+            {
+                Version = 1,
+                Status = "Draft",
+                LastGeneratedAt = DateTime.UtcNow
+            };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId))
+                .ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId))
+                .ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>()))
+                .ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var draftSummary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert Draft output
+            var draftResult = draftSummary.Results.Should().ContainSingle(r => r.Key == "launch_assets").Subject;
+            draftResult.Title.Should().Be("One-Page Launch Website");
+            draftResult.Status.Should().Be("Draft");
+            draftResult.Downloadable.Should().BeFalse();
+            draftResult.ExportType.Should().Be("view");
+
+            // 2. Customized / Selected
+            journey.Phase4Data.LaunchAssets = new LaunchAssetsPlan
+            {
+                Version = 2,
+                Status = "Customized",
+                LastGeneratedAt = DateTime.UtcNow
+            };
+
+            var customizedSummary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+            var customizedResult = customizedSummary.Results.Should().ContainSingle(r => r.Key == "launch_assets").Subject;
+            customizedResult.Title.Should().Be("One-Page Launch Website");
+            customizedResult.Status.Should().Be("Ready");
         }
     }
 }

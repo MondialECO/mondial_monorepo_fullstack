@@ -431,6 +431,7 @@ export const menu: Record<UserRole, MenuSection[]> = {
             },
           ],
         },
+        /* Creator MVP: deferred — retain for future reactivation.
         {
           label: "Launch to Market",
           href: "/dashboard/creator/crossroads",
@@ -458,6 +459,7 @@ export const menu: Record<UserRole, MenuSection[]> = {
             },
           ],
         },
+        */
         {
           label: "Assets & Documents",
           href: "/dashboard/creator/documents",
@@ -473,6 +475,7 @@ export const menu: Record<UserRole, MenuSection[]> = {
             },
           ],
         },
+        /* Creator MVP: deferred — retain for future reactivation.
         {
           label: "Services & Network",
           href: "/marketplace/services",
@@ -488,6 +491,7 @@ export const menu: Record<UserRole, MenuSection[]> = {
             },
           ],
         },
+        */
       ],
     },
     {

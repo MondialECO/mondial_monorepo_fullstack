@@ -191,6 +191,14 @@ export default function CreatorDashboard() {
     );
   }
 
+  // Project-scoped link helper
+  const projectHref = (path: string) => {
+    if (!activeIdeaId) return path;
+    return path.includes('?')
+      ? `${path}&ideaId=${encodeURIComponent(activeIdeaId)}`
+      : `${path}?ideaId=${encodeURIComponent(activeIdeaId)}`;
+  };
+
   const { project, nextAction, attentionItems, journey, results, phase5 } = summary;
   const brand = project.brand;
   const brandLogo = brand?.logoAsset || brand?.logoUrl;
@@ -294,13 +302,13 @@ export default function CreatorDashboard() {
           <div className="flex items-center gap-3 shrink-0 self-start md:self-center">
             {journey.currentPhase >= 2 && (
               <Button variant="outline" size="sm" asChild className="rounded-xl border-border text-xs h-9">
-                <Link href="/dashboard/creator/phase-2">
+                <Link href={projectHref('/dashboard/creator/phase-2')}>
                   <Edit2 className="w-3.5 h-3.5 mr-1.5" /> Brand Identity
                 </Link>
               </Button>
             )}
             <Button variant="outline" size="sm" asChild className="rounded-xl border-border text-xs h-9">
-              <Link href="/dashboard/creator/documents">
+              <Link href={projectHref('/dashboard/creator/documents')}>
                 <Folder className="w-3.5 h-3.5 mr-1.5" /> Vault
               </Link>
             </Button>
@@ -602,7 +610,7 @@ export default function CreatorDashboard() {
                 </p>
               </div>
               <Button variant="outline" size="sm" asChild className="rounded-lg text-xs h-7 border-border px-2.5">
-                <Link href="/dashboard/creator/documents">View Vault</Link>
+                <Link href={projectHref('/dashboard/creator/documents')}>View Vault</Link>
               </Button>
             </div>
 
@@ -853,7 +861,7 @@ export default function CreatorDashboard() {
                 asChild
                 className="h-9 justify-start text-xs font-semibold rounded-lg border-border"
               >
-                <Link href="/dashboard/creator/phase-3/legal">
+                <Link href={projectHref('/dashboard/creator/phase-3/compliance')}>
                   <Scale className="w-3.5 h-3.5 mr-1.5 text-emerald-500" />
                   Legal Center
                 </Link>
@@ -864,7 +872,7 @@ export default function CreatorDashboard() {
                 asChild
                 className="h-9 justify-start text-xs font-semibold rounded-lg border-border"
               >
-                <Link href="/dashboard/creator/phase-4">
+                <Link href={projectHref('/dashboard/creator/phase-4')}>
                   <Briefcase className="w-3.5 h-3.5 mr-1.5 text-blue-500" />
                   Construction
                 </Link>
@@ -875,7 +883,7 @@ export default function CreatorDashboard() {
                 asChild
                 className="h-9 justify-start text-xs font-semibold rounded-lg border-border"
               >
-                <Link href="/dashboard/creator/documents">
+                <Link href={projectHref('/dashboard/creator/documents')}>
                   <Folder className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
                   IP Vault
                 </Link>

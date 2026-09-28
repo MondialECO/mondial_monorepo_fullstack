@@ -526,7 +526,7 @@ namespace WebApp.Services.Implementations
             // ---- Phase 4 (Construction Engine) ----
             var p4 = j.Phase4Data ?? new CreatorPhase4Data();
             var p4Eval = Phase4CompletionResolver.Resolve(p4);
-            bool anyP4 = p4Eval.SnapshotResolved || p4Eval.RoadmapResolved || p4Eval.NeedsResolved || p4Eval.SkillsResolved || p4Eval.SupportResolved || p4Eval.PricingResolved || p4Eval.GtmResolved;
+            bool anyP4 = p4Eval.ResolvedCount > 0;
             bool p4Complete = p4Eval.IsComplete;
 
             if (!p3Done) s.Phase4.Status = "locked";
@@ -541,7 +541,9 @@ namespace WebApp.Services.Implementations
                 !p4Eval.SkillsResolved ? 4 :
                 !p4Eval.SupportResolved ? 5 :
                 !p4Eval.PricingResolved ? 6 :
-                !p4Eval.GtmResolved ? 7 : 8;
+                !p4Eval.GtmResolved ? 7 :
+                !p4Eval.LaunchAssetsResolved ? 8 :
+                !p4Eval.ReadinessResolved ? 9 : 10;
 
             bool p4Done = s.Phase4.Status == "completed";
 
