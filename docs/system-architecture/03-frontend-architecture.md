@@ -365,13 +365,22 @@ Following Figma Node `57157:9297` (`Financial Forecast · Creator Phase 3.3`), S
 
 ## 7. Creator Navigation & Brand Studio Architecture — FINAL / FROZEN
 
-### A. Creator Navigation Architecture
-- **Hierarchical Structure**: Creator sidebar structured into a Menu/Submenu hierarchy with 4 expandable parent groups:
-  1. `Build My Project` (`submenu-build-my-project`)
-  2. `Offers & Marketplace` (`submenu-offers-marketplace`)
-  3. `Assets & Documents` (`submenu-assets-documents`)
-  4. `Services & Network` (`submenu-services-network`)
-- **Canonical Routing & Aliases**: Internal workflow routes map cleanly to canonical sidebar destinations via `CREATOR_ROUTE_ALIASES` in `src/lib/menu-navigation.ts` (e.g. `/branding`, `/logo-tool`, `/brand-kit`, `/complete` all resolve to `Brand Studio`).
+### A. Creator Navigation Architecture (MVP Scope)
+- **Hierarchical Structure**: Creator sidebar is configured in `src/lib/menu.ts` and rendered via `AppSidebar.tsx`:
+  1. `Dashboard` (`Overview`, `My Ideas`)
+  2. `Project Workspace`
+     - `Build My Project` (9 submenus: `AI Studio`, `Brand Studio`, `Market Study`, `Business Model`, `Financial Forecast`, `Legal & Compliance`, `Company Formation`, `Business Plan`, `Project Readiness`)
+     - `Launch Preparation` (9 canonical unnumbered submenus: `Construction Snapshot`, `Operational Roadmap`, `Needs & Requirements`, `Skills & Training`, `Aids, Grants & Support`, `Pricing & Revenue Model`, `GTM & Launch Strategy`, `Launch Assets`, `Construction Readiness`)
+     - `Assets & Documents` (2 submenus: `IP Vault & Legal`, `Asset Library`)
+  3. `Communication` (`Messages`, `Notifications`)
+  4. `Account` (`Profile`, `Settings`, `Billing History`)
+- **MVP Deferred Groups (Retained as Comments)**:
+  - `Launch to Market` (Market Crossroads, Marketplace, Partnerships, Sales & Buyouts, Growth & Readiness) and `Services & Network` (Hire Providers, Active Engagements) are deferred beyond Creator MVP and commented out in `src/lib/menu.ts`.
+  - All underlying routes, APIs, and data stores remain preserved in the codebase for post-MVP reactivation.
+- **Completed Phase 4 Next Action (MVP Alignment)**:
+  - When all 9 Phase 4 steps are completed, the dashboard serves the available MVP Next Action: *"Review your launch preparation"* pointing to `/dashboard/creator/phase-4?ideaId={activeIdeaId}`.
+  - **Restoration Requirement**: Reactivating Crossroads in post-MVP releases requires replacing the MVP review fallback appropriately in `CreatorDashboardService.cs` (`ResolveNextAction`) as well as uncommenting the menu groups in `src/lib/menu.ts`.
+- **Canonical Routing & Aliases**: Internal workflow routes map cleanly to canonical sidebar destinations via `CREATOR_ROUTE_ALIASES` in `src/lib/menu-navigation.ts` (e.g. `/branding`, `/logo-tool`, `/brand-kit`, `/complete` all resolve to `Brand Studio`; `/dashboard/creator/phase-4/assets` resolves to `Launch Assets`).
 - **Clarifier Workflow**: Clarifier steps retain parent `Build My Project` active/expanded context without activating child links.
 
 ### B. Brand Studio Architecture
@@ -396,30 +405,24 @@ Following Figma Node `57157:9297` (`Financial Forecast · Creator Phase 3.3`), S
   - **Edit Existing Section**:
     `View Mode` → `Creator clicks Edit` → `corresponding modal only opens` → `Save` → `modal closes` → `updated View Mode`.
 
-### C. Test Verification Baseline (273/273 Passed)
+### C. Test Verification Baseline
 - **Creator Navigation Suite**: `192/192` (`npx tsx`)
 - **Brand Studio Entry & Orchestration**: `31/31` (`npx tsx`)
 - **Brand Studio View Mode & UI**: `42/42` (`npx tsx`)
 - **Creator Stabilization 02**: `8/8` (`npx vitest run`)
-- **Total Executed Tests**: **273/273 passed (0 failures)**
-
-> [!NOTE]
-> `CreatorStabilization02.test.tsx` uses `vitest` imports and must be executed with `npx vitest run`. The other suites are executed via `npx tsx`.
-
-### D. Freeze Status
-- `CREATOR NAVIGATION ARCHITECTURE — COMPLETE & FROZEN`
-- `CREATOR BRAND STUDIO ENTRY, VIEW MODE & EDITING ARCHITECTURE — COMPLETE & FROZEN`
-- `CREATOR BRAND STUDIO LEGACY PROGRESS TOPBAR — REMOVED & FROZEN`
+- **Menu Navigation & Submenu Tests**: `25/25` (`vitest`)
+- **Creator Dashboard Command Center Tests**: `7/7` (`vitest`)
+- **Backend Creator Phase 4 & Dashboard Tests**: `302/302` (`dotnet test`)
 
 ---
 
 ## 9. Creator Phase 4 Full-Width Layout & Launch Preparation Architecture — FINAL / FROZEN
 
 ### A. Phase 4 Full-Width Architecture
-All 9 Creator Phase 4 pages (`/dashboard/creator/phase-4/**` and views) have been normalized to use the full available dashboard main width without artificial letterboxing clamps (`w-full max-w-none min-w-0 flex-1 flex flex-col`).
+All 9 Creator Phase 4 pages (`/dashboard/creator/phase-4/**` and views) operate with full available dashboard main width without artificial letterboxing clamps (`w-full max-w-none min-w-0 flex-1 flex flex-col`):
 
 1. **Step 4.1 Construction Snapshot** (`/dashboard/creator/phase-4`): Full-width 9-step timeline overview, dynamic metrics, and readiness scorecard.
-2. **Step 4.2 Operational Roadmap** (`/dashboard/creator/phase-4/roadmap`): Multi-track Gantt/kanban execution timeline with task drawers.
+2. **Step 4.2 Operational Roadmap** (`/dashboard/creator/phase-4/roadmap`): Multi-track execution timeline with task drawers.
 3. **Step 4.3 Needs & Requirements** (`/dashboard/creator/phase-4/needs`): Categorized requirement grid with inline confirmation and deferral.
 4. **Step 4.4 Skills & Training** (`/dashboard/creator/phase-4/skills`): Skills matrix, resolution modes (Hire, Train, AI Agent), and training resource library.
 5. **Step 4.5 Aids, Grants & Support** (`/dashboard/creator/phase-4/support`): Grant and subsidy directory, eligibility match filters, and application tracking.
@@ -431,8 +434,8 @@ All 9 Creator Phase 4 pages (`/dashboard/creator/phase-4/**` and views) have bee
 ### B. Creator Sidebar & Launch Preparation Navigation
 - **Single Source of Truth**: Menu structure defined in [`src/lib/menu.ts`](file:///e:/17-07-2026/mondial_monorepo_fullstack/src/lib/menu.ts).
 - **Group Labeling**:
-  - `Launch Preparation`: Houses all 9 canonical submenus (4.1–4.9) under `Project Workspace`.
-  - `Launch to Market`: Houses market crossroads, marketplace listings, partnerships, sales/buyouts, and investor relations.
+  - `Launch Preparation`: Houses all 9 canonical unnumbered submenus (4.1–4.9) under `Project Workspace`.
+  - `Launch to Market`: Deferred for MVP; commented in menu configuration while retaining underlying routes.
 - **Dynamic Context Preservation**: `AppSidebar.tsx` dynamically preserves `ideaId` across all links via `searchParams` without fabricating fallback IDs.
 - **Mutual Exclusivity & Exact Matching**: Exact route matching on root `/dashboard/creator/phase-4` ensures nested subpaths highlight strictly their corresponding active step.
 - **Route Aliasing**: Both `/dashboard/creator/phase-4/launch-assets` and `/dashboard/creator/phase-4/assets` resolve and highlight Step 4.8.

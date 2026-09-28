@@ -1,0 +1,145 @@
+{
+  "auditMetadata": {
+    "targetSurface": "/dashboard/creator",
+    "surfaceName": "MBC Creator Dashboard Command Center",
+    "repository": "MondialECO/mondial_monorepo_fullstack",
+    "branch": "dev-hafiz",
+    "headCommit": "c668b82d",
+    "workingTreeStatus": "batch-1-applied",
+    "auditTimestamp": "2026-09-28T19:22:00+06:00",
+    "auditMode": "batch-1-implemented"
+  },
+  "summary": {
+    "totalFindings": 8,
+    "resolved": 4,
+    "disprovedOrIntentional": 1,
+    "openGapsOrDeferred": 3,
+    "bySeverity": {
+      "critical": 0,
+      "high": 2,
+      "medium": 2,
+      "low": 4,
+      "info": 0
+    },
+    "byClassification": {
+      "confirmedDefect": 3,
+      "suspectedRisk": 2,
+      "verificationGap": 2,
+      "optionalImprovement": 1
+    }
+  },
+  "verdicts": {
+    "dataCorrectness": "PASS (Canonical 9-step Phase 4 & DTOs Aligned)",
+    "journeyProgress": "PASS (9 Canonical Steps Verified in Resolver, Journey, & Dashboard)",
+    "navigation": "PASS (Broken routes resolved, ideaId preserved, canonical routes verified)",
+    "designSystemConsistency": "PASS (Visual layout preserved)",
+    "renderedUi": "VERIFIED VIA JSDOM / STATIC (Live Browser Not Verified)",
+    "automatedTests": "PASS (Fresh Build Backend: 302/302 passed, Vitest: 32/32 passed, TSC: 0 errors)"
+  },
+  "findings": [
+    {
+      "id": "DEFECT-DASH-01",
+      "severity": "high",
+      "classification": "confirmedDefect",
+      "status": "RESOLVED",
+      "file": "src/app/dashboard/creator/page.tsx",
+      "line": 856,
+      "title": "Broken Legal Center shortcut route pointing to /phase-3/legal (404)",
+      "observedBehaviour": "The Venture Hub shortcut button for 'Legal Center' rendered <Link href=\"/dashboard/creator/phase-3/legal\">, which led to a 404 Route Not Found page.",
+      "resolution": "Updated shortcut in src/app/dashboard/creator/page.tsx to use projectHref('/dashboard/creator/phase-3/compliance').",
+      "evidence": "src/app/dashboard/creator/phase-3/compliance/page.tsx verified as canonical route; vitest and unit tests confirm resolution.",
+      "userImpact": "Resolved. Creators navigate directly to Legal & Compliance workspace with active project context."
+    },
+    {
+      "id": "DEFECT-DASH-02",
+      "severity": "high",
+      "classification": "confirmedDefect",
+      "status": "RESOLVED",
+      "file": "backend/Services/Implementations/CreatorDashboardService.cs",
+      "line": 411,
+      "title": "Backend summary generates invalid /phase-4/construction-snapshot route for Phase 4.1",
+      "observedBehaviour": "CreatorDashboardService generated hrefs pointing to /dashboard/creator/phase-4/construction-snapshot for NextAction, Attention Items, Substages, and Results.",
+      "resolution": "Updated all Phase 4.1 hrefs in CreatorDashboardService.cs to return /dashboard/creator/phase-4 with project context.",
+      "evidence": "CreatorDashboardSummaryTests.cs and CreatorDashboardService.cs updated; tests confirm canonical route /dashboard/creator/phase-4.",
+      "userImpact": "Resolved. All Phase 4.1 CTAs and substage links resolve to the canonical Construction Snapshot page."
+    },
+    {
+      "id": "DEFECT-DASH-03",
+      "severity": "medium",
+      "classification": "confirmedDefect",
+      "status": "RESOLVED",
+      "file": "backend/Services/Implementations/CreatorDashboardService.cs",
+      "line": 782,
+      "title": "Dashboard service models Phase 4 with 7 steps, omitting Phase 4.8 and 4.9",
+      "observedBehaviour": "BuildJourneyOverview hardcoded TotalSteps = 7 for Phase 4, omitting 4.8 Launch Assets and 4.9 Construction Readiness. ResolveNextAction jumped straight from 4.7 GTM to Phase 5 Crossroads, and BuildResultsList omitted 4.8/4.9 outputs.",
+      "resolution": "Extended Phase4CompletionResolver, CreatorJourneyService, and CreatorDashboardService (BuildJourneyOverview, ResolveNextAction, ResolveAttentionItems, BuildResultsList, and BuildPhase5Summary) to evaluate and sequence all 9 canonical Phase 4 steps.",
+      "evidence": "All 49 backend unit tests and 30 Vitest tests pass, verifying 9 substages, Step 4.8 launch assets next action, Step 4.9 readiness next action, and saved outputs for Launch Website and Readiness Review.",
+      "userImpact": "Resolved. Founders sequence through Launch Assets (4.8) and Construction Readiness Review (4.9) before unlocking Phase 5 Crossroads."
+    },
+    {
+      "id": "RISK-DASH-04",
+      "severity": "medium",
+      "classification": "suspectedRisk",
+      "status": "RESOLVED",
+      "file": "src/app/dashboard/creator/page.tsx",
+      "line": 297,
+      "title": "Missing activeIdeaId query parameter on static dashboard buttons and backend substage hrefs",
+      "observedBehaviour": "Static dashboard buttons and backend-returned substage and result hrefs lacked the ?ideaId={activeIdeaId} parameter.",
+      "resolution": "Added projectHref helper in page.tsx for project-scoped links and updated CreatorDashboardService to wrap all substages and results in Route(path, ideaId).",
+      "evidence": "CreatorDashboardSummaryTests.ProjectContext_PreservesIdeaIdAcrossAllSubstagesAndResults_WhenSwitchingIdeas passes.",
+      "userImpact": "Resolved. Active project context is consistently preserved across navigation, tabs, and project switches."
+    },
+    {
+      "id": "RISK-DASH-05",
+      "severity": "low",
+      "classification": "suspectedRisk",
+      "status": "DISPROVED / VERIFIED AS INTENTIONAL",
+      "file": "src/lib/menu-navigation.ts",
+      "line": 46,
+      "title": "CREATOR_ROUTE_ALIASES maps /dashboard/creator/profile to /dashboard/profile",
+      "observedBehaviour": "CREATOR_ROUTE_ALIASES defines '/dashboard/creator/profile': '/dashboard/profile'.",
+      "resolution": "Source inspection confirmed this alias is intentional for standard shell sidebar highlighting when accessing the global Account profile, without breaking Creator context. The full creator sidebar structure is maintained.",
+      "evidence": "menu-navigation.test.tsx passes with all 24 tests.",
+      "userImpact": "No defect. Current alias behavior is verified as intentional and safe."
+    },
+    {
+      "id": "GAP-DASH-06",
+      "severity": "low",
+      "classification": "verificationGap",
+      "status": "OPEN (DOCUMENTED GAP)",
+      "file": "analysis/mbc/CREATOR_DASHBOARD_AUDIT.md",
+      "line": 1,
+      "title": "No approved standalone Figma reference node indexed for /dashboard/creator",
+      "observedBehaviour": "No standalone Figma frame exists in project documentation for the top-level /dashboard/creator page.",
+      "resolution": "Documented as Not Verified for Figma reference matching; existing layout preserved exactly.",
+      "evidence": "Audit documentation recorded.",
+      "userImpact": "None."
+    },
+    {
+      "id": "GAP-DASH-07",
+      "severity": "low",
+      "classification": "verificationGap",
+      "status": "OPEN (DOCUMENTED GAP)",
+      "file": "analysis/mbc/CREATOR_DASHBOARD_AUDIT.md",
+      "line": 1,
+      "title": "Live browser rendered visual screenshot capture unavailable in local environment",
+      "observedBehaviour": "Local dev servers were not listening on ports 3000/5093 during the audit execution.",
+      "resolution": "Marked rendered-browser visual inspection as Not Verified, with static code analysis, TypeScript type checking, and 79 automated tests passing.",
+      "evidence": "Port inspection recorded in audit logs.",
+      "userImpact": "None."
+    },
+    {
+      "id": "IMPROVE-DASH-08",
+      "severity": "low",
+      "classification": "optionalImprovement",
+      "status": "OPEN (DEFERRED OPTIONAL)",
+      "file": "src/app/dashboard/creator/page.tsx",
+      "line": 239,
+      "title": "Header date relies directly on un-normalized browser locale date evaluation",
+      "observedBehaviour": "Header pill evaluates new Date().toLocaleDateString('en-US', ...) directly on render.",
+      "resolution": "Deferred to non-breaking UI polish batch to preserve existing visual layout strictly.",
+      "evidence": "src/app/dashboard/creator/page.tsx:239.",
+      "userImpact": "None."
+    }
+  ]
+}

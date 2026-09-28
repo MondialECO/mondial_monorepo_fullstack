@@ -15,6 +15,8 @@ namespace WebApp.Services.Implementations
         public bool SupportResolved { get; set; }
         public bool PricingResolved { get; set; }
         public bool GtmResolved { get; set; }
+        public bool LaunchAssetsResolved { get; set; }
+        public bool ReadinessResolved { get; set; }
         public List<string> UnresolvedStages { get; set; } = new();
 
         public int ResolvedCount =>
@@ -24,12 +26,14 @@ namespace WebApp.Services.Implementations
             (SkillsResolved ? 1 : 0) +
             (SupportResolved ? 1 : 0) +
             (PricingResolved ? 1 : 0) +
-            (GtmResolved ? 1 : 0);
+            (GtmResolved ? 1 : 0) +
+            (LaunchAssetsResolved ? 1 : 0) +
+            (ReadinessResolved ? 1 : 0);
     }
 
     /// <summary>
     /// Deterministic, single authority on Phase 4 completion.
-    /// Evaluates stage-native resolution semantics across all 7 construction preparation stages.
+    /// Evaluates stage-native resolution semantics across all 9 construction preparation stages.
     /// Note: A stage does not need to contain positive findings (e.g. 0 public grants or 0 skill gaps)
     /// in order to be considered evaluated and resolved.
     /// </summary>
@@ -48,7 +52,9 @@ namespace WebApp.Services.Implementations
                     "4.4 Skills",
                     "4.5 Support",
                     "4.6 Pricing",
-                    "4.7 GTM"
+                    "4.7 GTM",
+                    "4.8 Launch Assets",
+                    "4.9 Construction Readiness"
                 });
                 return res;
             }
@@ -110,13 +116,27 @@ namespace WebApp.Services.Implementations
                 && p4.GtmStrategy.LaunchPlan != null;
             if (!res.GtmResolved) res.UnresolvedStages.Add("4.7 GTM");
 
+            // 4.8 Launch Assets (Stage-native: generated asset with version >= 1, reusable draft/selected-version semantics)
+            res.LaunchAssetsResolved = p4.LaunchAssets != null
+                && p4.LaunchAssets.LastGeneratedAt != default
+                && p4.LaunchAssets.Version >= 1;
+            if (!res.LaunchAssetsResolved) res.UnresolvedStages.Add("4.8 Launch Assets");
+
+            // 4.9 Construction Readiness (Stage-native: founder-saved review with ReviewedAt)
+            res.ReadinessResolved = p4.ConstructionReadiness != null
+                && p4.ConstructionReadiness.ReviewedAt.HasValue
+                && p4.ConstructionReadiness.ReviewedAt.Value != default;
+            if (!res.ReadinessResolved) res.UnresolvedStages.Add("4.9 Construction Readiness");
+
             res.IsComplete = res.SnapshotResolved
                 && res.RoadmapResolved
                 && res.NeedsResolved
                 && res.SkillsResolved
                 && res.SupportResolved
                 && res.PricingResolved
-                && res.GtmResolved;
+                && res.GtmResolved
+                && res.LaunchAssetsResolved
+                && res.ReadinessResolved;
 
             return res;
         }

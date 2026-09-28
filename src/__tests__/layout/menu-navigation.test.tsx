@@ -601,5 +601,36 @@ describe("Menu Navigation & Submenu Interaction Suite", () => {
 
       expect(mockPush).toHaveBeenCalledWith("/dashboard/creator/phase-4/roadmap?ideaId=project-123");
     });
+
+    it("Creator MVP: hides Launch to Market and Services & Network from sidebar navigation", () => {
+      mockUser = { id: "u1", name: "Creator Founder", role: UserRole.CREATOR };
+      mockPathname = "/dashboard/creator";
+      mockSearchParams = new URLSearchParams("ideaId=project-123");
+
+      render(
+        <SidebarProvider>
+          <AppSidebar />
+        </SidebarProvider>
+      );
+
+      // Deferred groups must be absent
+      expect(screen.queryByText("Launch to Market")).toBeNull();
+      expect(screen.queryByText("Market Crossroads")).toBeNull();
+      expect(screen.queryByText("Partnerships")).toBeNull();
+      expect(screen.queryByText("Sales & Buyouts")).toBeNull();
+      expect(screen.queryByText("Growth & Readiness")).toBeNull();
+      expect(screen.queryByText("Services & Network")).toBeNull();
+      expect(screen.queryByText("Hire Providers")).toBeNull();
+      expect(screen.queryByText("Active Engagements")).toBeNull();
+
+      // Active groups must remain intact
+      expect(screen.getByText("Overview")).toBeDefined();
+      expect(screen.getByText("My Ideas")).toBeDefined();
+      expect(screen.getByText("Build My Project")).toBeDefined();
+      expect(screen.getByText("Launch Preparation")).toBeDefined();
+      expect(screen.getByText("Assets & Documents")).toBeDefined();
+      expect(screen.getByText("Communication")).toBeDefined();
+      expect(screen.getByText("Account")).toBeDefined();
+    });
   });
 });
