@@ -667,10 +667,13 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   - **Terminal Completion:** On `Completed` status, the loading card unmounts and the new valid version replaces the previous forecast atomically without page reload.
   - **Failure Handling:** If regeneration fails (`Failed` or error), previous valid forecast remains completely intact and displayed; a non-destructive failure alert card renders with `[Adjust & Retry]` without wiping or corrupting the results.
 
-#### 3. Single Canonical Assumptions Authority & Dead Code Cleanup
+#### 3. Single Canonical Assumptions Authority & Deterministic Forecast Engine
+- **ForecastSession.Inputs as SSoT:** `ForecastSession.Inputs` is the canonical Single Source of Truth for all founder assumptions and financial simulation drivers.
+- **Compact Qualitative AI Output:** The AI (`google/gemini-3.8-flash`) generates only compact qualitative analysis (driving assumptions commentary, key business risks & mitigations, advisory notice, concise financial summary). The AI no longer generates redundant 12/36-month numeric projection arrays, preventing length truncation while preserving token efficiency.
+- **`FinancialForecastEngine` as Sole Numeric Authority:** `FinancialForecastEngine` is the sole deterministic 36-month calculation authority for all financial projection numbers (revenue, cost, cash flow, ending balance, break-even).
+- **Failure Safety & Preservation:** Malformed or truncated AI output is rejected; partial malformed forecasts are never persisted; previous valid versions remain intact and displayed; automatic credit refunds execute on malformed output; initial generation and regeneration use the identical compact path.
 - **Single Canonical Form Schema:** `ForecastAssumptionsForm` is the single canonical assumptions form and validation schema across both the initial setup page and the in-results modal.
 - **Removal of `StartingBudgetModal.tsx`:** The legacy separate `StartingBudgetModal.tsx` wrapper has been completely excised. Starting Budget is natively integrated into the canonical assumptions form across all views.
-- **`FinancialForecastEngine` as Sole Authority:** `FinancialForecastEngine` is the sole deterministic 36-month calculation authority for all 4 business archetypes. Obsolete projection helpers (`ExtendToThirtySixMonths`, `RecomputeBreakEven`, and unused static helpers) have been completely removed from `ForecastHandler`.
 - **Zero Client-Side Calculation Engine:** React components contain no competing forecast calculation engine or parallel math forks.
 - **Zero Static Fallback Data:** Static fallback counts = 0; first-idea fallbacks = 0; all cards, tables, charts, and metrics are derived from live database records.
 - **Budget Suggestion API:** `GET /api/ai/forecast/budget-suggestion` remains fully active and contracted to supply intelligent baseline recommendations.

@@ -56,13 +56,10 @@ public class ForecastHandlerTests
     private static string ValidJson() => """
         {
           "schemaVersion": 1,
-          "revenueForecast": { "currency": "USD", "summary": "ramp", "monthly": [ { "month": 1, "amount": 1000, "notes": "launch" } ] },
-          "costForecast": { "currency": "USD", "summary": "lean", "monthly": [ { "month": 1, "fixedCosts": 500, "variableCosts": 100, "notes": "" } ] },
-          "cashFlowProjection": { "currency": "USD", "summary": "tight", "monthly": [ { "month": 1, "netCashFlow": 400, "endingBalance": 400, "notes": "" } ] },
-          "breakEvenAnalysis": { "breakEvenMonth": 9, "summary": "month 9", "isAchievedWithinHorizon": true },
-          "assumptions": ["10% MoM growth"],
-          "risks": [ { "category": "market", "description": "slow adoption", "likelihood": "medium", "impact": "high", "mitigation": "pilots" } ],
-          "advisoryNotice": "Estimates only; not guarantees."
+          "summary": "Sustainable SaaS unit economics with disciplined CAC payback.",
+          "assumptions": ["10% MoM subscriber growth through organic content and referrals"],
+          "risks": [ { "category": "market", "description": "delayed enterprise adoption", "likelihood": "medium", "impact": "high", "mitigation": "tiered self-service pilot onboarding" } ],
+          "advisoryNotice": "Estimates only; not guarantees. Consult a professional advisor."
         }
         """;
 
@@ -85,7 +82,8 @@ public class ForecastHandlerTests
         prep.MaxTokens.Should().Be(8000);
         prep.Temperature.Should().Be(0.3);
         prep.ResponseFormat.Should().Be("json_object");
-        prep.Task.Should().Contain("12-month");
+        prep.Task.Should().Contain("compact qualitative financial forecast");
+        prep.Task.Should().Contain("Do NOT calculate monthly financial projection numbers");
     }
 
     [Fact]
@@ -179,19 +177,58 @@ public class ForecastHandlerTests
         prep.UserContext.Should().NotContain("Edited plan.");
     }
 
+    [Fact]
+    public async Task Prepare_regeneration_uses_same_compact_forecast_path()
+    {
+        var planId = ObjectId.GenerateNewId().ToString();
+        _plans.Setup(p => p.GetOwnedAsync(planId, "user-1")).ReturnsAsync(CompletedPlan(planId));
+
+        var prep = await Handler().PrepareAsync(Request(new BsonDocument
+        {
+            ["sessionId"] = "fc-regen-1",
+            ["businessPlanSessionId"] = planId,
+            ["startingBudget"] = 25000,
+            ["arpu"] = 99,
+            ["opex"] = 3000,
+            ["isRegeneration"] = true,
+        }));
+
+        prep.PromptKey.Should().Be(PromptTemplate.Forecast.Key);
+        prep.Task.Should().Contain("Do NOT calculate monthly financial projection numbers");
+        prep.UserContext.Should().Contain("Starting Budget / Cash Reserve (€): 25000");
+    }
+
     // ---- InterpretAsync: happy path ----
 
     [Fact]
-    public async Task Interpret_appends_version_and_returns_contract()
+    public async Task Interpret_appends_version_and_engine_generates_deterministic_projections()
     {
         var sessionId = ObjectId.GenerateNewId().ToString();
-        var request = Request(new BsonDocument { ["sessionId"] = sessionId });
+        var request = Request(new BsonDocument
+        {
+            ["sessionId"] = sessionId,
+            ["startingBudget"] = 15000,
+            ["launchSubscribers"] = 50,
+            ["arpu"] = 30,
+            ["opex"] = 2000,
+            ["monthlyGrowthPct"] = 10,
+        });
 
         var result = await Handler().InterpretAsync(request, Completion(ValidJson()));
 
         result.OutputPayload.Should().NotBeNull();
         result.OutputPayload!["schemaVersion"].AsInt32.Should().Be(1);
-        result.OutputPayload!["revenueForecast"]["currency"].AsString.Should().Be("USD");
+
+        // Deterministic engine populated monthly projections
+        result.OutputPayload["revenueForecast"]["monthly"].AsBsonArray.Count.Should().Be(36);
+        result.OutputPayload["costForecast"]["monthly"].AsBsonArray.Count.Should().Be(36);
+        result.OutputPayload["cashFlowProjection"]["monthly"].AsBsonArray.Count.Should().Be(36);
+        result.OutputPayload["breakEvenAnalysis"]["isAchievedWithinHorizon"].Should().NotBeNull();
+
+        // AI qualitative narrative is preserved
+        result.OutputPayload["assumptions"].AsBsonArray.Should().NotBeEmpty();
+        result.OutputPayload["risks"].AsBsonArray.Should().NotBeEmpty();
+        result.OutputPayload["advisoryNotice"].AsString.Should().Contain("Estimates only");
 
         _sessions.Verify(s => s.AppendGeneratedVersionAsync(sessionId, It.IsAny<BsonDocument>(), request.Id), Times.Once);
         _sessions.Verify(s => s.SetNeedsReviewAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
@@ -227,8 +264,9 @@ public class ForecastHandlerTests
 
     [Theory]
     [InlineData("not json at all")]
-    [InlineData("{ \"revenueForecast\": {} }")] // missing required fields
-    [InlineData("")]                             // empty
+    [InlineData("{ \"summary\": \"no assumptions or risks\" }")] // missing required fields
+    [InlineData("{ \"assumptions\": \"not an array\", \"risks\": [], \"advisoryNotice\": \"note\" }")] // invalid types
+    [InlineData("")]                                            // empty
     public async Task Interpret_marks_needs_review_without_throwing(string badOutput)
     {
         var sessionId = ObjectId.GenerateNewId().ToString();
@@ -245,7 +283,7 @@ public class ForecastHandlerTests
     public async Task Interpret_classifies_finish_reason_length_as_truncation()
     {
         var sessionId = ObjectId.GenerateNewId().ToString();
-        var truncatedJson = "{\"revenueForecast\": {\"currency\": \"EUR\", \"monthly\": ["; // cut off mid-stream
+        var truncatedJson = "{\"summary\": \"Growing business\", \"assumptions\": [\"Partial"; // cut off mid-stream
 
         var result = await Handler().InterpretAsync(Request(new BsonDocument("sessionId", sessionId)), Completion(truncatedJson, finishReason: "length"));
 

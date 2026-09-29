@@ -126,7 +126,46 @@ namespace WebApp.Services.Ai.Jobs
             var planContent = CurrentVersionContent(plan);
 
             if (planContent is not null)
-                contextLines.Add("BUSINESS PLAN (supporting source):\n" + planContent.ToJson());
+            {
+                var bpSummary = new List<string>();
+                if (planContent.Contains("executiveSummary") && planContent["executiveSummary"].IsBsonDocument)
+                {
+                    var exec = planContent["executiveSummary"].AsBsonDocument;
+                    if (exec.Contains("overview") && exec["overview"].IsString && !string.IsNullOrWhiteSpace(exec["overview"].AsString))
+                        bpSummary.Add($"Executive Overview: {exec["overview"].AsString}");
+                    if (exec.Contains("valueProposition") && exec["valueProposition"].IsString && !string.IsNullOrWhiteSpace(exec["valueProposition"].AsString))
+                        bpSummary.Add($"Value Proposition: {exec["valueProposition"].AsString}");
+                }
+                if (planContent.Contains("problemSolution") && planContent["problemSolution"].IsBsonDocument)
+                {
+                    var ps = planContent["problemSolution"].AsBsonDocument;
+                    if (ps.Contains("problem") && ps["problem"].IsString && !string.IsNullOrWhiteSpace(ps["problem"].AsString))
+                        bpSummary.Add($"Problem: {ps["problem"].AsString}");
+                    if (ps.Contains("solution") && ps["solution"].IsString && !string.IsNullOrWhiteSpace(ps["solution"].AsString))
+                        bpSummary.Add($"Solution: {ps["solution"].AsString}");
+                }
+                if (planContent.Contains("revenueModel") && planContent["revenueModel"].IsBsonDocument)
+                {
+                    var rm = planContent["revenueModel"].AsBsonDocument;
+                    if (rm.Contains("overview") && rm["overview"].IsString && !string.IsNullOrWhiteSpace(rm["overview"].AsString))
+                        bpSummary.Add($"Revenue Model Overview: {rm["overview"].AsString}");
+                }
+                if (planContent.Contains("marketAnalysis") && planContent["marketAnalysis"].IsBsonDocument)
+                {
+                    var ma = planContent["marketAnalysis"].AsBsonDocument;
+                    if (ma.Contains("overview") && ma["overview"].IsString && !string.IsNullOrWhiteSpace(ma["overview"].AsString))
+                        bpSummary.Add($"Target Market: {ma["overview"].AsString}");
+                }
+
+                if (bpSummary.Count > 0)
+                {
+                    contextLines.Add("BUSINESS PLAN (supporting commercial context):\n" + string.Join("\n", bpSummary));
+                }
+                else
+                {
+                    contextLines.Add("BUSINESS PLAN (supporting commercial context):\n" + planContent.ToJson());
+                }
+            }
 
             var inputLines = new List<string>();
             if (startingBudget.HasValue) inputLines.Add($"Starting Budget / Cash Reserve (€): {startingBudget.Value}");
@@ -149,12 +188,10 @@ namespace WebApp.Services.Ai.Jobs
             var userContext = string.Join("\n\n", contextLines);
 
             var task =
-                "Produce a compact 12-month financial forecast grounded in the BUSINESS MODEL and BUSINESS PLAN above " +
-                "and refined by the FORECAST PARAMETERS (Starting Budget, launch subscribers, variable cost, ARPU, OPEX, monthly growth, TAM, monthly churn), " +
-                "following the output contract exactly: 12 consecutive monthly periods, " +
-                "numeric monthly arrays, no funding ask. " +
-                (startingBudget.HasValue ? $"In cashFlowProjection, Month 1 endingBalance MUST equal the Starting Budget (€{startingBudget.Value}) plus Month 1 netCashFlow, and subsequent months accumulate netCashFlow. " : "") +
-                "Keep summaries, notes, and narrative concise. State driving assumptions. " +
+                "Produce a compact qualitative financial forecast assessment grounded in the BUSINESS MODEL and BUSINESS PLAN above " +
+                "and aligned with the FORECAST PARAMETERS (Starting Budget, launch subscribers, variable cost, ARPU, OPEX, monthly growth, TAM, monthly churn). " +
+                "Provide strategic assumption commentary, key business risks and mitigations, a concise financial summary, and an advisory notice. " +
+                "Do NOT calculate monthly financial projection numbers. " +
                 "Return only the JSON object.";
 
             var maxTokens = _settings.OutputTokenLimits.TryGetValue("Forecast", out var limit) && limit > 0
@@ -310,8 +347,8 @@ namespace WebApp.Services.Ai.Jobs
     }
 
     /// <summary>
-    /// Tolerant parser for the model's forecast output: strips markdown/code fences,
-    /// extracts the first JSON object, validates the seven required top-level fields,
+    /// Tolerant parser for the model's qualitative forecast output: strips markdown/code fences,
+    /// extracts the first JSON object, validates required qualitative fields (assumptions, risks, advisoryNotice),
     /// and pins <c>schemaVersion = 1</c>. Mirrors the business-plan parser; public so
     /// it can be unit-tested directly.
     /// </summary>
@@ -319,8 +356,7 @@ namespace WebApp.Services.Ai.Jobs
     {
         private static readonly string[] RequiredFields =
         {
-            "revenueForecast", "costForecast", "cashFlowProjection",
-            "breakEvenAnalysis", "assumptions", "risks", "advisoryNotice",
+            "assumptions", "risks", "advisoryNotice",
         };
 
         public static bool TryParse(string? rawText, out BsonDocument contract, out string error)
@@ -359,6 +395,24 @@ namespace WebApp.Services.Ai.Jobs
                     error = $"Output is missing required field '{field}'.";
                     return false;
                 }
+            }
+
+            if (!doc["assumptions"].IsBsonArray)
+            {
+                error = "Field 'assumptions' must be an array.";
+                return false;
+            }
+
+            if (!doc["risks"].IsBsonArray)
+            {
+                error = "Field 'risks' must be an array.";
+                return false;
+            }
+
+            if (!doc["advisoryNotice"].IsString)
+            {
+                error = "Field 'advisoryNotice' must be a string.";
+                return false;
             }
 
             // The forecast contract has no funding ask — drop it if the model added one.
