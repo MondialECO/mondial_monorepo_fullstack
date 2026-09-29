@@ -414,6 +414,14 @@ Following Figma Node `57157:9297` (`Financial Forecast · Creator Phase 3.3`), S
 - **Creator Dashboard Command Center Tests**: `7/7` (`vitest`)
 - **Backend Creator Phase 4 & Dashboard Tests**: `302/302` (`dotnet test`)
 
+### D. Creator Dashboard Zero-State & Resilient Routing
+- **Zero-State Command Center**: When an authenticated creator has 0 business ideas (`ideas.length === 0`), `/dashboard/creator` displays a specialized zero-state welcome command card offering direct paths:
+  1. `Create Your First Idea`: Mints a blank idea and activates it seamlessly.
+  2. `Brainstorm with AI Clarifier`: Navigates to `/dashboard/creator/phase-2/clarifier`.
+  3. `View Idea Vault`: Navigates to `/dashboard/creator/myideas`.
+  4. `Path from Concept to Liquidity`: 4-phase preview cards explaining Phases 2–5.
+- **Resilient Context Fallback**: In `CreatorDashboardService`, invalid or stale `ideaId` references automatically fall back to the active idea rather than throwing 403 Forbidden errors, ensuring high uptime and uninterrupted user journeys.
+
 ---
 
 ## 9. Creator Phase 4 Full-Width Layout & Launch Preparation Architecture — FINAL / FROZEN

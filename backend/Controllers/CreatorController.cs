@@ -68,7 +68,6 @@ namespace WebApp.Controllers
             try
             {
                 var userId = GetUserId();
-                await EnsureUniversalPhase1CompleteAsync(userId);
 
             // 1️ Get Canonical Creator Ideas (scoped to authenticated user)
             var ideas = await _context.CreatorIdeas

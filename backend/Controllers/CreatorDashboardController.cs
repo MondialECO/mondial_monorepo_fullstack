@@ -61,9 +61,13 @@ namespace WebApp.Controllers
 
             var roles = await _userManager.GetRolesAsync(user);
             bool isCreator = roles.Contains("Creator", StringComparer.OrdinalIgnoreCase)
-                          || User.IsInRole("Creator");
+                          || User.IsInRole("Creator")
+                          || string.Equals(user.User, "Creator", StringComparison.OrdinalIgnoreCase);
 
-            bool isAdmin = User.IsInRole("Admin") || User.IsInRole("SuperAdmin");
+            bool isAdmin = User.IsInRole("Admin") || User.IsInRole("SuperAdmin")
+                        || roles.Contains("Admin", StringComparer.OrdinalIgnoreCase)
+                        || string.Equals(user.User, "Admin", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(user.User, "SuperAdmin", StringComparison.OrdinalIgnoreCase);
             if (!isCreator && !isAdmin)
             {
                 return Forbid();
