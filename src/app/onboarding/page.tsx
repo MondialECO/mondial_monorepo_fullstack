@@ -73,6 +73,8 @@ export default function OnboardingHubPage() {
   }
 
   const supplementary = ONBOARDING_ITEMS.filter((i) => i.group === "supplementary");
+  const optionalCore = core.filter((i) => status ? !status.items[i.key]?.required : false);
+  const optionalItems = [...optionalCore, ...supplementary];
 
   // Show supplementary items the role requires PLUS any user-uploaded optional
   // ones (so a Creator who chose to upload Residence still sees that card).
@@ -125,14 +127,14 @@ export default function OnboardingHubPage() {
       {/* Additional Documents */}
       <section className="mb-10">
         <div className="flex items-center gap-3 mb-4">
-          <h2 className="text-base font-semibold text-foreground">Additional Document</h2>
+          <h2 className="text-base font-semibold text-foreground">Additional Steps & Documents</h2>
           <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
             {extraRequired.length > 0 ? "Required for your role" : "Optional"}
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {supplementary.map((item) => (
+          {optionalItems.map((item) => (
             <ItemCard
               key={item.key}
               item={item}

@@ -369,9 +369,10 @@ namespace WebApp.Controllers
         [HttpPost("phone/skip")]
         public async Task<IActionResult> SkipPhoneVerification()
         {
+            var isPhoneRequired = OnboardingGate.IsPhoneRequired(_configuration);
             var isProduction = _env.IsProduction();
             var allowAlphaBypass = _configuration.GetValue<bool>("FeatureFlags:EnableAlphaBypassEndpoints", false);
-            if (isProduction && !allowAlphaBypass)
+            if (isPhoneRequired && isProduction && !allowAlphaBypass)
             {
                 var caller = (await CurrentUserAsync())?.Email ?? "unknown";
                 _audit.Record("phone_skip_rejected_production", caller, false);
