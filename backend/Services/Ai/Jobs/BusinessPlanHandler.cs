@@ -90,36 +90,83 @@ namespace WebApp.Services.Ai.Jobs
                 var p3 = creatorIdea?.Phase3Data;
                 if (p3 != null)
                 {
-                    // 1. Upstream Step 3.1 Market Study
+                    // 1. Upstream Step 3.1 Market Study (compact commercial extraction)
                     if (!string.IsNullOrEmpty(p3.MarketStudySessionId) && _marketStudies != null)
                     {
                         var mkt = await _marketStudies.GetOwnedAsync(p3.MarketStudySessionId, request.OwnerUserId);
                         var currentMkt = mkt?.Versions.FirstOrDefault(v => v.Version == mkt.CurrentVersion);
                         if (currentMkt?.Content != null)
                         {
-                            contextLines.Add("MARKET INTELLIGENCE (Step 3.1 — authoritative TAM/SAM/SOM, market definition, and competitive landscape):\n" + currentMkt.Content.ToJson());
+                            var mktDoc = currentMkt.Content;
+                            var mktSummary = new List<string>();
+                            if (mktDoc.Contains("marketDefinition") && mktDoc["marketDefinition"].IsString)
+                                mktSummary.Add("Market Definition: " + mktDoc["marketDefinition"].AsString);
+                            if (mktDoc.Contains("marketSizing"))
+                                mktSummary.Add("Market Sizing (TAM/SAM/SOM): " + mktDoc["marketSizing"].ToJson());
+                            if (mktDoc.Contains("targetSegments"))
+                                mktSummary.Add("Target Segments: " + mktDoc["targetSegments"].ToJson());
+                            if (mktDoc.Contains("competitors"))
+                                mktSummary.Add("Competitors: " + mktDoc["competitors"].ToJson());
+                            if (mktDoc.Contains("trends"))
+                                mktSummary.Add("Market Trends: " + mktDoc["trends"].ToJson());
+
+                            if (mktSummary.Count > 0)
+                                contextLines.Add("MARKET INTELLIGENCE (Step 3.1):\n" + string.Join("\n", mktSummary));
+                            else
+                                contextLines.Add("MARKET INTELLIGENCE (Step 3.1):\n" + mktDoc.ToJson());
                         }
                     }
 
-                    // 2. Upstream Step 3.2 Business Model Canvas
+                    // 2. Upstream Step 3.2 Business Model Canvas (compact commercial extraction)
                     if (!string.IsNullOrEmpty(p3.BusinessModelSessionId) && _businessModels != null)
                     {
                         var bm = await _businessModels.GetOwnedAsync(p3.BusinessModelSessionId, request.OwnerUserId);
                         var currentBm = bm?.Versions.FirstOrDefault(v => v.Version == bm.CurrentVersion);
                         if (currentBm?.Content != null)
                         {
-                            contextLines.Add("BUSINESS MODEL CANVAS (Step 3.2 — authoritative value propositions, customer segments, channels, pricing tiers, and revenue streams):\n" + currentBm.Content.ToJson());
+                            var bmDoc = currentBm.Content;
+                            var bmSummary = new List<string>();
+                            if (bmDoc.Contains("revenueTiers"))
+                                bmSummary.Add("Pricing & Revenue Tiers: " + bmDoc["revenueTiers"].ToJson());
+                            if (bmDoc.Contains("unitEconomics"))
+                                bmSummary.Add("Unit Economics: " + bmDoc["unitEconomics"].ToJson());
+                            if (bmDoc.Contains("canvas") && bmDoc["canvas"].IsBsonDocument)
+                            {
+                                var canvas = bmDoc["canvas"].AsBsonDocument;
+                                if (canvas.Contains("valuePropositions"))
+                                    bmSummary.Add("Value Propositions: " + canvas["valuePropositions"].ToJson());
+                                if (canvas.Contains("revenueStreams"))
+                                    bmSummary.Add("Revenue Streams: " + canvas["revenueStreams"].ToJson());
+                                if (canvas.Contains("costStructure"))
+                                    bmSummary.Add("Cost Structure: " + canvas["costStructure"].ToJson());
+                                if (canvas.Contains("channels"))
+                                    bmSummary.Add("Channels: " + canvas["channels"].ToJson());
+                            }
+
+                            if (bmSummary.Count > 0)
+                                contextLines.Add("BUSINESS MODEL (Step 3.2):\n" + string.Join("\n", bmSummary));
+                            else
+                                contextLines.Add("BUSINESS MODEL (Step 3.2):\n" + bmDoc.ToJson());
                         }
                     }
 
-                    // 3. Upstream Step 3.3 Financial Forecast
+                    // 3. Upstream Step 3.3 Financial Forecast (highlights only — do not dump 36-month tables)
                     if (!string.IsNullOrEmpty(p3.ForecastSessionId) && _forecasts != null)
                     {
                         var fc = await _forecasts.GetOwnedAsync(p3.ForecastSessionId, request.OwnerUserId);
                         var currentFc = fc?.Versions.FirstOrDefault(v => v.Version == fc.CurrentVersion);
                         if (currentFc?.Content != null)
                         {
-                            contextLines.Add("FINANCIAL FORECAST (Step 3.3 — authoritative 36-month P&L, breakeven, and runway projections):\n" + currentFc.Content.ToJson());
+                            var fcDoc = currentFc.Content;
+                            var fcSummary = new List<string>();
+                            if (fcDoc.Contains("summary") && fcDoc["summary"].IsString)
+                                fcSummary.Add("Forecast Summary: " + fcDoc["summary"].AsString);
+                            if (fcDoc.Contains("breakEvenAnalysis"))
+                                fcSummary.Add("Break-Even: " + fcDoc["breakEvenAnalysis"].ToJson());
+                            if (fcDoc.Contains("assumptions"))
+                                fcSummary.Add("Key Financial Assumptions: " + fcDoc["assumptions"].ToJson());
+                            if (fcSummary.Count > 0)
+                                contextLines.Add("FINANCIAL FORECAST HIGHLIGHTS (Step 3.3):\n" + string.Join("\n", fcSummary));
                         }
                     }
 
@@ -217,11 +264,11 @@ namespace WebApp.Services.Ai.Jobs
             }
 
             const string task =
-                "Produce a complete, structured 12-section business plan grounded in the canonical Idea Core and completed " +
+                "Produce a complete, structured business plan JSON object grounded in the canonical Idea Core and completed " +
                 "upstream artifacts (Market Study, Business Model Canvas, Financial Forecast, and Formation Architecture) " +
-                "above, following the output contract exactly. Preserve creator edits in " +
-                "that core; use supporting history only to fill gaps, never to override it. " +
-                "Keep every section concise, decision-useful, and non-repetitive. Prefer " +
+                "above. Preserve creator edits and ensure your output matches the output contract schema exactly with all required sections: " +
+                "executiveSummary, problemSolution, marketAnalysis, competitorAnalysis, revenueModel, goToMarket, operationsPlan, and risks. " +
+                "Ensure every required section is present, concise, decision-useful, and non-repetitive. Prefer " +
                 "compact paragraphs and focused bullet arrays. Return only the JSON object.";
 
             return new AiHandlerRequest(
@@ -385,8 +432,20 @@ namespace WebApp.Services.Ai.Jobs
     {
         private static readonly string[] RequiredFields =
         {
-            "executiveSummary", "marketAnalysis", "competitorAnalysis",
+            "executiveSummary", "problemSolution", "marketAnalysis", "competitorAnalysis",
             "revenueModel", "goToMarket", "operationsPlan", "risks",
+        };
+
+        private static readonly Dictionary<string, string[]> SectionAliases = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["executiveSummary"] = new[] { "executive_summary", "executive", "summary" },
+            ["problemSolution"] = new[] { "problem_solution", "problemAndSolution", "problem", "problemsAndSolutions", "problem_and_solution" },
+            ["marketAnalysis"] = new[] { "market_analysis", "marketOpportunity", "targetMarket", "market", "marketStudy", "marketOverview", "market_opportunity", "target_market", "market_study" },
+            ["competitorAnalysis"] = new[] { "competitor_analysis", "competitiveAnalysis", "competitors", "competition", "competitive_analysis", "competitiveOverview", "competitor_overview" },
+            ["revenueModel"] = new[] { "revenue_model", "businessModel", "business_model", "revenueStreams", "monetization", "revenue", "revenue_streams" },
+            ["goToMarket"] = new[] { "go_to_market", "gtm", "goToMarketStrategy", "go_to_market_strategy", "marketingStrategy", "marketing_plan", "marketing", "gtmStrategy" },
+            ["operationsPlan"] = new[] { "operations_plan", "operations", "operationalPlan", "operational_plan", "executionPlan", "execution_plan", "operating_plan" },
+            ["risks"] = new[] { "risk_assessment", "riskAssessment", "risksAndMitigations", "riskAnalysis", "risks_and_mitigations", "risk_mitigation", "risksList" },
         };
 
         public static bool TryParse(string? rawText, out BsonDocument contract, out string error)
@@ -418,6 +477,10 @@ namespace WebApp.Services.Ai.Jobs
                 return false;
             }
 
+            // 1. Normalize case and known aliases to canonical keys
+            NormalizeSectionKeys(doc);
+
+            // 2. Strictly validate every required section is present
             foreach (var field in RequiredFields)
             {
                 if (!doc.Contains(field))
@@ -425,6 +488,13 @@ namespace WebApp.Services.Ai.Jobs
                     error = $"Output is missing required section '{field}'.";
                     return false;
                 }
+            }
+
+            // 3. Ensure risks is an array
+            if (!doc["risks"].IsBsonArray)
+            {
+                error = "Output section 'risks' must be an array.";
+                return false;
             }
 
             // v1 explicitly excludes a funding ask — drop it if the model added one.
@@ -435,6 +505,34 @@ namespace WebApp.Services.Ai.Jobs
 
             contract = doc;
             return true;
+        }
+
+        private static void NormalizeSectionKeys(BsonDocument doc)
+        {
+            var existingNames = doc.Names.ToList();
+            foreach (var kvp in SectionAliases)
+            {
+                var canonicalKey = kvp.Key;
+                var aliases = kvp.Value;
+
+                if (!doc.Contains(canonicalKey))
+                {
+                    var matchName = existingNames.FirstOrDefault(name =>
+                        name.Equals(canonicalKey, StringComparison.OrdinalIgnoreCase) ||
+                        aliases.Any(a => a.Equals(name, StringComparison.OrdinalIgnoreCase)));
+
+                    if (matchName != null && doc.TryGetValue(matchName, out var val))
+                    {
+                        doc[canonicalKey] = val;
+                        if (!matchName.Equals(canonicalKey, StringComparison.Ordinal))
+                        {
+                            doc.Remove(matchName);
+                            existingNames.Remove(matchName);
+                            existingNames.Add(canonicalKey);
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -477,6 +575,19 @@ namespace WebApp.Services.Ai.Jobs
             {
                 value = v;
                 return true;
+            }
+
+            // Check aliases for the field
+            if (SectionAliases.TryGetValue(field, out var aliases))
+            {
+                foreach (var alias in aliases)
+                {
+                    if (doc.TryGetValue(alias, out var aliasVal))
+                    {
+                        value = aliasVal;
+                        return true;
+                    }
+                }
             }
 
             // Fallback: the model returned the section object directly, without the

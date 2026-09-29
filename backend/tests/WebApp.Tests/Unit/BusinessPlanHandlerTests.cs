@@ -45,6 +45,7 @@ public class BusinessPlanHandlerTests
         {
           "schemaVersion": 1,
           "executiveSummary": { "overview": "Autonomous crop monitoring.", "valueProposition": "Save time", "highlights": ["solar"] },
+          "problemSolution": { "problem": "Crop monitoring is manual.", "solution": "Autonomous drone system." },
           "marketAnalysis": { "overview": "Agtech is growing.", "targetSegments": ["mid-size farms"], "marketSizeQualitative": "regional", "trends": ["automation"] },
           "competitorAnalysis": { "overview": "Few automated players.", "competitors": [ { "name": "Manual scouting", "positioning": "incumbent", "strengths": ["cheap"], "weaknesses": ["slow"], "ourAdvantage": "speed" } ] },
           "revenueModel": { "summary": "Subscription.", "revenueStreams": [ { "name": "SaaS", "description": "per acre" } ], "pricingStrategy": "tiered", "keyMetrics": ["churn"] },
@@ -199,6 +200,58 @@ public class BusinessPlanHandlerTests
         _sessions.Verify(s => s.SetNeedsReviewAsync(sessionId, It.Is<string>(e => e.Length > 0)), Times.Once);
         _sessions.Verify(s => s.AppendGeneratedVersionAsync(It.IsAny<string>(), It.IsAny<BsonDocument>(), It.IsAny<string>()), Times.Never);
         _insights.Verify(i => i.WriteAsync(It.IsAny<AiInsight>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Interpret_normalizes_common_section_aliases()
+    {
+        var sessionId = ObjectId.GenerateNewId().ToString();
+        var aliasedJson = """
+        {
+          "executive_summary": { "overview": "Autonomous crop monitoring.", "valueProposition": "Save time", "highlights": ["solar"] },
+          "problem_solution": { "problem": "Manual scouting is slow.", "solution": "Automated drones." },
+          "marketOpportunity": { "overview": "Agtech is growing.", "targetSegments": ["mid-size farms"], "marketSizeQualitative": "regional", "trends": ["automation"] },
+          "competitiveAnalysis": { "overview": "Few automated players.", "competitors": [ { "name": "Manual scouting", "positioning": "incumbent", "strengths": ["cheap"], "weaknesses": ["slow"], "ourAdvantage": "speed" } ] },
+          "revenue_model": { "summary": "Subscription.", "revenueStreams": [ { "name": "SaaS", "description": "per acre" } ], "pricingStrategy": "tiered", "keyMetrics": ["churn"] },
+          "gtm": { "strategy": "Direct sales.", "channels": ["co-ops"], "phases": [ { "name": "Pilot", "description": "3 farms" } ] },
+          "operations": { "overview": "Lean ops.", "keyActivities": ["assembly"], "resources": ["drones"], "milestones": [ { "title": "MVP", "description": "fly", "timeframe": "first 90 days" } ] },
+          "riskAssessment": [ { "category": "regulatory", "description": "airspace", "likelihood": "medium", "impact": "high", "mitigation": "permits" } ]
+        }
+        """;
+
+        var result = await Handler().InterpretAsync(Request(new BsonDocument("sessionId", sessionId)), Completion(aliasedJson));
+
+        result.OutputPayload.Should().NotBeNull();
+        result.OutputPayload!["executiveSummary"]["overview"].AsString.Should().Be("Autonomous crop monitoring.");
+        result.OutputPayload!["problemSolution"]["problem"].AsString.Should().Be("Manual scouting is slow.");
+        result.OutputPayload!["marketAnalysis"]["overview"].AsString.Should().Be("Agtech is growing.");
+        result.OutputPayload!["competitorAnalysis"]["overview"].AsString.Should().Be("Few automated players.");
+        result.OutputPayload!["revenueModel"]["summary"].AsString.Should().Be("Subscription.");
+        result.OutputPayload!["goToMarket"]["strategy"].AsString.Should().Be("Direct sales.");
+        result.OutputPayload!["operationsPlan"]["overview"].AsString.Should().Be("Lean ops.");
+        result.OutputPayload!["risks"].AsBsonArray.Count.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("executiveSummary")]
+    [InlineData("problemSolution")]
+    [InlineData("marketAnalysis")]
+    [InlineData("competitorAnalysis")]
+    [InlineData("revenueModel")]
+    [InlineData("goToMarket")]
+    [InlineData("operationsPlan")]
+    [InlineData("risks")]
+    public async Task Interpret_rejects_missing_required_section_when_no_alias_exists(string missingSection)
+    {
+        var sessionId = ObjectId.GenerateNewId().ToString();
+        var doc = BsonDocument.Parse(ValidJson());
+        doc.Remove(missingSection);
+
+        var result = await Handler().InterpretAsync(Request(new BsonDocument("sessionId", sessionId)), Completion(doc.ToJson()));
+
+        result.OutputPayload.Should().BeNull();
+        _sessions.Verify(s => s.SetNeedsReviewAsync(sessionId, It.Is<string>(e => e.Contains(missingSection))), Times.Once);
+        _sessions.Verify(s => s.AppendGeneratedVersionAsync(It.IsAny<string>(), It.IsAny<BsonDocument>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]

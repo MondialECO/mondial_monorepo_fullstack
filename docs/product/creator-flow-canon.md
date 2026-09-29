@@ -667,10 +667,13 @@ Phase 3 establishes the comprehensive business, market, financial, and legal fou
   - **Terminal Completion:** On `Completed` status, the loading card unmounts and the new valid version replaces the previous forecast atomically without page reload.
   - **Failure Handling:** If regeneration fails (`Failed` or error), previous valid forecast remains completely intact and displayed; a non-destructive failure alert card renders with `[Adjust & Retry]` without wiping or corrupting the results.
 
-#### 3. Single Canonical Assumptions Authority & Dead Code Cleanup
+#### 3. Single Canonical Assumptions Authority & Deterministic Forecast Engine
+- **ForecastSession.Inputs as SSoT:** `ForecastSession.Inputs` is the canonical Single Source of Truth for all founder assumptions and financial simulation drivers.
+- **Compact Qualitative AI Output:** The AI (`google/gemini-3.8-flash`) generates only compact qualitative analysis (driving assumptions commentary, key business risks & mitigations, advisory notice, concise financial summary). The AI no longer generates redundant 12/36-month numeric projection arrays, preventing length truncation while preserving token efficiency.
+- **`FinancialForecastEngine` as Sole Numeric Authority:** `FinancialForecastEngine` is the sole deterministic 36-month calculation authority for all financial projection numbers (revenue, cost, cash flow, ending balance, break-even).
+- **Failure Safety & Preservation:** Malformed or truncated AI output is rejected; partial malformed forecasts are never persisted; previous valid versions remain intact and displayed; automatic credit refunds execute on malformed output; initial generation and regeneration use the identical compact path.
 - **Single Canonical Form Schema:** `ForecastAssumptionsForm` is the single canonical assumptions form and validation schema across both the initial setup page and the in-results modal.
 - **Removal of `StartingBudgetModal.tsx`:** The legacy separate `StartingBudgetModal.tsx` wrapper has been completely excised. Starting Budget is natively integrated into the canonical assumptions form across all views.
-- **`FinancialForecastEngine` as Sole Authority:** `FinancialForecastEngine` is the sole deterministic 36-month calculation authority for all 4 business archetypes. Obsolete projection helpers (`ExtendToThirtySixMonths`, `RecomputeBreakEven`, and unused static helpers) have been completely removed from `ForecastHandler`.
 - **Zero Client-Side Calculation Engine:** React components contain no competing forecast calculation engine or parallel math forks.
 - **Zero Static Fallback Data:** Static fallback counts = 0; first-idea fallbacks = 0; all cards, tables, charts, and metrics are derived from live database records.
 - **Budget Suggestion API:** `GET /api/ai/forecast/budget-suggestion` remains fully active and contracted to supply intelligent baseline recommendations.
@@ -1912,6 +1915,31 @@ RC1 Freeze
   - Full Creator Vitest Suite: 150 / 150 PASS across 12 test files.
   - Backend Tests (C#): 268 / 268 PASS (`WebApp.Tests.dll --filter Phase4`).
   - Next.js Production Build: 100% clean compilation of all Creator Phase 4 routes.
+
+**2026-09-29 — Creator Phase 3.6 Business Plan: Strict Required-Section Output Validation, Alias Normalization & Anti-Fabrication Rules.**
+- **Business Plan Parser Rules (`BusinessPlanOutputParser`):**
+  - Context trimming remains enabled (upstream artifacts passed as concise summaries; raw 36-month tables excluded).
+  - Recognized aliases may normalize to canonical section keys (e.g. `marketOpportunity`/`targetMarket` $\rightarrow$ `marketAnalysis`, `competitiveAnalysis` $\rightarrow$ `competitorAnalysis`, `revenue_model` $\rightarrow$ `revenueModel`, `gtm` $\rightarrow$ `goToMarket`, `operations` $\rightarrow$ `operationsPlan`, `riskAssessment` $\rightarrow$ `risks`, `problem_solution` $\rightarrow$ `problemSolution`).
+  - Alias normalization is allowed ONLY when actual model content exists.
+  - Parser must NEVER synthesize or fabricate missing required Business Plan sections.
+  - All 8 required sections must strictly exist after alias normalization:
+    - `executiveSummary`
+    - `problemSolution`
+    - `marketAnalysis`
+    - `competitorAnalysis`
+    - `revenueModel`
+    - `goToMarket`
+    - `operationsPlan`
+    - `risks`
+  - Missing required section handling:
+    - Parser rejects output (`TryParse` $\rightarrow$ `false`).
+    - No new valid version persisted.
+    - Previous valid Business Plan version preserved.
+    - Existing `NeedsReview`/error flow applies.
+    - Existing automatic credit refund behavior remains unchanged.
+  - Single-section rewrite behavior (`TryParseField`) remains unchanged with alias lookup and strict rejection on absent target sections.
+- **Verification Evidence:**
+  - Backend Unit Tests: 20 / 20 PASS (`BusinessPlanHandlerTests`).
 
 ---
 

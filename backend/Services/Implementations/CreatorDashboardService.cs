@@ -44,7 +44,10 @@ namespace WebApp.Services.Implementations
             {
                 var explicitIdea = await _ideas.GetOwnedAsync(ideaId, userId);
                 if (explicitIdea == null)
-                    throw new UnauthorizedAccessException("Idea not found or access denied.");
+                {
+                    // Fall back cleanly if an invalid or stale ideaId was passed rather than returning a 403 error
+                    ideaId = null;
+                }
             }
 
             // 1. Get composed journey and active idea (owner-scoped)

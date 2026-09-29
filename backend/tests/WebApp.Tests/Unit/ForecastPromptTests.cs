@@ -5,10 +5,9 @@ using Xunit;
 namespace WebApp.Tests.Unit;
 
 /// <summary>
-/// C-4 P1: the Forecast prompt template is registered for seeding, and its output
-/// contract is the locked seven-field hand-off shape (schemaVersion = 1) over a
-/// fixed 12-month horizon, with no funding ask. The template feeds the existing
-/// 5-layer <see cref="PromptBuilder"/> unchanged.
+/// Phase 3 Step 3.3 Forecast prompt template is registered for seeding, and its output
+/// contract is the compact qualitative analysis shape (schemaVersion = 1) with no funding ask.
+/// The template feeds the existing 5-layer <see cref="PromptBuilder"/> unchanged.
 /// </summary>
 public class ForecastPromptTests
 {
@@ -40,10 +39,7 @@ public class ForecastPromptTests
     }
 
     [Theory]
-    [InlineData("revenueForecast")]
-    [InlineData("costForecast")]
-    [InlineData("cashFlowProjection")]
-    [InlineData("breakEvenAnalysis")]
+    [InlineData("summary")]
     [InlineData("assumptions")]
     [InlineData("risks")]
     [InlineData("advisoryNotice")]
@@ -51,13 +47,11 @@ public class ForecastPromptTests
         => Template.OutputContract.Should().Contain($"\"{key}\"");
 
     [Fact]
-    public void Horizon_is_fixed_to_twelve_monthly_periods()
+    public void Prompt_does_not_require_monthly_numeric_projection_tables()
     {
-        // Locked C-4: 12 monthly periods, no custom horizon, no yearly forecast.
-        Template.OutputContract.Should().Contain("exactly 12");
-        Template.SystemText.Should().Contain("12 consecutive monthly periods");
-        Template.SystemText.Should().Contain("never a yearly forecast");
-        Template.OutputContract.Should().NotContain("yearly");
+        Template.SystemText.Should().Contain("Do NOT generate monthly numeric projection tables");
+        Template.OutputContract.Should().NotContain("\"revenueForecast\"");
+        Template.OutputContract.Should().NotContain("\"monthly\"");
     }
 
     [Fact]
@@ -90,7 +84,7 @@ public class ForecastPromptTests
         var composition = new PromptBuilder().Build(
             Template,
             userContext: "BUSINESS PLAN: solar crop-monitoring drones for mid-size farms.",
-            task: "Produce the 12-month forecast JSON contract.");
+            task: "Produce the compact qualitative forecast assessment.");
 
         composition.Layers.Select(l => l.Name).Should().ContainInOrder(
             PromptLayerNames.System,
@@ -100,12 +94,12 @@ public class ForecastPromptTests
             PromptLayerNames.OutputFormat);
 
         var system = composition.Messages[0].Content;
-        system.Should().Contain("Financial Forecast Analyst"); // template system text
-        system.Should().Contain(SafetyRules.Text);             // builder-injected safety
-        system.Should().Contain("\"revenueForecast\"");        // output format layer
+        system.Should().Contain("Financial Forecast Strategic Analyst"); // template system text
+        system.Should().Contain(SafetyRules.Text);                       // builder-injected safety
+        system.Should().Contain("\"advisoryNotice\"");                   // output format layer
 
         var user = composition.Messages[1].Content;
         user.Should().Contain("solar crop-monitoring drones"); // user context
-        user.Should().Contain("12-month forecast JSON contract"); // task
+        user.Should().Contain("Produce the compact qualitative forecast assessment."); // task
     }
 }
