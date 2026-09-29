@@ -202,6 +202,57 @@ public class BusinessPlanHandlerTests
     }
 
     [Fact]
+    public async Task Interpret_normalizes_common_section_aliases()
+    {
+        var sessionId = ObjectId.GenerateNewId().ToString();
+        var aliasedJson = """
+        {
+          "executive_summary": { "overview": "Autonomous crop monitoring.", "valueProposition": "Save time", "highlights": ["solar"] },
+          "marketOpportunity": { "overview": "Agtech is growing.", "targetSegments": ["mid-size farms"], "marketSizeQualitative": "regional", "trends": ["automation"] },
+          "competitiveAnalysis": { "overview": "Few automated players.", "competitors": [ { "name": "Manual scouting", "positioning": "incumbent", "strengths": ["cheap"], "weaknesses": ["slow"], "ourAdvantage": "speed" } ] },
+          "revenue_model": { "summary": "Subscription.", "revenueStreams": [ { "name": "SaaS", "description": "per acre" } ], "pricingStrategy": "tiered", "keyMetrics": ["churn"] },
+          "gtm": { "strategy": "Direct sales.", "channels": ["co-ops"], "phases": [ { "name": "Pilot", "description": "3 farms" } ] },
+          "operations": { "overview": "Lean ops.", "keyActivities": ["assembly"], "resources": ["drones"], "milestones": [ { "title": "MVP", "description": "fly", "timeframe": "first 90 days" } ] },
+          "riskAssessment": [ { "category": "regulatory", "description": "airspace", "likelihood": "medium", "impact": "high", "mitigation": "permits" } ]
+        }
+        """;
+
+        var result = await Handler().InterpretAsync(Request(new BsonDocument("sessionId", sessionId)), Completion(aliasedJson));
+
+        result.OutputPayload.Should().NotBeNull();
+        result.OutputPayload!["marketAnalysis"]["overview"].AsString.Should().Be("Agtech is growing.");
+        result.OutputPayload!["competitorAnalysis"]["overview"].AsString.Should().Be("Few automated players.");
+        result.OutputPayload!["revenueModel"]["summary"].AsString.Should().Be("Subscription.");
+        result.OutputPayload!["goToMarket"]["strategy"].AsString.Should().Be("Direct sales.");
+        result.OutputPayload!["operationsPlan"]["overview"].AsString.Should().Be("Lean ops.");
+        result.OutputPayload!["risks"].AsBsonArray.Count.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Interpret_tolerates_missing_market_analysis_when_other_sections_are_intact()
+    {
+        var sessionId = ObjectId.GenerateNewId().ToString();
+        // Valid JSON missing only marketAnalysis
+        var missingMarketJson = """
+        {
+          "executiveSummary": { "overview": "Autonomous crop monitoring.", "valueProposition": "Save time", "highlights": ["solar"] },
+          "competitorAnalysis": { "overview": "Few automated players.", "competitors": [] },
+          "revenueModel": { "summary": "Subscription.", "revenueStreams": [], "pricingStrategy": "tiered", "keyMetrics": ["churn"] },
+          "goToMarket": { "strategy": "Direct sales.", "channels": ["co-ops"], "phases": [] },
+          "operationsPlan": { "overview": "Lean ops.", "keyActivities": ["assembly"], "resources": ["drones"], "milestones": [] },
+          "risks": [ { "category": "regulatory", "description": "airspace", "likelihood": "medium", "impact": "high", "mitigation": "permits" } ]
+        }
+        """;
+
+        var result = await Handler().InterpretAsync(Request(new BsonDocument("sessionId", sessionId)), Completion(missingMarketJson));
+
+        result.OutputPayload.Should().NotBeNull();
+        result.OutputPayload!.Contains("marketAnalysis").Should().BeTrue();
+        result.OutputPayload!["marketAnalysis"]["overview"].AsString.Should().NotBeNullOrWhiteSpace();
+        _sessions.Verify(s => s.AppendGeneratedVersionAsync(sessionId, It.IsAny<BsonDocument>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Interpret_without_session_id_does_not_write_or_throw()
     {
         var result = await Handler().InterpretAsync(Request(new BsonDocument("clarifierSessionId", "x")), Completion(ValidJson()));
