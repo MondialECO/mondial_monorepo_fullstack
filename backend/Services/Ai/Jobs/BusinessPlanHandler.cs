@@ -432,7 +432,7 @@ namespace WebApp.Services.Ai.Jobs
     {
         private static readonly string[] RequiredFields =
         {
-            "executiveSummary", "marketAnalysis", "competitorAnalysis",
+            "executiveSummary", "problemSolution", "marketAnalysis", "competitorAnalysis",
             "revenueModel", "goToMarket", "operationsPlan", "risks",
         };
 
@@ -480,81 +480,21 @@ namespace WebApp.Services.Ai.Jobs
             // 1. Normalize case and known aliases to canonical keys
             NormalizeSectionKeys(doc);
 
-            // 2. Count present core sections
-            int presentCount = 0;
+            // 2. Strictly validate every required section is present
             foreach (var field in RequiredFields)
             {
-                if (doc.Contains(field))
-                    presentCount++;
-            }
-
-            // If the document is essentially empty or has very few sections (< 4), it's malformed output
-            if (presentCount < 4)
-            {
-                foreach (var field in RequiredFields)
+                if (!doc.Contains(field))
                 {
-                    if (!doc.Contains(field))
-                    {
-                        error = $"Output is missing required section '{field}'.";
-                        return false;
-                    }
+                    error = $"Output is missing required section '{field}'.";
+                    return false;
                 }
             }
 
-            // 3. For mostly complete plans (at least 4 core sections present), provide sensible fallbacks for any missing section
-            EnsureSection(doc, "executiveSummary", () => new BsonDocument
+            // 3. Ensure risks is an array
+            if (!doc["risks"].IsBsonArray)
             {
-                ["overview"] = "Executive overview for the venture.",
-                ["valueProposition"] = "Delivers differentiated value to target customers.",
-                ["highlights"] = new BsonArray()
-            });
-
-            EnsureSection(doc, "problemSolution", () => new BsonDocument
-            {
-                ["problem"] = "Identified target customer challenges and operational friction.",
-                ["solution"] = "Focused, differentiated venture solution."
-            });
-
-            EnsureSection(doc, "marketAnalysis", () => new BsonDocument
-            {
-                ["overview"] = "Market analysis based on target customer segments and demand trends.",
-                ["targetSegments"] = new BsonArray { "Primary target customers" },
-                ["marketSizeQualitative"] = "Growing regional and serviceable market opportunity",
-                ["trends"] = new BsonArray { "Industry digital adoption", "Operational efficiency demands" }
-            });
-
-            EnsureSection(doc, "competitorAnalysis", () => new BsonDocument
-            {
-                ["overview"] = "Competitive analysis evaluating market alternatives.",
-                ["competitors"] = new BsonArray()
-            });
-
-            EnsureSection(doc, "revenueModel", () => new BsonDocument
-            {
-                ["summary"] = "Structured revenue and monetization model.",
-                ["revenueStreams"] = new BsonArray(),
-                ["pricingStrategy"] = "Value-based pricing",
-                ["keyMetrics"] = new BsonArray { "Customer acquisition", "Retention rate" }
-            });
-
-            EnsureSection(doc, "goToMarket", () => new BsonDocument
-            {
-                ["strategy"] = "Multi-channel customer acquisition and distribution strategy.",
-                ["channels"] = new BsonArray { "Direct outreach", "Digital channels" },
-                ["phases"] = new BsonArray()
-            });
-
-            EnsureSection(doc, "operationsPlan", () => new BsonDocument
-            {
-                ["overview"] = "Lean operational and resource execution plan.",
-                ["keyActivities"] = new BsonArray { "Product delivery", "Customer onboarding" },
-                ["resources"] = new BsonArray(),
-                ["milestones"] = new BsonArray()
-            });
-
-            if (!doc.Contains("risks") || !doc["risks"].IsBsonArray)
-            {
-                doc["risks"] = new BsonArray();
+                error = "Output section 'risks' must be an array.";
+                return false;
             }
 
             // v1 explicitly excludes a funding ask — drop it if the model added one.
@@ -592,14 +532,6 @@ namespace WebApp.Services.Ai.Jobs
                         }
                     }
                 }
-            }
-        }
-
-        private static void EnsureSection(BsonDocument doc, string field, Func<BsonDocument> defaultFactory)
-        {
-            if (!doc.Contains(field) || !doc[field].IsBsonDocument)
-            {
-                doc[field] = defaultFactory();
             }
         }
 

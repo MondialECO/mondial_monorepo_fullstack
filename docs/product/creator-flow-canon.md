@@ -1916,6 +1916,31 @@ RC1 Freeze
   - Backend Tests (C#): 268 / 268 PASS (`WebApp.Tests.dll --filter Phase4`).
   - Next.js Production Build: 100% clean compilation of all Creator Phase 4 routes.
 
+**2026-09-29 — Creator Phase 3.6 Business Plan: Strict Required-Section Output Validation, Alias Normalization & Anti-Fabrication Rules.**
+- **Business Plan Parser Rules (`BusinessPlanOutputParser`):**
+  - Context trimming remains enabled (upstream artifacts passed as concise summaries; raw 36-month tables excluded).
+  - Recognized aliases may normalize to canonical section keys (e.g. `marketOpportunity`/`targetMarket` $\rightarrow$ `marketAnalysis`, `competitiveAnalysis` $\rightarrow$ `competitorAnalysis`, `revenue_model` $\rightarrow$ `revenueModel`, `gtm` $\rightarrow$ `goToMarket`, `operations` $\rightarrow$ `operationsPlan`, `riskAssessment` $\rightarrow$ `risks`, `problem_solution` $\rightarrow$ `problemSolution`).
+  - Alias normalization is allowed ONLY when actual model content exists.
+  - Parser must NEVER synthesize or fabricate missing required Business Plan sections.
+  - All 8 required sections must strictly exist after alias normalization:
+    - `executiveSummary`
+    - `problemSolution`
+    - `marketAnalysis`
+    - `competitorAnalysis`
+    - `revenueModel`
+    - `goToMarket`
+    - `operationsPlan`
+    - `risks`
+  - Missing required section handling:
+    - Parser rejects output (`TryParse` $\rightarrow$ `false`).
+    - No new valid version persisted.
+    - Previous valid Business Plan version preserved.
+    - Existing `NeedsReview`/error flow applies.
+    - Existing automatic credit refund behavior remains unchanged.
+  - Single-section rewrite behavior (`TryParseField`) remains unchanged with alias lookup and strict rejection on absent target sections.
+- **Verification Evidence:**
+  - Backend Unit Tests: 20 / 20 PASS (`BusinessPlanHandlerTests`).
+
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
