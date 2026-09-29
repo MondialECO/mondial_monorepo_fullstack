@@ -1,0 +1,169 @@
+{
+  "auditMetadata": {
+    "repository": "MondialECO/mondial_monorepo_fullstack",
+    "branch": "dev-hafiz",
+    "headCommit": "93e8e85e37d467ea63c77419c37cf8f56018cf16",
+    "timestamp": "2026-09-29T16:13:30+06:00",
+    "scope": "MBC Creator Phase 4 Entry & HumainX Hand-off Flow",
+    "readOnly": true
+  },
+  "summary": {
+    "overallStatus": "PASS_WITH_OBSERVATIONS",
+    "humainxEnforcedBeforePhase4": true,
+    "completeProfilesAvoidRepetition": true,
+    "dashboardAndSidebarConsistent": true,
+    "aliasPreservesHandoff": true,
+    "findingsCount": {
+      "confirmedDefects": 0,
+      "suspectedRisks": 1,
+      "verificationGaps": 1,
+      "optionalImprovements": 1
+    }
+  },
+  "predicates": {
+    "scope": "User-scoped (persisted in ProfessionalProfiles collection)",
+    "requiredFieldsForPhase4": [
+      {
+        "key": "Skills",
+        "description": "At least one skill declared in profile",
+        "backendCheck": "(profile?.Skills?.Count ?? 0) > 0",
+        "frontendCheck": "skills.length >= 1",
+        "weight": 20
+      },
+      {
+        "key": "CurrentSituation",
+        "description": "Founder professional situation",
+        "backendCheck": "!string.IsNullOrWhiteSpace(profile?.VentureContext?.CurrentSituation)",
+        "frontendCheck": "Boolean(currentSituation?.trim())",
+        "weight": 15
+      },
+      {
+        "key": "WeeklyAvailability",
+        "description": "Weekly time commitment",
+        "backendCheck": "!string.IsNullOrWhiteSpace(profile?.VentureContext?.WeeklyAvailability)",
+        "frontendCheck": "Boolean(weeklyAvailability?.trim())",
+        "weight": 15
+      },
+      {
+        "key": "Region",
+        "description": "Geographical region (e.g., French region)",
+        "backendCheck": "!string.IsNullOrWhiteSpace(profile?.VentureContext?.Region)",
+        "frontendCheck": "Boolean(region?.trim())",
+        "weight": 10
+      },
+      {
+        "key": "ProgressPreference",
+        "description": "Learning vs delegation preference",
+        "backendCheck": "!string.IsNullOrWhiteSpace(profile?.VentureContext?.LearningPreference) || !string.IsNullOrWhiteSpace(profile?.VentureContext?.DelegationPreference)",
+        "frontendCheck": "Boolean(learningPreference?.trim() || delegationPreference?.trim() || progressPreference?.trim())",
+        "weight": 15
+      }
+    ],
+    "optionalFieldsNotBlockingPhase4": [
+      "Experiences (weight: 5%)",
+      "Education (weight: 5%)",
+      "Languages / LanguageProficiencies (weight: 5%)",
+      "PreviousEntrepreneurialExperience (weight: 10%)"
+    ]
+  },
+  "verificationMatrix": [
+    {
+      "case": "A. Phase 3 complete + HumainX missing",
+      "guardStatus": "Blocked by Phase4ProfileGuard (Gate 2) & backend EnforceGateAsync",
+      "uiRendering": "Displays 'Phase 4 Personalization Gate' card with missing checklist",
+      "verificationType": "Verified by source, unit/mock tests, and Vitest DOM tests"
+    },
+    {
+      "case": "B. Phase 3 complete + partially completed HumainX",
+      "guardStatus": "Blocked; missing keys pinpointed in UI checklist",
+      "uiRendering": "Displays 'Phase 4 Personalization Gate' with specific missing badges",
+      "verificationType": "Verified by source, backend tests (HumainXProfileCompletenessTests), and Vitest DOM tests"
+    },
+    {
+      "case": "C. Phase 3 complete + HumainX complete",
+      "guardStatus": "Passes all gates; Phase4Ready = true",
+      "uiRendering": "Directly renders Phase 4 tool / workspace without displaying questionnaire",
+      "verificationType": "Verified by source, Vitest DOM tests, and backend unit tests"
+    },
+    {
+      "case": "D. Phase 3 incomplete + HumainX complete",
+      "guardStatus": "Blocked by Gate 1 (Phase 3 completion check)",
+      "uiRendering": "Displays 'Phase 3 Must Be Completed First' card with CTA to Phase 3",
+      "verificationType": "Verified by source and Vitest DOM tests"
+    },
+    {
+      "case": "E. Required fields complete but Experience/Education/Languages absent",
+      "guardStatus": "Passes Phase 4 Gate (Phase4Ready = true at 75-85% profile completion)",
+      "uiRendering": "Direct access to Phase 4 granted without friction",
+      "verificationType": "Verified by backend test Resolve_MinimumRequiredForPhase4_ReturnsPhase4ReadyTrue_EvenWhenExperienceAndEducationEmpty"
+    },
+    {
+      "case": "F. Complete an incomplete profile, then return to Phase 4",
+      "guardStatus": "Saved via creatorProfileApi.saveHumainXProfile, invalidates query cache, returns via router.push(returnTo)",
+      "uiRendering": "Returns cleanly to target Phase 4 deep-link with ideaId preserved",
+      "verificationType": "Verified by source and component tests"
+    },
+    {
+      "case": "G. Direct entry to a later Phase 4 step",
+      "guardStatus": "All 9 Phase 4 step pages wrapped in <Phase4ProfileGuard>; backend endpoints check Gate independently",
+      "uiRendering": "Immediate intercept across all 9 submenus",
+      "verificationType": "Verified by source code across all /phase-4/* pages"
+    },
+    {
+      "case": "H. Refresh during profile/return flow",
+      "guardStatus": "Profile data persisted to MongoDB and cached via TanStack React Query",
+      "uiRendering": "Preserves state and returnTo query params across full page reloads",
+      "verificationType": "Verified by source and React Query integration tests"
+    },
+    {
+      "case": "I. Switch between two ideas",
+      "guardStatus": "Idea context maintained via ideaId param and CreatorProgressProvider; HumainX profile is user-scoped and shared across ideas",
+      "uiRendering": "Founder does not have to re-enter HumainX profile when starting or switching projects",
+      "verificationType": "Verified by source and CreatorJourneyService isolation tests"
+    },
+    {
+      "case": "J. Existing Phase 4 outputs with incomplete or legacy profile",
+      "guardStatus": "Existing Phase 4 artifacts preserved on CreatorJourney; generation/refresh endpoints enforce gate before re-derivation",
+      "uiRendering": "Cached Phase 4 responses serve existing strategy with gate info",
+      "verificationType": "Verified by backend unit tests (CreatorPhase4*Tests)"
+    }
+  ],
+  "findings": [
+    {
+      "id": "FINDING-HX-01",
+      "severity": "LOW",
+      "classification": "Suspected risk",
+      "file": "src/app/dashboard/creator/humainx/page.tsx:538",
+      "title": "HumainX Quick Start wizard hardcodes destination to /dashboard/creator upon completion",
+      "observedBehaviour": "In handleFinalSubmit of HumainXQuickStartInner, completion executes router.replace('/dashboard/creator') without checking searchParams.get('returnTo').",
+      "expectedBehaviour": "If a user lands on the Quick Start wizard with a returnTo param, it should return to returnTo if provided and validated.",
+      "evidence": "src/app/dashboard/creator/humainx/page.tsx line 538: router.replace('/dashboard/creator');",
+      "userImpact": "Phase 4 deflection properly routes users to /dashboard/creator/profile (which does handle returnTo correctly), so users deflected from Phase 4 are not affected. However, if a user directly navigated to /dashboard/creator/humainx?returnTo=..., they would return to the main dashboard rather than returnTo.",
+      "smallestCorrection": "In src/app/dashboard/creator/humainx/page.tsx, read returnTo from useSearchParams and navigate to (returnTo || '/dashboard/creator')."
+    },
+    {
+      "id": "FINDING-HX-02",
+      "severity": "LOW",
+      "classification": "Verification gap",
+      "file": "tests/creator/frontend/CreatorStabilization02.test.tsx:113",
+      "title": "Legacy test assertion expects /dashboard/creator/profile to redirect to /dashboard/profile",
+      "observedBehaviour": "CreatorStabilization02.test.tsx imports a mock redirect component expecting CreatorProfileRedirect() to call redirect('/dashboard/profile'). In production, /dashboard/creator/profile is the active 10-step HumainX Profile Builder page.",
+      "expectedBehaviour": "Test suite should reflect the modern HumainX Profile Builder component rather than legacy redirect mock.",
+      "evidence": "tests/creator/frontend/CreatorStabilization02.test.tsx line 113",
+      "userImpact": "No runtime user impact; test artifact legacy mismatch.",
+      "smallestCorrection": "Update CreatorStabilization02.test.tsx to assert HumainX Profile Builder rendering rather than legacy redirect."
+    },
+    {
+      "id": "FINDING-HX-03",
+      "severity": "INFORMATIONAL",
+      "classification": "Optional improvement",
+      "file": "src/lib/menu-navigation.ts:46",
+      "title": "CREATOR_ROUTE_ALIASES maps /dashboard/creator/profile to /dashboard/profile for sidebar highlighting",
+      "observedBehaviour": "CREATOR_ROUTE_ALIASES defines '/dashboard/creator/profile': '/dashboard/profile'. When on the HumainX Profile Builder, the sidebar active state highlights Account Profile in the bottom menu.",
+      "expectedBehaviour": "Sidebar active item could optionally highlight a dedicated Creator Profile entry if added to main menu.",
+      "evidence": "src/lib/menu-navigation.ts line 46",
+      "userImpact": "Sidebar visual highlight reflects Account Profile; functionality and form submission are 100% operational.",
+      "smallestCorrection": "Leave as intentional alias or add explicit submenu mapping if Creator navigation demands distinct highlight."
+    }
+  ]
+}

@@ -28,14 +28,17 @@ export default function OnboardingHubPage() {
   }
 
   const core = ONBOARDING_ITEMS.filter((i) => i.group === "core");
+  const mandatoryItems = core.filter((i) => status ? status.items[i.key]?.required : true);
+  const optionalCore = core.filter((i) => status ? !status.items[i.key]?.required : false);
   const supplementary = ONBOARDING_ITEMS.filter((i) => i.group === "supplementary");
+  const optionalItems = [...optionalCore, ...supplementary];
 
   // Show supplementary items the role requires PLUS any user-uploaded optional
   // ones (so a Creator who chose to upload Residence still sees that card).
   // The hub always shows all four supplementary cards so the user can opt in
   // even when they're not required.
-  const requiredCoreDone = core.filter((i) => status.items[i.key]?.verified).length;
-  const requiredCoreTotal = core.filter((i) => status.items[i.key]?.required).length;
+  const requiredCoreDone = mandatoryItems.filter((i) => status.items[i.key]?.verified).length;
+  const requiredCoreTotal = mandatoryItems.length;
 
   // Additional items the user's role requires (Investor: income+tax; SP: license)
   const extraRequired = supplementary.filter((i) => status.items[i.key]?.required);
@@ -66,12 +69,12 @@ export default function OnboardingHubPage() {
         </div>
 
         <ul className="space-y-3">
-          {core.map((item) => (
+          {mandatoryItems.map((item) => (
             <ItemRow
               key={item.key}
               item={item}
               verified={status.items[item.key]?.verified}
-              required={status.items[item.key]?.required}
+              required={true}
             />
           ))}
         </ul>
@@ -80,14 +83,14 @@ export default function OnboardingHubPage() {
       {/* Additional Documents */}
       <section className="mb-10">
         <div className="flex items-center gap-3 mb-4">
-          <h2 className="text-base font-semibold text-foreground">Additional Document</h2>
+          <h2 className="text-base font-semibold text-foreground">Additional Steps & Documents</h2>
           <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
             {extraRequired.length > 0 ? "Required for your role" : "Optional"}
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {supplementary.map((item) => (
+          {optionalItems.map((item) => (
             <ItemCard
               key={item.key}
               item={item}

@@ -17,21 +17,14 @@ namespace WebApp.Services
     /// copy of the gate.
     /// 
     /// Current Universal MVP Policy:
-    /// EMAIL + PHONE = PHASE 1.
-    /// Identity document verification is fully implemented and deferred for future activation.
-    /// Reversible via FeatureFlags:RequireIdentityVerificationInUniversalOnboarding.
+    /// EMAIL = PHASE 1 (Phone & Identity verification are optional/deferred).
+    /// Reversible via FeatureFlags:RequirePhoneVerificationInUniversalOnboarding
+    /// and FeatureFlags:RequireIdentityVerificationInUniversalOnboarding.
     /// </summary>
     public static class OnboardingGate
     {
         public const string RequireIdentityFlagKey = "FeatureFlags:RequireIdentityVerificationInUniversalOnboarding";
-
-        /// <summary>The full 3 core items when identity verification is active.</summary>
-        public static readonly string[] CoreRequiredWithIdentity =
-            { "identity", "phone", "email" };
-
-        /// <summary>The default MVP 2 core items when identity verification is deferred.</summary>
-        public static readonly string[] CoreRequiredDefault =
-            { "phone", "email" };
+        public const string RequirePhoneFlagKey = "FeatureFlags:RequirePhoneVerificationInUniversalOnboarding";
 
         /// <summary>
         /// Reads whether identity verification is required for Universal Phase 1 from configuration.
@@ -43,14 +36,29 @@ namespace WebApp.Services
             return config.GetValue<bool>(RequireIdentityFlagKey, false);
         }
 
+        /// <summary>
+        /// Reads whether phone verification is required for Universal Phase 1 from configuration.
+        /// Defaults to false (optional).
+        /// </summary>
+        public static bool IsPhoneRequired(IConfiguration? config)
+        {
+            if (config == null) return false;
+            return config.GetValue<bool>(RequirePhoneFlagKey, false);
+        }
+
         /// <summary>Required item set for universal Phase 1 based on active configuration policy.</summary>
         public static HashSet<string> RequiredItemsFor(string role, IConfiguration? config = null)
         {
+            var items = new List<string> { "email" };
+            if (IsPhoneRequired(config))
+            {
+                items.Add("phone");
+            }
             if (IsIdentityRequired(config))
             {
-                return new(CoreRequiredWithIdentity, StringComparer.OrdinalIgnoreCase);
+                items.Add("identity");
             }
-            return new(CoreRequiredDefault, StringComparer.OrdinalIgnoreCase);
+            return new HashSet<string>(items, StringComparer.OrdinalIgnoreCase);
         }
 
         public static bool IsItemVerified(ApplicationUser user, string key)
@@ -73,15 +81,17 @@ namespace WebApp.Services
 
         /// <summary>
         /// Authoritative completion evaluation for Universal Phase 1.
-        /// When RequireIdentity = false (MVP default): EmailOtpVerified && PhoneVerified.
-        /// When RequireIdentity = true: EmailOtpVerified && PhoneVerified && IdentityDocumentVerified.
+        /// Email verification is always required.
+        /// When RequirePhone = false (MVP default): Phone verification is optional.
+        /// When RequireIdentity = false (MVP default): Identity document verification is deferred.
         /// </summary>
         public static bool IsComplete(ApplicationUser user, IConfiguration? config = null)
         {
             if (user?.Onboarding == null) return false;
             var requireIdentity = IsIdentityRequired(config);
+            var requirePhone = IsPhoneRequired(config);
             return user.Onboarding.EmailOtpVerified &&
-                   user.Onboarding.PhoneVerified &&
+                   (!requirePhone || user.Onboarding.PhoneVerified) &&
                    (!requireIdentity || user.Onboarding.IdentityDocumentVerified);
         }
 

@@ -14,14 +14,15 @@ Mondial ECO enforces a **Universal Phase 0 Onboarding Gate** across all user arc
 
 Every user undergoes the standardized verification sequence:
 1. **Email Verification** (HMAC-SHA256 6-digit OTP via SMTP) — **Required**
-2. **Phone Verification** (HMAC-SHA256 6-digit OTP via Twilio SMS) — **Required**
-3. **Identity Document Verification** (Automated document KYC via Sumsub WebSDK) — **Fully Implemented & Deferred for MVP Launch**
+2. **Phone Verification** (HMAC-SHA256 6-digit OTP via Twilio SMS) — **Optional / Configurable** (governed by `FeatureFlags:RequirePhoneVerificationInUniversalOnboarding`, defaults to `false`)
+3. **Identity Document Verification** (Automated document KYC via Sumsub WebSDK) — **Fully Implemented & Deferred for MVP Launch** (governed by `FeatureFlags:RequireIdentityVerificationInUniversalOnboarding`, defaults to `false`)
 
 > [!IMPORTANT]
-> **MVP Launch Gate Policy & Reversible Feature Flag**:
-> - Required Universal Onboarding Steps: **Email Verification** + **Phone Verification**.
-> - Identity Document Verification is fully implemented and preserved in place, but temporarily deferred from blocking Universal Phase 1 onboarding.
-> - Policy is governed by `FeatureFlags:RequireIdentityVerificationInUniversalOnboarding` (defaults to `false`).
+> **MVP Launch Gate Policy & Reversible Feature Flags**:
+> - Required Universal Onboarding Step: **Email Verification** (Email OTP = Phase 1 Onboarding Complete).
+> - Phone Verification is optional by default for MVP launch (`FeatureFlags:RequirePhoneVerificationInUniversalOnboarding = false`).
+> - Identity Document Verification is fully implemented and preserved in place, but temporarily deferred from blocking Universal Phase 1 onboarding (`FeatureFlags:RequireIdentityVerificationInUniversalOnboarding = false`).
+> - Sumsub / Identity V2 startup validation is dormant by default (`FeatureFlags:IdentityV2Enabled = false`).
 > - **Facial verification, selfie photos, liveness detection, and video identification are permanently removed** from active runtime business logic.
 
 ---
@@ -176,9 +177,11 @@ The promotion gate is centralized in `backend/Services/OnboardingGate.cs`.
 ```csharp
 var requireIdentity = config.GetValue<bool>(
     "FeatureFlags:RequireIdentityVerificationInUniversalOnboarding", false);
+var requirePhone = config.GetValue<bool>(
+    "FeatureFlags:RequirePhoneVerificationInUniversalOnboarding", false);
 
 var complete = user.Onboarding.EmailOtpVerified &&
-               user.Onboarding.PhoneVerified &&
+               (!requirePhone || user.Onboarding.PhoneVerified) &&
                (!requireIdentity || user.Onboarding.IdentityDocumentVerified);
 ```
 
@@ -585,8 +588,8 @@ In `backend/Controllers/CreatorJourneyController.cs`, domain exceptions raised d
 
 | Component | Architecture & Baseline Status |
 | :--- | :--- |
-| **Universal Onboarding** | **Email Verification + Phone Verification** (Phase 0 $\to$ Phase 1). |
-| **Identity Verification** | **Deferred** (`FeatureFlags:RequireIdentityVerificationInUniversalOnboarding = false`). Code, SDK, Webhooks, and Sumsub config remain intact and production-ready for future activation. |
+| **Universal Onboarding** | **Email Verification** (Phase 0 $\to$ Phase 1). Phone verification is optional (`FeatureFlags:RequirePhoneVerificationInUniversalOnboarding = false`). |
+| **Identity Verification** | **Deferred** (`FeatureFlags:RequireIdentityVerificationInUniversalOnboarding = false`). Code, SDK, Webhooks, and Sumsub config remain intact and production-ready for future activation (`FeatureFlags:IdentityV2Enabled = false` by default). |
 | **Biometrics / Face** | Permanently excluded from platform runtime (no selfie, liveness, or video). |
 | **Routing Authority** | Backend persisted onboarding state $\to$ `refreshAuthMe()` $\to$ `AuthContext` / `localStorage` $\to$ `<AuthGuard>` decision. Zero ping-pong loops. |
 | **SignalR Security** | `QueryStringRedactionMiddleware` redacts query tokens before Serilog logging while passing token to `JwtBearerEvents` via `HttpContext.Items`. Hub is `[Authorize]`. |

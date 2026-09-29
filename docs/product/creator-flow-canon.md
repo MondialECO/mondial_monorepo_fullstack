@@ -233,13 +233,13 @@ Gating is strict: no skipping steps; user can always go back one step; completed
 
 > [!NOTE]
 > **Historical / Superseded Architecture Note (September 2026 Baseline)**:
-> The canonical Universal Onboarding Gate (Phase 0 $\to$ Phase 1) is documented in [09-universal-identity-and-onboarding.md](file:///d:/mondial.eco/9-12-2026/mondial_monorepo_fullstack/docs/system-architecture/09-universal-identity-and-onboarding.md). For the current production MVP, Universal Onboarding requires **Email OTP + Phone OTP**; Identity Document Verification is automated via Sumsub WebSDK and deferred (`FeatureFlags:RequireIdentityVerificationInUniversalOnboarding = false`); face/biometrics has been permanently removed.
+> The canonical Universal Onboarding Gate (Phase 0 $\to$ Phase 1) is documented in [09-universal-identity-and-onboarding.md](file:///e:/17-07-2026/mondial_monorepo_fullstack/docs/system-architecture/09-universal-identity-and-onboarding.md). For the current production MVP, Universal Onboarding requires **Email OTP**; Phone OTP is optional (`FeatureFlags:RequirePhoneVerificationInUniversalOnboarding = false`); Identity Document Verification is automated via Sumsub WebSDK and deferred (`FeatureFlags:RequireIdentityVerificationInUniversalOnboarding = false`, `FeatureFlags:IdentityV2Enabled = false`); face/biometrics has been permanently removed.
 
 **Purpose:** verify identity and lock in the Creator role before any dashboard access.
 
-**Steps:** email OTP, phone OTP, identity document upload, role selection.
+**Steps:** email OTP, phone OTP (optional), identity document upload (optional/deferred), role selection.
 
-The Phase-1 completion gate promotes onboarding to Phase 1 based on verified core items (email, phone, identity document) on the Onboarding model. Promotion is derived — no manual phase writes.
+The Phase-1 completion gate promotes onboarding to Phase 1 based on verified core items on the Onboarding model. Promotion is derived — no manual phase writes.
 
 ### Status:
 

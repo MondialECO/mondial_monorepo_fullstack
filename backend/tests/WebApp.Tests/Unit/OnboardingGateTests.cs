@@ -59,9 +59,9 @@ public class OnboardingGateTests
     }
 
     [Fact]
-    public async Task CaseB_Gate_Fails_When_Email_Only()
+    public async Task CaseB_Gate_Passes_When_Email_Only_Under_Default_MVP()
     {
-        // Arrange: Email=T, Phone=F, Identity=F
+        // Arrange: Email=T, Phone=F, Identity=F (Default MVP: Phone is optional, Identity is deferred)
         var user = new ApplicationUser
         {
             Id = Guid.NewGuid(),
@@ -79,9 +79,9 @@ public class OnboardingGateTests
         // Act
         await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object);
 
-        // Assert: Must remain Phase 0
-        Assert.Equal(0, user.Onboarding.Phase);
-        Assert.Null(user.Onboarding.CompletedAt);
+        // Assert: Promoted to Phase 1 because only email is required by default
+        Assert.Equal(1, user.Onboarding.Phase);
+        Assert.NotNull(user.Onboarding.CompletedAt);
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public class OnboardingGateTests
         // Act
         await OnboardingGate.PromoteIfCompleteAsync(user, _userManagerMock.Object);
 
-        // Assert: Must remain Phase 0
+        // Assert: Must remain Phase 0 because email is mandatory
         Assert.Equal(0, user.Onboarding.Phase);
         Assert.Null(user.Onboarding.CompletedAt);
     }
@@ -167,6 +167,36 @@ public class OnboardingGateTests
     }
 
     [Fact]
+    public async Task FeatureFlag_When_Phone_Required_Blocks_Email_Only_User()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["FeatureFlags:RequirePhoneVerificationInUniversalOnboarding"] = "true"
+        }).Build();
+
+        var userWithoutPhone = new ApplicationUser
+        {
+            Id = Guid.NewGuid(),
+            Email = "test@example.com",
+            User = "Creator",
+            Onboarding = new OnboardingState
+            {
+                Phase = 0,
+                EmailOtpVerified = true,
+                PhoneVerified = false,
+                IdentityDocumentVerified = false,
+            }
+        };
+
+        // Act
+        await OnboardingGate.PromoteIfCompleteAsync(userWithoutPhone, _userManagerMock.Object, config);
+
+        // Assert: Remains Phase 0 when RequirePhone is true and phone is not verified
+        Assert.Equal(0, userWithoutPhone.Onboarding.Phase);
+        Assert.Null(userWithoutPhone.Onboarding.CompletedAt);
+    }
+
+    [Fact]
     public async Task FeatureFlag_When_Enabled_Requires_Identity_For_Phase1()
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
@@ -220,7 +250,7 @@ public class OnboardingGateTests
     [InlineData("Entrepreneur")]
     [InlineData("Investor")]
     [InlineData("ServiceProvider")]
-    public async Task Role_Parity_All_Roles_Reach_Phase1_Without_Identity_Under_Default_MVP(string role)
+    public async Task Role_Parity_All_Roles_Reach_Phase1_With_Email_Only_Under_Default_MVP(string role)
     {
         var user = new ApplicationUser
         {
@@ -231,7 +261,7 @@ public class OnboardingGateTests
             {
                 Phase = 0,
                 EmailOtpVerified = true,
-                PhoneVerified = true,
+                PhoneVerified = false,
                 IdentityDocumentVerified = false,
             }
         };
@@ -247,22 +277,33 @@ public class OnboardingGateTests
     [InlineData("Entrepreneur")]
     [InlineData("Investor")]
     [InlineData("ServiceProvider")]
-    public void RequiredItemsFor_Returns_Two_Items_By_Default_And_Three_When_Flag_Enabled(string role)
+    public void RequiredItemsFor_Returns_One_Item_By_Default_And_More_When_Flags_Enabled(string role)
     {
-        // Default (Identity deferred): 2 items
+        // Default (Identity deferred, Phone optional): 1 item (email)
         var defaultItems = OnboardingGate.RequiredItemsFor(role);
-        Assert.Equal(2, defaultItems.Count);
-        Assert.Contains("phone", defaultItems);
+        Assert.Single(defaultItems);
         Assert.Contains("email", defaultItems);
+        Assert.DoesNotContain("phone", defaultItems);
         Assert.DoesNotContain("identity", defaultItems);
 
-        // Flag enabled (Identity required): 3 items
-        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        // Phone flag enabled: 2 items
+        var phoneConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
+            ["FeatureFlags:RequirePhoneVerificationInUniversalOnboarding"] = "true"
+        }).Build();
+        var phoneItems = OnboardingGate.RequiredItemsFor(role, phoneConfig);
+        Assert.Equal(2, phoneItems.Count);
+        Assert.Contains("phone", phoneItems);
+        Assert.Contains("email", phoneItems);
+
+        // Both flags enabled: 3 items
+        var fullConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["FeatureFlags:RequirePhoneVerificationInUniversalOnboarding"] = "true",
             ["FeatureFlags:RequireIdentityVerificationInUniversalOnboarding"] = "true"
         }).Build();
 
-        var flagItems = OnboardingGate.RequiredItemsFor(role, config);
+        var flagItems = OnboardingGate.RequiredItemsFor(role, fullConfig);
         Assert.Equal(3, flagItems.Count);
         Assert.Contains("identity", flagItems);
         Assert.Contains("phone", flagItems);
