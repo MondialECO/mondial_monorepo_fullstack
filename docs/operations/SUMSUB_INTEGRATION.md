@@ -31,13 +31,18 @@ Sumsub credentials are read by `SumsubService.cs` and validated fail-closed:
     "LevelName": "id-document-only"
   },
   "FeatureFlags": {
-    "IdentityV2Enabled": true,
-    "AllowLegacyIdentityUpload": false
+    "IdentityV2Enabled": false,
+    "AllowLegacyIdentityUpload": false,
+    "RequireIdentityVerificationInUniversalOnboarding": false
   }
 }
 ```
 
-### Environment Variable / User Secrets Format
+> **Note on Feature Flags:**
+> - `FeatureFlags:IdentityV2Enabled` defaults to `false` in base/production config so startup validation does not block application boot when Sumsub production credentials are unconfigured or contain template placeholders.
+> - When deploying with real Sumsub credentials, set `FeatureFlags__IdentityV2Enabled=true` alongside valid `Sumsub__AppToken`, `Sumsub__SecretKey`, and `Sumsub__WebhookSecret`.
+
+### Environment Variable / User Secrets Format (When Enabled)
 
 ```bash
 Sumsub__BaseUrl="https://api.sumsub.com"
