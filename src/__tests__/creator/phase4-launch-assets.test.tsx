@@ -254,12 +254,10 @@ describe('LaunchAssetsView (Phase 4.8)', () => {
     });
   });
 
-  it('renders Section 2: Source Strip and Attention Notice', () => {
+  it('renders Section 2: Button Destination Attention Notice and does not render removed Brand Studio strip', () => {
     render(<LaunchAssetsView {...defaultProps} />);
-    expect(screen.getByText('BUILT FROM:')).toBeInTheDocument();
-    expect(screen.getByText('Your Brand Kit')).toBeInTheDocument();
-    expect(screen.getByText('Chosen offer')).toBeInTheDocument();
-    expect(screen.getByText('Launch strategy')).toBeInTheDocument();
+    expect(screen.queryByText('BUILT FROM:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Brand Palette')).not.toBeInTheDocument();
     expect(screen.getByText(/Add a destination for your main button/i)).toBeInTheDocument();
   });
 
