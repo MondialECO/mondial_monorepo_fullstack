@@ -13,7 +13,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Lock,
-  Layers,
   FileText,
   Bell,
   Mail,
@@ -21,7 +20,6 @@ import {
   Monitor,
   Smartphone,
   Check,
-  ExternalLink,
   Edit3,
   Copy,
   ChevronDown,
@@ -703,116 +701,9 @@ export function LaunchAssetsView({
       </section>
 
       {/* ------------------------------------------------------------------------- */}
-      {/* SECTION 2: BRAND STUDIO SOURCE STRIP & BUTTON DESTINATION NOTICE */}
+      {/* SECTION 2: BUTTON DESTINATION NOTICE */}
       {/* ------------------------------------------------------------------------- */}
-      <section className="space-y-3">
-        {/* Built From Strip & Brand Studio Intelligence Summary */}
-        <div className="bg-card border border-border rounded-xl p-4 sm:p-5 space-y-3.5">
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/60">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono font-semibold text-muted-foreground text-[11px] uppercase tracking-wider shrink-0 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-primary" />
-                BUILT FROM:
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/60 text-foreground border border-border/80 font-sans text-xs">
-                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                Your Brand Kit
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/60 text-foreground border border-border/80 font-sans text-xs">
-                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                Chosen offer
-              </span>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-muted/60 text-foreground border border-border/80 font-sans text-xs">
-                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                Launch strategy
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-sans text-xs font-medium">
-                <Sparkles className="w-3 h-3" />
-                {assets?.brandStudio?.brandName || brandName || projectName}
-              </span>
-            </div>
-            <Link
-              href={`/dashboard/creator/brand-kit${ideaId ? `?ideaId=${ideaId}` : ''}`}
-              className="inline-flex items-center gap-1 text-xs font-sans text-primary hover:underline font-medium"
-            >
-              <span>Edit Brand Studio</span>
-              <ExternalLink className="w-3 h-3" />
-            </Link>
-          </div>
-
-          {/* Detailed Brand Studio Tokens */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            {/* Color Palette */}
-            <div className="bg-muted/30 border border-border/80 rounded-lg p-2.5 space-y-1.5">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
-                Brand Palette
-              </span>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className="w-4 h-4 rounded-full border border-white/20 shadow-sm"
-                    style={{ backgroundColor: assets?.brandStudio?.primaryColorHex || '#3B82F6' }}
-                    title={`Primary: ${assets?.brandStudio?.primaryColorHex || '#3B82F6'}`}
-                  />
-                  <div
-                    className="w-4 h-4 rounded-full border border-white/20 shadow-sm"
-                    style={{ backgroundColor: assets?.brandStudio?.secondaryColorHex || '#10B981' }}
-                    title={`Secondary: ${assets?.brandStudio?.secondaryColorHex || '#10B981'}`}
-                  />
-                  <div
-                    className="w-4 h-4 rounded-full border border-white/20 shadow-sm"
-                    style={{ backgroundColor: assets?.brandStudio?.accentColorHex || '#F59E0B' }}
-                    title={`Accent: ${assets?.brandStudio?.accentColorHex || '#F59E0B'}`}
-                  />
-                </div>
-                <span className="font-mono text-[11px] text-foreground font-medium">
-                  {assets?.brandStudio?.primaryColorHex || '#3B82F6'}
-                </span>
-              </div>
-            </div>
-
-            {/* Typography */}
-            <div className="bg-muted/30 border border-border/80 rounded-lg p-2.5 space-y-1.5">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
-                Typography
-              </span>
-              <div className="flex items-center gap-1.5 text-foreground font-medium truncate">
-                <span className="truncate">{assets?.brandStudio?.displayFontFamily || 'Inter'}</span>
-                <span className="text-muted-foreground">/</span>
-                <span className="truncate text-muted-foreground">{assets?.brandStudio?.textFontFamily || 'DM Sans'}</span>
-              </div>
-            </div>
-
-            {/* Target Audience */}
-            <div className="bg-muted/30 border border-border/80 rounded-lg p-2.5 space-y-1.5">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
-                Target Audience
-              </span>
-              <p className="text-foreground text-[11px] font-sans truncate" title={assets?.brandStudio?.targetAudience || 'Independent businesses'}>
-                {assets?.brandStudio?.targetAudience || 'Independent service businesses'}
-              </p>
-            </div>
-
-            {/* Personality Traits */}
-            <div className="bg-muted/30 border border-border/80 rounded-lg p-2.5 space-y-1.5">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
-                Brand Personality
-              </span>
-              <div className="flex items-center gap-1 flex-wrap">
-                {assets?.brandStudio?.personalityTraits && assets.brandStudio.personalityTraits.length > 0 ? (
-                  assets.brandStudio.personalityTraits.slice(0, 2).map((t, i) => (
-                    <span key={i} className="px-1.5 py-0.5 rounded bg-muted/80 text-[10px] font-sans text-foreground">
-                      {t}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-muted-foreground text-[11px]">Clear, Straightforward</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
+      <section>
         {/* Amber / Success Attention Notice Card */}
         {!isDestinationConfigured ? (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

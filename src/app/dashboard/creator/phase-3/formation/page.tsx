@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { withIdeaContext } from '@/lib/creator-routes';
+import { isTabReloadingForSwitch } from '@/lib/creator-tab-sync';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -127,6 +128,7 @@ export default function FormationPage() {
     isMountedRef.current = true;
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isTabReloadingForSwitch()) return;
       if (!pendingSkillsSaveRef.current && !skillsSaveInFlightRef.current) return;
       void flushSkills().catch(() => undefined);
       event.preventDefault();
@@ -141,7 +143,9 @@ export default function FormationPage() {
         clearTimeout(skillsSaveTimerRef.current);
         skillsSaveTimerRef.current = null;
       }
-      if (pendingSkillsSaveRef.current) void drainSkillsQueue().catch(() => undefined);
+      if (pendingSkillsSaveRef.current && !isTabReloadingForSwitch()) {
+        void drainSkillsQueue().catch(() => undefined);
+      }
     };
   }, [drainSkillsQueue, flushSkills]);
 

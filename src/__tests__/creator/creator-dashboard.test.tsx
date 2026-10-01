@@ -88,6 +88,11 @@ vi.mock('@/hooks/queries/creator', () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useMyIdeas: () => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 describe('CreatorDashboard Component — Canonical Command Center', () => {

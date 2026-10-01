@@ -56,20 +56,21 @@ deploying, or startup validation aborts the boot (intended fail-fast).
 
 ## 4. Credits & Metering
 
-- Per-user balance in `AICredits` / `AiCreditLedgers` (one doc per user, unique `OwnerUserId`).
-- Single source of truth: `GET /api/ai/credits` returns balance, lifetime stats (`TotalGranted`, `TotalSpent`), and per-capability cost table.
+- Per-user balance in `AICredits` (one doc per user, unique `OwnerUserId`).
+- Single source of truth: `GET /api/ai/credits` returns balance, lifetime stats (`LifetimeGranted`, `LifetimeSpent`), and per-capability cost table.
+- **Starter Credit Guarantee:** New users are guaranteed **200 starter AI credits** (`Ai:StarterCredits = 200`) before their first paid AI operation. The `AICredits` ledger is lazily initialized on the first credit-balance request (`GET /api/ai/credits` when `AiCreditBadge` mounts) or via fallback guard in `AiCreditService.DebitForJobAsync` before the first debit. Initial grant uses MongoDB `$setOnInsert` and is strictly idempotent. Spent zero balances are never topped up.
 - Enqueue debits the configured cost atomically (`Balance >= cost`) before dispatch; insufficient balance → **402**. Cost-0 jobs (Probe, IdeaGenerator, LogoConceptRegenerate) are free and never touch the ledger.
 - **Automatic Refunds & Zero-Unfair-Debit:**
   - Any job failing in Hangfire or returning unparseable output automatically refunds the debited credits (`Balance += amount`).
-  - Gross spent accounting: `TotalSpent` remains immutable lifetime consumption history; refunds are recorded in a dedicated `Refunds` subdocument array with original `DebitOperationId`.
+  - Gross spent accounting: `LifetimeSpent` remains immutable lifetime consumption history; refunds are recorded in a dedicated subdocument array with original `DebitOperationId`.
   - Deterministic timing: `AiJobRunner` applies the refund before transitioning the user session to `Failed`, eliminating timing races for client pollers.
 - **Visibility:** Topbar `AiCreditBadge` renders real-time balance for Creator and Entrepreneur roles, invalidates immediately on mutation dispatch and session terminal state, updating dynamically without page reload.
 - Full architectural details: see `docs/operations/ai-credit-metering-and-visibility.md`.
-- **Starter-credit backfill (optional, config-gated):** set
-  `Ai:GrantStarterCreditsToExisting = true` and `Ai:StarterCredits = <n>`. On
-  the next boot every existing user **without** a ledger is granted `<n>`
+- **Starter-credit backfill (optional, config-gated for existing legacy accounts):** set
+  `Ai:GrantStarterCreditsToExisting = true` and `Ai:StarterCredits = 200`. On
+  the next boot every existing user **without** a ledger is granted 200
   credits. Idempotent (upsert with `$setOnInsert`) — existing balances are never
-  touched, safe to leave on. Off by default.
+  touched. Safe to leave on. Off by default.
 
 ### 4.1 Brand Kit Studio Generative Metering & Per-Element Caps
 - **Synchronous Debits:** Billed Brand Kit AI generative calls (`DirectionGeneration`: 7, `LogoParameterSelection`: 4, `ColorGeneration`: 2, `TypographyGeneration`: 2) are debited immediately before model execution in `CreatorBrandKitController`. Local SVG redraws (`LogoConceptRegenerate`: 0 credits) are unmetered and free. Billed operations are eligible for deduction against the starter credit grant (200 credits).

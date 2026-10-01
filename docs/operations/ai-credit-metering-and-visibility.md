@@ -52,47 +52,51 @@ All capabilities route authoritatively to `google/gemini-3.8-flash` in base conf
 ## 3. Credit Ledger & Accounting Model
 
 ### A. Document Schema (`AiCreditLedger`)
-Storage collection: `AiCreditLedgers` (MongoDB).
+Storage collection: `AICredits` (MongoDB).
 
 ```json
 {
   "_id": "ObjectId(...)",
   "OwnerUserId": "user-guid-string",
   "Balance": 189,
-  "TotalGranted": 200,
-  "TotalSpent": 11,
+  "LifetimeGranted": 200,
+  "LifetimeSpent": 11,
   "Debits": [
     {
       "OperationId": "6aa821414c09fc5641f2c8e8",
       "Amount": 5,
       "Reason": "Forecast",
-      "Timestamp": "2026-09-14T16:31:01Z"
+      "Refunded": false,
+      "At": "2026-09-14T16:31:01Z"
     }
   ],
-  "Refunds": [
-    {
-      "DebitOperationId": "6aa821414c09fc5641f2c8e8",
-      "Amount": 5,
-      "Reason": "Unusable or malformed model output",
-      "Timestamp": "2026-09-14T16:31:02Z"
-    }
-  ],
-  "Period": {
-    "PeriodId": "2026-09",
-    "CreditsGranted": 100,
-    "CreditsSpent": 11,
-    "CarryOverCeiling": 25,
-    "StartedAt": "2026-09-01T00:00:00Z",
-    "ExpiresAt": "2026-10-01T00:00:00Z"
-  }
+  "PeriodStart": null,
+  "PeriodEnd": null,
+  "PeriodCreditsSpent": null,
+  "CarryOverCeiling": null,
+  "CreatedAt": "2026-09-01T00:00:00Z",
+  "UpdatedAt": "2026-09-14T16:31:01Z"
 }
 ```
 
 ### B. Gross Spent Accounting
-- **Debits**: Decrement `Balance`, increment `TotalSpent`, append to `Debits`.
-- **Refunds**: Increment `Balance`, append to `Refunds`. `TotalSpent` remains immutable lifetime consumption history (no revisionist ledger history).
-- **Idempotency**: Every refund specifies the original `DebitOperationId`. Subsequent refund attempts for the same operation return `CreditRefundResult.AlreadyRefunded` and make no state modifications.
-- **Period Tracking**: The dormant `Period` schema enables atomic per-cycle usage tracking (`CreditsSpent`), grant caps, and carry-over ceilings without altering available balance behavior until business activation.
+- **Debits**: Decrement `Balance`, increment `LifetimeSpent`, push debit subdocument to `Debits`.
+- **Refunds**: Increment `Balance`, set `Debits.$.Refunded = true`, set `Debits.$.RefundedAt = now`. `LifetimeSpent` remains immutable lifetime consumption history (no revisionist ledger history).
+- **Idempotency**: Every refund specifies the original `OperationId` and expected amount. Subsequent refund attempts return `CreditRefundResult.AlreadyRefunded` and make no state modifications.
+- **Period Tracking**: The dormant measurement period schema (`PeriodStart`, `PeriodEnd`, `PeriodCreditsSpent`, `CarryOverCeiling`) enables atomic per-cycle usage tracking without altering lifetime balance behavior until business activation.
+
+### C. Starter Credit Lifecycle & Guarantees
+- **Configured Starter Balance**: **200 credits** (`Ai:StarterCredits = 200` in `AiSettings.cs`, `appsettings.json`, and `appsettings.Development.json`).
+- **Lazy Initialization (Dashboard Mount)**: The physical `AICredits` ledger is **not** created during `POST /api/auth/register` or during onboarding. When a Creator navigates to their dashboard, `<AiCreditBadge />` mounts and queries `GET /api/ai/credits`. `AiCreditService.GetBalanceAsync` invokes `AiCreditLedgerRepository.TryGrantInitialAsync(ownerUserId, 200)` to initialize the document.
+- **Guaranteed Fallback (First AI Debit)**: If a user executes a paid AI action directly before any credit-balance request, `AiCreditService.DebitForJobAsync` calls `TryGrantInitialAsync(ownerUserId, 200)` before evaluating `TryDebitAsync`. New users are guaranteed 200 starter AI credits before their first paid AI operation.
+- **Atomic Upsert & Idempotency**: Creation uses MongoDB `UpdateOneAsync` with `IsUpsert = true` and `.SetOnInsert` for all initial fields (`Balance = 200`, `LifetimeGranted = 200`, `LifetimeSpent = 0`, `Debits = []`). An existing ledger is never touched by repeat queries, and a user who spends their balance to zero is never re-granted starter credits.
+- **Duplicate Protection**: Guarded by a unique index on `OwnerUserId` (`OwnerUserId_Unique`). Concurrent initialization requests safely resolve to a single ledger.
+- **Creator AI Journey Economics**:
+  - **Standard Path (Skipping Brand Studio)**: Idea Clarifier (20) + Market Study (20) + Business Model (18) + Financial Forecast (32) + Business Plan (33) = **123 credits consumed** across 7 AI provider calls. **77 credits remaining**.
+  - **Brand Studio Path**: Standard Path (123) + Visual Direction (7) + Logo Concepts (4) = **134 credits consumed** across 9 AI provider calls. **66 credits remaining**.
+  - **Phase 4**: 0 AI credits across all current Phase 4 tools (100% deterministic).
+  - The standard Creator journey easily completes within the initial 200-credit grant without requiring balance top-ups.
+- **Legacy 100-Credit Accounts**: Accounts created under the earlier 100-credit configuration can be normalized to 200 via `AiCreditLedgerRepository.TryNormalizeLegacyStarterCreditsForUserAsync(userId, 100, 200)`, which adds +100 to `Balance` and `LifetimeGranted` only when `LifetimeGranted == 100`, preserving spent history. Brand-new accounts are initialized directly with 200.
 
 ---
 

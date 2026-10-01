@@ -108,8 +108,8 @@ graph TD
 
 ### Step 4.8: Launch Assets (`/dashboard/creator/phase-4/launch-assets` & `/assets`)
 - **Figma Node**: `57221:12861`
-- **Layout Behavior**: Outer editor workspace uses full available width. The embedded website preview envelope retains fixed device frame proportions (`max-w-[390px]` for mobile preview simulation, `max-w-full` for desktop preview).
-- **Branding Boundary**: Dashboard editor controls strictly use MBC theme tokens; the embedded website preview and public `/p/launch/[token]` retain the project's own Brand Kit typography and palette.
+- **Layout Behavior**: Outer editor workspace uses full available width. Section 2 focuses strictly on the Button Destination Attention Notice Card, with redundant Brand Studio intelligence metadata strip removed for clean visual flow. The embedded website preview envelope retains fixed device frame proportions (`max-w-[390px]` for mobile preview simulation, `max-w-full` for desktop preview).
+- **Branding Boundary**: Dashboard editor controls strictly use MBC theme tokens; the embedded website preview, public `/p/launch/[token]`, and standalone downloadable HTML retain the project's own Brand Kit typography and palette.
 - **Alias Verification**: `/dashboard/creator/phase-4/assets` re-exports the identical page component and functions as a seamless alias.
 
 ### Step 4.9: Construction Readiness (`/dashboard/creator/phase-4/readiness`)
