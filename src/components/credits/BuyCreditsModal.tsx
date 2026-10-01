@@ -120,9 +120,9 @@ export function BuyCreditsModal({ isOpen, onClose }: BuyCreditsModalProps) {
 
   // 3 conceptual package slots (100, 250, 500)
   const targetSlots = [
-    { id: "pack_100", credits: 100, label: "Starter", desc: "Best for quick idea validations" },
-    { id: "pack_250", credits: 250, label: "Creator", desc: "Most popular — full phase generation", popular: true },
-    { id: "pack_500", credits: 500, label: "Pro", desc: "Maximum power for multi-project workflows" },
+    { id: "pack_100", credits: 100, label: "Starter", desc: "Enough for several AI tools and revisions" },
+    { id: "pack_250", credits: 250, label: "Creator", desc: "Enough for almost two complete Creator AI journeys", popular: true },
+    { id: "pack_500", credits: 500, label: "Pro", desc: "For multiple projects and heavier AI use" },
   ];
 
   return (

@@ -1050,5 +1050,193 @@ namespace WebApp.Tests.Unit
             _mongoSessionMock.Verify(s => s.AbortTransactionAsync(It.IsAny<CancellationToken>()), Times.Once);
             _mongoSessionMock.Verify(s => s.CommitTransactionAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
+
+        [Fact]
+        public async Task Test_23_Stripe_Enabled_Mongo_Transactions_Disabled_Fails_Closed_Webhook_Throws_And_Does_Not_Fulfill()
+        {
+            var nonTxConfig = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Mongo:TransactionsEnabled"] = "false"
+                })
+                .Build();
+
+            var purchase = new CreditPurchase
+            {
+                Id = "p_non_tx",
+                UserId = "user_non_tx",
+                PackageId = "pack_100",
+                Credits = 100,
+                AmountInCents = 1000,
+                Currency = "eur",
+                ProviderSessionId = "cs_non_tx",
+                Status = CreditPurchaseStatus.Pending
+            };
+
+            _purchasesRepoMock.Setup(r => r.GetByProviderSessionIdAsync("cs_non_tx", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(purchase);
+
+            var ledgerMock = new Mock<AiCreditLedgerRepository>(Mock.Of<IMongoDatabase>());
+
+            var stripeEvent = new Stripe.Event
+            {
+                Id = "evt_non_tx",
+                Type = "checkout.session.completed",
+                Data = new EventData
+                {
+                    Object = new Session
+                    {
+                        Id = "cs_non_tx",
+                        Mode = "payment",
+                        PaymentStatus = "paid",
+                        PaymentIntentId = "pi_non_tx",
+                        AmountTotal = 1000,
+                        Currency = "eur"
+                    }
+                }
+            };
+
+            _stripeCheckoutMock.Setup(s => s.ConstructWebhookEvent(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(stripeEvent);
+
+            var service = new AiCreditPurchaseService(
+                Options.Create(_testStripeSettings),
+                _purchasesRepoMock.Object,
+                ledgerMock.Object,
+                _stripeCheckoutMock.Object,
+                _mongoClientMock.Object,
+                nonTxConfig,
+                _serviceLoggerMock.Object);
+
+            var act = () => service.ProcessWebhookAsync("raw", "sig");
+
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*requires Mongo transactions to be enabled*");
+
+            // Verify credits were NEVER added
+            ledgerMock.Verify(r => r.AddPurchasedCreditsAsync(It.IsAny<IClientSessionHandle>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            ledgerMock.Verify(r => r.AddPurchasedCreditsAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+
+            // Purchase remains Pending (not marked Succeeded)
+            purchase.Status.Should().Be(CreditPurchaseStatus.Pending);
+        }
+
+        [Fact]
+        public async Task Test_24_Stripe_Enabled_Mongo_Transactions_Disabled_Checkout_Throws_InvalidOperationException()
+        {
+            var nonTxConfig = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Mongo:TransactionsEnabled"] = "false"
+                })
+                .Build();
+
+            var service = new AiCreditPurchaseService(
+                Options.Create(_testStripeSettings),
+                _purchasesRepoMock.Object,
+                new Mock<AiCreditLedgerRepository>(Mock.Of<IMongoDatabase>()).Object,
+                _stripeCheckoutMock.Object,
+                _mongoClientMock.Object,
+                nonTxConfig,
+                _serviceLoggerMock.Object);
+
+            var act = () => service.CreateCheckoutAsync("user_1", "pack_100");
+
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*MongoDB transactions are disabled*");
+        }
+
+        [Fact]
+        public void Test_25_Stripe_Enabled_Mongo_Transactions_Disabled_GetPackages_Returns_Empty()
+        {
+            var nonTxConfig = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Mongo:TransactionsEnabled"] = "false"
+                })
+                .Build();
+
+            var service = new AiCreditPurchaseService(
+                Options.Create(_testStripeSettings),
+                _purchasesRepoMock.Object,
+                new Mock<AiCreditLedgerRepository>(Mock.Of<IMongoDatabase>()).Object,
+                _stripeCheckoutMock.Object,
+                _mongoClientMock.Object,
+                nonTxConfig,
+                _serviceLoggerMock.Object);
+
+            var packages = service.GetAvailablePackages();
+            packages.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Test_26_GetAvailablePackages_Returns_Deterministic_Ascending_Credit_Order()
+        {
+            // Packages defined in non-ascending order (500, 100, 250)
+            var scrambledSettings = new StripeSettings
+            {
+                Enabled = true,
+                Packages = new Dictionary<string, StripePackageConfig>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["pack_500"] = new StripePackageConfig { Credits = 500, AmountInCents = 3500, Currency = "eur" },
+                    ["pack_100"] = new StripePackageConfig { Credits = 100, AmountInCents = 1000, Currency = "eur" },
+                    ["pack_250"] = new StripePackageConfig { Credits = 250, AmountInCents = 2000, Currency = "eur" }
+                }
+            };
+
+            var service = new AiCreditPurchaseService(
+                Options.Create(scrambledSettings),
+                _purchasesRepoMock.Object,
+                new Mock<AiCreditLedgerRepository>(Mock.Of<IMongoDatabase>()).Object,
+                _stripeCheckoutMock.Object,
+                _mongoClientMock.Object,
+                _config,
+                _serviceLoggerMock.Object);
+
+            var packages = service.GetAvailablePackages();
+
+            packages.Should().HaveCount(3);
+            packages[0].PackageId.Should().Be("pack_100");
+            packages[0].Credits.Should().Be(100);
+
+            packages[1].PackageId.Should().Be("pack_250");
+            packages[1].Credits.Should().Be(250);
+
+            packages[2].PackageId.Should().Be("pack_500");
+            packages[2].Credits.Should().Be(500);
+        }
+
+        [Fact]
+        public void Test_27_Controller_Enforces_Roles_Creator_And_Entrepreneur()
+        {
+            var controllerType = typeof(AiCreditPurchaseController);
+
+            // Check GetPackages
+            var getPackagesMethod = controllerType.GetMethod(nameof(AiCreditPurchaseController.GetPackages));
+            getPackagesMethod.Should().NotBeNull();
+            var getPackagesAuth = (Microsoft.AspNetCore.Authorization.AuthorizeAttribute?)Attribute.GetCustomAttribute(getPackagesMethod!, typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute));
+            getPackagesAuth.Should().NotBeNull();
+            getPackagesAuth!.Roles.Should().Be("Creator,Entrepreneur");
+
+            // Check CreateCheckout
+            var createCheckoutMethod = controllerType.GetMethod(nameof(AiCreditPurchaseController.CreateCheckout));
+            createCheckoutMethod.Should().NotBeNull();
+            var createCheckoutAuth = (Microsoft.AspNetCore.Authorization.AuthorizeAttribute?)Attribute.GetCustomAttribute(createCheckoutMethod!, typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute));
+            createCheckoutAuth.Should().NotBeNull();
+            createCheckoutAuth!.Roles.Should().Be("Creator,Entrepreneur");
+
+            // Check GetPurchases
+            var getPurchasesMethod = controllerType.GetMethod(nameof(AiCreditPurchaseController.GetPurchases));
+            getPurchasesMethod.Should().NotBeNull();
+            var getPurchasesAuth = (Microsoft.AspNetCore.Authorization.AuthorizeAttribute?)Attribute.GetCustomAttribute(getPurchasesMethod!, typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute));
+            getPurchasesAuth.Should().NotBeNull();
+            getPurchasesAuth!.Roles.Should().Be("Creator,Entrepreneur");
+
+            // Check StripeWebhook has AllowAnonymous
+            var webhookMethod = controllerType.GetMethod(nameof(AiCreditPurchaseController.StripeWebhook));
+            webhookMethod.Should().NotBeNull();
+            var allowAnon = Attribute.GetCustomAttribute(webhookMethod!, typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute));
+            allowAnon.Should().NotBeNull();
+        }
     }
 }

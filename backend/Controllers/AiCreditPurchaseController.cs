@@ -25,7 +25,7 @@ namespace WebApp.Controllers
         /// Returns all configured, purchasable credit packs.
         /// Unconfigured/unpriced packages are excluded automatically.
         /// </summary>
-        [Authorize]
+        [Authorize(Roles = "Creator,Entrepreneur")]
         [HttpGet("packages")]
         public IActionResult GetPackages()
         {
@@ -37,7 +37,7 @@ namespace WebApp.Controllers
         /// Creates a Stripe Hosted Checkout Session for the requested package.
         /// Server resolves credit quantity, price, and currency authoritatively.
         /// </summary>
-        [Authorize]
+        [Authorize(Roles = "Creator,Entrepreneur")]
         [HttpPost("checkout")]
         public async Task<IActionResult> CreateCheckout([FromBody] CreateCheckoutRequestDto request, CancellationToken ct)
         {
@@ -73,7 +73,7 @@ namespace WebApp.Controllers
         /// <summary>
         /// Returns simple purchase history for the authenticated user, newest first.
         /// </summary>
-        [Authorize]
+        [Authorize(Roles = "Creator,Entrepreneur")]
         [HttpGet("purchases")]
         public async Task<IActionResult> GetPurchases(CancellationToken ct)
         {

@@ -44,11 +44,16 @@ namespace WebApp.Services.Ai
             _mongoClient = mongoClient;
             _logger = logger;
             _transactionsEnabled = config.GetValue("Mongo:TransactionsEnabled", true);
+
+            if (_stripeSettings.Enabled && !_transactionsEnabled)
+            {
+                _logger.LogCritical("CRITICAL CONFIGURATION ERROR: Stripe credit purchasing is enabled (Stripe:Enabled=true), but MongoDB transactions are disabled (Mongo:TransactionsEnabled=false). Credit purchasing will fail closed to prevent non-transactional payment fulfillment.");
+            }
         }
 
         public List<CreditPackageDto> GetAvailablePackages()
         {
-            if (!_stripeSettings.Enabled)
+            if (!_stripeSettings.Enabled || !_transactionsEnabled)
                 return new List<CreditPackageDto>();
 
             var list = new List<CreditPackageDto>();
@@ -69,7 +74,7 @@ namespace WebApp.Services.Ai
                 }
             }
 
-            return list;
+            return list.OrderBy(p => p.Credits).ToList();
         }
 
         public async Task<CheckoutSessionResponseDto> CreateCheckoutAsync(
@@ -86,6 +91,9 @@ namespace WebApp.Services.Ai
 
             if (!_stripeSettings.Enabled)
                 throw new InvalidOperationException("AI Credit purchasing is currently disabled.");
+
+            if (!_transactionsEnabled)
+                throw new InvalidOperationException("AI Credit purchasing cannot initialize checkouts because MongoDB transactions are disabled (Mongo:TransactionsEnabled is false).");
 
             if (string.IsNullOrWhiteSpace(_stripeSettings.SecretKey))
                 throw new InvalidOperationException("Stripe SecretKey is not configured.");
@@ -301,58 +309,18 @@ namespace WebApp.Services.Ai
 
             var paymentIntentId = session.PaymentIntentId ?? session.Id;
 
-            // Crash-Safe Fulfillment via MongoDB Transaction
-            if (_transactionsEnabled)
+            // Crash-Safe Fulfillment via MongoDB Transaction (MANDATORY FOR PRODUCTION PAYMENT FULFILLMENT)
+            if (!_transactionsEnabled)
             {
-                using var mongoSession = await _mongoClient.StartSessionAsync(cancellationToken: ct);
-                mongoSession.StartTransaction();
-                try
-                {
-                    // 1. Compare-and-swap purchase: Status == Pending -> Succeeded
-                    var filter = Builders<CreditPurchase>.Filter.And(
-                        Builders<CreditPurchase>.Filter.Eq(x => x.Id, purchase.Id),
-                        Builders<CreditPurchase>.Filter.Eq(x => x.Status, CreditPurchaseStatus.Pending)
-                    );
-
-                    var update = Builders<CreditPurchase>.Update
-                        .Set(x => x.Status, CreditPurchaseStatus.Succeeded)
-                        .Set(x => x.ProviderSessionId, session.Id)
-                        .Set(x => x.ProviderPaymentIntentId, paymentIntentId)
-                        .Set(x => x.ProviderEventId, eventId)
-                        .Set(x => x.CompletedAt, DateTime.UtcNow);
-
-                    var updateResult = await _purchasesRepo.Collection.UpdateOneAsync(mongoSession, filter, update, cancellationToken: ct);
-
-                    if (updateResult.ModifiedCount != 1)
-                    {
-                        // Duplicate webhook or race won by another worker
-                        _logger.LogInformation("Purchase {PurchaseId} was already fulfilled or modified. Skipping credit grant.", purchase.Id);
-                        await mongoSession.AbortTransactionAsync(ct);
-                        return true;
-                    }
-
-                    // 2. Increment AICredits balance within the exact same transaction
-                    var creditAdded = await _creditsRepo.AddPurchasedCreditsAsync(mongoSession, purchase.UserId, purchase.Credits, ct);
-                    if (!creditAdded)
-                    {
-                        throw new InvalidOperationException($"Failed to increment balance for user {purchase.UserId} in transaction.");
-                    }
-
-                    await mongoSession.CommitTransactionAsync(ct);
-                    _logger.LogInformation("Successfully fulfilled credit purchase {PurchaseId}: +{Credits} credits for user {UserId}.",
-                        purchase.Id, purchase.Credits, purchase.UserId);
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Transaction aborted during credit fulfillment for purchase {PurchaseId}.", purchase.Id);
-                    try { await mongoSession.AbortTransactionAsync(CancellationToken.None); } catch { }
-                    throw; // Re-throw to allow Stripe webhook retry
-                }
+                _logger.LogError("Atomic fulfillment cannot proceed for purchase {PurchaseId}: Mongo transactions are disabled (Mongo:TransactionsEnabled is false). Failing closed to prevent non-transactional execution.", purchase.Id);
+                throw new InvalidOperationException("Payment fulfillment requires Mongo transactions to be enabled. Purchase remains pending for webhook retry.");
             }
-            else
+
+            using var mongoSession = await _mongoClient.StartSessionAsync(cancellationToken: ct);
+            mongoSession.StartTransaction();
+            try
             {
-                // Fallback for non-replica-set standalone dev environments
+                // 1. Compare-and-swap purchase: Status == Pending -> Succeeded
                 var filter = Builders<CreditPurchase>.Filter.And(
                     Builders<CreditPurchase>.Filter.Eq(x => x.Id, purchase.Id),
                     Builders<CreditPurchase>.Filter.Eq(x => x.Status, CreditPurchaseStatus.Pending)
@@ -365,14 +333,33 @@ namespace WebApp.Services.Ai
                     .Set(x => x.ProviderEventId, eventId)
                     .Set(x => x.CompletedAt, DateTime.UtcNow);
 
-                var updateResult = await _purchasesRepo.Collection.UpdateOneAsync(filter, update, cancellationToken: ct);
-                if (updateResult.ModifiedCount == 1)
+                var updateResult = await _purchasesRepo.Collection.UpdateOneAsync(mongoSession, filter, update, cancellationToken: ct);
+
+                if (updateResult.ModifiedCount != 1)
                 {
-                    await _creditsRepo.AddPurchasedCreditsAsync(purchase.UserId, purchase.Credits, ct);
-                    _logger.LogInformation("Successfully fulfilled credit purchase {PurchaseId} (non-transactional): +{Credits} credits for user {UserId}.",
-                        purchase.Id, purchase.Credits, purchase.UserId);
+                    // Duplicate webhook or race won by another worker
+                    _logger.LogInformation("Purchase {PurchaseId} was already fulfilled or modified. Skipping credit grant.", purchase.Id);
+                    await mongoSession.AbortTransactionAsync(ct);
+                    return true;
                 }
+
+                // 2. Increment AICredits balance within the exact same transaction
+                var creditAdded = await _creditsRepo.AddPurchasedCreditsAsync(mongoSession, purchase.UserId, purchase.Credits, ct);
+                if (!creditAdded)
+                {
+                    throw new InvalidOperationException($"Failed to increment balance for user {purchase.UserId} in transaction.");
+                }
+
+                await mongoSession.CommitTransactionAsync(ct);
+                _logger.LogInformation("Successfully fulfilled credit purchase {PurchaseId}: +{Credits} credits for user {UserId}.",
+                    purchase.Id, purchase.Credits, purchase.UserId);
                 return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Transaction aborted during credit fulfillment for purchase {PurchaseId}.", purchase.Id);
+                try { await mongoSession.AbortTransactionAsync(CancellationToken.None); } catch { }
+                throw; // Re-throw to allow Stripe webhook retry
             }
         }
     }

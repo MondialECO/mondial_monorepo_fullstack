@@ -72,9 +72,11 @@
    - `GET /api/ai/credits/purchases` returns authenticated user's records sorted newest first.
    - Displays package, credit count, amount, currency, status, and timestamps.
 
-9. **Payment Refund Scope (V1 Limitation):**
+9. **Payment Refund & Dispute Scope (V1 Limitation):**
    - AI generation failure refunds (`IAiCreditService.RefundForJobAsync`) remain strictly for failed LLM generations.
-   - Monetary refunds through Stripe are not automated in V1 and require operational reconciliation.
+   - Automatic Stripe monetary refund handling is not implemented in V1; Stripe refunds do not automatically reverse granted AI credits.
+   - Payment disputes and chargebacks do not automatically modify `AICredits.Balance`.
+   - Manual administrative reconciliation is currently required for refunded, disputed, or charged-back transactions in V1.
 
 ---
 
