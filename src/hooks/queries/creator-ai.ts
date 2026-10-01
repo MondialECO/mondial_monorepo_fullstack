@@ -16,6 +16,8 @@ import {
   type BusinessModelSession,
   type BusinessPlanSession,
   type ClarifierSession,
+  type CreditPackage,
+  type CreditPurchaseHistory,
   type ForecastInputs,
   type ForecastSession,
   type MarketStudySession,
@@ -160,6 +162,8 @@ function useTimedSession<T extends { status: AiSessionStatus }>(
 
 export const creditKeys = {
   balance: ["ai-credits"] as const,
+  packages: ["ai-credits", "packages"] as const,
+  purchases: ["ai-credits", "purchases"] as const,
 };
 
 /** Fetches balance + server-authoritative cost table. Stale-while-revalidate at 60s. */
@@ -170,6 +174,30 @@ export const useAiCredits = () =>
     staleTime: 60_000,
     refetchOnWindowFocus: true,
   });
+
+/** Fetches available credit purchase packages. */
+export const useCreditPackages = () =>
+  useQuery<CreditPackage[]>({
+    queryKey: creditKeys.packages,
+    queryFn: () => creatorAiApi.getCreditPackages(),
+    staleTime: 300_000,
+  });
+
+/** Fetches user's credit purchase history. */
+export const useCreditPurchases = (options?: { refetchInterval?: number | false }) =>
+  useQuery<CreditPurchaseHistory[]>({
+    queryKey: creditKeys.purchases,
+    queryFn: () => creatorAiApi.getCreditPurchases(),
+    staleTime: 10_000,
+    refetchInterval: options?.refetchInterval,
+  });
+
+/** Mutation to initiate Stripe Hosted Checkout for a credit pack. */
+export const useCreateCreditCheckout = () => {
+  return useMutation({
+    mutationFn: (packageId: string) => creatorAiApi.createCreditCheckout(packageId),
+  });
+};
 
 // ===== Generic helpers =====
 

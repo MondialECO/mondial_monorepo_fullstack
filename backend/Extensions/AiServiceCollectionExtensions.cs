@@ -105,6 +105,12 @@ public static class AiServiceCollectionExtensions
         services.AddScoped<Services.Ai.IAiCreditService, Services.Ai.AiCreditService>();
         services.AddScoped<Services.Ai.IFinancialAssumptionsService, Services.Ai.FinancialAssumptionsService>();
 
+        // ---- Simple AI Credit Purchase System (V1) ----
+        services.Configure<WebApp.Configuration.StripeSettings>(configuration.GetSection(WebApp.Configuration.StripeSettings.SectionName));
+        services.AddSingleton<Services.Repository.Ai.ICreditPurchaseRepository, Services.Repository.Ai.CreditPurchaseRepository>();
+        services.AddScoped<Services.Ai.IStripeCreditCheckoutService, Services.Ai.StripeCreditCheckoutService>();
+        services.AddScoped<Services.Ai.IAiCreditPurchaseService, Services.Ai.AiCreditPurchaseService>();
+
         // ---- Operational: idempotent starter-credit backfill (Phase 7) ----
         services.AddScoped<Services.Ai.IAiCreditSeeder, Services.Ai.AiCreditSeeder>();
 

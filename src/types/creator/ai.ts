@@ -705,3 +705,24 @@ export interface AiCreditBalance {
   /** Per-capability cost table — keys are capability names (e.g. "Forecast", "BusinessPlan"). */
   costs: Record<string, number>;
 }
+
+// ---------- Credit Purchase V1 ----------
+
+export interface CreditPackage {
+  packageId: string;
+  credits: number;
+  amountInCents: number;
+  currency: string;
+  displayName: string;
+}
+
+export interface CreditPurchaseHistory {
+  purchaseId: string;
+  packageId: string;
+  credits: number;
+  amountInCents: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  completedAt?: string | null;
+}

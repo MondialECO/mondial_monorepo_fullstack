@@ -15,6 +15,8 @@ import type {
   BusinessModelSession,
   BusinessPlanSession,
   ClarifierSession,
+  CreditPackage,
+  CreditPurchaseHistory,
   ForecastInputs,
   ForecastSession,
   IdeaGenerationSession,
@@ -283,6 +285,24 @@ export const creatorAiApi = {
   getCredits: async (): Promise<AiCreditBalance> => {
     const res = await api.get("/ai/credits");
     return unwrap<AiCreditBalance>(res.data);
+  },
+
+  // ---------- Credit Purchase V1 ----------
+  getCreditPackages: async (): Promise<CreditPackage[]> => {
+    const res = await api.get("/ai/credits/packages");
+    return unwrap<CreditPackage[]>(res.data);
+  },
+
+  createCreditCheckout: async (
+    packageId: string,
+  ): Promise<{ checkoutUrl: string; sessionId?: string }> => {
+    const res = await api.post("/ai/credits/checkout", { packageId });
+    return unwrap<{ checkoutUrl: string; sessionId?: string }>(res.data);
+  },
+
+  getCreditPurchases: async (): Promise<CreditPurchaseHistory[]> => {
+    const res = await api.get("/ai/credits/purchases");
+    return unwrap<CreditPurchaseHistory[]>(res.data);
   },
 };
 
