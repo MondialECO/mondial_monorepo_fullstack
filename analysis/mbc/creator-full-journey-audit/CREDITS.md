@@ -37,20 +37,26 @@ The AI credit ledger is managed by `backend/Services/Implementations/AiCreditSer
 ## 2. Full-Journey Cost & Starter Balance Analysis
 
 ### 2.1 Complete Journey Total (Phase 1 → Phase 6)
-- **Minimum Journey Cost** (Branding skipped or M50 Designer hired, zero business plan section rewrites):  
-  $$20 + 20 + 18 + 32 + 33 = \mathbf{123\text{ credits}}$$
-- **Standard Journey Cost** (Using Brand Studio for full AI logo & identity generation, zero rewrites):  
-  $$123 + (7 + 4 + 2 + 2) = 123 + 15 = \mathbf{138\text{ credits}}$$
-- **Extended Journey Cost** (Standard journey + 2 section rewrites):  
-  $$138 + 10 = \mathbf{148\text{ credits}}$$
+- **Minimum Journey Cost** (Branding skipped or Designer hired, zero business plan section rewrites):  
+  $$20 + 20 + 18 + 32 + 33 = \mathbf{123\text{ credits consumed}}\quad (7\text{ provider calls})$$
+- **Normal Brand Studio Journey Cost** (Visual Direction 7 + Logo Concepts 4 + free deterministic initial colors/typo derivations):  
+  $$123 + 7 + 4 = \mathbf{134\text{ credits consumed}}\quad (9\text{ provider calls})$$
+- **Extended Journey Cost** (Brand Studio + Color Regen 2 + Typo Regen 2):  
+  $$134 + 2 + 2 = \mathbf{138\text{ credits consumed}}$$
+- **Extended Journey with Section Rewrites** (Standard journey + 2 section rewrites):  
+  $$134 + 10 = \mathbf{144\text{ credits consumed}}$$
 
 ### 2.2 Starter Grant & Net Balance
 - **Starter Grant at HEAD**: **200 credits**  
-  - Evidence: `backend/appsettings.Example.json:AiCreditSettings:StarterGrant = 200` and `AiCreditService.cs:48`.
-- **Remaining Balance After One Complete Standard Journey**:  
-  $$200 - 138 = \mathbf{62\text{ credits remaining}}$$
-- **Remaining Balance After Minimum Journey**:  
+  - Guaranteed before first paid AI operation (`Ai:StarterCredits = 200`).
+  - Lazily initialized when `GET /api/ai/credits` is requested upon dashboard entry, or via fallback guard in `DebitForJobAsync` prior to the first debit.
+  - Idempotent `$setOnInsert` ensures zero balances are never topped back up.
+- **Remaining Balance After Standard Journey (Minimum Path)**:  
   $$200 - 123 = \mathbf{77\text{ credits remaining}}$$
+- **Remaining Balance After Normal Brand Studio Journey**:  
+  $$200 - 134 = \mathbf{66\text{ credits remaining}}$$
+- **Remaining Balance After Extended Journey (138 credits)**:  
+  $$200 - 138 = \mathbf{62\text{ credits remaining}}$$
 
 ---
 

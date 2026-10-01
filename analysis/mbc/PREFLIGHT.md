@@ -160,7 +160,7 @@ mondial_monorepo_fullstack/
   11. `ColorGeneration` / `TypographyGeneration`
 - **Output Token Limits**: Bounded between 500 (`Probe`) and 8,500 (`BusinessModel`).
 - **Credit & Quota Economy**:
-  - Starter credits: 200 credits granted upon user onboarding.
+  - Starter credits: 200 starter AI credits guaranteed before first paid AI operation (lazily initialized on first balance request or debit).
   - Credit consumption per task: e.g. Business Plan (33), Forecast (32), Clarifier (20), Market Study (20), Business Model (18).
 - **AI Persistence Repositories**: 7 dedicated collections:
   - `AiRequestRepository`
