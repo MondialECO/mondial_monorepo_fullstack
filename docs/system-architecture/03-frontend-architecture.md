@@ -422,6 +422,57 @@ Following Figma Node `57157:9297` (`Financial Forecast · Creator Phase 3.3`), S
   4. `Path from Concept to Liquidity`: 4-phase preview cards explaining Phases 2–5.
 - **Resilient Context Fallback**: In `CreatorDashboardService`, invalid or stale `ideaId` references automatically fall back to the active idea rather than throwing 403 Forbidden errors, ensuring high uptime and uninterrupted user journeys.
 
+### E. Creator Single-Active-Idea Cross-Tab Synchronization Architecture
+
+- **Canonical Product Rule**:
+  - A user may own multiple business ideas, but works on only **ONE** selected idea at a time.
+  - All open Creator workspace tabs within the same browser session follow the active idea selection.
+  - Example: If Tab 1 is open to Pricing and Tab 2 is open to Launch Assets for Idea A, and the user switches to Idea B in Tab 1, Tab 1 navigates to Pricing for Idea B and Tab 2 automatically reloads its Launch Assets view for Idea B.
+- **Authoritative Selection vs. Notification Signal**:
+  - **Authoritative Source of Truth**: MongoDB collection `CreatorJourneys`, field `ActiveIdeaId` (persisted per authenticated user).
+  - **Decoupled Account Read**: `creatorJourneyApi.getAccountJourney()` issues parameter-less `GET /api/creator/journey`, guaranteeing retrieval of the authoritative account selection without injecting module-level `workspaceIdeaId`. Existing idea-scoped reads (`creatorJourneyApi.get(ideaId)`) remain fully supported.
+  - **Lightweight Notification Payload**: Upon explicit switch (`setActiveIdea`) or new idea creation (`createIdea`), `notifyActiveIdeaChanged` writes a notification payload to `localStorage.setItem('mondial_active_idea_signal', ...)`:
+    ```typescript
+    interface ActiveIdeaSignalPayload {
+      ideaId: string;
+      userId: string | null;
+      timestamp: number;
+      tabId: string;
+    }
+    ```
+  - **Non-Authoritative Signal**: Receiving tabs **never** treat the `localStorage` signal payload as the authoritative selection. It functions strictly as a wakeup notification.
+- **Headless Tab Coordination (`CreatorActiveIdeaSync.tsx` & `creator-tab-sync.ts`)**:
+  - Headless `<CreatorActiveIdeaSync />` is mounted inside `src/app/dashboard/creator/layout.tsx`.
+  - On window `storage` events, the listener:
+    1. Ignores events originating from the same tab (`payload.tabId === getTabId()`).
+    2. Ignores events from other accounts (`payload.userId !== currentUserId`).
+    3. Drops stale or out-of-order notifications (`payload.timestamp <= lastHandledTime`).
+    4. Limits execution strictly to Creator routes (`window.location.pathname.startsWith('/dashboard/creator')`).
+    5. Re-reads the authoritative backend selection via `creatorJourneyApi.getAccountJourney()`.
+    6. If `authoritativeId !== currentDisplayedIdeaId`, cancels pending uncommitted saves and performs a full-page reload via `window.location.replace(buildReloadUrlForNewIdea(...))`.
+- **Route Retention & URL Reconstruction (`buildReloadUrlForNewIdea`)**:
+  - Retains the current page route and URL hash.
+  - Sets or updates `?ideaId={authoritativeId}`.
+  - Removes deprecated `?idea=` query parameters.
+  - Preserves unrelated query parameters (e.g. `preview=true`).
+- **Unsaved Input Policy & Save Cancellation Guards**:
+  - **Policy**: Unsaved inputs are deliberately discarded upon an active idea switch; no draft preservation, autosave-before-switch, or confirmation modals are presented.
+  - **Save Cancellation Coordination**: `cancelAllPendingSaves()` sets module flag `isTabReloadingForSwitch = true` and invokes all callbacks registered via `registerSaveCancellation()`.
+  - **Registered Guards**:
+    - `useCreatorProgressState.ts`: Clears pending debounce timer `projectSaveTimerRef`, resets accumulated patches `projectPatchRef.current = {}`, and guards `flushProjectPatch` and `updateProject` against firing during reload.
+    - `PricingStrategyView.tsx`: Guards `executeSavePrice` and price input `onBlur` so that blur events during DOM destruction do not fire saves.
+    - `phase-3/formation/page.tsx`: Guards `handleBeforeUnload` and unmount cleanup from draining the skills queue.
+  - **Scope of Cancellation**: This mechanism cancels pending un-dispatched writes and guards event handlers before network dispatch. Writes already in flight across the network to the server are not cancelled and are safely governed by MongoDB optimistic concurrency (`expectedVersion`).
+- **Initial Hydration & URL Reconciliation**:
+  - `useCreatorProgressState` unifies parsing of both `?ideaId=` and legacy `?idea=`.
+  - On initial mount or reload, `getAccountJourney()` resolves the backend selection.
+  - If a Creator tab is opened with a stale URL `?ideaId=A` while the account's active idea is `B`, it automatically aligns by replacing the URL to `?ideaId=B`.
+  - Stale workspace recovery in `sessionStorage` (e.g. after idea deletion) derives the replacement workspace from authoritative `journey.activeIdeaId`.
+- **System Boundaries & Non-Interference**:
+  - Bounded strictly to `/dashboard/creator/**`.
+  - Public anonymous launch routes (`/p/launch/[token]`) are completely unaffected.
+  - Zero backend code, API contract, model, or database schema modifications.
+
 ---
 
 ## 9. Creator Phase 4 Full-Width Layout & Launch Preparation Architecture — FINAL / FROZEN

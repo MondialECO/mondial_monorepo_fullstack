@@ -9,6 +9,7 @@
  */
 
 import api from '@/lib/axios';
+import { notifyActiveIdeaChanged } from '@/lib/creator-tab-sync';
 import type {
   JourneyResponse,
   JourneyOutputKey,
@@ -115,7 +116,23 @@ export interface UpdateProjectPayload {
 }
 
 export const creatorJourneyApi = {
-  get: async (ideaId?: string | null): Promise<JourneyResponse> => {
+  /**
+   * Authoritative account-level journey read without an ideaId parameter.
+   * Never injects module-level workspaceIdeaId.
+   */
+  getAccountJourney: async (): Promise<JourneyResponse> => {
+    const res = await api.get('/creator/journey');
+    const data = unwrap<JourneyResponse>(res.data);
+    if (data.journey.activeIdeaId && data.journey.ideaVersion > 0) {
+      ideaVersions.set(data.journey.activeIdeaId, data.journey.ideaVersion);
+    }
+    return data;
+  },
+
+  get: async (ideaId?: string | null, options?: { accountOnly?: boolean }): Promise<JourneyResponse> => {
+    if (options?.accountOnly) {
+      return creatorJourneyApi.getAccountJourney();
+    }
     const resolved = ideaId ?? workspaceIdeaId;
     const res = await api.get('/creator/journey', resolved ? { params: { ideaId: resolved } } : undefined);
     const data = unwrap<JourneyResponse>(res.data);
@@ -441,13 +458,23 @@ export const creatorJourneyApi = {
   /** Mint a blank idea and make it active. The caller re-hydrates and routes to Phase 2. */
   createIdea: async (): Promise<{ ideaId: string }> => {
     const res = await api.post('/creator/ideas', {});
-    return unwrap<{ ideaId: string }>(res.data);
+    const data = unwrap<{ ideaId: string }>(res.data);
+    if (data?.ideaId) {
+      setCreatorWorkspaceIdea(data.ideaId);
+      notifyActiveIdeaChanged(data.ideaId);
+    }
+    return data;
   },
 
   /** Switch the active idea (owned-check 404 server-side, never a fallback). */
   setActiveIdea: async (ideaId: string): Promise<{ activeIdeaId: string }> => {
     const res = await api.patch('/creator/ideas/active', { ideaId });
-    return unwrap<{ activeIdeaId: string }>(res.data);
+    const data = unwrap<{ activeIdeaId: string }>(res.data);
+    if (data?.activeIdeaId) {
+      setCreatorWorkspaceIdea(data.activeIdeaId);
+      notifyActiveIdeaChanged(data.activeIdeaId);
+    }
+    return data;
   },
 };
 

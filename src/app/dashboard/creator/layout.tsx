@@ -2,6 +2,7 @@ import { CreatorProgressProvider } from "@/providers/CreatorProgressProvider";
 import CreatorPhaseGuard from "@/components/layout/CreatorPhaseGuard";
 import CreatorHumainXQuickStartGuard from "@/components/layout/CreatorHumainXQuickStartGuard";
 import { CreatorConflictNotice } from "@/components/creator/CreatorConflictNotice";
+import { CreatorActiveIdeaSync } from "@/components/creator/CreatorActiveIdeaSync";
 
 export default function CreatorLayout({
   children,
@@ -10,6 +11,7 @@ export default function CreatorLayout({
 }) {
   return (
     <CreatorProgressProvider>
+      <CreatorActiveIdeaSync />
       <CreatorConflictNotice />
       <CreatorHumainXQuickStartGuard>
         <CreatorPhaseGuard>

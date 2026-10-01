@@ -14,6 +14,11 @@ import type {
   JourneyOutputKey,
 } from '@/types/creator/journey-api';
 import { creatorJourneyApi, setCreatorWorkspaceIdea, type UpdateProjectPayload } from '@/lib/api-creator-journey';
+import {
+  registerSaveCancellation,
+  isTabReloadingForSwitch,
+  buildReloadUrlForNewIdea,
+} from '@/lib/creator-tab-sync';
 
 const STORAGE_KEY = 'mondial_creator_progress_draft';
 const SAVE_DEBOUNCE_MS = 500;
@@ -280,6 +285,19 @@ export function useCreatorProgressState() {
   const projectSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => { activeIdeaIdRef.current = state.activeIdeaId; }, [state.activeIdeaId]);
 
+  // Register clean save cancellation when switching active ideas
+  useEffect(() => {
+    const unregister = registerSaveCancellation(() => {
+      if (projectSaveTimerRef.current) {
+        clearTimeout(projectSaveTimerRef.current);
+        projectSaveTimerRef.current = null;
+      }
+      projectPatchRef.current = {};
+      projectPatchTargetRef.current = null;
+    });
+    return unregister;
+  }, []);
+
   // In-flight guard: concurrent hydration attempts (the StrictMode-double-invoked
   // mount effect, and on-demand refetch callers) share ONE request instead of each
   // firing its own. Cleared on settle (success OR failure) below — never cached, so
@@ -308,33 +326,49 @@ export function useCreatorProgressState() {
     // stored forever — the sticky-cache failure this guard exists to avoid.
     const request = Promise.resolve().then(async (): Promise<HydrateResult> => {
       try {
-        const queryIdeaId = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('idea');
+        const search = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search);
+        const queryIdeaId = search ? (search.get('ideaId') || search.get('idea')) : null;
         const storedIdeaId = typeof window === 'undefined' ? null : sessionStorage.getItem('creator_workspace_idea_id');
         const explicitWorkspaceId = requestedIdeaId ?? workspaceIdeaIdRef.current ?? queryIdeaId;
-        const requested = explicitWorkspaceId ?? storedIdeaId;
+
         let loaded;
+        let recoveredFromStaleWorkspace = false;
         try {
-          loaded = await creatorJourneyApi.get(requested);
+          if (requestedIdeaId) {
+            loaded = await creatorJourneyApi.get(requestedIdeaId);
+          } else {
+            loaded = await creatorJourneyApi.getAccountJourney();
+          }
         } catch (err) {
           // A sessionStorage workspace is only a convenience pointer. It may refer
           // to a deleted or no-longer-owned idea, so recover through the server's
           // permitted default rather than trapping this tab on a permanent 404.
-          // Explicit navigation/refetch targets must keep their real error.
           const canRecoverStoredWorkspace = !explicitWorkspaceId && !!storedIdeaId;
           if (!canRecoverStoredWorkspace) throw err;
           sessionStorage.removeItem('creator_workspace_idea_id');
           workspaceIdeaIdRef.current = null;
           setCreatorWorkspaceIdea(null);
-          loaded = await creatorJourneyApi.get();
+          loaded = await creatorJourneyApi.getAccountJourney();
+          recoveredFromStaleWorkspace = true;
         }
         const { journey, computedStatus } = loaded;
-        // An explicit workspace remains stable even when another tab repoints the
-        // user's ActiveIdeaId. State.activeIdeaId is the workspace identity in this tab.
-        const workspaceIdeaId = requested ?? journey.activeIdeaId;
+
+        // Authoritative active idea selection
+        const authoritativeIdeaId = requestedIdeaId ?? journey.activeIdeaId ?? null;
+        const workspaceIdeaId = (recoveredFromStaleWorkspace ? null : (requestedIdeaId ?? queryIdeaId)) ?? authoritativeIdeaId;
+
         if (workspaceIdeaId) {
           workspaceIdeaIdRef.current = workspaceIdeaId;
           setCreatorWorkspaceIdea(workspaceIdeaId);
-          if (typeof window !== 'undefined') sessionStorage.setItem('creator_workspace_idea_id', workspaceIdeaId);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('creator_workspace_idea_id', workspaceIdeaId);
+            // If the URL has an outdated ideaId on a creator project page, reload cleanly to align with the authoritative selection
+            if (queryIdeaId && authoritativeIdeaId && queryIdeaId !== authoritativeIdeaId && window.location.pathname.startsWith('/dashboard/creator')) {
+              const targetUrl = buildReloadUrlForNewIdea(window.location.href, authoritativeIdeaId);
+              window.location.replace(targetUrl);
+              return { ok: true, activeIdeaId: authoritativeIdeaId };
+            }
+          }
         } else {
           workspaceIdeaIdRef.current = null;
           setCreatorWorkspaceIdea(null);
@@ -403,6 +437,7 @@ export function useCreatorProgressState() {
 
   // Send the accumulated patch to ITS captured target idea (never the current one).
   const flushProjectPatch = useCallback(async () => {
+    if (isTabReloadingForSwitch()) return;
     const payload = projectPatchRef.current;
     // Target = the idea captured at queue time; a patch queued BEFORE the first
     // hydration (null capture) re-resolves at flush time. Both null → no param
@@ -422,6 +457,7 @@ export function useCreatorProgressState() {
   }, [applyResponse]);
 
   const updateProject = useCallback((fields: Partial<CreatorProject>) => {
+    if (isTabReloadingForSwitch()) return;
     // Optimistic local update.
     setState((prev) => ({ ...prev, project: { ...prev.project, ...fields, exists: true } }));
 

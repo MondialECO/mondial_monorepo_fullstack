@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { isTabReloadingForSwitch } from '@/lib/creator-tab-sync';
 import {
   Tag,
   AlertTriangle,
@@ -136,7 +137,7 @@ export function PricingStrategyView({
   const [offerNoteText, setOfferNoteText] = useState<string>('');
 
   const executeSavePrice = async (targetPrice: number): Promise<void> => {
-    if (!activeOffer) return;
+    if (!activeOffer || isTabReloadingForSwitch()) return;
     if (isSavingRef.current && activeSavePromiseRef.current) {
       return activeSavePromiseRef.current;
     }
@@ -863,6 +864,7 @@ export function PricingStrategyView({
                   value={chosenPriceInput}
                   onChange={(e) => setChosenPriceInput(e.target.value)}
                   onBlur={() => {
+                    if (isTabReloadingForSwitch()) return;
                     const parsed = parseFloat(chosenPriceInput);
                     if (!isNaN(parsed) && parsed !== initialPrice) {
                       executeSavePrice(parsed);
