@@ -17,6 +17,9 @@ using WebApp.Models.Dtos;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
 using WebApp.Services.Repository;
+using WebApp.Models.DatabaseModels.Ai;
+using WebApp.Services.Repository.Ai;
+using MongoDB.Bson;
 using Xunit;
 
 namespace WebApp.Tests.Unit
@@ -1206,6 +1209,282 @@ namespace WebApp.Tests.Unit
             var customizedResult = customizedSummary.Results.Should().ContainSingle(r => r.Key == "launch_assets").Subject;
             customizedResult.Title.Should().Be("One-Page Launch Website");
             customizedResult.Status.Should().Be("Ready");
+        }
+
+        private static ForecastSession CreateTestForecastSession(
+            string ideaId,
+            string userId,
+            decimal[] monthlyAmounts,
+            int? breakEvenMonth = 14,
+            string currency = "EUR",
+            bool isValid = true)
+        {
+            var revMonthly = new BsonArray();
+            if (isValid)
+            {
+                for (int i = 0; i < monthlyAmounts.Length; i++)
+                {
+                    revMonthly.Add(new BsonDocument
+                    {
+                        ["month"] = i + 1,
+                        ["amount"] = (double)monthlyAmounts[i],
+                        ["notes"] = $"Month {i + 1}"
+                    });
+                }
+            }
+
+            var costMonthly = new BsonArray();
+            if (isValid)
+            {
+                costMonthly.Add(new BsonDocument { ["month"] = 1, ["fixedCosts"] = 1000, ["variableCosts"] = 200 });
+            }
+
+            var content = new BsonDocument
+            {
+                ["revenueForecast"] = new BsonDocument
+                {
+                    ["currency"] = currency,
+                    ["summary"] = "Projection summary",
+                    ["monthly"] = revMonthly
+                },
+                ["costForecast"] = new BsonDocument
+                {
+                    ["currency"] = currency,
+                    ["summary"] = "Cost summary",
+                    ["monthly"] = costMonthly
+                },
+                ["breakEvenAnalysis"] = new BsonDocument
+                {
+                    ["breakEvenMonth"] = breakEvenMonth.HasValue ? (BsonValue)breakEvenMonth.Value : BsonNull.Value,
+                    ["isAchievedWithinHorizon"] = breakEvenMonth.HasValue,
+                    ["summary"] = "Break-even summary"
+                }
+            };
+
+            return new ForecastSession
+            {
+                Id = "session-fc-1",
+                OwnerUserId = userId,
+                BusinessIdeaId = ideaId,
+                Status = isValid ? "Completed" : "Failed",
+                Versions = new List<ForecastVersion>
+                {
+                    new ForecastVersion
+                    {
+                        Version = 1,
+                        Content = content,
+                        GeneratedContent = content,
+                        CreatedAt = DateTime.UtcNow
+                    }
+                }
+            };
+        }
+
+        [Fact]
+        public async Task ForecastRevenue_WhenValidForecastExists_ReturnsDeterministicRevenueProjection()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            var forecastStoreMock = new Mock<IForecastSessionStore>();
+
+            var amounts = new decimal[] { 10000m, 20000m, 30000m };
+            var session = CreateTestForecastSession(TestIdeaId, TestUserId, amounts, breakEvenMonth: 14, currency: "EUR");
+            forecastStoreMock.Setup(f => f.GetByIdeaAsync(TestIdeaId, TestUserId)).ReturnsAsync(session);
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId)).ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId)).ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>())).ReturnsAsync(new ComputedJourneyStatus());
+
+            var service = new CreatorDashboardService(
+                _journeysMock.Object,
+                _ideasMock.Object,
+                _brandKitsMock.Object,
+                _profilesMock.Object,
+                _userManagerMock.Object,
+                forecastStoreMock.Object
+            );
+
+            // Act
+            var summary = await service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.Forecast.Should().NotBeNull();
+            summary.Forecast.HasForecast.Should().BeTrue();
+            summary.Forecast.RevenueProjection.Should().Be(60000m);
+            summary.Forecast.Currency.Should().Be("EUR");
+        }
+
+        [Fact]
+        public async Task ForecastBreakEven_WhenValidForecastExists_ReturnsBreakEvenMonth()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            var forecastStoreMock = new Mock<IForecastSessionStore>();
+
+            var amounts = new decimal[] { 5000m, 10000m };
+            var session = CreateTestForecastSession(TestIdeaId, TestUserId, amounts, breakEvenMonth: 14);
+            forecastStoreMock.Setup(f => f.GetByIdeaAsync(TestIdeaId, TestUserId)).ReturnsAsync(session);
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId)).ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId)).ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>())).ReturnsAsync(new ComputedJourneyStatus());
+
+            var service = new CreatorDashboardService(
+                _journeysMock.Object,
+                _ideasMock.Object,
+                _brandKitsMock.Object,
+                _profilesMock.Object,
+                _userManagerMock.Object,
+                forecastStoreMock.Object
+            );
+
+            // Act
+            var summary = await service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.Forecast.BreakEvenMonth.Should().Be(14);
+        }
+
+        [Fact]
+        public async Task Forecast_WhenFailedOrInvalidForecast_ReturnsNullFields()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            var forecastStoreMock = new Mock<IForecastSessionStore>();
+
+            var invalidSession = CreateTestForecastSession(TestIdeaId, TestUserId, Array.Empty<decimal>(), breakEvenMonth: null, isValid: false);
+            forecastStoreMock.Setup(f => f.GetByIdeaAsync(TestIdeaId, TestUserId)).ReturnsAsync(invalidSession);
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId)).ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId)).ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>())).ReturnsAsync(new ComputedJourneyStatus());
+
+            var service = new CreatorDashboardService(
+                _journeysMock.Object,
+                _ideasMock.Object,
+                _brandKitsMock.Object,
+                _profilesMock.Object,
+                _userManagerMock.Object,
+                forecastStoreMock.Object
+            );
+
+            // Act
+            var summary = await service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.Forecast.HasForecast.Should().BeFalse();
+            summary.Forecast.RevenueProjection.Should().BeNull();
+            summary.Forecast.BreakEvenMonth.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task Forecast_WhenCrossProjectForecast_DoesNotExposeForecastData()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            var forecastStoreMock = new Mock<IForecastSessionStore>();
+
+            // Session belongs to another idea
+            var crossProjectSession = CreateTestForecastSession("other-idea-999", TestUserId, new decimal[] { 50000m }, breakEvenMonth: 12);
+            forecastStoreMock.Setup(f => f.GetByIdeaAsync(TestIdeaId, TestUserId)).ReturnsAsync(crossProjectSession);
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId)).ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId)).ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>())).ReturnsAsync(new ComputedJourneyStatus());
+
+            var service = new CreatorDashboardService(
+                _journeysMock.Object,
+                _ideasMock.Object,
+                _brandKitsMock.Object,
+                _profilesMock.Object,
+                _userManagerMock.Object,
+                forecastStoreMock.Object
+            );
+
+            // Act
+            var summary = await service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.Forecast.HasForecast.Should().BeFalse();
+            summary.Forecast.RevenueProjection.Should().BeNull();
+            summary.Forecast.BreakEvenMonth.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task Forecast_WhenNoForecastExists_ReturnsNullFields()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+            var forecastStoreMock = new Mock<IForecastSessionStore>();
+
+            forecastStoreMock.Setup(f => f.GetByIdeaAsync(TestIdeaId, TestUserId)).ReturnsAsync((ForecastSession?)null);
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId)).ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId)).ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>())).ReturnsAsync(new ComputedJourneyStatus());
+
+            var service = new CreatorDashboardService(
+                _journeysMock.Object,
+                _ideasMock.Object,
+                _brandKitsMock.Object,
+                _profilesMock.Object,
+                _userManagerMock.Object,
+                forecastStoreMock.Object
+            );
+
+            // Act
+            var summary = await service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.Forecast.HasForecast.Should().BeFalse();
+            summary.Forecast.RevenueProjection.Should().BeNull();
+            summary.Forecast.BreakEvenMonth.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task LegalReadiness_WhenAssessmentExists_ReturnsPlanningReadinessPct()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            journey.Phase3Data.LegalAssessment = new CreatorLegalAssessment
+            {
+                PlanningReadinessPct = 85.0
+            };
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId)).ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId)).ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>())).ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.Project.LegalReadinessPct.Should().Be(85.0);
+        }
+
+        [Fact]
+        public async Task LegalReadiness_WhenNoAssessmentExists_ReturnsNullAndNoInventedScore()
+        {
+            // Arrange
+            var journey = CreateBaseJourney();
+            journey.Phase3Data.LegalAssessment = null;
+            var idea = new CreatorIdea { Id = TestIdeaId, UserId = TestUserId, Project = journey.Project };
+
+            _journeysMock.Setup(j => j.GetOrCreateComposedAsync(TestUserId, TestIdeaId)).ReturnsAsync(journey);
+            _ideasMock.Setup(i => i.GetOwnedAsync(TestIdeaId, TestUserId)).ReturnsAsync(idea);
+            _journeysMock.Setup(j => j.ComputePhaseStatusAsync(journey, It.IsAny<bool>())).ReturnsAsync(new ComputedJourneyStatus());
+
+            // Act
+            var summary = await _service.GetSummaryAsync(TestUserId, TestIdeaId);
+
+            // Assert
+            summary.Project.LegalReadinessPct.Should().BeNull();
         }
     }
 }

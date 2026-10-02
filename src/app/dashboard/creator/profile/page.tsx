@@ -94,6 +94,7 @@ function HumainXProfileBuilderInner() {
   const initialMode = searchParams.get('mode');
 
   const [step, setStep] = useState<number>(initialMode === 'view' ? 9 : 0);
+  const [hasInitializedStep, setHasInitializedStep] = useState(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<HumainXFormData>({
@@ -112,6 +113,37 @@ function HumainXProfileBuilderInner() {
   });
 
   const [initialSkills, setInitialSkills] = useState<HumainXSkill[]>([]);
+
+  // Helper to determine if a specific step is completed
+  const isStepComplete = (idx: number, data: HumainXFormData): boolean => {
+    switch (idx) {
+      case 0: // Experience
+        return data.experiences.length > 0;
+      case 1: // Education
+        return data.education.length > 0;
+      case 2: // Skills
+        return data.skills.length > 0;
+      case 3: // Languages
+        return data.languages.length > 0;
+      case 4: // Current Situation
+        return Boolean(data.ventureContext.currentSituation?.trim());
+      case 5: // Availability
+        return Boolean(data.ventureContext.weeklyAvailability?.trim());
+      case 6: // Region
+        return Boolean(data.ventureContext.region?.trim());
+      case 7: // Business Experience
+        return Boolean(data.ventureContext.previousEntrepreneurialExperience?.trim());
+      case 8: // Learn / Delegate
+        return Boolean(
+          data.ventureContext.learningPreference?.trim() ||
+          data.ventureContext.delegationPreference?.trim()
+        );
+      case 9: // Summary
+        return false;
+      default:
+        return false;
+    }
+  };
 
   // Fetch current profile
   const { data: profileData, isLoading: isProfileLoading } = useQuery({
@@ -162,7 +194,7 @@ function HumainXProfileBuilderInner() {
 
     const vc = profileData.ventureContext || {};
 
-    setFormData({
+    const populatedData: HumainXFormData = {
       experiences: loadedExperiences,
       education: loadedEducation,
       skills: loadedSkills,
@@ -175,8 +207,28 @@ function HumainXProfileBuilderInner() {
         learningPreference: vc.learningPreference || '',
         delegationPreference: vc.delegationPreference || '',
       },
-    });
-  }, [profileData]);
+    };
+
+    setFormData(populatedData);
+
+    // Auto-resume from the first incomplete step, preserving existing Quick Start & profile answers
+    if (!hasInitializedStep && initialMode !== 'view') {
+      const explicitStep = searchParams.get('step');
+      if (explicitStep !== null && !isNaN(Number(explicitStep))) {
+        setStep(Math.min(9, Math.max(0, Number(explicitStep))));
+      } else {
+        const firstIncomplete = [0, 1, 2, 3, 4, 5, 6, 7, 8].find(
+          (idx) => !isStepComplete(idx, populatedData)
+        );
+        if (firstIncomplete !== undefined) {
+          setStep(firstIncomplete);
+        } else {
+          setStep(9);
+        }
+      }
+      setHasInitializedStep(true);
+    }
+  }, [profileData, hasInitializedStep, initialMode, searchParams]);
 
   // Save Mutation
   const saveMutation = useMutation({
@@ -202,6 +254,25 @@ function HumainXProfileBuilderInner() {
     setTimeout(() => {
       router.push(returnTo);
     }, 2000);
+  };
+
+  // Step navigation: continue remaining/incomplete questions
+  const handleNextStep = () => {
+    const nextAfter = [0, 1, 2, 3, 4, 5, 6, 7, 8].find(
+      (idx) => idx > step && !isStepComplete(idx, formData)
+    );
+    if (nextAfter !== undefined) {
+      setStep(nextAfter);
+      return;
+    }
+    const earlierIncomplete = [0, 1, 2, 3, 4, 5, 6, 7, 8].find(
+      (idx) => idx < step && !isStepComplete(idx, formData)
+    );
+    if (earlierIncomplete !== undefined) {
+      setStep(earlierIncomplete);
+      return;
+    }
+    setStep(9);
   };
 
   // Skill Input State
@@ -384,7 +455,7 @@ function HumainXProfileBuilderInner() {
       <div className="flex w-full items-center overflow-x-auto pb-2 scrollbar-none gap-2">
         {STEP_TITLES.map((title, idx) => {
           const isActive = step === idx;
-          const isCompleted = step > idx;
+          const isCompleted = isStepComplete(idx, formData);
           return (
             <button
               key={title}
@@ -1166,7 +1237,12 @@ function HumainXProfileBuilderInner() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border">
               <Button
                 variant="outline"
-                onClick={() => setStep(0)}
+                onClick={() => {
+                  const firstIncomplete = [0, 1, 2, 3, 4, 5, 6, 7, 8].find(
+                    (idx) => !isStepComplete(idx, formData)
+                  );
+                  setStep(firstIncomplete !== undefined ? firstIncomplete : 0);
+                }}
                 className="w-full sm:w-auto rounded-xl border-border text-xs font-semibold"
               >
                 Edit Profile
@@ -1205,7 +1281,7 @@ function HumainXProfileBuilderInner() {
           </Button>
 
           <Button
-            onClick={() => setStep((s) => Math.min(9, s + 1))}
+            onClick={handleNextStep}
             className="rounded-xl bg-primary text-primary-foreground text-xs font-semibold px-6 shadow-sm"
           >
             Next <ArrowRight className="w-4 h-4 ml-2" />

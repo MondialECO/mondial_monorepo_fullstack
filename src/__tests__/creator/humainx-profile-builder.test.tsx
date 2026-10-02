@@ -4,6 +4,7 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HumainXDashboardCard } from "@/components/creator/dashboard/HumainXDashboardCard";
 import { Phase4ProfileGuard } from "@/components/creator/phase4/Phase4ProfileGuard";
+import HumainXProfileBuilderPage from "@/app/dashboard/creator/profile/page";
 import {
   calculateLocalCompleteness,
   prepareHumainXPayload,
@@ -348,7 +349,7 @@ describe("Phase4ProfileGuard Component", () => {
     expect(creatorProfileApi.getPhase4Readiness).not.toHaveBeenCalled();
   });
 
-  it("shows Profile Incomplete gate when phase 3 is completed but phase4Ready is false", async () => {
+  it("1. Phase 3 complete + profileCompletion 40 -> redirects to Full HumainX", async () => {
     mockCreatorState.journeyState.phase3.status = "completed";
     vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
       phase4Ready: false,
@@ -366,24 +367,19 @@ describe("Phase4ProfileGuard Component", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Personalize your construction plan/i)).toBeDefined();
-      expect(screen.getAllByText("Skills").length).toBeGreaterThan(0);
-      expect(screen.getByText("Progress preference (learning or delegation)")).toBeDefined();
+      expect(mockRouter.replace).toHaveBeenCalledWith(
+        expect.stringContaining("/dashboard/creator/profile?ideaId=idea-456&returnTo=")
+      );
       expect(screen.queryByText("Protected Phase 4 Content")).toBeNull();
     });
-
-    const cta = screen.getByText("Complete My Profile").closest("a");
-    expect(cta?.getAttribute("href")).toContain("/dashboard/creator/profile");
-    expect(cta?.getAttribute("href")).toContain("ideaId=idea-456");
-    expect(creatorProfileApi.getPhase4Readiness).not.toHaveBeenCalled();
   });
 
-  it("renders protected Phase 4 children when phase 3 is completed and phase4Ready is true", async () => {
+  it("2. Phase 3 complete + phase4Ready true + profileCompletion 80 -> STILL redirects to Full HumainX (critical)", async () => {
     mockCreatorState.journeyState.phase3.status = "completed";
     vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
       phase4Ready: true,
       missingForPhase4: [],
-      profileCompletion: 70,
+      profileCompletion: 80,
     });
 
     const queryClient = createTestQueryClient();
@@ -396,13 +392,14 @@ describe("Phase4ProfileGuard Component", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Protected Phase 4 Content")).toBeDefined();
+      expect(mockRouter.replace).toHaveBeenCalledWith(
+        expect.stringContaining("/dashboard/creator/profile?ideaId=idea-456&returnTo=")
+      );
+      expect(screen.queryByText("Protected Phase 4 Content")).toBeNull();
     });
-    expect(mockRouter.replace).not.toHaveBeenCalled();
-    expect(creatorProfileApi.getPhase4Readiness).not.toHaveBeenCalled();
   });
 
-  it("renders protected Phase 4 children when phase 3 is completed, phase4Ready is true, and profileCompletion is 100", async () => {
+  it("3. Phase 3 complete + profileCompletion 100 -> Phase 4 renders directly", async () => {
     mockCreatorState.journeyState.phase3.status = "completed";
     vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
       phase4Ready: true,
@@ -424,5 +421,153 @@ describe("Phase4ProfileGuard Component", () => {
     });
     expect(mockRouter.replace).not.toHaveBeenCalled();
     expect(creatorProfileApi.getPhase4Readiness).not.toHaveBeenCalled();
+  });
+
+  it("4. Existing Quick Start answers are preserved when Full HumainX builder loads", async () => {
+    const mockProfileData = {
+      skills: [{ name: "Design", level: "Advanced", source: "QuickStart" }],
+      ventureContext: {
+        currentSituation: "Employed",
+        weeklyAvailability: "20Hours",
+        region: "Ile-de-France",
+        previousEntrepreneurialExperience: "",
+        learningPreference: "HandsOn",
+        delegationPreference: "WantsAgency",
+      },
+      experiences: [],
+      education: [],
+      languageProficiencies: [],
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValueOnce(mockProfileData as any);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXProfileBuilderPage />
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Build your professional identity/i)).toBeDefined();
+    });
+
+    expect(creatorProfileApi.getMyProfile).toHaveBeenCalled();
+  });
+
+  it("5. returnTo preserves same ideaId when redirecting to Full HumainX", async () => {
+    mockCreatorState.journeyState.phase3.status = "completed";
+    vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
+      phase4Ready: true,
+      missingForPhase4: [],
+      profileCompletion: 80,
+    });
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <Phase4ProfileGuard>
+          <div>Protected Phase 4 Content</div>
+        </Phase4ProfileGuard>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalled();
+      const redirectUrl = mockRouter.replace.mock.calls[0][0];
+      expect(redirectUrl).toContain("ideaId=idea-456");
+      expect(redirectUrl).toContain("returnTo=%2Fdashboard%2Fcreator%2Fphase-4%3FideaId%3Didea-456");
+    });
+  });
+
+  it("6. Profile completion refetch unlocks Phase 4 when 100% is reached", async () => {
+    mockCreatorState.journeyState.phase3.status = "completed";
+    vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
+      phase4Ready: true,
+      missingForPhase4: [],
+      profileCompletion: 80,
+    });
+
+    const queryClient = createTestQueryClient();
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <Phase4ProfileGuard>
+          <div>Protected Phase 4 Content</div>
+        </Phase4ProfileGuard>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(mockRouter.replace).toHaveBeenCalled();
+    });
+
+    mockRouter.replace.mockClear();
+
+    // Now user finishes profile and refetch returns 100%
+    vi.mocked(creatorProfileApi.getCompleteness).mockResolvedValueOnce({
+      phase4Ready: true,
+      missingForPhase4: [],
+      profileCompletion: 100,
+    });
+
+    await queryClient.invalidateQueries({ queryKey: ["creator", "profile-completeness"] });
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <Phase4ProfileGuard>
+          <div>Protected Phase 4 Content</div>
+        </Phase4ProfileGuard>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Protected Phase 4 Content")).toBeDefined();
+    });
+    expect(mockRouter.replace).not.toHaveBeenCalled();
+  });
+
+  it("7. No HumainX restart/reset: loads saved answers and resumes at first incomplete question", async () => {
+    // Quick Start fields + Experience + Education already complete; Languages (step 3) incomplete
+    const mockProfileData = {
+      skills: [{ name: "Product Design", level: "Advanced", source: "QuickStart" }],
+      ventureContext: {
+        currentSituation: "Employed",
+        weeklyAvailability: "20Hours",
+        region: "Ile-de-France",
+        previousEntrepreneurialExperience: "Founder",
+        learningPreference: "HandsOn",
+        delegationPreference: "",
+      },
+      experiences: [
+        {
+          id: "exp-1",
+          jobTitle: "Founder",
+          companyName: "Startup",
+          startDate: "2020",
+          isCurrent: true,
+        },
+      ],
+      education: [
+        {
+          id: "edu-1",
+          institution: "University",
+          fieldOfStudy: "CS",
+          startYear: 2016,
+        },
+      ],
+      languageProficiencies: [], // Incomplete!
+    };
+    vi.mocked(creatorProfileApi.getMyProfile).mockResolvedValueOnce(mockProfileData as any);
+
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HumainXProfileBuilderPage />
+      </QueryClientProvider>
+    );
+
+    // Should resume at Languages (step 3), not step 0 (Experience)
+    await waitFor(() => {
+      expect(screen.getByText(/Which languages can you use\?/i)).toBeDefined();
+    });
   });
 });

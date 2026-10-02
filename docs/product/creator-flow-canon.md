@@ -184,6 +184,121 @@ Mandatory Creator-only 3-screen frontend journey gate positioned directly after 
   - `completed === true && isQuickStartComplete(profile)` → Dashboard.
   Manual query parameter tampering cannot bypass step gating.
 
+### CREATOR DASHBOARD / COMMAND CENTER (`/dashboard/creator`)
+
+- **Route:** `/dashboard/creator`
+- **Purpose:** The Creator Dashboard is the command center for the currently selected Creator idea. It provides a real-time overview of:
+  - Active project identity and venture summary
+  - Creator journey progress across Phases 1–5
+  - Venture clarity score and statutory Legal Readiness
+  - Compiled and verified outputs count
+  - AI Financial Forecast synthesis (Step 3.3)
+  - Verified Outputs & Assets (Creator Asset Library)
+  - Live communications (`useConversations`)
+  - Platform notifications (`useNotifications`)
+  - Phase 5 Crossroads / Marketplace liquidity state
+  - Contextual next actions and quick creation pathways
+
+#### 1. Figma Implementation & Layout Architecture
+- **Figma Reference:** Node `24783:68163` ("Creator Command Center / Dashboard").
+- **Strict Scope of Implementation:** Only the **main dashboard content** was implemented from this node. The pre-existing, verified application shell components — including the Creator sidebar, Creator topbar, and global dashboard layout shell — were **NOT** replaced or modified.
+- **Implemented Main-Content Structure:**
+  1. **Hero Banner:** Personalized greeting (`{firstName}`), active project context, current Creator journey stage chip, project tagline, and dynamic primary Next Action CTA.
+  2. **Four Dashboard Metrics Row (20px border radius):**
+     - Metric 1: *Venture Clarity* (`summary.project.clarityScore`)
+     - Metric 2: *AI Assets* (canonical count of compiled/generated outputs)
+     - Metric 3: *Legal Readiness* (`CreatorIdea.Phase3Data.LegalAssessment.PlanningReadinessPct` — statutory readiness)
+     - Metric 4: *Reports* (canonical count of finalized strategic documents)
+  3. **Bento Grid (3-column desktop layout, 20px radius cards):**
+     - *Column 1:* Active Project Card (brand mark/logo, category, sector, geography, market gap, Stage 2 detail link) & Creator Journey Stepper (Phases 1–5 sub-steps, statuses, locks, Phase 5 Crossroads entry).
+     - *Column 2:* AI Financial Forecast Card (3-stat strip: Revenue Projection, Break-Even Month, Business Model archetype; Step 3.3 link) & Verified Outputs & Assets Card (Asset Library recent deliverables, status badges, timestamps, direct document links).
+     - *Column 3:* Live Conversations Card (`useConversations`), Platform Notifications Card (`useNotifications`), Marketplace & Liquidity Gateway (`Phase 5` or services network), and HumainX Completeness Card (`HumainXDashboardCard`).
+  4. **Quick Actions Row:** 4 persistent action cards: Business Plan (`/dashboard/creator/phase-3/business-plan`), Marketplace (`/marketplace/services`), Hire Providers (`/dashboard/creator/phase-2/hire-designer`), and Construction (`/dashboard/creator/phase-4`).
+- **Responsive Behavior:**
+  - Desktop (≥1024px): 3-column Bento layout (`grid-cols-1 lg:grid-cols-3`)
+  - Tablet (≥640px and <1024px): 2-column adaptive layout (`grid-cols-1 sm:grid-cols-2`)
+  - Mobile (<640px): 1-column vertically stacked stream (`grid-cols-1`)
+
+#### 2. Single Source of Truth (SSoT)
+- **Canonical SSoT Endpoint:** `GET /api/creator/dashboard/summary?ideaId={ideaId}`
+- **Frontend Hook:** `useCreatorDashboardSummary(activeIdeaId)`
+- **Architectural Rules:**
+  - Zero duplicate business calculations on the frontend tier.
+  - Zero synthetic or mock dashboard metrics.
+  - Zero mock project data.
+  - Zero cross-project output mixing.
+
+#### 3. Active Idea & Strict Project Isolation
+- All project-specific dashboard data is strictly scoped by explicit `ideaId`.
+- Preserves canonical provider and synchronization infrastructure:
+  - `CreatorProgressProvider`
+  - `CreatorActiveIdeaSync`
+  - `CreatorConflictNotice`
+- **Isolation Invariants:**
+  - NO first-idea fallback.
+  - NO global latest-project fallback.
+  - NO browser `localStorage` as canonical project authority.
+  - NO cross-project forecast leakage.
+  - NO cross-project assets or deliverables leakage.
+- All dashboard navigation links must append and preserve the explicit active `ideaId`.
+
+#### 4. Real Data Bindings
+- **Hero Banner:** Authenticated user first name (`user.name`), active project name (`summary.project.name`), current Creator phase, and canonical next action (`summary.nextAction`).
+- **Clarity Score:** `summary.project.clarityScore` (derived from Step 2.1 Concept Clarifier).
+- **AI Assets Count:** Canonical count of verified deliverables from `summary.results`.
+- **Legal Readiness:** Sourced strictly from `CreatorIdea.Phase3Data.LegalAssessment.PlanningReadinessPct`.
+  > [!IMPORTANT]
+  > **No Fabricated IP Readiness Score:** There is NO canonical numeric IP Readiness percentage defined in the product architecture. The dashboard MUST NOT fabricate, estimate, or simulate an "IP Readiness %". Where numeric readiness is surfaced, it represents statutory **Legal Readiness**.
+- **Reports Count:** Canonical count of compiled/downloadable strategic reports (`r.downloadable === true`).
+- **Project Card:** Active idea data only (`summary.project`).
+- **Creator Journey Stepper:** Canonical phase and sub-step status computed server-side (`summary.journey`).
+- **Live Messages:** `useConversations()` query.
+- **Notifications:** `useNotifications()` query.
+- **Marketplace State:** Derived server-side from Phase 5 status and chosen pathway (`summary.phase5`).
+
+#### 5. Financial Forecast Dashboard Contract (Step 3.3)
+- Dashboard Financial Forecast card reflects the latest valid, completed Step 3.3 forecast only.
+- **Canonical Version Source:** `ForecastSession.GetLatestValidCompletedVersion()`
+- **Revenue Projection Source:** `Content["revenueForecast"]`
+  - Reads deterministic `revenueProjection` or `totalRevenue` when available.
+  - Otherwise calculates deterministic aggregate of `monthly[].amount` over the 36-month horizon.
+- **Break-Even Source:** `Content["breakEvenAnalysis"]["breakEvenMonth"]`
+- **Forecast Rules & Invariants:**
+  - Evaluates only the latest valid completed forecast version (`Status == "completed"`).
+  - Stale, in-progress, or failed forecast versions are strictly ignored.
+  - Zero frontend financial calculations or formula approximations.
+  - Zero AI-generated numeric authority or hallucinated fallbacks.
+  - When no valid completed forecast exists: returns truthful empty state (`null` / em dash `—`).
+  - Strict ownership validation: forecast session must match authenticated `userId` and requested `ideaId`.
+
+#### 6. Verified Outputs & Assets (Creator Asset Library)
+- **Canonical Outputs Hub Route:** `/dashboard/creator/asset-library`
+- The dashboard card **Verified Outputs & Assets** (or **Asset Library**) links to:
+  `/dashboard/creator/asset-library?ideaId=<activeIdeaId>`
+- This destination owns and presents all compiled Creator assets: Brand Kit, Market Study report, Business Model canvas, 36-Month Financial Forecast, Legal Roadmap, Formation Memo, Business Plan, and Investor Readiness package.
+- **Routing Rule:** The dashboard card must NOT route to `/dashboard/creator/documents` (which is reserved as an internal file upload/attachment vault).
+
+#### 7. Financial Forecast Navigation
+- **Canonical Step 3.3 Forecast Route:** `/dashboard/creator/phase-3/forecast`
+- Dashboard **View Full** CTA resolves to:
+  `/dashboard/creator/phase-3/forecast?ideaId=<activeIdeaId>`
+- **Project Identity Hydration Helper:** Navigation helper `projectHref(path)` derives `effectiveIdeaId = activeIdeaId || summary?.project?.id`. This fallback ensures that during initial frontend progress hydration (before `useCreatorProgress` state is populated), links consistently preserve the SAME canonical project identity rather than generating bare URLs. It is strictly identity preservation, NOT a first-project fallback.
+
+#### 8. Zero-Mock Architecture Rule
+The Creator Dashboard operates under strict Zero-Mock principles:
+- Never hardcode user names, project titles, clarity scores, legal readiness, asset numbers, reports, revenue projections, break-even months, financial models, journey phases, marketplace states, notifications, or output records.
+- When canonical data is unavailable or pending upstream completion, display a truthful empty or null state (`—`).
+
+#### 9. Verified Dashboard Navigation Routes
+All primary dashboard CTA and card navigation targets point to verified canonical filesystem routes with preserved `ideaId`:
+- **AI Financial Forecast:** `/dashboard/creator/phase-3/forecast?ideaId=<ideaId>`
+- **Verified Outputs & Assets:** `/dashboard/creator/asset-library?ideaId=<ideaId>`
+- **Project Full Details:** `/dashboard/creator/phase-2?ideaId=<ideaId>`
+- **Executive Business Plan:** `/dashboard/creator/phase-3/business-plan?ideaId=<ideaId>`
+- **Hire Providers / Designer:** `/dashboard/creator/phase-2/hire-designer?ideaId=<ideaId>`
+- **Construction Hub:** `/dashboard/creator/phase-4?ideaId=<ideaId>`
+- **Marketplace / Crossroads:** `/dashboard/creator/crossroads?ideaId=<ideaId>` (or `/marketplace/services`)
+
 ### PHASE 2 — Project Identity & Branding
 ```text
 Clarifier (/phase-2/clarifier)
@@ -1947,6 +2062,40 @@ RC1 Freeze
   - Single-section rewrite behavior (`TryParseField`) remains unchanged with alias lookup and strict rejection on absent target sections.
 - **Verification Evidence:**
   - Backend Unit Tests: 20 / 20 PASS (`BusinessPlanHandlerTests`).
+
+**2026-10-02 — Creator Dashboard: Exact Figma 24783:68163 Main Content Implementation, Real Data Parity & Canonical Route Repair.**
+- **Route:** `/dashboard/creator`
+- **Figma Reference:** Node `24783:68163` (Creator Command Center). Implemented exclusively within main content container; existing Creator sidebar, topbar, and global layout shell preserved unchanged.
+- **Implementation Commits:**
+  1. `840ee850 feat(creator-dashboard): connect Figma dashboard to canonical project data`
+     - Connected Figma bento layout to canonical `GET /api/creator/dashboard/summary` SSoT.
+     - Sourced deterministic 36-month revenue projection and break-even month from `ForecastSession.GetLatestValidCompletedVersion()`.
+     - Bound truthful Legal Readiness from `Phase3Data.LegalAssessment.PlanningReadinessPct`.
+     - Preserved zero-mock architecture and explicit idea isolation.
+     - Verification: `CreatorDashboardSummaryTests` 37/37 PASS, Creator dashboard frontend tests 9/9 PASS.
+  2. `fc6c6939 fix(creator-dashboard): repair forecast and asset navigation`
+     - Fixed AI Financial Forecast "View Full" CTA to point to canonical Step 3.3 route `/dashboard/creator/phase-3/forecast?ideaId=<ideaId>`.
+     - Fixed Verified Outputs & Assets CTA to point to canonical Creator outputs hub `/dashboard/creator/asset-library?ideaId=<ideaId>` labeled "View All".
+     - Enhanced `projectHref` helper with `effectiveIdeaId = activeIdeaId || summary?.project?.id` to reliably preserve project identity during initial progress hydration.
+     - Removed stale link pointing to internal `/dashboard/creator/documents`.
+     - Verification: Creator dashboard frontend tests 10/10 PASS, TypeScript `tsc --noEmit` 0 errors.
+- **Canonical Status:**
+  - Route: `/dashboard/creator`
+  - Figma: `24783:68163`
+  - Dashboard Summary SSoT: PRESERVED
+  - Real Data Parity: COMPLETE
+  - Forecast Revenue: REAL / CANONICAL
+  - Break-Even: REAL / CANONICAL
+  - Legal Readiness: CANONICAL
+  - Numeric IP score: NOT DEFINED / NOT FABRICATED
+  - Forecast navigation: FIXED
+  - Asset navigation: FIXED
+  - ideaId isolation: PRESERVED
+  - Zero-Mock: PRESERVED
+  - Sidebar: UNCHANGED
+  - Topbar: UNCHANGED
+  - STATUS: CLOSED / FROZEN
+  - Only reopen for confirmed runtime defects, new approved product requirements, or canonical backend capability changes.
 
 ---
 

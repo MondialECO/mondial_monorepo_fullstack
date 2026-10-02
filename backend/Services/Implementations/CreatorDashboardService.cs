@@ -8,8 +8,10 @@ using WebApp.Models;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.Dtos;
 using WebApp.Models.DatabaseModels.Phase4;
+using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Services.Interface;
 using WebApp.Services.Repository;
+using WebApp.Services.Repository.Ai;
 
 namespace WebApp.Services.Implementations
 {
@@ -20,19 +22,22 @@ namespace WebApp.Services.Implementations
         private readonly IBrandKitStore _brandKits;
         private readonly IProfessionalProfileStore _profiles;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IForecastSessionStore? _forecasts;
 
         public CreatorDashboardService(
             ICreatorJourneyService journeys,
             ICreatorIdeaStore ideas,
             IBrandKitStore brandKits,
             IProfessionalProfileStore profiles,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IForecastSessionStore? forecasts = null)
         {
             _journeys = journeys;
             _ideas = ideas;
             _brandKits = brandKits;
             _profiles = profiles;
             _userManager = userManager;
+            _forecasts = forecasts;
         }
 
         public async Task<CreatorDashboardSummaryDto> GetSummaryAsync(string userId, string? ideaId = null, CancellationToken ct = default)
@@ -83,8 +88,11 @@ namespace WebApp.Services.Implementations
             var p4 = journey.Phase4Data ?? new CreatorPhase4Data();
             var p4Eval = Phase4CompletionResolver.Resolve(p4);
 
-            // Build DTO
+            // 7. Resolve Financial Forecast (strictly scoped to owner and effective idea)
             var effectiveIdeaId = idea?.Id ?? activeIdeaId;
+            var forecastDto = await ResolveForecastSummaryAsync(userId, effectiveIdeaId);
+
+            // Build DTO
             var summary = new CreatorDashboardSummaryDto
             {
                 UpdatedAt = journey.UpdatedAt,
@@ -93,7 +101,8 @@ namespace WebApp.Services.Implementations
                 NextAction = ResolveNextAction(computedStatus, journey, p4, p4Eval, effectiveIdeaId),
                 AttentionItems = ResolveAttentionItems(journey, p4, profile, effectiveIdeaId),
                 Results = BuildResultsList(journey, brandKit, p4, effectiveIdeaId),
-                Phase5 = BuildPhase5Summary(computedStatus, journey, p4Eval, effectiveIdeaId)
+                Phase5 = BuildPhase5Summary(computedStatus, journey, p4Eval, effectiveIdeaId),
+                Forecast = forecastDto
             };
 
             return summary;
@@ -140,6 +149,9 @@ namespace WebApp.Services.Implementations
                 TypographyPairing = typographyPairing
             };
 
+            double? legalReadinessPct = journey.Phase3Data?.LegalAssessment?.PlanningReadinessPct
+                ?? idea?.Phase3Data?.LegalAssessment?.PlanningReadinessPct;
+
             return new DashboardProjectSummaryDto
             {
                 Id = idea?.Id ?? journey.BusinessIdeaId ?? string.Empty,
@@ -149,6 +161,7 @@ namespace WebApp.Services.Implementations
                 Category = project.Category,
                 Sector = project.Sector,
                 ClarityScore = project.ClarityScore,
+                LegalReadinessPct = legalReadinessPct,
                 Brand = brandDto
             };
         }
@@ -1237,6 +1250,96 @@ namespace WebApp.Services.Implementations
                 GuidanceText = isUnlocked 
                     ? "Construction stages complete. Proceed to Crossroads to select your venture launch path."
                     : "Complete all 9 Construction stages to unlock Phase 5 Crossroads."
+            };
+        }
+
+        private async Task<DashboardForecastSummaryDto> ResolveForecastSummaryAsync(string userId, string? ideaId)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(ideaId) || _forecasts == null)
+            {
+                return new DashboardForecastSummaryDto();
+            }
+
+            var session = await _forecasts.GetByIdeaAsync(ideaId, userId);
+            if (session == null || session.OwnerUserId != userId || session.BusinessIdeaId != ideaId)
+            {
+                return new DashboardForecastSummaryDto();
+            }
+
+            var validVersion = session.GetLatestValidCompletedVersion();
+            if (validVersion == null)
+            {
+                return new DashboardForecastSummaryDto
+                {
+                    HasForecast = false,
+                    Status = session.Status ?? "Pending",
+                    RevenueProjection = null,
+                    BreakEvenMonth = null
+                };
+            }
+
+            var content = validVersion.Content ?? validVersion.GeneratedContent;
+            if (content == null)
+            {
+                return new DashboardForecastSummaryDto
+                {
+                    HasForecast = false,
+                    Status = session.Status ?? "Pending",
+                    RevenueProjection = null,
+                    BreakEvenMonth = null
+                };
+            }
+
+            string currency = "EUR";
+            decimal? revenueProjection = null;
+            int? breakEvenMonth = null;
+
+            if (content.Contains("revenueForecast") && content["revenueForecast"].IsBsonDocument)
+            {
+                var rf = content["revenueForecast"].AsBsonDocument;
+                if (rf.Contains("currency") && rf["currency"].IsString && !string.IsNullOrWhiteSpace(rf["currency"].AsString))
+                {
+                    currency = rf["currency"].AsString;
+                }
+
+                if (rf.TryGetValue("revenueProjection", out var rpVal) && rpVal.IsNumeric)
+                {
+                    revenueProjection = Convert.ToDecimal(rpVal.ToDouble());
+                }
+                else if (rf.TryGetValue("totalRevenue", out var trVal) && trVal.IsNumeric)
+                {
+                    revenueProjection = Convert.ToDecimal(trVal.ToDouble());
+                }
+                else if (rf.TryGetValue("monthly", out var mVal) && mVal.IsBsonArray)
+                {
+                    double sum = 0;
+                    foreach (var m in mVal.AsBsonArray)
+                    {
+                        if (m.IsBsonDocument && m.AsBsonDocument.TryGetValue("amount", out var amt) && amt.IsNumeric)
+                        {
+                            sum += amt.ToDouble();
+                        }
+                    }
+                    revenueProjection = Convert.ToDecimal(Math.Round(sum, 2));
+                }
+            }
+
+            if (content.Contains("breakEvenAnalysis") && content["breakEvenAnalysis"].IsBsonDocument)
+            {
+                var bea = content["breakEvenAnalysis"].AsBsonDocument;
+                if (bea.TryGetValue("breakEvenMonth", out var bemVal) && bemVal.IsNumeric)
+                {
+                    breakEvenMonth = bemVal.ToInt32();
+                }
+            }
+
+            return new DashboardForecastSummaryDto
+            {
+                HasForecast = true,
+                RevenueProjection = revenueProjection,
+                BreakEvenMonth = breakEvenMonth,
+                Currency = currency,
+                Status = session.Status ?? "Completed"
             };
         }
     }

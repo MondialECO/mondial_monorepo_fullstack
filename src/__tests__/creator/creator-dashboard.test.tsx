@@ -438,4 +438,148 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
     const actionBtn = screen.getByRole('link', { name: /Review Launch Preparation/i });
     expect(actionBtn).toHaveAttribute('href', '/dashboard/creator/phase-4?ideaId=idea-123');
   });
+
+  it('8. Financial Forecast card binds real revenue projection and break-even month', () => {
+    mockSummaryData = {
+      project: {
+        id: 'idea-123',
+        name: 'CleanDrop',
+        category: 'SaaS',
+        legalReadinessPct: 85,
+      },
+      forecast: {
+        hasForecast: true,
+        revenueProjection: 1250000,
+        breakEvenMonth: 14,
+        currency: 'EUR',
+        status: 'Completed',
+      },
+      nextAction: {
+        key: 'brand_identity',
+        phase: 2,
+        title: 'Build Brand Identity',
+        description: 'Define your brand voice.',
+        buttonLabel: 'Open Brand Studio',
+        href: '/dashboard/creator/phase-2',
+      },
+      attentionItems: [],
+      journey: {
+        currentPhase: 3,
+        overallProgress: 50,
+        phases: [],
+      },
+      results: [],
+      phase5: { isUnlocked: false, href: '/dashboard/creator/crossroads', guidanceText: 'Locked.' },
+    };
+
+    render(<CreatorDashboard />);
+
+    // Forecast values
+    expect(screen.getByText('€1,250,000')).toBeInTheDocument();
+    expect(screen.getByText('Month 14')).toBeInTheDocument();
+    expect(screen.getAllByText('SaaS').length).toBeGreaterThanOrEqual(2);
+
+    // Truthful Legal Readiness
+    expect(screen.getByText('Legal Readiness')).toBeInTheDocument();
+    expect(screen.getAllByText('85%').length).toBeGreaterThanOrEqual(1);
+
+    // No demo values
+    expect(screen.queryByText('€1,631,264')).toBeNull();
+  });
+
+  it('9. Financial Forecast card and Legal metric render — in empty state when forecast or legal is absent', () => {
+    mockSummaryData = {
+      project: {
+        id: 'idea-123',
+        name: 'CleanDrop',
+      },
+      forecast: {
+        hasForecast: false,
+        revenueProjection: null,
+        breakEvenMonth: null,
+        currency: 'EUR',
+        status: 'Pending',
+      },
+      nextAction: {
+        key: 'brand_identity',
+        phase: 2,
+        title: 'Build Brand Identity',
+        description: 'Define your brand voice.',
+        buttonLabel: 'Open Brand Studio',
+        href: '/dashboard/creator/phase-2',
+      },
+      attentionItems: [],
+      journey: {
+        currentPhase: 2,
+        overallProgress: 0,
+        phases: [],
+      },
+      results: [],
+      phase5: { isUnlocked: false, href: '/dashboard/creator/crossroads', guidanceText: 'Locked.' },
+    };
+
+    render(<CreatorDashboard />);
+
+    // Em-dash empty states rendered
+    const emDashes = screen.getAllByText('—');
+    expect(emDashes.length).toBeGreaterThanOrEqual(2);
+
+    // No demo values
+    expect(screen.queryByText('€1,631,264')).toBeNull();
+    expect(screen.queryByText('Month 14')).toBeNull();
+  });
+
+  it('10. Canonical Navigation: Forecast "View Full" and Assets "View All" point to canonical routes with preserved ideaId', () => {
+    mockSummaryData = {
+      project: {
+        id: 'idea-123',
+        name: 'CleanDrop',
+      },
+      forecast: {
+        hasForecast: true,
+        revenueProjection: 60000,
+        breakEvenMonth: 14,
+        currency: 'EUR',
+        status: 'Completed',
+      },
+      nextAction: {
+        key: 'brand_identity',
+        phase: 2,
+        title: 'Build Brand Identity',
+        description: 'Define your brand voice.',
+        buttonLabel: 'Open Brand Studio',
+        href: '/dashboard/creator/phase-2',
+      },
+      attentionItems: [],
+      journey: {
+        currentPhase: 3,
+        overallProgress: 45,
+        phases: [],
+      },
+      results: [
+        {
+          key: 'financial_forecast',
+          title: '36-Month Financial Forecast',
+          phase: 3,
+          status: 'Ready',
+          href: '/dashboard/creator/phase-3/forecast?ideaId=idea-123',
+        },
+      ],
+      phase5: { isUnlocked: false, href: '/dashboard/creator/crossroads', guidanceText: 'Locked.' },
+    };
+
+    render(<CreatorDashboard />);
+
+    // Forecast CTA points to canonical /dashboard/creator/phase-3/forecast preserving ideaId
+    const forecastLink = screen.getByRole('link', { name: /View Full/i });
+    expect(forecastLink).toHaveAttribute('href', '/dashboard/creator/phase-3/forecast?ideaId=idea-123');
+
+    // Assets CTA points to canonical /dashboard/creator/asset-library preserving ideaId
+    const assetsLink = screen.getByRole('link', { name: /View All/i });
+    expect(assetsLink).toHaveAttribute('href', '/dashboard/creator/asset-library?ideaId=idea-123');
+
+    // No stale View Vault or /dashboard/creator/documents
+    expect(screen.queryByRole('link', { name: /View Vault/i })).toBeNull();
+  });
 });
+
