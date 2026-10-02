@@ -26,6 +26,7 @@ export interface LogoCreationModalProps {
   onConfirm?: (kit: BrandKit) => void;
   onBack?: () => void;
   onClose?: () => void;
+  onKitUpdated?: (kit: BrandKit) => void;
 }
 
 export function LogoCreationModal({
@@ -34,6 +35,7 @@ export function LogoCreationModal({
   onConfirm,
   onBack,
   onClose,
+  onKitUpdated,
 }: LogoCreationModalProps) {
   const [kit, setKit] = useState<BrandKit | null>(initialKit ?? null);
   const [concepts, setConcepts] = useState<BrandLogoConcept[]>(
@@ -42,6 +44,21 @@ export function LogoCreationModal({
   const [selectedConceptKey, setSelectedConceptKey] = useState<string | null>(
     initialKit?.logo?.selectedConceptKey ?? (initialKit?.logo?.concepts?.[0]?.key || "concept_1")
   );
+
+  // Synchronize local kit if initialKit receives an updated version
+  useEffect(() => {
+    if (initialKit) {
+      setKit((prev) => {
+        if (!prev || (initialKit.version && initialKit.version >= (prev.version ?? 0))) {
+          if (initialKit.logo?.concepts && initialKit.logo.concepts.length >= 6) {
+            setConcepts(initialKit.logo.concepts);
+          }
+          return initialKit;
+        }
+        return prev;
+      });
+    }
+  }, [initialKit]);
 
   const [viewMode, setViewMode] = useState<"mark" | "invoice" | "16px">("mark");
   const [isCompareMode, setIsCompareMode] = useState<boolean>(false);
@@ -190,6 +207,7 @@ export function LogoCreationModal({
         updatedKit.logo?.selectedConceptKey || updatedKit.logo?.concepts?.[0]?.key || "concept_1"
       );
       setBatchRegenerateCount((prev) => prev + 1);
+      onKitUpdated?.(updatedKit);
     } catch (err: any) {
       const status = err?.response?.status;
       const msg =
@@ -260,6 +278,7 @@ export function LogoCreationModal({
             return c;
           })
         );
+        onKitUpdated?.(updatedKit);
       } catch (err: any) {
         const status = err?.response?.status;
         const msg =
@@ -341,6 +360,7 @@ export function LogoCreationModal({
       );
 
       setKit(updatedKit);
+      onKitUpdated?.(updatedKit);
       if (onConfirm) {
         onConfirm(updatedKit);
       }

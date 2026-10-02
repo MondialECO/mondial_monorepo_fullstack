@@ -32,6 +32,7 @@ export interface TypographySystemModalProps {
   kit: BrandKit;
   onClose: () => void;
   onSuccess: (updatedKit: BrandKit) => void;
+  onKitUpdated?: (updatedKit: BrandKit) => void;
 }
 
 interface PairingPreset {
@@ -95,6 +96,7 @@ export function TypographySystemModal({
   kit,
   onClose,
   onSuccess,
+  onKitUpdated,
 }: TypographySystemModalProps) {
   const [currentKit, setCurrentKit] = useState<BrandKit>(kit);
   const [localTypography, setLocalTypography] = useState<BrandTypography>(() => {
@@ -285,6 +287,7 @@ export function TypographySystemModal({
       );
       if (updatedKit) {
         setCurrentKit(updatedKit);
+        onKitUpdated?.(updatedKit);
       }
     } catch (err: any) {
       console.error("Failed to patch typography pairing:", err);
@@ -322,6 +325,7 @@ export function TypographySystemModal({
       );
       if (updatedKit) {
         setCurrentKit(updatedKit);
+        onKitUpdated?.(updatedKit);
       }
     } catch (err: any) {
       console.error("Failed to update role typography:", err);
@@ -340,6 +344,7 @@ export function TypographySystemModal({
       const res = await apiCreatorBrandKit.regenerateTypography(ideaId, currentKit.version);
       if (res) {
         setCurrentKit(res);
+        onKitUpdated?.(res);
         if (res.typography) {
           setLocalTypography(res.typography);
         }
@@ -387,7 +392,7 @@ export function TypographySystemModal({
         patchRes.version ?? currentKit.version
       );
       setCurrentKit(completedKit);
-
+      onKitUpdated?.(completedKit);
       onSuccess(completedKit);
     } catch (err: any) {
       console.error("Failed to confirm typography:", err);

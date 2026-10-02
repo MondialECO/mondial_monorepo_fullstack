@@ -328,6 +328,13 @@ export function BrandStudioShell({
     []
   );
 
+  // Authoritative BrandKit state synchronization callback for child modal mutations
+  const handleKitUpdated = useCallback((updatedKit: BrandKit) => {
+    if (updatedKit && typeof updatedKit.version === "number") {
+      setKit(updatedKit);
+    }
+  }, []);
+
   const handleStrategyConfirm = async (updatedStrategy: Partial<BrandStrategy>) => {
     if (!kit) return;
     try {
@@ -1040,6 +1047,7 @@ export function BrandStudioShell({
           onSuccess={(updatedKit) =>
             handleStepTransition(isSequentialFlow ? "logo_type" : null, updatedKit)
           }
+          onKitUpdated={handleKitUpdated}
         />
       )}
 
@@ -1053,6 +1061,7 @@ export function BrandStudioShell({
           onSuccess={(updatedKit) =>
             handleStepTransition(isSequentialFlow ? "logo_creation" : null, updatedKit)
           }
+          onKitUpdated={handleKitUpdated}
         />
       )}
 
@@ -1066,6 +1075,7 @@ export function BrandStudioShell({
           }
           onBack={() => handleStepTransition(null)}
           onClose={() => handleStepTransition(null)}
+          onKitUpdated={handleKitUpdated}
         />
       )}
 
@@ -1081,6 +1091,7 @@ export function BrandStudioShell({
             handleStepTransition(isSequentialFlow ? "logo_creation" : null)
           }
           onClose={() => handleStepTransition(null)}
+          onKitUpdated={handleKitUpdated}
         />
       )}
 
@@ -1094,6 +1105,7 @@ export function BrandStudioShell({
           onSuccess={(updatedKit) =>
             handleStepTransition(isSequentialFlow ? "typography" : null, updatedKit)
           }
+          onKitUpdated={handleKitUpdated}
         />
       )}
 
@@ -1105,6 +1117,7 @@ export function BrandStudioShell({
           kit={kit}
           onClose={() => handleStepTransition(null)}
           onSuccess={(updatedKit) => handleStepTransition(null, updatedKit)}
+          onKitUpdated={handleKitUpdated}
         />
       )}
     </div>

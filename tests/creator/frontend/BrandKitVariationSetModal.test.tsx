@@ -150,6 +150,7 @@ describe('VariationSetModal Component', () => {
       .spyOn(brandKitApi, 'patchLogo')
       .mockResolvedValue({
         ...mockBrandKit,
+        version: 3,
         logo: {
           ...mockBrandKit.logo,
           approvedAt: '2026-09-15T12:00:00Z',

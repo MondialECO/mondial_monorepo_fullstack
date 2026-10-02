@@ -34,6 +34,7 @@ export interface ColorSystemModalProps {
   kit: BrandKit;
   onClose: () => void;
   onSuccess: (updatedKit: BrandKit) => void;
+  onKitUpdated?: (updatedKit: BrandKit) => void;
 }
 
 type PaletteMood = "as_generated" | "calmer" | "warmer" | "higher_contrast";
@@ -190,6 +191,7 @@ export function ColorSystemModal({
   kit,
   onClose,
   onSuccess,
+  onKitUpdated,
 }: ColorSystemModalProps) {
   const [currentKit, setCurrentKit] = useState<BrandKit>(kit);
   const [roles, setRoles] = useState<BrandColorRole[]>(kit.colors?.roles ?? []);
@@ -267,14 +269,22 @@ export function ColorSystemModal({
     return rawUri ? resolveMediaUrl(rawUri, currentKit.version) : null;
   }, [currentKit.logo, currentKit.version]);
 
-  // 1. Initial State Population (No Auto-Generate)
+  // 1. Initial State Population & Prop Synchronization
   useEffect(() => {
-    if ((kit.colors?.roles?.length ?? 0) >= 5) {
-      setRoles(kit.colors!.roles);
-      setRegenerateCount(kit.colors?.regenerateCount ?? 0);
-    } else {
-      setRoles([]);
-      setRegenerateCount(kit.colors?.regenerateCount ?? 0);
+    if (kit) {
+      setCurrentKit((prev) => {
+        if (!prev || (kit.version && kit.version >= (prev.version ?? 0))) {
+          if ((kit.colors?.roles?.length ?? 0) >= 5) {
+            setRoles(kit.colors!.roles);
+            setRegenerateCount(kit.colors?.regenerateCount ?? 0);
+          } else {
+            setRoles([]);
+            setRegenerateCount(kit.colors?.regenerateCount ?? 0);
+          }
+          return kit;
+        }
+        return prev;
+      });
     }
   }, [ideaId, kit]);
 
@@ -306,6 +316,7 @@ export function ColorSystemModal({
         currentKit.version
       );
       setCurrentKit(updated);
+      onKitUpdated?.(updated);
     } catch (err: any) {
       // Revert on error
       setRoles(roles);
@@ -366,6 +377,7 @@ export function ColorSystemModal({
         currentKit.version
       );
       setCurrentKit(updated);
+      onKitUpdated?.(updated);
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
@@ -437,6 +449,7 @@ export function ColorSystemModal({
         currentKit.version
       );
       setCurrentKit(updated);
+      onKitUpdated?.(updated);
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
@@ -461,6 +474,7 @@ export function ColorSystemModal({
       setRoles(updated.colors?.roles ?? []);
       setRegenerateCount(updated.colors?.regenerateCount ?? 0);
       setSelectedMood("as_generated");
+      onKitUpdated?.(updated);
     } catch (err: any) {
       if (err?.response?.status === 402) {
         setCreditError(
@@ -495,6 +509,7 @@ export function ColorSystemModal({
       setRoles(updated.colors?.roles ?? []);
       setRegenerateCount(updated.colors?.regenerateCount ?? 0);
       setSelectedMood("as_generated");
+      onKitUpdated?.(updated);
     } catch (err: any) {
       if (err?.response?.status === 402) {
         setCreditError(
@@ -534,6 +549,7 @@ export function ColorSystemModal({
         currentKit.version
       );
       setCurrentKit(updated);
+      onKitUpdated?.(updated);
       onSuccess(updated);
     } catch (err: any) {
       setError(
