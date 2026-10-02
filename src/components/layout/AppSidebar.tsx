@@ -129,13 +129,13 @@ function StandardRoleSidebar({
             onClick={handleLinkClick}
             className="flex items-center gap-2.5"
           >
-            <div className="relative h-8 w-8 rounded-lg bg-white border border-sidebar-border shadow-xs flex items-center justify-center overflow-hidden shrink-0">
+            <div className="relative w-[95px] h-[46px] p-1 flex items-center justify-center overflow-hidden shrink-0">
               <Image
-                src="/brand-logo-footer.png"
+                src="/images/mbc-logo.png"
                 alt="Mondial"
-                width={24}
-                height={24}
-                className="object-contain"
+                width={95}
+                height={46}
+                className="w-full h-full object-contain"
                 priority
               />
             </div>
@@ -336,13 +336,13 @@ function ServiceProviderSidebar({
             onClick={handleLinkClick}
             className="flex min-w-0 items-center gap-2.5"
           >
-            <div className="relative flex size-8 shrink-0 items-center justify-center rounded-lg bg-white border border-[#E5E7EB] shadow-xs overflow-hidden">
+            <div className="relative flex w-[95px] h-[46px] shrink-0 p-1 items-center justify-center overflow-hidden">
               <Image
-                src="/brand-logo-footer.png"
+                src="/images/mbc-logo.png"
                 alt="Mondial"
-                width={24}
-                height={24}
-                className="object-contain"
+                width={95}
+                height={46}
+                className="w-full h-full object-contain"
                 priority
               />
             </div>

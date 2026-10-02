@@ -64,6 +64,9 @@ namespace WebApp.Tests.Creator.Integration
         public LegalApplicabilityEngine LegalEngine { get; private set; } = null!;
         public LegalFrameworkSectionBuilder SectionBuilder { get; private set; } = null!;
 
+        public bool Available { get; private set; }
+        public string SkipReason { get; private set; } = "Docker/Testcontainers unavailable";
+
         public async Task InitializeAsync()
         {
             await _appFixture.InitializeAsync();
@@ -76,59 +79,72 @@ namespace WebApp.Tests.Creator.Integration
                 var sp = _appFixture.Factory.Services;
                 var client = (IMongoClient)sp.GetService(typeof(IMongoClient))!;
                 Database = client.GetDatabase(_ephemeralDbName);
+                Available = true;
+            }
+            else if (TestMongoDatabaseGuard.IsLiveTestExplicitlyOptedIn())
+            {
+                var connStr = Environment.GetEnvironmentVariable(TestMongoDatabaseGuard.MongoTestConnectionEnvVar);
+                if (!string.IsNullOrWhiteSpace(connStr))
+                {
+                    _fallbackClient = new MongoClient(connStr);
+                    Database = _fallbackClient.GetDatabase(_ephemeralDbName);
+                    Available = true;
+                }
+                else
+                {
+                    Available = false;
+                    SkipReason = $"{TestMongoDatabaseGuard.LiveTestOptInEnvVar} is set, but {TestMongoDatabaseGuard.MongoTestConnectionEnvVar} is missing.";
+                }
             }
             else
             {
-                var connStr = Environment.GetEnvironmentVariable("MONGO_TEST_CONNECTION_STRING")
-                    ?? "mongodb+srv://mongoDB:hr11100010@cluster0.nsfffx4.mongodb.net/";
-                _fallbackClient = new MongoClient(connStr);
-                Database = _fallbackClient.GetDatabase(_ephemeralDbName);
+                Available = false;
+                SkipReason = $"Docker/Testcontainers unavailable and {TestMongoDatabaseGuard.LiveTestOptInEnvVar} not enabled. Implicit live Atlas fallback is disabled.";
             }
 
-            IdeaRepo = new CreatorIdeaRepository(Database);
-            var context = new MongoDbContext(Database);
+            if (Available && Database != null)
+            {
+                IdeaRepo = new CreatorIdeaRepository(Database);
+                var context = new MongoDbContext(Database);
 
-            JourneyService = new CreatorJourneyService(
-                context,
-                Mock.Of<IBusinessPlanSessionStore>(),
-                Mock.Of<IForecastSessionStore>(),
-                IdeaRepo,
-                Mock.Of<IClarifierSessionStore>());
+                JourneyService = new CreatorJourneyService(
+                    context,
+                    Mock.Of<IBusinessPlanSessionStore>(),
+                    Mock.Of<IForecastSessionStore>(),
+                    IdeaRepo,
+                    Mock.Of<IClarifierSessionStore>());
 
-            RulesCatalog = new FranceLegalRulesCatalog(NullLogger<FranceLegalRulesCatalog>.Instance);
-            ProfileClassifier = new BusinessProfileClassifier();
-            LegalEngine = new LegalApplicabilityEngine(RulesCatalog, NullLogger<LegalApplicabilityEngine>.Instance);
-            SectionBuilder = new LegalFrameworkSectionBuilder();
+                RulesCatalog = new FranceLegalRulesCatalog(NullLogger<FranceLegalRulesCatalog>.Instance);
+                ProfileClassifier = new BusinessProfileClassifier();
+                LegalEngine = new LegalApplicabilityEngine(RulesCatalog, NullLogger<LegalApplicabilityEngine>.Instance);
+                SectionBuilder = new LegalFrameworkSectionBuilder();
 
-            _tempUploadDir = Path.Combine(Path.GetTempPath(), "mbc-tests-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(_tempUploadDir);
+                _tempUploadDir = Path.Combine(Path.GetTempPath(), "mbc-tests-" + Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(_tempUploadDir);
+            }
         }
 
         public async Task DisposeAsync()
         {
             if (!string.IsNullOrEmpty(_ephemeralDbName))
             {
-                try
-                {
-                    var client = _fallbackClient ?? (IMongoClient?)_appFixture.Factory?.Services.GetService(typeof(IMongoClient));
-                    if (client != null)
-                        await client.DropDatabaseAsync(_ephemeralDbName);
-                }
-                catch { }
+                var client = _fallbackClient ?? (IMongoClient?)_appFixture.Factory?.Services.GetService(typeof(IMongoClient));
+                await TestMongoDatabaseGuard.SafeDropDatabaseAsync(client, _ephemeralDbName, "test_stage10_");
             }
 
-            try
+            if (!string.IsNullOrEmpty(_tempUploadDir) && Directory.Exists(_tempUploadDir))
             {
-                if (Directory.Exists(_tempUploadDir))
-                    Directory.Delete(_tempUploadDir, recursive: true);
+                try { Directory.Delete(_tempUploadDir, recursive: true); } catch { }
             }
-            catch { }
 
             await _appFixture.DisposeAsync();
         }
 
+        private void EnsureAvailable() => Skip.IfNot(Available, SkipReason);
+
         private async Task SaveIdeaDirectAsync(CreatorIdea idea)
         {
+            EnsureAvailable();
             await Database.GetCollection<CreatorIdea>("CreatorIdeas")
                 .ReplaceOneAsync(x => x.Id == idea.Id, idea, new ReplaceOptions { IsUpsert = true });
         }
@@ -136,9 +152,10 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 1. STAGE 10 LIVE CHECK — PRESERVATION
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Stage10_LiveCheck_Preservation_CompletedStatus_FounderNotes_EvidenceLinks_And_History_Preserved()
         {
+            EnsureAvailable();
             var userId = "user-preservation-" + Guid.NewGuid().ToString("N")[..8];
             var ideaId = ObjectId.GenerateNewId().ToString();
 
@@ -280,9 +297,10 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 2. STAGE 10 LIVE CHECK — IDEMPOTENCY
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Stage10_LiveCheck_Idempotency_ZeroDuplicateRequirements_EvidenceLinks_Sources_And_History()
         {
+            EnsureAvailable();
             var userId = "user-idempotency-" + Guid.NewGuid().ToString("N")[..8];
             var ideaId = ObjectId.GenerateNewId().ToString();
 
@@ -387,9 +405,10 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 3. STAGE 10 LIVE CHECK — FRESHNESS CONSISTENCY
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Stage10_LiveCheck_FreshnessConsistency_Across_AllFourSurfaces_Before_And_After_Refresh()
         {
+            EnsureAvailable();
             var userId = "user-freshness-" + Guid.NewGuid().ToString("N")[..8];
             var ideaId = ObjectId.GenerateNewId().ToString();
 
@@ -495,9 +514,10 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 4. TRUE CROSS-TENANT LIVE JWT TEST (Two Real Authenticated Accounts)
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task CrossTenant_LiveJwtTest_UserB_DirectAccessToUserA_Returns_403_Or_404_Never_200()
         {
+            EnsureAvailable();
             var userA = "user-a-creator-" + Guid.NewGuid().ToString("N")[..8];
             var userB = "user-b-infiltrator-" + Guid.NewGuid().ToString("N")[..8];
 

@@ -14,19 +14,17 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
                 href="/onboarding"
                 className="flex items-center gap-2.5 hover:opacity-90 transition-opacity"
               >
-                <div className="w-9 h-9 rounded-xl bg-card border border-border shadow-xs flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="w-[95px] h-[46px] p-1 flex items-center justify-center shrink-0 overflow-hidden">
                   <Image
-                    src="/brand-logo-footer.png"
+                    src="/images/mbc-logo.png"
                     alt="Mondial"
-                    width={24}
-                    height={24}
-                    className="object-contain"
+                    width={95}
+                    height={46}
+                    className="object-contain w-full h-full"
                     priority
                   />
                 </div>
-                <span className="font-semibold text-lg tracking-tight text-foreground">
-                  Mondial
-                </span>
+
               </Link>
               <span className="inline-flex items-center rounded-full bg-primary/10 text-primary border border-primary/20 px-3 py-1 text-xs font-medium uppercase tracking-wider">
                 Verification

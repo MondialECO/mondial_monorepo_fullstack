@@ -30,7 +30,7 @@ namespace WebApp.Services.Repository.Ai
         /// Returns CreditDebitResult.Applied if debited, CreditDebitResult.AlreadyDebited if idempotent duplicate,
         /// or CreditDebitResult.InsufficientCredits / LedgerNotFound.
         /// </summary>
-        public async Task<CreditDebitResult> TryDebitAsync(string ownerUserId, int amount, AiCreditDebit debit)
+        public virtual async Task<CreditDebitResult> TryDebitAsync(string ownerUserId, int amount, AiCreditDebit debit)
         {
             if (string.IsNullOrWhiteSpace(ownerUserId) || amount <= 0)
                 return CreditDebitResult.InsufficientCredits;
@@ -97,7 +97,7 @@ namespace WebApp.Services.Repository.Ai
         /// debit <paramref name="operationId"/> iff it exists, belongs to the user, has not been
         /// refunded yet, and matches the expected amount. Exactly one concurrent refund will apply.
         /// </summary>
-        public async Task<CreditRefundResult> TryRefundAsync(string ownerUserId, string operationId, int expectedAmount, string reason)
+        public virtual async Task<CreditRefundResult> TryRefundAsync(string ownerUserId, string operationId, int expectedAmount, string reason)
         {
             if (string.IsNullOrWhiteSpace(ownerUserId) || string.IsNullOrWhiteSpace(operationId) || expectedAmount <= 0)
                 return CreditRefundResult.InvalidMismatch;
@@ -159,6 +159,44 @@ namespace WebApp.Services.Repository.Ai
                 new UpdateOptions { IsUpsert = true });
 
             return result.UpsertedId is not null;
+        }
+
+        /// <summary>
+        /// Atomically increments the user's available AI balance and LifetimeGranted by the exact purchased credit amount.
+        /// Executed within an existing MongoDB transaction session.
+        /// </summary>
+        public virtual async Task<bool> AddPurchasedCreditsAsync(IClientSessionHandle session, string ownerUserId, int credits, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(ownerUserId) || credits <= 0)
+                return false;
+
+            var filter = Builders<AiCreditLedger>.Filter.Eq(x => x.OwnerUserId, ownerUserId);
+            var update = Builders<AiCreditLedger>.Update
+                .Inc(x => x.Balance, credits)
+                .Inc(x => x.LifetimeGranted, credits)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(session, filter, update, cancellationToken: ct);
+            return result.ModifiedCount > 0;
+        }
+
+        /// <summary>
+        /// Atomically increments the user's available AI balance and LifetimeGranted by the exact purchased credit amount.
+        /// Non-transactional overload.
+        /// </summary>
+        public virtual async Task<bool> AddPurchasedCreditsAsync(string ownerUserId, int credits, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(ownerUserId) || credits <= 0)
+                return false;
+
+            var filter = Builders<AiCreditLedger>.Filter.Eq(x => x.OwnerUserId, ownerUserId);
+            var update = Builders<AiCreditLedger>.Update
+                .Inc(x => x.Balance, credits)
+                .Inc(x => x.LifetimeGranted, credits)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(filter, update, cancellationToken: ct);
+            return result.ModifiedCount > 0;
         }
 
         /// <summary>

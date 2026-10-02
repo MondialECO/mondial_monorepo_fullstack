@@ -73,12 +73,14 @@ export default function Topbar() {
           {/* LEFT: Logo tile + Breadcrumb */}
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
             {/* Logo tile */}
-            <div className="h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ backgroundColor: "var(--popover)", borderColor: "var(--stroke-10)", borderWidth: "1px" }}>
+            <div className="w-[95px] h-[46px] p-1 flex items-center justify-center flex-shrink-0 overflow-hidden">
               <Image
-                src="/icons/phase2/logo.png"
+                src="/images/mbc-logo.png"
                 alt="Mondial"
-                width={20}
-                height={20}
+                width={95}
+                height={46}
+                className="w-full h-full object-contain"
+                priority
               />
             </div>
 
@@ -140,19 +142,19 @@ export default function Topbar() {
           <SidebarTrigger />
 
           {/* Mondial Logo */}
-          <Link
+          {/* <Link
             href={getRoleDashboardRoute(role)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-sidebar-border bg-card shadow-xs overflow-hidden shrink-0 hover:opacity-90 transition-opacity"
+            className="flex h-8 w-8 p-1 items-center justify-center rounded-lg border border-sidebar-border bg-card shadow-xs overflow-hidden shrink-0 hover:opacity-90 transition-opacity"
             title="Dashboard Home"
           >
             <Image
-              src="/brand-logo-footer.png"
+              src="/images/mbc-logo.png"
               alt="Mondial"
-              width={22}
-              height={22}
+              width={26}
+              height={26}
               className="object-contain"
             />
-          </Link>
+          </Link> */}
 
           {/* Breadcrumb (desktop only) */}
           <nav className="hidden lg:flex items-center text-sm min-w-0">
@@ -192,11 +194,10 @@ export default function Topbar() {
           <NotificationBell />
           {(role === UserRole.SUPERADMIN || role === UserRole.ADMIN) && (
             <span
-              className={`hidden sm:inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                role === UserRole.SUPERADMIN
-                  ? "bg-primary/10 text-primary border-primary/25"
-                  : "bg-muted text-muted-foreground border-border/80"
-              }`}
+              className={`hidden sm:inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${role === UserRole.SUPERADMIN
+                ? "bg-primary/10 text-primary border-primary/25"
+                : "bg-muted text-muted-foreground border-border/80"
+                }`}
             >
               {role === UserRole.SUPERADMIN ? "SuperAdmin" : "Admin"}
             </span>

@@ -28,13 +28,13 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-4">
-        <div className="relative w-12 h-12 rounded-xl bg-white border border-border shadow-xs flex items-center justify-center overflow-hidden">
+        <div className="relative w-[95px] h-[46px] p-1 flex items-center justify-center overflow-hidden">
           <Image
-            src="/brand-logo-footer.png"
+            src="/images/mbc-logo.png"
             alt="Mondial Logo"
-            width={32}
-            height={32}
-            className="object-contain"
+            width={95}
+            height={46}
+            className="object-contain w-full h-full"
             priority
           />
         </div>
