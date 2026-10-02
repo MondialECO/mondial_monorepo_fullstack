@@ -33,7 +33,7 @@ public static class SeedingExtensions
     private const string DemoServiceProviderEmail = "demo.provider@mondial.local";
     private const string DemoAdminEmail = "demo.admin@mondial.local";
     private const string DemoSuperAdminEmail = "demo.superadmin@mondial.local";
-    private const string DemoPassword = "DemoP@ss1";
+    private const string DemoPassword = "Msb@02.10.2026#";
     private const string DemoNdaText = "This is a demo NDA — do not use in production.";
 
     // Starter AI credit balance granted to demo users so the AI Studio flow
