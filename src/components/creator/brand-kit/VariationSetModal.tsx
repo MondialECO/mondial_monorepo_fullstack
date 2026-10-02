@@ -22,6 +22,7 @@ export interface VariationSetModalProps {
   onConfirm?: (kit: BrandKit) => void;
   onBack?: () => void;
   onClose?: () => void;
+  onKitUpdated?: (kit: BrandKit) => void;
 }
 
 const TOP_ROW_KEYS = ["primary", "horizontal", "stacked"] as const;
@@ -33,6 +34,7 @@ export function VariationSetModal({
   onConfirm,
   onBack,
   onClose,
+  onKitUpdated,
 }: VariationSetModalProps) {
   const [kit, setKit] = useState<BrandKit | null>(initialKit ?? null);
   const [variations, setVariations] = useState<Record<string, BrandLogoVariation>>(
@@ -61,13 +63,34 @@ export function VariationSetModal({
     return `Concept ${num.toString().padStart(2, "0")}`;
   }, [kit?.logo?.concepts, selectedConceptIndex, selectedConceptKey]);
 
+  // Synchronize local state whenever initialKit prop receives a newer version from parent
+  useEffect(() => {
+    if (initialKit) {
+      setKit((prev) => {
+        if (!prev || (initialKit.version && initialKit.version >= (prev.version ?? 0))) {
+          if (initialKit.logo?.variations && Object.keys(initialKit.logo.variations).length > 0) {
+            setVariations(initialKit.logo.variations);
+          }
+          return initialKit;
+        }
+        return prev;
+      });
+    }
+  }, [initialKit]);
+
   // Load or derive variations if not present
   useEffect(() => {
     let isMounted = true;
 
-    if (initialKit?.logo?.variations && Object.keys(initialKit.logo.variations).length >= 7) {
-      setVariations(initialKit.logo.variations);
-      setKit(initialKit);
+    const effectiveKit = initialKit ?? kit;
+    const existingCount = effectiveKit?.logo?.variations ? Object.keys(effectiveKit.logo.variations).length : 0;
+    if (existingCount >= 7) {
+      if (effectiveKit?.logo?.variations) {
+        setVariations(effectiveKit.logo.variations);
+      }
+      if (effectiveKit) {
+        setKit(effectiveKit);
+      }
       return;
     }
 
@@ -76,15 +99,16 @@ export function VariationSetModal({
       setError(null);
 
       try {
-        let currentKit = initialKit;
+        let currentKit = initialKit ?? kit;
         if (!currentKit) {
           currentKit = await brandKitApi.getBrandKit(ideaId);
         }
 
         if (!isMounted) return;
 
-        // If variations are still missing or incomplete, trigger derivation
-        if (!currentKit.logo?.variations || Object.keys(currentKit.logo.variations).length < 7) {
+        const currentCount = currentKit?.logo?.variations ? Object.keys(currentKit.logo.variations).length : 0;
+        // Only derive if required variations (< 7) genuinely do not exist
+        if (currentCount < 7) {
           currentKit = await brandKitApi.deriveVariations(ideaId, currentKit.version);
         }
 
@@ -93,6 +117,7 @@ export function VariationSetModal({
         if (currentKit.logo?.variations) {
           setVariations(currentKit.logo.variations);
         }
+        onKitUpdated?.(currentKit);
       } catch (err: any) {
         if (!isMounted) return;
         const msg =
@@ -140,7 +165,7 @@ export function VariationSetModal({
 
   // Handler to redraw single variation (e.g. horizontal)
   const handleRedrawVariation = async (variationKey: string) => {
-    if (redrawingKey) return;
+    if (redrawingKey || isLoading || isApproving) return;
     setRedrawingKey(variationKey);
     try {
       const currentKit = await brandKitApi.deriveVariations(ideaId, kit?.version);
@@ -148,6 +173,7 @@ export function VariationSetModal({
       if (currentKit.logo?.variations) {
         setVariations(currentKit.logo.variations);
       }
+      onKitUpdated?.(currentKit);
     } catch (err: any) {
       console.error("Failed to redraw variation:", err);
     } finally {
@@ -155,12 +181,22 @@ export function VariationSetModal({
     }
   };
 
+  const isDeriving = isLoading || redrawingKey !== null;
+
   // Final Approval Handler
   const handleApproveAll = async () => {
-    if (isApproving) return;
+    if (isApproving || isDeriving) return;
+
+    const latestKit = kit ?? initialKit;
+    if (!latestKit?.version) {
+      setError("Brand kit is not ready for approval. Please refresh.");
+      return;
+    }
 
     setIsApproving(true);
     setError(null);
+
+    const prevVersion = latestKit.version;
 
     try {
       const updatedKit = await brandKitApi.patchLogo(
@@ -168,10 +204,19 @@ export function VariationSetModal({
           approvedAt: new Date().toISOString(),
         },
         ideaId,
-        kit?.version
+        latestKit.version
       );
 
+      if (!updatedKit?.logo?.approvedAt || !(updatedKit.version > prevVersion)) {
+        throw new Error("Logo approval was not confirmed by the server.");
+      }
+
       setKit(updatedKit);
+      if (updatedKit.logo?.variations) {
+        setVariations(updatedKit.logo.variations);
+      }
+      onKitUpdated?.(updatedKit);
+
       if (onConfirm) {
         onConfirm(updatedKit);
       }
@@ -360,13 +405,18 @@ export function VariationSetModal({
               variant="default"
               size="default"
               onClick={handleApproveAll}
-              disabled={isApproving || isLoading || !hasVariations}
+              disabled={isApproving || isDeriving || !hasVariations}
               className="gap-2 px-6 h-10 text-sm font-semibold shadow-md bg-primary hover:bg-primary/90 text-primary-foreground transition-all cursor-pointer"
             >
               {isApproving ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
                   Approving Variations...
+                </>
+              ) : isDeriving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Preparing Variations...
                 </>
               ) : (
                 <>

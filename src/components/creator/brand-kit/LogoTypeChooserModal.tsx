@@ -18,6 +18,7 @@ export interface LogoTypeChooserModalProps {
   ideaId?: string;
   kit: BrandKit;
   onSuccess: (updatedKit: BrandKit) => void;
+  onKitUpdated?: (updatedKit: BrandKit) => void;
 }
 
 export interface LogoTypeOption {
@@ -254,6 +255,7 @@ export function LogoTypeChooserModal({
   ideaId,
   kit,
   onSuccess,
+  onKitUpdated,
 }: LogoTypeChooserModalProps) {
   const initialType = kit?.logo?.logoType || "symbol_plus_name";
   const [selectedType, setSelectedType] = useState<string>(initialType);
@@ -321,6 +323,7 @@ export function LogoTypeChooserModal({
         kit?.version
       );
 
+      onKitUpdated?.(updatedKit);
       onSuccess(updatedKit);
     } catch (err: any) {
       setError(

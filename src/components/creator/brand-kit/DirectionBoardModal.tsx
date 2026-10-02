@@ -30,6 +30,7 @@ interface DirectionBoardModalProps {
   ideaId?: string;
   kit: BrandKit;
   onSuccess: (updatedKit: BrandKit) => void;
+  onKitUpdated?: (updatedKit: BrandKit) => void;
 }
 
 // Fallback font family mappings
@@ -176,6 +177,7 @@ export function DirectionBoardModal({
   ideaId,
   kit,
   onSuccess,
+  onKitUpdated,
 }: DirectionBoardModalProps) {
   // 1. Core State
   const [currentKit, setCurrentKit] = useState<BrandKit>(kit);
@@ -350,10 +352,11 @@ export function DirectionBoardModal({
     try {
       const updatedKit = await brandKitApi.generateDirections(
         ideaId,
-        kit?.version
+        currentKit?.version ?? kit?.version
       );
 
       setCurrentKit(updatedKit);
+      onKitUpdated?.(updatedKit);
       if (updatedKit?.direction?.candidates) {
         setCandidates(updatedKit.direction.candidates);
         setSelectedKey(
@@ -416,6 +419,7 @@ export function DirectionBoardModal({
         currentKit?.version ?? kit?.version
       );
 
+      onKitUpdated?.(updatedKit);
       onSuccess(updatedKit);
     } catch (err: any) {
       const msg =

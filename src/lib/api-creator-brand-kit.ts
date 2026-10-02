@@ -36,6 +36,7 @@ async function withConcurrencyRetry<T>(
         }
       } catch (retryErr) {
         console.error("[BrandKitApi] Concurrency conflict auto-retry failed:", retryErr);
+        throw retryErr;
       }
     }
     throw err;
