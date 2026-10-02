@@ -14,7 +14,7 @@ export default function FigmaHero() {
   };
 
   return (
-    <section className="relative w-full overflow-hidden pt-12 pb-14 sm:pt-16 sm:pb-20 md:pt-20 md:pb-28 bg-white dark:bg-background border-b border-[#e8ecf2] dark:border-border">
+    <section className="relative w-full pt-12 sm:pt-16 md:pt-20 bg-white dark:bg-background border-b border-[#e8ecf2] dark:border-border">
 
       {/* Centered Hero Container */}
       <div className="w-full max-w-[1440px] xl:max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 flex flex-col items-center text-center">
@@ -69,7 +69,7 @@ export default function FigmaHero() {
             />
           </div>
 
-          {/* Product Dashboard Screenshot (724x507px r:14) */}
+          {/* Product Dashboard Screenshot (724x507px r:14) with Shadow & ~15% Bottom Overflow */}
           <div className="relative z-0 w-full max-w-[724px] rounded-[14px] overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3),0_12px_24px_-8px_rgba(0,0,0,0.15)] border border-[#e2e8f0] dark:border-border bg-white dark:bg-card -mb-16 sm:-mb-20 md:-mb-24">
             <Image
               src="/homepage_figma/screenshot_2026-10-02_at_3_00_34_am_1_fde9301e.png"
