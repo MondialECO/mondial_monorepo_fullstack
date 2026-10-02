@@ -26,11 +26,12 @@ public class StartupConfigValidationTests
     /// it — a value added there later would have silently made them vacuous. In-memory is
     /// now the only configuration source.
     /// </summary>
-    private static WebApplicationBuilder BuilderWith(Dictionary<string, string?> settings)
+    private static WebApplicationBuilder BuilderWith(Dictionary<string, string?> settings, string environmentName = "Development")
     {
         var builder = WebApplication.CreateEmptyBuilder(new WebApplicationOptions
         {
             ContentRootPath = AppContext.BaseDirectory,
+            EnvironmentName = environmentName,
         });
         builder.Configuration.AddInMemoryCollection(settings);
         return builder;
@@ -118,5 +119,117 @@ public class StartupConfigValidationTests
         var act = () => builder.ValidateRequiredConfiguration();
         act.Should().Throw<InvalidOperationException>()
            .WithMessage("*256-bit*");
+    }
+
+    [Fact]
+    public void Passes_when_stripe_disabled_with_empty_keys()
+    {
+        var cfg = ValidConfig();
+        cfg["Stripe:Enabled"] = "false";
+        cfg["Stripe:SecretKey"] = "";
+        cfg["Stripe:WebhookSecret"] = "";
+        var builder = BuilderWith(cfg, "Production");
+
+        var act = () => builder.ValidateRequiredConfiguration();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Passes_in_production_with_valid_live_key_and_production_db()
+    {
+        var cfg = ValidConfig();
+        cfg["MongoDbSettings:DatabaseName"] = "MondialEco";
+        cfg["Stripe:Enabled"] = "true";
+        cfg["Stripe:SecretKey"] = "sk_live_valid_prod_key_123456789";
+        cfg["Stripe:WebhookSecret"] = "whsec_valid_prod_secret_123456789";
+        var builder = BuilderWith(cfg, "Production");
+
+        var act = () => builder.ValidateRequiredConfiguration();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Throws_in_production_when_stripe_uses_test_key()
+    {
+        var cfg = ValidConfig();
+        cfg["MongoDbSettings:DatabaseName"] = "MondialEco";
+        cfg["Stripe:Enabled"] = "true";
+        cfg["Stripe:SecretKey"] = "sk_test_accidental_test_key_123";
+        cfg["Stripe:WebhookSecret"] = "whsec_valid_prod_secret_123";
+        var builder = BuilderWith(cfg, "Production");
+
+        var act = () => builder.ValidateRequiredConfiguration();
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage("*Production environment with Stripe enabled requires a live secret key starting with 'sk_live_'*");
+    }
+
+    [Fact]
+    public void Throws_in_production_when_stripe_key_missing()
+    {
+        var cfg = ValidConfig();
+        cfg["MongoDbSettings:DatabaseName"] = "MondialEco";
+        cfg["Stripe:Enabled"] = "true";
+        cfg["Stripe:SecretKey"] = "";
+        cfg["Stripe:WebhookSecret"] = "whsec_valid_prod_secret_123";
+        var builder = BuilderWith(cfg, "Production");
+
+        var act = () => builder.ValidateRequiredConfiguration();
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage("*'Stripe:SecretKey' is required*");
+    }
+
+    [Fact]
+    public void Throws_in_production_when_stripe_webhook_secret_missing_or_placeholder()
+    {
+        var cfg = ValidConfig();
+        cfg["MongoDbSettings:DatabaseName"] = "MondialEco";
+        cfg["Stripe:Enabled"] = "true";
+        cfg["Stripe:SecretKey"] = "sk_live_valid_key_123";
+        cfg["Stripe:WebhookSecret"] = "<placeholder>";
+        var builder = BuilderWith(cfg, "Production");
+
+        var act = () => builder.ValidateRequiredConfiguration();
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage("*'Stripe:WebhookSecret' is required and cannot be a placeholder in production*");
+    }
+
+    [Fact]
+    public void Throws_in_production_when_stripe_live_runs_against_dev_database()
+    {
+        var cfg = ValidConfig();
+        cfg["MongoDbSettings:DatabaseName"] = "MondialEcoDev";
+        cfg["Stripe:Enabled"] = "true";
+        cfg["Stripe:SecretKey"] = "sk_live_valid_prod_key_123";
+        cfg["Stripe:WebhookSecret"] = "whsec_valid_prod_secret_123";
+        var builder = BuilderWith(cfg, "Production");
+
+        var act = () => builder.ValidateRequiredConfiguration();
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage("*Production Stripe live payments cannot run against development database 'MondialEcoDev'*");
+    }
+
+    [Fact]
+    public void Throws_in_development_when_stripe_uses_live_key()
+    {
+        var cfg = ValidConfig();
+        cfg["Stripe:Enabled"] = "true";
+        cfg["Stripe:SecretKey"] = "sk_live_accidental_live_key_in_dev";
+        var builder = BuilderWith(cfg, "Development");
+
+        var act = () => builder.ValidateRequiredConfiguration();
+        act.Should().Throw<InvalidOperationException>()
+           .WithMessage("*Non-production environment cannot use live Stripe secret key ('sk_live_')*");
+    }
+
+    [Fact]
+    public void Passes_in_development_when_stripe_uses_test_key()
+    {
+        var cfg = ValidConfig();
+        cfg["Stripe:Enabled"] = "true";
+        cfg["Stripe:SecretKey"] = "sk_test_valid_test_key";
+        var builder = BuilderWith(cfg, "Development");
+
+        var act = () => builder.ValidateRequiredConfiguration();
+        act.Should().NotThrow();
     }
 }
