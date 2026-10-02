@@ -24,6 +24,7 @@ docs/
 │
 ├── product/                       # Product Strategy & Domain Canons
 │   ├── creator-flow-canon.md      # Creator journey canon (P1–P6, multi-idea, Level Up)
+│   ├── homepage-creator-figma-canon.md # Creator Homepage & MBC Logo Canon (Figma 57349:8209)
 │   ├── service-provider-flow-canon.md # Service Provider canon (flat dashboard, 4 tiers)
 │   ├── buyer-journey-reference.md # Investor & Buyer discovery & deal journey
 │   └── blueprints/                # Target Enterprise v2.0 product specifications (.docx & .txt)
