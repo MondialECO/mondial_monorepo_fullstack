@@ -261,6 +261,7 @@ namespace WebApp.Tests
         [SkippableFact]
         public async Task OptionA_LiveVerification_AllFourServices_FailHonest_RefundCredits_PreserveRegenCap()
         {
+            EnsureAvailable();
             _output.WriteLine("==========================================================================");
             _output.WriteLine("OPTION A LIVE BACKEND VERIFICATION: 4 BRAND STUDIO SERVICES");
             _output.WriteLine("==========================================================================");
