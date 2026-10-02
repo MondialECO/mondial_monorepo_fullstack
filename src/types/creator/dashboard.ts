@@ -47,6 +47,7 @@ export interface DashboardProjectSummary {
   category?: string | null;
   sector?: string | null;
   clarityScore?: number | null;
+  legalReadinessPct?: number | null;
   brand: DashboardBrandSummary;
 }
 
@@ -129,6 +130,14 @@ export interface DashboardPhase5Summary {
   guidanceText: string;
 }
 
+export interface DashboardForecastSummary {
+  hasForecast: boolean;
+  revenueProjection?: number | null;
+  breakEvenMonth?: number | null;
+  currency: string;
+  status: string;
+}
+
 export interface CreatorDashboardSummary {
   updatedAt: string;
   project: DashboardProjectSummary;
@@ -137,4 +146,5 @@ export interface CreatorDashboardSummary {
   attentionItems: DashboardAttentionItem[];
   results: DashboardResultItem[];
   phase5: DashboardPhase5Summary;
+  forecast?: DashboardForecastSummary;
 }

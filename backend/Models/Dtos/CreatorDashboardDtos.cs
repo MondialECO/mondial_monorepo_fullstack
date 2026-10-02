@@ -16,7 +16,17 @@ namespace WebApp.Models.Dtos
         public DashboardJourneyOverviewDto Journey { get; set; } = new();
         public List<DashboardResultItemDto> Results { get; set; } = new();
         public DashboardPhase5SummaryDto Phase5 { get; set; } = new();
+        public DashboardForecastSummaryDto Forecast { get; set; } = new();
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public class DashboardForecastSummaryDto
+    {
+        public bool HasForecast { get; set; }
+        public decimal? RevenueProjection { get; set; }
+        public int? BreakEvenMonth { get; set; }
+        public string Currency { get; set; } = "EUR";
+        public string Status { get; set; } = "Pending";
     }
 
     public class DashboardProjectSummaryDto
@@ -28,6 +38,7 @@ namespace WebApp.Models.Dtos
         public string? Category { get; set; }
         public string? Sector { get; set; }
         public double? ClarityScore { get; set; }
+        public double? LegalReadinessPct { get; set; }
         public DashboardBrandSummaryDto Brand { get; set; } = new();
     }
 
