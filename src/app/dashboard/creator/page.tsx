@@ -253,11 +253,14 @@ export default function CreatorDashboard() {
   }
 
   // Project-scoped link helper
+  const effectiveIdeaId = activeIdeaId || summary?.project?.id;
   const projectHref = (path: string) => {
-    if (!activeIdeaId) return path;
-    return path.includes('?')
-      ? `${path}&ideaId=${encodeURIComponent(activeIdeaId)}`
-      : `${path}?ideaId=${encodeURIComponent(activeIdeaId)}`;
+    if (!effectiveIdeaId) return path;
+    const [basePath, search] = path.split('?');
+    const params = new URLSearchParams(search || '');
+    params.set('ideaId', effectiveIdeaId);
+    const queryString = params.toString();
+    return queryString ? `${basePath}?${queryString}` : basePath;
   };
 
   const { project, nextAction, attentionItems, journey, results, phase5 } = summary;
@@ -1031,7 +1034,7 @@ export default function CreatorDashboard() {
                 </div>
               </div>
               <Button variant="ghost" size="sm" asChild className="h-7 text-xs font-semibold text-primary hover:text-primary/80 px-2">
-                <Link href={forecastResult?.href || projectHref('/dashboard/creator/phase-3/forecast')}>
+                <Link href={projectHref('/dashboard/creator/phase-3/forecast')}>
                   View Full <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Link>
               </Button>
@@ -1110,7 +1113,7 @@ export default function CreatorDashboard() {
                 </p>
               </div>
               <Button variant="outline" size="sm" asChild className="rounded-lg text-xs h-7 border-border px-2.5">
-                <Link href={projectHref('/dashboard/creator/documents')}>View Vault</Link>
+                <Link href={projectHref('/dashboard/creator/asset-library')}>View All</Link>
               </Button>
             </div>
 

@@ -528,4 +528,58 @@ describe('CreatorDashboard Component — Canonical Command Center', () => {
     expect(screen.queryByText('€1,631,264')).toBeNull();
     expect(screen.queryByText('Month 14')).toBeNull();
   });
+
+  it('10. Canonical Navigation: Forecast "View Full" and Assets "View All" point to canonical routes with preserved ideaId', () => {
+    mockSummaryData = {
+      project: {
+        id: 'idea-123',
+        name: 'CleanDrop',
+      },
+      forecast: {
+        hasForecast: true,
+        revenueProjection: 60000,
+        breakEvenMonth: 14,
+        currency: 'EUR',
+        status: 'Completed',
+      },
+      nextAction: {
+        key: 'brand_identity',
+        phase: 2,
+        title: 'Build Brand Identity',
+        description: 'Define your brand voice.',
+        buttonLabel: 'Open Brand Studio',
+        href: '/dashboard/creator/phase-2',
+      },
+      attentionItems: [],
+      journey: {
+        currentPhase: 3,
+        overallProgress: 45,
+        phases: [],
+      },
+      results: [
+        {
+          key: 'financial_forecast',
+          title: '36-Month Financial Forecast',
+          phase: 3,
+          status: 'Ready',
+          href: '/dashboard/creator/phase-3/forecast?ideaId=idea-123',
+        },
+      ],
+      phase5: { isUnlocked: false, href: '/dashboard/creator/crossroads', guidanceText: 'Locked.' },
+    };
+
+    render(<CreatorDashboard />);
+
+    // Forecast CTA points to canonical /dashboard/creator/phase-3/forecast preserving ideaId
+    const forecastLink = screen.getByRole('link', { name: /View Full/i });
+    expect(forecastLink).toHaveAttribute('href', '/dashboard/creator/phase-3/forecast?ideaId=idea-123');
+
+    // Assets CTA points to canonical /dashboard/creator/asset-library preserving ideaId
+    const assetsLink = screen.getByRole('link', { name: /View All/i });
+    expect(assetsLink).toHaveAttribute('href', '/dashboard/creator/asset-library?ideaId=idea-123');
+
+    // No stale View Vault or /dashboard/creator/documents
+    expect(screen.queryByRole('link', { name: /View Vault/i })).toBeNull();
+  });
 });
+
