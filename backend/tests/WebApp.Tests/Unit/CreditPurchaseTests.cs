@@ -1429,6 +1429,14 @@ namespace WebApp.Tests.Unit
             act.Should().Throw<StripeException>();
         }
 
+        [Fact]
+        public void Test_33_Stripe_Sdk_And_Api_Version_Verification()
+        {
+            var apiVersion = StripeConfiguration.ApiVersion;
+            apiVersion.Should().NotBeNullOrWhiteSpace();
+            apiVersion.Should().Be("2026-09-30.endive");
+        }
+
         private static string GenerateStripeSignature(string payload, string secret, long timestamp)
         {
             var signedPayload = $"{timestamp}.{payload}";

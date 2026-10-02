@@ -52,6 +52,39 @@ namespace WebApp.Configuration
                            "(256-bit) for HMAC-SHA256.");
             }
 
+            // Stripe payment subsystem fail-closed startup validation
+            var stripeEnabledSetting = cfg["Stripe:Enabled"];
+            if (bool.TryParse(stripeEnabledSetting, out var stripeEnabled) && stripeEnabled)
+            {
+                var secretKey = cfg["Stripe:SecretKey"];
+                var webhookSecret = cfg["Stripe:WebhookSecret"];
+                var dbName = cfg["MongoDbSettings:DatabaseName"];
+                var isProd = builder.Environment.IsProduction();
+
+                if (string.IsNullOrWhiteSpace(secretKey))
+                {
+                    errors.Add("  - 'Stripe:SecretKey' is required when Stripe is enabled.");
+                }
+                else if (isProd && !secretKey.StartsWith("sk_live_", StringComparison.Ordinal))
+                {
+                    errors.Add("  - Production environment with Stripe enabled requires a live secret key starting with 'sk_live_'. Found test or invalid key.");
+                }
+                else if (!isProd && secretKey.StartsWith("sk_live_", StringComparison.Ordinal))
+                {
+                    errors.Add("  - Non-production environment cannot use live Stripe secret key ('sk_live_'). Use a test key ('sk_test_').");
+                }
+
+                if (isProd && (string.IsNullOrWhiteSpace(webhookSecret) || webhookSecret.StartsWith("<")))
+                {
+                    errors.Add("  - 'Stripe:WebhookSecret' is required and cannot be a placeholder in production when Stripe is enabled.");
+                }
+
+                if (isProd && string.Equals(dbName, "MondialEcoDev", StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add("  - Production Stripe live payments cannot run against development database 'MondialEcoDev'. Production database must be configured.");
+                }
+            }
+
             if (errors.Count > 0)
             {
                 throw new InvalidOperationException(
