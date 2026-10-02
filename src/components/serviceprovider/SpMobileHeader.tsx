@@ -19,13 +19,13 @@ export function SpMobileHeader() {
       <div className="flex min-w-0 items-center gap-2.5">
         <SidebarTrigger className="size-11 shrink-0 text-[#4B5563]" />
         <Link href="/dashboard/serviceprovider" className="flex items-center gap-2 min-w-0 outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[#3C61DD]">
-          <div className="relative size-7 shrink-0 rounded-md bg-white border border-[#E5E7EB] flex items-center justify-center overflow-hidden">
+          <div className="relative w-[95px] h-[46px] shrink-0 p-1 flex items-center justify-center overflow-hidden">
             <Image
-              src="/brand-logo-footer.png"
+              src="/images/mbc-logo.png"
               alt="Mondial"
-              width={20}
-              height={20}
-              className="object-contain"
+              width={95}
+              height={46}
+              className="object-contain w-full h-full"
             />
           </div>
           <div className="min-w-0">

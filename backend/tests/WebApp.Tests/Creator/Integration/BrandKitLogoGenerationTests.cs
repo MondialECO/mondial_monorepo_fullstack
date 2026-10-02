@@ -38,6 +38,9 @@ namespace WebApp.Tests.Creator.Integration
         public LogoGenerationService LogoGenService { get; private set; } = null!;
         public LogoMarkRendererRegistry RendererRegistry { get; private set; } = null!;
 
+        public bool Available { get; private set; }
+        public string SkipReason { get; private set; } = "Docker/Testcontainers unavailable";
+
         public async Task InitializeAsync()
         {
             await _appFixture.InitializeAsync();
@@ -50,77 +53,89 @@ namespace WebApp.Tests.Creator.Integration
                 var sp = _appFixture.Factory.Services;
                 var client = (IMongoClient)sp.GetService(typeof(IMongoClient))!;
                 Database = client.GetDatabase(_ephemeralDbName);
+                Available = true;
+            }
+            else if (TestMongoDatabaseGuard.IsLiveTestExplicitlyOptedIn())
+            {
+                var connStr = Environment.GetEnvironmentVariable(TestMongoDatabaseGuard.MongoTestConnectionEnvVar);
+                if (!string.IsNullOrWhiteSpace(connStr))
+                {
+                    _fallbackClient = new MongoClient(connStr);
+                    Database = _fallbackClient.GetDatabase(_ephemeralDbName);
+                    Available = true;
+                }
+                else
+                {
+                    Available = false;
+                    SkipReason = $"{TestMongoDatabaseGuard.LiveTestOptInEnvVar} is set, but {TestMongoDatabaseGuard.MongoTestConnectionEnvVar} is missing.";
+                }
             }
             else
             {
-                var connStr = Environment.GetEnvironmentVariable("MONGO_TEST_CONNECTION_STRING")
-                    ?? "mongodb+srv://mongoDB:hr11100010@cluster0.nsfffx4.mongodb.net/";
-                _fallbackClient = new MongoClient(connStr);
-                Database = _fallbackClient.GetDatabase(_ephemeralDbName);
+                Available = false;
+                SkipReason = $"Docker/Testcontainers unavailable and {TestMongoDatabaseGuard.LiveTestOptInEnvVar} not enabled. Implicit live Atlas fallback is disabled.";
             }
 
-            BrandKitRepo = new BrandKitRepository(Database);
-            IdeaRepo = new CreatorIdeaRepository(Database);
-            var context = new MongoDbContext(Database);
+            if (Available && Database != null)
+            {
+                BrandKitRepo = new BrandKitRepository(Database);
+                IdeaRepo = new CreatorIdeaRepository(Database);
+                var context = new MongoDbContext(Database);
 
-            JourneyService = new CreatorJourneyService(
-                context,
-                Mock.Of<IBusinessPlanSessionStore>(),
-                Mock.Of<IForecastSessionStore>(),
-                IdeaRepo,
-                Mock.Of<IClarifierSessionStore>());
+                JourneyService = new CreatorJourneyService(
+                    context,
+                    Mock.Of<IBusinessPlanSessionStore>(),
+                    Mock.Of<IForecastSessionStore>(),
+                    IdeaRepo,
+                    Mock.Of<IClarifierSessionStore>());
 
-            _tempWebRoot = Path.Combine(Path.GetTempPath(), $"webroot_{Guid.NewGuid():N}");
-            Directory.CreateDirectory(_tempWebRoot);
+                _tempWebRoot = Path.Combine(Path.GetTempPath(), $"webroot_{Guid.NewGuid():N}");
+                Directory.CreateDirectory(_tempWebRoot);
 
-            var envMock = new Mock<IWebHostEnvironment>();
-            envMock.Setup(e => e.WebRootPath).Returns(_tempWebRoot);
+                var envMock = new Mock<IWebHostEnvironment>();
+                envMock.Setup(e => e.WebRootPath).Returns(_tempWebRoot);
 
-            var mockAi = new Mock<IAiProvider>();
-            mockAi.Setup(a => a.CompleteAsync(It.IsAny<AiCompletionRequest>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((AiCompletionRequest req, CancellationToken ct) =>
-                {
-                    var userPrompt = req.Messages.FirstOrDefault(m => m.Role == "user")?.Content ?? "";
-                    var tag = userPrompt.Contains("CyberLock") ? "Cyber" : (userPrompt.Contains("TerraHarvest") ? "Terra" : "Luxe");
-                    var json = $@"{{
-                        ""concepts"": [
-                            {{ ""family"": ""wordmark"", ""descriptor"": ""{tag} Wordmark"", ""parameters"": {{ ""Layout"": ""single_line"", ""LetterCase"": ""uppercase"", ""AccentElement"": ""none"", ""FontCategory"": ""geometric_sans"", ""LetterSpacing"": ""normal"" }} }},
-                            {{ ""family"": ""symbol_plus_name"", ""descriptor"": ""{tag} Badge"", ""parameters"": {{ ""BadgeShape"": ""circle"", ""BadgeStyle"": ""outline_stroke"", ""InternalGlyph"": ""initial_letter"" }} }},
-                            {{ ""family"": ""monogram"", ""descriptor"": ""{tag} Monogram"", ""parameters"": {{ ""MonogramType"": ""single_letter"", ""FrameStyle"": ""circle_ring"", ""StrokeStyle"": ""heavy_block"", ""FontCategory"": ""geometric_sans"" }} }},
-                            {{ ""family"": ""abstract"", ""descriptor"": ""{tag} Abstract"", ""parameters"": {{ ""GeometryType"": ""intersecting_rings"", ""StrokeWeight"": ""medium"", ""FontCategory"": ""geometric_sans"" }} }},
-                            {{ ""family"": ""icon"", ""descriptor"": ""{tag} Icon"", ""parameters"": {{ ""MetaphorPrimitive"": ""node_network"", ""Construction"": ""monoline_stroke"", ""FontCategory"": ""geometric_sans"" }} }},
-                            {{ ""family"": ""minimal"", ""descriptor"": ""{tag} Minimal"", ""parameters"": {{ ""Primitive"": ""quadrant_arc"", ""Orientation"": ""0_deg"", ""WeightBalance"": ""monolithic_solid"", ""FontCategory"": ""geometric_sans"" }} }}
-                        ]
-                    }}";
-                    return new AiCompletion
+                var mockAi = new Mock<IAiProvider>();
+                mockAi.Setup(a => a.CompleteAsync(It.IsAny<AiCompletionRequest>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync((AiCompletionRequest req, CancellationToken ct) =>
                     {
-                        Text = json,
-                        Model = "mock-model",
-                        Usage = new AiTokenUsage(100, 200, 300)
-                    };
-                });
+                        var userPrompt = req.Messages.FirstOrDefault(m => m.Role == "user")?.Content ?? "";
+                        var tag = userPrompt.Contains("CyberLock") ? "Cyber" : (userPrompt.Contains("TerraHarvest") ? "Terra" : "Luxe");
+                        var json = $@"{{
+                            ""concepts"": [
+                                {{ ""family"": ""wordmark"", ""descriptor"": ""{tag} Wordmark"", ""parameters"": {{ ""Layout"": ""single_line"", ""LetterCase"": ""uppercase"", ""AccentElement"": ""none"", ""FontCategory"": ""geometric_sans"", ""LetterSpacing"": ""normal"" }} }},
+                                {{ ""family"": ""symbol_plus_name"", ""descriptor"": ""{tag} Badge"", ""parameters"": {{ ""BadgeShape"": ""circle"", ""BadgeStyle"": ""outline_stroke"", ""InternalGlyph"": ""initial_letter"" }} }},
+                                {{ ""family"": ""monogram"", ""descriptor"": ""{tag} Monogram"", ""parameters"": {{ ""MonogramType"": ""single_letter"", ""FrameStyle"": ""circle_ring"", ""StrokeStyle"": ""heavy_block"", ""FontCategory"": ""geometric_sans"" }} }},
+                                {{ ""family"": ""abstract"", ""descriptor"": ""{tag} Abstract"", ""parameters"": {{ ""GeometryType"": ""intersecting_rings"", ""StrokeWeight"": ""medium"", ""FontCategory"": ""geometric_sans"" }} }},
+                                {{ ""family"": ""icon"", ""descriptor"": ""{tag} Icon"", ""parameters"": {{ ""MetaphorPrimitive"": ""node_network"", ""Construction"": ""monoline_stroke"", ""FontCategory"": ""geometric_sans"" }} }},
+                                {{ ""family"": ""minimal"", ""descriptor"": ""{tag} Minimal"", ""parameters"": {{ ""Primitive"": ""quadrant_arc"", ""Orientation"": ""0_deg"", ""WeightBalance"": ""monolithic_solid"", ""FontCategory"": ""geometric_sans"" }} }}
+                            ]
+                        }}";
+                        return new AiCompletion
+                        {
+                            Text = json,
+                            Model = "mock-model",
+                            Usage = new AiTokenUsage(100, 200, 300)
+                        };
+                    });
 
-            var mockRouter = new Mock<IModelRouter>();
-            mockRouter.Setup(r => r.Resolve(It.IsAny<string>())).Returns("mock-model");
+                var mockRouter = new Mock<IModelRouter>();
+                mockRouter.Setup(r => r.Resolve(It.IsAny<string>())).Returns("mock-model");
 
-            RendererRegistry = new LogoMarkRendererRegistry();
-            LogoGenService = new LogoGenerationService(RendererRegistry, mockAi.Object, mockRouter.Object, env: envMock.Object);
+                RendererRegistry = new LogoMarkRendererRegistry();
+                LogoGenService = new LogoGenerationService(RendererRegistry, mockAi.Object, mockRouter.Object, env: envMock.Object);
+            }
         }
 
         public async Task DisposeAsync()
         {
             if (!string.IsNullOrEmpty(_ephemeralDbName))
             {
-                try
-                {
-                    var client = _fallbackClient ?? (IMongoClient?)_appFixture.Factory?.Services.GetService(typeof(IMongoClient));
-                    if (client != null)
-                        await client.DropDatabaseAsync(_ephemeralDbName);
-                }
-                catch { }
+                var client = _fallbackClient ?? (IMongoClient?)_appFixture.Factory?.Services.GetService(typeof(IMongoClient));
+                await TestMongoDatabaseGuard.SafeDropDatabaseAsync(client, _ephemeralDbName, "bk_logo_");
             }
 
-            if (Directory.Exists(_tempWebRoot))
+            if (!string.IsNullOrEmpty(_tempWebRoot) && Directory.Exists(_tempWebRoot))
             {
                 try { Directory.Delete(_tempWebRoot, recursive: true); } catch { }
             }
@@ -128,8 +143,11 @@ namespace WebApp.Tests.Creator.Integration
             await _appFixture.DisposeAsync();
         }
 
+        private void EnsureAvailable() => Skip.IfNot(Available, SkipReason);
+
         private CreatorBrandKitController CreateController(string userId)
         {
+            EnsureAvailable();
             var client = _fallbackClient ?? (IMongoClient?)_appFixture.Factory?.Services.GetService(typeof(IMongoClient));
             return new CreatorBrandKitController(
                 JourneyService,
@@ -155,6 +173,7 @@ namespace WebApp.Tests.Creator.Integration
 
         private async Task<CreatorIdea> SeedIdeaAndJourneyAsync(string userId, string ideaId, string brandName = "Apex Robotics")
         {
+            EnsureAvailable();
             var idea = new CreatorIdea
             {
                 Id = ideaId,
@@ -186,7 +205,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 1. GENERATE CONCEPTS PRODUCES 6 DISTINCT CONCEPTS WITH VALID DISK FILES
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task GenerateConcepts_with_confirmed_direction_generates_six_distinct_concepts_with_valid_files()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -250,7 +269,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 2. REGENERATE SINGLE CONCEPT MODIFIES TARGET AND LEAVES 5 BYTE-IDENTICAL
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task RegenerateSingleConcept_updates_only_target_concept_and_leaves_other_five_byte_identical()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -302,7 +321,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 3. GENERATE BEFORE DIRECTION SELECTED RETURNS 400
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task GenerateConcepts_before_direction_selected_returns_400_with_prerequisite_error()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -325,7 +344,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 4. AVOID LIST EXCLUSION ENFORCEMENT
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task AvoidList_elements_are_excluded_from_generated_concepts()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -366,9 +385,10 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 5. THREE CONTRASTING BUSINESSES DEMONSTRATION
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Three_contrasting_businesses_generate_distinct_tailored_concept_sets()
         {
+            EnsureAvailable();
             // Business A: Tech Cybersecurity
             var ideaA = new CreatorIdea { Id = ObjectId.GenerateNewId().ToString(), Project = new CreatorJourneyProject { Name = "CyberLock" } };
             var kitA = new BrandKit

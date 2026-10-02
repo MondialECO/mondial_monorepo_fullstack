@@ -27,6 +27,7 @@ using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
 using WebApp.Services.Repository;
 using WebApp.Services.Repository.Ai;
+using WebApp.Tests.Creator.Integration;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -51,56 +52,78 @@ namespace WebApp.Tests
             _output = output;
         }
 
+        public bool Available { get; private set; }
+        public string SkipReason { get; private set; } = "Live Mongo tests not opted in";
+
         public async Task InitializeAsync()
         {
-            var connStr = Environment.GetEnvironmentVariable("MONGO_TEST_CONNECTION_STRING")
-                ?? "mongodb+srv://mongoDB:hr11100010@cluster0.nsfffx4.mongodb.net/";
-            _mongoClient = new MongoClient(connStr);
-            _dbName = $"verify_opt_a_{Guid.NewGuid():N}"[..24];
-            _db = _mongoClient.GetDatabase(_dbName);
-
-            _brandKitRepo = new BrandKitRepository(_db);
-            _ideaRepo = new CreatorIdeaRepository(_db);
-            _creditLedgerRepo = new AiCreditLedgerRepository(_db);
-            var mongoContext = new MongoDbContext(_db);
-
-            _aiSettings = new AiSettings
+            if (TestMongoDatabaseGuard.IsLiveTestExplicitlyOptedIn())
             {
-                CreditCosts = new Dictionary<string, int>
+                var connStr = Environment.GetEnvironmentVariable(TestMongoDatabaseGuard.MongoTestConnectionEnvVar);
+                if (!string.IsNullOrWhiteSpace(connStr))
                 {
-                    ["DirectionGeneration"] = 7,
-                    ["LogoParameterSelection"] = 4,
-                    ["ColorGeneration"] = 2,
-                    ["TypographyGeneration"] = 2,
-                    ["LogoConceptRegenerate"] = 0
-                },
-                ModelRouting = new ModelRoutingSettings
-                {
-                    Models = new Dictionary<string, string>
-                    {
-                        ["DirectionGeneration"] = "mock-model",
-                        ["LogoParameterSelection"] = "mock-model",
-                        ["ColorGeneration"] = "mock-model",
-                        ["TypographyGeneration"] = "mock-model"
-                    }
-                },
-                OutputTokenLimits = new Dictionary<string, int>
-                {
-                    ["DirectionGeneration"] = 4500,
-                    ["LogoParameterSelection"] = 3000,
-                    ["ColorGeneration"] = 4500,
-                    ["TypographyGeneration"] = 2000
+                    _mongoClient = new MongoClient(connStr);
+                    _dbName = $"verify_opt_a_{Guid.NewGuid():N}"[..24];
+                    _db = _mongoClient.GetDatabase(_dbName);
+                    Available = true;
                 }
-            };
+                else
+                {
+                    Available = false;
+                    SkipReason = $"{TestMongoDatabaseGuard.LiveTestOptInEnvVar} is set, but {TestMongoDatabaseGuard.MongoTestConnectionEnvVar} is missing.";
+                }
+            }
+            else
+            {
+                Available = false;
+                SkipReason = $"Docker/Testcontainers unavailable and {TestMongoDatabaseGuard.LiveTestOptInEnvVar} not enabled. Implicit live Atlas fallback is disabled.";
+            }
 
-            _creditService = new AiCreditService(_creditLedgerRepo, Options.Create(_aiSettings));
+            if (Available && _db != null)
+            {
+                _brandKitRepo = new BrandKitRepository(_db);
+                _ideaRepo = new CreatorIdeaRepository(_db);
+                _creditLedgerRepo = new AiCreditLedgerRepository(_db);
+                var mongoContext = new MongoDbContext(_db);
 
-            _journeyService = new CreatorJourneyService(
-                mongoContext,
-                Mock.Of<IBusinessPlanSessionStore>(),
-                Mock.Of<IForecastSessionStore>(),
-                _ideaRepo,
-                Mock.Of<IClarifierSessionStore>());
+                _aiSettings = new AiSettings
+                {
+                    CreditCosts = new Dictionary<string, int>
+                    {
+                        ["DirectionGeneration"] = 7,
+                        ["LogoParameterSelection"] = 4,
+                        ["ColorGeneration"] = 2,
+                        ["TypographyGeneration"] = 2,
+                        ["LogoConceptRegenerate"] = 0
+                    },
+                    ModelRouting = new ModelRoutingSettings
+                    {
+                        Models = new Dictionary<string, string>
+                        {
+                            ["DirectionGeneration"] = "mock-model",
+                            ["LogoParameterSelection"] = "mock-model",
+                            ["ColorGeneration"] = "mock-model",
+                            ["TypographyGeneration"] = "mock-model"
+                        }
+                    },
+                    OutputTokenLimits = new Dictionary<string, int>
+                    {
+                        ["DirectionGeneration"] = 4500,
+                        ["LogoParameterSelection"] = 3000,
+                        ["ColorGeneration"] = 4500,
+                        ["TypographyGeneration"] = 2000
+                    }
+                };
+
+                _creditService = new AiCreditService(_creditLedgerRepo, Options.Create(_aiSettings));
+
+                _journeyService = new CreatorJourneyService(
+                    mongoContext,
+                    Mock.Of<IBusinessPlanSessionStore>(),
+                    Mock.Of<IForecastSessionStore>(),
+                    _ideaRepo,
+                    Mock.Of<IClarifierSessionStore>());
+            }
 
             await Task.CompletedTask;
         }
@@ -109,9 +132,11 @@ namespace WebApp.Tests
         {
             if (_mongoClient != null && !string.IsNullOrEmpty(_dbName))
             {
-                try { await _mongoClient.DropDatabaseAsync(_dbName); } catch { }
+                await TestMongoDatabaseGuard.SafeDropDatabaseAsync(_mongoClient, _dbName, "verify_opt_a_");
             }
         }
+
+        private void EnsureAvailable() => Skip.IfNot(Available, SkipReason);
 
         private CreatorBrandKitController CreateController(
             string userId,
@@ -120,6 +145,7 @@ namespace WebApp.Tests
             IColorGenerationService? colorGen = null,
             ITypographyGenerationService? typoGen = null)
         {
+            EnsureAvailable();
             var controller = new CreatorBrandKitController(
                 _journeyService,
                 _brandKitRepo,
@@ -232,7 +258,7 @@ namespace WebApp.Tests
             return (idea, kit);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task OptionA_LiveVerification_AllFourServices_FailHonest_RefundCredits_PreserveRegenCap()
         {
             _output.WriteLine("==========================================================================");

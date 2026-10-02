@@ -48,23 +48,35 @@ namespace WebApp.Tests.Creator.Integration
                     var sp = _appFixture.Factory.Services;
                     var client = (IMongoClient)sp.GetService(typeof(IMongoClient))!;
                     Database = client.GetDatabase(_ephemeralDbName);
+                    Repository = new BrandKitRepository(Database);
+                    Available = true;
+                }
+                else if (TestMongoDatabaseGuard.IsLiveTestExplicitlyOptedIn())
+                {
+                    var connStr = Environment.GetEnvironmentVariable(TestMongoDatabaseGuard.MongoTestConnectionEnvVar);
+                    if (!string.IsNullOrWhiteSpace(connStr))
+                    {
+                        _fallbackClient = new MongoClient(connStr);
+                        Database = _fallbackClient.GetDatabase(_ephemeralDbName);
+                        Repository = new BrandKitRepository(Database);
+                        Available = true;
+                    }
+                    else
+                    {
+                        Available = false;
+                        SkipReason = $"{TestMongoDatabaseGuard.LiveTestOptInEnvVar} is set, but {TestMongoDatabaseGuard.MongoTestConnectionEnvVar} is missing.";
+                    }
                 }
                 else
                 {
-                    // Local dev environment without Docker — use ephemeral Atlas database
-                    var connStr = Environment.GetEnvironmentVariable("MONGO_TEST_CONNECTION_STRING")
-                        ?? "mongodb+srv://mongoDB:hr11100010@cluster0.nsfffx4.mongodb.net/";
-                    _fallbackClient = new MongoClient(connStr);
-                    Database = _fallbackClient.GetDatabase(_ephemeralDbName);
+                    Available = false;
+                    SkipReason = $"Docker/Testcontainers unavailable and {TestMongoDatabaseGuard.LiveTestOptInEnvVar} not enabled. Implicit live Atlas fallback is disabled.";
                 }
-
-                Repository = new BrandKitRepository(Database);
-                Available = true;
             }
             catch (Exception ex)
             {
                 Available = false;
-                SkipReason = $"MongoDB unavailable or quota exceeded: {ex.Message}";
+                SkipReason = $"MongoDB initialization skipped: {ex.Message}";
             }
         }
 
@@ -72,18 +84,8 @@ namespace WebApp.Tests.Creator.Integration
         {
             if (!string.IsNullOrEmpty(_ephemeralDbName))
             {
-                try
-                {
-                    var client = _fallbackClient ?? (IMongoClient?)_appFixture.Factory?.Services.GetService(typeof(IMongoClient));
-                    if (client != null)
-                    {
-                        await client.DropDatabaseAsync(_ephemeralDbName);
-                    }
-                }
-                catch
-                {
-                    // Best effort cleanup
-                }
+                var client = _fallbackClient ?? (IMongoClient?)_appFixture.Factory?.Services.GetService(typeof(IMongoClient));
+                await TestMongoDatabaseGuard.SafeDropDatabaseAsync(client, _ephemeralDbName, "bk_");
             }
 
             await _appFixture.DisposeAsync();

@@ -46,6 +46,8 @@ namespace WebApp.Tests.Creator.Integration
         public BrandKitRepository BrandKitRepo { get; private set; } = null!;
         public CreatorIdeaRepository IdeaRepo { get; private set; } = null!;
         public CreatorJourneyService JourneyService { get; private set; } = null!;
+        public bool Available { get; private set; }
+        public string SkipReason { get; private set; } = "Docker/Testcontainers unavailable";
 
         public async Task InitializeAsync()
         {
@@ -59,42 +61,56 @@ namespace WebApp.Tests.Creator.Integration
                 var sp = _appFixture.Factory.Services;
                 var client = (IMongoClient)sp.GetService(typeof(IMongoClient))!;
                 Database = client.GetDatabase(_ephemeralDbName);
+                Available = true;
+            }
+            else if (TestMongoDatabaseGuard.IsLiveTestExplicitlyOptedIn())
+            {
+                var connStr = Environment.GetEnvironmentVariable(TestMongoDatabaseGuard.MongoTestConnectionEnvVar);
+                if (!string.IsNullOrWhiteSpace(connStr))
+                {
+                    _fallbackClient = new MongoClient(connStr);
+                    Database = _fallbackClient.GetDatabase(_ephemeralDbName);
+                    Available = true;
+                }
+                else
+                {
+                    Available = false;
+                    SkipReason = $"{TestMongoDatabaseGuard.LiveTestOptInEnvVar} is set, but {TestMongoDatabaseGuard.MongoTestConnectionEnvVar} is missing.";
+                }
             }
             else
             {
-                var connStr = Environment.GetEnvironmentVariable("MONGO_TEST_CONNECTION_STRING")
-                    ?? "mongodb+srv://mongoDB:hr11100010@cluster0.nsfffx4.mongodb.net/";
-                _fallbackClient = new MongoClient(connStr);
-                Database = _fallbackClient.GetDatabase(_ephemeralDbName);
+                Available = false;
+                SkipReason = $"Docker/Testcontainers unavailable and {TestMongoDatabaseGuard.LiveTestOptInEnvVar} not enabled. Implicit live Atlas fallback is disabled.";
             }
 
-            BrandKitRepo = new BrandKitRepository(Database);
-            IdeaRepo = new CreatorIdeaRepository(Database);
-            var context = new MongoDbContext(Database);
+            if (Available && Database != null)
+            {
+                BrandKitRepo = new BrandKitRepository(Database);
+                IdeaRepo = new CreatorIdeaRepository(Database);
+                var context = new MongoDbContext(Database);
 
-            JourneyService = new CreatorJourneyService(
-                context,
-                Mock.Of<IBusinessPlanSessionStore>(),
-                Mock.Of<IForecastSessionStore>(),
-                IdeaRepo,
-                Mock.Of<IClarifierSessionStore>());
+                JourneyService = new CreatorJourneyService(
+                    context,
+                    Mock.Of<IBusinessPlanSessionStore>(),
+                    Mock.Of<IForecastSessionStore>(),
+                    IdeaRepo,
+                    Mock.Of<IClarifierSessionStore>());
+            }
         }
 
         public async Task DisposeAsync()
         {
             if (!string.IsNullOrEmpty(_ephemeralDbName))
             {
-                try
-                {
-                    var client = _fallbackClient ?? (IMongoClient?)_appFixture.Factory?.Services.GetService(typeof(IMongoClient));
-                    if (client != null)
-                        await client.DropDatabaseAsync(_ephemeralDbName);
-                }
-                catch { }
+                var client = _fallbackClient ?? (IMongoClient?)_appFixture.Factory?.Services.GetService(typeof(IMongoClient));
+                await TestMongoDatabaseGuard.SafeDropDatabaseAsync(client, _ephemeralDbName, "bk_");
             }
 
             await _appFixture.DisposeAsync();
         }
+
+        private void EnsureAvailable() => Skip.IfNot(Available, SkipReason);
 
         private CreatorBrandKitController CreateController(
             string userId,
@@ -102,6 +118,7 @@ namespace WebApp.Tests.Creator.Integration
             IMongoClient? mongoClientOverride = null,
             IConfiguration? configOverride = null)
         {
+            EnsureAvailable();
             var client = mongoClientOverride ?? (_fallbackClient ?? (IMongoClient?)_appFixture.Factory?.Services.GetService(typeof(IMongoClient)));
             return new CreatorBrandKitController(
                 JourneyService,
@@ -127,6 +144,7 @@ namespace WebApp.Tests.Creator.Integration
 
         private async Task<CreatorIdea> SeedIdeaAndJourneyAsync(string userId, string ideaId)
         {
+            EnsureAvailable();
             var idea = new CreatorIdea
             {
                 Id = ideaId,
@@ -153,7 +171,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 1. IDEMPOTENT CREATION
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task CreateKit_called_twice_is_idempotent_and_returns_single_document()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -189,7 +207,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 2. HTTP-LAYER TARGETED UPDATE SIBLING ISOLATION
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task PatchColors_leaves_all_sibling_roles_and_sections_byte_identical_when_reread()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -259,7 +277,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 3. SEQUENCING ENFORCEMENT: DIRECTION REJECTED BEFORE STRATEGY CONFIRMED
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task PatchDirection_before_strategy_confirmed_returns_400_with_prerequisite_message()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -287,7 +305,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 4. SEQUENCING ENFORCEMENT: DIRECTION SUCCEEDS ONCE STRATEGY CONFIRMED
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task PatchDirection_after_strategy_confirmed_succeeds_with_200()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -322,7 +340,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 5. COMPLETED KIT ACCEPTS EDITS AND COMPLETION IS A ONE-WAY DOOR
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Completed_kit_accepts_edits_without_sequencing_rejection_and_status_remains_complete()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -373,7 +391,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 6. INVALID ROLE NAME RETURNS 400 AND WRITES NOTHING
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task PatchColors_with_invalid_role_name_returns_400_and_writes_nothing()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -410,7 +428,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 7. STALE EXPECTED VERSION RETURNS 409 CONFLICT ON PATCH
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Patch_with_stale_expected_version_returns_409_conflict()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -435,7 +453,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 8. SNAPSHOT WITH STALE EXPECTED VERSION RETURNS 409 AND HISTORY IS UNTOUCHED
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Snapshot_with_stale_expected_version_returns_409_and_leaves_history_untouched()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -465,7 +483,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 9. ADVANCE STEP SEQUENCING AND BACKWARD ADVANCE REJECTION
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Advance_targeting_later_step_with_unmet_prerequisites_returns_400_and_leaves_step_unchanged()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -498,7 +516,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 10. SCOPING: UNOWNED/MISSING IDEA RETURNS 404, CONFLICT PROPAGATES 409
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Scoping_unowned_idea_returns_404_and_conflict_propagates_409()
         {
             var user1 = "user-1-" + Guid.NewGuid();
@@ -544,9 +562,10 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 11. DERIVED SUMMARY SYNC: 4-FIELD TARGETED SET LEAVES DESIGNER FIELDS UNTOUCHED
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Approving_logo_updates_all_four_summary_fields_and_leaves_designer_fields_untouched()
         {
+            EnsureAvailable();
             var userId = "user-" + Guid.NewGuid();
             var ideaId = ObjectId.GenerateNewId().ToString();
 
@@ -645,9 +664,10 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 12. TARGETED $SET LEAVES ALL SIBLING PROJECT FIELDS BYTE-IDENTICAL
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Targeted_set_leaves_all_sibling_project_fields_byte_identical()
         {
+            EnsureAvailable();
             var userId = "user-" + Guid.NewGuid();
             var ideaId = ObjectId.GenerateNewId().ToString();
 
@@ -732,7 +752,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 13. STRATEGY-ONLY PATCH PRODUCES NO WRITE TO CREATOR IDEA (VERSION UNCHANGED)
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Strategy_only_patch_produces_no_write_to_CreatorIdea_and_version_is_unchanged()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -765,7 +785,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 14. TYPOGRAPHY WEIGHT TWEAK DOES NOT BUMP CREATOR IDEA VERSION
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Typography_weight_tweak_does_not_bump_CreatorIdea_version()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -817,7 +837,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 15. TRANSACTION ROLLBACK: FORCED FAILURE OF SECOND WRITE ROLLS BACK FIRST WRITE
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Transaction_rollback_on_forced_second_write_failure_leaves_neither_collection_changed()
         {
             var userId = "user-" + Guid.NewGuid();
@@ -893,9 +913,10 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 16. BRANDING METHOD AI_STUDIO SATISFIES RESOLUTION WITHOUT DESIGNER HIRE CREDIT
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task BrandingMethod_ai_studio_satisfies_resolution_without_awarding_designer_hire_points()
         {
+            EnsureAvailable();
             var userId = "user-" + Guid.NewGuid();
             var ideaId = ObjectId.GenerateNewId().ToString();
 
@@ -941,7 +962,7 @@ namespace WebApp.Tests.Creator.Integration
         // =========================================================================
         // 17. STRATEGY PROVENANCED TEXT EDIT TRACKING (EDITEDAT & PROVENANCE)
         // =========================================================================
-        [Fact]
+        [SkippableFact]
         public async Task Strategy_text_patch_sets_EditedAt_and_Provenance_only_for_modified_fields()
         {
             var userId = "user-" + Guid.NewGuid();
