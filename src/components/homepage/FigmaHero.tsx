@@ -58,7 +58,7 @@ export default function FigmaHero() {
         {/* Hero Visual Mockup Deck (Figma 57358:15972 3D 0€ Graphic + 57351:15342 Henry Dashboard) */}
         <div className="relative w-full max-w-[996px] mx-auto mt-2 sm:mt-4 flex flex-col items-center px-2">
           {/* 3D 0€ Atmospheric Background Graphic (996x339px) */}
-          <div className="relative w-full max-w-[996px] h-auto pointer-events-none -mb-8 sm:-mb-16 md:-mb-24 z-0 flex items-center justify-center">
+          <div className="relative w-full max-w-[996px] h-auto pointer-events-none -mb-12 sm:-mb-22 md:-mb-32 z-0 flex items-center justify-center">
             <Image
               src="/homepage_figma/gemini_generated_image_ywk6ghywk6ghywk6_1_15f9ec9f.png"
               alt="Mondial 0€ 3D Graphic"
