@@ -26,6 +26,7 @@ const CHECKLIST_DEFINITIONS = [
   { key: 'WeeklyAvailability', label: 'Weekly availability' },
   { key: 'Region', label: 'Region' },
   { key: 'ProgressPreference', label: 'Progress preference (learning or delegation)' },
+  { key: 'FullProfile', label: 'Full HumainX Profile (Experience, Education, Languages — 100% required)' },
 ] as const;
 
 export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
@@ -38,7 +39,8 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
   const { data: completeness, isLoading: completenessLoading, refetch } = useQuery({
     queryKey: ['creator', 'profile-completeness'],
     queryFn: () => creatorProfileApi.getCompleteness(),
-    staleTime: 5000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const isLoading = journeyLoading || completenessLoading;
@@ -46,8 +48,29 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
   // Gate 1: Phase 3 completion
   const isPhase3Done = state.journeyState.phase3.status === 'completed';
 
-  // Gate 2: Core HumainX profile readiness for Phase 4 (Skills, Situation, Availability, Region, Preferences)
-  const isProfileReady = completeness?.phase4Ready ?? false;
+  // Gate 2: Core HumainX Quick Start readiness (Skills, Situation, Availability, Region, Preferences)
+  const isQuickStartReady = completeness?.phase4Ready ?? false;
+
+  // Gate 3: Full HumainX Profile completion (100% required before Phase 4)
+  const profileCompletion = completeness?.profileCompletion ?? 0;
+  const isFullProfileComplete = profileCompletion >= 100;
+
+  const isProfileReady = isQuickStartReady && isFullProfileComplete;
+
+  const queryStr = searchParams.toString();
+  const returnTo = queryStr
+    ? `${pathname}?${queryStr}`
+    : (activeIdeaId ? `${pathname}?ideaId=${encodeURIComponent(activeIdeaId)}` : pathname);
+
+  const profileUrl = activeIdeaId
+    ? `/dashboard/creator/profile?ideaId=${encodeURIComponent(activeIdeaId)}&returnTo=${encodeURIComponent(returnTo)}`
+    : `/dashboard/creator/profile?returnTo=${encodeURIComponent(returnTo)}`;
+
+  useEffect(() => {
+    if (!isLoading && isPhase3Done && !isProfileReady) {
+      router.replace(profileUrl);
+    }
+  }, [isLoading, isPhase3Done, isProfileReady, profileUrl, router]);
 
   if (isLoading) {
     return (
@@ -88,13 +111,14 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
     );
   }
 
-  // Gate 2: HumainX Profile Completeness Gate
+  // Gate 2: HumainX Profile Completeness Gate (100% required)
   if (!isProfileReady) {
-    const missingKeys = completeness?.missingForPhase4 ?? [];
-    const returnTo = pathname;
-    const profileUrl = `/dashboard/creator/profile?returnTo=${encodeURIComponent(returnTo)}${
-      activeIdeaId ? `&ideaId=${encodeURIComponent(activeIdeaId)}` : ''
-    }`;
+    const missingKeys = [
+      ...(completeness?.missingForPhase4 ?? []),
+      ...(!isFullProfileComplete && (completeness?.missingForPhase4 ?? []).length === 0
+        ? ['FullProfile']
+        : []),
+    ];
 
     return (
       <div className="max-w-3xl mx-auto py-12 px-4 font-sans">
