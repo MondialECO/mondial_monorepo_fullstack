@@ -94,7 +94,7 @@ namespace WebApp.Services.Ai
             if (string.IsNullOrWhiteSpace(stripeSignature))
                 throw new ArgumentException("Missing Stripe-Signature header.", nameof(stripeSignature));
 
-            return EventUtility.ConstructEvent(json, stripeSignature, _settings.WebhookSecret);
+            return EventUtility.ConstructEvent(json, stripeSignature, _settings.WebhookSecret, throwOnApiVersionMismatch: false);
         }
     }
 }

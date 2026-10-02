@@ -263,4 +263,95 @@ describe("AI Credit Purchase System V1 Frontend", () => {
     expect(screen.getByText("+250 AI Credits")).toBeInTheDocument();
     expect(screen.getByText("succeeded")).toBeInTheDocument();
   });
+
+  it("activates bounded polling (2500ms) while returned purchase is pending", () => {
+    mockSearchParams = new URLSearchParams("creditPurchase=success");
+
+    let capturedOptions: any = null;
+    vi.spyOn(creatorAiQueries, "useCreditPurchases").mockImplementation((options) => {
+      capturedOptions = options;
+      return {
+        data: [
+          {
+            purchaseId: "p_pending",
+            packageId: "pack_250",
+            credits: 250,
+            amountInCents: 990,
+            currency: "eur",
+            status: "pending",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        isLoading: false,
+      } as any;
+    });
+
+    renderWithProviders(<BuyCreditsModal isOpen={true} onClose={vi.fn()} />);
+
+    expect(capturedOptions?.refetchInterval).toBe(2500);
+    expect(screen.getByText(/Adding your credits/i)).toBeInTheDocument();
+  });
+
+  it("stops polling immediately when purchase status is succeeded", async () => {
+    mockSearchParams = new URLSearchParams("creditPurchase=success");
+
+    let capturedOptions: any = null;
+    vi.spyOn(creatorAiQueries, "useCreditPurchases").mockImplementation((options) => {
+      capturedOptions = options;
+      return {
+        data: [
+          {
+            purchaseId: "p_succ",
+            packageId: "pack_250",
+            credits: 250,
+            amountInCents: 990,
+            currency: "eur",
+            status: "succeeded",
+            createdAt: new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+          },
+        ],
+        isLoading: false,
+      } as any;
+    });
+
+    renderWithProviders(<BuyCreditsModal isOpen={true} onClose={vi.fn()} />);
+
+    // When latestStatus is succeeded, isFulfillmentComplete sets refetchInterval to false
+    await waitFor(() => {
+      expect(capturedOptions?.refetchInterval).toBe(false);
+    });
+    expect(screen.getByText(/Credits added successfully/i)).toBeInTheDocument();
+  });
+
+  it("stops polling immediately when purchase status is failed or expired", async () => {
+    mockSearchParams = new URLSearchParams("creditPurchase=success");
+
+    let capturedOptions: any = null;
+    vi.spyOn(creatorAiQueries, "useCreditPurchases").mockImplementation((options) => {
+      capturedOptions = options;
+      return {
+        data: [
+          {
+            purchaseId: "p_failed",
+            packageId: "pack_250",
+            credits: 250,
+            amountInCents: 990,
+            currency: "eur",
+            status: "failed",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        isLoading: false,
+      } as any;
+    });
+
+    renderWithProviders(<BuyCreditsModal isOpen={true} onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(capturedOptions?.refetchInterval).toBe(false);
+    });
+    expect(screen.getByText(/Payment failed or could not be completed/i)).toBeInTheDocument();
+  });
 });
+

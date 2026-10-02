@@ -7,8 +7,8 @@ namespace WebApp.Configuration
         public bool Enabled { get; set; } = false;
         public string? SecretKey { get; set; }
         public string? WebhookSecret { get; set; }
-        public string SuccessUrl { get; set; } = "/dashboard/creator?creditPurchase=success&session_id={CHECKOUT_SESSION_ID}";
-        public string CancelUrl { get; set; } = "/dashboard/creator?creditPurchase=cancelled";
+        public string SuccessUrl { get; set; } = "https://mondialbusiness.eu/dashboard/creator?creditPurchase=success&session_id={CHECKOUT_SESSION_ID}";
+        public string CancelUrl { get; set; } = "https://mondialbusiness.eu/dashboard/creator?creditPurchase=cancelled";
 
         public Dictionary<string, StripePackageConfig> Packages { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     }

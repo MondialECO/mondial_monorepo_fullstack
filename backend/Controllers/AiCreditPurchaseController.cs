@@ -48,11 +48,9 @@ namespace WebApp.Controllers
             if (request == null || string.IsNullOrWhiteSpace(request.PackageId))
                 return BadRequest(new { message = "packageId is required." });
 
-            var baseUrl = $"{Request.Scheme}://{Request.Host}";
-
             try
             {
-                var result = await _purchaseService.CreateCheckoutAsync(userId, request.PackageId, baseUrl, ct);
+                var result = await _purchaseService.CreateCheckoutAsync(userId, request.PackageId, ct: ct);
                 return Ok(result);
             }
             catch (ArgumentException ex)

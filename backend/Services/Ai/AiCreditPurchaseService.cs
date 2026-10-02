@@ -121,14 +121,6 @@ namespace WebApp.Services.Ai
             string successUrl = _stripeSettings.SuccessUrl;
             string cancelUrl = _stripeSettings.CancelUrl;
 
-            if (!string.IsNullOrWhiteSpace(baseUrl))
-            {
-                if (successUrl.StartsWith("/"))
-                    successUrl = $"{baseUrl.TrimEnd('/')}{successUrl}";
-                if (cancelUrl.StartsWith("/"))
-                    cancelUrl = $"{baseUrl.TrimEnd('/')}{cancelUrl}";
-            }
-
             try
             {
                 var session = await _stripeCheckout.CreateCheckoutSessionAsync(

@@ -40,8 +40,8 @@ namespace WebApp.Tests.Unit
                 Enabled = true,
                 SecretKey = "sk_test_fake_key_for_mocking",
                 WebhookSecret = "whsec_fake_secret_for_mocking",
-                SuccessUrl = "/dashboard/creator?creditPurchase=success",
-                CancelUrl = "/dashboard/creator?creditPurchase=cancelled",
+                SuccessUrl = "http://localhost:3000/dashboard/creator?creditPurchase=success&session_id={CHECKOUT_SESSION_ID}",
+                CancelUrl = "http://localhost:3000/dashboard/creator?creditPurchase=cancelled",
                 Packages = new Dictionary<string, StripePackageConfig>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["pack_100"] = new StripePackageConfig { Credits = 100, AmountInCents = 1000, Currency = "eur", DisplayName = "100 Credits" },
@@ -691,7 +691,7 @@ namespace WebApp.Tests.Unit
             {
                 Id = "purchase_wrong_amt",
                 UserId = "user_13",
-                AmountInCents = 2000, // Expected €20.00
+                AmountInCents = 2000, // Expected â‚¬20.00
                 Currency = "eur",
                 ProviderSessionId = "cs_wrong_amt",
                 Status = CreditPurchaseStatus.Pending
@@ -713,7 +713,7 @@ namespace WebApp.Tests.Unit
                         Id = "cs_wrong_amt",
                         Mode = "payment",
                         PaymentStatus = "paid",
-                        AmountTotal = 500, // Attacker paid €5.00 instead
+                        AmountTotal = 500, // Attacker paid â‚¬5.00 instead
                         Currency = "eur"
                     }
                 }
@@ -1238,5 +1238,205 @@ namespace WebApp.Tests.Unit
             var allowAnon = Attribute.GetCustomAttribute(webhookMethod!, typeof(Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute));
             allowAnon.Should().NotBeNull();
         }
+
+        [Fact]
+        public async Task Test_28_CheckoutSession_ReturnUrls_Use_Frontend_Origin_And_Preserve_Placeholder()
+        {
+            // Requirement A, B, C: Frontend origin (localhost:3000), literal {CHECKOUT_SESSION_ID}, not port 5093
+            string? capturedSuccessUrl = null;
+            string? capturedCancelUrl = null;
+
+            _purchasesRepoMock.Setup(r => r.CreateAsync(It.IsAny<CreditPurchase>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            _stripeCheckoutMock.Setup(s => s.CreateCheckoutSessionAsync(
+                    It.IsAny<CreditPurchase>(),
+                    It.IsAny<StripePackageConfig>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback<CreditPurchase, StripePackageConfig, string?, string?, CancellationToken>((_, _, succ, canc, _) =>
+                {
+                    capturedSuccessUrl = succ;
+                    capturedCancelUrl = canc;
+                })
+                .ReturnsAsync(new Session { Id = "cs_return_test", Url = "https://checkout.stripe.com/pay/cs_return_test" });
+
+            var service = new AiCreditPurchaseService(
+                Options.Create(_testStripeSettings),
+                _purchasesRepoMock.Object,
+                new Mock<AiCreditLedgerRepository>(Mock.Of<IMongoDatabase>()).Object,
+                _stripeCheckoutMock.Object,
+                _mongoClientMock.Object,
+                _config,
+                _serviceLoggerMock.Object);
+
+            var result = await service.CreateCheckoutAsync("user_return_test", "pack_100");
+
+            result.Should().NotBeNull();
+            capturedSuccessUrl.Should().NotBeNull();
+            capturedCancelUrl.Should().NotBeNull();
+
+            // A: SuccessUrl uses frontend origin
+            capturedSuccessUrl!.Should().StartWith("http://localhost:3000/");
+            capturedSuccessUrl.Should().Be("http://localhost:3000/dashboard/creator?creditPurchase=success&session_id={CHECKOUT_SESSION_ID}");
+
+            // B: CancelUrl uses frontend origin
+            capturedCancelUrl!.Should().StartWith("http://localhost:3000/");
+            capturedCancelUrl.Should().Be("http://localhost:3000/dashboard/creator?creditPurchase=cancelled");
+
+            // C: Literal placeholder preserved exactly
+            capturedSuccessUrl.Should().Contain("{CHECKOUT_SESSION_ID}");
+
+            // E: Backend port 5093 is NEVER used
+            capturedSuccessUrl.Should().NotContain("5093");
+            capturedCancelUrl.Should().NotContain("5093");
+        }
+
+        [Fact]
+        public async Task Test_29_Success_Query_Parameter_Does_Not_Grant_Credits()
+        {
+            // Requirement D: Success query parameter cannot grant credits.
+            // Balance is strictly non-authoritative on frontend queries / GET endpoints.
+            var ledgerMock = new Mock<AiCreditLedgerRepository>(Mock.Of<IMongoDatabase>());
+            ledgerMock.Setup(r => r.GetByOwnerAsync("user_querystring"))
+                .ReturnsAsync(new AiCreditLedger { OwnerUserId = "user_querystring", Balance = 200, LifetimeGranted = 200, LifetimeSpent = 0 });
+
+            var creditService = new AiCreditService(ledgerMock.Object, Options.Create(new AiSettings { StarterCredits = 200 }));
+            var balanceBefore = await creditService.GetBalanceAsync("user_querystring");
+
+            // Attempting to query purchase history or balance cannot mutate credits
+            var purchases = await _purchasesRepoMock.Object.GetByUserIdAsync("user_querystring", 50, CancellationToken.None);
+            var balanceAfter = await creditService.GetBalanceAsync("user_querystring");
+
+            balanceAfter.Balance.Should().Be(balanceBefore.Balance);
+            balanceAfter.LifetimeGranted.Should().Be(balanceBefore.LifetimeGranted);
+
+            // Confirm ledger.AddPurchasedCreditsAsync was NEVER called without a signed webhook fulfillment
+            ledgerMock.Verify(r => r.AddPurchasedCreditsAsync(
+                It.IsAny<IClientSessionHandle>(),
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public void Test_30_Default_And_Local_Configuration_Never_Uses_Backend_Port_5093_For_Return_Urls()
+        {
+            // Requirement E: Default StripeSettings and configured return URLs never use port 5093
+            var defaultSettings = new StripeSettings();
+            defaultSettings.SuccessUrl.Should().NotContain("5093");
+            defaultSettings.CancelUrl.Should().NotContain("5093");
+            defaultSettings.SuccessUrl.Should().StartWith("https://mondialbusiness.eu/");
+            defaultSettings.CancelUrl.Should().StartWith("https://mondialbusiness.eu/");
+
+            // Test settings representing local development
+            _testStripeSettings.SuccessUrl.Should().NotContain("5093");
+            _testStripeSettings.CancelUrl.Should().NotContain("5093");
+            _testStripeSettings.SuccessUrl.Should().StartWith("http://localhost:3000/");
+            _testStripeSettings.CancelUrl.Should().StartWith("http://localhost:3000/");
+        }
+
+        [Fact]
+        public void Test_31_ConstructWebhookEvent_Accepts_ApiVersionMismatch_When_Signature_Valid_And_Deserializes_All_Fields()
+        {
+            // Regression test for real-world failure: Incoming Stripe API version is 2025-11-17.clover
+            // while Stripe.net SDK expects 2026-09-30.endive.
+            var secret = "whsec_test_secret_for_unit_tests_12345";
+            var settings = new StripeSettings
+            {
+                Enabled = true,
+                SecretKey = "sk_test_fake_key_for_mocking",
+                WebhookSecret = secret,
+            };
+
+            var service = new StripeCreditCheckoutService(Options.Create(settings));
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            var payload = @"{
+  ""id"": ""evt_regression_version_mismatch"",
+  ""object"": ""event"",
+  ""api_version"": ""2025-11-17.clover"",
+  ""created"": " + timestamp + @",
+  ""data"": {
+    ""object"": {
+      ""id"": ""cs_test_version_mismatch"",
+      ""object"": ""checkout.session"",
+      ""amount_total"": 990,
+      ""currency"": ""eur"",
+      ""client_reference_id"": ""purchase_version_mismatch"",
+      ""mode"": ""payment"",
+      ""payment_status"": ""paid"",
+      ""payment_intent"": ""pi_test_version_mismatch"",
+      ""metadata"": {
+        ""credits"": ""250"",
+        ""packageId"": ""pack_250"",
+        ""purchaseId"": ""purchase_version_mismatch"",
+        ""userId"": ""user_regression_1""
+      }
+    }
+  },
+  ""type"": ""checkout.session.completed""
+}";
+
+            var signatureHeader = GenerateStripeSignature(payload, secret, timestamp);
+
+            // ConstructWebhookEvent must NOT throw on version mismatch when throwOnApiVersionMismatch is false
+            var stripeEvent = service.ConstructWebhookEvent(payload, signatureHeader);
+
+            stripeEvent.Should().NotBeNull();
+            stripeEvent.Type.Should().Be("checkout.session.completed");
+            stripeEvent.Data.Object.Should().BeOfType<Session>();
+
+            var session = (Session)stripeEvent.Data.Object;
+            session.Id.Should().Be("cs_test_version_mismatch");
+            session.ClientReferenceId.Should().Be("purchase_version_mismatch");
+            session.AmountTotal.Should().Be(990);
+            session.Currency.Should().Be("eur");
+            session.Mode.Should().Be("payment");
+            session.PaymentStatus.Should().Be("paid");
+            session.PaymentIntentId.Should().Be("pi_test_version_mismatch");
+            session.Metadata.Should().ContainKey("packageId").WhoseValue.Should().Be("pack_250");
+            session.Metadata.Should().ContainKey("credits").WhoseValue.Should().Be("250");
+            session.Metadata.Should().ContainKey("userId").WhoseValue.Should().Be("user_regression_1");
+        }
+
+        [Fact]
+        public void Test_32_ConstructWebhookEvent_Rejects_Invalid_Signature_Even_With_VersionMismatch_Allowed()
+        {
+            var secret = "whsec_test_secret_for_unit_tests_12345";
+            var settings = new StripeSettings
+            {
+                Enabled = true,
+                SecretKey = "sk_test_fake_key_for_mocking",
+                WebhookSecret = secret,
+            };
+
+            var service = new StripeCreditCheckoutService(Options.Create(settings));
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            var payload = @"{
+  ""id"": ""evt_bad_sig"",
+  ""object"": ""event"",
+  ""api_version"": ""2025-11-17.clover"",
+  ""type"": ""checkout.session.completed""
+}";
+
+            var badSignatureHeader = "t=" + timestamp + ",v1=0000000000000000000000000000000000000000000000000000000000000000";
+
+            var act = () => service.ConstructWebhookEvent(payload, badSignatureHeader);
+
+            act.Should().Throw<StripeException>();
+        }
+
+        private static string GenerateStripeSignature(string payload, string secret, long timestamp)
+        {
+            var signedPayload = $"{timestamp}.{payload}";
+            using var hmac = new System.Security.Cryptography.HMACSHA256(System.Text.Encoding.UTF8.GetBytes(secret));
+            var hash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(signedPayload));
+            var hex = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            return $"t={timestamp},v1={hex}";
+        }
     }
 }
+

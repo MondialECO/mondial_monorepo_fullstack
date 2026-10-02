@@ -42,13 +42,14 @@ export function BuyCreditsModal({ isOpen, onClose }: BuyCreditsModalProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"packages" | "history">("packages");
   const [pollCount, setPollCount] = useState<number>(0);
+  const [isFulfillmentComplete, setIsFulfillmentComplete] = useState<boolean>(false);
 
   const isReturnSuccess = purchaseParam === "success";
 
   const { data: packages, isLoading: isLoadingPackages, isError: isPackagesError } = useCreditPackages();
 
   const { data: purchases, isLoading: isLoadingPurchases } = useCreditPurchases({
-    refetchInterval: isReturnSuccess && pollCount < 15 ? 2500 : false,
+    refetchInterval: isReturnSuccess && !isFulfillmentComplete && pollCount < 15 ? 2500 : false,
   });
 
   const checkoutMutation = useCreateCreditCheckout();
@@ -63,6 +64,13 @@ export function BuyCreditsModal({ isOpen, onClose }: BuyCreditsModalProps) {
 
   const latestPurchase = purchases?.[0];
   const latestStatus = latestPurchase?.status?.toLowerCase();
+
+  // Stop polling once the purchase reaches a completed state
+  useEffect(() => {
+    if (latestStatus && latestStatus !== "pending") {
+      setIsFulfillmentComplete(true);
+    }
+  }, [latestStatus]);
 
   // Track bounded polling iterations while in pending state
   useEffect(() => {
