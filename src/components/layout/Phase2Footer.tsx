@@ -1,9 +1,9 @@
 export default function Phase2Footer() {
   return (
-    <footer className="border-t px-8 py-8 sm:px-10 sm:py-10" style={{ borderColor: "var(--stroke-10)", backgroundColor: "var(--background)" }}>
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm" style={{ color: "var(--muted-foreground)" }}>
-        <p>@2025 Mondial Eco System. All right reserved</p>
-        <div className="flex items-center gap-6 sm:gap-8">
+    <footer className="border-t px-6 py-4 sm:px-8 sm:py-4 bg-background" style={{ borderColor: "var(--border)" }}>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs" style={{ color: "var(--muted-foreground)" }}>
+        <p>© 2026 Mondial Eco System. All rights reserved.</p>
+        <div className="flex items-center gap-4 sm:gap-6">
           <a href="#" className="hover:text-foreground transition-colors">
             Privacy Policy
           </a>
