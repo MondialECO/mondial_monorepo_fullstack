@@ -51,17 +51,17 @@ export default function PublicHeader() {
         {/* ========================================================================= */}
         {/* CENTER: Main Navigation Menus (Figma 57381:10863) */}
         {/* ========================================================================= */}
-        <nav className="hidden md:flex items-center gap-7 lg:gap-8" aria-label="Main Navigation">
+        <nav className="hidden md:flex items-center gap-7 lg:gap-9" aria-label="Main Navigation">
           <Link
             href="#how-it-works"
-            className="text-[14.5px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
+            className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
           >
             How it works
           </Link>
 
           <Link
             href="#outputs"
-            className="text-[14.5px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans inline-flex items-center gap-1.5"
+            className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans inline-flex items-center gap-1.5"
           >
             <span>Creator Tools</span>
             {/* Blue dot indicator (Figma 57381:10868) */}
@@ -70,14 +70,21 @@ export default function PublicHeader() {
 
           <Link
             href="#outputs"
-            className="text-[14.5px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
+            className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
           >
             What you get
           </Link>
 
           <Link
             href="#faq"
-            className="text-[14.5px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
+            className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
+          >
+            Pricing
+          </Link>
+
+          <Link
+            href="#faq"
+            className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
           >
             FAQ
           </Link>
@@ -98,7 +105,7 @@ export default function PublicHeader() {
           {/* Primary Conversion CTA: Start for €0 (Figma 57381:10876) */}
           <Link
             href="/signup"
-            className="h-[42px] px-5 bg-[#3c61dd] hover:bg-[#3252be] text-white font-medium text-[14px] rounded-[8px] transition-all shadow-sm inline-flex items-center justify-center gap-2 font-sans group active:scale-[0.98]"
+            className="h-[42px] px-5 bg-[#3c61dd] hover:bg-[#3252be] text-white font-medium text-[14px] rounded-[12px] transition-all shadow-sm inline-flex items-center justify-center gap-2 font-sans group active:scale-[0.98]"
           >
             <span>Start for €0</span>
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
@@ -145,6 +152,14 @@ export default function PublicHeader() {
               className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors"
             >
               What you get
+            </Link>
+
+            <Link
+              href="#faq"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors"
+            >
+              Pricing
             </Link>
 
             <Link
