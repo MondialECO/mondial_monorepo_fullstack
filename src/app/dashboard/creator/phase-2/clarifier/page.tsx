@@ -418,71 +418,85 @@ export default function AIClarifierPage() {
   };
 
   // Derived progress — driven by answered count so the panel is independent of the
-  // in-flight optimistic step.
+  // in-flight optimistic step. Kept for the ring, band and step list (stage 2).
   const answeredCount = messages.filter((m) => m.sender === "user").length;
   const ringPct = Math.min(Math.round((answeredCount / totalQuestions) * 100), 100);
   const band = ringBand(answeredCount, totalQuestions);
   const currentQuestion = Math.min(answeredCount + 1, totalQuestions);
-  const ringR = 40;
+  const ringR = 52;
   const ringC = 2 * Math.PI * ringR;
   const ringOffset = ringC * (1 - ringPct / 100);
 
   return (
     <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
-      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-3.5 sm:py-5 space-y-3 sm:space-y-4">
+      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 pt-4 pb-4 sm:pt-6 sm:pb-6 space-y-4 sm:space-y-5">
 
         {/* ── Heading block ── */}
-        <div className="space-y-1">
-          <h1 className="text-xl sm:text-2xl font-semibold" style={{ color: "var(--foreground)" }}>
+        <div className="space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
             Let&apos;s sharpen your idea
           </h1>
-          <p className="text-xs sm:text-sm max-w-[780px]" style={{ color: "var(--muted-foreground)" }}>
+          <p className="text-base max-w-[780px]" style={{ color: "var(--muted-foreground)" }}>
             Answer {totalQuestions} focused questions. Our AI will analyze your responses and build your concept canvas.
           </p>
         </div>
 
-        {/* ── Two columns (stack below lg) ── */}
+        {/* ── Two columns (stack below lg) ──
+            Cards: lit white edge (--card-edge) so they read as raised on the darker
+            page, plus shadow-sm — a Tailwind default that deliberately approximates
+            the design's softer 0 0 22px ambient glow (project uses default shadows). */}
         <div className="flex flex-col lg:flex-row gap-4 items-stretch">
 
           {/* LEFT: conversation card */}
           <section
-            className="w-full lg:flex-1 rounded-2xl border shadow-sm p-4 sm:p-4.5 flex flex-col min-w-0"
+            className="w-full lg:flex-1 rounded-2xl border shadow-sm p-5 flex flex-col min-w-0"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
           >
             {/* ── Assistant header ── */}
-            <div className="flex items-center gap-2.5 shrink-0">
+            <div className="flex items-center gap-3 shrink-0">
               <div
                 className="rounded-full overflow-hidden flex items-center justify-center shrink-0 border"
-                style={{ width: 40, height: 40, backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
+                style={{ width: 48, height: 48, backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
               >
+                {/* Robot avatar — DELIBERATE exception to the lucide-only icon rule: this
+                    is a raster character illustration (artwork), not a symbol. The library
+                    has no equivalent and its Bot glyph would read as empty in this tile.
+                    Native 456x376 → crisp at this ~30px leaf. Source: exported from Figma. */}
                 <Image
                   src="/icons/phase2/robot.png"
                   alt="AI assistant"
-                  width={24}
-                  height={20}
+                  width={30}
+                  height={25}
                   className="object-contain"
                 />
               </div>
               <div className="min-w-0">
-                <p className="text-base font-semibold leading-tight" style={{ color: "var(--foreground)" }}>
+                <p className="text-lg font-medium" style={{ color: "var(--foreground)" }}>
                   AI Idea Clarifier
                 </p>
-                <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
                   {totalQuestions} focused questions to sharpen your idea
                 </p>
               </div>
             </div>
 
-            {/* ── Transcript surface — scrolls within its own bounds ── */}
+            {/* ── Transcript surface — scrolls within its own bounds ──
+                DELIBERATE deviation: fixed height, not flex-to-fill like the design.
+                Flexing would couple the row height to the viewport (reintroducing the
+                stage-1 pin) and to the chrome's topbar/footer heights; a predictable
+                scroll container is worth more than matching the flex. Dead space in the
+                shorter column is absorbed by the journal card (stage 6, mt-auto). */}
             <div
-              className="mt-3 flex-1 min-h-0 rounded-xl border overflow-hidden"
+              className="mt-4 flex-1 min-h-0 rounded-2xl border overflow-hidden"
               style={{ backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
             >
               <div
-                className="h-[280px] sm:h-[320px] lg:h-[340px] overflow-y-auto p-3 sm:p-3.5 flex flex-col gap-2.5 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
+                className="h-[420px] sm:h-[550px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
               >
                 {messages.map((msg, index) => {
                   const isUser = msg.sender === "user";
+                  // Send-failure notes are pushed as ai-sender messages with an "err-" id
+                  // (handleSend rollback). Flag them for destructive styling — no logic change.
                   const isError = msg.id.startsWith("err-");
                   const isEditing = isUser && editingIndex === index;
                   return (
@@ -496,8 +510,12 @@ export default function AIClarifierPage() {
                           Editing…
                         </span>
                       )}
+                      {/* Assistant and user bubbles share bg/border/radius by design —
+                          they differ only by alignment and max width. Off-screen speaker
+                          label distinguishes them for assistive tech. The answer being
+                          edited gets a --primary border to tie it to the input below. */}
                       <div
-                        className={`rounded-xl border px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed ${isUser ? "max-w-[548px]" : "max-w-[580px]"}`}
+                        className={`rounded-2xl border px-[18px] py-[14px] text-body leading-relaxed ${isUser ? "max-w-[548px]" : "max-w-[580px]"}`}
                         style={{
                           backgroundColor: isError ? "color-mix(in srgb, var(--destructive) 8%, transparent)" : "var(--card)",
                           borderColor: isEditing ? "var(--primary)" : isError ? "var(--destructive)" : "var(--border)",
@@ -508,9 +526,12 @@ export default function AIClarifierPage() {
                         {msg.text}
                       </div>
 
-                      {/* Edit-in-place + copy actions on user messages */}
+                      {/* Edit-in-place + copy actions on user messages. Edit populates
+                          the input and marks this index; gated on !isTyping && !finalizing
+                          (no summaryReady gate — editing before finalize is the key case).
+                          Hidden on the message currently being edited (it's in the input). */}
                       {isUser && !isEditing && (
-                        <div className="mt-1 flex items-center gap-2">
+                        <div className="mt-1.5 flex items-center gap-2">
                           <button
                             onClick={() => handleEditStart(index)}
                             disabled={isTyping || finalizing}
@@ -520,7 +541,7 @@ export default function AIClarifierPage() {
                             onMouseEnter={(e) => { if (!isTyping && !finalizing) e.currentTarget.style.color = "var(--foreground)"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
                           >
-                            <Pencil className="h-3.5 w-3.5" />
+                            <Pencil className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleCopy(msg.id, msg.text)}
@@ -532,10 +553,10 @@ export default function AIClarifierPage() {
                           >
                             {copiedId === msg.id ? (
                               <>
-                                <Check className="h-3.5 w-3.5" /> Copied
+                                <Check className="h-4 w-4" /> Copied
                               </>
                             ) : (
-                              <Copy className="h-3.5 w-3.5" />
+                              <Copy className="h-4 w-4" />
                             )}
                           </button>
                         </div>
@@ -544,16 +565,16 @@ export default function AIClarifierPage() {
                   );
                 })}
 
-                {/* Thinking indicator */}
+                {/* Thinking indicator — assistant working on the next question */}
                 {isTyping && (
                   <div className="flex flex-col items-start">
                     <div
-                      className="rounded-xl border px-3.5 py-2.5 max-w-[580px] flex items-center gap-2"
+                      className="rounded-2xl border px-[18px] py-[14px] max-w-[580px] flex items-center gap-2"
                       style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
                     >
                       <span className="sr-only">Assistant is typing</span>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: "var(--primary)" }} />
-                      <span className="text-xs sm:text-sm" style={{ color: "var(--muted-foreground)" }}>
+                      <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--primary)" }} />
+                      <span className="text-body" style={{ color: "var(--muted-foreground)" }}>
                         Thinking…
                       </span>
                     </div>
@@ -563,11 +584,14 @@ export default function AIClarifierPage() {
               </div>
             </div>
 
-            {/* ── Input row + keyboard hint ── */}
+            {/* ── Input row + keyboard hint ──
+                Renders while questions remain OR while editing — editing takes precedence
+                so an answer can be revised even after all six are answered (issue 1). Once
+                not editing and summaryReady, the finalize states below render instead. */}
             {editingIndex !== null || !summaryReady ? (
-              <div className="mt-3 shrink-0">
+              <div className="mt-4 shrink-0">
                 {editingIndex !== null && (
-                  <div className="mb-1.5 flex items-center justify-between px-1">
+                  <div className="mb-2 flex items-center justify-between px-1">
                     <span className="text-badge font-medium" style={{ color: "var(--primary)" }}>
                       Editing your answer
                     </span>
@@ -583,7 +607,7 @@ export default function AIClarifierPage() {
                   </div>
                 )}
                 <div
-                  className="flex items-end gap-2 rounded-xl border p-1 focus-within:ring-1 focus-within:ring-[var(--ring)] transition-shadow"
+                  className="flex items-end gap-2 rounded-xl border p-1.5 focus-within:ring-1 focus-within:ring-[var(--ring)] transition-shadow"
                   style={{ backgroundColor: "var(--popover)", borderColor: editingIndex !== null ? "var(--primary)" : "var(--border)" }}
                 >
                   <textarea
@@ -593,7 +617,7 @@ export default function AIClarifierPage() {
                     placeholder={editingIndex !== null ? "Revise your answer..." : "Type your answer..."}
                     rows={1}
                     disabled={isTyping}
-                    className="flex-1 resize-none bg-transparent outline-none border-none px-3 py-2 text-xs sm:text-sm min-h-[38px] max-h-[100px] placeholder:text-muted-foreground"
+                    className="flex-1 resize-none bg-transparent outline-none border-none px-3 py-2.5 text-input min-h-[40px] max-h-[120px] placeholder:text-muted-foreground"
                     style={{ color: "var(--foreground)" }}
                   />
                   <button
@@ -601,37 +625,38 @@ export default function AIClarifierPage() {
                     disabled={!inputValue.trim() || isTyping}
                     aria-label={editingIndex !== null ? "Save edit" : "Send answer"}
                     className="flex items-center justify-center rounded-lg shrink-0 transition-opacity disabled:opacity-50"
-                    style={{ width: 38, height: 38, backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
+                    style={{ width: 44, height: 44, backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                   >
                     {isTyping ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" />
                     ) : editingIndex !== null ? (
-                      <Check className="h-4 w-4" />
+                      <Check className="h-5 w-5" />
                     ) : (
-                      <Send className="h-4 w-4" />
+                      <Send className="h-5 w-5" />
                     )}
                   </button>
                 </div>
-                <p className="mt-1.5 text-center text-caption" style={{ color: "var(--muted-foreground)" }}>
+                <p className="mt-2 text-center text-caption" style={{ color: "var(--muted-foreground)" }}>
                   {editingIndex !== null
                     ? "Press Enter to save your edit"
                     : "Press Enter to send  Shift + Enter for new line"}
                 </p>
               </div>
             ) : finalizeError ? (
-              /* FINALIZE ERROR */
+              /* FINALIZE ERROR — retry is always possible; the six answers stay in
+                 messages/state (finalize failure never clears them), so nothing is lost. */
               <div
-                className="mt-3 shrink-0 rounded-xl border p-4 flex flex-col items-center text-center gap-2.5"
+                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
                 style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
               >
                 <div
                   className="flex items-center justify-center rounded-full"
-                  style={{ width: 38, height: 38, backgroundColor: "color-mix(in srgb, var(--destructive) 12%, transparent)" }}
+                  style={{ width: 44, height: 44, backgroundColor: "color-mix(in srgb, var(--destructive) 12%, transparent)" }}
                 >
-                  <X className="h-4 w-4" strokeWidth={3} style={{ color: "var(--destructive)" }} />
+                  <X className="h-5 w-5" strokeWidth={3} style={{ color: "var(--destructive)" }} />
                 </div>
-                <div className="space-y-0.5">
-                  <h3 className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                <div className="space-y-1">
+                  <h3 className="text-card-title font-semibold" style={{ color: "var(--foreground)" }}>
                     We couldn&apos;t finish that
                   </h3>
                   <p className="text-caption max-w-xs" style={{ color: "var(--destructive)" }}>
@@ -644,25 +669,25 @@ export default function AIClarifierPage() {
                 <button
                   onClick={handleComplete}
                   disabled={finalizing}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition-opacity disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-button font-semibold transition-opacity disabled:opacity-60"
                   style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
-                  Try again <ArrowRight className="h-3.5 w-3.5" />
+                  Try again <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             ) : finalizing ? (
-              /* FINALIZING */
+              /* FINALIZING — the AI clarifier is running + being polled. */
               <div
-                className="mt-3 shrink-0 rounded-xl border p-4 flex flex-col items-center text-center gap-2.5"
+                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
                 style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
               >
                 <div
                   className="flex items-center justify-center rounded-full"
-                  style={{ width: 38, height: 38, backgroundColor: "var(--muted)" }}
+                  style={{ width: 44, height: 44, backgroundColor: "var(--muted)" }}
                 >
-                  <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--muted-foreground)" }} />
+                  <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--muted-foreground)" }} />
                 </div>
-                <h3 className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                <h3 className="text-card-title font-semibold" style={{ color: "var(--foreground)" }}>
                   Clarifying your idea…
                 </h3>
                 <p className="text-caption max-w-xs" style={{ color: "var(--muted-foreground)" }}>
@@ -672,33 +697,34 @@ export default function AIClarifierPage() {
                 </p>
               </div>
             ) : (
-              /* FINALIZE CTA */
+              /* FINALIZE CTA — replaces the input entirely; the action a user must take
+                 or lose their work. Says what finalizing does, not just the button name. */
               <div
-                className="mt-3 shrink-0 rounded-xl border p-4 flex flex-col items-center text-center gap-2.5"
+                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
                 style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
               >
                 <div
                   className="flex items-center justify-center rounded-full"
-                  style={{ width: 38, height: 38, backgroundColor: "var(--dr-bg-green)" }}
+                  style={{ width: 44, height: 44, backgroundColor: "var(--dr-bg-green)" }}
                 >
-                  <Check className="h-4 w-4" strokeWidth={3} style={{ color: "var(--p8-green)" }} />
+                  <Check className="h-5 w-5" strokeWidth={3} style={{ color: "var(--p8-green)" }} />
                 </div>
-                <div className="space-y-0.5">
-                  <h3 className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                <div className="space-y-1">
+                  <h3 className="text-card-title font-semibold" style={{ color: "var(--foreground)" }}>
                     All questions answered
                   </h3>
                   <p className="text-caption max-w-sm mx-auto" style={{ color: "var(--muted-foreground)" }}>
                     Finalizing runs the AI analysis to score your idea&apos;s clarity and build your
-                    concept canvas.
+                    concept canvas, then takes you to your summary. You&apos;re not done until you do this.
                   </p>
                 </div>
                 <button
                   onClick={handleComplete}
                   disabled={finalizing}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-semibold transition-opacity disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-button font-semibold transition-opacity disabled:opacity-60"
                   style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
-                  Generate my summary <ArrowRight className="h-3.5 w-3.5" />
+                  Generate my summary <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             )}
@@ -706,32 +732,32 @@ export default function AIClarifierPage() {
 
           {/* RIGHT: progress panel */}
           <aside
-            className="w-full lg:w-[280px] rounded-2xl border shadow-sm p-4 sm:p-4.5 flex flex-col gap-3.5 shrink-0"
+            className="w-full lg:w-[300px] rounded-2xl border shadow-sm px-6 pt-9 pb-6 flex flex-col gap-6 shrink-0"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
           >
             {/* ── Clarity ring + band label + finalize cue ── */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="relative" style={{ width: 96, height: 96 }}>
-                <svg width="96" height="96" viewBox="0 0 96 96" aria-hidden="true">
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative" style={{ width: 120, height: 120 }}>
+                <svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">
                   {/* track */}
-                  <circle cx="48" cy="48" r={ringR} fill="none" strokeWidth="6" stroke="var(--muted)" />
-                  {/* progress arc */}
+                  <circle cx="60" cy="60" r={ringR} fill="none" strokeWidth="8" stroke="var(--muted)" />
+                  {/* progress arc — starts at 12 o'clock (rotate -90), travels clockwise */}
                   <circle
-                    cx="48"
-                    cy="48"
+                    cx="60"
+                    cy="60"
                     r={ringR}
                     fill="none"
-                    strokeWidth="6"
+                    strokeWidth="8"
                     stroke={band.color}
                     strokeLinecap="round"
                     strokeDasharray={ringC}
                     strokeDashoffset={ringOffset}
-                    transform="rotate(-90 48 48)"
+                    transform="rotate(-90 60 60)"
                     style={{ transition: "stroke-dashoffset 700ms ease, stroke 300ms ease" }}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-semibold tabular-nums" style={{ color: band.color }}>
+                  <span className="text-3xl font-semibold tabular-nums" style={{ color: band.color }}>
                     {ringPct}%
                   </span>
                 </div>
@@ -740,31 +766,37 @@ export default function AIClarifierPage() {
                 {band.label}
               </span>
 
+              {/* Finalize prominence: the full ring never stands alone. Once every
+                  question is answered the ring shows 100% green, but summaryReady only
+                  flips when the chat-message response returns — so in that in-flight
+                  window (answeredCount === total, summaryReady false) we show an explicit
+                  in-progress note, and the finalize action the moment it's ready. The
+                  ring reaching full is therefore always paired with one or the other. */}
               {summaryReady ? (
-                <div className="w-full flex flex-col items-center gap-1.5 pt-1">
+                <div className="w-full flex flex-col items-center gap-2 pt-1">
                   <p className="text-caption text-center" style={{ color: "var(--muted-foreground)" }}>
                     You&apos;re not done yet — finalize to save your clarity score.
                   </p>
                   <button
                     onClick={handleComplete}
                     disabled={finalizing}
-                    className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-badge font-semibold transition-opacity disabled:opacity-60"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-badge font-semibold transition-opacity disabled:opacity-60"
                     style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                   >
                     {finalizing ? (
                       <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Finalizing…
+                        <Loader2 className="h-4 w-4 animate-spin" /> Finalizing…
                       </>
                     ) : (
                       <>
-                        Generate my summary <ArrowRight className="h-3.5 w-3.5" />
+                        Generate my summary <ArrowRight className="h-4 w-4" />
                       </>
                     )}
                   </button>
                 </div>
               ) : answeredCount >= totalQuestions ? (
-                <div className="w-full flex flex-col items-center gap-1 pt-1">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: band.color }} />
+                <div className="w-full flex flex-col items-center gap-1.5 pt-1">
+                  <Loader2 className="h-4 w-4 animate-spin" style={{ color: band.color }} />
                   <p className="text-caption text-center" style={{ color: "var(--muted-foreground)" }}>
                     Saving your final answer…
                   </p>
@@ -772,28 +804,31 @@ export default function AIClarifierPage() {
               ) : null}
             </div>
 
-            {/* Divider */}
+            {/* Divider — drawn as a 1px rule (the design exports it as an image) */}
             <div className="h-px w-full" style={{ backgroundColor: "var(--border)" }} />
 
             {/* ── Progress line + step list ── */}
-            <div className="flex flex-col gap-2">
-              <p className="text-badge font-medium" style={{ color: "var(--foreground)" }}>
+            <div className="flex flex-col gap-3">
+              <p className="text-label font-medium" style={{ color: "var(--foreground)" }}>
                 {summaryReady
                   ? `All ${totalQuestions} questions answered`
                   : `Progress: Question ${currentQuestion} of ${totalQuestions}`}
               </p>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 {STEP_LABELS.map((label, idx) => {
                   const stepNum = idx + 1;
                   const done = answeredCount >= stepNum;
                   const current = !done && answeredCount === stepNum - 1;
                   return (
                     <div key={label} className="flex items-center gap-2">
+                      {/* status badge: tinted circle drawn separately; lucide supplies
+                          the check glyph (design's filled tick-circle has no library
+                          single-glyph equivalent) or the step number */}
                       <div
                         className="flex items-center justify-center rounded-full shrink-0"
                         style={{
-                          width: 18,
-                          height: 18,
+                          width: 20,
+                          height: 20,
                           backgroundColor: done
                             ? "var(--dr-bg-green)"
                             : current
@@ -802,16 +837,18 @@ export default function AIClarifierPage() {
                         }}
                       >
                         {done ? (
-                          <Check className="h-3 w-3" strokeWidth={3} style={{ color: "var(--p8-green)" }} />
+                          <Check className="h-3.5 w-3.5" strokeWidth={3} style={{ color: "var(--p8-green)" }} />
                         ) : (
                           <span
-                            className="text-[10px] leading-none font-mono"
+                            className="text-badge leading-none font-mono"
                             style={{ color: current ? "var(--primary-foreground)" : "var(--muted-foreground)" }}
                           >
                             {stepNum}
                           </span>
                         )}
                       </div>
+                      {/* label + parenthetical (future steps only; completed & current
+                          drop it — a completed step relies on the tick) */}
                       <div className="flex items-center gap-1 min-w-0">
                         <span
                           className={`text-badge ${current ? "font-medium" : ""}`}
@@ -820,8 +857,8 @@ export default function AIClarifierPage() {
                           {label}
                         </span>
                         {!done && !current && (
-                          <span className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>
-                            (Q{stepNum - 1})
+                          <span className="text-badge" style={{ color: "var(--muted-foreground)" }}>
+                            (Unlocks after Q{stepNum - 1})
                           </span>
                         )}
                       </div>
@@ -831,17 +868,21 @@ export default function AIClarifierPage() {
               </div>
             </div>
 
-            {/* ── Idea Journal ── */}
+            {/* ── Idea Journal ──
+                mt-auto pins it to the bottom so the right column fills its stretched
+                height (equal to the taller left column, per items-stretch) with no dead
+                space — the agreed fix for the fixed-transcript deviation. The content
+                mirrors the first transcript answer and is redundant (CI-14), kept as-is. */}
             <div
-              className="mt-auto rounded-lg border p-3 flex flex-col gap-1.5"
+              className="mt-auto rounded-xl border p-4 flex flex-col gap-2"
               style={{ backgroundColor: "var(--muted)", borderColor: "var(--border)" }}
             >
-              <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
+              <span className="text-badge font-semibold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
                 Idea Journal
               </span>
-              <div className="flex items-start gap-1.5">
-                <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" style={{ color: "var(--muted-foreground)" }} />
-                <p className="text-caption leading-relaxed line-clamp-3 font-sans" style={{ color: "var(--muted-foreground)" }}>
+              <div className="flex items-start gap-2">
+                <FileText className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "var(--muted-foreground)" }} />
+                <p className="text-caption leading-relaxed line-clamp-4 font-sans" style={{ color: "var(--muted-foreground)" }}>
                   {journalText}
                 </p>
               </div>
