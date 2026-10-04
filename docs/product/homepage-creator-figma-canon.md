@@ -1,14 +1,16 @@
 # MBC Creator Homepage & Brand Identity Canon (Figma 57349:8209)
 
 ## 1. Overview & Authority
-This document defines the canonical specification and implementation architecture for the **Mondial Business Creation (MBC) Creator Marketing Homepage** (Figma Frame `57349:8209` / Nodes `57375:8951` & `57424:508`) and the global **MBC Logo Standard** across the entire fullstack monorepo.
+This document defines the canonical specification and implementation architecture for the **Mondial Business Creation (MBC) Creator Marketing Homepage** (Figma Frame `57349:8209` / Nodes `57375:8951`, `57424:508`, `57381:10846`, `57381:10882`) and the global **MBC Logo Standard** across the entire fullstack monorepo.
 
 - **Figma File:** `yLDPLB9hIAIqfYY9uHuJom` (Mondial-Dashboard-EDU)
 - **Primary Design Node:** `57349:8209` (Creator Marketing Landing Page)
+- **Header Navigation Design Node:** `57381:10846` (Public Header with 5-link Nav & Dual CTAs)
 - **Action Roadmap Design Node:** `57375:8951` (Output 05 Schedule Breakdown)
 - **Trust Sources Design Node:** `57424:508` (Official French Sources Trust Section)
+- **Footer Design Node:** `57381:10882` (5-Column Site Footer with Ambient Watermark)
 - **Primary Route:** `src/app/page.tsx`
-- **Component Root:** `src/components/homepage/`
+- **Component Root:** `src/components/homepage/` & `src/components/shared/`
 
 ---
 
@@ -21,7 +23,7 @@ The platform utilizes the official MBC (Mondial Business Creation) squircle mono
 
 ### Standardized Layout Locations:
 1. **Public Header (`src/components/shared/PublicHeader.tsx`):** `w-[95px] h-[46px] p-1`, aligned with `CREATOR` pill badge and `MONDIAL BUSINESS CREATION` title.
-2. **Public Footer (`src/components/shared/Footer.tsx`):** `w-[95px] h-[46px] p-1` brand lockup.
+2. **Public Footer (`src/components/shared/Footer.tsx`):** `w-[95px] h-[46px] p-1` brand lockup with `MBC` header and `MONDIAL BUSINESS CREATION` subtitle.
 3. **App Sidebar (`src/components/layout/AppSidebar.tsx`):** Desktop and Mobile headers rendered at `w-[95px] h-[46px] p-1` without outer borders or shadow.
 4. **Topbar (`src/components/layout/Topbar.tsx`):** Reduced phase and general headers rendered at `w-[95px] h-[46px] p-1`.
 5. **Service Provider Headers (`src/components/serviceprovider/`):** Desktop Topbar and Mobile Header rendered at `w-[95px] h-[46px] p-1`.
@@ -30,7 +32,26 @@ The platform utilizes the official MBC (Mondial Business Creation) squircle mono
 
 ---
 
-## 3. Homepage Section Architecture
+## 3. Global Navigation Header (`src/components/shared/PublicHeader.tsx` — Figma Node `57381:10846`)
+- **Container:** Sticky top navbar with glassmorphism `bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md border-b border-[#e8ecf2] dark:border-border/80`.
+- **Left (Brand Lockup):**
+  - Squircle MBC Monogram (`95x46px`).
+  - `CREATOR` badge (`bg-[#e8eeff]`, text `#1f3faf`, font-mono).
+  - `MONDIAL BUSINESS CREATION` title (`font-mono`, uppercase, tracking).
+- **Center (Main Navigation — 5 Links):**
+  1. `How it works` (`#how-it-works`)
+  2. `Creator Tools •` (`#outputs` — featuring sapphire indicator dot `#3c61dd`)
+  3. `What you get` (`#outputs`)
+  4. `Pricing` (`#faq`)
+  5. `FAQ` (`#faq`)
+- **Right (Dual Conversion CTAs):**
+  - Secondary: `Sign in` (clean text link, 14px font-medium, `#667085`).
+  - Primary CTA: `Start for €0 →` (`bg-[#3c61dd]`, 14px font-medium, `rounded-[12px]`, shadow-sm, hover slide effect).
+- **Mobile Responsive Drawer:** Collapsible hamburger drawer with all 5 navigation links and dual action buttons.
+
+---
+
+## 4. Homepage Section Architecture
 
 The Creator homepage consists of 7 structured sections organized linearly:
 
@@ -115,7 +136,22 @@ The Creator homepage consists of 7 structured sections organized linearly:
 
 ---
 
-## 4. Verification & Testing
+## 5. Global Site Footer (`src/components/shared/Footer.tsx` — Figma Node `57381:10882`)
+- **Background & Theme:** `bg-[#F7F9FC] dark:bg-[#070b14] border-t border-[#e3e8f2] dark:border-border/80`.
+- **Ambient Watermark Graphic:** Native Figma Progress / Network motif (SVG `57381:10884`) positioned subtly on the right side.
+- **5-Column Top Grid:**
+  - **Column 1 (Brand & Socials):** MBC Logo (`95x46px`), `MBC` title, `MONDIAL BUSINESS CREATION` overline, supporting copy ("*Build your digital business from idea to launch. Start building for €0.*"), paragraph, and outline social icon boxes (LinkedIn, Instagram, X).
+  - **Column 2 (PRODUCT):** `Creator •` (active sapphire dot indicator), `Creator Tools`, `How it works`, `What you get`.
+  - **Column 3 (RESOURCES):** `FAQ`, `Guides`, `Contact`.
+  - **Column 4 (MBC NETWORK):** `Entrepreneur`, `Investor`, `Service Provider` (each styled with a `Coming soon` badge).
+  - **Column 5 (LEGAL):** `Terms of Use`, `Privacy Policy`, `Cookie Policy`.
+- **Bottom Bar:**
+  - Copyright: `© 2026 Mondial Business Création. All rights reserved.`
+  - Tagline & Origin: Emerald green indicator dot + `Made for the next generation of founders. | Paris, France`.
+
+---
+
+## 6. Verification & Testing
 - **Test Suite:** `src/__tests__/app/homepage-figma-57349-8209.test.tsx`
 - **Layout Suite:** `src/__tests__/layout/`
-- **Coverage:** All 7 homepage sections, headline texts, CTA buttons, output cards, trust source panels, logo alt-attributes, responsive viewports, and navigation anchors are covered by automated unit tests.
+- **Coverage:** All 7 homepage sections, navigation menus, dual CTAs, output cards, trust source panels, footer columns, logo alt-attributes, responsive viewports, and navigation anchors are covered by automated unit tests.
