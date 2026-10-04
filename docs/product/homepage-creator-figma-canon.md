@@ -68,7 +68,23 @@ The Creator homepage consists of 6 structured sections organized linearly:
   - Phase 5: `Marketplace & Buyout`
   - Phase 6: `Legal Structuring & Launch`
 
-### Section 4: What's Next & Ecosystem (`src/components/homepage/FigmaWhatsNext.tsx`)
+### Section 4: Where The Facts Come From (`src/components/homepage/FigmaTrustSources.tsx` — Figma Node `57424:508`)
+- **Eyebrow Badge:** `WHERE THE FACTS COME FROM`
+- **Headline:** `We don't guess. We check.`
+- **Subline:** `AI helps explain things in plain words. But the rules, the grants and the paperwork? Those come straight from official French sources.`
+- **Left Column:**
+  - Interactive Proof Card: Legal checklist example ("Declare who owns your company") with official source link `Source: service-public.fr`.
+  - Curved Dotted Annotation: "See? It tells you where it got that."
+- **Right Column (3 Grouped Source Panels):**
+  - Panel 1 (*Setting up your company*): `Service Public Entreprendre` (OFFICIAL), `INPI Guichet unique` (OFFICIAL).
+  - Panel 2 (*Money and help you can apply for*): `Aides-entreprises / data.gouv.fr` (OPEN DATA), `Bpifrance Création` (OFFICIAL), `France Travail` (OFFICIAL).
+  - Panel 3 (*Checking other companies*): `API Recherche d'entreprises` (OPEN DATA), `SIRENE` (COMING SOON).
+- **Bottom Trust Strip:**
+  - `You can always see where info came from.`
+  - `Grants say 'you can apply', never 'you'll get it'.`
+  - `Your changes stay yours. Nothing gets overwritten.`
+
+### Section 5: What's Next & Ecosystem (`src/components/homepage/FigmaWhatsNext.tsx`)
 - **Headline:** `Take your project wherever it needs to go.`
 - **Central Node:** `Project Built (Creator Hub)`
 - **4 Satellite Pathways:**
@@ -77,11 +93,11 @@ The Creator homepage consists of 6 structured sections organized linearly:
   - `Hire Verified Service Providers` (Lawyers, accountants, developers)
   - `Level Up to Entrepreneur` (Full operating business)
 
-### Section 5: FAQ (`src/components/homepage/FigmaFaq.tsx`)
+### Section 6: FAQ (`src/components/homepage/FigmaFaq.tsx`)
 - **Headline:** `Frequently Asked Questions`
 - **Interactive Accordion:** Category filtering (All, Pricing, IP & Ownership, Launch), full-text search, expandable items.
 
-### Section 6: Final CTA (`src/components/homepage/FigmaFinalCta.tsx`)
+### Section 7: Final CTA (`src/components/homepage/FigmaFinalCta.tsx`)
 - **Headline:** `Turn your idea into a business project today.`
 - **Action:** Primary `Start for €0 →` button with subtle trust markers.
 

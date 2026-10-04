@@ -4,6 +4,7 @@ import Footer from "@/components/shared/Footer";
 import FigmaHero from "@/components/homepage/FigmaHero";
 import FigmaOutputsShowcase from "@/components/homepage/FigmaOutputsShowcase";
 import FigmaHowItWorks from "@/components/homepage/FigmaHowItWorks";
+import FigmaTrustSources from "@/components/homepage/FigmaTrustSources";
 import FigmaWhatsNext from "@/components/homepage/FigmaWhatsNext";
 import FigmaFaq from "@/components/homepage/FigmaFaq";
 import FigmaFinalCta from "@/components/homepage/FigmaFinalCta";
@@ -38,7 +39,10 @@ export default function Home() {
         {/* Section 3: How It Works — From Idea to Company in 6 Steps (Figma 57377:9704) */}
         <FigmaHowItWorks />
 
-        {/* Section 4: What's Next — Creator is Just the Beginning (Figma 57381:10328) */}
+        {/* Section 4: Where The Facts Come From — Official French Sources (Figma 57424:508) */}
+        <FigmaTrustSources />
+
+        {/* Section 5: What's Next — Creator is Just the Beginning (Figma 57381:10328) */}
         <FigmaWhatsNext />
 
         {/* Section 5: FAQ — What "Start for €0" Really Means (Figma 57354:15783) */}

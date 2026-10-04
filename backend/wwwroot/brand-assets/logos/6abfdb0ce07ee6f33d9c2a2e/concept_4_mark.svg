@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%" role="img" aria-label="Audioly Logo">
+  <title>Audioly Logo</title>
+  <path d="M 50.0,17.6 L 82.4,38.7 L 74.3,71.0 L 50.0,82.4 L 25.7,71.0 L 17.6,38.7 Z" fill="none" stroke="#34D399" stroke-width="5.2" stroke-linejoin="round" />
+  <g transform="translate(38.7, 62.5)">
+    <path d="M0.3696 0L9.5088005 -25.032001L12.3984 -25.032001L21.5376 0L18.7152 0L16.5648 -6.1152L5.3759999 -6.1152L3.1920002 0L0.3696 0ZM6.2495999 -8.6351995L15.624001 -8.6351995L10.5504 -23.016001L11.3568 -23.016001L6.2495999 -8.6351995Z" fill="#047857" />
+  </g>
+</svg>
