@@ -23,9 +23,9 @@ export default function Phase2Layout({
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-full w-full">
+    <div className="flex flex-col min-h-full">
       {/* Content (provided by page and sub-routes) */}
-      <div className="flex-1 w-full">
+      <div className="flex-1">
         {children}
       </div>
 

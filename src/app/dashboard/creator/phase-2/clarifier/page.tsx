@@ -429,7 +429,7 @@ export default function AIClarifierPage() {
 
   return (
     <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
-      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-5 sm:py-6 space-y-5">
+      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-8 sm:py-10 space-y-6">
 
         {/* ── Heading block ── */}
         <div className="space-y-2">
@@ -441,8 +441,11 @@ export default function AIClarifierPage() {
           </p>
         </div>
 
-        {/* ── Two columns (stack below lg) ── */}
-        <div className="flex flex-col lg:flex-row gap-4 items-start">
+        {/* ── Two columns (stack below lg) ──
+            Cards: lit white edge (--card-edge) so they read as raised on the darker
+            page, plus shadow-sm — a Tailwind default that deliberately approximates
+            the design's softer 0 0 22px ambient glow (project uses default shadows). */}
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch">
 
           {/* LEFT: conversation card */}
           <section
@@ -477,13 +480,18 @@ export default function AIClarifierPage() {
               </div>
             </div>
 
-            {/* ── Transcript surface — auto height, scrolls when reaching max height ── */}
+            {/* ── Transcript surface — scrolls within its own bounds ──
+                DELIBERATE deviation: fixed height, not flex-to-fill like the design.
+                Flexing would couple the row height to the viewport (reintroducing the
+                stage-1 pin) and to the chrome's topbar/footer heights; a predictable
+                scroll container is worth more than matching the flex. Dead space in the
+                shorter column is absorbed by the journal card (stage 6, mt-auto). */}
             <div
-              className="mt-4 rounded-2xl border overflow-hidden"
+              className="mt-4 flex-1 min-h-0 rounded-2xl border overflow-hidden"
               style={{ backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
             >
               <div
-                className="min-h-[140px] max-h-[480px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
+                className="h-[420px] sm:h-[550px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
               >
                 {messages.map((msg, index) => {
                   const isUser = msg.sender === "user";
@@ -860,9 +868,13 @@ export default function AIClarifierPage() {
               </div>
             </div>
 
-            {/* ── Idea Journal ── */}
+            {/* ── Idea Journal ──
+                mt-auto pins it to the bottom so the right column fills its stretched
+                height (equal to the taller left column, per items-stretch) with no dead
+                space — the agreed fix for the fixed-transcript deviation. The content
+                mirrors the first transcript answer and is redundant (CI-14), kept as-is. */}
             <div
-              className="mt-0 rounded-xl border p-4 flex flex-col gap-2"
+              className="mt-auto rounded-xl border p-4 flex flex-col gap-2"
               style={{ backgroundColor: "var(--muted)", borderColor: "var(--border)" }}
             >
               <span className="text-badge font-semibold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
