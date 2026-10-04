@@ -429,7 +429,7 @@ export default function AIClarifierPage() {
 
   return (
     <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
-      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 pt-4 pb-6 sm:pt-6 sm:pb-8 space-y-4 sm:space-y-5">
+      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 pt-4 pb-4 sm:pt-6 sm:pb-6 space-y-4 sm:space-y-5">
 
         {/* ── Heading block ── */}
         <div className="space-y-2">

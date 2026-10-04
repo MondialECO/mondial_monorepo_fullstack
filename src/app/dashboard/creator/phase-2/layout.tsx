@@ -11,22 +11,11 @@ export default function Phase2Layout({
 }) {
   const pathname = usePathname();
   const isBrandStudio = pathname?.includes("/brand-studio");
-  const isClarifier = pathname?.includes("/clarifier");
 
   if (isBrandStudio) {
     return (
       <div className="flex flex-col h-full min-h-0 w-full overflow-hidden">
         <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
-          {children}
-        </div>
-      </div>
-    );
-  }
-
-  if (isClarifier) {
-    return (
-      <div className="flex flex-col min-h-full w-full">
-        <div className="flex-1">
           {children}
         </div>
       </div>
