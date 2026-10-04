@@ -428,24 +428,21 @@ export default function AIClarifierPage() {
   const ringOffset = ringC * (1 - ringPct / 100);
 
   return (
-    <div className="w-full" style={{ backgroundColor: "var(--background)" }}>
-      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 pt-4 pb-4 sm:pt-6 sm:pb-6 space-y-4 sm:space-y-5">
+    <div className="w-full flex-1 flex flex-col min-h-0" style={{ backgroundColor: "var(--background)" }}>
+      <div className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 py-4 flex-1 flex flex-col min-h-0 space-y-4">
 
         {/* ── Heading block ── */}
-        <div className="space-y-2">
+        <div className="space-y-1 shrink-0">
           <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
             Let&apos;s sharpen your idea
           </h1>
-          <p className="text-base max-w-[780px]" style={{ color: "var(--muted-foreground)" }}>
+          <p className="text-sm sm:text-base max-w-[780px]" style={{ color: "var(--muted-foreground)" }}>
             Answer {totalQuestions} focused questions. Our AI will analyze your responses and build your concept canvas.
           </p>
         </div>
 
-        {/* ── Two columns (stack below lg) ──
-            Cards: lit white edge (--card-edge) so they read as raised on the darker
-            page, plus shadow-sm — a Tailwind default that deliberately approximates
-            the design's softer 0 0 22px ambient glow (project uses default shadows). */}
-        <div className="flex flex-col lg:flex-row gap-4 items-stretch">
+        {/* ── Two columns (stack below lg) ── */}
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch flex-1 min-h-0">
 
           {/* LEFT: conversation card */}
           <section
@@ -480,18 +477,13 @@ export default function AIClarifierPage() {
               </div>
             </div>
 
-            {/* ── Transcript surface — scrolls within its own bounds ──
-                DELIBERATE deviation: fixed height, not flex-to-fill like the design.
-                Flexing would couple the row height to the viewport (reintroducing the
-                stage-1 pin) and to the chrome's topbar/footer heights; a predictable
-                scroll container is worth more than matching the flex. Dead space in the
-                shorter column is absorbed by the journal card (stage 6, mt-auto). */}
+            {/* ── Transcript surface — scrolls within its own bounds ── */}
             <div
-              className="mt-4 flex-1 min-h-0 rounded-2xl border overflow-hidden"
+              className="mt-4 flex-1 min-h-[240px] rounded-2xl border overflow-hidden flex flex-col"
               style={{ backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
             >
               <div
-                className="h-[420px] sm:h-[550px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
+                className="flex-1 min-h-[240px] max-h-[58vh] lg:max-h-none overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
               >
                 {messages.map((msg, index) => {
                   const isUser = msg.sender === "user";
