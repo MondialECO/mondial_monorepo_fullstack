@@ -65,11 +65,13 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `POST /api/creator/ideas`: Create a new multi-idea entry with active journey anchoring.
   - `GET /api/creator/ideas/{id}`: Detailed idea entity including output snapshots.
   - `GET /api/creator/journey`: Derived-status engine returning active phase completion state.
-- **`CreatorPhase2Controller`** (`/api/creator/phase-2`):
-  - `GET /api/creator/phase-2/concept-name`: Query generated concept names.
-  - `POST /api/creator/phase-2/branding`: Save color palette, typography, and visual tone.
-  - `POST /api/creator/phase-2/logo`: Upload and attach brand logo asset.
-  - `GET /api/creator/phase-2/hire-designer`: Find matched Service Providers for design work.
+- **`CreatorPhase2Controller`** (`/api/creator/journey/phase2`):
+  - `GET /api/creator/journey/phase2/company-search`: Search registered French companies via `API Recherche d’entreprises` (optional, rate-limited, cached, 0 credits).
+  - `GET /api/creator/journey/phase2/concept-name`: Query concept name and tagline for current journey.
+  - `POST /api/creator/journey/phase2/concept-name`: Persist venture name and tagline to `CreatorIdea.Project`.
+  - `POST /api/creator/journey/phase2/branding`: Save color palette, typography, and visual tone.
+  - `POST /api/creator/journey/phase2/logo`: Upload and attach brand logo asset.
+  - `GET /api/creator/journey/phase2/hire-designer`: Find matched Service Providers for design work.
 - **`CreatorBrandKitController`** (`/api/creator/journey/phase2/brand-kit`):
   - `GET /api/creator/journey/phase2/brand-kit`: Retrieve complete BrandKit entity (`BrandKitRecord`) for the active or queried idea (returns 200 with null data if no kit exists).
   - `POST /api/creator/journey/phase2/brand-kit`: Idempotently create or retrieve initial BrandKit entity (seeding Strategy from Project, 5-role default Colors, 4-role default Typography) via shared `GetOrCreateBrandKitAsync`.

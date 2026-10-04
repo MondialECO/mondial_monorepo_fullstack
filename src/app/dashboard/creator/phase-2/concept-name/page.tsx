@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Check, Loader2 } from "lucide-react";
+import { ArrowRight, Check, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
-import { creatorJourneyApi } from "@/lib/api-creator-journey";
+import { creatorJourneyApi, type CompanySearchMatch } from "@/lib/api-creator-journey";
 import { toAiError } from "@/lib/ai-errors";
 
 type Suggestion = { name: string; tagline: string; score: number };
@@ -27,6 +27,14 @@ export default function ConceptNamePage() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [savingName, setSavingName] = useState(false);
   const autoFetchedRef = useRef(false);
+
+  // ── Company Search State (Optional French Company Records Check) ──
+  type CompanySearchStatus = "idle" | "loading" | "success" | "empty" | "error";
+  const [searchStatus, setSearchStatus] = useState<CompanySearchStatus>("idle");
+  const [searchMatches, setSearchMatches] = useState<CompanySearchMatch[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const currentSearchTargetRef = useRef<string>("");
 
   // The API returns names only; pair each with the project's value prop as the tagline.
   const mapNames = useCallback((names: string[]): Suggestion[] => {
@@ -104,6 +112,55 @@ export default function ConceptNamePage() {
     : selectedSuggestion !== null
     ? suggestions[selectedSuggestion]?.tagline ?? ""
     : "";
+
+  // Reset company search results immediately whenever the active name changes
+  useEffect(() => {
+    if (searchAbortRef.current) {
+      searchAbortRef.current.abort();
+      searchAbortRef.current = null;
+    }
+    setSearchStatus("idle");
+    setSearchMatches([]);
+    setSearchError(null);
+  }, [activeName]);
+
+  const handleSearchCompanies = async () => {
+    const query = activeName.trim();
+    if (!query) return;
+
+    if (searchAbortRef.current) {
+      searchAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    currentSearchTargetRef.current = query;
+
+    setSearchStatus("loading");
+    setSearchError(null);
+    setSearchMatches([]);
+
+    try {
+      const data = await creatorJourneyApi.searchSimilarCompanies(query, controller.signal);
+      if (currentSearchTargetRef.current !== activeName.trim()) return;
+
+      if (data.matches && data.matches.length > 0) {
+        setSearchMatches(data.matches.slice(0, 5));
+        setSearchStatus("success");
+      } else {
+        setSearchMatches([]);
+        setSearchStatus("empty");
+      }
+    } catch {
+      if (controller.signal.aborted) return;
+      if (currentSearchTargetRef.current !== activeName.trim()) return;
+      setSearchStatus("error");
+      setSearchError("We couldn’t check right now. You can continue and try again later.");
+    } finally {
+      if (searchAbortRef.current === controller) {
+        searchAbortRef.current = null;
+      }
+    }
+  };
 
   // Enable button if: (1) suggestion selected, or (2) custom name + tagline filled
   const canProceed =
@@ -295,6 +352,128 @@ export default function ConceptNamePage() {
                     style={{ backgroundColor: "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--border)", color: "var(--foreground)" }}
                   />
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Optional French Company Name Search ── */}
+          <div className="flex flex-col gap-3 pt-3 border-t border-[var(--border)]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <span className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
+                  French Company Registry Check
+                </span>
+                <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                  Optional lookup against active and closed French enterprise records.
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSearchCompanies}
+                disabled={!activeName.trim() || searchStatus === "loading"}
+                className="self-start sm:self-auto rounded-xl flex items-center gap-2 shrink-0"
+              >
+                {searchStatus === "loading" ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Checking…
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-3.5 h-3.5" />
+                    Check similar names
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Inline Results Container */}
+            {searchStatus !== "idle" && (
+              <div
+                className="rounded-2xl p-4 flex flex-col gap-3 transition-all"
+                style={{ backgroundColor: "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--border)" }}
+                data-testid="company-search-results"
+              >
+                <div className="flex items-center justify-between gap-2 border-b pb-2" style={{ borderColor: "var(--border)" }}>
+                  <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+                    Similar company names in France
+                  </span>
+                  {searchStatus === "loading" && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Searching…
+                    </span>
+                  )}
+                </div>
+
+                {searchStatus === "loading" && (
+                  <div className="py-4 flex items-center justify-center gap-2 text-xs" style={{ color: "var(--muted-foreground)" }}>
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    Searching French enterprise database for &ldquo;{activeName.trim()}&rdquo;…
+                  </div>
+                )}
+
+                {searchStatus === "empty" && (
+                  <p className="text-xs py-2" style={{ color: "var(--muted-foreground)" }}>
+                    No matching companies were found in this search.
+                  </p>
+                )}
+
+                {searchStatus === "error" && (
+                  <p className="text-xs py-2" style={{ color: "var(--destructive)" }}>
+                    {searchError || "We couldn’t check right now. You can continue and try again later."}
+                  </p>
+                )}
+
+                {searchStatus === "success" && searchMatches.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    {searchMatches.map((match) => {
+                      const location = [match.postalCode, match.city].filter(Boolean).join(" ");
+                      return (
+                        <div
+                          key={match.siren || match.name}
+                          className="p-3 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 border"
+                          style={{ backgroundColor: "var(--background)", borderColor: "var(--border)" }}
+                        >
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>
+                              {match.name}
+                            </span>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                              {match.siren && <span>SIREN: {match.siren}</span>}
+                              {location && <span>Location: {location}</span>}
+                              {match.activityCode && <span>NAF: {match.activityCode}</span>}
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 flex items-center gap-2">
+                            {match.status === "active" && (
+                              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                Actif
+                              </span>
+                            )}
+                            {match.status === "closed" && (
+                              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                Fermé
+                              </span>
+                            )}
+                            {match.status === "unknown" && (
+                              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                                Unknown status
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-[11px] leading-relaxed pt-1" style={{ color: "var(--muted-foreground)" }}>
+                  This search finds similar company names in France. It does not confirm trademark or name availability.
+                </p>
               </div>
             )}
           </div>

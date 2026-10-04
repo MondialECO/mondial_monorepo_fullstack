@@ -569,6 +569,8 @@ var globalPermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:Globa
         : (builder.Environment.IsDevelopment() ? 500 : 100));
 var aiPermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:AiPermitLimit")
     ?? 40;
+var companySearchPermitLimit = builder.Configuration.GetValue<int?>("RateLimiting:CompanySearchPermitLimit")
+    ?? 30;
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -605,6 +607,18 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = aiPermitLimit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    // Company name lookup rate limiter: 30 requests per MINUTE per user/IP.
+    options.AddPolicy("company_search", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                          ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "anon",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = companySearchPermitLimit,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));

@@ -62,6 +62,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILegalApplicabilityEngine, LegalApplicabilityEngine>();
         services.AddSingleton<ILegalFrameworkSectionBuilder, LegalFrameworkSectionBuilder>();
 
+        // French Company Search proxy (API Recherche d'entreprises - gouv.fr)
+        services.AddMemoryCache();
+        services.AddHttpClient<ICompanySearchService, CompanySearchService>(client =>
+        {
+            client.BaseAddress = new Uri("https://recherche-entreprises.api.gouv.fr/");
+            client.Timeout = TimeSpan.FromSeconds(5);
+            client.DefaultRequestHeaders.Add("User-Agent", "MondialBusinessCreation/1.0");
+        });
+
         return services;
     }
 }
