@@ -39,7 +39,7 @@ export default function FigmaTrustSources() {
             </p>
 
             {/* 4. Proof Card Wrapper with Interactive Callout (Figma 57424:524) */}
-            <div className="relative pt-2 pb-10 max-w-[446px]">
+            <div className="relative pt-2 pb-8 max-w-[446px]">
 
               {/* White Proof Card (Border radius 20px, Shadow 0 20px 50px rgba(60,97,221,0.12)) */}
               <div className="w-full bg-white dark:bg-card rounded-[20px] p-6 border border-[#e3e8f2] dark:border-border shadow-[0_20px_50px_rgba(60,97,221,0.12)] space-y-3.5">
