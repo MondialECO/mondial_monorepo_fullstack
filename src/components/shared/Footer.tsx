@@ -165,7 +165,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="#outputs"
+                  href="/#outputs"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
                   Creator Tools
@@ -173,7 +173,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="#how-it-works"
+                  href="/#how-it-works"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
                   How it works
@@ -181,10 +181,18 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="#outputs"
+                  href="/#outputs"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
                   What you get
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/pricing"
+                  className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
+                >
+                  Pricing
                 </Link>
               </li>
             </ul>
@@ -198,7 +206,7 @@ export default function Footer() {
             <ul className="space-y-2.5 text-[14px] font-sans">
               <li>
                 <Link
-                  href="#faq"
+                  href="/#faq"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
                   FAQ

@@ -53,14 +53,14 @@ export default function PublicHeader() {
         {/* ========================================================================= */}
         <nav className="hidden md:flex items-center gap-7 lg:gap-9" aria-label="Main Navigation">
           <Link
-            href="#how-it-works"
+            href="/#how-it-works"
             className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
           >
             How it works
           </Link>
 
           <Link
-            href="#outputs"
+            href="/#outputs"
             className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans inline-flex items-center gap-1.5"
           >
             <span>Creator Tools</span>
@@ -69,21 +69,21 @@ export default function PublicHeader() {
           </Link>
 
           <Link
-            href="#outputs"
+            href="/#outputs"
             className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
           >
             What you get
           </Link>
 
           <Link
-            href="#faq"
+            href="/pricing"
             className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
           >
             Pricing
           </Link>
 
           <Link
-            href="#faq"
+            href="/#faq"
             className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
           >
             FAQ
@@ -130,7 +130,7 @@ export default function PublicHeader() {
         <div className="md:hidden border-t border-[#e8ecf2] dark:border-border/80 bg-white dark:bg-[#0b0f19] px-6 py-5 space-y-4 shadow-lg animate-in fade-in slide-in-from-top-2 duration-150">
           <nav className="flex flex-col space-y-3 font-sans">
             <Link
-              href="#how-it-works"
+              href="/#how-it-works"
               onClick={() => setMobileMenuOpen(false)}
               className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors"
             >
@@ -138,7 +138,7 @@ export default function PublicHeader() {
             </Link>
 
             <Link
-              href="#outputs"
+              href="/#outputs"
               onClick={() => setMobileMenuOpen(false)}
               className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors inline-flex items-center justify-between"
             >
@@ -147,7 +147,7 @@ export default function PublicHeader() {
             </Link>
 
             <Link
-              href="#outputs"
+              href="/#outputs"
               onClick={() => setMobileMenuOpen(false)}
               className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors"
             >
@@ -155,7 +155,7 @@ export default function PublicHeader() {
             </Link>
 
             <Link
-              href="#faq"
+              href="/pricing"
               onClick={() => setMobileMenuOpen(false)}
               className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors"
             >
@@ -163,7 +163,7 @@ export default function PublicHeader() {
             </Link>
 
             <Link
-              href="#faq"
+              href="/#faq"
               onClick={() => setMobileMenuOpen(false)}
               className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors"
             >
