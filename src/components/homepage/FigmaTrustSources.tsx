@@ -39,7 +39,7 @@ export default function FigmaTrustSources() {
             </p>
 
             {/* 4. Proof Card Wrapper with Interactive Callout (Figma 57424:524) */}
-            <div className="relative pt-2 pb-8 max-w-[446px]">
+            <div className="relative pt-2 pb-12 max-w-[446px]">
               
               {/* White Proof Card (Border radius 20px, Shadow 0 20px 50px rgba(60,97,221,0.12)) */}
               <div className="w-full bg-white dark:bg-card rounded-[20px] p-6 border border-[#e3e8f2] dark:border-border shadow-[0_20px_50px_rgba(60,97,221,0.12)] space-y-3.5">
@@ -76,7 +76,7 @@ export default function FigmaTrustSources() {
               </div>
 
               {/* Hand-Drawn / Dotted Curved Annotation (Figma 57424:543) */}
-              <div className="absolute bottom-1 right-[-4px] sm:right-[-12px] md:right-[-20px] flex items-center gap-1.5 pointer-events-none z-10">
+              <div className="absolute -bottom-4 sm:-bottom-5 right-[-4px] sm:right-[-12px] md:right-[-20px] flex items-center gap-1.5 pointer-events-none z-10">
                 {/* Exact Figma Curved Arrow SVG (57424:544) */}
                 <svg width="42" height="34" viewBox="0 0 42 34" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 text-[#3c61dd] -mb-1">
                   <path d="M6 30C16 32 30 25 34 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="3 3"/>
