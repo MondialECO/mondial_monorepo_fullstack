@@ -84,7 +84,7 @@ The backend is an ASP.NET Core 8 Web API monolith running on Kestrel, engineered
   - `options.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;`
   - Explicitly pinned so all JSON payloads delivered over WebSockets match the frontend REST models exactly.
 - **Registered Hubs**:
-  1. `NotificationHub` (`/hubs/notifications`): Dispatches real-time badge updates, deal offer alerts, KYC status updates, and AI generation completion events to individual user groups (`user_{userId}`).
+  1. `NotificationHub` (`/hubs/notifications`): Dispatches real-time badge updates, deal offer alerts, KYC status updates, and transactional notices to individual user groups (`user_{userId}`). (AI job completion notifications disabled per product requirement).
   2. `ChatHub` (`/hubs/chat`): Powers direct conversation threads between Creators, Entrepreneurs, Investors, and Service Providers, with online presence tracked via `RedisPresenceTracker`.
 
 ---

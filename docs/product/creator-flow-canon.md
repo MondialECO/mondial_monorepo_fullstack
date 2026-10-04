@@ -2161,6 +2161,17 @@ RC1 Freeze
   - Note: Visual automated subagent verification was blocked by Playwright driver CDN 404.
   - Production deployment was not performed.
 
+**2026-10-04 — AI Infrastructure: Disable AI Job Completion & Failure Notifications & Realtime Events.**
+- **Component:** `backend/Services/Ai/Jobs/AiJobCompletionHandler.cs`
+- **Specification:**
+  - Disabled all persistent in-app notifications and Web Push notifications for terminal AI job states (`AI job complete`, `AI job failed`).
+  - Disabled SignalR realtime events (`AiJobUpdate`, `AiJobCompleted`) on AI job terminal completions and failures.
+  - Transactional system notifications (Deals, Marketplace, Conversations, KYC verification, Provider invitations) remain active and unaffected.
+- **Verification Evidence:**
+  - Backend Unit Tests: `AiNotificationTests.cs` (4 / 4 PASS).
+  - Backend AI Test Suite: 364 / 364 PASS (0 failed).
+  - Production deployment was not performed.
+
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
