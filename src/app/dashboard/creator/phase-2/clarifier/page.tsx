@@ -418,7 +418,8 @@ export default function AIClarifierPage() {
   };
 
   // Derived progress — driven by answered count so the panel is independent of the
-  // in-flight optimistic step. Kept for  const answeredCount = messages.filter((m) => m.sender === "user").length;
+  // in-flight optimistic step.
+  const answeredCount = messages.filter((m) => m.sender === "user").length;
   const ringPct = Math.min(Math.round((answeredCount / totalQuestions) * 100), 100);
   const band = ringBand(answeredCount, totalQuestions);
   const currentQuestion = Math.min(answeredCount + 1, totalQuestions);
