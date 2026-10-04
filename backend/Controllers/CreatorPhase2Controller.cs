@@ -48,6 +48,7 @@ namespace WebApp.Controllers
         private readonly MongoDbContext _context;
         private readonly IChatService _chat;
         private readonly ISpMatchingService _spMatching;
+        private readonly ICompanySearchService? _companySearch;
 
         public CreatorPhase2Controller(
             ICreatorJourneyService journeys,
@@ -56,7 +57,8 @@ namespace WebApp.Controllers
             MongoDbContext context,
             IChatService chat,
             ISpMatchingService spMatching,
-            IServiceProvider services)
+            IServiceProvider services,
+            ICompanySearchService? companySearch = null)
         {
             _journeys = journeys;
             _clarifier = clarifier;
@@ -64,6 +66,7 @@ namespace WebApp.Controllers
             _context = context;
             _chat = chat;
             _spMatching = spMatching;
+            _companySearch = companySearch;
             // Optional: null in dev when Redis is disabled. Lifetime counters then
             // fall back to permissive (we never block the only entry path on infra).
             _redis = services.GetService(typeof(IConnectionMultiplexer)) as IConnectionMultiplexer;
@@ -257,6 +260,58 @@ namespace WebApp.Controllers
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
             catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // GET /api/creator/journey/phase2/company-search?query=name
+        // Informational lookup against official French enterprise records (API Recherche d'entreprises).
+        // Does not consume AI credits, require company ownership, or mutate database state.
+        [HttpGet("company-search")]
+        [EnableRateLimiting("company_search")]
+        public async Task<IActionResult> CompanySearch([FromQuery] string query, CancellationToken cancellationToken)
+        {
+            try
+            {
+                GetUserId(); // Ensure authenticated caller
+
+                if (string.IsNullOrWhiteSpace(query))
+                {
+                    return BadRequest(ApiResponse.Error("Query is required."));
+                }
+
+                var trimmed = query.Trim();
+                if (trimmed.Length > 80)
+                {
+                    return BadRequest(ApiResponse.Error("Query exceeds maximum allowed length of 80 characters."));
+                }
+
+                if (_companySearch == null)
+                {
+                    return StatusCode(503, ApiResponse.Error("Company search service is not configured."));
+                }
+
+                var result = await _companySearch.SearchCompaniesAsync(trimmed, 5, cancellationToken);
+                return Ok(ApiResponse.Ok("Company search completed", result));
+            }
+            catch (TimeoutException)
+            {
+                return StatusCode(504, ApiResponse.Error("The company search service timed out."));
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                return StatusCode(429, ApiResponse.Error("Rate limit reached on the external company search service."));
+            }
+            catch (HttpRequestException ex)
+            {
+                return StatusCode(502, ApiResponse.Error(ex.Message));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, ApiResponse.Error(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier));
+            }
         }
 
         // POST /api/creator/journey/phase2/branding/upload-logo  (multipart)

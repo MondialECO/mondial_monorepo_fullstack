@@ -1,21 +1,16 @@
 import type { Metadata } from 'next';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
-import PricingHero from '@/components/public/pricing/PricingHero';
-import RolePricingGrid from '@/components/public/pricing/RolePricingGrid';
-import PricingComparison from '@/components/public/pricing/PricingComparison';
-import ProviderCommission from '@/components/public/pricing/ProviderCommission';
-import PricingClarification from '@/components/public/pricing/PricingClarification';
-import PricingRoleGateway from '@/components/public/pricing/PricingRoleGateway';
+import FigmaPricingView from '@/components/pricing/FigmaPricingView';
 
 export const metadata: Metadata = {
-  title: 'Pricing | Mondial',
+  title: 'Pricing — Create your digital company for €0 | Mondial',
   description:
-    'Explore Mondial pricing by role: free access for Creators and Entrepreneurs, €9.99/month for Service Providers and Investors, plus tier-based Service Provider commission on eligible paid work.',
+    'Start with 200 free credits. Buy more only when you need them. No subscription. Transparent pay-as-you-go credit packs for digital company creation in France.',
   openGraph: {
-    title: 'Pricing | Mondial',
+    title: 'Pricing — Create your digital company for €0 | Mondial',
     description:
-      'Explore Mondial pricing by role: free access for Creators and Entrepreneurs, €9.99/month for Service Providers and Investors, plus tier-based Service Provider commission on eligible paid work.',
+      'Start with 200 free credits. Buy more only when you need them. No subscription. Transparent pay-as-you-go credit packs for digital company creation in France.',
     url: 'https://mondialbusiness.eu/pricing',
     siteName: 'Mondial.eco',
     type: 'website',
@@ -25,34 +20,18 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <div
-      className="w-full min-h-screen bg-white text-foreground flex flex-col justify-between"
+      className="w-full min-h-screen bg-[#F4F5F7] dark:bg-background text-foreground flex flex-col justify-between overflow-x-hidden"
       data-testid="public-pricing-page"
     >
-      {/* 1. Global Public Header (Locked) */}
+      {/* 1. Global Public Header (Figma 57381:10846) */}
       <Navbar />
 
-      {/* 2. Public Pricing Body (56939:79716) */}
-      <main className="w-full flex-1 flex flex-col items-center overflow-x-hidden">
-        {/* Section 01: Hero (56939:79254) */}
-        <PricingHero />
-
-        {/* Section 01: 2-Column Role Pricing Grid + Closing Note (56939:79273) */}
-        <RolePricingGrid />
-
-        {/* Section 02 Part A: Quick Comparison Table (56939:79430) */}
-        <PricingComparison />
-
-        {/* Section 02 Part B: Service Provider Commission & €1,000 Project (56939:79506) */}
-        <ProviderCommission />
-
-        {/* Section 02 Part C: Important Clarification (56939:79572) */}
-        <PricingClarification />
-
-        {/* Section 02 Part E: Final Role CTA & Pricing Strip (56939:79643) */}
-        <PricingRoleGateway />
+      {/* 2. Public Pricing Page Content (Figma 57424:108) */}
+      <main className="w-full flex-1 flex flex-col items-center">
+        <FigmaPricingView />
       </main>
 
-      {/* 3. Global Approved Public Footer (Locked) */}
+      {/* 3. Global Public Footer (Figma 57381:10882) */}
       <Footer />
     </div>
   );

@@ -4,11 +4,9 @@ using WebApp.Services.Interface;
 namespace WebApp.Services.Ai.Jobs
 {
     /// <summary>
-    /// Fires the user-facing side effects when an AI job reaches a terminal
-    /// state: a persisted notification (reusing <see cref="INotificationService"/>
-    /// — persist + SignalR-if-online + Web-Push-if-offline) plus realtime hub
-    /// events to the owner's group. Best-effort: notification/transport failures
-    /// are logged, never thrown, so they cannot fail or mask the AI job itself.
+    /// Handles post-execution side effects when an AI job reaches a terminal state.
+    /// In-app user notifications, push notifications, and SignalR realtime events (AiJobUpdate/AiJobCompleted)
+    /// for AI job completions/failures are disabled as per product specifications.
     /// </summary>
     public interface IAiJobCompletionHandler
     {
@@ -18,62 +16,31 @@ namespace WebApp.Services.Ai.Jobs
 
     public sealed class AiJobCompletionHandler : IAiJobCompletionHandler
     {
-        private const int SummaryMaxChars = 160;
+        private readonly ILogger<AiJobCompletionHandler>? _logger;
 
-        private readonly INotificationService _notifications;
-        private readonly IAiEventPublisher _events;
-        private readonly ILogger<AiJobCompletionHandler> _logger;
+        public AiJobCompletionHandler(ILogger<AiJobCompletionHandler>? logger = null)
+        {
+            _logger = logger;
+        }
 
         public AiJobCompletionHandler(
             INotificationService notifications,
             IAiEventPublisher events,
             ILogger<AiJobCompletionHandler> logger)
         {
-            _notifications = notifications;
-            _events = events;
             _logger = logger;
         }
 
-        public async Task OnCompletedAsync(AiRequest request, AiResponse response)
+        public Task OnCompletedAsync(AiRequest request, AiResponse response)
         {
-            try
-            {
-                await _events.PublishToOwnerAsync(request.OwnerUserId, AiEventNames.AiJobUpdate,
-                    new { jobId = request.Id, status = "Completed" });
-
-                await _events.PublishToOwnerAsync(request.OwnerUserId, AiEventNames.AiJobCompleted,
-                    new { jobId = request.Id, jobType = request.JobType, status = "Completed", resultSummary = Summarize(response) });
-
-                if (Guid.TryParse(request.OwnerUserId, out var userId))
-                    await _notifications.NotifyUser(userId, "AI job complete", $"{request.JobType} finished");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "AI completion notification failed for {RequestId} (non-fatal).", request.Id);
-            }
+            // AI job completion notifications and SignalR realtime events are deliberately disabled.
+            return Task.CompletedTask;
         }
 
-        public async Task OnFailedAsync(AiRequest request, string error)
+        public Task OnFailedAsync(AiRequest request, string error)
         {
-            try
-            {
-                await _events.PublishToOwnerAsync(request.OwnerUserId, AiEventNames.AiJobUpdate,
-                    new { jobId = request.Id, status = "Failed" });
-
-                if (Guid.TryParse(request.OwnerUserId, out var userId))
-                    await _notifications.NotifyUser(userId, "AI job failed", $"{request.JobType} failed");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "AI failure notification failed for {RequestId} (non-fatal).", request.Id);
-            }
-        }
-
-        private static string Summarize(AiResponse response)
-        {
-            var text = response.RawText ?? string.Empty;
-            text = text.Trim();
-            return text.Length <= SummaryMaxChars ? text : text[..SummaryMaxChars] + "…";
+            // AI job failure notifications and SignalR realtime events are deliberately disabled.
+            return Task.CompletedTask;
         }
     }
 }

@@ -42,7 +42,16 @@ describe('Homepage — Figma Node 57349:8209 Canon Alignment', () => {
     expect(screen.getByText(/PHASE 05 · COMPANY/i)).toBeInTheDocument();
     expect(screen.getByText(/PHASE 06 · NEXT CHAPTER/i)).toBeInTheDocument();
 
-    // 4. What's Next (Figma 57381:10328)
+    // 4. Where The Facts Come From (Figma 57424:508)
+    expect(screen.getByText(/WHERE THE FACTS COME FROM/i)).toBeInTheDocument();
+    expect(screen.getByText(/We don't guess\./i)).toBeInTheDocument();
+    expect(screen.getByText(/We check\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Service Public Entreprendre/i)).toBeInTheDocument();
+    expect(screen.getByText(/INPI Guichet unique/i)).toBeInTheDocument();
+    expect(screen.getByText(/Aides-entreprises \/ data\.gouv\.fr/i)).toBeInTheDocument();
+    expect(screen.getByText(/You can always see where info came from\./i)).toBeInTheDocument();
+
+    // 5. What's Next (Figma 57381:10328)
     expect(screen.getByText(/Creator is just the/i)).toBeInTheDocument();
     expect(screen.getByText(/beginning\./i)).toBeInTheDocument();
     expect(screen.getAllByText(/Entrepreneur/i).length).toBeGreaterThan(0);
@@ -50,12 +59,12 @@ describe('Homepage — Figma Node 57349:8209 Canon Alignment', () => {
     expect(screen.getAllByText(/Service Provider/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Marketplace/i).length).toBeGreaterThan(0);
 
-    // 5. FAQ (Figma 57354:15783)
+    // 6. FAQ (Figma 57354:15783)
     expect(screen.getByText(/What “start for/i)).toBeInTheDocument();
     expect(screen.getByText(/€0” really means\./i)).toBeInTheDocument();
     expect(screen.getAllByText(/Can I really start with MBC for €0\?/i).length).toBeGreaterThan(0);
 
-    // 6. Final CTA (Figma 57354:15831)
+    // 7. Final CTA (Figma 57354:15831)
     expect(screen.getByText(/Your business starts with a/i)).toBeInTheDocument();
     expect(screen.getByText(/first step\./i)).toBeInTheDocument();
   });

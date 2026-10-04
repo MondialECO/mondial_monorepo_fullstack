@@ -1,0 +1,196 @@
+- [FRAME] "PAth A - Clarifier" (1440x1072 @ (3440,-12602)) 
+  - [FRAME] "Frame 2147228952" (1200x800 @ (3560,-12502)) [VERTICAL, gap=24, pad=Tundefined Rundefined Bundefined Lundefined, align=undefined, grow=undefined]
+    - [FRAME] "Intro Panel" (1200x72 @ (3560,-12502)) [VERTICAL, gap=8, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+      - [TEXT] "Title" (360x40 @ (3560,-12502))  "Let's sharpen your idea"
+      - [TEXT] "Subtitle" (780x24 @ (3560,-12454))  "Answer 6 focused questions. Our AI will analyze your responses and build your concept canvas."
+    - [FRAME] "Frame 2147228951" (1200x704 @ (3560,-12406)) [HORIZONTAL, gap=16, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=1]
+      - [FRAME] "Frame 2147228950" (884x704 @ (3560,-12406)) r=16 [VERTICAL, gap=16, pad=T20 R20 B20 L20, align=STRETCH, grow=1]
+        - [FRAME] "Frame 2147228958" (844x48 @ (3580,-12386)) [HORIZONTAL, gap=12, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+          - [FRAME] "Frame 2147228956" (48x48 @ (3580,-12386)) r=100 
+            - [RECTANGLE] "friendly chatbot icon, ai assistant head, futuristic robot character illustration" (30x25 @ (3588,-12374)) 
+          - [FRAME] "Frame 2147228957" (255x44 @ (3640,-12384)) [VERTICAL, gap=undefined, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=0]
+            - [TEXT] "AI Idea Clarifier" (255x24 @ (3640,-12384))  "AI Idea Clarifier"
+            - [TEXT] "5 focused questions to sharpen your idea" (255x20 @ (3640,-12360))  "5 focused questions to sharpen your idea"
+        - [FRAME] "Frame 2147228954" (844x568 @ (3580,-12322)) [VERTICAL, gap=9, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=1]
+          - [FRAME] "Frame 2147228953" (844x493 @ (3580,-12322)) r=16 [VERTICAL, gap=8, pad=T16 R16 B16 L16, align=STRETCH, grow=1]
+            - [FRAME] "Frame" (812x80 @ (3596,-12306)) [VERTICAL, gap=16, pad=Tundefined Rundefined B12 Lundefined, align=STRETCH, grow=0]
+              - [FRAME] "AI Bubble" (812x68 @ (3596,-12306)) [HORIZONTAL, gap=undefined, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+                - [FRAME] "Frame" (580x68 @ (3596,-12306)) r=16 [HORIZONTAL, gap=undefined, pad=T14 R18 B14 L18, align=INHERIT, grow=0]
+                  - [TEXT] "Welcome Message" (544x40 @ (3614,-12292))  "Welcome. Tell me your idea - in your own words, however rough it is. What problem are you solving?"
+            - [FRAME] "AI Bubble" (812x116 @ (3596,-12218)) [HORIZONTAL, gap=undefined, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+              - [FRAME] "Frame 2147228960" (548x116 @ (3860,-12218)) [VERTICAL, gap=12, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=0]
+                - [FRAME] "Frame" (548x88 @ (3860,-12218)) r=16 [VERTICAL, gap=12, pad=T14 R18 B14 L18, align=INHERIT, grow=0]
+                  - [TEXT] "Welcome Message" (512x60 @ (3878,-12204))  "I propose a late-night coffee delivery service for night-shift workers, freelancers, and students. It connects users with cafés open at night for easy ordering of fresh coffee."
+                - [FRAME] "Frame 2147228959" (40x16 @ (4368,-12118)) [HORIZONTAL, gap=8, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=0]
+                  - [INSTANCE] "edit-2 - 16" (16x16 @ (4368,-12118)) 
+                    - [GROUP] "vuesax/linear/edit-2" (16x16 @ (4368,-12118)) 
+                      - [GROUP] "edit-2" (16x16 @ (4368,-12118)) 
+                        - [VECTOR] "Vector" (11x11 @ (4371,-12117)) 
+                        - [VECTOR] "Vector" (4x3 @ (4376,-12115)) 
+                        - [VECTOR] "Vector" (12x0 @ (4370,-12103)) 
+                        - [VECTOR] "Vector" (16x16 @ (4368,-12118)) 
+                  - [INSTANCE] "copy - 16" (16x16 @ (4392,-12118)) 
+                    - [GROUP] "vuesax/linear/copy" (16x16 @ (4392,-12118)) 
+                      - [GROUP] "copy" (16x16 @ (4392,-12118)) 
+                        - [VECTOR] "Vector" (9x9 @ (4393,-12113)) 
+                        - [VECTOR] "Vector" (9x9 @ (4397,-12117)) 
+                        - [VECTOR] "Vector" (16x16 @ (4392,-12118)) 
+            - [FRAME] "Frame" (812x60 @ (3596,-12094)) [VERTICAL, gap=16, pad=Tundefined Rundefined B12 Lundefined, align=STRETCH, grow=0]
+              - [FRAME] "AI Bubble" (812x48 @ (3596,-12094)) [HORIZONTAL, gap=undefined, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+                - [FRAME] "Frame" (415x48 @ (3596,-12094)) r=16 [HORIZONTAL, gap=undefined, pad=T14 R18 B14 L18, align=INHERIT, grow=0]
+                  - [TEXT] "Welcome Message" (379x20 @ (3614,-12080))  "Who feels this problem acutely- describe your target user."
+            - [FRAME] "AI Bubble" (812x156 @ (3596,-12026)) [HORIZONTAL, gap=undefined, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+              - [FRAME] "Frame 2147228960" (548x156 @ (3860,-12026)) [VERTICAL, gap=12, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=0]
+                - [FRAME] "Frame" (548x128 @ (3860,-12026)) r=16 [VERTICAL, gap=12, pad=T14 R18 B14 L18, align=INHERIT, grow=0]
+                  - [TEXT] "Welcome Message" (512x100 @ (3878,-12012))  "My target users are people who are active late at night and rely on coffee to stay productive. This includes night-shift workers, freelancers, software developers, designers, customer support agents, healthcare workers, delivery drivers, gamers, and students. They need a convenient way to order fresh coffee after midnight when most cafés are closed."
+                - [FRAME] "Frame 2147228959" (40x16 @ (4368,-11886)) [HORIZONTAL, gap=8, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=0]
+                  - [INSTANCE] "edit-2 - 16" (16x16 @ (4368,-11886)) 
+                    - [GROUP] "vuesax/linear/edit-2" (16x16 @ (4368,-11886)) 
+                      - [GROUP] "edit-2" (16x16 @ (4368,-11886)) 
+                        - [VECTOR] "Vector" (11x11 @ (4371,-11885)) 
+                        - [VECTOR] "Vector" (4x3 @ (4376,-11883)) 
+                        - [VECTOR] "Vector" (12x0 @ (4370,-11871)) 
+                        - [VECTOR] "Vector" (16x16 @ (4368,-11886)) 
+                  - [INSTANCE] "copy - 16" (16x16 @ (4392,-11886)) 
+                    - [GROUP] "vuesax/linear/copy" (16x16 @ (4392,-11886)) 
+                      - [GROUP] "copy" (16x16 @ (4392,-11886)) 
+                        - [VECTOR] "Vector" (9x9 @ (4393,-11881)) 
+                        - [VECTOR] "Vector" (9x9 @ (4397,-11885)) 
+                        - [VECTOR] "Vector" (16x16 @ (4392,-11886)) 
+            - [RECTANGLE] "Rectangle 21" (4x84 @ (4419,-12252)) r=100 
+          - [TEXT] "title" (296x20 @ (3580,-11803))  "Desktop - large - default"
+          - [FRAME] "Input body" (844x66 @ (3580,-11820)) r=12 [HORIZONTAL, gap=8, pad=T12 R10 B10 L16, align=STRETCH, grow=0]
+            - [INSTANCE] "add-circle 17" (20x20 @ (3596,-11806)) 
+              - [GROUP] "vuesax/linear/add-square" (20x20 @ (3596,-11806)) 
+                - [GROUP] "add-square" (20x20 @ (3596,-11806)) 
+                  - [VECTOR] "Vector" (7x0 @ (3603,-11796)) 
+                  - [VECTOR] "Vector" (0x7 @ (3606,-11799)) 
+                  - [VECTOR] "Vector" (17x17 @ (3598,-11804)) 
+                  - [VECTOR] "Vector" (20x20 @ (3596,-11806)) 
+            - [TEXT] "Next Text" (766x20 @ (3596,-11796))  "Type your answer..."
+            - [INSTANCE] "add-square - 20" (20x20 @ (3840,-11806)) 
+              - [GROUP] "vuesax/linear/add-square" (20x20 @ (3840,-11806)) 
+                - [GROUP] "add-square" (20x20 @ (3840,-11806)) 
+                  - [VECTOR] "Vector" (7x0 @ (3847,-11796)) 
+                  - [VECTOR] "Vector" (0x7 @ (3850,-11799)) 
+                  - [VECTOR] "Vector" (17x17 @ (3842,-11804)) 
+                  - [VECTOR] "Vector" (20x20 @ (3840,-11806)) 
+            - [INSTANCE] "button" (44x44 @ (4370,-11808)) r=8 [HORIZONTAL, gap=8, pad=T12 R24 B12 L24, align=INHERIT, grow=0]
+              - [INSTANCE] "icon left" (20x20 @ (4394,-11794)) 
+                - [GROUP] "vuesax/linear/add-square" (20x20 @ (4394,-11794)) 
+                  - [GROUP] "add-square" (20x20 @ (4394,-11794)) 
+                    - [VECTOR] "Vector" (7x0 @ (4401,-11784)) 
+                    - [VECTOR] "Vector" (0x7 @ (4404,-11787)) 
+                    - [VECTOR] "Vector" (17x17 @ (4396,-11792)) 
+                    - [VECTOR] "Vector" (20x20 @ (4394,-11794)) 
+              - [TEXT] "Next Text" (40x24 @ (4422,-11796))  "Send"
+              - [INSTANCE] "Icon right" (20x20 @ (4382,-11796)) 
+                - [GROUP] "vuesax/linear/send-2" (20x20 @ (4382,-11796)) 
+                  - [GROUP] "send-2" (20x20 @ (4382,-11796)) 
+                    - [VECTOR] "Vector" (15x15 @ (4385,-11793)) 
+                    - [VECTOR] "Vector" (3x3 @ (4390,-11788)) 
+                    - [VECTOR] "Vector" (20x20 @ (4382,-11796)) 
+          - [FRAME] "Frame 2147225307" (296x20 @ (3580,-11719)) [HORIZONTAL, gap=10, pad=Tundefined R4 Bundefined L4, align=STRETCH, grow=0]
+            - [TEXT] "title" (288x20 @ (3584,-11719))  "guide here"
+        - [TEXT] "Press Enter to send Shift + Enter for new line" (231x16 @ (3887,-11738))  "Press Enter to send  Shift + Enter for new line"
+      - [FRAME] "Frame" (300x420 @ (4460,-12406)) r=16 [VERTICAL, gap=24, pad=T36 R24 B24 L24, align=INHERIT, grow=0]
+        - [FRAME] "Frame" (252x148 @ (4484,-12370)) [VERTICAL, gap=12, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+          - [FRAME] "Clarity Ring" (120x120 @ (4550,-12370)) 
+            - [ELLIPSE] "Ellipse" (120x120 @ (4550,-12370)) 
+            - [ELLIPSE] "Ellipse" (120x120 @ (4549,-12370)) 
+            - [TEXT] "Clarity Value" (70x40 @ (4575,-12330))  "40%"
+          - [TEXT] "Clarity Status" (73x16 @ (4574,-12238))  "DEVELOPING"
+        - [LINE] "Line" (252x0 @ (4484,-12198)) 
+        - [FRAME] "Frame" (252x164 @ (4484,-12174)) [VERTICAL, gap=12, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+          - [TEXT] "Progress Title" (150x20 @ (4484,-12174))  "Progress: Question 1 of 6"
+          - [FRAME] "Frame" (252x132 @ (4484,-12142)) [VERTICAL, gap=8, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+            - [INSTANCE] "Step Item" (252x20 @ (4484,-12142)) [HORIZONTAL, gap=8, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+              - [FRAME] "Todo" (20x20 @ (4484,-12142)) r=100 [HORIZONTAL, gap=undefined, pad=T4 R4 B4 L4, align=INHERIT, grow=0]
+                - [INSTANCE] "tick-circle - 16" (16x16 @ (4486,-12140)) 
+                  - [GROUP] "vuesax/bold/tick-circle" (16x16 @ (4486,-12140)) 
+                    - [GROUP] "tick-circle" (16x16 @ (4486,-12140)) 
+                      - [VECTOR] "Vector" (13x13 @ (4487,-12139)) 
+                      - [VECTOR] "Vector" (16x16 @ (4486,-12140)) 
+              - [FRAME] "Frame 2147228955" (224x16 @ (4512,-12140)) [HORIZONTAL, gap=4, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=1]
+                - [TEXT] "Step Title Active" (49x16 @ (4512,-12140))  "Concept"
+                - [TEXT] "Step Title Active" (171x16 @ (4565,-12140))  "(Response to Q1)"
+            - [INSTANCE] "Step Item" (252x20 @ (4484,-12114)) [HORIZONTAL, gap=8, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+              - [FRAME] "Todo" (20x20 @ (4484,-12114)) r=100 [HORIZONTAL, gap=undefined, pad=T4 R4 B4 L4, align=INHERIT, grow=0]
+                - [INSTANCE] "tick-circle - 16" (16x16 @ (4486,-12112)) 
+                  - [GROUP] "vuesax/bold/tick-circle" (16x16 @ (4486,-12112)) 
+                    - [GROUP] "tick-circle" (16x16 @ (4486,-12112)) 
+                      - [VECTOR] "Vector" (13x13 @ (4487,-12111)) 
+                      - [VECTOR] "Vector" (16x16 @ (4486,-12112)) 
+              - [FRAME] "Frame 2147228955" (224x16 @ (4512,-12112)) [HORIZONTAL, gap=4, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=1]
+                - [TEXT] "Step Title Active" (70x16 @ (4512,-12112))  "Target Users"
+                - [TEXT] "Step Title Active" (150x16 @ (4586,-12112))  "(Unlocks after Q1)"
+            - [INSTANCE] "Step Item" (252x20 @ (4484,-12086)) [HORIZONTAL, gap=8, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+              - [FRAME] "Todo" (20x20 @ (4484,-12086)) r=100 [HORIZONTAL, gap=undefined, pad=T4 R4 B4 L4, align=INHERIT, grow=0]
+                - [TEXT] "Step Number" (8x13 @ (4490,-12082))  "3"
+              - [FRAME] "Frame 2147228955" (224x16 @ (4512,-12084)) [HORIZONTAL, gap=4, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=1]
+                - [TEXT] "Step Title Active" (77x16 @ (4512,-12084))  "Core Problem"
+                - [TEXT] "Step Title Active" (143x16 @ (4593,-12084))  "(Unlocks after Q2)"
+            - [INSTANCE] "Step Item" (252x20 @ (4484,-12058)) [HORIZONTAL, gap=8, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+              - [FRAME] "Todo" (20x20 @ (4484,-12058)) r=100 [HORIZONTAL, gap=undefined, pad=T4 R4 B4 L4, align=INHERIT, grow=0]
+                - [TEXT] "Step Number" (8x13 @ (4490,-12054))  "4"
+              - [FRAME] "Frame 2147228955" (224x16 @ (4512,-12056)) [HORIZONTAL, gap=4, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=1]
+                - [TEXT] "Step Title Active" (74x16 @ (4512,-12056))  "Your Solution"
+                - [TEXT] "Step Title Active" (146x16 @ (4590,-12056))  "(Unlocks after Q3)"
+            - [INSTANCE] "Step Item" (252x20 @ (4484,-12030)) [HORIZONTAL, gap=8, pad=Tundefined Rundefined Bundefined Lundefined, align=STRETCH, grow=0]
+              - [FRAME] "Todo" (20x20 @ (4484,-12030)) r=100 [HORIZONTAL, gap=undefined, pad=T4 R4 B4 L4, align=INHERIT, grow=0]
+                - [TEXT] "Step Number" (7x13 @ (4491,-12026))  "5"
+              - [FRAME] "Frame 2147228955" (224x16 @ (4512,-12028)) [HORIZONTAL, gap=4, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=1]
+                - [TEXT] "Step Title Active" (59x16 @ (4512,-12028))  "Your EDGE"
+                - [TEXT] "Step Title Active" (161x16 @ (4575,-12028))  "(Unlocks after Q4)"
+  - [INSTANCE] "Header" (1440x68 @ (3440,-12602)) [HORIZONTAL, gap=20, pad=T16 R24 B16 L24, align=undefined, grow=undefined]
+    - [FRAME] "ph:meta-logo-bold" (36x36 @ (3464,-12586)) r=10 [VERTICAL, gap=10, pad=T2 R2 B2 L2, align=INHERIT, grow=0]
+      - [FRAME] "div" (20x20 @ (3472,-12578)) [VERTICAL, gap=undefined, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=0]
+        - [RECTANGLE] "Image" (20x20 @ (3472,-12578)) 
+    - [FRAME] "Icon-Breadcrumb" (1280x20 @ (3520,-12578)) [HORIZONTAL, gap=8, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=1]
+      - [FRAME] "Icon" (32x32 @ (3520,-12578)) r=9.14285659790039 
+        - [INSTANCE] "Line arrow-left - 20" (20x20 @ (3526,-12572)) 
+          - [GROUP] "vuesax/outline/arrow-left" (20x20 @ (3526,-12572)) 
+            - [GROUP] "arrow-left" (20x20 @ (3526,-12572)) 
+              - [VECTOR] "Vector" (6x11 @ (3528,-12568)) 
+              - [VECTOR] "Vector" (15x1 @ (3528,-12563)) 
+              - [VECTOR] "Vector" (20x20 @ (3526,-12572)) 
+      - [FRAME] "Frame 2147225279" (245x20 @ (3520,-12578)) [HORIZONTAL, gap=4, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=0]
+        - [TEXT] "Breadcrumb item" (192x20 @ (3520,-12578))  "Dashboard / Creator / Phase 2 /   "
+        - [TEXT] "Breadcrumb item" (49x20 @ (3716,-12578))  "Clarifier"
+    - [FRAME] "Icons container" (36x36 @ (4820,-12586)) [HORIZONTAL, gap=20, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=0]
+      - [FRAME] "Icons" (140x36 @ (4820,-12586)) [HORIZONTAL, gap=16, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=0]
+        - [FRAME] "icon frame" (36x36 @ (4820,-12586)) r=100 
+          - [FRAME] "Icon badge" (8x8 @ (4846,-12584)) r=100 
+          - [INSTANCE] "message - 16" (16x16 @ (4830,-12576)) 
+            - [GROUP] "vuesax/linear/message" (16x16 @ (4830,-12576)) 
+              - [GROUP] "message" (16x16 @ (4830,-12576)) 
+                - [VECTOR] "Vector" (13x13 @ (4831,-12575)) 
+                - [VECTOR] "Vector" (1x1 @ (4840,-12569)) 
+                - [VECTOR] "Vector" (1x1 @ (4838,-12569)) 
+                - [VECTOR] "Vector" (1x1 @ (4835,-12569)) 
+                - [VECTOR] "Vector" (16x16 @ (4830,-12576)) 
+        - [FRAME] "icon frame" (36x36 @ (4872,-12586)) r=1285.7142333984375 
+          - [FRAME] "Frame 2147225278" (8x8 @ (4898,-12584)) r=100 
+          - [INSTANCE] "notification-bing - 16" (16x16 @ (4882,-12576)) 
+            - [GROUP] "vuesax/linear/notification-bing" (16x16 @ (4882,-12576)) 
+              - [GROUP] "notification-bing" (16x16 @ (4882,-12576)) 
+                - [VECTOR] "Vector" (0x2 @ (4890,-12572)) 
+                - [VECTOR] "Vector" (12x12 @ (4884,-12575)) 
+                - [VECTOR] "Vector" (4x2 @ (4888,-12563)) 
+                - [VECTOR] "Vector" (16x16 @ (4882,-12576)) 
+        - [FRAME] "icon frame" (36x36 @ (4924,-12586)) r=1285.7142333984375 
+          - [INSTANCE] "sun - 16" (16x16 @ (4934,-12576)) 
+            - [GROUP] "vuesax/linear/sun" (16x16 @ (4934,-12576)) 
+              - [GROUP] "sun" (16x16 @ (4934,-12576)) 
+                - [VECTOR] "Vector" (9x9 @ (4938,-12572)) 
+                - [VECTOR] "Vector" (13x13 @ (4935,-12575)) 
+                - [VECTOR] "Vector" (16x16 @ (4934,-12576)) 
+      - [RECTANGLE] "Divider" (1x28 @ (4980,-12582)) 
+      - [INSTANCE] "profile icon" (36x36 @ (4820,-12586)) r=1285.7142333984375 
+        - [TEXT] "Profile initials" (18x16 @ (4829,-12576))  "ME"
+  - [INSTANCE] "Bottom Footer" (1440x84 @ (3440,-11614)) [HORIZONTAL, gap=626, pad=T32 R40 B32 L40, align=undefined, grow=undefined]
+    - [TEXT] "Copyright Text" (278x20 @ (3480,-11582))  "@2025 Mondial Eco System. All right reserved"
+    - [FRAME] "Footer Links" (334x20 @ (4506,-11582)) [HORIZONTAL, gap=28, pad=Tundefined Rundefined Bundefined Lundefined, align=INHERIT, grow=0]
+      - [TEXT] "Terms of Service Link" (83x20 @ (4506,-11582))  "Privacy Policy"
+      - [TEXT] "Privacy Policy Link" (94x20 @ (4617,-11582))  "Support Center"
+      - [TEXT] "Accessibility Link" (101x20 @ (4739,-11582))  "Terms of Service"

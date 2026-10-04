@@ -20,7 +20,7 @@ public class AiNotificationTests
     // ---- AiJobCompletionHandler ----
 
     [Fact]
-    public async Task OnCompleted_emits_update_and_completed_events_plus_success_notification()
+    public async Task OnCompleted_does_not_emit_events_or_send_notification()
     {
         var owner = Guid.NewGuid().ToString();
         var events = new Mock<IAiEventPublisher>();
@@ -28,13 +28,12 @@ public class AiNotificationTests
 
         await Handler(notif, events).OnCompletedAsync(Request(owner), Response());
 
-        events.Verify(e => e.PublishToOwnerAsync(owner, AiEventNames.AiJobUpdate, It.IsAny<object>()), Times.Once);
-        events.Verify(e => e.PublishToOwnerAsync(owner, AiEventNames.AiJobCompleted, It.IsAny<object>()), Times.Once);
-        notif.Verify(n => n.NotifyUser(Guid.Parse(owner), "AI job complete", It.IsAny<string>()), Times.Once);
+        events.Verify(e => e.PublishToOwnerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<object>()), Times.Never);
+        notif.Verify(n => n.NotifyUser(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
-    public async Task OnFailed_emits_update_failed_and_failure_notification_no_completed_event()
+    public async Task OnFailed_does_not_emit_events_or_send_notification()
     {
         var owner = Guid.NewGuid().ToString();
         var events = new Mock<IAiEventPublisher>();
@@ -42,34 +41,8 @@ public class AiNotificationTests
 
         await Handler(notif, events).OnFailedAsync(Request(owner), "boom");
 
-        events.Verify(e => e.PublishToOwnerAsync(owner, AiEventNames.AiJobUpdate, It.IsAny<object>()), Times.Once);
-        events.Verify(e => e.PublishToOwnerAsync(owner, AiEventNames.AiJobCompleted, It.IsAny<object>()), Times.Never);
-        notif.Verify(n => n.NotifyUser(Guid.Parse(owner), "AI job failed", It.IsAny<string>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task Notification_transport_failure_is_swallowed()
-    {
-        var owner = Guid.NewGuid().ToString();
-        var events = new Mock<IAiEventPublisher>();
-        events.Setup(e => e.PublishToOwnerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<object>()))
-              .ThrowsAsync(new Exception("hub down"));
-        var notif = new Mock<INotificationService>();
-
-        var act = () => Handler(notif, events).OnCompletedAsync(Request(owner), Response());
-        await act.Should().NotThrowAsync(); // best-effort: must not fail the job
-    }
-
-    [Fact]
-    public async Task Non_guid_owner_skips_notification_but_still_emits_events()
-    {
-        var events = new Mock<IAiEventPublisher>();
-        var notif = new Mock<INotificationService>();
-
-        await Handler(notif, events).OnCompletedAsync(Request("not-a-guid"), Response());
-
+        events.Verify(e => e.PublishToOwnerAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<object>()), Times.Never);
         notif.Verify(n => n.NotifyUser(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-        events.Verify(e => e.PublishToOwnerAsync("not-a-guid", AiEventNames.AiJobUpdate, It.IsAny<object>()), Times.Once);
     }
 
     // ---- AiEventPublisher (realtime delivery) ----

@@ -115,6 +115,22 @@ export interface UpdateProjectPayload {
   clarityScore?: number;
 }
 
+export interface CompanySearchMatch {
+  siren: string;
+  name: string;
+  postalCode?: string | null;
+  city?: string | null;
+  department?: string | null;
+  activityCode?: string | null;
+  status: 'active' | 'closed' | 'unknown';
+}
+
+export interface CompanySearchResponse {
+  query: string;
+  matches: CompanySearchMatch[];
+  totalResults: number;
+}
+
 export const creatorJourneyApi = {
   /**
    * Authoritative account-level journey read without an ideaId parameter.
@@ -208,6 +224,14 @@ export const creatorJourneyApi = {
   nameSuggestions: async (concept: string): Promise<{ names: string[] }> => {
     const res = await api.post('/creator/journey/phase2/name-suggestions', { concept });
     return unwrap<{ names: string[] }>(res.data);
+  },
+
+  searchSimilarCompanies: async (query: string, signal?: AbortSignal): Promise<CompanySearchResponse> => {
+    const res = await api.get('/creator/journey/phase2/company-search', {
+      params: { query },
+      signal,
+    });
+    return unwrap<CompanySearchResponse>(res.data);
   },
 
   uploadLogo: async (file: File | Blob, source: 'ai_logo' | 'm50_designer', ideaId?: string | null): Promise<{ logoAsset: string }> => {

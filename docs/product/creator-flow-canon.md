@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-09-26 (Creator Phase 4.5 Aids, Grants & Public Support Exact Figma 57221:11932, Phase 4.6 Pricing & Revenue Model Exact Figma 57221:12167, and Phase 4.7 GTM & Launch Strategy Exact Figma 57221:12464 Delivery).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-10-04 (Creator Phase 2 Optional French Company Name Search Integration via API Recherche d’entreprises).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -401,7 +401,51 @@ A 6-question conversational AI-guided clarifier (core problem, target user, exis
 
 Following the Clarifier:
 1. **Idea Summary (`/phase-2/idea-summary`):** Displays the structured concept summary and clarity score. The "Revisit" button routes directly back to `/phase-2/clarifier`.
-2. **Concept Name (`/phase-2/concept-name`):** Names the project based on clarified concept context.
+2. **Concept Name (`/dashboard/creator/phase-2/concept-name` — LIVE):**
+   - **Purpose & Core Inputs:** Names the venture and establishes an optional marketing tagline (`name` required min 2 chars max 80 chars, `tagline` optional max 120 chars). Saves directly to `CreatorIdea.Project` (and journey).
+   - **Optional French Company Name Search ("Check similar names"):**
+     - **Location & Trigger:** Inline interactive action positioned below the project name input. Search is completely optional and user-initiated; typing does not trigger auto-search.
+     - **Backend Route:** `GET /api/creator/journey/phase2/company-search?query={q}` (in `CreatorPhase2Controller`), secured with Creator JWT (`[Authorize]`).
+     - **Upstream Provider:** Official French public directory `API Recherche d’entreprises` (`https://recherche-entreprises.api.gouv.fr/search`).
+     - **Input Validation & Parameters:**
+       - Client requires at least 2 non-whitespace characters to enable search.
+       - Backend enforces strict max 80 characters (`400 Bad Request` if `query.Length > 80`).
+       - Parameter `per_page=5` restricts upstream retrieval to at most 5 results.
+     - **Rate Limiting & Protection:**
+       - Local ASP.NET Core rate limiter policy `company_search` configured at 30 requests/minute per authenticated user/IP (`FixedWindowRateLimiterOptions`).
+       - In-memory cache (`IMemoryCache`) with `SizeLimit = 500` entries, 10-minute sliding/absolute expiration (`TimeSpan.FromMinutes(10)`), and bounded entry sizing.
+       - 5-second upstream HTTP timeout (`TimeSpan.FromSeconds(5)`).
+       - Handles upstream HTTP 429 and network errors gracefully.
+     - **Data Privacy & Minimal External Transfer:**
+       - Only the sanitized, trimmed query string is sent upstream to `api.gouv.fr`. No user profile identifiers, idea IDs, authentication tokens, or session metadata are transmitted.
+     - **Zero AI-Credit Consumption:**
+       - Public registry search is deterministic and costs **0 AI credits** (never debits `AICredits` ledger).
+     - **Result Mapping & Attributes:**
+       - Displays: company name (`nom_complet` or `nom_raison_sociale`), SIREN number, registered address (postal code + city), legal structure (`nature_juridique`), and normalized operating status.
+       - Status Normalization: `etat_administratif == "A"` $\rightarrow$ `"active"` ("Active", green badge), `etat_administratif` in `["C", "F"]` $\rightarrow$ `"closed"` ("Closed", zinc badge), any unknown/unrecognized code $\rightarrow$ `"unknown"` ("Unknown", muted badge).
+     - **Non-Blocking Progression & Zero Preconditions:**
+       - The search is strictly advisory. It does NOT introduce a progression gate.
+       - Existing name/tagline validation and save-on-continue behavior remain active.
+       - Neither prior company registration nor possession of a SIREN/SIRET is required. Creators can continue without searching, with zero matches, with existing matches, or after a search error.
+     - **Stale Results & Race Condition Protection:**
+       - Modifying or typing into the project name field immediately clears existing search results and unmounts the results panel.
+       - In-flight HTTP requests are aborted via `AbortController` and stale responses matching superseded queries are discarded.
+     - **Error vs Empty State Distinction:**
+       - Network/service failures display an explicit error alert with a "Retry" button.
+       - Successful searches returning 0 matches display a distinct informative message ("No registered French companies found with a similar name").
+     - **Legal Disclaimer:**
+       - Results are advisory only and do not establish company ownership, trademark availability, or legal protection. Official trademark clearance and registrations reside with INPI (*Guichet unique* / *Registre national des entreprises*).
+   - **Historical Audit Corrections:**
+     - *Active-Idea Navigation:* Earlier audit notes suggesting missing `ideaId` in query strings caused active-idea loss were disproven; multi-idea context is reliably resolved through `useCreatorProgressState`, session storage, and backend `ActiveIdeaId` fallback.
+     - *Showcase Artifact vs Live Screen:* Clarified that the "Validated" badge existed exclusively in `FigmaOutputsShowcase.tsx` and was never part of the live naming screen.
+     - *Score 95:* Clarified that `score: 95` was an internal data heuristic and was never rendered in the live naming UI.
+   - **Verification History:**
+     - Automated Backend Tests: `backend/tests/WebApp.Tests/Unit/CompanySearchServiceTests.cs` (10 / 10 PASS).
+     - Automated Frontend Tests: `src/__tests__/creator/concept-name-company-search.test.tsx` (7 / 7 PASS; 199 / 199 Creator suite PASS).
+     - Live Backend Integration: Live proxy verified against `recherche-entreprises.api.gouv.fr` with real queries (200 OK, 5 bounded results, status normalization, 400 validation on >80 chars, and project state persistence).
+     - Manual Browser Verification: User confirmed the feature works in their manual browser check.
+     - Automated visual browser verification was blocked by Playwright driver download CDN 404 error.
+     - Production deployment has not been performed.
 3. **Branding Entry (`/phase-2/branding`):** Reconciled single-card presentation (`max-w-[680px]`, "Brand Visual Identity Studio", light/dark theme tokens, no icon tile per updated Figma revision) highlighting 6 concrete deliverables, body copy in DM Sans (`font-sans`), a single filled primary blue CTA ("Open Brand Studio") routing to `/dashboard/creator/phase-2/brand-studio`, and a quiet secondary "Skip for now" action that calls `creatorJourneyApi.skipBranding()` and navigates directly to `/complete`.
 4. **Phase 2 Complete (`/phase-2/complete` — Figma Node `57007-12780`):** Redesigned canonical completion screen (720px centered container) reading live `BrandKit` from `brandKitApi.getBrandKit(ideaId)` and `CreatorIdea.Project`. Features:
    - **Header Cluster:** 56px circular checkmark badge, `"✓ Phase 2 complete"`, project name, and dynamic category/tagline subline.
@@ -2096,6 +2140,46 @@ RC1 Freeze
   - Topbar: UNCHANGED
   - STATUS: CLOSED / FROZEN
   - Only reopen for confirmed runtime defects, new approved product requirements, or canonical backend capability changes.
+
+**2026-10-04 — Creator Phase 2: Optional French Company Name Search Integration (API Recherche d’entreprises).**
+- **Route:** `/dashboard/creator/phase-2/concept-name`
+- **Backend Endpoint:** `GET /api/creator/journey/phase2/company-search?query={q}`
+- **Provider:** `API Recherche d’entreprises` (api.gouv.fr).
+- **Implementation Summary:**
+  - Integrated optional "Check similar names" action beneath the project name input.
+  - Implemented backend `ICompanySearchService` / `CompanySearchService` proxy with 5s timeout, 10-minute bounded memory cache (`SizeLimit=500`), and strict 80-char query validation.
+  - Configured local ASP.NET Core rate-limiter policy `company_search` (30 requests/minute per authenticated user/IP).
+  - Enforced 0 AI-credit debit and minimal external data transfer (only sanitized query string).
+  - Implemented normalized status mapping (`etat_administratif`: `A` $\rightarrow$ `active`, `C`/`F` $\rightarrow$ `closed`, other $\rightarrow$ `unknown`).
+  - Guaranteed non-blocking journey progression (no company registration or SIREN/SIRET gate).
+  - Protected against stale responses and race conditions via `AbortController` and instant query-change invalidation.
+- **Verification Evidence:**
+  - Backend Unit Tests: `CompanySearchServiceTests.cs` (10 / 10 PASS).
+  - Frontend Component Tests: `concept-name-company-search.test.tsx` (7 / 7 PASS; 199 / 199 Creator suite PASS).
+  - Live Proxy: Verified against real French business registry queries, 400 validation on overlong queries, and project persistence.
+  - Manual Browser Verification: User confirmed the feature works in manual browser check.
+  - Note: Visual automated subagent verification was blocked by Playwright driver CDN 404.
+  - Production deployment was not performed.
+
+**2026-10-04 — AI Infrastructure: Disable AI Job Completion & Failure Notifications & Realtime Events.**
+- **Component:** `backend/Services/Ai/Jobs/AiJobCompletionHandler.cs`
+- **Specification:**
+  - Disabled all persistent in-app notifications and Web Push notifications for terminal AI job states (`AI job complete`, `AI job failed`).
+  - Disabled SignalR realtime events (`AiJobUpdate`, `AiJobCompleted`) on AI job terminal completions and failures.
+  - Transactional system notifications (Deals, Marketplace, Conversations, KYC verification, Provider invitations) remain active and unaffected.
+- **Verification Evidence:**
+  - Backend Unit Tests: `AiNotificationTests.cs` (4 / 4 PASS).
+  - Backend AI Test Suite: 364 / 364 PASS (0 failed).
+  - Production deployment was not performed.
+
+**2026-10-04 — Creator Phase 2 UI: Footer Sizing and Padding Optimization.**
+- **Components:** `src/components/layout/Phase2Footer.tsx`, `src/app/dashboard/creator/phase-2/clarifier/page.tsx`
+- **Summary:**
+  - Optimized `Phase2Footer` from excessive `py-8 sm:py-10` padding to compact, modern `px-6 py-4 sm:px-8 sm:py-4` with canonical `text-xs` typography and `var(--border)` stroke.
+  - Reduced outer vertical spacing on the Clarifier page container from `py-8 sm:py-10` to `py-6 sm:py-8` for clean visual balance without bloated empty space.
+- **Verification Evidence:**
+  - Frontend Test Suite: 16 / 16 test files PASS (199 / 199 tests passed).
+  - Production deployment was not performed.
 
 ---
 
