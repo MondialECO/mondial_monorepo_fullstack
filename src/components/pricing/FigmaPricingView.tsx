@@ -37,7 +37,7 @@ export default function FigmaPricingView() {
 
   return (
     <div className="w-full bg-[#F4F5F7] dark:bg-background text-[#172033] dark:text-foreground py-16 sm:py-20 md:py-24">
-      <div className="w-full max-w-[1056px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col space-y-16 md:space-y-20">
+      <div className="w-full max-w-[1280px] xl:max-w-[1360px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 flex flex-col space-y-16 md:space-y-20">
 
         {/* ========================================================================= */}
         {/* SECTION 1: HERO (Figma 57424:112) */}

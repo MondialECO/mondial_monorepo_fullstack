@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <div
-      className="w-full min-h-screen bg-white dark:bg-background text-foreground flex flex-col justify-between overflow-x-hidden"
+      className="w-full min-h-screen bg-[#F4F5F7] dark:bg-background text-foreground flex flex-col justify-between overflow-x-hidden"
       data-testid="public-pricing-page"
     >
       {/* 1. Global Public Header (Figma 57381:10846) */}
