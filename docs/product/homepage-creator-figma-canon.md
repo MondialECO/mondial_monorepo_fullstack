@@ -1,11 +1,12 @@
 # MBC Creator Homepage & Brand Identity Canon (Figma 57349:8209)
 
 ## 1. Overview & Authority
-This document defines the canonical specification and implementation architecture for the **Mondial Business Creation (MBC) Creator Marketing Homepage** (Figma Frame `57349:8209` / Node `57375:8951`) and the global **MBC Logo Standard** across the entire fullstack monorepo.
+This document defines the canonical specification and implementation architecture for the **Mondial Business Creation (MBC) Creator Marketing Homepage** (Figma Frame `57349:8209` / Nodes `57375:8951` & `57424:508`) and the global **MBC Logo Standard** across the entire fullstack monorepo.
 
 - **Figma File:** `yLDPLB9hIAIqfYY9uHuJom` (Mondial-Dashboard-EDU)
 - **Primary Design Node:** `57349:8209` (Creator Marketing Landing Page)
 - **Action Roadmap Design Node:** `57375:8951` (Output 05 Schedule Breakdown)
+- **Trust Sources Design Node:** `57424:508` (Official French Sources Trust Section)
 - **Primary Route:** `src/app/page.tsx`
 - **Component Root:** `src/components/homepage/`
 
@@ -31,7 +32,7 @@ The platform utilizes the official MBC (Mondial Business Creation) squircle mono
 
 ## 3. Homepage Section Architecture
 
-The Creator homepage consists of 6 structured sections organized linearly:
+The Creator homepage consists of 7 structured sections organized linearly:
 
 ### Section 1: Hero Deck (`src/components/homepage/FigmaHero.tsx`)
 - **Eyebrow Badge:** `MBC Creator · France` with sapphire indicator dot.
@@ -41,7 +42,7 @@ The Creator homepage consists of 6 structured sections organized linearly:
   - `Start for €0 →` (`bg-[#3c61dd]`, 153x48px, r: 13px).
   - `See how it works` (white card, border `#e6eaf2`, smooth-scrolls to `#how-it-works`).
 - **Visual Mockup Deck:**
-  - 3D 0€ Atmospheric Background Graphic (`996x339px`, high elevation right behind CTA buttons).
+  - 3D 0€ Atmospheric Background Graphic (`996x339px`, elevated position behind CTA buttons).
   - Product Dashboard Screenshot (`724x507px`, rounded 14px, elevated shadow `0 25px 60px -15px rgba(0,0,0,0.3)`).
   - Bottom 15% overflow (`-mb-16 sm:-mb-20 md:-mb-24`) protruding underneath Section 2.
 
@@ -59,7 +60,7 @@ The Creator homepage consists of 6 structured sections organized linearly:
   6. `06 / Investor Deck & Deal Room`: Executive summary and investor matching.
 
 ### Section 3: How It Works (`src/components/homepage/FigmaHowItWorks.tsx`)
-- **Headline:** `From your first idea to your project launch.`
+- **Headline:** `From idea to company in 6 steps.`
 - **6 Step Progression Cards (P1 to P6):**
   - Phase 1: `Describe your idea`
   - Phase 2: `Brand & Visual Identity`
@@ -69,36 +70,47 @@ The Creator homepage consists of 6 structured sections organized linearly:
   - Phase 6: `Legal Structuring & Launch`
 
 ### Section 4: Where The Facts Come From (`src/components/homepage/FigmaTrustSources.tsx` — Figma Node `57424:508`)
-- **Eyebrow Badge:** `WHERE THE FACTS COME FROM`
-- **Headline:** `We don't guess. We check.`
+- **Location:** Placed directly between Section 3 (*From idea to company in 6 steps*) and Section 5 (*What's Next*).
+- **Eyebrow Badge:** `WHERE THE FACTS COME FROM` (`bg-[#e8eeff]`, text `#1f3faf`, dot `#3c61dd`).
+- **Headline:** `We don't guess.` + `<span class="text-[#3c61dd]">We check.</span>` (Inter 700 / 54px).
 - **Subline:** `AI helps explain things in plain words. But the rules, the grants and the paperwork? Those come straight from official French sources.`
 - **Left Column:**
-  - Interactive Proof Card: Legal checklist example ("Declare who owns your company") with official source link `Source: service-public.fr`.
-  - Curved Dotted Annotation: "See? It tells you where it got that."
-- **Right Column (3 Grouped Source Panels):**
-  - Panel 1 (*Setting up your company*): `Service Public Entreprendre` (OFFICIAL), `INPI Guichet unique` (OFFICIAL).
-  - Panel 2 (*Money and help you can apply for*): `Aides-entreprises / data.gouv.fr` (OPEN DATA), `Bpifrance Création` (OFFICIAL), `France Travail` (OFFICIAL).
-  - Panel 3 (*Checking other companies*): `API Recherche d'entreprises` (OPEN DATA), `SIRENE` (COMING SOON).
-- **Bottom Trust Strip:**
-  - `You can always see where info came from.`
-  - `Grants say 'you can apply', never 'you'll get it'.`
-  - `Your changes stay yours. Nothing gets overwritten.`
+  - Interactive Proof Card: Legal checklist example ("*Declare who owns your company*") with official source link `Source: service-public.fr` and metadata.
+  - Curved Dotted Annotation: Exact Figma vector path (SVG `57424:544`) with callout pill "*See? It tells you where it got that.*" positioned below the proof card with comfortable breathing room.
+- **Right Column (3 Grouped Source Panels with 20px gap):**
+  - **Panel 1 (*Setting up your company* - Scale SVG `57424:554`):**
+    - `Service Public Entreprendre`: *The government's own guide to the legal stuff.* (`• OFFICIAL`)
+    - `INPI Guichet unique`: *Where you actually register your company.* (`• OFFICIAL`)
+  - **Panel 2 (*Money and help you can apply for* - Coins SVG `57424:589`):**
+    - `Aides-entreprises / data.gouv.fr ↗`: *Public grants and support, all in one list.* (`• OPEN DATA`, soft blue highlight card `bg-[#f2f5ff]`)
+    - `Bpifrance Création`: *Practical guides for starting out.* (`• OFFICIAL`)
+    - `France Travail`: *ARCE and ACRE, if you qualify.* (`• OFFICIAL`)
+  - **Panel 3 (*Checking other companies* - Building SVG `57424:638`):**
+    - `API Recherche d'entreprises`: *Look up any French company in seconds.* (`• OPEN DATA`)
+    - `SIRENE`: *Show your company is officially registered.* (`COMING SOON`)
+    - Layout styling: `opacity-70` with `hover:opacity-100` transition.
+- **Bottom Trust Strip (1184px rounded 16px container):**
+  - Item 1: `You can always see where info came from.` (`#00c896` check in soft green circle)
+  - Item 2: `Grants say 'you can apply', never 'you'll get it'.` (`#00c896` check in soft green circle)
+  - Item 3: `Your changes stay yours. Nothing gets overwritten.` (`#00c896` check in soft green circle)
 
-### Section 5: What's Next & Ecosystem (`src/components/homepage/FigmaWhatsNext.tsx`)
-- **Headline:** `Take your project wherever it needs to go.`
-- **Central Node:** `Project Built (Creator Hub)`
+### Section 5: What's Next & Ecosystem (`src/components/homepage/FigmaWhatsNext.tsx` — Figma Node `57381:10328`)
+- **Eyebrow Badge:** `WHAT'S NEXT`
+- **Headline:** `Creator is just the beginning.`
+- **Subtitle:** `Once your project is structured, Mondial opens doors to funding, services, and growth.`
+- **Central Hub Node:** `Project Built (Creator Hub)`
 - **4 Satellite Pathways:**
   - `Sell on Marketplace` (Full buyout or equity transfer)
   - `Find a Co-Founder / Investor` (Venture matching)
   - `Hire Verified Service Providers` (Lawyers, accountants, developers)
   - `Level Up to Entrepreneur` (Full operating business)
 
-### Section 6: FAQ (`src/components/homepage/FigmaFaq.tsx`)
-- **Headline:** `Frequently Asked Questions`
+### Section 6: FAQ (`src/components/homepage/FigmaFaq.tsx` — Figma Node `57354:15783`)
+- **Headline:** `What "Start for €0" really means`
 - **Interactive Accordion:** Category filtering (All, Pricing, IP & Ownership, Launch), full-text search, expandable items.
 
-### Section 7: Final CTA (`src/components/homepage/FigmaFinalCta.tsx`)
-- **Headline:** `Turn your idea into a business project today.`
+### Section 7: Final CTA (`src/components/homepage/FigmaFinalCta.tsx` — Figma Node `57354:15831`)
+- **Headline:** `Start your digital business for €0.`
 - **Action:** Primary `Start for €0 →` button with subtle trust markers.
 
 ---
@@ -106,4 +118,4 @@ The Creator homepage consists of 6 structured sections organized linearly:
 ## 4. Verification & Testing
 - **Test Suite:** `src/__tests__/app/homepage-figma-57349-8209.test.tsx`
 - **Layout Suite:** `src/__tests__/layout/`
-- **Coverage:** All headline texts, CTA buttons, output cards, logo alt-attributes, responsive viewports, and navigation anchors are covered by automated unit tests.
+- **Coverage:** All 7 homepage sections, headline texts, CTA buttons, output cards, trust source panels, logo alt-attributes, responsive viewports, and navigation anchors are covered by automated unit tests.
