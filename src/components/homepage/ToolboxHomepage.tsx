@@ -334,16 +334,16 @@ export default function ToolboxHomepage() {
             <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr]">
               <div className="hidden border-r border-[#e8edf4] bg-[#fafbfe] p-4 sm:block">
                 {[
-                  ["Dashboard", LayoutDashboard],
-                  ["Profile", UserRound],
-                  ["Project", BriefcaseBusiness],
-                  ["Generators", Sparkles],
-                  ["Results", Layers3],
-                  ["Roadmap", Route],
-                ].map(([label, Icon], index) => (
-                  <div key={label as string} className={`mb-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-[10px] ${index === 0 ? "bg-[#edf3ff] font-semibold text-[#3c61dd]" : "text-[#667085]"}`}>
+                  { label: "Dashboard", icon: LayoutDashboard },
+                  { label: "Profile", icon: UserRound },
+                  { label: "Project", icon: BriefcaseBusiness },
+                  { label: "Generators", icon: Sparkles },
+                  { label: "Results", icon: Layers3 },
+                  { label: "Roadmap", icon: Route },
+                ].map(({ label, icon: Icon }, index) => (
+                  <div key={label} className={`mb-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-[10px] ${index === 0 ? "bg-[#edf3ff] font-semibold text-[#3c61dd]" : "text-[#667085]"}`}>
                     <Icon className="h-3.5 w-3.5" />
-                    {label as string}
+                    {label}
                   </div>
                 ))}
               </div>
