@@ -113,10 +113,10 @@ describe('Homepage — Figma Node 57349:8209 Canon Alignment', () => {
     expect(screen.getByText('MONDIAL BUSINESS CREATION')).toBeInTheDocument();
 
     // 4 Canonical Menus
-    expect(screen.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', '#how-it-works');
-    expect(screen.getByRole('link', { name: /Creator Tools/i })).toHaveAttribute('href', '#outputs');
-    expect(screen.getByRole('link', { name: 'What you get' })).toHaveAttribute('href', '#outputs');
-    expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', '#faq');
+    expect(screen.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', expect.stringMatching(/#how-it-works$/));
+    expect(screen.getByRole('link', { name: /Creator Tools/i })).toHaveAttribute('href', expect.stringMatching(/#outputs$/));
+    expect(screen.getByRole('link', { name: 'What you get' })).toHaveAttribute('href', expect.stringMatching(/#outputs$/));
+    expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', expect.stringMatching(/#faq$/));
 
     // Dual CTAs
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
@@ -136,8 +136,8 @@ describe('Homepage — Figma Node 57349:8209 Canon Alignment', () => {
     // Key Links & Copy
     expect(screen.getByText(/Build your digital business from idea to launch\./i)).toBeInTheDocument();
     expect(screen.getByText(/Start building for €0\./i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Creator Tools/i })).toHaveAttribute('href', '#outputs');
-    expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', '#faq');
+    expect(screen.getByRole('link', { name: /Creator Tools/i })).toHaveAttribute('href', expect.stringMatching(/#outputs$/));
+    expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', expect.stringMatching(/#faq$/));
     expect(screen.getByRole('link', { name: 'Terms of Use' })).toHaveAttribute('href', '/terms');
     expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
 

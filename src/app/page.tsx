@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div className="w-full min-h-screen bg-white dark:bg-background text-foreground flex flex-col justify-between overflow-x-hidden" data-testid="homepage-root">
+    <div className="w-full min-h-screen bg-white dark:bg-background text-foreground flex flex-col justify-between overflow-x-clip" data-testid="homepage-root">
       {/* 1. Global Public Header */}
       <Navbar />
 
