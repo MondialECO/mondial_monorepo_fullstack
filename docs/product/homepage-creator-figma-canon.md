@@ -33,7 +33,9 @@ The platform utilizes the official MBC (Mondial Business Creation) squircle mono
 ---
 
 ## 3. Global Navigation Header (`src/components/shared/PublicHeader.tsx` — Figma Node `57381:10846`)
-- **Container:** Sticky top navbar with glassmorphism `bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md border-b border-[#e8ecf2] dark:border-border/80`.
+- **Container:** Sticky top navbar (`sticky top-0 z-50`) with glassmorphism `bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md border-b border-[#e8ecf2] dark:border-border/80`.
+  - Active scroll elevation (`isScrolled`): dynamically applies `shadow-xs bg-white/98` when scrolled > 8px.
+  - Page wrapper uses `overflow-x-clip` (`src/app/page.tsx`) to ensure flawless sticky tracking without clipping or scroll containment issues.
 - **Left (Brand Lockup):**
   - Squircle MBC Monogram (`95x46px`).
   - `CREATOR` badge (`bg-[#e8eeff]`, text `#1f3faf`, font-mono).
@@ -55,11 +57,16 @@ The platform utilizes the official MBC (Mondial Business Creation) squircle mono
 
 The Creator homepage consists of 7 structured sections organized linearly:
 
-### Section 1: Hero Deck (`src/components/homepage/FigmaHero.tsx`)
-- **Eyebrow Badge:** `MBC Creator · France` with sapphire indicator dot.
-- **Hero Headline:** `Start your digital business for €0.` (Inter 600, 54px, lh: 65px).
-- **Subtitle:** `One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch.` (18px, relaxed).
-- **Dual CTA:**
+### Section 1: Hero Deck (`src/components/homepage/FigmaHero.tsx` — Figma Node `57449:112`)
+- **Eyebrow Badge (Figma 57449:113):** `MBC CREATOR · FRANCE` (uppercase, letter-spacing 1.04px) with sapphire indicator dot (`#3c61dd`).
+- **Hero Headline (Figma 57449:120):**
+  - Line 1: `MBC` (Inter 700 / Bold, Mondial Royal Blue `#3c61dd`)
+  - Line 2: `The Intelligent` (Inter 600 / SemiBold)
+  - Line 3: `Toolbox` (Inter 600 / SemiBold)
+  - Metric: 54px, lh: 61px, center-aligned.
+- **Subheading / Value Proposition (Figma 57449:1584):** `Start your digital business for €0.` (Inter 600, 24px, lh: 31px, center-aligned).
+- **Subtitle (Figma 57449:121):** `One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch.` (DM Sans 400, 16px, relaxed, center-aligned).
+- **Dual CTA (Figma 57449:122):**
   - `Start for €0 →` (`bg-[#3c61dd]`, 153x48px, r: 13px).
   - `See how it works` (white card, border `#e6eaf2`, smooth-scrolls to `#how-it-works`).
 - **Visual Mockup Deck:**
@@ -80,15 +87,25 @@ The Creator homepage consists of 7 structured sections organized linearly:
      - Exact status labels: `Priority 1`, `On Track`, `Scheduled`, `Future`.
   6. `06 / Investor Deck & Deal Room`: Executive summary and investor matching.
 
-### Section 3: How It Works (`src/components/homepage/FigmaHowItWorks.tsx`)
+### Section 3: How It Works (`src/components/homepage/FigmaHowItWorks.tsx` — Figma Node `57377:9704`)
 - **Headline:** `From idea to company in 6 steps.`
+- **Subline:** `Go one step at a time. Everything you make is saved and feeds the next step.`
+- **Dynamic 6-Step Spine Stepper & Scrollspy:**
+  - Dynamic viewport tracking (`useEffect` scroll listener + `IntersectionObserver` threshold): automatically updates the active step (1 to 6) as the user scrolls through the 6 phase cards.
+  - **Node States:**
+    - `Active Step (s === activeStep)`: Solid Royal Blue (`bg-[#3c61dd] text-white`), outer glow ring (`ring-4 ring-[#3c61dd]/20`), scale transition.
+    - `Completed Steps (s < activeStep)`: Soft blue pill (`bg-[#e8eeff] text-[#1f3faf]`) with green checkmark badge (`✓` `#00c896`).
+    - `Upcoming Steps (s > activeStep)`: Clean white tile (`bg-white border-[#e3e8f2] text-[#667085]`).
+  - **Dynamic Connector Track:** Unbroken vertical rail; Royal Blue active fill expands down from Step 01 to the current active step node.
+  - **Click-to-Scroll Navigation:** Clicking any spine node (01–06) or bottom breadcrumb button smooth-scrolls directly to that phase card.
 - **6 Step Progression Cards (P1 to P6):**
-  - Phase 1: `Describe your idea`
-  - Phase 2: `Brand & Visual Identity`
-  - Phase 3: `Market Study & Financials`
-  - Phase 4: `Construction Engine`
-  - Phase 5: `Marketplace & Buyout`
-  - Phase 6: `Legal Structuring & Launch`
+  - Phase 1: `Start with you` (`PHASE 01 · YOU` — Builder profile)
+  - Phase 2: `Shape your idea and brand` (`PHASE 02 · PROJECT & BRAND` — Brand Kit & Bento tiles)
+  - Phase 3: `Build the business behind your idea` (`PHASE 03 · BUSINESS PLAN` — Core Phase Centerpiece & 7-step Intelligence)
+  - Phase 4: `Get ready to build and launch` (`PHASE 04 · BUILD & LAUNCH PREP` — 90-day horizon & Launch website)
+  - Phase 5: `Create your company` (`PHASE 05 · COMPANY` — SAS/SAS-U French registration guide)
+  - Phase 6: `See what you built, and keep going` (`PHASE 06 · NEXT CHAPTER` — Milestone dashboard & Next Move)
+- **Interactive Breadcrumb Sequence:** Clickable bottom breadcrumbs (`You` → `Brand` → `Business plan` → `Launch plan` → `Company` → `Next chapter`) reflecting active scroll state.
 
 ### Section 4: Where The Facts Come From (`src/components/homepage/FigmaTrustSources.tsx` — Figma Node `57424:508`)
 - **Location:** Placed directly between Section 3 (*From idea to company in 6 steps*) and Section 5 (*What's Next*).

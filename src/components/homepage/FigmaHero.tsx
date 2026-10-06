@@ -19,21 +19,31 @@ export default function FigmaHero() {
       {/* Centered Hero Container */}
       <div className="w-full max-w-[1440px] xl:max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16 flex flex-col items-center text-center">
 
-        {/* Eyebrow Badge (Figma 57381:10451 - 194x33px) */}
+        {/* Eyebrow Badge (Figma 57449:113 - 194x33px) */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e8eeff] text-[#1f3faf] text-[12px] font-medium font-sans shadow-2xs mb-5">
           <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd] shrink-0" />
-          <span>MBC Creator · France</span>
+          <span className="uppercase tracking-[1.04px]">MBC Creator · France</span>
         </div>
 
-        {/* Headline (Figma 57354:15961 - Inter 600 54px lh:65 - 628px width) */}
-        <h1 className="max-w-[628px] text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-semibold text-[#000000] dark:text-foreground tracking-tight leading-[1.12] font-heading mb-4">
-          Start your digital<br className="hidden sm:inline" /> business for €0.
-        </h1>
+        {/* Title & Value Proposition Hierarchy (Figma 57449:119) */}
+        <div className="flex flex-col items-center text-center gap-3.5 max-w-[628px] mb-8 sm:mb-10">
+          {/* Main Headline (Figma 57449:120 - Inter 600/700 54px lh:61) */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-semibold text-foreground tracking-tight leading-[1.13] font-heading">
+            <span className="block font-bold text-primary">MBC</span>
+            <span className="block">The Intelligent</span>
+            <span className="block">Toolbox</span>
+          </h1>
 
-        {/* Subtitle (Figma 57354:15962 - DM Sans 400 18px) */}
-        <p className="max-w-[640px] text-base sm:text-lg md:text-[18px] text-[#000000]/80 dark:text-muted-foreground leading-relaxed font-sans font-normal mb-8 px-2">
-          One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch.
-        </p>
+          {/* Subheading / Value Proposition (Figma 57449:1584 - Inter 600 24px lh:31) */}
+          <h2 className="text-xl sm:text-2xl md:text-[24px] font-semibold text-foreground tracking-tight leading-[1.29] font-heading">
+            Start your digital business for €0.
+          </h2>
+
+          {/* Subtitle Description (Figma 57449:121 - DM Sans 400 16px lh:18) */}
+          <p className="max-w-[628px] text-sm sm:text-base md:text-[16px] text-foreground/80 dark:text-muted-foreground leading-relaxed font-sans font-normal px-2">
+            One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch.
+          </p>
+        </div>
 
         {/* Hero Actions (Figma 57354:15964 - 628px container) */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto mb-10 px-4">

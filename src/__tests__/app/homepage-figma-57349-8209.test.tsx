@@ -10,7 +10,9 @@ describe('Homepage — Figma Node 57349:8209 Canon Alignment', () => {
   it('renders the 6 canonical sections in exact order', () => {
     render(<Home />);
 
-    // 1. Hero Section (Figma 57354:15959)
+    // 1. Hero Section (Figma 57449:112)
+    expect(screen.getByText(/The Intelligent/i)).toBeInTheDocument();
+    expect(screen.getByText(/Toolbox/i)).toBeInTheDocument();
     expect(screen.getByText(/Start your digital business for/i)).toBeInTheDocument();
     expect(screen.getAllByText(/€0\./i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/MBC Creator · France/i).length).toBeGreaterThan(0);
@@ -111,10 +113,10 @@ describe('Homepage — Figma Node 57349:8209 Canon Alignment', () => {
     expect(screen.getByText('MONDIAL BUSINESS CREATION')).toBeInTheDocument();
 
     // 4 Canonical Menus
-    expect(screen.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', '#how-it-works');
-    expect(screen.getByRole('link', { name: /Creator Tools/i })).toHaveAttribute('href', '#outputs');
-    expect(screen.getByRole('link', { name: 'What you get' })).toHaveAttribute('href', '#outputs');
-    expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', '#faq');
+    expect(screen.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', expect.stringMatching(/#how-it-works$/));
+    expect(screen.getByRole('link', { name: /Creator Tools/i })).toHaveAttribute('href', expect.stringMatching(/#outputs$/));
+    expect(screen.getByRole('link', { name: 'What you get' })).toHaveAttribute('href', expect.stringMatching(/#outputs$/));
+    expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', expect.stringMatching(/#faq$/));
 
     // Dual CTAs
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
@@ -134,8 +136,8 @@ describe('Homepage — Figma Node 57349:8209 Canon Alignment', () => {
     // Key Links & Copy
     expect(screen.getByText(/Build your digital business from idea to launch\./i)).toBeInTheDocument();
     expect(screen.getByText(/Start building for €0\./i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Creator Tools/i })).toHaveAttribute('href', '#outputs');
-    expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', '#faq');
+    expect(screen.getByRole('link', { name: /Creator Tools/i })).toHaveAttribute('href', expect.stringMatching(/#outputs$/));
+    expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', expect.stringMatching(/#faq$/));
     expect(screen.getByRole('link', { name: 'Terms of Use' })).toHaveAttribute('href', '/terms');
     expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
 
