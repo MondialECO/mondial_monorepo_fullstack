@@ -10,7 +10,9 @@ describe('Homepage — Figma Node 57349:8209 Canon Alignment', () => {
   it('renders the 6 canonical sections in exact order', () => {
     render(<Home />);
 
-    // 1. Hero Section (Figma 57354:15959)
+    // 1. Hero Section (Figma 57449:112)
+    expect(screen.getByText(/The Intelligent/i)).toBeInTheDocument();
+    expect(screen.getByText(/Toolbox/i)).toBeInTheDocument();
     expect(screen.getByText(/Start your digital business for/i)).toBeInTheDocument();
     expect(screen.getAllByText(/€0\./i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/MBC Creator · France/i).length).toBeGreaterThan(0);

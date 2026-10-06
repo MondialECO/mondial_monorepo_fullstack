@@ -30,7 +30,7 @@ export default function Home() {
       <Navbar />
 
       <main className="w-full flex-1 flex flex-col">
-        {/* Section 1: Hero — Start your digital business for €0 (Figma 57354:15959) */}
+        {/* Section 1: Hero — MBC The Intelligent Toolbox (Figma 57449:112) */}
         <FigmaHero />
 
         {/* Section 2: Real Deliverables Showcase — 6 Business-Ready Outputs (Figma 57360:15973) */}

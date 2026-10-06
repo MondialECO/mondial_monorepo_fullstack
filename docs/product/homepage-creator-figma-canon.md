@@ -55,11 +55,16 @@ The platform utilizes the official MBC (Mondial Business Creation) squircle mono
 
 The Creator homepage consists of 7 structured sections organized linearly:
 
-### Section 1: Hero Deck (`src/components/homepage/FigmaHero.tsx`)
-- **Eyebrow Badge:** `MBC Creator · France` with sapphire indicator dot.
-- **Hero Headline:** `Start your digital business for €0.` (Inter 600, 54px, lh: 65px).
-- **Subtitle:** `One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch.` (18px, relaxed).
-- **Dual CTA:**
+### Section 1: Hero Deck (`src/components/homepage/FigmaHero.tsx` — Figma Node `57449:112`)
+- **Eyebrow Badge (Figma 57449:113):** `MBC CREATOR · FRANCE` (uppercase, letter-spacing 1.04px) with sapphire indicator dot (`#3c61dd`).
+- **Hero Headline (Figma 57449:120):**
+  - Line 1: `MBC` (Inter 700 / Bold, Mondial Royal Blue `#3c61dd`)
+  - Line 2: `The Intelligent` (Inter 600 / SemiBold)
+  - Line 3: `Toolbox` (Inter 600 / SemiBold)
+  - Metric: 54px, lh: 61px, center-aligned.
+- **Subheading / Value Proposition (Figma 57449:1584):** `Start your digital business for €0.` (Inter 600, 24px, lh: 31px, center-aligned).
+- **Subtitle (Figma 57449:121):** `One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch.` (DM Sans 400, 16px, relaxed, center-aligned).
+- **Dual CTA (Figma 57449:122):**
   - `Start for €0 →` (`bg-[#3c61dd]`, 153x48px, r: 13px).
   - `See how it works` (white card, border `#e6eaf2`, smooth-scrolls to `#how-it-works`).
 - **Visual Mockup Deck:**
