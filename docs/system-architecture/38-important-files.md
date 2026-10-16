@@ -55,3 +55,9 @@ This index identifies the most critical files in the codebase that define platfo
 - **Role**: Production Container Topology & Orchestration
 - **Why Important**: Defines the single-VPS production architecture: Traefik v2.11 reverse proxy with Let's Encrypt TLS, scalable ASP.NET Core API replicas, Redis 7 with AOF persistence, and named Docker volume mounts.
 - **Connected Systems**: Docker Engine, Traefik, Redis, ASP.NET Core API.
+
+### 11. `src/providers/LanguageProvider.tsx` & `src/hooks/useTranslation.ts`
+- **Role**: Universal Bilingual Internationalization (i18n) Engine & Translation Hook
+- **Why Important**: Supplies the platform-wide language context (`en` / `fr`), JSON catalog translation resolution with dot-notation path traversal, template parameter interpolation (`{{key}}`), dual-layer locale persistence (`localStorage` + cookie), and locale-aware date/currency formatting. Preserves 100% URL route stability without breaking rewrites.
+- **Connected Systems**: `src/app/_providers/RootProviders.tsx`, `src/components/layout/LanguageSwitcher.tsx`, `src/components/layout/Topbar.tsx`, `src/locales/`, `src/app/dashboard/creator/page.tsx`.
+

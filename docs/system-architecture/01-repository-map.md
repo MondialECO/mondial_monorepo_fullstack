@@ -35,9 +35,11 @@
 | `src/app/(auth)/` | Authentication Routes | `login/`, `register/`, `forgot-password/`, `reset-password/` | Unauthenticated Visitors |
 | `src/app/onboarding/` | Universal Phase 1 Identity & Verification Hub | `identity/`, `documents/*`, `face-verification/`, `complete/` | New Users across all roles |
 | `src/app/dashboard/` | Role-Based Authenticated Dashboards | `creator/`, `entrepreneur/`, `investor/`, `serviceprovider/`, `admin/` | Authenticated Users with valid roles |
-| `src/app/_providers/` | Root Context Providers | `AuthProvider.tsx`, `ReactQueryProvider.tsx`, `RootProviders.tsx` | All routes wrapped by `src/app/layout.tsx` |
+| `src/app/_providers/` | Root Context Providers | `AuthProvider.tsx`, `ReactQueryProvider.tsx`, `RootProviders.tsx` (wraps Theme, Language, Auth, ReactQuery, Tooltip) | All routes wrapped by `src/app/layout.tsx` |
+| `src/providers/` | Universal Application Providers | `LanguageProvider.tsx` (bilingual EN/FR i18n engine, persistence, formatting) | Global context layer in `RootProviders.tsx` |
+| `src/locales/` | Translation Dictionaries | `en/`, `fr/` JSON catalogs (`common.json`, `creator.json`) | `LanguageProvider.tsx`, `useTranslation.ts` |
 | `src/components/ui/` | shadcn/ui Design Primitives | Button, Dialog, Card, Input, Table, Tooltip, Dropdown, etc. | Feature components across all domains |
-| `src/components/layout/` | Shell, Navigation & Guards | `AppSidebar.tsx`, `Topbar.tsx`, `AuthGuard.tsx` | Dashboard pages and root layouts |
+| `src/components/layout/` | Shell, Navigation & Guards | `AppSidebar.tsx`, `Topbar.tsx`, `AuthGuard.tsx`, `LanguageSwitcher.tsx` | Dashboard pages and root layouts |
 | `src/components/serviceprovider/` | Service Provider Design System & UI | `SpCard`, `SpMetricCard`, `SpPage`, analytics charts | Service Provider Dashboard routes |
 | `src/components/creator/` | Creator Phase 1-6 UI Components | AI Clarifier, Branding tool, Business plan editor, Crossroads | Creator Dashboard routes |
 | `src/components/entrepreneur/` | Entrepreneur Phase 2-10 Components | Cap Table, KPI Tracker, Data Room, Diligence, Pitch Deck | Entrepreneur Dashboard routes |
@@ -45,7 +47,7 @@
 | `src/components/marketplace/` | Marketplace Listings & Exploration | Project grid, Service catalog, Filters, Deal modals | Public & Authenticated Marketplace |
 | `src/lib/` | Core Utilities, API Clients & Contracts | `axios.ts`, `roles.ts`, `api-config.ts`, `menu.ts`, `auth-contract.ts` | Entire frontend application |
 | `src/context/` | Legacy and specialized context stores | `AuthContext.tsx` (re-exports AuthProvider) | Components consuming auth state |
-| `src/hooks/` | Custom React Hooks | `useBreadcrumb.ts`, `use-mobile.ts`, `use-notifications.ts` | Navigation and layout components |
+| `src/hooks/` | Custom React Hooks | `useTranslation.ts`, `useBreadcrumb.ts`, `use-mobile.ts`, `use-notifications.ts` | Navigation, layout, and UI components |
 | `src/types/` | TypeScript Domain Interfaces | `deals.ts`, `creator/`, `investor/`, `entrepreneur.ts`, `workroom.ts` | Frontend type checking and API DTO contracts |
 | `src/styles/` | Global CSS & Typography | `globals.css`, `fonts.css` | Root styling, theme tokens (light/dark mode) |
 

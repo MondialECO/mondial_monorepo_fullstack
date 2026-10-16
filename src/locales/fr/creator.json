@@ -1,0 +1,120 @@
+{
+  "phases": {
+    "2": "Identité & Marque",
+    "3": "Intelligence Économique",
+    "4": "Construction",
+    "5": "La Croisée des Chemins"
+  },
+  "dashboard": {
+    "myIdeas": "Mes Idées",
+    "newIdea": "Nouvelle Idée",
+    "switchIdea": "Changer d'Idée",
+    "commandCenterBadge": "Centre de Contrôle Creator Studio",
+    "turnVisionTitle": "Transformez Votre Vision en Entreprise Prête pour le Marché, {{name}} !",
+    "emptyDescription": "Vous n'avez pas encore créé d'idées de projet. Commencez par créer votre première idée ou échangez avec notre Clarificateur de Concept IA pour élaborer vos éléments de marque, modèles financiers et structure commerciale.",
+    "createFirstIdea": "Créer Votre Première Idée",
+    "brainstormWithClarifier": "Brainstormer avec le Clarificateur IA",
+    "viewIdeaVault": "Voir le Coffre d'Idées",
+    "pathTitle": "Votre Parcours du Concept à la Liquidité",
+    "fourPhases": "4 Phases",
+    "roadmap": {
+      "phase2Title": "Identité & Marque",
+      "phase2Desc": "Clarifiez votre proposition de valeur, générez des noms de marque et créez vos éléments visuels avec Brand Studio IA.",
+      "phase3Title": "Intelligence Économique",
+      "phase3Desc": "Synthétisez vos prévisions financières sur 10 ans, vos business plans et vérifiez la conformité réglementaire.",
+      "phase4Title": "Offre & Construction",
+      "phase4Desc": "Définissez vos modèles de tarification, construisez votre feuille de route opérationnelle et cartographiez les compétences requises.",
+      "phase5Title": "La Croisée des Chemins",
+      "phase5Desc": "Choisissez entre un rachat direct de votre propriété intellectuelle sur la marketplace ou la création d'entreprise avec des investisseurs."
+    },
+    "hero": {
+      "phaseMilestone": "Phase {{phase}} · {{title}}",
+      "nextMilestone": "Prochaine Étape",
+      "ventureValidated": "{{name}} est validé. Vous avez atteint la Phase {{phase}} — {{phaseTitle}}.",
+      "active": "Active",
+      "goodMorning": "Bonjour, {{name}} !",
+      "goodAfternoon": "Bon après-midi, {{name}} !",
+      "goodEvening": "Bonsoir, {{name}} !"
+    },
+    "metrics": {
+      "clarityScore": "Score de Clarté",
+      "phaseEvaluated": "Phase {{phase}} évaluée",
+      "pendingPhase2": "En attente Phase 2",
+      "aiAssets": "Actifs IA",
+      "oneGenerated": "1 Généré",
+      "multipleGenerated": "{{count}} Générés",
+      "legalReadiness": "Préparation Juridique",
+      "statutoryCompliance": "Conformité Légale & Statutaire",
+      "pending": "En attente",
+      "reports": "Rapports",
+      "oneDocumentCompiled": "1 document compilé",
+      "multipleDocumentsCompiled": "{{count}} documents compilés"
+    },
+    "attention": {
+      "title": "Éléments Requérant Votre Attention ({{count}})",
+      "priorityBadge": "Priorité {{severity}}",
+      "phase": "Phase {{phase}}",
+      "resolve": "Résoudre"
+    },
+    "bento": {
+      "projectCard": {
+        "title": "Résumé du Projet",
+        "tagline": "Aucun slogan spécifié",
+        "category": "Catégorie",
+        "currentPhase": "Phase {{phase}} — {{title}}",
+        "clarity": "Clarté",
+        "legal": "Juridique",
+        "fullDetails": "Détails Complets"
+      },
+      "journey": {
+        "title": "Parcours Créateur",
+        "stepProgress": "Étape {{current}} sur {{total}}",
+        "viewPhase": "Voir la Phase",
+        "continuePhase": "Continuer la Phase",
+        "locked": "Verrouillé",
+        "completed": "Terminé",
+        "inProgress": "En cours",
+        "percentComplete": "{{percent}}% Complété"
+      },
+      "phase5Gate": {
+        "title": "Phase 5 — La Croisée des Chemins",
+        "unlockedTitle": "Accès Phase 5 : Prêt pour la Croisée",
+        "locked": "Verrouillé",
+        "unlocked": "Débloqué",
+        "lockedDesc": "Complétez toutes les étapes de la Phase 4 (Feuille de route, Besoins, Compétences, Aides, Tarification, GTM) pour débloquer la Phase 5.",
+        "unlockedDesc": "Félicitations ! Votre projet est entièrement structuré. Choisissez entre un rachat direct sur la marketplace ou la constitution de votre société.",
+        "enterCrossroads": "Accéder à la Croisée des Chemins",
+        "crossroadsLocked": "Croisée des Chemins Verrouillée"
+      },
+      "forecast": {
+        "title": "Prévisions Financières IA",
+        "subtitle": "Synthèse Étape 3.3",
+        "viewFull": "Voir Tout",
+        "revenueProjection": "Projection de revenus",
+        "breakeven": "Seuil de rentabilité",
+        "grossMargin": "Marge brute",
+        "chartCaption": "Projection déterministe sur 36 mois issue de l'Étape 3.3 Prévisions Financières"
+      },
+      "outputs": {
+        "title": "Livrables & Actifs Vérifiés ({{count}})",
+        "subtitle": "Documents et plans stratégiques compilés",
+        "viewAll": "Voir Tout",
+        "noOutputsTitle": "Aucun livrable généré pour l'instant",
+        "noOutputsDesc": "Dès que vous franchirez chaque étape de votre parcours, les modèles et documents finalisés apparaîtront ici.",
+        "openAsset": "Ouvrir l'Actif"
+      },
+      "communication": {
+        "messagesTitle": "Messages",
+        "newMessages": "{{count}} nouveau(x)",
+        "noMessages": "Aucun message pour l'instant",
+        "noMessagesDesc": "Vos échanges avec les prestataires et partenaires apparaîtront ici.",
+        "openMessenger": "Ouvrir la Messagerie",
+        "notificationsTitle": "Notifications",
+        "newNotifications": "{{count}} nouvelle(s)",
+        "allCaughtUp": "Vous êtes à jour — aucune nouvelle notification.",
+        "allNotifications": "Toutes les Notifications",
+        "retry": "Réessayer"
+      }
+    }
+  }
+}

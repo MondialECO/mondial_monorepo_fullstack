@@ -16,6 +16,7 @@ import { UserRole, getRoleDashboardRoute } from "@/lib/roles";
 
 import { CompanySwitcher } from "@/components/entrepreneur/CompanySwitcher";
 import { AiCreditBadge } from "@/components/layout/AiCreditBadge";
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 
 /**
  * Account destinations per role, verified against the routes that actually exist under
@@ -116,11 +117,12 @@ export default function Topbar() {
             </nav>
           </div>
 
-          {/* RIGHT: Switcher + Credits + ThemeToggle + Avatar */}
+          {/* RIGHT: Switcher + Credits + ThemeToggle + LanguageSwitcher + Avatar */}
           <div className="flex items-center gap-3">
             {showCredits && <AiCreditBadge />}
             {isEntrepreneurContext && <CompanySwitcher />}
             <ThemeToggle />
+            <LanguageSwitcher />
             <div className="h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold" style={{ backgroundColor: "var(--muted)", color: "var(--foreground)" }}>
               {user?.name?.charAt(0).toUpperCase() || "U"}
             </div>
@@ -190,6 +192,7 @@ export default function Topbar() {
           {isEntrepreneurContext && <CompanySwitcher />}
           {showCredits && <AiCreditBadge />}
           <ThemeToggle />
+          <LanguageSwitcher />
           <MessageIcon />
           <NotificationBell />
           {(role === UserRole.SUPERADMIN || role === UserRole.ADMIN) && (

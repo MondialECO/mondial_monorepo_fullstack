@@ -9,8 +9,11 @@ The frontend is a Next.js 16 App Router application engineered with React 19, Ty
 ```
 src/app/layout.tsx (Root HTML, Fonts, Global Meta, Viewport)
 └── _providers/RootProviders
-    └── _providers/AuthProvider (Token hydration, multi-tab sync, /auth/me verification)
-        └── _providers/ReactQueryProvider (TanStack Query client)
+    ├── ThemeProvider (Dark / Light / System theme context)
+    └── providers/LanguageProvider (Bilingual EN / FR i18n engine, cookie & localStorage sync)
+        └── _providers/AuthProvider (Token hydration, multi-tab sync, /auth/me verification)
+            └── _providers/ReactQueryProvider (TanStack Query client)
+                └── ui/tooltip/TooltipProvider
             ├── (auth)/layout.tsx (Public Auth Container)
             │   ├── /login
             │   ├── /register
@@ -93,7 +96,7 @@ src/app/layout.tsx (Root HTML, Fonts, Global Meta, Viewport)
 ```
 src/components/
 ├── ui/                     # 38 Primitive Shadcn components (Button, Dialog, Input, Table, etc.)
-├── layout/                 # AppSidebar, Topbar, AuthGuard, MobileNav, Breadcrumbs
+├── layout/                 # AppSidebar, Topbar, AuthGuard, LanguageSwitcher, MobileNav, Breadcrumbs
 ├── creator/                # AI Clarifier modal, Phase progress stepper, Branding palette editor
 ├── entrepreneur/           # Cap Table grid, ESOP calculator, Diligence room upload, KPI tracker
 ├── investor/               # Term sheet interactive builder, Match score card, Portfolio card
@@ -498,4 +501,54 @@ All 9 Creator Phase 4 pages (`/dashboard/creator/phase-4/**` and views) operate 
 - **Dynamic Context Preservation**: `AppSidebar.tsx` dynamically preserves `ideaId` across all links via `searchParams` without fabricating fallback IDs.
 - **Mutual Exclusivity & Exact Matching**: Exact route matching on root `/dashboard/creator/phase-4` ensures nested subpaths highlight strictly their corresponding active step.
 - **Route Aliasing**: Both `/dashboard/creator/phase-4/launch-assets` and `/dashboard/creator/phase-4/assets` resolve and highlight Step 4.8.
+
+---
+
+## 10. Bilingual Internationalization (i18n) Engine — Architecture & Conventions
+
+### A. Architectural Strategy
+The internationalization system provides native bilingual support for **English (`en`)** and **French (`fr`)** without route-breaking rewrites:
+- **Zero URL Rewrites**: Preserves all 198 App Router paths (`/dashboard/creator`, `/login`, etc.) without inserting `/[locale]/` segments. This ensures 100% backward compatibility with authenticated bookmarking, API query caching, external webhooks, and test harnesses.
+- **Provider Layer (`src/providers/LanguageProvider.tsx`)**: Global React context wrapped within `RootProviders.tsx`. Exposes `locale`, `setLocale`, translation function `t(key, params)`, and locale-aware formatters (`formatDate`, `formatCurrency`, `formatNumber`).
+- **Translation Dictionaries (`src/locales/{en,fr}/*.json`)**: Modular JSON catalogs organized by domain:
+  - `common.json`: Shared button labels, status badges, priority levels, date formats.
+  - `creator.json`: Creator journey phases, Empty State hero/CTA/roadmap, and Active Journey State (metrics, quick actions, attention cards, AI outputs, communications).
+- **Client Hook (`src/hooks/useTranslation.ts`)**: Direct ergonomic hook (`const { t, locale, setLocale, formatCurrency, formatDate } = useTranslation()`) for functional components.
+
+### B. Storage, Synchronization & Hydration
+1. **Locale Resolution Priority**:
+   - Stored preference in `localStorage.getItem("mondial_locale")`.
+   - Cookie preference in `document.cookie` (`mondial_locale=en|fr; path=/; max-age=31536000`).
+   - Browser preference fallback: `navigator.language` (if French, defaults to `fr`; otherwise `en`).
+   - System baseline fallback: `en`.
+2. **DOM Document Sync**:
+   - `useEffect` automatically synchronizes `<html lang="en">` or `<html lang="fr">` on locale change for proper screen-reader pronunciation and browser spellcheck behavior.
+3. **Storage Persistence**:
+   - Updating the locale via `setLocale('fr')` synchronously sets both `localStorage` and a 1-year persistent cookie (`SameSite=Lax`).
+
+### C. Formatting & Translation Capabilities
+- **Dot-Notation Key Traversal**: Supports deep nesting such as `t('creator.dashboard.active.title')` and `t('creator.phases.p2.name')`.
+- **Parameter Interpolation**: Handles dynamic templates using `{{key}}` syntax (e.g., `t('creator.dashboard.active.greeting', { name: 'Sarah' })`).
+- **Fallback Resolution**: If a key is missing in French (`fr`), the engine automatically falls back to English (`en`). If missing in both, it gracefully outputs the raw key string without crashing the UI.
+- **Locale-Aware Formatting Helpers**:
+  - `formatDate(date, options)`: Formats dates using `Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US')`.
+  - `formatCurrency(amount, currency = 'EUR')`: Formats currency amounts with appropriate French (`1 250 000 €`) or English (`€1,250,000`) conventions.
+  - `formatNumber(value)`: Number formatting respecting locale decimal and thousands separators.
+
+### D. UI Component: `LanguageSwitcher` (`src/components/layout/LanguageSwitcher.tsx`)
+- **Visual Design**: Compact, high-polish dropdown (`🌐 EN ▾ / FR ▾`) adhering to the Mondial UI Design System tokens (`bg-popover`, `text-popover-foreground`, `border-border`, `hover:bg-accent`).
+- **Topbar Integration**: Integrated into `src/components/layout/Topbar.tsx` adjacent to the theme toggle (`ThemeToggle`) across standard and Phase 2 dashboard shells.
+- **Accessibility**:
+  - Supports keyboard Escape key dismissal.
+  - Outside-click detection via document listener with clean event unbinding.
+  - Clear checkmark indicator on the currently active language.
+
+### E. Current Surface Rollout & Boundary Rules
+- **Creator Dashboard Overview (`src/app/dashboard/creator/page.tsx`)**: Fully localized across both states:
+  - **Empty / Welcome State**: Hero title, subtitle, 4-phase visual roadmap, IP protection disclaimer, and "Start Your First Idea Now" action.
+  - **Active Journey State**: Time-aware greeting ("Bonjour / Welcome back"), 4 primary metric cards (Clarity Score, AI Assets, Legal Readiness, Reports), Project Info card, Attention Items, Creator Journey progress stepper, Phase 5 Gate warning, AI Forecast preview, and Verified Outputs.
+- **Creator Sidebar Navigation (`src/lib/menu.ts`)**: **Deliberately Deferred**. Per user explicit instruction, Creator sidebar menus remain in English during the initial phase and will be localized in a subsequent dedicated pass.
+- **Landing Page & Marketing Surfaces**: Queued for execution following the Creator dashboard audit.
+- **Testing Integrity**: Tested via `src/__tests__/creator/creator-dashboard.test.tsx` (10/10 PASS) and dedicated i18n switcher suite `src/__tests__/creator/creator-i18n.test.tsx` (11/11 PASS with live toggle verification).
+
 

@@ -1,0 +1,42 @@
+{
+  "languages": {
+    "en": "English",
+    "fr": "Français"
+  },
+  "status": {
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "locked": "Locked",
+    "draft": "Draft",
+    "ready": "Ready",
+    "pending": "Pending",
+    "notStarted": "Not Started",
+    "underReview": "Under Review"
+  },
+  "priority": {
+    "critical": "Critical",
+    "high": "High",
+    "warning": "Warning",
+    "medium": "Medium",
+    "info": "Info",
+    "low": "Low"
+  },
+  "common": {
+    "now": "now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "resolve": "Resolve",
+    "continue": "Continue",
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "view": "View",
+    "loading": "Loading...",
+    "search": "Search...",
+    "filter": "Filter",
+    "all": "All"
+  }
+}
