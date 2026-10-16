@@ -5,15 +5,19 @@ import { AuthProvider } from './AuthProvider';
 import { ReactQueryProvider } from './ReactQueryProvider';
 import DevServiceWorkerCleanup from '@/components/shared/DevServiceWorkerCleanup';
 
+import { LanguageProvider } from '@/providers/LanguageProvider';
+
 export function RootProviders({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="light">
       <DevServiceWorkerCleanup />
-      <AuthProvider>
-        <ReactQueryProvider>
-          {children}
-        </ReactQueryProvider>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <ReactQueryProvider>
+            {children}
+          </ReactQueryProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

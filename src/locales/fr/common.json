@@ -1,0 +1,42 @@
+{
+  "languages": {
+    "en": "English",
+    "fr": "Français"
+  },
+  "status": {
+    "inProgress": "En cours",
+    "completed": "Terminé",
+    "locked": "Verrouillé",
+    "draft": "Brouillon",
+    "ready": "Prêt",
+    "pending": "En attente",
+    "notStarted": "Non commencé",
+    "underReview": "En cours d'examen"
+  },
+  "priority": {
+    "critical": "Critique",
+    "high": "Élevée",
+    "warning": "Avertissement",
+    "medium": "Moyenne",
+    "info": "Info",
+    "low": "Basse"
+  },
+  "common": {
+    "now": "à l'instant",
+    "minutesAgo": "il y a {{count}}m",
+    "hoursAgo": "il y a {{count}}h",
+    "daysAgo": "il y a {{count}}j",
+    "resolve": "Résoudre",
+    "continue": "Continuer",
+    "back": "Retour",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "view": "Voir",
+    "loading": "Chargement...",
+    "search": "Rechercher...",
+    "filter": "Filtrer",
+    "all": "Tous"
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "phases": {
+    "2": "Identity & Brand",
+    "3": "Business Intelligence",
+    "4": "Construction",
+    "5": "The Crossroads"
+  },
+  "dashboard": {
+    "myIdeas": "My Ideas",
+    "newIdea": "New Idea",
+    "switchIdea": "Switch Idea",
+    "commandCenterBadge": "Creator Studio Command Center",
+    "turnVisionTitle": "Turn Your Vision Into a Market-Ready Venture, {{name}}!",
+    "emptyDescription": "You haven't created any business ideas yet. Start your journey by creating your first idea or brainstorming with our AI Concept Clarifier to produce identity tokens, financial models, and commercial architecture.",
+    "createFirstIdea": "Create Your First Idea",
+    "brainstormWithClarifier": "Brainstorm with AI Clarifier",
+    "viewIdeaVault": "View Idea Vault",
+    "pathTitle": "Your Path from Concept to Liquidity",
+    "fourPhases": "4 Phases",
+    "roadmap": {
+      "phase2Title": "Identity & Brand",
+      "phase2Desc": "Clarify your core proposition, generate brand names, and craft visual tokens with AI Brand Studio.",
+      "phase3Title": "Business Intelligence",
+      "phase3Desc": "Synthesize 10-year financial forecasts, business plans, and verify jurisdiction compliance.",
+      "phase4Title": "Offer & Construction",
+      "phase4Desc": "Design pricing models, build operational roadmap, and map required skills and resources.",
+      "phase5Title": "The Crossroads",
+      "phase5Desc": "Choose between a direct IP buyout on the marketplace or build a company with investor backing."
+    },
+    "hero": {
+      "phaseMilestone": "Phase {{phase}} · {{title}}",
+      "nextMilestone": "Next Milestone",
+      "ventureValidated": "{{name}} is validated. You've reached Phase {{phase}} — {{phaseTitle}}.",
+      "active": "Active",
+      "goodMorning": "Good morning, {{name}}!",
+      "goodAfternoon": "Good afternoon, {{name}}!",
+      "goodEvening": "Good evening, {{name}}!"
+    },
+    "metrics": {
+      "clarityScore": "Clarity Score",
+      "phaseEvaluated": "Phase {{phase}} evaluated",
+      "pendingPhase2": "Pending Phase 2",
+      "aiAssets": "AI Assets",
+      "oneGenerated": "1 Generated",
+      "multipleGenerated": "{{count}} Generated",
+      "legalReadiness": "Legal Readiness",
+      "statutoryCompliance": "Statutory Compliance & Legal",
+      "pending": "Pending",
+      "reports": "Reports",
+      "oneDocumentCompiled": "1 document compiled",
+      "multipleDocumentsCompiled": "{{count}} documents compiled"
+    },
+    "attention": {
+      "title": "Items Requiring Attention ({{count}})",
+      "priorityBadge": "{{severity}} priority",
+      "phase": "Phase {{phase}}",
+      "resolve": "Resolve"
+    },
+    "bento": {
+      "projectCard": {
+        "title": "Project Summary",
+        "tagline": "No tagline specified",
+        "category": "Category",
+        "currentPhase": "Phase {{phase}} — {{title}}",
+        "clarity": "Clarity",
+        "legal": "Legal",
+        "fullDetails": "Full Details"
+      },
+      "journey": {
+        "title": "Creator Journey",
+        "stepProgress": "Step {{current}} of {{total}}",
+        "viewPhase": "View Phase",
+        "continuePhase": "Continue Phase",
+        "locked": "Locked",
+        "completed": "Completed",
+        "inProgress": "In Progress",
+        "percentComplete": "{{percent}}% Complete"
+      },
+      "phase5Gate": {
+        "title": "Phase 5 — The Crossroads",
+        "unlockedTitle": "Phase 5 Gate: Ready for Crossroads",
+        "locked": "Locked",
+        "unlocked": "Unlocked",
+        "lockedDesc": "Complete all Phase 4 Construction milestones (Roadmap, Needs, Skills, Support, Pricing, GTM) to unlock Phase 5.",
+        "unlockedDesc": "Congratulations! Your project is fully constructed. Choose between direct marketplace buyout or investor company formation.",
+        "enterCrossroads": "Enter The Crossroads",
+        "crossroadsLocked": "Crossroads Locked"
+      },
+      "forecast": {
+        "title": "AI Financial Forecast",
+        "subtitle": "Step 3.3 Synthesis",
+        "viewFull": "View Full",
+        "revenueProjection": "Revenue projection",
+        "breakeven": "Breakeven",
+        "grossMargin": "Gross margin",
+        "chartCaption": "36-Month deterministic projection from Step 3.3 Financial Forecast"
+      },
+      "outputs": {
+        "title": "Verified Outputs & Assets ({{count}})",
+        "subtitle": "Authoritative artifacts and plans compiled",
+        "viewAll": "View All",
+        "noOutputsTitle": "No outputs generated yet",
+        "noOutputsDesc": "As you complete each stage of your Creator journey, finalized plans and models will appear here.",
+        "openAsset": "Open Asset"
+      },
+      "communication": {
+        "messagesTitle": "Messages",
+        "newMessages": "{{count}} new",
+        "noMessages": "No messages yet",
+        "noMessagesDesc": "Messages with service providers and partners will appear here.",
+        "openMessenger": "Open Messenger",
+        "notificationsTitle": "Notifications",
+        "newNotifications": "{{count}} new",
+        "allCaughtUp": "You're all caught up — no new notifications.",
+        "allNotifications": "All Notifications",
+        "retry": "Retry"
+      }
+    }
+  }
+}

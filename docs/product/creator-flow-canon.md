@@ -2,7 +2,7 @@
 
 Source of truth for development. When code and this doc disagree, this doc wins — unless a change is agreed and written back here first.
 
-**Last reconciled with code: 2026-10-04 (Creator Phase 2 Optional French Company Name Search Integration via API Recherche d’entreprises).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
+**Last reconciled with code: 2026-10-17 (Creator Dashboard Bilingual Internationalization Engine — EN / FR).** See the Changelog (§11) for what changed. If a claim here contradicts the code, treat it as drift to reconcile — not a spec to build back toward — and confirm before acting.
 
 ---
 
@@ -2179,6 +2179,21 @@ RC1 Freeze
   - Reduced outer vertical spacing on the Clarifier page container from `py-8 sm:py-10` to `py-6 sm:py-8` for clean visual balance without bloated empty space.
 - **Verification Evidence:**
   - Frontend Test Suite: 16 / 16 test files PASS (199 / 199 tests passed).
+  - Production deployment was not performed.
+
+**2026-10-17 — Creator Dashboard: Bilingual Internationalization (EN / FR) & Dynamic Locale Switcher.**
+- **Components:** `src/providers/LanguageProvider.tsx`, `src/hooks/useTranslation.ts`, `src/locales/en/creator.json`, `src/locales/fr/creator.json`, `src/locales/en/common.json`, `src/locales/fr/common.json`, `src/components/layout/LanguageSwitcher.tsx`, `src/components/layout/Topbar.tsx`, `src/app/dashboard/creator/page.tsx`, `src/app/_providers/RootProviders.tsx`
+- **Specification:**
+  - Implemented bilingual dictionary-based i18n provider (`LanguageProvider`) without URL segment modification (preserving route integrity across all Next.js App Router paths).
+  - Created modular JSON translation catalogs (`en`, `fr`) with dot notation path lookup, parameter interpolation (`{{key}}`), and fallback to English.
+  - Added compact, accessible language switcher dropdown (`🌐 EN ▾ / FR ▾`) to dashboard `Topbar`, supporting keyboard dismissal, outside-click closing, and semantic tokens (`bg-popover`, `text-popover-foreground`, `border-border`).
+  - Added dual-layer locale persistence via `localStorage` (`mondial_locale`) and cookie (`mondial_locale`), dynamically synchronizing `document.documentElement.lang`.
+  - Fully translated Creator Dashboard overview: Empty / Welcome State (Hero, CTA, 4-phase visual roadmap, IP disclaimer) and Active Journey State (greeting, 4 metric cards, Attention Items, Project Card, Creator Journey progress stepper, Phase 5 Gate warning, AI Forecast preview, and Verified Outputs).
+  - Integrated locale-aware date and currency formatting (`formatDate`, `formatCurrency`).
+  - **Scope Boundary**: Creator sidebar navigation menu (`src/lib/menu.ts`) remains in English and is intentionally deferred for a subsequent pass per user directive.
+- **Verification Evidence:**
+  - Frontend Test Suite: `src/__tests__/creator/creator-dashboard.test.tsx` (10 / 10 PASS) and `src/__tests__/creator/creator-i18n.test.tsx` (11 / 11 PASS with live toggle verification).
+  - Regression Zero: All existing dashboard assertions preserved.
   - Production deployment was not performed.
 
 ---
