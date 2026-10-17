@@ -144,7 +144,7 @@ function Phase4Content({ ideaId }: { ideaId: string }) {
       {/* Compact Page Header */}
       <div className="space-y-1">
         <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
-          PHASE 4 · STEP 4.1
+          {t('creator.phase4.stepBadge', 'PHASE 4 · STEP 4.1')}
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
           {t("creator.phase4.title")}

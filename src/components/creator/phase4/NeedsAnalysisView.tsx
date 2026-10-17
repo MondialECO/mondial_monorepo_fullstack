@@ -333,7 +333,7 @@ export function NeedsAnalysisView({
             {t('creator.phase4.needsView.title', 'Analyze Needs & Requirements')}
           </h3>
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-            MBC will evaluate your project snapshot, operational roadmap, company formation, and founder profile to map exact capability, service, legal, and capital requirements.
+            {t('creator.phase4.needsView.emptyDesc', 'MBC will evaluate your project snapshot, operational roadmap, company formation, and founder profile to map exact capability, service, legal, and capital requirements.')}
           </p>
         </div>
         <button
@@ -344,7 +344,7 @@ export function NeedsAnalysisView({
           {isGenerating ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Analyzing requirements...</span>
+              <span>{t('creator.phase4.needsView.analyzingRequirements', 'Analyzing requirements...')}</span>
             </>
           ) : (
             <>
@@ -365,7 +365,7 @@ export function NeedsAnalysisView({
           <div className="flex items-start gap-2.5">
             <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
             <div>
-              <strong>Error:</strong> {error}
+              <strong>{t('creator.phase4.error', 'Error')}:</strong> {error}
             </div>
           </div>
           {onClearError && (
@@ -373,7 +373,7 @@ export function NeedsAnalysisView({
               onClick={onClearError}
               className="text-xs font-semibold hover:underline shrink-0"
             >
-              Dismiss
+              {t('creator.phase4.dismiss', 'Dismiss')}
             </button>
           )}
         </div>
@@ -385,7 +385,7 @@ export function NeedsAnalysisView({
           <div className="flex items-start sm:items-center gap-3">
             <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5 sm:mt-0" />
             <span className="text-xs leading-relaxed">
-              <strong className="font-semibold text-foreground">Update available:</strong> Changed project information may affect these needs. Updates detected in:{' '}
+              <strong className="font-semibold text-foreground">{t('creator.phase4.needsView.updateAvailableText', 'Update available: Changed project information may affect these needs. Updates detected in:')}</strong>{' '}
               <span className="font-medium underline decoration-amber-500/50 underline-offset-2">
                 {changedSources.join(', ')}
               </span>.
@@ -452,7 +452,7 @@ export function NeedsAnalysisView({
           ) : (
             <div className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              <span>All needs reviewed</span>
+              <span>{t('creator.phase4.needsView.allNeedsReviewed', 'All needs reviewed')}</span>
             </div>
           )}
         </div>
@@ -462,7 +462,7 @@ export function NeedsAnalysisView({
       <div className="space-y-3">
         {allNeeds.length === 0 ? (
           <div className="p-8 text-center text-xs text-muted-foreground italic rounded-2xl bg-card border border-border">
-            No requirements recorded for this project yet.
+            {t('creator.phase4.needsView.noRequirementsYet', 'No requirements recorded for this project yet.')}
           </div>
         ) : (
           allNeeds.map((need, index) => {
@@ -522,31 +522,31 @@ export function NeedsAnalysisView({
                     {isSatisfied ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span>Satisfied</span>
+                        <span>{t('creator.phase4.needsView.satisfiedBadge', 'Satisfied')}</span>
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/80">
                         <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
-                        <span>Identified</span>
+                        <span>{t('creator.phase4.needsView.identifiedBadge', 'Identified')}</span>
                       </span>
                     )}
 
                     {/* Decision Badge */}
                     {need.founderState === 'Confirmed' && (
                       <span className="inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                        {isExpanded ? 'Decision: Confirmed' : 'Confirmed'}
+                        {isExpanded ? t('creator.phase4.needsView.decisionConfirmed', 'Decision: Confirmed') : t('creator.phase4.needsView.confirmedBadge', 'Confirmed')}
                       </span>
                     )}
 
                     {need.founderState === 'Deferred' && (
                       <span className="inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                        Deferred
+                        {t('creator.phase4.needsView.deferredBadge', 'Deferred')}
                       </span>
                     )}
 
                     {need.founderState === 'Unreviewed' && (
                       <span className="inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                        Awaiting your review
+                        {t('creator.phase4.needsView.awaitingYourReview', 'Awaiting your review')}
                       </span>
                     )}
 
@@ -619,7 +619,7 @@ export function NeedsAnalysisView({
         {/* Right Action: Supporting Copy + Primary Pill Button */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto justify-end">
           <span className="text-xs text-muted-foreground sm:text-right">
-            Your reviewed needs will help shape the next step.
+            {t('creator.phase4.needsView.nextStepGuidance', 'Your reviewed needs will help shape the next step.')}
           </span>
           <Link
             href={`/dashboard/creator/phase-4/skills?ideaId=${encodeURIComponent(ideaId)}`}
@@ -637,19 +637,19 @@ export function NeedsAnalysisView({
           <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in fade-in-50 zoom-in-95">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="text-base font-bold text-foreground">
-                Review Upstream Changes
+                {t('creator.phase4.needsView.reviewUpstreamChanges', 'Review Upstream Changes')}
               </h3>
               <button
                 onClick={() => setShowReviewModal(false)}
                 className="text-muted-foreground hover:text-foreground text-xs font-semibold"
               >
-                Close
+                {t('creator.phase4.needsView.close', 'Close')}
               </button>
             </div>
 
             <div className="space-y-3 text-xs text-muted-foreground leading-relaxed">
               <p>
-                The following upstream project records have been updated since this requirements analysis was generated:
+                {t('creator.phase4.needsView.upstreamUpdatedIntro', 'The following upstream project records have been updated since this requirements analysis was generated:')}
               </p>
               <div className="p-3 rounded-xl bg-muted/40 border border-border space-y-1.5">
                 {changedSources.map((src, i) => (
@@ -660,7 +660,7 @@ export function NeedsAnalysisView({
                 ))}
               </div>
               <p className="text-[11px]">
-                Refreshing will recalculate requirement coverage against your latest snapshot, roadmap, and profile data while preserving all your confirmed decisions and submitted notes.
+                {t('creator.phase4.needsView.refreshExplanation', 'Refreshing will recalculate requirement coverage against your latest snapshot, roadmap, and profile data while preserving all your confirmed decisions and submitted notes.')}
               </p>
             </div>
 
@@ -673,7 +673,7 @@ export function NeedsAnalysisView({
                 }}
                 className="px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
               >
-                Keep current version
+                {t('creator.phase4.needsView.keepCurrentVersion', 'Keep current version')}
               </button>
               <button
                 onClick={async () => {
@@ -684,7 +684,7 @@ export function NeedsAnalysisView({
                 className="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-lg transition-all shadow flex items-center gap-1.5 disabled:opacity-50"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Refresh needs analysis</span>
+                <span>{t('creator.phase4.needsView.refreshNeedsAnalysis', 'Refresh needs analysis')}</span>
               </button>
             </div>
           </div>
@@ -829,7 +829,7 @@ function ExpandedNeedDetail({
             </div>
           ) : (
             <div className="text-xs text-muted-foreground italic">
-              No direct operational roadmap tasks linked to this requirement.
+              {t('creator.phase4.needsView.noLinkedTasks', 'No direct operational roadmap tasks linked to this requirement.')}
             </div>
           )}
         </div>
@@ -851,7 +851,7 @@ function ExpandedNeedDetail({
               ))
             ) : (
               <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-card border border-border/80 text-foreground">
-                Construction Snapshot
+                {t('creator.phase4.needsView.constructionSnapshot', 'Construction Snapshot')}
               </span>
             )}
           </div>
@@ -860,7 +860,7 @@ function ExpandedNeedDetail({
             href={resolveSourceLink(need.source || [])}
             className="text-xs font-semibold text-primary hover:text-primary/80 inline-flex items-center gap-1 transition-colors self-start sm:self-center"
           >
-            <span>View source</span>
+            <span>{t('creator.phase4.needsView.viewSource', 'View source')}</span>
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -869,7 +869,7 @@ function ExpandedNeedDetail({
         <div className="pt-4 border-t border-border/70 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="text-xs sm:text-sm font-semibold text-foreground">
-              Provide information about an existing capability, resource, or asset
+              {t('creator.phase4.needsView.provideDetailsHeading', 'Provide information about an existing capability, resource, or asset')}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
@@ -896,7 +896,7 @@ function ExpandedNeedDetail({
             <textarea
               value={infoText}
               onChange={(e) => setInfoText(e.target.value)}
-              placeholder="e.g. Contracted software agency, technical co-founder commitment, or technical portfolio..."
+              placeholder={t('creator.phase4.needsView.detailsPlaceholder', 'e.g. Contracted software agency, technical co-founder commitment, or technical portfolio...')}
               rows={3}
               disabled={isUpdating}
               className="w-full text-xs sm:text-sm p-3 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed resize-y disabled:opacity-50"
@@ -904,13 +904,13 @@ function ExpandedNeedDetail({
 
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <p className="text-[11px] text-muted-foreground leading-relaxed max-w-2xl">
-                Founder-provided details will be assessed against this requirement&apos;s criteria. Adding details records your information; it does not automatically mark the need Satisfied.
+                {t('creator.phase4.needsView.detailsDisclaimer', 'Founder-provided details will be assessed against this requirement\'s criteria. Adding details records your information; it does not automatically mark the need Satisfied.')}
               </p>
 
               {isSavedNotice && (
                 <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <Check className="w-3.5 h-3.5" />
-                  <span>Information recorded</span>
+                  <span>{t('creator.phase4.needsView.informationRecorded', 'Information recorded')}</span>
                 </span>
               )}
             </div>

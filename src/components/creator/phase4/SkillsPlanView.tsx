@@ -105,7 +105,7 @@ export function SkillsPlanView({
                 href={`/dashboard/creator/phase-4/phase-3?ideaId=${ideaId}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground font-semibold text-sm transition-all"
               >
-                Review Prior Steps
+                {t('creator.phase4.skillsView.reviewPriorSteps', 'Review Prior Steps')}
               </Link>
             )}
           </div>
@@ -120,38 +120,46 @@ export function SkillsPlanView({
       <div className="w-full min-w-0 space-y-8 animate-fadeIn">
         <div className="text-center space-y-3 pt-4">
           <span className="text-xs uppercase tracking-widest text-primary font-mono font-semibold">
-            STEP 4.4 · SKILLS & TRAINING
+            {t('creator.phase4.skillsView.stepBadge', 'STEP 4.4 · SKILLS & TRAINING')}
           </span>
           <h1 className="text-3xl font-bold tracking-tight text-foreground font-heading">
-            Learn · Delegate · Verify Engine
+            {t('creator.phase4.skillsView.engineTitle', 'Learn · Delegate · Verify Engine')}
           </h1>
           <p className="text-muted-foreground max-w-xl mx-auto text-sm leading-relaxed font-sans">
-            Determines the optimal resolution path for every capability requirement for{' '}
-            <span className="text-foreground font-medium">{projectName}</span> — balancing your skills,
-            weekly availability, and statutory compliance.
+            {t(
+              'creator.phase4.skillsView.engineSubtitle',
+              'Determines the optimal resolution path for every capability requirement for {{name}} — balancing your skills, weekly availability, and statutory compliance.',
+              { name: projectName }
+            )}
           </p>
         </div>
 
         {profileSummary && (
           <div className="bg-card border border-border/80 rounded-2xl p-6 space-y-4 shadow-sm">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground font-mono">
-              YOUR PROFILE CONTEXT (FROM HUMAINX)
+              {t('creator.phase4.skillsView.yourProfileContext', 'YOUR PROFILE CONTEXT (FROM HUMAINX)')}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-muted/40 border border-border/60 rounded-xl p-4">
-                <span className="text-xs text-muted-foreground block mb-1">Weekly Availability</span>
+                <span className="text-xs text-muted-foreground block mb-1">
+                  {t('creator.phase4.skillsView.weeklyAvailability', 'Weekly Availability')}
+                </span>
                 <span className="text-sm font-semibold text-foreground">
                   {profileSummary.weeklyAvailability || '4-8 hours/week'}
                 </span>
               </div>
               <div className="bg-muted/40 border border-border/60 rounded-xl p-4">
-                <span className="text-xs text-muted-foreground block mb-1">Learning Approach</span>
+                <span className="text-xs text-muted-foreground block mb-1">
+                  {t('creator.phase4.skillsView.learningApproach', 'Learning Approach')}
+                </span>
                 <span className="text-sm font-semibold text-foreground">
                   {profileSummary.learningPreference || profileSummary.preferredApproach || 'Balanced'}
                 </span>
               </div>
               <div className="bg-muted/40 border border-border/60 rounded-xl p-4">
-                <span className="text-xs text-muted-foreground block mb-1">Declared Top Skills</span>
+                <span className="text-xs text-muted-foreground block mb-1">
+                  {t('creator.phase4.skillsView.declaredTopSkills', 'Declared Top Skills')}
+                </span>
                 <span className="text-sm font-semibold text-foreground">
                   {profileSummary.topSkills?.length ? profileSummary.topSkills.join(', ') : 'None declared'}
                 </span>
@@ -169,8 +177,10 @@ export function SkillsPlanView({
               {t('creator.phase4.skillsView.readyTitle', 'Ready to Build Your Skills Plan')}
             </h3>
             <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
-              Our deterministic capability resolution engine will evaluate each unresolved requirement from Step 4.3
-              against your HumainX profile and statutory legal requirements.
+              {t(
+                'creator.phase4.skillsView.evaluatingIntro',
+                'Our deterministic capability resolution engine will evaluate each unresolved requirement from Step 4.3 against your HumainX profile and statutory legal requirements.'
+              )}
             </p>
           </div>
           <button
@@ -181,7 +191,7 @@ export function SkillsPlanView({
             {isLoading || isGenerating ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                Resolving Capabilities...
+                {t('creator.phase4.skillsView.resolvingCapabilities', 'Resolving Capabilities...')}
               </>
             ) : (
               <>
@@ -238,7 +248,7 @@ export function SkillsPlanView({
           </div>
           {onClearError && (
             <button onClick={onClearError} className="text-xs font-semibold hover:underline">
-              Dismiss
+              {t('creator.phase4.skillsView.dismiss', 'Dismiss')}
             </button>
           )}
         </div>
@@ -250,10 +260,13 @@ export function SkillsPlanView({
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <span className="text-xs leading-relaxed">
-              <strong className="font-semibold text-foreground">Update available:</strong> Changes to your project or experience may affect this plan.
+              <strong className="font-semibold text-foreground">
+                {t('creator.phase4.skillsView.updateAvailable', 'Update available:')}
+              </strong>{' '}
+              {t('creator.phase4.skillsView.updateAvailableNotice', 'Changes to your project or experience may affect this plan.')}
               {changedSources.length > 0 && (
                 <span className="ml-1 text-muted-foreground">
-                  (Updates in: {changedSources.join(', ')})
+                  {t('creator.phase4.skillsView.updatesIn', '(Updates in: {{sources}})', { sources: changedSources.join(', ') })}
                 </span>
               )}
             </span>
@@ -263,9 +276,9 @@ export function SkillsPlanView({
               onClick={() => setShowReviewModal(true)}
               className="text-xs font-semibold text-primary hover:underline"
             >
-              Review changes
+              {t('creator.phase4.skillsView.reviewChanges', 'Review changes')}
             </button>
-            <span className="text-amber-500/50">|</span>
+            <span className="text-amber-500/50">{'|'}</span>
             <button
               onClick={async () => {
                 setStaleDismissed(true);
@@ -298,7 +311,7 @@ export function SkillsPlanView({
             </div>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Based on your project needs and what you’ve shared.
+            {t('creator.phase4.skillsView.basedOnNeeds', 'Based on your project needs and what you’ve shared.')}
           </p>
         </div>
 
@@ -316,7 +329,7 @@ export function SkillsPlanView({
               {t('creator.phase4.skillsView.region', 'REGION')}
             </span>
             <span className="text-sm font-semibold text-foreground">
-              France
+              {t('creator.phase4.skillsView.france', 'France')}
             </span>
           </div>
         </div>
@@ -331,7 +344,7 @@ export function SkillsPlanView({
                 {t('creator.phase4.skillsView.youCanHandle', 'You can already handle')}
               </h2>
               <p className="text-xs text-muted-foreground">
-                From your Creator profile
+                {t('creator.phase4.skillsView.fromCreatorProfile', 'From your Creator profile')}
               </p>
             </div>
             <Link
@@ -358,7 +371,7 @@ export function SkillsPlanView({
                       {item.capability}
                     </h4>
                     <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                      {item.currentLevel || 'Comfortable'} · Covered for ordinary work
+                      {item.currentLevel || 'Comfortable'} {t('creator.phase4.skillsView.coveredOrdinaryWork', '· Covered for ordinary work')}
                     </span>
                   </div>
                 </div>
@@ -366,7 +379,7 @@ export function SkillsPlanView({
                   onClick={() => setActiveMatchReasonModal(item)}
                   className="text-xs text-muted-foreground hover:text-foreground font-medium shrink-0"
                 >
-                  Why this matches
+                  {t('creator.phase4.skillsView.whyThisMatches', 'Why this matches')}
                 </button>
               </div>
             ))}
@@ -441,8 +454,8 @@ export function SkillsPlanView({
 
           const isSelectedChoice = Boolean(res.founderDecision);
           const choiceLabel = isSelectedChoice
-            ? `${effectiveMode.charAt(0) + effectiveMode.slice(1).toLowerCase()} (Selected)`
-            : 'Not selected yet';
+            ? `${effectiveMode.charAt(0) + effectiveMode.slice(1).toLowerCase()} ${t('creator.phase4.skillsView.selectedSuffix', '(Selected)')}`
+            : t('creator.phase4.skillsView.notSelectedYet', 'Not selected yet');
 
           return (
             <article
@@ -457,17 +470,17 @@ export function SkillsPlanView({
                       {res.capability}
                     </h3>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                      Needs attention
+                      {t('creator.phase4.skillsView.needsAttention', 'Needs attention')}
                     </span>
                     {res.blocking && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-destructive/10 text-destructive border border-destructive/20">
-                        Launch-Blocking
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-destructive/10 text-destructive border border-destructive/20">
+                        {t('creator.phase4.skillsView.launchBlocking', 'Launch-Blocking')}
                       </span>
                     )}
                     {res.isMandatoryVerification && (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30">
                         <Lock className="w-2.5 h-2.5" />
-                        Statutory
+                        {t('creator.phase4.skillsView.statutory', 'Statutory')}
                       </span>
                     )}
                   </div>
@@ -486,21 +499,21 @@ export function SkillsPlanView({
 
               {/* Level & Recommendation strip */}
               <div className="p-3 rounded-xl bg-muted/40 border border-border/60 flex flex-wrap items-center gap-2 text-xs text-muted-foreground font-medium">
-                <span>Current level: {res.currentSkillLevel || 'Beginner'}</span>
-                <span>·</span>
+                <span>{t('creator.phase4.skillsView.currentLevel', 'Current level: {{level}}', { level: res.currentSkillLevel || 'Beginner' })}</span>
+                <span>{'·'}</span>
                 <span>
-                  Recommended:{' '}
+                  {t('creator.phase4.skillsView.recommended', 'Recommended:')}{' '}
                   <strong className="text-foreground font-semibold">
                     {res.resolutionMode?.toUpperCase() === 'LEARN'
-                      ? 'Learn'
+                      ? t('creator.phase4.skillsView.learn', 'Learn')
                       : res.resolutionMode?.toUpperCase() === 'DELEGATE'
-                      ? 'Delegate'
-                      : 'Verify'}
+                      ? t('creator.phase4.skillsView.delegate', 'Delegate')
+                      : t('creator.phase4.skillsView.verify', 'Verify')}
                   </strong>
                 </span>
-                <span>·</span>
+                <span>{'·'}</span>
                 <span>
-                  Your choice:{' '}
+                  {t('creator.phase4.skillsView.yourChoice', 'Your choice:')}{' '}
                   <strong
                     className={
                       isSelectedChoice
@@ -515,9 +528,9 @@ export function SkillsPlanView({
 
               {/* Rationale explanation */}
               <div className="text-xs sm:text-sm text-foreground/90 leading-relaxed">
-                <span className="font-semibold text-foreground">Why this recommendation:</span>{' '}
+                <span className="font-semibold text-foreground">{t('creator.phase4.skillsView.whyThisRecommendation', 'Why this recommendation:')}</span>{' '}
                 {res.why ||
-                  'Technical support may help you move forward while you focus on the work you can handle.'}
+                  t('creator.phase4.skillsView.defaultWhyRecommendation', 'Technical support may help you move forward while you focus on the work you can handle.')}
               </div>
 
               {/* 3-Button Approach Selector Row */}
@@ -535,7 +548,7 @@ export function SkillsPlanView({
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold flex items-center gap-1.5">
                       <GraduationCap className="w-4 h-4" />
-                      Learn
+                      {t('creator.phase4.skillsView.learn', 'Learn')}
                     </span>
                     {effectiveMode === 'LEARN' && (
                       <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">
@@ -544,7 +557,7 @@ export function SkillsPlanView({
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground mt-1">
-                    Build the skills to do it yourself
+                    {t('creator.phase4.skillsView.learnBtnDesc', 'Build the skills to do it yourself')}
                   </span>
                 </button>
 
@@ -561,7 +574,7 @@ export function SkillsPlanView({
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold flex items-center gap-1.5">
                       <Users className="w-4 h-4" />
-                      Delegate
+                      {t('creator.phase4.skillsView.delegate', 'Delegate')}
                     </span>
                     {effectiveMode === 'DELEGATE' && (
                       <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">
@@ -570,7 +583,7 @@ export function SkillsPlanView({
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground mt-1">
-                    Get help from someone with the right skills
+                    {t('creator.phase4.skillsView.delegateBtnDesc', 'Get help from someone with the right skills')}
                   </span>
                 </button>
 
@@ -587,7 +600,7 @@ export function SkillsPlanView({
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4" />
-                      Verify
+                      {t('creator.phase4.skillsView.verify', 'Verify')}
                     </span>
                     {effectiveMode === 'VERIFY' && (
                       <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">
@@ -596,7 +609,7 @@ export function SkillsPlanView({
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground mt-1">
-                    Check whether experience covers this
+                    {t('creator.phase4.skillsView.verifyBtnDesc', 'Check whether experience covers this')}
                   </span>
                 </button>
               </div>
@@ -610,7 +623,7 @@ export function SkillsPlanView({
                       {t('creator.phase4.skillsView.delegationBriefPreview', 'DELEGATION BRIEF PREVIEW')}
                     </span>
                     <span className="text-xs font-semibold text-foreground">
-                      Suggested type:{' '}
+                      {t('creator.phase4.skillsView.suggestedType', 'Suggested type:')}{' '}
                       <span className="text-primary font-medium">
                         {res.delegationRequirement?.suggestedResourceType || 'Freelance specialist'}
                       </span>
@@ -620,11 +633,15 @@ export function SkillsPlanView({
                   {/* 6 Structured Attributes Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div>
-                      <span className="text-muted-foreground block mb-0.5">Capability needed</span>
+                      <span className="text-muted-foreground block mb-0.5">
+                        {t('creator.phase4.skillsView.capabilityNeeded', 'Capability needed')}
+                      </span>
                       <span className="font-semibold text-foreground">{res.capability}</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground block mb-0.5">Target timing</span>
+                      <span className="text-muted-foreground block mb-0.5">
+                        {t('creator.phase4.skillsView.targetTiming', 'Target timing')}
+                      </span>
                       <span className="font-semibold text-foreground">
                         {res.delegationRequirement?.targetTiming ||
                           res.delegationRequirement?.timing ||
@@ -632,25 +649,33 @@ export function SkillsPlanView({
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground block mb-0.5">Suggested budget tier</span>
+                      <span className="text-muted-foreground block mb-0.5">
+                        {t('creator.phase4.skillsView.suggestedBudgetTier', 'Suggested budget tier')}
+                      </span>
                       <span className="font-semibold text-foreground">
                         {res.delegationRequirement?.estimatedBudgetTier || 'Moderate freelance tier'}
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground block mb-0.5">Working language</span>
+                      <span className="text-muted-foreground block mb-0.5">
+                        {t('creator.phase4.skillsView.workingLanguage', 'Working language')}
+                      </span>
                       <span className="font-semibold text-foreground">
                         {res.delegationRequirement?.workingLanguage || 'French or English'}
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground block mb-0.5">Estimated weekly time</span>
+                      <span className="text-muted-foreground block mb-0.5">
+                        {t('creator.phase4.skillsView.estimatedWeeklyTime', 'Estimated weekly time')}
+                      </span>
                       <span className="font-semibold text-foreground">
                         {res.delegationRequirement?.estimatedWeeklyTime || '5–8 hours/week'}
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground block mb-0.5">Expected deliverable</span>
+                      <span className="text-muted-foreground block mb-0.5">
+                        {t('creator.phase4.skillsView.expectedDeliverable', 'Expected deliverable')}
+                      </span>
                       <span className="font-semibold text-foreground">
                         {res.delegationRequirement?.expectedDeliverable ||
                           res.delegationRequirement?.expectedOutcome ||
@@ -672,13 +697,13 @@ export function SkillsPlanView({
                       onClick={() => setActiveBriefModal(res)}
                       className="px-3 py-1.5 rounded-lg bg-card border border-border text-foreground hover:bg-muted text-xs font-semibold transition-colors"
                     >
-                      Edit brief
+                      {t('creator.phase4.skillsView.editBrief', 'Edit brief')}
                     </button>
                     <button
                       onClick={() => handleSelectMode(res, 'VERIFY')}
                       className="px-3 py-1.5 rounded-lg bg-card border border-border text-foreground hover:bg-muted text-xs font-semibold transition-colors"
                     >
-                      Add existing support
+                      {t('creator.phase4.skillsView.addExistingSupport', 'Add existing support')}
                     </button>
                   </div>
                 </div>
@@ -693,7 +718,7 @@ export function SkillsPlanView({
                       <span>{t('creator.phase4.skillsView.yourLearningPlan', 'Your learning plan')}</span>
                     </div>
                     <span className="text-xs px-2.5 py-1 rounded-md bg-muted text-muted-foreground font-medium">
-                      Suggested effort:{' '}
+                      {t('creator.phase4.skillsView.suggestedEffort', 'Suggested effort:')}{' '}
                       {res.learningAction?.suggestedEffortText ||
                         (res.learningAction?.estimatedHours
                           ? `${res.learningAction.estimatedHours} hours total`
@@ -705,7 +730,7 @@ export function SkillsPlanView({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div className="p-3.5 rounded-xl bg-card border border-border/70 space-y-1">
                       <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                        WHAT YOU’LL BE ABLE TO DO
+                        {t('creator.phase4.skillsView.whatYoullBeAbleToDo', 'WHAT YOU’LL BE ABLE TO DO')}
                       </span>
                       <p className="font-semibold text-foreground leading-relaxed">
                         {res.learningAction?.whatYoullBeAbleToDo ||
@@ -716,7 +741,7 @@ export function SkillsPlanView({
 
                     <div className="p-3.5 rounded-xl bg-card border border-border/70 space-y-1">
                       <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                        WHAT YOU’LL CREATE
+                        {t('creator.phase4.skillsView.whatYoullCreate', 'WHAT YOU’LL CREATE')}
                       </span>
                       <p className="font-semibold text-foreground leading-relaxed">
                         {res.learningAction?.whatYoullCreate ||
@@ -811,11 +836,11 @@ export function SkillsPlanView({
                   <div className="p-3.5 rounded-xl bg-card border border-border/70 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <BookOpen className="w-4 h-4 text-foreground shrink-0" />
-                      <span className="font-semibold text-foreground">Training options</span>
-                      <span>· No course selected</span>
+                      <span className="font-semibold text-foreground">{t('creator.phase4.skillsView.trainingOptions', 'Training options')}</span>
+                      <span>{t('creator.phase4.skillsView.noCourseSelected', '· No course selected')}</span>
                     </div>
                     <span className="text-muted-foreground font-medium">
-                      Provider and cost: To confirm
+                      {t('creator.phase4.skillsView.providerAndCost', 'Provider and cost: To confirm')}
                     </span>
                   </div>
 
@@ -827,7 +852,7 @@ export function SkillsPlanView({
                     <div className="p-4 rounded-xl bg-card border border-border/80 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
                       <div>
                         <span className="text-xs text-muted-foreground block mb-0.5">
-                          Weekly availability
+                          {t('creator.phase4.skillsView.weeklyAvailability', 'Weekly availability')}
                         </span>
                         <span className="text-sm font-bold text-foreground">
                           {availStr}
@@ -835,43 +860,43 @@ export function SkillsPlanView({
                       </div>
                       <div>
                         <span className="text-xs text-muted-foreground block mb-0.5">
-                          Already planned
+                          {t('creator.phase4.skillsView.alreadyPlanned', 'Already planned')}
                         </span>
                         <span className="text-sm font-bold text-foreground">
-                          {plannedHours} hours
+                          {`${plannedHours} ${t('creator.phase4.skillsView.hoursUnit', 'hours')}`}
                         </span>
                       </div>
                       <div>
                         <span className="text-xs text-primary block mb-0.5">
-                          Proposed learning
+                          {t('creator.phase4.skillsView.proposedLearning', 'Proposed learning')}
                         </span>
                         <span className="text-sm font-bold text-primary">
-                          +{proposedHours} {proposedHours === 1 ? 'hour' : 'hours'}
+                          {`+${proposedHours} ${proposedHours === 1 ? 'hour' : 'hours'}`}
                         </span>
                       </div>
                       <div>
                         <span className="text-xs text-emerald-600 dark:text-emerald-400 block mb-0.5">
-                          Total if accepted
+                          {t('creator.phase4.skillsView.totalIfAccepted', 'Total if accepted')}
                         </span>
                         <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                          {totalHours} hours
+                          {`${totalHours} ${t('creator.phase4.skillsView.hoursUnit', 'hours')}`}
                         </span>
                         <span className="text-[10px] text-muted-foreground block mt-0.5">
-                          {bufferHours}h weekly buffer
+                          {t('creator.phase4.skillsView.weeklyBuffer', '{{hours}}h weekly buffer', { hours: bufferHours })}
                         </span>
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-muted-foreground pt-1 gap-2">
                       <div className="flex items-center gap-1.5">
-                        <span>Review the change before adding learning time to your plan:</span>
+                        <span>{t('creator.phase4.skillsView.reviewChangeBeforeAdding', 'Review the change before adding learning time to your plan:')}</span>
                         <Link
                           href={`/dashboard/creator/phase-4/roadmap?ideaId=${ideaId}`}
                           className="font-semibold text-primary hover:underline"
                         >
-                          Review roadmap change
+                          {t('creator.phase4.skillsView.reviewRoadmapChange', 'Review roadmap change')}
                         </Link>
                       </div>
-                      <span>Training support can be explored in the next step.</span>
+                      <span>{t('creator.phase4.skillsView.trainingSupportNextStep', 'Training support can be explored in the next step.')}</span>
                     </div>
                   </div>
                 </div>
@@ -930,7 +955,7 @@ export function SkillsPlanView({
                       onClick={() => handleSelectMode(res, 'VERIFY')}
                       className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors shadow-sm"
                     >
-                      Choose Verify
+                      {t('creator.phase4.skillsView.chooseVerify', 'Choose Verify')}
                     </button>
                   </div>
                 </div>
@@ -940,28 +965,32 @@ export function SkillsPlanView({
               <div className="pt-2 border-t border-border/50 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-muted-foreground">
                 <div className="leading-relaxed">
                   {effectiveMode === 'DELEGATE'
-                    ? 'Mondial can help match you with vetted specialists, but hiring remains your decision.'
+                    ? t('creator.phase4.skillsView.delegateQuietNote', 'Mondial can help match you with vetted specialists, but hiring remains your decision.')
                     : effectiveMode === 'LEARN'
-                    ? 'Includes practical step-by-step guidance and operational milestones.'
-                    : 'Verification avoids extra learning hours if your experience already qualifies.'}
+                    ? t('creator.phase4.skillsView.learnQuietNote', 'Includes practical step-by-step guidance and operational milestones.')
+                    : t('creator.phase4.skillsView.verifyQuietNote', 'Verification avoids extra learning hours if your experience already qualifies.')}
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono text-[10px] uppercase font-semibold">Built from:</span>
-                  <span className="px-2 py-0.5 rounded-md bg-muted text-[11px] font-medium text-foreground">
-                    Needs & Requirements
+                  <span className="font-mono text-[10px] uppercase font-semibold">
+                    {t('creator.phase4.skillsView.builtFrom', 'Built from:')}
                   </span>
                   <span className="px-2 py-0.5 rounded-md bg-muted text-[11px] font-medium text-foreground">
-                    Creator profile
+                    {t('creator.phase4.skillsView.needsAndRequirements', 'Needs & Requirements')}
                   </span>
                   <span className="px-2 py-0.5 rounded-md bg-muted text-[11px] font-medium text-foreground">
-                    {effectiveMode === 'LEARN' ? 'Business Model' : 'Operational Roadmap'}
+                    {t('creator.phase4.skillsView.creatorProfile', 'Creator profile')}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-muted text-[11px] font-medium text-foreground">
+                    {effectiveMode === 'LEARN'
+                      ? t('creator.phase4.skillsView.businessModel', 'Business Model')
+                      : t('creator.phase4.skillsView.operationalRoadmap', 'Operational Roadmap')}
                   </span>
                   <button
                     onClick={() => setActiveWhyModal(res)}
                     className="text-primary hover:underline font-semibold ml-1 text-xs"
                   >
-                    Why this suggestion?
+                    {t('creator.phase4.skillsView.whyThisSuggestion', 'Why this suggestion?')}
                   </button>
                 </div>
               </div>
@@ -989,7 +1018,7 @@ export function SkillsPlanView({
             <ArrowRight className="w-4 h-4" />
           </Link>
           <span className="text-[11px] text-muted-foreground">
-            Save your choices and explore support for your project.
+            {t('creator.phase4.skillsView.saveChoicesSupport', 'Save your choices and explore support for your project.')}
           </span>
         </div>
       </footer>
@@ -1000,7 +1029,7 @@ export function SkillsPlanView({
           <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in fade-in-50 zoom-in-95">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="text-base font-bold text-foreground">
-                Review Upstream Changes
+                {t('creator.phase4.skillsView.reviewUpstreamChanges', 'Review Upstream Changes')}
               </h3>
               <button
                 onClick={() => setShowReviewModal(false)}
@@ -1012,7 +1041,10 @@ export function SkillsPlanView({
 
             <div className="space-y-3 text-xs text-muted-foreground leading-relaxed">
               <p>
-                The following upstream project records have been updated since this skills plan was generated:
+                {t(
+                  'creator.phase4.skillsView.upstreamUpdatedIntro',
+                  'The following upstream project records have been updated since this skills plan was generated:'
+                )}
               </p>
               <div className="p-3 rounded-xl bg-muted/40 border border-border space-y-1.5">
                 {changedSources.map((src, i) => (
@@ -1023,7 +1055,10 @@ export function SkillsPlanView({
                 ))}
               </div>
               <p className="text-[11px]">
-                Refreshing will recalculate capability resolution paths against your latest requirements, profile, and roadmap while preserving your existing choices.
+                {t(
+                  'creator.phase4.skillsView.refreshExplanation',
+                  'Refreshing will recalculate capability resolution paths against your latest requirements, profile, and roadmap while preserving your existing choices.'
+                )}
               </p>
             </div>
 
@@ -1036,7 +1071,7 @@ export function SkillsPlanView({
                 }}
                 className="px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
               >
-                Keep my choices
+                {t('creator.phase4.skillsView.keepMyChoices', 'Keep my choices')}
               </button>
               <button
                 onClick={async () => {
@@ -1047,7 +1082,7 @@ export function SkillsPlanView({
                 className="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-lg transition-all shadow flex items-center gap-1.5 disabled:opacity-50"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? 'animate-spin' : ''}`} />
-                Refresh Skills Plan
+                {t('creator.phase4.skillsView.refreshSkillsPlan', 'Refresh Skills Plan')}
               </button>
             </div>
           </div>
@@ -1061,7 +1096,11 @@ export function SkillsPlanView({
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2 text-foreground font-bold text-base">
                 <FileText className="w-4 h-4 text-primary" />
-                <span>Delegation Brief: {activeBriefModal.capability}</span>
+                <span>
+                  {t('creator.phase4.skillsView.delegationBrief', 'Delegation Brief: {{capability}}', {
+                    capability: activeBriefModal.capability,
+                  })}
+                </span>
               </div>
               <button
                 onClick={() => setActiveBriefModal(null)}
@@ -1074,7 +1113,9 @@ export function SkillsPlanView({
             <div className="space-y-3 text-xs leading-relaxed text-muted-foreground">
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-2">
                 <div>
-                  <span className="font-semibold text-foreground block">Objective & Scope:</span>
+                  <span className="font-semibold text-foreground block">
+                    {t('creator.phase4.skillsView.objectiveAndScope', 'Objective & Scope:')}
+                  </span>
                   <span>
                     {activeBriefModal.delegationRequirement?.expectedOutcome ||
                       activeBriefModal.delegationRequirement?.requirementSummary ||
@@ -1082,14 +1123,18 @@ export function SkillsPlanView({
                   </span>
                 </div>
                 <div>
-                  <span className="font-semibold text-foreground block">Suggested Resource:</span>
+                  <span className="font-semibold text-foreground block">
+                    {t('creator.phase4.skillsView.suggestedResource', 'Suggested Resource:')}
+                  </span>
                   <span>
                     {activeBriefModal.delegationRequirement?.suggestedResourceType || 'Freelance specialist'} (
                     {activeBriefModal.delegationRequirement?.estimatedBudgetTier || 'Moderate tier'})
                   </span>
                 </div>
                 <div>
-                  <span className="font-semibold text-foreground block">Timing & Cadence:</span>
+                  <span className="font-semibold text-foreground block">
+                    {t('creator.phase4.skillsView.timingAndCadence', 'Timing & Cadence:')}
+                  </span>
                   <span>
                     {activeBriefModal.delegationRequirement?.targetTiming ||
                       activeBriefModal.timing ||
@@ -1098,7 +1143,10 @@ export function SkillsPlanView({
                 </div>
               </div>
               <p className="text-[11px]">
-                In Step 4.5, you will be able to review matching French and EU funding mechanisms and subsidies that can offset specialist costs.
+                {t(
+                  'creator.phase4.skillsView.fundingMechanismNote',
+                  'In Step 4.5, you will be able to review matching French and EU funding mechanisms and subsidies that can offset specialist costs.'
+                )}
               </p>
             </div>
 
@@ -1107,7 +1155,7 @@ export function SkillsPlanView({
                 onClick={() => setActiveBriefModal(null)}
                 className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs shadow"
               >
-                Close Brief
+                {t('creator.phase4.skillsView.closeBrief', 'Close Brief')}
               </button>
             </div>
           </div>
@@ -1121,7 +1169,7 @@ export function SkillsPlanView({
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2 text-foreground font-bold text-base">
                 <ShieldCheck className="w-4 h-4 text-primary" />
-                <span>Verification Evidence Guide</span>
+                <span>{t('creator.phase4.skillsView.verificationEvidenceGuide', 'Verification Evidence Guide')}</span>
               </div>
               <button
                 onClick={() => setActiveEvidenceModal(null)}
@@ -1133,25 +1181,33 @@ export function SkillsPlanView({
 
             <div className="space-y-3 text-xs leading-relaxed text-muted-foreground">
               <p>
-                To satisfy this verification requirement for <strong className="text-foreground">{activeEvidenceModal.capability}</strong>, you can provide:
+                {t('creator.phase4.skillsView.satisfyVerificationFor', 'To satisfy this verification requirement for {{capability}}, you can provide:', {
+                  capability: activeEvidenceModal.capability,
+                })}
               </p>
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-2 text-foreground font-medium">
                 <div className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">•</span>
+                  <span className="text-primary mt-0.5">{'•'}</span>
                   <span>
                     {activeEvidenceModal.verificationRequirement?.requiredEvidence ||
                       'Relevant previous work, professional certification, or a practical test record.'}
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">•</span>
+                  <span className="text-primary mt-0.5">{'•'}</span>
                   <span>
-                    Official authority or registry documentation if applicable under French regulations.
+                    {t(
+                      'creator.phase4.skillsView.officialAuthorityDoc',
+                      'Official authority or registry documentation if applicable under French regulations.'
+                    )}
                   </span>
                 </div>
               </div>
               <p className="text-[11px]">
-                Providing verified credentials waives the need to allocate learning or delegation hours to this requirement.
+                {t(
+                  'creator.phase4.skillsView.providingVerifiedWaives',
+                  'Providing verified credentials waives the need to allocate learning or delegation hours to this requirement.'
+                )}
               </p>
             </div>
 
@@ -1160,7 +1216,7 @@ export function SkillsPlanView({
                 onClick={() => setActiveEvidenceModal(null)}
                 className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs shadow"
               >
-                Understood
+                {t('creator.phase4.skillsView.understood', 'Understood')}
               </button>
             </div>
           </div>
@@ -1174,7 +1230,7 @@ export function SkillsPlanView({
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2 text-foreground font-bold text-base">
                 <HelpCircle className="w-4 h-4 text-primary" />
-                <span>Why this suggestion?</span>
+                <span>{t('creator.phase4.skillsView.whyThisSuggestion', 'Why this suggestion?')}</span>
               </div>
               <button
                 onClick={() => setActiveWhyModal(null)}
@@ -1186,18 +1242,21 @@ export function SkillsPlanView({
 
             <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
               <p>
-                The resolution engine determined the recommendation for <strong className="text-foreground">{activeWhyModal.capability}</strong> based on:
+                {t('creator.phase4.skillsView.engineRecommendationFor', 'The resolution engine determined the recommendation for {{capability}} based on:', {
+                  capability: activeWhyModal.capability,
+                })}
               </p>
               <ul className="list-disc list-inside space-y-1 p-2 rounded-lg bg-muted/30 border border-border">
                 <li>
-                  Reason code: <span className="font-mono text-foreground font-medium">{activeWhyModal.reasonCode}</span>
+                  {t('creator.phase4.skillsView.reasonCode', 'Reason code:')}{' '}
+                  <span className="font-mono text-foreground font-medium">{activeWhyModal.reasonCode}</span>
                 </li>
                 <li>
-                  Confidence:{' '}
+                  {t('creator.phase4.skillsView.confidence', 'Confidence:')}{' '}
                   <span className="font-semibold text-foreground">{activeWhyModal.confidence}</span>
                 </li>
                 <li>
-                  Priority:{' '}
+                  {t('creator.phase4.skillsView.priority', 'Priority:')}{' '}
                   <span className="font-semibold text-foreground">{activeWhyModal.priority}</span>
                 </li>
               </ul>
@@ -1211,7 +1270,7 @@ export function SkillsPlanView({
                 onClick={() => setActiveWhyModal(null)}
                 className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs shadow"
               >
-                Close
+                {t('creator.phase4.skillsView.close', 'Close')}
               </button>
             </div>
           </div>
@@ -1225,7 +1284,7 @@ export function SkillsPlanView({
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2 text-foreground font-bold text-base">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                <span>Capability Coverage</span>
+                <span>{t('creator.phase4.skillsView.capabilityCoverage', 'Capability Coverage')}</span>
               </div>
               <button
                 onClick={() => setActiveMatchReasonModal(null)}
@@ -1237,15 +1296,18 @@ export function SkillsPlanView({
 
             <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
               <p>
-                <strong className="text-foreground">{activeMatchReasonModal.capability}</strong> is already marked as covered for ordinary project operations:
+                {t('creator.phase4.skillsView.alreadyCoveredFor', '{{capability}} is already marked as covered for ordinary project operations:', {
+                  capability: activeMatchReasonModal.capability,
+                })}
               </p>
               <div className="p-3 rounded-lg bg-muted/30 border border-border space-y-1">
                 <div className="text-foreground font-medium">
-                  Evidence: {activeMatchReasonModal.evidence || 'Documented in your creator profile and experience records.'}
+                  {t('creator.phase4.skillsView.evidence', 'Evidence:')}{' '}
+                  {activeMatchReasonModal.evidence || 'Documented in your creator profile and experience records.'}
                 </div>
                 {activeMatchReasonModal.coverageSource && (
                   <div className="text-[11px] text-muted-foreground">
-                    Source: {activeMatchReasonModal.coverageSource}
+                    {t('creator.phase4.skillsView.source', 'Source:')} {activeMatchReasonModal.coverageSource}
                   </div>
                 )}
               </div>
@@ -1256,7 +1318,7 @@ export function SkillsPlanView({
                 onClick={() => setActiveMatchReasonModal(null)}
                 className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-xs shadow"
               >
-                Close
+                {t('creator.phase4.skillsView.close', 'Close')}
               </button>
             </div>
           </div>

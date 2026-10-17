@@ -148,15 +148,10 @@ export function SupportPlanView({
           </div>
           <div className="space-y-2 max-w-xl mx-auto">
             <h2 className="text-2xl font-bold tracking-tight text-foreground font-heading">
-              {t('creator.phase4.supportView.engineTitle', 'Aids, Grants & Public Support Engine')}
+              {t('creator.phase4.supportView.engineTitle', 'Aids, Grants & Public Support Scheme Engine')}
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans">
-              Match{' '}
-              <span className="text-foreground font-semibold">
-                {projectName || 'your venture'}
-              </span>{' '}
-              with relevant public, institutional, regional, national, and European support
-              opportunities based on official, versioned source data.
+              {t('creator.phase4.supportView.engineSubtitle', 'Match {{name}} with relevant public, institutional, regional, national, and European support opportunities based on official, versioned source data.', { name: projectName || 'your venture' })}
             </p>
           </div>
 
@@ -164,31 +159,28 @@ export function SupportPlanView({
             <div className="p-4 rounded-xl bg-muted/30 border border-border/70 space-y-1.5">
               <div className="flex items-center gap-2 text-primary text-xs font-semibold">
                 <CheckCircle2 className="w-4 h-4" />
-                Deterministic Eligibility
+                {t('creator.phase4.supportView.featureDeterministic', 'Deterministic Eligibility')}
               </div>
               <p className="text-xs text-muted-foreground">
-                Audited against authoritative conditions from France Travail, URSSAF, Bpifrance, and
-                Region portals.
+                {t('creator.phase4.supportView.featureDeterministicDesc', 'Audited against authoritative conditions from France Travail, URSSAF, Bpifrance, and Region portals.')}
               </p>
             </div>
             <div className="p-4 rounded-xl bg-muted/30 border border-border/70 space-y-1.5">
               <div className="flex items-center gap-2 text-primary text-xs font-semibold">
                 <Compass className="w-4 h-4" />
-                Application Readiness
+                {t('creator.phase4.supportView.featureReadiness', 'Application Readiness')}
               </div>
               <p className="text-xs text-muted-foreground">
-                Automatically connects your Phase 3 Business Plan, Financial Forecast, and Phase 4.4
-                Skills Plan.
+                {t('creator.phase4.supportView.featureReadinessDesc', 'Automatically connects your Phase 3 Business Plan, Financial Forecast, and Phase 4.4 Skills Plan.')}
               </p>
             </div>
             <div className="p-4 rounded-xl bg-muted/30 border border-border/70 space-y-1.5">
               <div className="flex items-center gap-2 text-primary text-xs font-semibold">
                 <ShieldCheck className="w-4 h-4" />
-                Award vs Apply Safety
+                {t('creator.phase4.supportView.featureSafety', 'Award vs Apply Safety')}
               </div>
               <p className="text-xs text-muted-foreground">
-                Discretionary and competitive schemes explicitly marked &quot;Eligible to
-                Apply&quot; without fake success rates.
+                {t('creator.phase4.supportView.featureSafetyDesc', 'Discretionary and competitive schemes explicitly marked "Eligible to Apply" without fake success rates.')}
               </p>
             </div>
           </div>
@@ -201,12 +193,12 @@ export function SupportPlanView({
             {isLoading ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>{t('creator.phase4.supportView.evaluating', 'Evaluating Authoritative Opportunities...')}</span>
+                <span>{t('creator.phase4.supportView.evaluating', 'Evaluating Schemes...')}</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                <span>{t('creator.phase4.supportView.evaluateButton', 'Evaluate Support Opportunities')}</span>
+                <span>{t('creator.phase4.supportView.evaluateButton', 'Evaluate Support Schemes')}</span>
               </>
             )}
           </button>
@@ -295,14 +287,13 @@ export function SupportPlanView({
   return (
     <div className="w-full space-y-6 animate-fadeIn">
       {/* Staleness Banner */}
+      {/* Staleness Banner */}
       {updateAvailable && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-800 dark:text-amber-300 text-xs">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <div>
-              <span className="font-semibold">Upstream project sources changed:</span>{' '}
-              <span className="font-mono">{changedSources.join(', ')}</span>. Refresh to incorporate
-              updated venture facts while preserving your choices.
+              <span className="font-semibold">{t('creator.phase4.supportView.upstreamChanged', 'Upstream project sources changed: {{sources}}. Refresh to incorporate updated venture facts while preserving your choices.', { sources: changedSources.join(', ') })}</span>
             </div>
           </div>
           <button
@@ -310,7 +301,7 @@ export function SupportPlanView({
             disabled={isLoading}
             className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs shrink-0 transition-colors shadow-sm self-start sm:self-auto"
           >
-            Refresh Now
+            {t('creator.phase4.supportView.refreshNow', 'Refresh Now')}
           </button>
         </div>
       )}
@@ -323,7 +314,7 @@ export function SupportPlanView({
               {t('creator.phase4.supportView.optionsToExplore', '{{count}} options to explore', { count: totalOptions })}
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground font-sans">
-              Based on your project, learning needs and current situation.
+              {t('creator.phase4.supportView.basedOnProject', 'Based on your project, learning needs and current situation.')}
             </p>
           </div>
           <Link
@@ -331,14 +322,14 @@ export function SupportPlanView({
             className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline transition-colors shrink-0 font-sans"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            <span>Update my details</span>
+            <span>{t('creator.phase4.supportView.updateMyDetails', 'Update my details')}</span>
           </Link>
         </div>
 
         {/* Tags Strip */}
         <div className="flex items-center gap-2 flex-wrap text-sm text-foreground font-medium font-sans">
           <span className="px-3 py-1 rounded-full bg-muted border border-border/60 text-xs sm:text-sm">
-            France
+            {t('creator.phase4.supportView.france', 'France')}
           </span>
           {profileSummary?.currentSituation && (
             <>
@@ -358,14 +349,13 @@ export function SupportPlanView({
           )}
           <span className="text-muted-foreground text-xs">•</span>
           <span className="px-3 py-1 rounded-full bg-muted border border-border/60 text-xs sm:text-sm">
-            Project in preparation
+            {t('creator.phase4.supportView.projectInPreparation', 'Project in preparation')}
           </span>
         </div>
 
         {/* Quiet Footnote */}
         <p className="text-xs text-muted-foreground pt-4 border-t border-border/50 font-sans leading-relaxed">
-          Each programme has its own conditions and application process. Saving an option does not
-          submit an application.
+          {t('creator.phase4.supportView.disclaimerNotice', 'Each programme has its own conditions and application process. Saving an option does not submit an application.')}
         </p>
       </section>
 
@@ -373,9 +363,9 @@ export function SupportPlanView({
       <section className="p-7 rounded-2xl bg-card border border-border/80 shadow-xs space-y-3">
         <div className="space-y-1">
           <h3 className="text-lg sm:text-xl font-bold text-foreground font-heading">
-            Where will you start your business?
+            {t('creator.phase4.supportView.locationTitle', 'Where will you start your business?')}
           </h3>
-          <p className="text-sm text-muted-foreground font-sans">This helps us check local support.</p>
+          <p className="text-sm text-muted-foreground font-sans">{t('creator.phase4.supportView.locationSubtitle', 'This helps us check local support.')}</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-md pt-1">
@@ -385,7 +375,7 @@ export function SupportPlanView({
               type="text"
               value={locationInput}
               onChange={(e) => setLocationInput(e.target.value)}
-              placeholder="City or postcode (e.g. Lyon, 69002)"
+              placeholder={t('creator.phase4.supportView.locationPlaceholder', 'City or postcode (e.g. Lyon, 69002)')}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-muted/40 border border-input text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
             />
           </div>
@@ -399,17 +389,16 @@ export function SupportPlanView({
             ) : locationSavedSuccess ? (
               <>
                 <Check className="w-4 h-4 text-emerald-500" />
-                <span>Saved ✓</span>
+                <span>{t('creator.phase4.supportView.savedBadge', 'Saved ✓')}</span>
               </>
             ) : (
-              <span>Save location</span>
+              <span>{t('creator.phase4.supportView.saveLocation', 'Save location')}</span>
             )}
           </button>
         </div>
 
         <p className="text-xs text-muted-foreground leading-relaxed font-sans pt-1">
-          Reused from your declared project country (France). Other details are requested only when
-          required by a specific programme.
+          {t('creator.phase4.supportView.locationReusedNote', 'Reused from your declared project country (France). Other details are requested only when required by a specific programme.')}
         </p>
       </section>
 
@@ -420,8 +409,7 @@ export function SupportPlanView({
           <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-semibold text-xs font-sans">
             <HelpCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <span>
-              Clarify Venture Facts to Unlock Deterministic Eligibility (
-              {plan.missingEligibilityFacts.length} Questions)
+              {t('creator.phase4.supportView.clarifyVentureFacts', 'Clarify Venture Facts to Unlock Deterministic Eligibility ({{count}} Questions)', { count: plan.missingEligibilityFacts.length })}
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -445,14 +433,14 @@ export function SupportPlanView({
                         disabled={answeringFactKey === fact.key}
                         className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors font-sans"
                       >
-                        Yes
+                        {t('creator.phase4.supportView.yes', 'Yes')}
                       </button>
                       <button
                         onClick={() => handleFactResponse(fact.key, 'false')}
                         disabled={answeringFactKey === fact.key}
                         className="px-3.5 py-1.5 rounded-lg bg-card hover:bg-muted border border-border text-foreground text-xs font-semibold transition-colors font-sans"
                       >
-                        No
+                        {t('creator.phase4.supportView.no', 'No')}
                       </button>
                     </>
                   ) : fact.allowedValues ? (
@@ -471,7 +459,7 @@ export function SupportPlanView({
                   ) : (
                     <input
                       type="text"
-                      placeholder="Enter answer..."
+                      placeholder={t('creator.phase4.supportView.enterAnswer', 'Enter answer...')}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && e.currentTarget.value) {
                           handleFactResponse(fact.key, e.currentTarget.value);
@@ -493,10 +481,10 @@ export function SupportPlanView({
           <div className="bg-card border border-border/80 rounded-2xl p-12 text-center text-muted-foreground space-y-2">
             <Compass className="w-8 h-8 mx-auto text-muted-foreground/60" />
             <div className="text-sm font-semibold text-foreground font-sans">
-              No matching support schemes identified yet.
+              {t('creator.phase4.supportView.noMatchingSchemes', 'No matching support schemes identified yet.')}
             </div>
             <div className="text-xs font-sans">
-              Update your declared location or refresh after completing your Skills Plan.
+              {t('creator.phase4.supportView.noMatchingDesc', 'Update your declared location or refresh after completing your Skills Plan.')}
             </div>
           </div>
         ) : (
@@ -557,7 +545,7 @@ export function SupportPlanView({
                     {isAwarded ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-light dark:bg-emerald-950/40 text-success-strong dark:text-emerald-400 border border-emerald-500/20">
                         <span className="w-1.5 h-1.5 rounded-full bg-success-strong dark:bg-emerald-400" />
-                        Awarded
+                        {t('creator.phase4.supportView.awarded', 'Awarded')}
                       </span>
                     ) : isEligibleStatutory ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-light dark:bg-emerald-950/40 text-success-strong dark:text-emerald-400 border border-emerald-500/20">
@@ -572,12 +560,12 @@ export function SupportPlanView({
                     ) : isNeedsCheck ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 dark:bg-amber-950/40 text-warning dark:text-amber-400 border border-amber-500/20">
                         <span className="w-1.5 h-1.5 rounded-full bg-warning dark:bg-amber-400" />
-                        A few details to check
+                        {t('creator.phase4.supportView.fewDetailsToCheck', 'A few details to check')}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/15 dark:bg-blue-950/40 text-info dark:text-blue-300 border border-blue-500/20">
                         <span className="w-1.5 h-1.5 rounded-full bg-info dark:bg-blue-400" />
-                        May fit your project
+                        {t('creator.phase4.supportView.mayFitProject', 'May fit your project')}
                       </span>
                     )}
 
@@ -592,7 +580,7 @@ export function SupportPlanView({
                   <button
                     onClick={() => toggleExpand(match.key, index)}
                     className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                    aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
+                    aria-label={isExpanded ? t('creator.phase4.supportView.collapseDetails', 'Collapse details') : t('creator.phase4.supportView.expandDetails', 'Expand details')}
                   >
                     {isExpanded ? (
                       <ChevronUp className="w-4 h-4" />
@@ -617,17 +605,17 @@ export function SupportPlanView({
                     </p>
                     <p className="text-sm text-muted-foreground font-sans leading-relaxed pt-0.5">
                       {match.whyMatched?.[0] ||
-                        'You are preparing an early-stage project and may benefit from guidance.'}
+                        t('creator.phase4.supportView.defaultWhyMatched', 'You are preparing an early-stage project and may benefit from guidance.')}
                     </p>
                     <div className="text-xs text-muted-foreground font-sans pt-1 flex items-center gap-2 flex-wrap">
                       <span>
-                        Official details:{' '}
+                        {t('creator.phase4.supportView.officialDetails', 'Official details:')}{' '}
                         <span className="font-medium text-foreground">
-                          {match.programmeOwner || match.managingAuthority || 'To be confirmed'}
+                          {match.programmeOwner || match.managingAuthority || t('creator.phase4.supportView.toBeConfirmed', 'To be confirmed')}
                         </span>
                       </span>
                       {match.catalogueSource && (
-                        <span className="text-muted-foreground/80 font-mono">via {match.catalogueSource}</span>
+                        <span className="text-muted-foreground/80 font-mono">{t('creator.phase4.supportView.via', 'via')} {match.catalogueSource}</span>
                       )}
                     </div>
                   </div>
@@ -644,14 +632,14 @@ export function SupportPlanView({
                         }`}
                       >
                         <Bookmark className="w-4 h-4" />
-                        <span>{isSaved ? 'Saved' : 'Save this option'}</span>
+                        <span>{isSaved ? t('creator.phase4.supportView.saved', 'Saved') : t('creator.phase4.supportView.saveThisOption', 'Save this option')}</span>
                       </button>
 
                       <button
                         onClick={() => toggleExpand(match.key, index)}
                         className="px-4 py-2 rounded-xl bg-card border border-border/80 text-primary hover:bg-muted font-medium text-sm transition-colors inline-flex items-center gap-1.5"
                       >
-                        <span>View details</span>
+                        <span>{t('creator.phase4.supportView.viewDetails', 'View details')}</span>
                         <ChevronDown className="w-4 h-4" />
                       </button>
                     </div>
@@ -665,7 +653,7 @@ export function SupportPlanView({
                     {(() => {
                       const matchChecklist = (plan.applicationChecklists || []).find(
                         (c) =>
-                          c.opportunityKey === match.key ||
+                           c.opportunityKey === match.key ||
                           c.opportunityId === match.opportunityId
                       );
 
@@ -704,64 +692,64 @@ export function SupportPlanView({
                       const mayNeedSummary =
                         matchChecklist && matchChecklist.items.length > 0
                           ? matchChecklist.items.map((i) => i.label).join(' • ')
-                          : 'A checklist based on the programme’s published requirements.';
+                          : t('creator.phase4.supportView.defaultChecklistSummary', 'A checklist based on the programme’s published requirements.');
 
                       return (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
                           {/* Left: What You Could Get */}
                           <div className="space-y-1">
                             <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                              WHAT YOU COULD GET
+                              {t('creator.phase4.supportView.whatYouCouldGet', 'WHAT YOU COULD GET')}
                             </span>
                             <p className="font-normal text-foreground leading-relaxed">
                               {match.supportValueDescription ||
-                                'Help with eligible project costs, depending on the programme’s rules.'}
+                                t('creator.phase4.supportView.defaultCouldGet', 'Help with eligible project costs, depending on the programme’s rules.')}
                             </p>
                           </div>
 
                           {/* Right: Why This May Fit */}
                           <div className="space-y-1">
                             <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                              WHY THIS MAY FIT
+                              {t('creator.phase4.supportView.whyThisMayFit', 'WHY THIS MAY FIT')}
                             </span>
                             <p className="font-normal text-foreground leading-relaxed">
                               {match.whyMatched && match.whyMatched.length > 0
                                 ? match.whyMatched.join(' ')
-                                : 'Aligned with your project goals, founder situation, and operational roadmap.'}
+                                : t('creator.phase4.supportView.defaultMayFit', 'Aligned with your project goals, founder situation, and operational roadmap.')}
                             </p>
                           </div>
 
                           {/* Left: What We Already Know */}
                           <div className="space-y-1">
                             <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                              WHAT WE ALREADY KNOW
+                              {t('creator.phase4.supportView.whatWeAlreadyKnow', 'WHAT WE ALREADY KNOW')}
                             </span>
                             <p className="font-normal text-foreground leading-relaxed">
-                              You are{' '}
+                              {t('creator.phase4.supportView.youAre', 'You are')}{' '}
                               {profileSummary?.currentSituation
                                 ? `a ${profileSummary.currentSituation.toLowerCase()}`
                                 : 'an entrepreneur'}{' '}
-                              preparing a project{locationInput ? ` in ${locationInput}` : ' in France'}.
+                              {t('creator.phase4.supportView.preparingProject', 'preparing a project')}{locationInput ? ` in ${locationInput}` : ' in France'}.
                             </p>
                           </div>
 
                           {/* Right: When To Apply */}
                           <div className="space-y-1">
                             <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                              WHEN TO APPLY
+                              {t('creator.phase4.supportView.whenToApply', 'WHEN TO APPLY')}
                             </span>
                             <p className="font-normal text-foreground leading-relaxed">
                               {match.timing?.timingNotes ||
                                 (match.timing?.rolling
-                                   ? 'Rolling programme — applications open year-round.'
-                                   : 'Application dates need checking.')}
+                                   ? t('creator.phase4.supportView.rollingProgramme', 'Rolling programme — applications open year-round.')
+                                   : t('creator.phase4.supportView.applicationDatesChecking', 'Application dates need checking.'))}
                             </p>
                           </div>
 
                           {/* Full Row: What To Check */}
                           <div className="space-y-2 sm:col-span-2 pt-1">
                             <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                              WHAT TO CHECK
+                              {t('creator.phase4.supportView.whatToCheck', 'WHAT TO CHECK')}
                             </span>
                             <ul className="space-y-2 pt-0.5">
                               {checks.map((checkItem, idx) => (
@@ -779,7 +767,7 @@ export function SupportPlanView({
                           {/* Left: What You May Need */}
                           <div className="space-y-1">
                             <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                              WHAT YOU MAY NEED
+                              {t('creator.phase4.supportView.whatYouMayNeed', 'WHAT YOU MAY NEED')}
                             </span>
                             <p className="font-normal text-foreground leading-relaxed">
                               {mayNeedSummary}
@@ -789,7 +777,7 @@ export function SupportPlanView({
                           {/* Right: Official Source */}
                           <div className="space-y-1">
                             <span className="text-xs font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                              OFFICIAL SOURCE
+                              {t('creator.phase4.supportView.officialSource', 'OFFICIAL SOURCE')}
                             </span>
                             <p className="font-normal text-muted-foreground leading-relaxed">
                               {match.officialUrl ? (
@@ -799,10 +787,10 @@ export function SupportPlanView({
                                   rel="noreferrer"
                                   className="text-primary hover:underline inline-flex items-center gap-1.5 font-medium"
                                 >
-                                  Official portal verified <ExternalLink className="w-3.5 h-3.5" />
+                                  {t('creator.phase4.supportView.officialPortalVerified', 'Official portal verified')} <ExternalLink className="w-3.5 h-3.5" />
                                 </a>
                               ) : (
-                                'Source to confirm · Official link not available yet.'
+                                t('creator.phase4.supportView.sourceToConfirm', 'Source to confirm · Official link not available yet.')
                               )}
                             </p>
                           </div>
@@ -815,11 +803,10 @@ export function SupportPlanView({
                       <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                       <div className="space-y-1">
                         <span className="text-xs font-mono font-bold uppercase tracking-wider text-foreground block">
-                          BEFORE YOU APPLY
+                          {t('creator.phase4.supportView.beforeYouApply', 'BEFORE YOU APPLY')}
                         </span>
                         <p className="text-sm text-muted-foreground leading-relaxed font-sans">
-                          When an official source is verified, you can prepare required documents and
-                          propose preparation tasks to your Operational Roadmap.
+                          {t('creator.phase4.supportView.beforeYouApplyDesc', 'When an official source is verified, you can prepare required documents and propose preparation tasks to your Operational Roadmap.')}
                         </p>
                       </div>
                     </div>
@@ -831,7 +818,7 @@ export function SupportPlanView({
                           onClick={() => setSelectedAuditMatch(match)}
                           className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium text-sm transition-colors"
                         >
-                          Check my details
+                          {t('creator.phase4.supportView.checkMyDetails', 'Check my details')}
                         </button>
                         <button
                           onClick={() => setSelectedAuditMatch(match)}
@@ -848,14 +835,14 @@ export function SupportPlanView({
                           }`}
                         >
                           <Bookmark className="w-4 h-4" />
-                          <span>{isSaved ? 'Saved' : 'Save this option'}</span>
+                          <span>{isSaved ? t('creator.phase4.supportView.saved', 'Saved') : t('creator.phase4.supportView.saveThisOption', 'Save this option')}</span>
                         </button>
                         <button
                           onClick={() => handleOpenStateModal(match)}
                           className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm font-medium transition-colors inline-flex items-center gap-1.5"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
-                          <span>Track Application</span>
+                          <span>{t('creator.phase4.supportView.trackApplication', 'Track Application')}</span>
                         </button>
                       </div>
 
@@ -867,7 +854,7 @@ export function SupportPlanView({
                             rel="noreferrer"
                             className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium transition-colors inline-flex items-center gap-1.5 shadow-sm"
                           >
-                            <span>Open official website</span>
+                            <span>{t('creator.phase4.supportView.openOfficialWebsite', 'Open official website')}</span>
                             <ExternalLink className="w-4 h-4" />
                           </a>
                         ) : (
@@ -876,10 +863,10 @@ export function SupportPlanView({
                               disabled
                               className="px-5 py-2.5 rounded-xl bg-muted text-muted-foreground text-sm font-medium cursor-not-allowed opacity-60"
                             >
-                              Open official website
+                              {t('creator.phase4.supportView.openOfficialWebsite', 'Open official website')}
                             </button>
                             <span className="text-xs text-muted-foreground">
-                              Official link not available yet.
+                              {t('creator.phase4.supportView.officialLinkNotAvailable', 'Official link not available yet.')}
                             </span>
                           </>
                         )}
@@ -904,14 +891,14 @@ export function SupportPlanView({
         </Link>
 
         <span className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
-          You can return to your saved support options later.
+          {t('creator.phase4.supportView.returnLaterNote', 'You can return to your saved support options later.')}
         </span>
 
         <Link
           href={`/dashboard/creator/phase-4/pricing?ideaId=${ideaId}`}
           className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm transition-all shadow-sm"
         >
-          <span>{t('creator.phase4.supportView.continueToPricing', 'Continue to Pricing & Revenue')}</span>
+          <span>{t('creator.phase4.supportView.continueToPricing', 'Continue to Pricing Strategy')}</span>
           <ArrowRight className="w-4 h-4" />
         </Link>
       </footer>
@@ -923,7 +910,7 @@ export function SupportPlanView({
             <div className="flex items-start justify-between border-b border-border pb-3">
               <div>
                 <span className="text-[10px] font-mono uppercase text-primary font-semibold tracking-wider">
-                  {t('creator.phase4.supportView.auditProvenance', 'Audit Provenance & Eligibility Trace')}
+                  {t('creator.phase4.supportView.auditProvenance', 'Eligibility & Statutory Audit Provenance')}
                 </span>
                 <h2 className="text-base font-bold text-foreground mt-0.5">
                   {selectedAuditMatch.name}
@@ -941,23 +928,23 @@ export function SupportPlanView({
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="bg-muted/40 p-3 rounded-xl border border-border">
                 <span className="text-muted-foreground block text-[10px] uppercase font-mono font-semibold">
-                  Programme Owner
+                  {t('creator.phase4.supportView.programmeOwner', 'Programme Owner')}
                 </span>
                 <span className="text-foreground font-medium">
-                  {selectedAuditMatch.programmeOwner || 'Public Authority'}
+                  {selectedAuditMatch.programmeOwner || t('creator.phase4.supportView.publicAuthority', 'Public Authority')}
                 </span>
               </div>
               <div className="bg-muted/40 p-3 rounded-xl border border-border">
                 <span className="text-muted-foreground block text-[10px] uppercase font-mono font-semibold">
-                  Managing Authority
+                  {t('creator.phase4.supportView.managingAuthority', 'Managing Authority')}
                 </span>
                 <span className="text-foreground font-medium">
-                  {selectedAuditMatch.managingAuthority || 'Regional/National Body'}
+                  {selectedAuditMatch.managingAuthority || t('creator.phase4.supportView.regionalNationalBody', 'Regional/National Body')}
                 </span>
               </div>
               <div className="bg-muted/40 p-3 rounded-xl border border-border">
                 <span className="text-muted-foreground block text-[10px] uppercase font-mono font-semibold">
-                  Catalogue Source
+                  {t('creator.phase4.supportView.catalogueSource', 'Catalogue Source')}
                 </span>
                 <span className="text-foreground font-medium">
                   {selectedAuditMatch.catalogueSource}
@@ -965,7 +952,7 @@ export function SupportPlanView({
               </div>
               <div className="bg-muted/40 p-3 rounded-xl border border-border">
                 <span className="text-muted-foreground block text-[10px] uppercase font-mono font-semibold">
-                  Selection Dimension
+                  {t('creator.phase4.supportView.selectionDimension', 'Selection Dimension')}
                 </span>
                 <span className="text-foreground font-medium">
                   {selectedAuditMatch.selectionMode}
@@ -989,7 +976,7 @@ export function SupportPlanView({
                 selectedAuditMatch.conditionsMissing.length > 0 && (
                   <>
                     <h4 className="font-bold text-amber-600 dark:text-amber-400 pt-2">
-                      Missing / Information Needed:
+                      {t('creator.phase4.supportView.missingInfoNeeded', 'Missing / Information Needed:')}
                     </h4>
                     <div className="space-y-1.5 pl-2">
                       {selectedAuditMatch.conditionsMissing.map((c, i) => (
@@ -1005,7 +992,7 @@ export function SupportPlanView({
               {selectedAuditMatch.conditionsFailed &&
                 selectedAuditMatch.conditionsFailed.length > 0 && (
                   <>
-                    <h4 className="font-bold text-destructive pt-2">Ineligible Conditions:</h4>
+                    <h4 className="font-bold text-destructive pt-2">{t('creator.phase4.supportView.ineligibleConditions', 'Ineligible Conditions:')}</h4>
                     <div className="space-y-1.5 pl-2">
                       {selectedAuditMatch.conditionsFailed.map((c, i) => (
                         <div key={i} className="flex items-center gap-2 text-destructive font-medium">
@@ -1027,7 +1014,7 @@ export function SupportPlanView({
               return (
                 <div className="space-y-2 text-xs border-t border-border pt-3">
                   <h4 className="font-bold text-foreground">
-                    Application Checklist & MBC Artifact Reuse:
+                    {t('creator.phase4.supportView.applicationChecklist', 'Application Checklist & MBC Artifact Reuse:')}
                   </h4>
                   <div className="space-y-2">
                     {checklist.items.map((item) => (
@@ -1039,7 +1026,7 @@ export function SupportPlanView({
                           <div className="text-foreground font-medium">{item.label}</div>
                           {item.existingArtifactReference && (
                             <div className="text-[11px] text-primary mt-0.5 font-medium">
-                              Reuses: {item.existingArtifactReference}
+                              {t('creator.phase4.supportView.reuses', 'Reuses:')} {item.existingArtifactReference}
                             </div>
                           )}
                         </div>
@@ -1064,7 +1051,7 @@ export function SupportPlanView({
                 onClick={() => setSelectedAuditMatch(null)}
                 className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs shadow"
               >
-                Close Audit
+                {t('creator.phase4.supportView.closeAudit', 'Close Audit')}
               </button>
             </div>
           </div>
@@ -1075,36 +1062,35 @@ export function SupportPlanView({
       {editingMatchKey && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl animate-in fade-in-50 zoom-in-95">
-            <h3 className="text-base font-bold text-foreground">Track Application Progress</h3>
+            <h3 className="text-base font-bold text-foreground">{t('creator.phase4.supportView.trackApplicationProgress', 'Track Application Progress')}</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Record your personal progress for this support opportunity. Your progress is preserved
-              across catalog refreshes.
+              {t('creator.phase4.supportView.trackProgressDesc', 'Record your personal progress for this support opportunity. Your progress is preserved across catalog refreshes.')}
             </p>
 
             <div className="space-y-3 pt-1">
               <label className="text-xs font-semibold text-foreground block">
-                Application State
+                {t('creator.phase4.supportView.applicationState', 'Application State')}
               </label>
               <select
                 value={targetState}
                 onChange={(e) => setTargetState(e.target.value as FounderApplicationState)}
                 className="w-full bg-muted/40 border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="NotStarted">Not Started</option>
-                <option value="Reviewing">Reviewing Guidelines</option>
-                <option value="Preparing">Preparing Dossier</option>
-                <option value="ReadyToApply">Ready to Submit</option>
-                <option value="Applied">Application Submitted</option>
-                <option value="Awarded">Awarded / Approved</option>
-                <option value="Rejected">Rejected</option>
-                <option value="Skipped">Skipped / Not Relevant</option>
+                <option value="NotStarted">{t('creator.phase4.supportView.statusNotStarted', 'Not Started')}</option>
+                <option value="Reviewing">{t('creator.phase4.supportView.statusReviewingGuidelines', 'Reviewing Guidelines')}</option>
+                <option value="Preparing">{t('creator.phase4.supportView.statusPreparingDossier', 'Preparing Dossier')}</option>
+                <option value="ReadyToApply">{t('creator.phase4.supportView.statusReadyToSubmit', 'Ready to Submit')}</option>
+                <option value="Applied">{t('creator.phase4.supportView.statusApplicationSubmitted', 'Application Submitted')}</option>
+                <option value="Awarded">{t('creator.phase4.supportView.statusAwardedApproved', 'Awarded / Approved')}</option>
+                <option value="Rejected">{t('creator.phase4.supportView.statusRejected', 'Rejected')}</option>
+                <option value="Skipped">{t('creator.phase4.supportView.statusSkipped', 'Skipped / Not Relevant')}</option>
               </select>
 
-              <label className="text-xs font-semibold text-foreground block">Founder Notes</label>
+              <label className="text-xs font-semibold text-foreground block">{t('creator.phase4.supportView.founderNotes', 'Founder Notes')}</label>
               <textarea
                 value={founderNotesInput}
                 onChange={(e) => setFounderNotesInput(e.target.value)}
-                placeholder="e.g. Discussed with advisor, application deadline next month..."
+                placeholder={t('creator.phase4.supportView.founderNotesPlaceholder', 'e.g. Discussed with advisor, application deadline next month...')}
                 className="w-full bg-muted/40 border border-border rounded-xl p-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-h-[80px]"
               />
             </div>
@@ -1114,14 +1100,14 @@ export function SupportPlanView({
                 onClick={() => setEditingMatchKey(null)}
                 className="px-4 py-2 rounded-xl text-muted-foreground hover:text-foreground text-xs font-semibold transition-colors"
               >
-                Cancel
+                {t('creator.phase4.supportView.cancel', 'Cancel')}
               </button>
               <button
                 onClick={() => handleSaveState(editingMatchKey)}
                 disabled={isSubmittingState}
                 className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all shadow disabled:opacity-50"
               >
-                {isSubmittingState ? 'Saving...' : 'Save Progress'}
+                {isSubmittingState ? t('creator.phase4.supportView.saving', 'Saving...') : t('creator.phase4.supportView.saveProgress', 'Save Progress')}
               </button>
             </div>
           </div>

@@ -224,7 +224,7 @@ export function OperationalRoadmapView({
           {isGenerating ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Generating Roadmap…</span>
+              <span>{t('creator.phase4.roadmapView.generatingRoadmap', 'Generating Roadmap…')}</span>
             </>
           ) : (
             <>
@@ -279,7 +279,7 @@ export function OperationalRoadmapView({
           <div className="flex items-start gap-2.5">
             <Info className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold text-xs text-foreground">Action Required</div>
+              <div className="font-semibold text-xs text-foreground">{t('creator.phase4.roadmapView.actionRequired', 'Action Required')}</div>
               <div className="text-xs text-muted-foreground mt-0.5">{error}</div>
             </div>
           </div>
@@ -288,7 +288,7 @@ export function OperationalRoadmapView({
               onClick={onClearError}
               className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors shrink-0 px-2.5 py-1 rounded bg-muted/80"
             >
-              Dismiss
+              {t('creator.phase4.roadmapView.dismiss', 'Dismiss')}
             </button>
           )}
         </div>
@@ -336,7 +336,7 @@ export function OperationalRoadmapView({
             </div>
             <div className="flex items-center justify-between text-xs pt-0.5">
               <span className="text-muted-foreground">
-                Tier: <strong className="text-foreground font-medium">{capacityTier}</strong>
+                {t('creator.phase4.roadmapView.tierLabel', 'Tier:')} <strong className="text-foreground font-medium">{capacityTier}</strong>
               </span>
               <button
                 onClick={() => {
@@ -359,21 +359,24 @@ export function OperationalRoadmapView({
             <div className="text-xl sm:text-2xl font-bold text-foreground">
               <span className="font-mono">{nowTasksCount}</span>{' '}
               <span className="text-sm font-normal text-muted-foreground">
-                {nowTasksCount === 1 ? 'task' : 'tasks'}
+                {nowTasksCount === 1
+                  ? t('creator.phase4.roadmapView.taskSingular', 'task')
+                  : t('creator.phase4.roadmapView.taskPlural', 'tasks')}
               </span>
             </div>
             <div className="text-xs text-muted-foreground pt-0.5">
               {knownEffortHours !== null ? (
                 <>
-                  <span className="font-mono font-medium text-foreground">~{knownEffortHours} hrs</span> known effort
+                  <span className="font-mono font-medium text-foreground">{`~${knownEffortHours} hrs`}</span>{' '}
+                  {t('creator.phase4.roadmapView.knownEffortHours', '{{count}} hrs known effort', { count: knownEffortHours }).replace(/^[~0-9\s]*hrs?\s*/i, '')}
                   {unestimatedTasksCount > 0 && (
                     <span className="text-muted-foreground ml-1">
-                      (+{unestimatedTasksCount} unestimated)
+                      {t('creator.phase4.roadmapView.unestimatedTasks', '({{count}} unestimated)', { count: unestimatedTasksCount })}
                     </span>
                   )}
                 </>
               ) : (
-                <span className="italic">Effort unestimated</span>
+                <span className="italic">{t('creator.phase4.roadmapView.effortUnestimated', 'Effort unestimated')}</span>
               )}
             </div>
           </div>
@@ -395,7 +398,7 @@ export function OperationalRoadmapView({
               </span>
             </div>
             <div className="text-xs text-muted-foreground pt-0.5">
-              {totalTasks} total tasks across 6 stages
+              {t('creator.phase4.roadmapView.tasksAcrossStages', '{{count}} total tasks across 6 stages', { count: totalTasks })}
             </div>
           </div>
         </div>
@@ -407,7 +410,7 @@ export function OperationalRoadmapView({
             <span className="leading-relaxed">{capacityMessage}</span>
           </div>
           <div className="shrink-0 font-mono text-[11px] text-muted-foreground">
-            Max {maxNowTasks} Now tasks limit
+            {t('creator.phase4.roadmapView.maxNowTasksLimit', 'Max {{count}} Now tasks limit', { count: maxNowTasks })}
           </div>
         </div>
       </div>
@@ -422,11 +425,11 @@ export function OperationalRoadmapView({
               </span>
               {nextBestAction.blocking && (
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                  Blocking
+                  {t('creator.phase4.roadmapView.blockingBadge', 'Blocking')}
                 </span>
               )}
               <span className="text-xs text-muted-foreground">
-                Priority: <strong className="text-foreground">{nextBestAction.priority}</strong>
+                {t('creator.phase4.roadmapView.priorityPrefix', 'Priority:')} <strong className="text-foreground">{nextBestAction.priority}</strong>
               </span>
             </div>
 
@@ -470,10 +473,13 @@ export function OperationalRoadmapView({
                     className={`text-badge font-semibold px-2 py-0.5 rounded-full border ${config.badgeVariant}`}
                   >
                     <span className="font-mono">{stageTasks.length}</span>{' '}
-                    {stageTasks.length === 1 ? 'task' : 'tasks'}
+                    {stageTasks.length === 1
+                      ? t('creator.phase4.roadmapView.taskSingular', 'task')
+                      : t('creator.phase4.roadmapView.taskPlural', 'tasks')}
                   </span>
                   <span className="hidden sm:inline-block text-xs text-muted-foreground">
-                    • {config.subtitle}
+                    {'• '}
+                    {config.subtitle}
                   </span>
                 </div>
               </div>
@@ -481,7 +487,7 @@ export function OperationalRoadmapView({
               {/* Compact Task Rows */}
               {stageTasks.length === 0 ? (
                 <div className="py-4 text-center text-xs text-muted-foreground italic">
-                  No tasks currently scheduled in this stage.
+                  {t('creator.phase4.roadmapView.emptyStage', 'No tasks currently scheduled in this stage.')}
                 </div>
               ) : (
                 <div className="divide-y divide-border/60">
@@ -530,7 +536,7 @@ export function OperationalRoadmapView({
             {isActivating ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Activating…</span>
+                <span>{t('creator.phase4.roadmapView.activating', 'Activating…')}</span>
               </>
             ) : (
               <>
@@ -556,18 +562,20 @@ export function OperationalRoadmapView({
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-base font-bold text-foreground">Review Upstream Changes</h3>
+              <h3 className="text-base font-bold text-foreground">
+                {t('creator.phase4.roadmapView.reviewUpstreamChanges', 'Review Upstream Changes')}
+              </h3>
               <button
                 onClick={() => setShowReviewModal(false)}
                 className="text-muted-foreground hover:text-foreground text-xs font-semibold"
               >
-                Close
+                {t('creator.phase4.roadmapView.close', 'Close')}
               </button>
             </div>
 
             <div className="space-y-3 text-xs text-muted-foreground leading-relaxed">
               <p>
-                The following upstream project records have been updated since this roadmap was generated:
+                {t('creator.phase4.roadmapView.upstreamUpdatedIntro', 'The following upstream project records have been updated since this roadmap was generated:')}
               </p>
               <div className="p-3 rounded-xl bg-muted/50 border border-border space-y-1.5">
                 {changedSources.map((src, i) => (
@@ -578,7 +586,7 @@ export function OperationalRoadmapView({
                 ))}
               </div>
               <p>
-                Refreshing will recalculate task prioritization while <strong>preserving all your custom task edits, statuses, and notes</strong>.
+                {t('creator.phase4.roadmapView.refreshPreservingNote', 'Refreshing will recalculate task prioritization while preserving all your custom task edits, statuses, and notes.')}
               </p>
             </div>
 
@@ -587,7 +595,7 @@ export function OperationalRoadmapView({
                 onClick={() => setShowReviewModal(false)}
                 className="px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
               >
-                Cancel
+                {t('creator.phase4.roadmapView.cancel', 'Cancel')}
               </button>
               <button
                 onClick={async () => {
@@ -596,7 +604,7 @@ export function OperationalRoadmapView({
                 }}
                 className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-lg transition-all shadow"
               >
-                Refresh Roadmap
+                {t('creator.phase4.roadmapView.refreshRoadmap', 'Refresh Roadmap')}
               </button>
             </div>
           </div>
@@ -608,18 +616,20 @@ export function OperationalRoadmapView({
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-base font-bold text-foreground">Adjust Weekly Availability</h3>
+              <h3 className="text-base font-bold text-foreground">
+                {t('creator.phase4.roadmapView.adjustWeeklyAvailability', 'Adjust Weekly Availability')}
+              </h3>
               <button
                 onClick={() => setShowAvailabilityModal(false)}
                 className="text-muted-foreground hover:text-foreground text-xs font-semibold"
               >
-                Close
+                {t('creator.phase4.roadmapView.close', 'Close')}
               </button>
             </div>
 
             <div className="space-y-3">
               <p className="text-xs text-muted-foreground">
-                Select your weekly availability. MBC will automatically adapt the task pacing in your Now stage to avoid overload.
+                {t('creator.phase4.roadmapView.adjustAvailabilityIntro', 'Select your weekly availability. MBC will automatically adapt the task pacing in your Now stage to avoid overload.')}
               </p>
 
               <div className="space-y-2">
@@ -654,7 +664,7 @@ export function OperationalRoadmapView({
                 onClick={() => setShowAvailabilityModal(false)}
                 className="px-4 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
               >
-                Cancel
+                {t('creator.phase4.roadmapView.cancel', 'Cancel')}
               </button>
               <button
                 onClick={async () => {
@@ -663,7 +673,7 @@ export function OperationalRoadmapView({
                 }}
                 className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-lg transition-all shadow"
               >
-                Save & Update Roadmap
+                {t('creator.phase4.roadmapView.saveAndUpdateRoadmap', 'Save & Update Roadmap')}
               </button>
             </div>
           </div>
@@ -768,7 +778,7 @@ function TaskRow({
               className="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
               title={`Blocks ${downstreamCount} downstream task(s): ${task.unblocks?.join(', ') ?? ''}`}
             >
-              Blocks {downstreamCount} {downstreamCount === 1 ? 'task' : 'tasks'}
+              {t('creator.phase4.roadmapView.blocksCount', 'Blocks {{count}}', { count: downstreamCount })}
             </span>
           )}
 
@@ -778,7 +788,7 @@ function TaskRow({
               className="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20"
               title={`Blocked by prerequisite: ${incompletePrereqs.map((p) => p.title).join(', ')}`}
             >
-              Blocked by {incompletePrereqs.length} {incompletePrereqs.length === 1 ? 'prereq' : 'prereqs'}
+              {t('creator.phase4.roadmapView.blockedByCount', 'Blocked by {{count}}', { count: incompletePrereqs.length })}
             </span>
           )}
         </div>
@@ -792,7 +802,7 @@ function TaskRow({
           <span className="hidden sm:inline-block text-xs text-muted-foreground font-mono">
             {task.estimatedEffortHours
               ? `~${task.estimatedEffortHours} hrs`
-              : `Effort: ${task.estimatedEffort || 'Medium'}`}
+              : `${t('creator.phase4.roadmapView.effortLabel', 'Effort:')} ${task.estimatedEffort || 'Medium'}`}
           </span>
 
           {/* Status Chip */}
@@ -804,7 +814,11 @@ function TaskRow({
               e.stopPropagation();
               onToggleExpand();
             }}
-            aria-label={isExpanded ? 'Collapse task details' : 'Expand task details'}
+            aria-label={
+              isExpanded
+                ? t('creator.phase4.roadmapView.collapseDetails', 'Collapse task details')
+                : t('creator.phase4.roadmapView.expandDetails', 'Expand task details')
+            }
             className="p-1 text-muted-foreground group-hover:text-foreground transition-colors"
           >
             {isExpanded ? (
@@ -851,22 +865,22 @@ function TaskRow({
               </div>
               <div className="text-muted-foreground pl-5 space-y-0.5">
                 <div>
-                  Effort:{' '}
+                  {t('creator.phase4.roadmapView.effortLabel', 'Effort:')}{' '}
                   <span className="font-mono font-medium text-foreground">
                     {task.estimatedEffortHours
                       ? `~${task.estimatedEffortHours} hrs (${task.estimatedEffort || 'Medium'})`
-                      : `Effort: ${task.estimatedEffort || 'Medium'}`}
+                      : `${t('creator.phase4.roadmapView.effortLabel', 'Effort:')} ${task.estimatedEffort || 'Medium'}`}
                   </span>
                 </div>
                 {task.estimatedDuration && (
                   <div className="text-[11px]">
-                    Turnaround:{' '}
+                    {t('creator.phase4.roadmapView.turnaroundLabel', 'Turnaround:')}{' '}
                     <span className="font-medium text-foreground">{task.estimatedDuration}</span>
                   </div>
                 )}
                 {task.targetWindow && (
                   <div className="text-[11px]">
-                    Target:{' '}
+                    {t('creator.phase4.roadmapView.targetLabel', 'Target:')}{' '}
                     <span className="font-medium text-foreground">{task.targetWindow}</span>
                   </div>
                 )}
@@ -883,7 +897,7 @@ function TaskRow({
                   <div className="space-y-1">
                     {isBlockedByPrereq && (
                       <div className="text-[11px] text-rose-500 font-medium pb-0.5">
-                        Blocked by {incompletePrereqs.length} prerequisite(s):
+                        {t('creator.phase4.roadmapView.blockedByPrereqs', 'Blocked by {{count}} prerequisite(s):', { count: incompletePrereqs.length })}
                       </div>
                     )}
                     <div className="flex flex-wrap gap-1.5">
@@ -905,7 +919,7 @@ function TaskRow({
                     </div>
                   </div>
                 ) : (
-                  <span className="text-muted-foreground italic">None (Ready to start)</span>
+                  <span className="text-muted-foreground italic">{t('creator.phase4.roadmapView.noPrereqs', 'None (Ready to start)')}</span>
                 )}
               </div>
             </div>
@@ -919,7 +933,7 @@ function TaskRow({
                 {task.unblocks && task.unblocks.length > 0 ? (
                   <div className="space-y-1">
                     <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium pb-0.5">
-                      Blocks {task.unblocks.length} task(s) until complete:
+                      {t('creator.phase4.roadmapView.blocksTasksUntilComplete', 'Blocks {{count}} task(s) until complete:', { count: task.unblocks.length })}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {task.unblocks.map((unb, idx) => (
@@ -933,7 +947,7 @@ function TaskRow({
                     </div>
                   </div>
                 ) : (
-                  <span className="text-muted-foreground italic">No downstream dependencies</span>
+                  <span className="text-muted-foreground italic">{t('creator.phase4.roadmapView.noDownstreamDeps', 'No downstream dependencies')}</span>
                 )}
               </div>
             </div>
@@ -942,7 +956,7 @@ function TaskRow({
           {/* Founder Notes if any */}
           {task.founderNotes && !isEditing && (
             <div className="p-2.5 rounded-lg bg-card border border-border/80 text-xs">
-              <span className="font-semibold text-foreground mr-1">Founder Notes:</span>
+              <span className="font-semibold text-foreground mr-1">{t('creator.phase4.roadmapView.founderNotesLabel', 'Founder Notes:')}</span>
               <span className="text-muted-foreground italic">{task.founderNotes}</span>
             </div>
           )}
@@ -950,30 +964,30 @@ function TaskRow({
           {/* Inline Editing Form */}
           {isEditing && (
             <div className="p-3.5 rounded-xl bg-card border border-border space-y-3 mt-2">
-              <div className="font-semibold text-foreground text-xs">Adjust Task Details</div>
+              <div className="font-semibold text-foreground text-xs">{t('creator.phase4.roadmapView.adjustTaskDetails', 'Adjust Task Details')}</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[11px] text-muted-foreground font-medium">Status</label>
+                  <label className="text-[11px] text-muted-foreground font-medium">{t('creator.phase4.roadmapView.statusLabel', 'Status')}</label>
                   <select
                     value={editedStatus}
                     onChange={(e) => setEditedStatus(e.target.value as RoadmapTaskStatus)}
                     className="w-full mt-1 px-2.5 py-1.5 text-xs rounded-lg border border-border bg-card text-foreground"
                   >
-                    <option value="NotStarted">Not Started</option>
-                    <option value="InProgress">In Progress</option>
-                    <option value="Blocked">Blocked</option>
-                    <option value="Done">Done</option>
-                    <option value="NeedsReview">Needs Review</option>
-                    <option value="Skipped">Skipped</option>
+                    <option value="NotStarted">{t('creator.phase4.roadmapView.statusNotStarted', 'Not Started')}</option>
+                    <option value="InProgress">{t('creator.phase4.roadmapView.statusInProgress', 'In Progress')}</option>
+                    <option value="Blocked">{t('creator.phase4.roadmapView.statusBlocked', 'Blocked')}</option>
+                    <option value="Done">{t('creator.phase4.roadmapView.statusDone', 'Done')}</option>
+                    <option value="NeedsReview">{t('creator.phase4.roadmapView.statusNeedsReview', 'Needs Review')}</option>
+                    <option value="Skipped">{t('creator.phase4.roadmapView.statusSkipped', 'Skipped')}</option>
                   </select>
                 </div>
                 <div>
                   <label className="text-[11px] text-muted-foreground font-medium">
-                    Target Window
+                    {t('creator.phase4.roadmapView.targetWindowLabel', 'Target Window')}
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Month 1, Week 2"
+                    placeholder={t('creator.phase4.roadmapView.targetWindowPlaceholder', 'e.g. Month 1, Week 2')}
                     value={editedTargetWindow}
                     onChange={(e) => setEditedTargetWindow(e.target.value)}
                     className="w-full mt-1 px-2.5 py-1.5 text-xs rounded-lg border border-border bg-card text-foreground"
@@ -982,11 +996,11 @@ function TaskRow({
               </div>
               <div>
                 <label className="text-[11px] text-muted-foreground font-medium">
-                  Founder Notes
+                  {t('creator.phase4.roadmapView.founderNotesLabel', 'Founder Notes:')}
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Add personal notes, contacts, or requirements for this task..."
+                  placeholder={t('creator.phase4.roadmapView.founderNotesPlaceholder', 'Add personal notes, contacts, or requirements for this task...')}
                   value={editedNotes}
                   onChange={(e) => setEditedNotes(e.target.value)}
                   className="w-full mt-1 p-2 text-xs rounded-lg border border-border bg-card text-foreground resize-none"
@@ -997,7 +1011,7 @@ function TaskRow({
                   onClick={() => setIsEditing(false)}
                   className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  Cancel
+                  {t('creator.phase4.roadmapView.cancel', 'Cancel')}
                 </button>
                 <button
                   onClick={handleSaveAdjustment}
@@ -1024,7 +1038,7 @@ function TaskRow({
                 ))
               ) : (
                 <span className="px-2 py-0.5 rounded-md bg-card border border-border text-[11px] text-muted-foreground font-mono">
-                  Construction Snapshot
+                  {t('creator.phase4.roadmapView.constructionSnapshot', 'Construction Snapshot')}
                 </span>
               )}
             </div>
@@ -1046,70 +1060,72 @@ function TaskRow({
 }
 
 function TaskPriorityBadge({ priority }: { priority: RoadmapTaskPriority }) {
+  const { t } = useTranslation();
   switch (priority) {
     case 'Critical':
       return (
         <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">
-          Critical
+          {t('creator.phase4.roadmapView.priorityCritical', 'Critical')}
         </span>
       );
     case 'High':
       return (
         <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-          High
+          {t('creator.phase4.roadmapView.priorityHigh', 'High')}
         </span>
       );
     case 'Medium':
       return (
         <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-          Medium
+          {t('creator.phase4.roadmapView.priorityMedium', 'Medium')}
         </span>
       );
     case 'Low':
       return (
         <span className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded bg-muted/60 text-muted-foreground">
-          Low
+          {t('creator.phase4.roadmapView.priorityLow', 'Low')}
         </span>
       );
   }
 }
 
 function TaskStatusChip({ status }: { status: RoadmapTaskStatus }) {
+  const { t } = useTranslation();
   switch (status) {
     case 'Done':
       return (
         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-          Done
+          {t('creator.phase4.roadmapView.statusDone', 'Done')}
         </span>
       );
     case 'InProgress':
       return (
         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
-          In Progress
+          {t('creator.phase4.roadmapView.statusInProgress', 'In Progress')}
         </span>
       );
     case 'Blocked':
       return (
         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
-          Blocked
+          {t('creator.phase4.roadmapView.statusBlocked', 'Blocked')}
         </span>
       );
     case 'NeedsReview':
       return (
         <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-          Needs Review
+          {t('creator.phase4.roadmapView.statusNeedsReview', 'Needs Review')}
         </span>
       );
     case 'Skipped':
       return (
         <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
-          Skipped
+          {t('creator.phase4.roadmapView.statusSkipped', 'Skipped')}
         </span>
       );
     default:
       return (
         <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground border border-border/60">
-          Not Started
+          {t('creator.phase4.roadmapView.statusNotStarted', 'Not Started')}
         </span>
       );
   }
