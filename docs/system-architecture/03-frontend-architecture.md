@@ -573,11 +573,23 @@ The internationalization system provides native bilingual support for **English 
   - `src/components/creator/formation/FormationFigmaFlow.tsx`: 12-section formation flow covering starting mode (solo/team/undecided), SASU/SAS/SARL structural comparisons, cap table ownership split, leadership role, starting capital, and skills assessment.
   - `phase-3/business-plan/page.tsx`: Step 3.6 12-Chapter Executive Business Plan generation, timeout & credit safeguards, version tracking, and PDF export (`creator.phase3.businessPlan.*`).
   - `src/components/creator/business-plan/BusinessPlanFigmaFlow.tsx`: Complete 12-chapter continuous document view with chapter titles, reviewed badges & buttons, source attribution chips, inline section edit dialog, and footer journey navigation (`creator.phase3.businessPlan.flow.*`).
-  - `src/components/creator/readiness/InvestorReadinessFigmaFlow.tsx`: Step 3.7 Institutional Investor Readiness Audit with 100-point score breakdown across 5 dimensions, gap recommendations, document vault, and Phase 4 unlock (`creator.phase3.readiness.*`).
-- **Phase 4: Construction Engine & Snapshot (`src/app/dashboard/creator/phase-4/page.tsx`)**: Localized construction snapshot header, status pillars, and execution overview.
+- **Phase 4: Construction Architecture & Full Launch Preparation**: 100% bilingual localization across all 9 steps, views, gate guards, and route wrappers:
+  - `Phase4ProfileGuard.tsx`: Pre-flight personalization gate verifying HumainX founder competencies, current employment situation, and Phase 3 completion (`creator.phase4.profileGuard.*`).
+  - `phase-4/page.tsx` & `ConstructionSnapshotView.tsx`: Step 4.1 Construction Snapshot with 6 status pillars, execution overview, update banners, and localized fallback (`creator.phase4.snapshotView.*`).
+  - `phase-4/roadmap/page.tsx` & `OperationalRoadmapView.tsx`: Step 4.2 Operational Roadmap with availability-paced multi-phase scheduling, task dependencies, inline editing, and localized fallback (`creator.phase4.roadmapView.*`, `creator.phase4.roadmapPage.*`).
+  - `phase-4/needs/page.tsx` & `NeedsAnalysisView.tsx`: Step 4.3 Needs & Requirements Engine with 6 category breakdowns, inline need confirmation, deferral, and localized fallback (`creator.phase4.needsView.*`, `creator.phase4.needsPage.*`).
+  - `phase-4/skills/page.tsx` & `SkillsPlanView.tsx`: Step 4.4 Skills & Training Plan with Learn · Delegate · Verify engine, topic taxonomies, hour estimates, and localized fallback (`creator.phase4.skillsView.*`, `creator.phase4.skillsPage.*`).
+  - `phase-4/support/page.tsx` & `SupportPlanView.tsx`: Step 4.5 Aids, Grants & Public Support Engine with deterministic eligibility matching, fact verification, and localized fallback (`creator.phase4.supportView.*`, `creator.phase4.supportPage.*`).
+  - `phase-4/pricing/page.tsx` & `PricingStrategyView.tsx`: Step 4.6 Pricing & Revenue Model Engine with packaging, price floors, HT/TTC presentation, immediate recalculation, and localized fallback (`creator.phase4.pricingView.*`, `creator.phase4.pricingPage.*`).
+  - `phase-4/gtm/page.tsx` & `GtmStrategyView.tsx`: Step 4.7 Go-To-Market & Launch Strategy Engine with channel portfolio, founder capacity load, experiment tracking, and localized fallback (`creator.phase4.gtmView.*`, `creator.phase4.gtmPage.*`).
+  - `phase-4/assets/page.tsx` & `LaunchAssetsView.tsx`: Step 4.8 One-Page Website & Launch Assets Engine with live iframe previews, versioning, source HTML export, copy-to-clipboard sharing, and localized fallback (`creator.phase4.launchAssetsView.*`, `creator.phase4.assetsPage.*`).
+  - `phase-4/readiness/page.tsx` & `ConstructionReadinessView.tsx`: Step 4.9 Construction Readiness Review & Personalization Gate with 3 core principles, personal commitment sign-off, version locking, and localized fallback (`creator.phase4.readinessView.*`, `creator.phase4.readinessPage.*`).
+  - **Route Wrapper Suspense Architecture**: Dedicated micro-client fallback components utilizing `useTranslation()` across all 9 route wrappers, eliminating raw unlocalized loading strings.
 - **Creator Sidebar Navigation (`src/lib/menu.ts`)**: **Deliberately Deferred**. Per user explicit instruction, Creator sidebar menus remain in English during the initial phase and will be localized in a subsequent dedicated pass.
 - **Landing Page & Marketing Surfaces**: Queued for execution following the Creator dashboard audit.
-- **Testing Integrity**: Tested via `src/__tests__/creator/` (17/17 test suites, 201/201 tests PASS) including dedicated i18n switcher suite `src/__tests__/creator/creator-i18n.test.tsx` verifying live bilingual toggling across Phases 1–4.
+- **Testing & Translation Integrity**:
+  - Full dictionary symmetry between `src/locales/en/creator.json` and `src/locales/fr/creator.json` (0 missing keys in either direction).
+  - Tested via `src/__tests__/creator/` (17/17 test suites, 201/201 tests PASS) including dedicated i18n switcher suite `src/__tests__/creator/creator-i18n.test.tsx` verifying live bilingual toggling across Phases 1–4.
 
 
 

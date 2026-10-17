@@ -1006,25 +1006,44 @@
       "attention": "Needs Attention"
     },
     "proceedToCrossroads": "Proceed to The Crossroads (Phase 5)",
+    "error": "Error",
+    "notice": "Notice",
+    "dismiss": "Dismiss",
     "roadmapPage": {
       "stepBadge": "PHASE 4 · STEP 4.2",
       "title": "Operational Roadmap",
-      "subtitle": "Turn your project requirements into a practical plan that fits your availability."
+      "subtitle": "Turn your project requirements into a practical plan that fits your availability.",
+      "loading": "Loading Operational Roadmap..."
     },
     "needsPage": {
       "stepBadge": "PHASE 4 · STEP 4.3",
       "title": "Needs & Requirements",
-      "subtitle": "Review what your project needs, what you already have, and what remains to be covered."
+      "subtitle": "Review what your project needs, what you already have, and what remains to be covered.",
+      "loading": "Loading Needs & Requirements..."
     },
     "skillsPage": {
       "stepBadge": "PHASE 4 · STEP 4.4",
       "title": "Skills & Training Plan",
-      "subtitle": "Map capabilities to learn, delegate, or verify based on your background, project scope, and weekly time."
+      "subtitle": "Map capabilities to learn, delegate, or verify based on your background, project scope, and weekly time.",
+      "loading": "Loading Skills & Training Plan..."
     },
     "supportPage": {
       "stepBadge": "PHASE 4 · STEP 4.5",
       "title": "Aids, Grants & Public Support",
-      "subtitle": "Explore funding schemes, training support, and institutional backing for your venture."
+      "subtitle": "Explore funding schemes, training support, and institutional backing for your venture.",
+      "loading": "Loading Aids, Grants & Public Support Engine..."
+    },
+    "pricingPage": {
+      "loading": "Loading Pricing & Revenue Model Engine..."
+    },
+    "gtmPage": {
+      "loading": "Loading GTM & Launch Strategy Engine..."
+    },
+    "assetsPage": {
+      "loading": "Loading Launch Assets Engine..."
+    },
+    "readinessPage": {
+      "loading": "Loading Construction Readiness..."
     },
     "profileGuard": {
       "gateBadge": "PHASE 4 PERSONALIZATION GATE",

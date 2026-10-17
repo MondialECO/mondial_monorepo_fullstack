@@ -93,7 +93,17 @@ PHASE 4 — Construction Architecture & Operational Roadmap
     ├─ Immutable historical experiment runs (never overwritten on refresh)
     ├─ Consumed-source-based staleness detection (zero spurious refresh cascades)
     └─ Single Source of Truth on CreatorJourney.Phase4Data.GtmStrategy (Zero Dual-Writing)
-[Phase 4.8 Launch Assets / Phase 4.9 Construction Readiness: Strictly Deferred / Coming Next]
+4.8 One-Page Launch Website & Asset Generator (/dashboard/creator/phase-4/assets)
+    ├─ Full-Spectrum HTML/Tailwind generator with dynamic Brand Kit & Offer injection
+    ├─ Live Sandboxed Desktop/Mobile Viewport Preview
+    ├─ Direct Source Code Viewer, Standalone HTML Download & Copy-to-Clipboard Link Sharing
+    ├─ Multi-Version Generation & History Ledger
+    └─ Single Source of Truth on CreatorJourney.Phase4Data.LaunchAssets (Zero Dual-Writing)
+4.9 Construction Readiness Review & Personalization Gate (/dashboard/creator/phase-4/readiness)
+    ├─ Comprehensive Pre-Execution Readiness Audit across all upstream artifacts
+    ├─ 3 Foundational Construction Principles (Honest Pace, Single Priority, Empirical Feedback)
+    ├─ Personal Founder Commitment Sign-off & Audit Lock
+    └─ Single Source of Truth on CreatorJourney.Phase4Data.ConstructionReadiness (Zero Dual-Writing)
 
 PHASE 5 — The Cross-Roads (30-Day Decision Window)
 Path A: Marketplace (Full Buyout OR Co-Founder / Equity)
@@ -190,6 +200,30 @@ Atomic Creator → Entrepreneur Level Up
 - **French Price Presentation & Tax Handling:** Standardizes B2B HT (*Hors Taxes*) and B2C TTC (*Toutes Taxes Comprises*) presentation with compliant French VAT default modes (`NotApplicableOrUnknown`).
 - **Dynamic Founder Recalculation & Invariant Preservation:** Instantaneous client & server-side recalculation of contribution margins and forecast alignment upon founder price adjustments, strictly preserving the 3 distinct price invariants: $\text{Recommended Price} \neq \text{Founder Selected Price} \neq \text{Validated Market Price}$.
 
+### 3.15 Creator Phase 4.7 — Go-To-Market & Launch Strategy Engine (`/dashboard/creator/phase-4/gtm`)
+- **Multi-Signal Sales Motion Derivation:** Evaluates venture archetype, market audience (B2B, B2C, Enterprise), ACV/price tiers, and Founder capacity to derive an optimal primary motion (`InboundSelfServe`, `OutboundDirectSales`, `ChannelPartnerLed`, `CommunityProductLed`).
+- **Deterministic Reason-Coded Channel Portfolio:** Synthesizes recommended channel strategies with rationale codes, estimated CAC efficiency, founder effort intensity, and pre-requisite resource tags.
+- **Reconciled Founder Capacity Balancing:** Shared `FounderCapacityResolver` evaluates weekly available hours against roadmap commitments, preventing over-allocation across acquisition channels.
+- **Empirical Validation Experiments:** Structured validation sprints with explicit hypotheses, minimum sample sizes, test durations, and target metric thresholds.
+- **Cash Provenance & Spendable Status:** Distinguishes confirmed available treasury cash from forward planned forecast revenue before green-lighting paid acquisition channels.
+- **Immutable Run Ledger & Freshness Guard:** Historical experiment runs remain immutable across strategy refreshes. Consumed-source fingerprinted staleness detection notifies founders of upstream pricing/market updates without destructive cascades.
+
+### 3.16 Creator Phase 4.8 — One-Page Launch Website & Asset Generator (`/dashboard/creator/phase-4/assets`)
+- **Full-Spectrum HTML/Tailwind Generation:** Generates a production-ready, standalone, single-file HTML/Tailwind landing page seamlessly injecting Phase 2 Brand Kit tokens (primary, accent, background hex codes, Google Font typography, logo SVGs) and Phase 4.6 Pricing packages.
+- **Live Sandboxed Responsive Preview:** Dual-viewport preview engine supporting Desktop (100% responsive fluid) and Mobile (375px device frame) rendering inside sandboxed iframes.
+- **Direct Source Code Viewer & Standalone Download:** Syntax-highlighted HTML source view with one-click direct file export (`[project-name]-launch-page-v[version].html`).
+- **Copy-to-Clipboard Public Share URL:** Generates shareable preview URLs (`/launch-preview/[token]`) with in-flight debouncing and transient clipboard confirmation.
+- **Multi-Version History & Selection:** Non-destructive version branching allowing founders to generate iterations, compare variations, and roll back or designate the active launch version.
+
+### 3.17 Creator Phase 4.9 — Construction Readiness Review & Personalization Gate (`/dashboard/creator/phase-4/readiness`)
+- **Comprehensive Pre-Execution Synthesis:** Holistic evaluation aggregating all upstream artifacts across Identity, Market Study, Business Model, Financial Forecast, Legal Roadmap, Formation Setup, Business Plan, Investor Readiness, Operational Roadmap, Needs Analysis, Skills Training, Public Support, Pricing, GTM, and Launch Assets.
+- **3 Foundational Construction Principles:** Explicitly surfaces and enforces MBC's construction philosophy:
+  1. *Honest Pace:* Realism over sprint burnout, matching task scheduling to proven founder hours.
+  2. *Single Priority:* One critical path blocker at a time to prevent cognitive overload.
+  3. *Empirical Feedback:* Testing real market appetite before committing capital expenditure.
+- **Personal Founder Commitment Sign-off:** Interactive sign-off mechanism that seals the review state, logs source fingerprints, and provides a permanent audit trail before committing into execution.
+- **Staleness Notification & Drift Protection:** If upstream assumptions change (e.g., revised pricing or forecast updates), displays clear change indicators while keeping the founder in control whether to update the review or preserve the signed audit.
+
 ---
 
 ## 4. Creator → Entrepreneur Continuity Contract
@@ -223,9 +257,10 @@ Environment Blocked:        0
 Mathematical Status:    100% Reconciled (2,023 + 0 + 129 = 2,152)
 
 Frontend Test Suite (Vitest & TypeScript)
-Vitest Test Files:        123 / 123 Passed (100%)
-Vitest Tests:           1,058 / 1,058 Passed (100%)
-TypeScript:                 0 production errors in src/
+Vitest Test Files:        123 / 123 Passed (100% Monorepo), 17 / 17 Creator Domain Suites (100%)
+Vitest Tests:           1,058 / 1,058 Passed (100% Monorepo), 201 / 201 Creator Tests (100%)
+TypeScript:                 0 production errors in src/ (tsc --noEmit)
+Localization Parity:     100% dictionary symmetry between src/locales/en/creator.json and src/locales/fr/creator.json (0 missing keys)
 Production Build:         185 / 185 Next.js routes compiled (Turbopack)
 
 Responsive Viewport Audit

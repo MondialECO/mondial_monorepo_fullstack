@@ -13,9 +13,18 @@ import {
 import { ConstructionSnapshot, ConstructionSnapshotResponse } from '@/types/creator/phase4';
 import { useTranslation } from '@/hooks/useTranslation';
 
+function Phase4PageFallback() {
+  const { t } = useTranslation();
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-mono text-sm">
+      {t('creator.phase4.loading', 'Loading Construction Snapshot...')}
+    </div>
+  );
+}
+
 export default function CreatorPhase4Page() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading Construction Snapshot...</div>}>
+    <Suspense fallback={<Phase4PageFallback />}>
       <CreatorPhase4Inner />
     </Suspense>
   );

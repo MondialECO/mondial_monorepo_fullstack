@@ -18,15 +18,18 @@ import type {
 } from '@/types/creator/skills';
 import { useTranslation } from '@/hooks/useTranslation';
 
+function SkillsPageFallback() {
+  const { t } = useTranslation();
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-mono text-sm">
+      {t('creator.phase4.skillsPage.loading', 'Loading Skills & Training Plan...')}
+    </div>
+  );
+}
+
 export default function CreatorPhase4SkillsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-mono text-sm">
-          Loading Skills & Training Plan...
-        </div>
-      }
-    >
+    <Suspense fallback={<SkillsPageFallback />}>
       <CreatorPhase4SkillsInner />
     </Suspense>
   );

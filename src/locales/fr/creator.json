@@ -1006,25 +1006,44 @@
       "attention": "Nécessite une attention"
     },
     "proceedToCrossroads": "Accéder au Carrefour (Phase 5)",
+    "error": "Erreur",
+    "notice": "Avis",
+    "dismiss": "Ignorer",
     "roadmapPage": {
       "stepBadge": "PHASE 4 · STEP 4.2",
       "title": "Feuille de route opérationnelle",
-      "subtitle": "Transformez les exigences de votre projet en un plan pratique adapté à votre disponibilité."
+      "subtitle": "Transformez les exigences de votre projet en un plan pratique adapté à votre disponibilité.",
+      "loading": "Chargement de la feuille de route opérationnelle..."
     },
     "needsPage": {
       "stepBadge": "PHASE 4 · STEP 4.3",
       "title": "Besoins et exigences",
-      "subtitle": "Examinez ce dont votre projet a besoin, ce que vous avez déjà et ce qui reste à couvrir."
+      "subtitle": "Examinez ce dont votre projet a besoin, ce que vous avez déjà et ce qui reste à couvrir.",
+      "loading": "Chargement des besoins et exigences..."
     },
     "skillsPage": {
       "stepBadge": "PHASE 4 · STEP 4.4",
       "title": "Plan de compétences et formation",
-      "subtitle": "Cartographiez les compétences à acquérir, à déléguer ou à vérifier en fonction de votre parcours, de la portée du projet et de votre temps disponible."
+      "subtitle": "Cartographiez les compétences à acquérir, à déléguer ou à vérifier en fonction de votre parcours, de la portée du projet et de votre temps disponible.",
+      "loading": "Chargement du plan de compétences et formation..."
     },
     "supportPage": {
       "stepBadge": "PHASE 4 · STEP 4.5",
       "title": "Aides, subventions et soutien public",
-      "subtitle": "Explorez les dispositifs de financement, l'aide à la formation et le soutien institutionnel pour votre entreprise."
+      "subtitle": "Explorez les dispositifs de financement, l'aide à la formation et le soutien institutionnel pour votre entreprise.",
+      "loading": "Chargement du moteur d'aides, subventions et soutien public..."
+    },
+    "pricingPage": {
+      "loading": "Chargement du moteur de tarification et modèle de revenus..."
+    },
+    "gtmPage": {
+      "loading": "Chargement du moteur de stratégie GTM et de lancement..."
+    },
+    "assetsPage": {
+      "loading": "Chargement du moteur de ressources de lancement..."
+    },
+    "readinessPage": {
+      "loading": "Chargement de la préparation à la construction..."
     },
     "profileGuard": {
       "gateBadge": "PORTAIL DE PERSONNALISATION PHASE 4",

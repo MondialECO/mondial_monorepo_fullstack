@@ -21,15 +21,18 @@ import type {
 } from '@/types/creator/roadmap';
 import { useTranslation } from '@/hooks/useTranslation';
 
+function RoadmapPageFallback() {
+  const { t } = useTranslation();
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-mono text-sm">
+      {t('creator.phase4.roadmapPage.loading', 'Loading Operational Roadmap...')}
+    </div>
+  );
+}
+
 export default function CreatorPhase4RoadmapPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
-          Loading Operational Roadmap...
-        </div>
-      }
-    >
+    <Suspense fallback={<RoadmapPageFallback />}>
       <CreatorPhase4RoadmapInner />
     </Suspense>
   );

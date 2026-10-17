@@ -18,15 +18,18 @@ import type {
 } from '@/types/creator/needs';
 import { useTranslation } from '@/hooks/useTranslation';
 
+function NeedsPageFallback() {
+  const { t } = useTranslation();
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-mono text-sm">
+      {t('creator.phase4.needsPage.loading', 'Loading Needs & Requirements...')}
+    </div>
+  );
+}
+
 export default function CreatorPhase4NeedsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
-          Loading Needs & Requirements...
-        </div>
-      }
-    >
+    <Suspense fallback={<NeedsPageFallback />}>
       <CreatorPhase4NeedsInner />
     </Suspense>
   );
