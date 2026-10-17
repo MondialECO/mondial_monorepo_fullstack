@@ -446,7 +446,10 @@ export default function BusinessPlanPage() {
             </div>
             {insufficientCredits && planCost != null && (
               <p className="text-xs font-medium text-destructive">
-                Insufficient credits: requires {planCost} credits (you have {credits.data?.balance ?? 0}).
+                {t('creator.phase3.businessPlan.insufficientCreditsWarning', 'Insufficient credits: requires {{required}} credits (you have {{balance}}).', {
+                  required: planCost,
+                  balance: credits.data?.balance ?? 0
+                })}
               </p>
             )}
           </Card>
@@ -531,7 +534,7 @@ export default function BusinessPlanPage() {
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 mb-6 flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-destructive font-sans">Regeneration Error</h4>
+              <h4 className="text-sm font-semibold text-destructive font-sans">{t('creator.phase3.businessPlan.regenerationError', 'Regeneration Error')}</h4>
               <p className="text-xs text-foreground/80 font-sans">{startError.message}</p>
             </div>
           </div>

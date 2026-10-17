@@ -913,7 +913,13 @@ export function FormationFigmaFlow({
               <li className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-primary" />
                 <span>
-                  External {primaryExpandedNeed.toLowerCase().includes('develop') ? 'developer' : primaryExpandedNeed.toLowerCase().includes('account') ? 'accountant' : 'specialist'}
+                  {t('creator.phase3.formation.day1External', 'External {{role}}', {
+                    role: primaryExpandedNeed.toLowerCase().includes('develop')
+                      ? t('creator.phase3.formation.roleDeveloper', 'developer')
+                      : primaryExpandedNeed.toLowerCase().includes('account')
+                        ? t('creator.phase3.formation.roleAccountant', 'accountant')
+                        : t('creator.phase3.formation.roleSpecialist', 'specialist')
+                  })}
                 </span>
               </li>
               <li className="flex items-center gap-2">

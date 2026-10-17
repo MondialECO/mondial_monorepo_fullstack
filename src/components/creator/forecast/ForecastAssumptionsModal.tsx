@@ -499,7 +499,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <DollarSign className="w-4 h-4 text-primary" />
-                  Average Transaction Value (ATV) (€)
+                  {t("creator.phase3.forecast.assumptions.marketplaceAtvTitle", "Average Transaction Value (ATV) (€)")}
                 </label>
                 {renderBadge("averageOrderValue", "upstream_business_model")}
               </div>
@@ -515,7 +515,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
                   placeholder="100"
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground">Average GMV value per marketplace trade.</p>
+              <p className="text-[11px] text-muted-foreground">{t("creator.phase3.forecast.assumptions.marketplaceAtvDesc", "Average GMV value per marketplace trade.")}</p>
             </div>
 
             {/* Marketplace: Take Rate % */}
@@ -523,7 +523,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <Percent className="w-4 h-4 text-purple-500" />
-                  Platform Take Rate (%)
+                  {t("creator.phase3.forecast.assumptions.marketplaceTakeRateTitle", "Platform Take Rate (%)")}
                 </label>
                 {renderBadge("takeRatePct", "upstream_business_model")}
               </div>
@@ -541,7 +541,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-muted-foreground">%</span>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Commission fee rate. Revenue = GMV × Take Rate.
+                {t("creator.phase3.forecast.assumptions.marketplaceTakeRateDesc", "Commission fee rate. Revenue = GMV × Take Rate.")}
               </p>
             </div>
           </>
@@ -706,7 +706,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
               value={values.taxRatePct != null ? values.taxRatePct : ""}
               onChange={(e) => handleChange("taxRatePct", e.target.value)}
               className="pr-7 font-mono text-sm h-9 rounded-lg"
-              placeholder="e.g. 25"
+              placeholder={t("creator.phase3.forecast.assumptions.taxRatePlaceholder", "e.g. 25")}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-muted-foreground">%</span>
           </div>

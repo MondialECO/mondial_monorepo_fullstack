@@ -303,7 +303,9 @@ export function Phase3LegalCard({ ideaId, className }: Phase3LegalCardProps) {
               ))}
               {staleMetadata.humanChangeDescriptions.length > 3 && (
                 <span className="text-[10px] text-amber-700/80 dark:text-amber-300/80 self-center">
-                  +{staleMetadata.humanChangeDescriptions.length - 3} more
+                  {t('creator.phase3.legalCard.moreCount', '+{{count}} more', {
+                    count: staleMetadata.humanChangeDescriptions.length - 3
+                  })}
                 </span>
               )}
             </div>
@@ -373,7 +375,7 @@ export function Phase3LegalCard({ ideaId, className }: Phase3LegalCardProps) {
             ))}
             {extraChipsCount > 0 && (
               <span className="text-caption text-muted-foreground font-medium pl-1">
-                +{extraChipsCount} more
+                {t('creator.phase3.legalCard.moreCount', '+{{count}} more', { count: extraChipsCount })}
               </span>
             )}
           </div>

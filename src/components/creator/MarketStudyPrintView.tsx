@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Printer, X, Check } from "lucide-react";
 import type { MarketStudyOutput } from "@/types/creator/ai";
 
@@ -74,6 +75,7 @@ export default function MarketStudyPrintView({
     return () => document.body.classList.remove("printing-active");
   }, [open]);
 
+  const { t } = useTranslation();
   const [logoError, setLogoError] = useState(false);
 
   // Derived Target Segments List
@@ -151,17 +153,17 @@ export default function MarketStudyPrintView({
       {/* Toolbar - never printed */}
       <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b border-neutral-300 bg-neutral-100 px-4 py-3">
         <Button variant="ghost" size="sm" onClick={onClose} className="gap-1.5 text-neutral-700">
-          <X className="h-4 w-4" /> Close
+          <X className="h-4 w-4" /> {t('creator.phase3.marketStudy.print.close', 'Close')}
         </Button>
         <span className="text-xs text-neutral-500 font-sans">
-          Use your browser&apos;s &ldquo;Save as PDF&rdquo; in the print dialog.
+          {t('creator.phase3.marketStudy.print.savePdfNote', "Use your browser's “Save as PDF” in the print dialog.")}
         </span>
         <Button
           size="sm"
           onClick={() => window.print()}
           className="gap-2 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
         >
-          <Printer className="h-4 w-4" /> Print / Save as PDF
+          <Printer className="h-4 w-4" /> {t('creator.phase3.marketStudy.print.printCta', 'Print / Save as PDF')}
         </Button>
       </div>
 
@@ -171,10 +173,10 @@ export default function MarketStudyPrintView({
           {/* Top meta line */}
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-mono font-semibold uppercase tracking-widest text-neutral-400">
-              Mondial · Market Study &amp; Competitive Intelligence
+              {t('creator.phase3.marketStudy.print.headerTitle', 'Mondial · Market Study & Competitive Intelligence')}
             </span>
             <span className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-              Phase 3.1 Output
+              {t('creator.phase3.marketStudy.print.stepEyebrow', 'Phase 3.1 Output')}
             </span>
           </div>
 
@@ -185,7 +187,7 @@ export default function MarketStudyPrintView({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={safeLogoSrc}
-                  alt={`${has(projectName) ? projectName : "Project"} Logo`}
+                  alt={t('creator.phase3.marketStudy.print.logoAlt', '{{name}} Logo', { name: has(projectName) ? projectName : "Project" })}
                   className="w-full h-full object-contain"
                   onError={() => setLogoError(true)}
                 />
@@ -213,12 +215,15 @@ export default function MarketStudyPrintView({
         {/* ========== SECTION 1: OPPORTUNITY SUMMARY CARD ========== */}
         <Section className="rounded-xl border border-neutral-200 bg-neutral-50/60 p-5 space-y-1.5">
           <div className="text-xs font-heading font-semibold uppercase tracking-wider text-neutral-400">
-            YOUR MARKET OPPORTUNITY
+            {t('creator.phase3.marketStudy.opportunityHeader', 'YOUR MARKET OPPORTUNITY')}
           </div>
           <p className="text-sm font-sans font-normal leading-relaxed text-neutral-900">
-            Your project operates in the {displaySector.toLowerCase()} market, targeting{" "}
-            {displayTargetUser} in {displayRegion}, with an estimated addressable opportunity of{" "}
-            <span className="font-mono font-bold text-neutral-950">{formatCurrency(tam?.value, tam?.currency)}</span>.
+            {t('creator.phase3.marketStudy.print.opportunityOverview', 'Your project operates in the {{industry}} market, targeting {{audience}} in {{geo}}, with an estimated addressable opportunity of {{tam}}.', {
+              industry: displaySector.toLowerCase(),
+              audience: displayTargetUser,
+              geo: displayRegion,
+              tam: formatCurrency(tam?.value, tam?.currency)
+            })}
           </p>
         </Section>
 
@@ -227,7 +232,7 @@ export default function MarketStudyPrintView({
           <div className="grid grid-cols-4 gap-3">
             <div className="rounded-lg border border-neutral-200 p-3.5 space-y-1">
               <div className="text-xs font-heading font-medium uppercase tracking-wider text-neutral-400">
-                INDUSTRY
+                {t('creator.phase3.marketStudy.industryLabel', 'INDUSTRY')}
               </div>
               <div className="text-sm font-sans font-semibold text-neutral-900 truncate">
                 {displaySector}
@@ -235,7 +240,7 @@ export default function MarketStudyPrintView({
             </div>
             <div className="rounded-lg border border-neutral-200 p-3.5 space-y-1">
               <div className="text-xs font-heading font-medium uppercase tracking-wider text-neutral-400">
-                MARKET
+                {t('creator.phase3.marketStudy.marketLabel', 'MARKET')}
               </div>
               <div className="text-sm font-sans font-semibold text-neutral-900 truncate">
                 {tam?.label || project?.marketGap || `${displaySector} operations tools`}
@@ -243,7 +248,7 @@ export default function MarketStudyPrintView({
             </div>
             <div className="rounded-lg border border-neutral-200 p-3.5 space-y-1">
               <div className="text-xs font-heading font-medium uppercase tracking-wider text-neutral-400">
-                PRIMARY GEOGRAPHY
+                {t('creator.phase3.marketStudy.primaryGeography', 'PRIMARY GEOGRAPHY')}
               </div>
               <div className="text-sm font-sans font-semibold text-neutral-900 truncate">
                 {displayRegion}
@@ -251,12 +256,12 @@ export default function MarketStudyPrintView({
             </div>
             <div className="rounded-lg border border-neutral-200 p-3.5 space-y-1">
               <div className="text-xs font-heading font-medium uppercase tracking-wider text-neutral-400">
-                MARKET STAGE
+                {t('creator.phase3.marketStudy.marketStage', 'MARKET STAGE')}
               </div>
               <div>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-sans font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
-                  Growing
+                  {t('creator.phase3.marketStudy.stageGrowing', 'Growing')}
                 </span>
               </div>
             </div>
@@ -265,13 +270,13 @@ export default function MarketStudyPrintView({
 
         {/* ========== SECTION 3: MARKET SIZING FUNNEL ========== */}
         <Section>
-          <SectionHeading num="01" title="Market Sizing Funnel (TAM / SAM / SOM)" />
+          <SectionHeading num="01" title={t('creator.phase3.marketStudy.print.sizingTitle', 'Market Sizing Funnel (TAM / SAM / SOM)')} />
           
           {/* 3-Card Summary Row */}
           <div className="grid grid-cols-3 gap-3.5 mb-4">
             <div className="rounded-xl border border-neutral-200 p-4 space-y-1.5 bg-white">
               <div className="flex items-center justify-between text-xs font-heading font-semibold uppercase tracking-wider text-neutral-500">
-                <span>TAM</span>
+                <span>{t('creator.phase3.marketStudy.tamAcronym', 'TAM')}</span>
                 <span className="font-mono text-neutral-400">100%</span>
               </div>
               <div className="text-2xl font-heading font-bold text-neutral-950 font-mono">
@@ -284,7 +289,7 @@ export default function MarketStudyPrintView({
 
             <div className="rounded-xl border border-neutral-200 p-4 space-y-1.5 bg-white">
               <div className="flex items-center justify-between text-xs font-heading font-semibold uppercase tracking-wider text-neutral-500">
-                <span>SAM</span>
+                <span>{t('creator.phase3.marketStudy.samAcronym', 'SAM')}</span>
                 <span className="font-mono text-neutral-400">{formatPct(samPctOfTam)}%</span>
               </div>
               <div className="text-2xl font-heading font-bold text-neutral-950 font-mono">
@@ -297,7 +302,7 @@ export default function MarketStudyPrintView({
 
             <div className="rounded-xl border border-neutral-200 p-4 space-y-1.5 bg-white">
               <div className="flex items-center justify-between text-xs font-heading font-semibold uppercase tracking-wider text-neutral-500">
-                <span>SOM</span>
+                <span>{t('creator.phase3.marketStudy.somAcronym', 'SOM')}</span>
                 <span className="font-mono text-neutral-400">
                   {formatPct(somPctOfTam)}% ({formatPct(somPctOfSam)}%)
                 </span>
@@ -328,15 +333,15 @@ export default function MarketStudyPrintView({
             <div className="flex flex-wrap items-center gap-5 text-xs font-mono text-neutral-600">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-[2px] bg-neutral-900 shrink-0" />
-                <span>SOM {formatCurrency(som?.value, som?.currency)} ({formatPct(somPctOfTam)}%)</span>
+                <span>{t('creator.phase3.marketStudy.somLegend', 'SOM {{val}} ({{pct}}%)', { val: formatCurrency(som?.value, som?.currency), pct: formatPct(somPctOfTam) })}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-[2px] bg-neutral-400 shrink-0" />
-                <span>SAM {formatCurrency(sam?.value, sam?.currency)} ({formatPct(samPctOfTam)}%)</span>
+                <span>{t('creator.phase3.marketStudy.samLegend', 'SAM {{val}} ({{pct}}%)', { val: formatCurrency(sam?.value, sam?.currency), pct: formatPct(samPctOfTam) })}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-[2px] bg-neutral-200 border border-neutral-300 shrink-0" />
-                <span>TAM {formatCurrency(tam?.value, tam?.currency)} (100%)</span>
+                <span>{t('creator.phase3.marketStudy.tamLegend', 'TAM {{val}} (100%)', { val: formatCurrency(tam?.value, tam?.currency) })}</span>
               </div>
             </div>
           </div>
@@ -346,16 +351,16 @@ export default function MarketStudyPrintView({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-neutral-200 bg-neutral-50 font-mono text-xs text-neutral-500 uppercase tracking-wider">
-                  <th className="py-2.5 px-3 font-semibold w-[10%]">Tier</th>
-                  <th className="py-2.5 px-3 font-semibold w-[40%]">Scope &amp; Description</th>
-                  <th className="py-2.5 px-3 font-semibold text-right w-[15%]">Value ({tam?.currency || "EUR"})</th>
-                  <th className="py-2.5 px-3 font-semibold text-right w-[12%]">% Parent</th>
-                  <th className="py-2.5 px-3 font-semibold w-[23%]">Source</th>
+                  <th className="py-2.5 px-3 font-semibold w-[10%]">{t('creator.phase3.marketStudy.print.tableTier', 'Tier')}</th>
+                  <th className="py-2.5 px-3 font-semibold w-[40%]">{t('creator.phase3.marketStudy.print.tableScope', 'Scope & Description')}</th>
+                  <th className="py-2.5 px-3 font-semibold text-right w-[15%]">{t('creator.phase3.marketStudy.print.tableValue', 'Value ({{currency}})', { currency: tam?.currency || "EUR" })}</th>
+                  <th className="py-2.5 px-3 font-semibold text-right w-[12%]">{t('creator.phase3.marketStudy.print.tablePctParent', '% Parent')}</th>
+                  <th className="py-2.5 px-3 font-semibold w-[23%]">{t('creator.phase3.marketStudy.print.tableSource', 'Source')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 text-sm">
                 <tr>
-                  <td className="py-2.5 px-3 font-mono font-bold text-neutral-900">TAM</td>
+                  <td className="py-2.5 px-3 font-mono font-bold text-neutral-900">{t('creator.phase3.marketStudy.tamAcronym', 'TAM')}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-semibold text-neutral-900">{tam?.label || "Total Addressable Market"}</div>
                     {tam?.derivation && <div className="text-xs text-neutral-500 mt-0.5 leading-snug">{tam.derivation}</div>}
@@ -367,7 +372,7 @@ export default function MarketStudyPrintView({
                   <td className="py-2.5 px-3 text-xs text-neutral-500 font-mono leading-snug">{tam?.sourceAttribution || "—"}</td>
                 </tr>
                 <tr>
-                  <td className="py-2.5 px-3 font-mono font-bold text-neutral-900">SAM</td>
+                  <td className="py-2.5 px-3 font-mono font-bold text-neutral-900">{t('creator.phase3.marketStudy.samAcronym', 'SAM')}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-semibold text-neutral-900">{sam?.label || "Serviceable Addressable Market"}</div>
                     {sam?.derivation && <div className="text-xs text-neutral-500 mt-0.5 leading-snug">{sam.derivation}</div>}
@@ -381,7 +386,7 @@ export default function MarketStudyPrintView({
                   <td className="py-2.5 px-3 text-xs text-neutral-500 font-mono leading-snug">{sam?.sourceAttribution || "—"}</td>
                 </tr>
                 <tr className="bg-emerald-50/30">
-                  <td className="py-2.5 px-3 font-mono font-bold text-emerald-900">SOM</td>
+                  <td className="py-2.5 px-3 font-mono font-bold text-emerald-900">{t('creator.phase3.marketStudy.somAcronym', 'SOM')}</td>
                   <td className="py-2.5 px-3">
                     <div className="font-semibold text-emerald-900">{som?.label || "Serviceable Obtainable Market"}</div>
                     {som?.derivation && <div className="text-xs text-emerald-700 mt-0.5 leading-snug">{som.derivation}</div>}
@@ -390,7 +395,7 @@ export default function MarketStudyPrintView({
                     {formatCurrency(som?.value, som?.currency)}
                   </td>
                   <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-800 whitespace-nowrap">
-                    {formatPct(somPctOfTam)}% ({formatPct(somPctOfSam)}% of SAM)
+                    {formatPct(somPctOfTam)}% {t('creator.phase3.marketStudy.pctOfSam', '({{pct}}% of SAM)', { pct: formatPct(somPctOfSam) })}
                   </td>
                   <td className="py-2.5 px-3 text-xs text-emerald-700 font-mono leading-snug">{som?.sourceAttribution || "—"}</td>
                 </tr>
@@ -400,7 +405,7 @@ export default function MarketStudyPrintView({
 
           {has(sizing?.methodology) && (
             <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 space-y-0.5">
-              <div className="font-mono text-xs font-semibold uppercase text-neutral-500 tracking-wider">Model Methodology</div>
+              <div className="font-mono text-xs font-semibold uppercase text-neutral-500 tracking-wider">{t('creator.phase3.marketStudy.print.methodology', 'Model Methodology')}</div>
               <p className="text-neutral-700 text-xs leading-relaxed font-sans">{sizing.methodology}</p>
             </div>
           )}
@@ -408,7 +413,7 @@ export default function MarketStudyPrintView({
 
         {/* ========== SECTION 4: TARGET SEGMENTS ========== */}
         <Section>
-          <SectionHeading num="02" title="Target Segments" />
+          <SectionHeading num="02" title={t('creator.phase3.marketStudy.targetSegmentsTitle', 'Target Segments')} />
           <div className="space-y-2.5">
             {targetSegmentsList.map((segment) => (
               <div
@@ -434,7 +439,7 @@ export default function MarketStudyPrintView({
         {/* ========== SECTION 5: COMPETITOR LANDSCAPE ========== */}
         {arr(competitors) && (
           <Section>
-            <SectionHeading num="03" title="Competitor Landscape & Benchmark Analysis" />
+            <SectionHeading num="03" title={t('creator.phase3.marketStudy.competitorLandscapeTitle', 'Competitor Landscape & Benchmark Analysis')} />
 
             {has(competitorSummary) && (
               <p className="text-xs text-neutral-600 mb-3 leading-relaxed font-sans">{competitorSummary}</p>
@@ -444,11 +449,11 @@ export default function MarketStudyPrintView({
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-neutral-200 bg-neutral-50 font-mono text-xs text-neutral-500 uppercase tracking-wider">
-                    <th className="py-2.5 px-3 font-semibold w-[20%]">COMPETITOR</th>
-                    <th className="py-2.5 px-3 font-semibold w-[20%]">POSITIONING</th>
-                    <th className="py-2.5 px-3 font-semibold w-[20%]">STRENGTHS</th>
-                    <th className="py-2.5 px-3 font-semibold w-[20%]">WEAKNESSES</th>
-                    <th className="py-2.5 px-3 font-semibold w-[20%]">OPPORTUNITY FOR YOU</th>
+                    <th className="py-2.5 px-3 font-semibold w-[20%]">{t('creator.phase3.marketStudy.tableCompetitor', 'COMPETITOR')}</th>
+                    <th className="py-2.5 px-3 font-semibold w-[20%]">{t('creator.phase3.marketStudy.tablePositioning', 'POSITIONING')}</th>
+                    <th className="py-2.5 px-3 font-semibold w-[20%]">{t('creator.phase3.marketStudy.tableStrengths', 'STRENGTHS')}</th>
+                    <th className="py-2.5 px-3 font-semibold w-[20%]">{t('creator.phase3.marketStudy.tableWeaknesses', 'WEAKNESSES')}</th>
+                    <th className="py-2.5 px-3 font-semibold w-[20%]">{t('creator.phase3.marketStudy.tableOpportunity', 'OPPORTUNITY FOR YOU')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100 text-xs">
@@ -490,14 +495,14 @@ export default function MarketStudyPrintView({
             {/* Indirect Competitors (if present) */}
             {arr(indirectCompetitors) && (
               <div className="mt-3">
-                <Sub>Indirect Competitors &amp; Alternatives</Sub>
+                <Sub>{t('creator.phase3.marketStudy.print.indirectCompetitors', 'Indirect Competitors & Alternatives')}</Sub>
                 <div className="overflow-hidden rounded-lg border border-neutral-200 mt-1">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-neutral-200 bg-neutral-50 font-mono text-xs text-neutral-500 uppercase tracking-wider">
-                        <th className="py-2 px-3 font-semibold w-1/4">Substitute</th>
-                        <th className="py-2 px-3 font-semibold w-1/2">Alternative Approach</th>
-                        <th className="py-2 px-3 font-semibold w-1/4 text-right">Threat Level</th>
+                        <th className="py-2 px-3 font-semibold w-1/4">{t('creator.phase3.marketStudy.print.substitute', 'Substitute')}</th>
+                        <th className="py-2 px-3 font-semibold w-1/2">{t('creator.phase3.marketStudy.print.altApproach', 'Alternative Approach')}</th>
+                        <th className="py-2 px-3 font-semibold w-1/4 text-right">{t('creator.phase3.marketStudy.print.threatLevel', 'Threat Level')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-100 text-xs">
@@ -521,12 +526,12 @@ export default function MarketStudyPrintView({
         {/* ========== SECTION 6: DEMAND SIGNALS & MARKET GAPS ========== */}
         {(arr(demandSignals) || arr(sizingRisks)) && (
           <Section>
-            <SectionHeading num="04" title="Demand Signals & Market Gaps" />
+            <SectionHeading num="04" title={t('creator.phase3.marketStudy.demandSignalsTitle', 'Demand Signals & Market Gaps')} />
             <div className="grid grid-cols-2 gap-4">
               {/* Demand Signals */}
               {arr(demandSignals) && (
                 <div className="space-y-2">
-                  <Sub>Verified Demand Signals</Sub>
+                  <Sub>{t('creator.phase3.marketStudy.print.verifiedSignals', 'Verified Demand Signals')}</Sub>
                   <div className="space-y-2">
                     {demandSignals.map((sig, idx) => (
                       <div key={idx} className="border border-neutral-200 rounded-lg p-3 bg-white text-xs space-y-1">
@@ -536,7 +541,7 @@ export default function MarketStudyPrintView({
                         )}
                         {sig.sourceAttribution && (
                           <div className="text-[11px] font-mono text-neutral-400 pt-1 border-t border-neutral-100">
-                            Source: {sig.sourceAttribution}
+                            {t('creator.phase3.marketStudy.sourceAttribution', 'Source:')} {sig.sourceAttribution}
                           </div>
                         )}
                       </div>
@@ -548,7 +553,7 @@ export default function MarketStudyPrintView({
               {/* Market Gaps */}
               {arr(sizingRisks) && (
                 <div className="space-y-2">
-                  <Sub>Market Gaps &amp; Sizing Constraints</Sub>
+                  <Sub>{t('creator.phase3.marketStudy.print.marketGaps', 'Market Gaps & Sizing Constraints')}</Sub>
                   <div className="space-y-2">
                     {sizingRisks.map((r, idx) => (
                       <div key={idx} className="border border-neutral-200 rounded-lg p-3 bg-white text-xs space-y-1">
@@ -562,7 +567,7 @@ export default function MarketStudyPrintView({
                         </div>
                         {r.mitigation && (
                           <div className="text-neutral-600 leading-relaxed font-sans pt-1 border-t border-neutral-100">
-                            <span className="font-semibold text-neutral-800">Mitigation:</span> {r.mitigation}
+                            <span className="font-semibold text-neutral-800">{t('creator.phase3.marketStudy.print.mitigation', 'Mitigation:')}</span> {r.mitigation}
                           </div>
                         )}
                       </div>
@@ -576,7 +581,7 @@ export default function MarketStudyPrintView({
 
         {/* ========== SECTION 7: STEP COMPLETE MILESTONES ========== */}
         <Section>
-          <SectionHeading num="05" title="Step Completion Milestones" />
+          <SectionHeading num="05" title={t('creator.phase3.marketStudy.stepCompleteTitle', 'Step Completion Milestones')} />
           <div className="grid grid-cols-5 gap-2.5 p-3 rounded-lg border border-neutral-200 bg-neutral-50/60">
             {[
               "Market identified",
@@ -604,9 +609,9 @@ export default function MarketStudyPrintView({
               /* eslint-disable-next-line @next/next/no-img-element */
               <img src={safeLogoSrc} alt="" className="h-4 object-contain opacity-40" />
             )}
-            <span>Mondial ECO Platform · Autonomous Startup Synthesis Engine</span>
+            <span>{t('creator.phase3.marketStudy.print.footerPlatform', 'Mondial ECO Platform · Autonomous Startup Synthesis Engine')}</span>
           </div>
-          <div>Verified Confidential · {today}</div>
+          <div>{t('creator.phase3.marketStudy.print.footerConfidential', 'Verified Confidential · {{today}}', { today })}</div>
         </footer>
       </div>
     </div>,

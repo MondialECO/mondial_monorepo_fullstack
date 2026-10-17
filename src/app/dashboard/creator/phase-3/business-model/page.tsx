@@ -292,7 +292,7 @@ export default function BusinessModelPage() {
                 </p>
                 {modelError && (
                   <p className="text-badge text-muted-foreground font-mono">
-                    Detail: {modelError}
+                    {t('creator.phase3.businessModel.errorDetail', 'Detail: {{detail}}', { detail: modelError })}
                   </p>
                 )}
               </div>
@@ -336,7 +336,7 @@ export default function BusinessModelPage() {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-muted/40 text-xs text-muted-foreground">
-                Cost:{' '}
+                {t('creator.phase3.businessModel.costLabel', 'Cost:')}{' '}
                 <span className="font-mono font-medium text-foreground">
                   {isCostLoading ? t('creator.phase3.marketStudy.loadingCost') : isCostError ? t('creator.phase3.marketStudy.costUnavailable') : `${businessModelCost ?? 18} credits`}
                 </span>
@@ -408,7 +408,7 @@ export default function BusinessModelPage() {
                         01
                       </span>
                       <h4 className="font-heading text-badge font-semibold uppercase tracking-wider text-foreground">
-                        KEY PARTNERS
+                        {t('creator.phase3.businessModel.canvas.keyPartners', 'KEY PARTNERS')}
                       </h4>
                     </div>
                     <span className="font-sans text-badge text-muted-foreground">
@@ -428,7 +428,7 @@ export default function BusinessModelPage() {
                         </div>
                       ))
                     ) : (
-                      <p className="font-sans text-caption text-muted-foreground italic py-2">None defined</p>
+                      <p className="font-sans text-caption text-muted-foreground italic py-2">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                     )}
                   </div>
                 </div>
@@ -443,11 +443,11 @@ export default function BusinessModelPage() {
                           02
                         </span>
                         <h4 className="font-heading text-badge font-semibold uppercase tracking-wider text-foreground">
-                          KEY ACTIVITIES
+                          {t('creator.phase3.businessModel.canvas.keyActivities', 'KEY ACTIVITIES')}
                         </h4>
                       </div>
                       <span className="font-sans text-badge text-muted-foreground">
-                        {canvas?.keyActivities?.length ?? 0} items
+                        {t('creator.phase3.businessModel.canvas.itemsCount', { count: canvas?.keyActivities?.length ?? 0 })}
                       </span>
                     </div>
                     <div className="p-3.5 flex-1 flex flex-col gap-2">
@@ -463,7 +463,7 @@ export default function BusinessModelPage() {
                           </div>
                         ))
                       ) : (
-                        <p className="font-sans text-caption text-muted-foreground italic py-2">None defined</p>
+                        <p className="font-sans text-caption text-muted-foreground italic py-2">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                       )}
                     </div>
                   </div>
@@ -476,11 +476,11 @@ export default function BusinessModelPage() {
                           03
                         </span>
                         <h4 className="font-heading text-badge font-semibold uppercase tracking-wider text-foreground">
-                          KEY RESOURCES
+                          {t('creator.phase3.businessModel.canvas.keyResources', 'KEY RESOURCES')}
                         </h4>
                       </div>
                       <span className="font-sans text-badge text-muted-foreground">
-                        {canvas?.keyResources?.length ?? 0} items
+                        {t('creator.phase3.businessModel.canvas.itemsCount', { count: canvas?.keyResources?.length ?? 0 })}
                       </span>
                     </div>
                     <div className="p-3.5 flex-1 flex flex-col gap-2">
@@ -496,7 +496,7 @@ export default function BusinessModelPage() {
                           </div>
                         ))
                       ) : (
-                        <p className="font-sans text-caption text-muted-foreground italic py-2">None defined</p>
+                        <p className="font-sans text-caption text-muted-foreground italic py-2">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                       )}
                     </div>
                   </div>
@@ -510,11 +510,11 @@ export default function BusinessModelPage() {
                         04
                       </span>
                       <h4 className="font-heading text-badge font-semibold uppercase tracking-wider text-foreground">
-                        VALUE PROPOSITIONS
+                        {t('creator.phase3.businessModel.canvas.valuePropositions', 'VALUE PROPOSITIONS')}
                       </h4>
                     </div>
                     <span className="font-sans text-badge text-muted-foreground">
-                      {canvas?.valuePropositions?.length ?? 0} items
+                      {t('creator.phase3.businessModel.canvas.itemsCount', { count: canvas?.valuePropositions?.length ?? 0 })}
                     </span>
                   </div>
                   <div className="p-3.5 flex-1 flex flex-col gap-2">
@@ -535,7 +535,7 @@ export default function BusinessModelPage() {
                         </div>
                       ))
                     ) : (
-                      <p className="font-sans text-caption text-muted-foreground italic py-2">None defined</p>
+                      <p className="font-sans text-caption text-muted-foreground italic py-2">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                     )}
                   </div>
                 </div>
@@ -550,11 +550,11 @@ export default function BusinessModelPage() {
                           05
                         </span>
                         <h4 className="font-heading text-badge font-semibold uppercase tracking-wider text-foreground">
-                          CUSTOMER RELATIONSHIPS
+                          {t('creator.phase3.businessModel.canvas.customerRelationships', 'CUSTOMER RELATIONSHIPS')}
                         </h4>
                       </div>
                       <span className="font-sans text-badge text-muted-foreground">
-                        {canvas?.customerRelationships?.length ?? 0} items
+                        {t('creator.phase3.businessModel.canvas.itemsCount', { count: canvas?.customerRelationships?.length ?? 0 })}
                       </span>
                     </div>
                     <div className="p-3.5 flex-1 flex flex-col gap-2">
@@ -570,7 +570,7 @@ export default function BusinessModelPage() {
                           </div>
                         ))
                       ) : (
-                        <p className="font-sans text-caption text-muted-foreground italic py-2">None defined</p>
+                        <p className="font-sans text-caption text-muted-foreground italic py-2">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                       )}
                     </div>
                   </div>
@@ -583,11 +583,11 @@ export default function BusinessModelPage() {
                           06
                         </span>
                         <h4 className="font-heading text-badge font-semibold uppercase tracking-wider text-foreground">
-                          CHANNELS
+                          {t('creator.phase3.businessModel.canvas.channels', 'CHANNELS')}
                         </h4>
                       </div>
                       <span className="font-sans text-badge text-muted-foreground">
-                        {canvas?.channels?.length ?? 0} items
+                        {t('creator.phase3.businessModel.canvas.itemsCount', { count: canvas?.channels?.length ?? 0 })}
                       </span>
                     </div>
                     <div className="p-3.5 flex-1 flex flex-col gap-2">
@@ -603,7 +603,7 @@ export default function BusinessModelPage() {
                           </div>
                         ))
                       ) : (
-                        <p className="font-sans text-caption text-muted-foreground italic py-2">None defined</p>
+                        <p className="font-sans text-caption text-muted-foreground italic py-2">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                       )}
                     </div>
                   </div>
@@ -617,11 +617,11 @@ export default function BusinessModelPage() {
                         07
                       </span>
                       <h4 className="font-heading text-badge font-semibold uppercase tracking-wider text-foreground">
-                        CUSTOMER SEGMENTS
+                        {t('creator.phase3.businessModel.canvas.customerSegments', 'CUSTOMER SEGMENTS')}
                       </h4>
                     </div>
                     <span className="font-sans text-badge text-muted-foreground">
-                      {canvas?.customerSegments?.length ?? 0} items
+                      {t('creator.phase3.businessModel.canvas.itemsCount', { count: canvas?.customerSegments?.length ?? 0 })}
                     </span>
                   </div>
                   <div className="p-3.5 flex-1 flex flex-col gap-2">
@@ -637,7 +637,7 @@ export default function BusinessModelPage() {
                         </div>
                       ))
                     ) : (
-                      <p className="font-sans text-caption text-muted-foreground italic py-2">None defined</p>
+                      <p className="font-sans text-caption text-muted-foreground italic py-2">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                     )}
                   </div>
                 </div>
@@ -653,11 +653,11 @@ export default function BusinessModelPage() {
                         08
                       </span>
                       <h4 className="font-heading text-badge font-semibold uppercase tracking-wider text-foreground">
-                        COST STRUCTURE
+                        {t('creator.phase3.businessModel.canvas.costStructure', 'COST STRUCTURE')}
                       </h4>
                     </div>
                     <span className="font-sans text-badge text-muted-foreground">
-                      {canvas?.costStructure?.length ?? 0} items
+                      {t('creator.phase3.businessModel.canvas.itemsCount', { count: canvas?.costStructure?.length ?? 0 })}
                     </span>
                   </div>
                   <div className="p-3.5 flex-1">
@@ -675,7 +675,7 @@ export default function BusinessModelPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="font-sans text-caption text-muted-foreground italic py-2">None defined</p>
+                      <p className="font-sans text-caption text-muted-foreground italic py-2">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                     )}
                   </div>
                 </div>
@@ -688,11 +688,11 @@ export default function BusinessModelPage() {
                         09
                       </span>
                       <h4 className="font-heading text-badge font-semibold uppercase tracking-wider text-foreground">
-                        REVENUE STREAMS
+                        {t('creator.phase3.businessModel.canvas.revenueStreams', 'REVENUE STREAMS')}
                       </h4>
                     </div>
                     <span className="font-sans text-badge text-muted-foreground">
-                      {canvas?.revenueStreams?.length ?? 0} items
+                      {t('creator.phase3.businessModel.canvas.itemsCount', { count: canvas?.revenueStreams?.length ?? 0 })}
                     </span>
                   </div>
                   <div className="p-3.5 flex-1 flex flex-col gap-2">
@@ -708,7 +708,7 @@ export default function BusinessModelPage() {
                         </div>
                       ))
                     ) : (
-                      <p className="font-sans text-caption text-muted-foreground italic py-2">None defined</p>
+                      <p className="font-sans text-caption text-muted-foreground italic py-2">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                     )}
                   </div>
                 </div>
@@ -721,10 +721,10 @@ export default function BusinessModelPage() {
             <div className="rounded-xl bg-card border border-border/80 p-6 space-y-4 shadow-none">
               <div className="flex items-center justify-between pb-3 border-b border-border/70">
                 <span className="font-heading text-badge font-semibold uppercase tracking-wider text-muted-foreground">
-                  UNIT ECONOMICS
+                  {t('creator.phase3.businessModel.unitEconomics.eyebrow', 'UNIT ECONOMICS')}
                 </span>
                 <span className="font-sans text-badge text-muted-foreground">
-                  Calibrated based on benchmarks
+                  {t('creator.phase3.businessModel.unitEconomics.calibratedDesc', 'Calibrated based on benchmarks')}
                 </span>
               </div>
 
@@ -732,7 +732,7 @@ export default function BusinessModelPage() {
                 {/* CAC */}
                 <div className="lg:pr-6 space-y-1.5 flex flex-col justify-between">
                   <span className="font-heading text-badge font-semibold uppercase tracking-wider text-muted-foreground">
-                    CAC
+                    {t('creator.phase3.businessModel.unitEconomics.cacShort', 'CAC')}
                   </span>
                   <div className="font-mono text-stat-lg font-bold tracking-tight text-foreground">
                     {formatCurrencyAmount(unitEconomics?.cac?.amount, unitEconomics?.cac?.currency)}
@@ -742,7 +742,7 @@ export default function BusinessModelPage() {
                 {/* LTV */}
                 <div className="lg:px-6 space-y-1.5 flex flex-col justify-between">
                   <span className="font-heading text-badge font-semibold uppercase tracking-wider text-muted-foreground">
-                    LTV
+                    {t('creator.phase3.businessModel.unitEconomics.ltvShort', 'LTV')}
                   </span>
                   <div className="font-mono text-stat-lg font-bold tracking-tight text-foreground">
                     {formatCurrencyAmount(unitEconomics?.ltv?.amount, unitEconomics?.ltv?.currency)}
@@ -752,7 +752,7 @@ export default function BusinessModelPage() {
                 {/* LTV / CAC */}
                 <div className="lg:px-6 space-y-1.5 flex flex-col justify-between">
                   <span className="font-heading text-badge font-semibold uppercase tracking-wider text-muted-foreground">
-                    LTV / CAC
+                    {t('creator.phase3.businessModel.unitEconomics.ratioShort', 'LTV / CAC')}
                   </span>
                   <div className="flex items-center gap-3">
                     <span className="font-mono text-stat-lg font-bold tracking-tight text-foreground">
@@ -760,10 +760,10 @@ export default function BusinessModelPage() {
                     </span>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-badge font-sans font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60">
                       {unitEconomics?.ltvToCacRatio !== undefined && unitEconomics.ltvToCacRatio < 1
-                        ? 'Needs Attention'
+                        ? t('creator.phase3.businessModel.unitEconomics.statusNeedsAttention', 'Needs Attention')
                         : unitEconomics?.ltvToCacRatio !== undefined && unitEconomics.ltvToCacRatio < 3
-                        ? 'Moderate'
-                        : 'Healthy'}
+                        ? t('creator.phase3.businessModel.unitEconomics.statusModerate', 'Moderate')
+                        : t('creator.phase3.businessModel.unitEconomics.statusHealthy', 'Healthy')}
                     </span>
                   </div>
                 </div>
@@ -771,11 +771,11 @@ export default function BusinessModelPage() {
                 {/* ESTIMATED PAYBACK */}
                 <div className="lg:pl-6 space-y-1.5 flex flex-col justify-between">
                   <span className="font-heading text-badge font-semibold uppercase tracking-wider text-muted-foreground">
-                    ESTIMATED PAYBACK
+                    {t('creator.phase3.businessModel.unitEconomics.paybackShort', 'ESTIMATED PAYBACK')}
                   </span>
                   <div className="font-mono text-stat-lg font-bold tracking-tight text-foreground">
                     {unitEconomics?.paybackPeriodMonths !== undefined
-                      ? `${unitEconomics.paybackPeriodMonths} month${unitEconomics.paybackPeriodMonths === 1 ? '' : 's'}`
+                      ? t('creator.phase3.businessModel.unitEconomics.paybackMonths', '{{count}} months', { count: unitEconomics.paybackPeriodMonths })
                       : '—'}
                   </div>
                 </div>

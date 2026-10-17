@@ -318,7 +318,7 @@ export default function MarketStudyPage() {
                 </p>
                 {studyError && (
                   <p className="text-xs text-muted-foreground font-mono">
-                    Detail: {studyError}
+                    {t('creator.phase3.marketStudy.errorDetail', 'Detail: {{detail}}', { detail: studyError })}
                   </p>
                 )}
               </div>
@@ -479,7 +479,7 @@ export default function MarketStudyPage() {
                 {/* TAM */}
                 <div className="rounded-2xl border border-border/80 bg-card p-6 space-y-2.5 shadow-none flex flex-col justify-between min-h-[140px]">
                   <div className="flex items-center justify-between text-xs font-heading font-semibold uppercase tracking-wider text-muted-foreground">
-                    <span>TAM</span>
+                    <span>{t('creator.phase3.marketStudy.tamAcronym', 'TAM')}</span>
                     <span className="text-xs font-normal font-mono text-muted-foreground">100%</span>
                   </div>
                   <div className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-foreground font-mono">
@@ -493,7 +493,7 @@ export default function MarketStudyPage() {
                 {/* SAM */}
                 <div className="rounded-2xl border border-border/80 bg-card p-6 space-y-2.5 shadow-none flex flex-col justify-between min-h-[140px]">
                   <div className="flex items-center justify-between text-xs font-heading font-semibold uppercase tracking-wider text-muted-foreground">
-                    <span>SAM</span>
+                    <span>{t('creator.phase3.marketStudy.samAcronym', 'SAM')}</span>
                     <span className="text-xs font-normal font-mono text-muted-foreground">{formatPct(samPctOfTam)}%</span>
                   </div>
                   <div className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-foreground font-mono">
@@ -507,9 +507,9 @@ export default function MarketStudyPage() {
                 {/* SOM */}
                 <div className="rounded-2xl border border-border/80 bg-card p-6 space-y-2.5 shadow-none flex flex-col justify-between min-h-[140px]">
                   <div className="flex items-center justify-between text-xs font-heading font-semibold uppercase tracking-wider text-muted-foreground">
-                    <span>SOM</span>
+                    <span>{t('creator.phase3.marketStudy.somAcronym', 'SOM')}</span>
                     <span className="text-xs font-normal font-mono text-muted-foreground">
-                      {formatPct(somPctOfTam)}% ({formatPct(somPctOfSam)}% of SAM)
+                      {formatPct(somPctOfTam)}% {t('creator.phase3.marketStudy.pctOfSam', '({{pct}}% of SAM)', { pct: formatPct(somPctOfSam) })}
                     </span>
                   </div>
                   <div className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-foreground font-mono">
@@ -542,15 +542,15 @@ export default function MarketStudyPage() {
                 <div className="flex flex-wrap items-center gap-6 pt-1 text-xs font-mono text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-[2px] bg-foreground shrink-0" />
-                    <span>SOM {formatCurrency(som?.value, som?.currency)} ({formatPct(somPctOfTam)}%)</span>
+                    <span>{t('creator.phase3.marketStudy.somLegend', 'SOM {{val}} ({{pct}}%)', { val: formatCurrency(som?.value, som?.currency), pct: formatPct(somPctOfTam) })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-[2px] bg-muted-foreground/40 shrink-0" />
-                    <span>SAM {formatCurrency(sam?.value, sam?.currency)} ({formatPct(samPctOfTam)}%)</span>
+                    <span>{t('creator.phase3.marketStudy.samLegend', 'SAM {{val}} ({{pct}}%)', { val: formatCurrency(sam?.value, sam?.currency), pct: formatPct(samPctOfTam) })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-[2px] bg-muted border border-border shrink-0" />
-                    <span>TAM {formatCurrency(tam?.value, tam?.currency)} (100%)</span>
+                    <span>{t('creator.phase3.marketStudy.tamLegend', 'TAM {{val}} (100%)', { val: formatCurrency(tam?.value, tam?.currency) })}</span>
                   </div>
                 </div>
               </div>
@@ -755,7 +755,7 @@ export default function MarketStudyPage() {
                 size="sm"
                 onClick={handleRegenerate}
                 disabled={isGenerating || insufficientCredits}
-                aria-label="Re-run market study"
+                aria-label={t('creator.phase3.marketStudy.regenerateAria', 'Re-run market study')}
                 className="inline-flex items-center gap-2 p-2 text-xs sm:text-sm font-sans font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 rounded-lg"
               >
                 <RotateCw className="w-4 h-4 text-muted-foreground" />
