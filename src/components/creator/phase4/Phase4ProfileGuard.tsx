@@ -15,21 +15,14 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { creatorProfileApi } from '@/lib/api-creator-profile';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface Phase4ProfileGuardProps {
   children: React.ReactNode;
 }
 
-const CHECKLIST_DEFINITIONS = [
-  { key: 'Skills', label: 'Skills' },
-  { key: 'CurrentSituation', label: 'Current situation' },
-  { key: 'WeeklyAvailability', label: 'Weekly availability' },
-  { key: 'Region', label: 'Region' },
-  { key: 'ProgressPreference', label: 'Progress preference (learning or delegation)' },
-  { key: 'FullProfile', label: 'Full HumainX Profile (Experience, Education, Languages — 100% required)' },
-] as const;
-
 export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -95,15 +88,15 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
           </div>
           <div className="space-y-2">
             <h2 className="text-xl font-bold font-heading text-foreground">
-              Phase 3 Must Be Completed First
+              {t('creator.phase4.profileGuard.phase3MustBeCompleted', 'Phase 3 Must Be Completed First')}
             </h2>
             <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-              Complete your business intelligence, market study, and forecasts in Phase 3 before configuring Phase 4 offer pricing.
+              {t('creator.phase4.profileGuard.phase3MustBeCompletedDesc', 'Complete your business intelligence, market study, and forecasts in Phase 3 before configuring Phase 4 offer pricing.')}
             </p>
           </div>
           <Button asChild className="rounded-xl font-semibold px-6">
             <Link href={`/dashboard/creator/phase-3${activeIdeaId ? `?ideaId=${encodeURIComponent(activeIdeaId)}` : ''}`}>
-              Return to Phase 3
+              {t('creator.phase4.profileGuard.returnToPhase3', 'Return to Phase 3')}
             </Link>
           </Button>
         </Card>
@@ -113,6 +106,15 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
 
   // Gate 2: HumainX Profile Completeness Gate (100% required)
   if (!isProfileReady) {
+    const checklistDefinitions = [
+      { key: 'Skills', label: t('creator.phase4.profileGuard.skills', 'Skills') },
+      { key: 'CurrentSituation', label: t('creator.phase4.profileGuard.currentSituation', 'Current situation') },
+      { key: 'WeeklyAvailability', label: t('creator.phase4.profileGuard.weeklyAvailability', 'Weekly availability') },
+      { key: 'Region', label: t('creator.phase4.profileGuard.region', 'Region') },
+      { key: 'ProgressPreference', label: t('creator.phase4.profileGuard.progressPreference', 'Progress preference (learning or delegation)') },
+      { key: 'FullProfile', label: t('creator.phase4.profileGuard.fullProfile', 'Full HumainX Profile (Experience, Education, Languages — 100% required)') },
+    ];
+
     const missingKeys = [
       ...(completeness?.missingForPhase4 ?? []),
       ...(!isFullProfileComplete && (completeness?.missingForPhase4 ?? []).length === 0
@@ -126,24 +128,24 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                PHASE 4 PERSONALIZATION GATE
+                {t('creator.phase4.profileGuard.gateBadge', 'PHASE 4 PERSONALIZATION GATE')}
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold font-heading text-foreground tracking-tight">
-              Personalize your construction plan
+              {t('creator.phase4.profileGuard.title', 'Personalize your construction plan')}
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-              We already understand your business. Now we need a little more information about you so MBC can build a realistic roadmap, training plan and resource strategy.
+              {t('creator.phase4.profileGuard.description', 'We already understand your business. Now we need a little more information about you so MBC can build a realistic roadmap, training plan and resource strategy.')}
             </p>
           </div>
 
           {/* Missing items checklist */}
           <div className="space-y-3 rounded-2xl border border-border bg-background/50 p-6">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Required Profile Information
+              {t('creator.phase4.profileGuard.requiredProfileInfo', 'Required Profile Information')}
             </h3>
             <ul className="space-y-2.5 pt-1">
-              {CHECKLIST_DEFINITIONS.map((item) => {
+              {checklistDefinitions.map((item) => {
                 const isMissing = missingKeys.includes(item.key);
                 return (
                   <li
@@ -160,7 +162,7 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
                     <span>{item.label}</span>
                     {isMissing && (
                       <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full font-bold ml-auto">
-                        Missing
+                        {t('creator.phase4.profileGuard.missingBadge', 'Missing')}
                       </span>
                     )}
                   </li>
@@ -175,7 +177,7 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
               className="w-full sm:w-auto rounded-xl bg-primary text-primary-foreground font-semibold px-6 h-11 shadow-sm hover:bg-primary/90"
             >
               <Link href={profileUrl}>
-                Complete My Profile
+                {t('creator.phase4.profileGuard.completeProfile', 'Complete My Profile')}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
             </Button>
@@ -184,7 +186,7 @@ export function Phase4ProfileGuard({ children }: Phase4ProfileGuardProps) {
               onClick={() => void refetch()}
               className="w-full sm:w-auto rounded-xl border-border"
             >
-              Recheck Profile Status
+              {t('creator.phase4.profileGuard.recheckStatus', 'Recheck Profile Status')}
             </Button>
           </div>
         </Card>

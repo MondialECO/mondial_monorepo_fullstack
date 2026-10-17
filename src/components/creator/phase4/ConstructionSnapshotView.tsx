@@ -19,6 +19,7 @@ import {
   Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export const CANONICAL_CATEGORIES: ConstructionCategory[] = [
   'Business Foundation',
@@ -154,6 +155,7 @@ export function ConstructionSnapshotView({
   onRefresh,
   onDismissStale,
 }: ConstructionSnapshotViewProps) {
+  const { t } = useTranslation();
   const [staleDismissed, setStaleDismissed] = useState(false);
   
   // Track open/collapsed state for categories and item explanations
@@ -212,10 +214,10 @@ export function ConstructionSnapshotView({
           <Layers className="w-6 h-6 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
         </div>
         <h3 className="text-section-title font-semibold text-foreground mb-2">
-          Building your construction snapshot…
+          {t('creator.phase4.snapshotView.buildingSnapshot', 'Building your construction snapshot…')}
         </h3>
         <p className="text-muted-foreground max-w-md text-body">
-          MBC is combining your business plan, project data and professional profile.
+          {t('creator.phase4.snapshotView.combiningData', 'MBC is combining your business plan, project data and professional profile.')}
         </p>
       </div>
     );
@@ -229,17 +231,17 @@ export function ConstructionSnapshotView({
           <AlertTriangle className="w-6 h-6" />
         </div>
         <h3 className="text-section-title font-semibold text-foreground mb-2">
-          We couldn't build your construction snapshot.
+          {t('creator.phase4.snapshotView.errorTitle', "We couldn't build your construction snapshot.")}
         </h3>
         <p className="text-muted-foreground max-w-md text-body mb-6">
-          Your existing project data is safe. ({error})
+          {t('creator.phase4.snapshotView.errorSafe', 'Your existing project data is safe.')} ({error})
         </p>
         <button
           onClick={onGenerate}
           className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl transition-colors inline-flex items-center gap-2"
         >
           <RefreshCw className="w-4 h-4" />
-          Try Again
+          {t('creator.phase4.snapshotView.tryAgain', 'Try Again')}
         </button>
       </div>
     );
@@ -253,16 +255,16 @@ export function ConstructionSnapshotView({
           <Layers className="w-8 h-8" />
         </div>
         <h2 className="text-page-heading font-bold text-foreground mb-3">
-          Your construction snapshot is ready to be generated.
+          {t('creator.phase4.snapshotView.readyTitle', 'Your construction snapshot is ready to be generated.')}
         </h2>
         <p className="text-muted-foreground max-w-lg text-body leading-relaxed mb-8">
-          MBC analyzes your Phase 2 branding, Phase 3 business intelligence, and HumainX professional profile to diagnose what is ready, what is partial, and what requires attention before building.
+          {t('creator.phase4.snapshotView.readyDesc', 'MBC analyzes your Phase 2 branding, Phase 3 business intelligence, and HumainX professional profile to diagnose what is ready, what is partial, and what requires attention before building.')}
         </p>
         <button
           onClick={onGenerate}
           className="px-8 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl transition-all duration-200 shadow-md hover:scale-[1.02] flex items-center gap-2"
         >
-          Generate My Snapshot
+          {t('creator.phase4.snapshotView.generateButton', 'Generate My Snapshot')}
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
@@ -316,7 +318,9 @@ export function ConstructionSnapshotView({
           <div className="space-y-1.5 lg:pr-6">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-500" />
-              <span className="text-body font-normal text-muted-foreground">Ready</span>
+              <span className="text-body font-normal text-muted-foreground">
+                {t('creator.phase4.snapshotView.statusReady', 'Ready')}
+              </span>
             </div>
             <div className="font-mono text-stat-lg font-semibold text-foreground">
               {readyCount}
@@ -327,13 +331,15 @@ export function ConstructionSnapshotView({
           <div className="space-y-1.5 lg:px-6">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-slate-500 dark:bg-slate-400" />
-              <span className="text-body font-normal text-muted-foreground">Partial</span>
+              <span className="text-body font-normal text-muted-foreground">
+                {t('creator.phase4.snapshotView.statusPartial', 'Partial')}
+              </span>
             </div>
             <div className="font-mono text-stat-lg font-semibold text-foreground">
               {partialCount}
             </div>
             <p className="text-badge text-muted-foreground font-normal">
-              Includes items needing review
+              {t('creator.phase4.snapshotView.partialNote', 'Includes items needing review')}
             </p>
           </div>
 
@@ -341,7 +347,9 @@ export function ConstructionSnapshotView({
           <div className="space-y-1.5 lg:px-6">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-600 dark:bg-amber-500" />
-              <span className="text-body font-normal text-muted-foreground">Missing</span>
+              <span className="text-body font-normal text-muted-foreground">
+                {t('creator.phase4.snapshotView.statusMissing', 'Missing')}
+              </span>
             </div>
             <div className="font-mono text-stat-lg font-semibold text-foreground">
               {missingCount}
@@ -352,7 +360,9 @@ export function ConstructionSnapshotView({
           <div className="space-y-1.5 lg:px-6">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-700 dark:bg-rose-500" />
-              <span className="text-body font-normal text-muted-foreground">Critical</span>
+              <span className="text-body font-normal text-muted-foreground">
+                {t('creator.phase4.snapshotView.statusCritical', 'Critical')}
+              </span>
             </div>
             <div className="font-mono text-stat-lg font-semibold text-foreground">
               {criticalCount}
@@ -363,7 +373,9 @@ export function ConstructionSnapshotView({
           <div className="space-y-1.5 lg:pl-6">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
-              <span className="text-body font-normal text-muted-foreground">Optional</span>
+              <span className="text-body font-normal text-muted-foreground">
+                {t('creator.phase4.snapshotView.statusOptional', 'Optional')}
+              </span>
             </div>
             <div className="font-mono text-stat-lg font-semibold text-foreground">
               {optionalCount}
@@ -374,7 +386,8 @@ export function ConstructionSnapshotView({
         {/* Sub-strip Divider */}
         <div className="pt-4 mt-6 border-t border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div className="text-body text-muted-foreground font-normal">
-            <span className="font-mono">{totalRequirements}</span> requirements identified from your project and Creator profile.
+            <span className="font-mono">{totalRequirements}</span>{' '}
+            {t('creator.phase4.snapshotView.requirementsIdentified', 'requirements identified from your project and Creator profile.', { count: totalRequirements }).replace(/^\d+\s*/, '')}
           </div>
           <div className="text-badge font-mono font-medium text-muted-foreground uppercase tracking-wider">
             {displayProjectName} · SCOPE V1
@@ -640,13 +653,13 @@ export function ConstructionSnapshotView({
           className="text-body font-medium text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1.5"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back</span>
+          <span>{t('creator.businessPlan.back', 'Back')}</span>
         </Link>
         <Link
           href={`/dashboard/creator/phase-4/roadmap?ideaId=${encodeURIComponent(ideaId)}`}
           className="text-button font-medium text-primary-foreground bg-primary hover:bg-primary/90 px-6 py-2.5 rounded-xl transition-all inline-flex items-center gap-2 shadow-sm"
         >
-          <span>Continue to Roadmap</span>
+          <span>{t('creator.phase4.snapshotView.openRoadmap', 'Continue to Roadmap')}</span>
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>

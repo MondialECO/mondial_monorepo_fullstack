@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   Layers,
   Clock,
@@ -200,6 +201,7 @@ export function NeedsAnalysisView({
   onKeepCurrent,
   onClearError,
 }: NeedsAnalysisViewProps) {
+  const { t } = useTranslation();
   const [staleDismissed, setStaleDismissed] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set());
@@ -282,7 +284,7 @@ export function NeedsAnalysisView({
           <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <h3 className="text-base font-bold text-foreground">
-              Phase 4 Requirements Check
+              {t('creator.phase4.needsView.requirementsCheck', 'Phase 4 Requirements Check')}
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {gateError.message}
@@ -294,13 +296,13 @@ export function NeedsAnalysisView({
             href={`/dashboard/creator/phase-4/roadmap?ideaId=${encodeURIComponent(ideaId)}`}
             className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors shadow-sm"
           >
-            Go to Operational Roadmap
+            {t('creator.phase4.needsView.goToRoadmap', 'Go to Operational Roadmap')}
           </Link>
           <Link
             href={`/dashboard/creator/phase-4/snapshot?ideaId=${encodeURIComponent(ideaId)}`}
             className="px-4 py-2 rounded-xl bg-card border border-border text-foreground text-xs font-semibold hover:bg-muted transition-colors shadow-sm"
           >
-            Review Snapshot
+            {t('creator.phase4.needsView.reviewSnapshot', 'Review Snapshot')}
           </Link>
         </div>
       </div>
@@ -313,7 +315,7 @@ export function NeedsAnalysisView({
       <div className="py-16 flex flex-col items-center justify-center space-y-4">
         <RefreshCw className="w-7 h-7 text-primary animate-spin" />
         <div className="text-sm font-medium text-muted-foreground">
-          Loading your needs & requirements analysis...
+          {t('creator.phase4.needsView.loading', 'Loading your needs & requirements analysis...')}
         </div>
       </div>
     );
@@ -328,7 +330,7 @@ export function NeedsAnalysisView({
         </div>
         <div className="space-y-2">
           <h3 className="text-lg font-bold text-foreground">
-            Analyze Needs & Requirements
+            {t('creator.phase4.needsView.title', 'Analyze Needs & Requirements')}
           </h3>
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
             MBC will evaluate your project snapshot, operational roadmap, company formation, and founder profile to map exact capability, service, legal, and capital requirements.
@@ -347,7 +349,7 @@ export function NeedsAnalysisView({
           ) : (
             <>
               <Sparkles className="w-4 h-4" />
-              <span>Generate Needs Analysis</span>
+              <span>{t('creator.phase4.needsView.generateButton', 'Generate Needs Analysis')}</span>
             </>
           )}
         </button>
@@ -394,7 +396,7 @@ export function NeedsAnalysisView({
               onClick={() => setShowReviewModal(true)}
               className="px-3 py-1.5 rounded-lg bg-card border border-border hover:bg-muted text-foreground font-semibold text-xs transition-colors shadow-sm"
             >
-              Review changes
+              {t('creator.phase4.roadmapView.reviewChanges', 'Review changes')}
             </button>
             <button
               onClick={async () => {
@@ -403,7 +405,7 @@ export function NeedsAnalysisView({
               }}
               className="px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors"
             >
-              Keep current version
+              {t('creator.phase4.needsView.keepCurrentVersion', 'Keep current version')}
             </button>
           </div>
         </div>
@@ -415,24 +417,24 @@ export function NeedsAnalysisView({
         <div className="space-y-1.5">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="text-lg sm:text-xl font-bold text-foreground">
-              {allNeeds.length} {allNeeds.length === 1 ? 'Requirement' : 'Requirements'}
+              {t('creator.phase4.needsView.requirementsCount', `${allNeeds.length} ${allNeeds.length === 1 ? 'Requirement' : 'Requirements'}`, { count: allNeeds.length })}
             </div>
 
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                {actualSatisfiedCount} Satisfied
+                {t('creator.phase4.needsView.satisfiedCount', `${actualSatisfiedCount} Satisfied`, { count: actualSatisfiedCount })}
               </span>
 
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/80">
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
-                {actualIdentifiedCount} Identified
+                {t('creator.phase4.needsView.identifiedCount', `${actualIdentifiedCount} Identified`, { count: actualIdentifiedCount })}
               </span>
             </div>
           </div>
 
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Confirming a need records your decision. It does not mean the need has been met.
+            {t('creator.phase4.needsView.confirmingRecords', 'Confirming a need records your decision. It does not mean the need has been met.')}
           </p>
         </div>
 
@@ -443,7 +445,9 @@ export function NeedsAnalysisView({
         <div className="shrink-0 flex items-center">
           {awaitingReviewCount > 0 ? (
             <div className="text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-              {awaitingReviewCount} {awaitingReviewCount === 1 ? 'need is' : 'needs are'} awaiting your review
+              {awaitingReviewCount === 1
+                ? t('creator.phase4.needsView.awaitingReview', '1 need is awaiting your review', { count: 1 })
+                : t('creator.phase4.needsView.multipleAwaitingReview', `${awaitingReviewCount} needs are awaiting your review`, { count: awaitingReviewCount })}
             </div>
           ) : (
             <div className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
@@ -555,7 +559,7 @@ export function NeedsAnalysisView({
                           disabled={isUpdating}
                           className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-card border border-border hover:bg-muted text-foreground transition-all shadow-sm disabled:opacity-50"
                         >
-                          Confirm need
+                          {t('creator.phase4.needsView.confirmNeed', 'Confirm need')}
                         </button>
                         <button
                           type="button"
@@ -563,7 +567,7 @@ export function NeedsAnalysisView({
                           disabled={isUpdating}
                           className="px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                         >
-                          Defer for now
+                          {t('creator.phase4.needsView.deferNeed', 'Defer for now')}
                         </button>
                       </div>
                     )}
@@ -609,7 +613,7 @@ export function NeedsAnalysisView({
           className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors self-start sm:self-center"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Roadmap</span>
+          <span>{t('creator.phase4.needsView.backToRoadmap', 'Back to Roadmap')}</span>
         </Link>
 
         {/* Right Action: Supporting Copy + Primary Pill Button */}
@@ -621,7 +625,7 @@ export function NeedsAnalysisView({
             href={`/dashboard/creator/phase-4/skills?ideaId=${encodeURIComponent(ideaId)}`}
             className="w-full sm:w-auto px-7 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm font-semibold transition-all shadow-sm inline-flex items-center justify-center gap-2"
           >
-            <span>Continue to Skills & Training</span>
+            <span>{t('creator.phase4.needsView.continueToSkills', 'Continue to Skills & Training')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -708,6 +712,7 @@ function ExpandedNeedDetail({
   onDefer,
   onSaveInfo,
 }: ExpandedNeedDetailProps) {
+  const { t } = useTranslation();
   const [infoText, setInfoText] = useState<string>(need.founderInformation || '');
   const [isSavedNotice, setIsSavedNotice] = useState<boolean>(false);
 
@@ -745,7 +750,7 @@ function ExpandedNeedDetail({
           <div className="space-y-4">
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                WHAT IS NEEDED
+                {t('creator.phase4.needsView.whatIsNeeded', 'WHAT IS NEEDED')}
               </div>
               <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-1">
                 {need.whatIsNeeded || need.description}
@@ -754,7 +759,7 @@ function ExpandedNeedDetail({
 
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                WHY THIS APPLIES
+                {t('creator.phase4.needsView.whyThisApplies', 'WHY THIS APPLIES')}
               </div>
               <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-1">
                 {need.whyThisApplies || need.whyNeeded}
@@ -766,7 +771,7 @@ function ExpandedNeedDetail({
           <div className="space-y-4">
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                WHAT YOU ALREADY HAVE
+                {t('creator.phase4.needsView.whatYouAlreadyHave', 'WHAT YOU ALREADY HAVE')}
               </div>
               <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-1">
                 {need.whatYouAlreadyHave || 'Not assessed yet.'}
@@ -775,7 +780,7 @@ function ExpandedNeedDetail({
 
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                WHAT IS STILL MISSING
+                {t('creator.phase4.needsView.whatIsStillMissing', 'WHAT IS STILL MISSING')}
               </div>
               <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-1">
                 {need.whatIsStillMissing || 'Prerequisite capability or deliverable.'}
@@ -787,7 +792,7 @@ function ExpandedNeedDetail({
         {/* Full-Width Lower Section with Divider: WHAT WOULD SATISFY THIS NEED */}
         <div className="pt-4 border-t border-border/70 space-y-1">
           <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            WHAT WOULD SATISFY THIS NEED
+            {t('creator.phase4.needsView.whatWouldSatisfy', 'WHAT WOULD SATISFY THIS NEED')}
           </div>
           <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-1">
             {need.whatWouldSatisfy ||
@@ -798,7 +803,7 @@ function ExpandedNeedDetail({
         {/* B. CONNECTED WORK (Roadmap Tasks) */}
         <div className="space-y-2">
           <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            CONNECTED WORK
+            {t('creator.phase4.needsView.connectedWork', 'CONNECTED WORK')}
           </div>
 
           {need.relatedRoadmapTaskKeys && need.relatedRoadmapTaskKeys.length > 0 ? (
@@ -833,7 +838,7 @@ function ExpandedNeedDetail({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-border/70">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              BUILT FROM:
+              {t('creator.phase4.needsView.builtFrom', 'BUILT FROM:')}
             </span>
             {need.source && need.source.length > 0 ? (
               need.source.map((src, i) => (
@@ -874,7 +879,7 @@ function ExpandedNeedDetail({
                 className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-all shadow-sm inline-flex items-center gap-1.5 disabled:opacity-50"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add what I have</span>
+                <span>{t('creator.phase4.needsView.addWhatIHave', 'Add what I have')}</span>
               </button>
 
               <button
@@ -882,7 +887,7 @@ function ExpandedNeedDetail({
                 disabled={isUpdating || need.founderState === 'Deferred'}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
               >
-                <span>Defer for now</span>
+                <span>{t('creator.phase4.needsView.deferNeed', 'Defer for now')}</span>
               </button>
             </div>
           </div>

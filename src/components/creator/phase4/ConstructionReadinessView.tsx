@@ -20,6 +20,7 @@ import {
   Check,
   AlertCircle,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import type {
   ConstructionReadinessReview,
   ReadinessArtifactCard,
@@ -49,6 +50,7 @@ export function ConstructionReadinessView({
   onSaveReview,
 }: ConstructionReadinessViewProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [isAccordionOpen, setIsAccordionOpen] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -123,7 +125,7 @@ export function ConstructionReadinessView({
             <div className="space-y-3">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  YOUR CURRENT POSITION
+                  {t('creator.phase4.readinessView.yourCurrentPosition', 'YOUR CURRENT POSITION')}
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 text-xs font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
@@ -170,7 +172,7 @@ export function ConstructionReadinessView({
               <div className="text-lg sm:text-xl font-bold font-heading text-foreground">
                 {review?.overallScore !== null && review?.overallScore !== undefined
                   ? `${review.overallScore}%`
-                  : 'Score not yet calculated'}
+                  : t('creator.phase4.readinessView.scoreNotCalculated', 'Score not yet calculated')}
               </div>
 
               <p className="text-xs text-muted-foreground leading-relaxed">
@@ -197,7 +199,7 @@ export function ConstructionReadinessView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
           <div>
             <h2 className="text-xl font-bold font-heading text-foreground tracking-tight">
-              What you already have
+              {t('creator.phase4.readinessView.whatYouAlreadyHave', 'What you already have')}
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
               Your saved work gives you a starting point for the next actions.
@@ -206,7 +208,12 @@ export function ConstructionReadinessView({
           <div className="inline-flex items-center px-3 py-1 rounded-full bg-muted text-xs font-mono font-medium text-muted-foreground shrink-0">
             {isLoading || !review
               ? '...'
-              : `${review.savedArtifactsCount ?? review.artifacts?.filter((a) => a.status !== 'Missing').length ?? 0} saved artefacts`}
+              : t('creator.phase4.readinessView.savedArtefacts', '{{count}} saved artefacts', {
+                  count:
+                    review.savedArtifactsCount ??
+                    review.artifacts?.filter((a) => a.status !== 'Missing').length ??
+                    0,
+                })}
           </div>
         </div>
 
@@ -263,7 +270,7 @@ export function ConstructionReadinessView({
       <section id="what-needs-attention" className="space-y-4">
         <div>
           <h2 className="text-xl font-bold font-heading text-foreground tracking-tight">
-            What needs attention
+            {t('creator.phase4.readinessView.whatNeedsAttention', 'What needs attention')}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
             Focus on the issues that affect your next actions.
@@ -280,7 +287,7 @@ export function ConstructionReadinessView({
                     {criticalIssue.title}
                   </h3>
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-semibold">
-                    {criticalIssue.badge || 'Critical priority'}
+                    {criticalIssue.badge || t('creator.phase4.readinessView.criticalPriority', 'Critical priority')}
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground font-medium">
@@ -293,7 +300,7 @@ export function ConstructionReadinessView({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
               <div className="bg-muted/30 border border-border/60 rounded-lg p-4 space-y-1.5">
                 <span className="font-mono text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
-                  WHY THIS MATTERS
+                  {t('creator.phase4.readinessView.whyThisMatters', 'WHY THIS MATTERS')}
                 </span>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {criticalIssue.whyItMatters}
@@ -302,7 +309,7 @@ export function ConstructionReadinessView({
 
               <div className="bg-muted/30 border border-border/60 rounded-lg p-4 space-y-1.5">
                 <span className="font-mono text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
-                  WHAT IS ALREADY DECIDED
+                  {t('creator.phase4.readinessView.whatIsAlreadyDecided', 'WHAT IS ALREADY DECIDED')}
                 </span>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {criticalIssue.whatIsAlreadyDecided}
@@ -311,7 +318,7 @@ export function ConstructionReadinessView({
 
               <div className="bg-muted/30 border border-border/60 rounded-lg p-4 space-y-1.5">
                 <span className="font-mono text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
-                  WHAT IS STILL NEEDED
+                  {t('creator.phase4.readinessView.whatIsStillNeeded', 'WHAT IS STILL NEEDED')}
                 </span>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {criticalIssue.whatIsStillNeeded}
@@ -320,7 +327,7 @@ export function ConstructionReadinessView({
 
               <div className="bg-muted/30 border border-border/60 rounded-lg p-4 space-y-1.5">
                 <span className="font-mono text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
-                  WHAT THIS AFFECTS
+                  {t('creator.phase4.readinessView.whatThisAffects', 'WHAT THIS AFFECTS')}
                 </span>
                 <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
                   {criticalIssue.whatThisAffects?.map((item, idx) => (
@@ -418,7 +425,7 @@ export function ConstructionReadinessView({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                YOUR NEXT ACTION
+                {t('creator.phase4.readinessView.yourNextAction', 'YOUR NEXT ACTION')}
               </span>
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 text-xs font-medium">
                 {review.nextAction.type}
@@ -426,7 +433,9 @@ export function ConstructionReadinessView({
               {review.nextAction.estimatedEffort && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-mono">
                   <Clock className="w-3 h-3" />
-                  Estimated effort: {review.nextAction.estimatedEffort}
+                  {t('creator.phase4.readinessView.estimatedEffort', 'Estimated effort: {{hours}}', {
+                    hours: review.nextAction.estimatedEffort,
+                  })}
                 </span>
               )}
             </div>
@@ -477,7 +486,7 @@ export function ConstructionReadinessView({
           <div className="flex items-center gap-2.5">
             <Info className="w-5 h-5 text-primary" />
             <h3 className="text-base sm:text-lg font-bold font-heading text-foreground group-hover:text-primary transition-colors">
-              Why this assessment?
+              {t('creator.phase4.readinessView.whyThisAssessment', 'Why this assessment?')}
             </h3>
           </div>
           <div className="p-1 rounded-md text-muted-foreground group-hover:text-foreground transition-colors">
@@ -542,13 +551,13 @@ export function ConstructionReadinessView({
         </div>
         <div className="space-y-1">
           <h4 className="text-sm font-bold font-heading text-foreground">
-            Keep building from your dashboard
+            {t('creator.phase4.readinessView.keepBuildingDashboard', 'Keep building from your dashboard')}
           </h4>
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
             Your saved outputs and unfinished actions will remain available so you can continue at your own pace.
           </p>
           <p className="text-xs text-muted-foreground/80 pt-0.5">
-            Saving this review does not mark unfinished work complete.
+            {t('creator.phase4.readinessView.savingNotice', 'Saving this review does not mark unfinished work complete.')}
           </p>
         </div>
       </section>
@@ -562,7 +571,7 @@ export function ConstructionReadinessView({
           className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Launch Assets</span>
+          <span>{t('creator.phase4.readinessView.backToAssets', 'Back to Launch Assets')}</span>
         </a>
 
         <button
@@ -577,7 +586,7 @@ export function ConstructionReadinessView({
               <span>Saving review...</span>
             </>
           ) : (
-            <span>Save review &amp; go to dashboard</span>
+            <span>{t('creator.phase4.readinessView.saveGoDashboard', 'Save review & go to dashboard')}</span>
           )}
         </button>
       </footer>

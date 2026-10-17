@@ -43,6 +43,7 @@ import type {
   UpdateLaunchAssetsRequest,
 } from '@/types/creator/launch-assets';
 import { resolveMediaUrl } from '@/lib/brand-kit-media';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface LaunchAssetsViewProps {
   ideaId: string;
@@ -76,6 +77,7 @@ export function LaunchAssetsView({
   onShareWebsite,
 }: LaunchAssetsViewProps) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Viewport mode for website preview
   const [viewportMode, setViewportMode] = useState<'desktop' | 'mobile'>('desktop');
@@ -500,7 +502,7 @@ export function LaunchAssetsView({
           </div>
           <div className="max-w-xl mx-auto space-y-2">
             <h2 className="text-2xl font-heading font-semibold text-foreground">
-              Launch Assets · One-Page Launch Website
+              {t('creator.phase4.launchAssetsView.emptyTitle', 'Launch Assets · One-Page Launch Website')}
             </h2>
             <p className="text-sm font-sans text-muted-foreground leading-relaxed">
               Generate an honest, branded one-page website synthesized directly from your Brand Kit, Value Proposition, Pricing Strategy, and GTM Plan.
@@ -513,7 +515,7 @@ export function LaunchAssetsView({
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
             >
               <Sparkles className="w-4 h-4" />
-              {isLoading ? 'Generating Launch Website...' : 'Generate Launch Website'}
+              {isLoading ? 'Generating Launch Website...' : t('creator.phase4.launchAssetsView.generateButton', 'Generate Launch Website')}
             </button>
           </div>
         </div>
@@ -619,7 +621,7 @@ export function LaunchAssetsView({
               ) : (
                 <Eye className="w-3.5 h-3.5" />
               )}
-              <span>{isViewingWebsite ? 'Opening...' : 'View website'}</span>
+              <span>{isViewingWebsite ? 'Opening...' : t('creator.phase4.launchAssetsView.viewWebsite', 'View website')}</span>
             </button>
 
             <button
@@ -632,7 +634,7 @@ export function LaunchAssetsView({
               ) : (
                 <Copy className="w-3.5 h-3.5 text-muted-foreground" />
               )}
-              <span>{copiedLink ? 'Link copied!' : 'Copy link'}</span>
+              <span>{copiedLink ? t('creator.phase4.launchAssetsView.linkCopied', 'Link copied!') : t('creator.phase4.launchAssetsView.copyLink', 'Copy link')}</span>
             </button>
 
             <button
@@ -641,7 +643,7 @@ export function LaunchAssetsView({
               title="Download standalone HTML source file"
             >
               <Download className="w-3.5 h-3.5 text-muted-foreground" />
-              <span>Download source</span>
+              <span>{t('creator.phase4.launchAssetsView.downloadSource', 'Download source')}</span>
             </button>
 
             <button
@@ -659,7 +661,7 @@ export function LaunchAssetsView({
                   ? 'Active Version'
                   : isSelectingVersion
                   ? 'Selecting...'
-                  : 'Use this version'}
+                  : t('creator.phase4.launchAssetsView.useThisVersion', 'Use this version')}
               </span>
             </button>
           </div>
@@ -695,7 +697,7 @@ export function LaunchAssetsView({
             className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isCreatingVersion ? 'animate-spin' : ''}`} />
-            <span>{versionSuccess ? 'Version Created!' : 'Create a new version'}</span>
+            <span>{versionSuccess ? t('creator.phase4.launchAssetsView.versionCreated', 'Version Created!') : t('creator.phase4.launchAssetsView.createNewVersion', 'Create a new version')}</span>
           </button>
         </div>
       </section>
@@ -755,7 +757,9 @@ export function LaunchAssetsView({
         {/* Controls Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <h2 className="text-base font-heading font-semibold text-foreground">Website preview</h2>
+            <h2 className="text-base font-heading font-semibold text-foreground">
+              {t('creator.phase4.launchAssetsView.websitePreview', 'Website preview')}
+            </h2>
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-sans text-muted-foreground border border-border bg-muted/40">
               Draft preview
             </span>
@@ -772,7 +776,7 @@ export function LaunchAssetsView({
               }`}
             >
               <Monitor className="w-3.5 h-3.5" />
-              <span>Desktop</span>
+              <span>{t('creator.phase4.launchAssetsView.desktop', 'Desktop')}</span>
             </button>
             <button
               onClick={() => setViewportMode('mobile')}
@@ -783,7 +787,7 @@ export function LaunchAssetsView({
               }`}
             >
               <Smartphone className="w-3.5 h-3.5" />
-              <span>Mobile</span>
+              <span>{t('creator.phase4.launchAssetsView.mobile', 'Mobile')}</span>
             </button>
           </div>
         </div>
@@ -1219,7 +1223,9 @@ export function LaunchAssetsView({
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div className="space-y-1">
-            <h2 className="text-base font-heading font-semibold text-foreground">Edit content</h2>
+            <h2 className="text-base font-heading font-semibold text-foreground">
+              {t('creator.phase4.launchAssetsView.editContent', 'Edit content')}
+            </h2>
             <p className="text-xs font-sans text-muted-foreground">
               Change the wording without starting again. Choose a section below to customize.
             </p>
@@ -1290,7 +1296,7 @@ export function LaunchAssetsView({
               {/* Headline */}
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  HEADLINE
+                  {t('creator.phase4.launchAssetsView.headline', 'HEADLINE')}
                 </label>
                 <input
                   type="text"
@@ -1304,7 +1310,7 @@ export function LaunchAssetsView({
               {/* Description */}
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  DESCRIPTION
+                  {t('creator.phase4.launchAssetsView.description', 'DESCRIPTION')}
                 </label>
                 <textarea
                   rows={3}
@@ -1320,7 +1326,7 @@ export function LaunchAssetsView({
                 {/* Button Label */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                    BUTTON LABEL
+                    {t('creator.phase4.launchAssetsView.buttonLabel', 'BUTTON LABEL')}
                   </label>
                   <input
                     type="text"
@@ -1335,7 +1341,7 @@ export function LaunchAssetsView({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                      BUTTON DESTINATION
+                      {t('creator.phase4.launchAssetsView.buttonDestination', 'BUTTON DESTINATION')}
                     </label>
                     {destValue.trim() ? (
                       <span className="text-[11px] font-sans font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
@@ -1718,7 +1724,7 @@ export function LaunchAssetsView({
               ) : (
                 <>
                   <Check className="w-3.5 h-3.5" />
-                  <span>{isApplying ? 'Applying...' : 'Apply changes'}</span>
+                  <span>{isApplying ? 'Applying...' : t('creator.phase4.launchAssetsView.applyChanges', 'Apply changes')}</span>
                 </>
               )}
             </button>
@@ -1778,7 +1784,9 @@ export function LaunchAssetsView({
       <section className="bg-card border border-border rounded-xl p-6 space-y-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div className="space-y-1">
-            <h2 className="text-base font-heading font-semibold text-foreground">Website sections</h2>
+            <h2 className="text-base font-heading font-semibold text-foreground">
+              {t('creator.phase4.launchAssetsView.websiteSections', 'Website sections')}
+            </h2>
             <p className="text-xs font-sans text-muted-foreground">
               Keep the sections that help explain your project. Click <strong>Edit</strong> to customize any section.
             </p>
@@ -1925,7 +1933,7 @@ export function LaunchAssetsView({
           className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Launch Strategy</span>
+          <span>{t('creator.phase4.launchAssetsView.backToStrategy', 'Back to Launch Strategy')}</span>
         </Link>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
@@ -1936,7 +1944,7 @@ export function LaunchAssetsView({
             href={`/dashboard/creator/phase-4/readiness${ideaId ? `?ideaId=${ideaId}` : ''}`}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm"
           >
-            <span>Continue to Construction Readiness</span>
+            <span>{t('creator.phase4.launchAssetsView.continueToReadiness', 'Continue to Construction Readiness')}</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

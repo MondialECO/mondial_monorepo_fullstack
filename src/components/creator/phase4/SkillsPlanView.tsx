@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   GraduationCap,
   Users,
@@ -66,6 +67,7 @@ export function SkillsPlanView({
   onKeepCurrent,
   onClearError,
 }: SkillsPlanViewProps) {
+  const { t } = useTranslation();
   const [staleDismissed, setStaleDismissed] = useState<boolean>(false);
   const [showReviewModal, setShowReviewModal] = useState<boolean>(false);
   const [activeBriefModal, setActiveBriefModal] = useState<CapabilityResolution | null>(null);
@@ -83,7 +85,9 @@ export function SkillsPlanView({
           <div className="inline-flex p-3 rounded-full bg-destructive/15 text-destructive">
             <AlertTriangle className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">Skills Plan Unavailable</h2>
+          <h2 className="text-xl font-bold text-foreground">
+            {t('creator.phase4.skillsView.unavailableTitle', 'Skills Plan Unavailable')}
+          </h2>
           <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed">
             {gateError.message}
           </p>
@@ -93,7 +97,7 @@ export function SkillsPlanView({
                 href={`/dashboard/creator/phase-4/needs?ideaId=${ideaId}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm transition-all shadow"
               >
-                Go to Step 4.3 Needs Analysis
+                {t('creator.phase4.skillsView.goToNeeds', 'Go to Step 4.3 Needs Analysis')}
                 <ArrowRight className="w-4 h-4" />
               </Link>
             ) : (
@@ -161,7 +165,9 @@ export function SkillsPlanView({
             <GraduationCap className="w-8 h-8" />
           </div>
           <div className="space-y-2">
-            <h3 className="text-lg font-bold text-foreground">Ready to Build Your Skills Plan</h3>
+            <h3 className="text-lg font-bold text-foreground">
+              {t('creator.phase4.skillsView.readyTitle', 'Ready to Build Your Skills Plan')}
+            </h3>
             <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
               Our deterministic capability resolution engine will evaluate each unresolved requirement from Step 4.3
               against your HumainX profile and statutory legal requirements.
@@ -180,7 +186,7 @@ export function SkillsPlanView({
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                Build My Skills Plan
+                <span>{t('creator.phase4.skillsView.buildButton', 'Build My Skills Plan')}</span>
               </>
             )}
           </button>
@@ -267,7 +273,7 @@ export function SkillsPlanView({
               }}
               className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              Keep my choices
+              {t('creator.phase4.skillsView.keepMyChoices', 'Keep my choices')}
             </button>
           </div>
         </div>
@@ -278,16 +284,16 @@ export function SkillsPlanView({
         <div className="space-y-1.5">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-              {totalSkillsCount} project skills
+              {t('creator.phase4.skillsView.projectSkills', `${totalSkillsCount} project skills`, { count: totalSkillsCount })}
             </h1>
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                {coveredCount} covered
+                {t('creator.phase4.skillsView.coveredCount', `${coveredCount} covered`, { count: coveredCount })}
               </span>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                {attentionCount} need attention
+                {t('creator.phase4.skillsView.needAttentionCount', `${attentionCount} need attention`, { count: attentionCount })}
               </span>
             </div>
           </div>
@@ -299,7 +305,7 @@ export function SkillsPlanView({
         <div className="flex items-center gap-8 border-t md:border-t-0 md:border-l border-border/80 pt-4 md:pt-0 md:pl-8">
           <div className="space-y-0.5">
             <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-              PROJECT SCOPE
+              {t('creator.phase4.skillsView.projectScope', 'PROJECT SCOPE')}
             </span>
             <span className="text-sm font-semibold text-foreground">
               {projectName || 'MVP v1'}
@@ -307,7 +313,7 @@ export function SkillsPlanView({
           </div>
           <div className="space-y-0.5">
             <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-              REGION
+              {t('creator.phase4.skillsView.region', 'REGION')}
             </span>
             <span className="text-sm font-semibold text-foreground">
               France
@@ -322,7 +328,7 @@ export function SkillsPlanView({
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-0.5">
               <h2 className="text-lg font-bold text-foreground">
-                You can already handle
+                {t('creator.phase4.skillsView.youCanHandle', 'You can already handle')}
               </h2>
               <p className="text-xs text-muted-foreground">
                 From your Creator profile
@@ -332,7 +338,7 @@ export function SkillsPlanView({
               href="/dashboard/creator/profile"
               className="text-xs font-semibold text-muted-foreground hover:text-foreground inline-flex items-center gap-1 transition-colors"
             >
-              <span>Update my experience</span>
+              <span>{t('creator.phase4.skillsView.updateExperience', 'Update my experience')}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -373,30 +379,30 @@ export function SkillsPlanView({
         <div className="p-4 rounded-xl bg-card border border-border/80 shadow-sm space-y-1">
           <div className="flex items-center gap-2 text-primary font-semibold text-sm">
             <GraduationCap className="w-4 h-4" />
-            <span>Learn</span>
+            <span>{t('creator.phase4.skillsView.learn', 'Learn')}</span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Build the skills to do it yourself.
+            {t('creator.phase4.skillsView.buildSkillsDesc', 'Build the skills to do it yourself.')}
           </p>
         </div>
 
         <div className="p-4 rounded-xl bg-card border border-border/80 shadow-sm space-y-1">
           <div className="flex items-center gap-2 text-primary font-semibold text-sm">
             <Users className="w-4 h-4" />
-            <span>Delegate</span>
+            <span>{t('creator.phase4.skillsView.delegate', 'Delegate')}</span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Get help from someone with the right skills.
+            {t('creator.phase4.skillsView.getHelpDesc', 'Get help from someone with the right skills.')}
           </p>
         </div>
 
         <div className="p-4 rounded-xl bg-card border border-border/80 shadow-sm space-y-1">
           <div className="flex items-center gap-2 text-primary font-semibold text-sm">
             <ShieldCheck className="w-4 h-4" />
-            <span>Verify</span>
+            <span>{t('creator.phase4.skillsView.verify', 'Verify')}</span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Check whether your experience covers this work.
+            {t('creator.phase4.skillsView.checkExperienceDesc', 'Check whether your experience covers this work.')}
           </p>
         </div>
       </section>
@@ -601,7 +607,7 @@ export function SkillsPlanView({
                   {/* Top Header */}
                   <div className="flex items-center justify-between border-b border-border/60 pb-3">
                     <span className="text-[11px] font-mono font-bold tracking-wider text-muted-foreground uppercase">
-                      DELEGATION BRIEF PREVIEW
+                      {t('creator.phase4.skillsView.delegationBriefPreview', 'DELEGATION BRIEF PREVIEW')}
                     </span>
                     <span className="text-xs font-semibold text-foreground">
                       Suggested type:{' '}
@@ -660,7 +666,7 @@ export function SkillsPlanView({
                       onClick={() => setActiveBriefModal(res)}
                       className="px-3 py-1.5 rounded-lg bg-card border border-border text-foreground hover:bg-muted text-xs font-semibold transition-colors"
                     >
-                      View brief
+                      {t('creator.phase4.skillsView.viewBrief', 'View brief')}
                     </button>
                     <button
                       onClick={() => setActiveBriefModal(res)}
@@ -684,7 +690,7 @@ export function SkillsPlanView({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/60 pb-3 gap-2">
                     <div className="flex items-center gap-2 text-foreground font-bold text-sm">
                       <GraduationCap className="w-4 h-4 text-primary" />
-                      <span>Your learning plan</span>
+                      <span>{t('creator.phase4.skillsView.yourLearningPlan', 'Your learning plan')}</span>
                     </div>
                     <span className="text-xs px-2.5 py-1 rounded-md bg-muted text-muted-foreground font-medium">
                       Suggested effort:{' '}
@@ -722,7 +728,7 @@ export function SkillsPlanView({
                   {/* 4 Practical Learning Steps */}
                   <div className="space-y-2">
                     <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                      4 PRACTICAL LEARNING STEPS
+                      {t('creator.phase4.skillsView.fourPracticalSteps', '4 PRACTICAL LEARNING STEPS')}
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                       {(() => {
@@ -816,7 +822,7 @@ export function SkillsPlanView({
                   {/* WORKLOAD IMPACT PREVIEW */}
                   <div className="space-y-2 pt-2">
                     <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase block font-semibold">
-                      WORKLOAD IMPACT PREVIEW
+                      {t('creator.phase4.skillsView.workloadImpactPreview', 'WORKLOAD IMPACT PREVIEW')}
                     </span>
                     <div className="p-4 rounded-xl bg-card border border-border/80 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
                       <div>
@@ -876,7 +882,9 @@ export function SkillsPlanView({
                   {/* 3 Columns */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
                     <div className="space-y-1">
-                      <span className="text-muted-foreground block font-medium">What needs checking</span>
+                      <span className="text-muted-foreground block font-medium">
+                        {t('creator.phase4.skillsView.whatNeedsChecking', 'What needs checking')}
+                      </span>
                       <p className="font-semibold text-foreground leading-relaxed">
                         {res.verificationRequirement?.whatNeedsChecking ||
                           res.verificationRequirement?.requirement ||
@@ -885,7 +893,9 @@ export function SkillsPlanView({
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-muted-foreground block font-medium">What you can share</span>
+                      <span className="text-muted-foreground block font-medium">
+                        {t('creator.phase4.skillsView.whatYouCanShare', 'What you can share')}
+                      </span>
                       <p className="font-semibold text-foreground leading-relaxed">
                         {res.verificationRequirement?.whatYouCanShare ||
                           res.verificationRequirement?.requiredEvidence ||
@@ -896,7 +906,9 @@ export function SkillsPlanView({
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-muted-foreground block font-medium">What is still unclear</span>
+                      <span className="text-muted-foreground block font-medium">
+                        {t('creator.phase4.skillsView.whatIsStillUnclear', 'What is still unclear')}
+                      </span>
                       <p className="font-semibold text-foreground leading-relaxed">
                         {res.verificationRequirement?.whatIsStillUnclear ||
                           res.verificationRequirement?.whyRequired ||
@@ -912,7 +924,7 @@ export function SkillsPlanView({
                       onClick={() => setActiveEvidenceModal(res)}
                       className="px-3.5 py-1.5 rounded-lg bg-card border border-border text-foreground hover:bg-muted text-xs font-semibold transition-colors"
                     >
-                      See what to share
+                      {t('creator.phase4.skillsView.seeWhatToShare', 'See what to share')}
                     </button>
                     <button
                       onClick={() => handleSelectMode(res, 'VERIFY')}
@@ -965,7 +977,7 @@ export function SkillsPlanView({
           className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Needs & Requirements
+          {t('creator.phase4.skillsView.backToNeeds', 'Back to Needs & Requirements')}
         </Link>
 
         <div className="flex flex-col sm:items-end gap-1">
@@ -973,7 +985,7 @@ export function SkillsPlanView({
             href={`/dashboard/creator/phase-4/support?ideaId=${ideaId}`}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm transition-all shadow"
           >
-            <span>Continue to Aids & Support</span>
+            <span>{t('creator.phase4.skillsView.continueToSupport', 'Continue to Aids & Support')}</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
           <span className="text-[11px] text-muted-foreground">

@@ -17,6 +17,7 @@ import {
   Sliders,
   HelpCircle,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import type {
   OperationalRoadmap,
   RoadmapTask,
@@ -139,6 +140,7 @@ export function OperationalRoadmapView({
   onKeepCurrent,
   onClearError,
 }: OperationalRoadmapViewProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [staleDismissed, setStaleDismissed] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -202,10 +204,10 @@ export function OperationalRoadmapView({
           <Clock className="w-7 h-7" />
         </div>
         <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
-          Your roadmap has not been generated yet.
+          {t('creator.phase4.roadmapView.emptyTitle', 'Your roadmap has not been generated yet.')}
         </h2>
         <p className="text-muted-foreground max-w-lg text-xs sm:text-sm leading-relaxed mb-6">
-          MBC will transform your construction snapshot, business model, financial runway, and weekly availability into an actionable operational roadmap.
+          {t('creator.phase4.roadmapView.emptyDesc', 'MBC will transform your construction snapshot, business model, financial runway, and weekly availability into an actionable operational roadmap.')}
         </p>
 
         {error && (
@@ -226,7 +228,7 @@ export function OperationalRoadmapView({
             </>
           ) : (
             <>
-              <span>Generate My Roadmap</span>
+              <span>{t('creator.phase4.roadmapView.generateButton', 'Generate My Roadmap')}</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}
@@ -242,9 +244,11 @@ export function OperationalRoadmapView({
         <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-5 animate-pulse">
           <RefreshCw className="w-6 h-6 animate-spin" />
         </div>
-        <h3 className="text-lg font-semibold text-foreground mb-1.5">Building your operational roadmap…</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-1.5">
+          {t('creator.phase4.roadmapView.buildingRoadmap', 'Building your operational roadmap…')}
+        </h3>
         <p className="text-muted-foreground text-xs max-w-md">
-          MBC is sequencing your priorities, dependencies, and available hours into a capacity-paced plan.
+          {t('creator.phase4.roadmapView.buildingDesc', 'MBC is sequencing your priorities, dependencies, and available hours into a capacity-paced plan.')}
         </p>
       </div>
     );
@@ -296,7 +300,7 @@ export function OperationalRoadmapView({
           <div className="flex items-start sm:items-center gap-2.5">
             <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5 sm:mt-0" />
             <span className="text-foreground font-medium">
-              Your project or availability has changed and may affect this roadmap.
+              {t('creator.phase4.roadmapView.noticeChanged', 'Your project or availability has changed and may affect this roadmap.')}
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
@@ -304,7 +308,7 @@ export function OperationalRoadmapView({
               onClick={() => setShowReviewModal(true)}
               className="px-3 py-1.5 rounded-lg bg-card border border-border hover:bg-muted text-foreground font-semibold transition-colors shadow-sm"
             >
-              Review changes
+              {t('creator.phase4.roadmapView.reviewChanges', 'Review changes')}
             </button>
             <button
               onClick={async () => {
@@ -313,7 +317,7 @@ export function OperationalRoadmapView({
               }}
               className="px-3 py-1.5 text-muted-foreground hover:text-foreground font-medium transition-colors"
             >
-              Keep current plan
+              {t('creator.phase4.roadmapView.keepCurrentPlan', 'Keep current plan')}
             </button>
           </div>
         </div>
@@ -325,7 +329,7 @@ export function OperationalRoadmapView({
           {/* Column 1: Your Availability */}
           <div className="space-y-1.5 pb-4 sm:pb-0 sm:pr-6">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Your Availability
+              {t('creator.phase4.roadmapView.yourAvailability', 'Your Availability')}
             </div>
             <div className="text-xl sm:text-2xl font-bold text-foreground font-mono">
               {weeklyAvailability}
@@ -342,7 +346,7 @@ export function OperationalRoadmapView({
                 className="text-primary hover:text-primary/80 font-semibold inline-flex items-center gap-1 transition-colors"
               >
                 <Sliders className="w-3 h-3" />
-                <span>Adjust availability</span>
+                <span>{t('creator.phase4.roadmapView.adjustAvailability', 'Adjust availability')}</span>
               </button>
             </div>
           </div>
@@ -350,7 +354,7 @@ export function OperationalRoadmapView({
           {/* Column 2: Planned Now */}
           <div className="space-y-1.5 py-4 sm:py-0 sm:px-6">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Planned Now
+              {t('creator.phase4.roadmapView.plannedNow', 'Planned Now')}
             </div>
             <div className="text-xl sm:text-2xl font-bold text-foreground">
               <span className="font-mono">{nowTasksCount}</span>{' '}
@@ -377,7 +381,7 @@ export function OperationalRoadmapView({
           {/* Column 3: Plan Status */}
           <div className="space-y-1.5 pt-4 sm:pt-0 sm:pl-6">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Plan Status
+              {t('creator.phase4.roadmapView.planStatus', 'Plan Status')}
             </div>
             <div className="flex items-center gap-2 pt-0.5">
               <span
@@ -414,7 +418,7 @@ export function OperationalRoadmapView({
           <div className="space-y-1.5 max-w-3xl">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-800/60">
-                START HERE
+                {t('creator.phase4.roadmapView.startHere', 'START HERE')}
               </span>
               {nextBestAction.blocking && (
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">
@@ -439,7 +443,7 @@ export function OperationalRoadmapView({
             onClick={() => scrollToAndExpandTask(nextBestAction.taskId)}
             className="px-4 py-2 text-xs font-semibold rounded-xl bg-card border border-border hover:bg-muted text-foreground transition-all shadow-sm shrink-0 flex items-center gap-1.5 self-start sm:self-center"
           >
-            <span>View task</span>
+            <span>{t('creator.phase4.roadmapView.viewTask', 'View task')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -514,7 +518,7 @@ export function OperationalRoadmapView({
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to Snapshot</span>
+          <span>{t('creator.phase4.roadmapView.backToSnapshot', 'Back to Snapshot')}</span>
         </Link>
 
         <div className="flex flex-col items-start sm:items-end gap-1.5 w-full sm:w-auto">
@@ -532,8 +536,8 @@ export function OperationalRoadmapView({
               <>
                 <span>
                   {planStatus === 'Active' || planStatus === 'Completed'
-                    ? 'Continue to Needs & Requirements'
-                    : 'Activate roadmap & continue'}
+                    ? t('creator.phase4.roadmapView.continueNeeds', 'Continue to Needs & Requirements')
+                    : t('creator.phase4.roadmapView.activateRoadmap', 'Activate roadmap & continue')}
                 </span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </>
@@ -686,6 +690,7 @@ function TaskRow({
   onUpdateTask: (req: UpdateRoadmapTaskRequest) => Promise<void>;
   isUpdating: boolean;
 }) {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editedStatus, setEditedStatus] = useState<RoadmapTaskStatus>(task.status);
   const [editedNotes, setEditedNotes] = useState<string>(task.founderNotes || '');
@@ -819,7 +824,7 @@ function TaskRow({
             <div>
               <div className="font-semibold text-foreground mb-1 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-                <span>Expected Result</span>
+                <span>{t('creator.phase4.roadmapView.expectedResult', 'Expected Result')}</span>
               </div>
               <p className="text-muted-foreground leading-relaxed pl-5">
                 {task.expectedResult || 'Deliverable outcome verified upon completion.'}
@@ -829,7 +834,7 @@ function TaskRow({
             <div>
               <div className="font-semibold text-foreground mb-1 flex items-center gap-1.5">
                 <HelpCircle className="w-3.5 h-3.5 text-primary" />
-                <span>Why This Is Here</span>
+                <span>{t('creator.phase4.roadmapView.whyThisIsHere', 'Why This Is Here')}</span>
               </div>
               <p className="text-muted-foreground leading-relaxed pl-5">
                 {task.why || task.description}
@@ -842,7 +847,7 @@ function TaskRow({
             <div>
               <div className="font-semibold text-foreground mb-1 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-primary" />
-                <span>Estimated Effort</span>
+                <span>{t('creator.phase4.roadmapView.estimatedEffort', 'Estimated Effort')}</span>
               </div>
               <div className="text-muted-foreground pl-5 space-y-0.5">
                 <div>
@@ -871,7 +876,7 @@ function TaskRow({
             <div>
               <div className="font-semibold text-foreground mb-1 flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-primary" />
-                <span>Prerequisites / Blocked by</span>
+                <span>{t('creator.phase4.roadmapView.prerequisites', 'Prerequisites / Blocked by')}</span>
               </div>
               <div className="pl-5">
                 {resolvedDependencies.length > 0 ? (
@@ -908,7 +913,7 @@ function TaskRow({
             <div>
               <div className="font-semibold text-foreground mb-1 flex items-center gap-1.5">
                 <ArrowRight className="w-3.5 h-3.5 text-primary" />
-                <span>Blocks Downstream Tasks</span>
+                <span>{t('creator.phase4.roadmapView.blocksDownstream', 'Blocks Downstream Tasks')}</span>
               </div>
               <div className="pl-5">
                 {task.unblocks && task.unblocks.length > 0 ? (
@@ -998,7 +1003,7 @@ function TaskRow({
                   onClick={handleSaveAdjustment}
                   className="px-3.5 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-lg shadow"
                 >
-                  Save Changes
+                  {t('creator.phase4.roadmapView.saveChanges', 'Save Changes')}
                 </button>
               </div>
             </div>
@@ -1007,7 +1012,7 @@ function TaskRow({
           {/* Bottom Row: Source chips on left, Adjust task on right */}
           <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] text-muted-foreground font-medium">Built from:</span>
+              <span className="text-[11px] text-muted-foreground font-medium">{t('creator.phase4.roadmapView.builtFrom', 'Built from:')}</span>
               {task.source && task.source.length > 0 ? (
                 task.source.map((src, idx) => (
                   <span
@@ -1030,7 +1035,7 @@ function TaskRow({
                 className="text-xs text-primary hover:text-primary/80 font-semibold flex items-center gap-1 transition-colors"
               >
                 <Sliders className="w-3.5 h-3.5" />
-                <span>Adjust task</span>
+                <span>{t('creator.phase4.roadmapView.adjustTask', 'Adjust task')}</span>
               </button>
             )}
           </div>

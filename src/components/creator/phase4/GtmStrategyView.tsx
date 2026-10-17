@@ -29,6 +29,7 @@ import {
   Sliders,
   CheckCheck,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import type {
   GtmStrategy,
   GtmChannelStrategy,
@@ -70,6 +71,7 @@ export function GtmStrategyView({
   onRecordExperimentRun,
 }: GtmStrategyViewProps) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Accordions
   const [whyGroupOpen, setWhyGroupOpen] = useState(false);
@@ -266,10 +268,10 @@ export function GtmStrategyView({
             <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
             <div>
               <span className="text-[11px] font-mono uppercase tracking-widest text-amber-800 dark:text-amber-300 font-semibold block">
-                PREREQUISITE GATE ACTIVE · PHASE 4.7 LOCKED
+                {t('creator.phase4.gtmView.prerequisiteActive', 'PREREQUISITE GATE ACTIVE · PHASE 4.7 LOCKED')}
               </span>
               <h2 className="text-lg sm:text-xl font-bold font-heading text-amber-900 dark:text-amber-200 mt-1">
-                Phase 4.6 Pricing Strategy Required First
+                {t('creator.phase4.gtmView.pricingRequiredFirst', 'Phase 4.6 Pricing Strategy Required First')}
               </h2>
               <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300/90 mt-1">
                 {gateError.message}
@@ -286,7 +288,7 @@ export function GtmStrategyView({
               href={`/dashboard/creator/phase-4/pricing?ideaId=${ideaId}`}
               className="px-5 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold shadow-sm flex items-center gap-2 transition-colors"
             >
-              <span>Complete Step 4.6 Pricing Strategy</span>
+              <span>{t('creator.phase4.gtmView.completePricing', 'Complete Step 4.6 Pricing Strategy')}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -308,7 +310,7 @@ export function GtmStrategyView({
               CREATOR PHASE 4.7 · GTM & LAUNCH STRATEGY ENGINE
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold font-heading text-foreground">
-              Convert Pricing & Market Intelligence into a Sequenced Launch
+              {t('creator.phase4.gtmView.convertTitle', 'Convert Pricing & Market Intelligence into a Sequenced Launch')}
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Derive grounded customer acquisition channels, weekly capacity allocations, empirical validation experiments, and measurable conversion funnel metrics without guesswork.
@@ -349,7 +351,7 @@ export function GtmStrategyView({
               className="px-6 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm shadow-sm inline-flex items-center gap-2 transition-colors disabled:opacity-50"
             >
               <Sparkles className="w-4 h-4" />
-              <span>{isLoading ? 'Synthesizing GTM Strategy...' : 'Build My Launch Strategy'}</span>
+              <span>{isLoading ? 'Synthesizing GTM Strategy...' : t('creator.phase4.gtmView.buildButton', 'Build My Launch Strategy')}</span>
             </button>
           </div>
         </div>
@@ -364,13 +366,13 @@ export function GtmStrategyView({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
-            PHASE 4 · STEP 4.7
+            {t('creator.phase4.gtmView.stepBadge', 'PHASE 4 · STEP 4.7')}
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
-            GTM & Launch Strategy
+            {t('creator.phase4.gtmView.title', 'GTM & Launch Strategy')}
           </h1>
           <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
-            Grounded go-to-market plan for {projectName}, balancing founder capacity, starting channels, and customer validation milestones.
+            {t('creator.phase4.gtmView.subtitle', 'Grounded go-to-market plan for {{name}}, balancing founder capacity, starting channels, and customer validation milestones.', { name: projectName })}
           </p>
         </div>
 
@@ -382,7 +384,7 @@ export function GtmStrategyView({
             title="Refresh GTM strategy against fresh upstream data"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-primary' : ''}`} />
-            <span>Re-verify</span>
+            <span>{t('creator.phase4.gtmView.reverify', 'Re-verify')}</span>
           </button>
         </div>
       </div>
@@ -393,7 +395,7 @@ export function GtmStrategyView({
           <div className="flex items-start gap-2.5">
             <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <h4 className="text-xs font-semibold text-foreground">Update available:</h4>
+              <h4 className="text-xs font-semibold text-foreground">{t('creator.phase4.gtmView.updateAvailable', 'Update available:')}</h4>
               <p className="text-xs text-muted-foreground">
                 Upstream changes detected in {changedSources.join(', ') || 'Pricing or Roadmap'}.
               </p>
@@ -404,7 +406,7 @@ export function GtmStrategyView({
             disabled={isLoading}
             className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium shrink-0 transition-colors"
           >
-            Refresh Launch Plan
+            {t('creator.phase4.gtmView.refreshLaunchPlan', 'Refresh Launch Plan')}
           </button>
         </div>
       )}
@@ -416,14 +418,14 @@ export function GtmStrategyView({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="text-[11px] font-mono uppercase tracking-widest text-muted-foreground font-semibold">
-              YOUR LAUNCH PLAN
+              {t('creator.phase4.gtmView.yourLaunchPlan', 'YOUR LAUNCH PLAN')}
             </span>
             <span className="px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border text-[11px] font-mono">
               {strategy.status || 'Draft'}
             </span>
           </div>
           <span className="text-xs font-mono text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-md border border-border/60">
-            Project: {projectName}
+            {t('creator.phase4.gtmView.project', 'Project: {{name}}', { name: projectName })}
           </span>
         </div>
 
@@ -477,7 +479,7 @@ export function GtmStrategyView({
         {/* Small Next-Action Reminder Line */}
         <div className="pt-2 flex items-center gap-2 text-xs text-muted-foreground border-t border-border/50">
           <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
-          <span>Next launch action: Prepare customer conversations</span>
+          <span>{t('creator.phase4.gtmView.nextLaunchAction', 'Next launch action: Prepare customer conversations')}</span>
         </div>
       </section>
 
@@ -488,7 +490,7 @@ export function GtmStrategyView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-0.5">
             <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
-              Your first customers
+              {t('creator.phase4.gtmView.firstCustomers', 'Your first customers')}
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
               Start with a specific group you can learn from.
@@ -501,7 +503,7 @@ export function GtmStrategyView({
             }}
             className="px-3.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-xs font-semibold text-foreground transition-colors shrink-0 self-start sm:self-auto"
           >
-            Adjust customer group
+            {t('creator.phase4.gtmView.adjustCustomerGroup', 'Adjust customer group')}
           </button>
         </div>
 
@@ -512,7 +514,7 @@ export function GtmStrategyView({
               {effectiveCustomerGroup}
             </h3>
             <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[11px] font-mono font-medium shrink-0">
-              {strategy.founderOverrides?.['CustomCustomerGroup'] ? 'Founder Decision' : 'Suggested'}
+              {strategy.founderOverrides?.['CustomCustomerGroup'] ? t('creator.phase4.gtmView.founderDecision', 'Founder Decision') : t('creator.phase4.gtmView.suggested', 'Suggested')}
             </span>
           </div>
 
@@ -523,7 +525,7 @@ export function GtmStrategyView({
           <div className="pt-2 flex items-center gap-2 text-xs text-muted-foreground">
             <Target className="w-3.5 h-3.5 text-primary shrink-0" />
             <span>
-              Likely decision-maker:{' '}
+              {t('creator.phase4.gtmView.likelyDecisionMaker', 'Likely decision-maker:')}{' '}
               <strong className="text-foreground font-medium">
                 {strategy.primarySegment?.buyingComplexity || 'Business owner'}
               </strong>{' '}
@@ -538,7 +540,7 @@ export function GtmStrategyView({
             onClick={() => setWhyGroupOpen(!whyGroupOpen)}
             className="w-full px-4 py-3 bg-muted/20 hover:bg-muted/40 flex items-center justify-between text-xs sm:text-sm font-medium text-foreground transition-colors"
           >
-            <span>Why this group?</span>
+            <span>{t('creator.phase4.gtmView.whyThisGroup', 'Why this group?')}</span>
             {whyGroupOpen ? (
               <ChevronUp className="w-4 h-4 text-muted-foreground" />
             ) : (
@@ -573,7 +575,7 @@ export function GtmStrategyView({
       <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
         <div className="space-y-0.5">
           <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
-            What you’ll say
+            {t('creator.phase4.gtmView.whatYoullSay', 'What you’ll say')}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
             Explain the problem you want to help with.
@@ -583,7 +585,7 @@ export function GtmStrategyView({
         {/* Positioning Pill Container */}
         <div className="bg-muted/30 border border-border/70 rounded-xl p-4 space-y-1.5">
           <span className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[10px] font-mono font-semibold uppercase tracking-wider inline-block">
-            POSITIONING
+            {t('creator.phase4.gtmView.positioning', 'POSITIONING')}
           </span>
           <p className="text-sm font-medium text-foreground leading-relaxed">
             {strategy.primarySegment?.primaryMessage ||
@@ -595,10 +597,10 @@ export function GtmStrategyView({
         <div className="bg-card border border-border/80 rounded-2xl p-5 space-y-3 shadow-xs">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground font-semibold">
-              INITIAL OUTREACH MESSAGE DRAFT
+              {t('creator.phase4.gtmView.initialOutreachDraft', 'INITIAL OUTREACH MESSAGE DRAFT')}
             </span>
             <span className="text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">
-              Ready for testing
+              {t('creator.phase4.gtmView.readyForTesting', 'Ready for testing')}
             </span>
           </div>
 
@@ -616,7 +618,7 @@ export function GtmStrategyView({
                 className="px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-xs font-semibold text-foreground flex items-center gap-1.5 transition-colors"
               >
                 <Edit3 className="w-3.5 h-3.5 text-muted-foreground" />
-                <span>Edit message</span>
+                <span>{t('creator.phase4.gtmView.editMessage', 'Edit message')}</span>
               </button>
 
               <button
@@ -628,7 +630,7 @@ export function GtmStrategyView({
                 ) : (
                   <Copy className="w-3.5 h-3.5 text-muted-foreground" />
                 )}
-                <span>{copiedMessage ? 'Copied!' : 'Copy message'}</span>
+                <span>{copiedMessage ? t('creator.phase4.gtmView.copied', 'Copied!') : t('creator.phase4.gtmView.copyMessage', 'Copy message')}</span>
               </button>
             </div>
 
@@ -650,7 +652,7 @@ export function GtmStrategyView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-0.5">
             <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
-              How customers will buy
+              {t('creator.phase4.gtmView.howCustomersWillBuy', 'How customers will buy')}
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
               Choose how much explanation and reassurance customers may need.
@@ -660,14 +662,14 @@ export function GtmStrategyView({
             onClick={() => setWhyGroupOpen(!whyGroupOpen)}
             className="text-xs font-semibold text-primary hover:underline self-start sm:self-auto"
           >
-            Review approach
+            {t('creator.phase4.gtmView.reviewApproach', 'Review approach')}
           </button>
         </div>
 
         {/* Recommended Approach Banner */}
         <div className="bg-muted/30 border border-border/70 rounded-xl p-4 space-y-1">
           <h3 className="text-sm font-bold text-foreground font-heading">
-            Talk first, demonstrate when ready
+            {t('creator.phase4.gtmView.talkFirst', 'Talk first, demonstrate when ready')}
           </h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
             A conversation helps you understand their current process. A working demo can later show how {projectName} fits.
@@ -678,7 +680,7 @@ export function GtmStrategyView({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-muted/20 border border-border/60 rounded-xl p-3.5 space-y-1">
             <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
-              WHO DECIDES?
+              {t('creator.phase4.gtmView.whoDecides', 'WHO DECIDES?')}
             </span>
             <p className="text-xs text-foreground leading-snug">
               {strategy.primarySegment?.buyingComplexity
@@ -689,7 +691,7 @@ export function GtmStrategyView({
 
           <div className="bg-muted/20 border border-border/60 rounded-xl p-3.5 space-y-1">
             <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
-              WHAT NEEDS EXPLAINING?
+              {t('creator.phase4.gtmView.whatNeedsExplaining', 'WHAT NEEDS EXPLAINING?')}
             </span>
             <p className="text-xs text-foreground leading-snug">
               {strategy.primarySegment?.problem
@@ -700,7 +702,7 @@ export function GtmStrategyView({
 
           <div className="bg-muted/20 border border-border/60 rounded-xl p-3.5 space-y-1">
             <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
-              WHAT COULD BUILD TRUST?
+              {t('creator.phase4.gtmView.whatCouldBuildTrust', 'WHAT COULD BUILD TRUST?')}
             </span>
             <p className="text-xs text-foreground leading-snug">
               {strategy.primarySegment?.primaryMessage
@@ -712,16 +714,16 @@ export function GtmStrategyView({
 
         {/* Stage Progression Preview */}
         <div className="bg-muted/30 border border-border/60 rounded-xl p-3.5 flex flex-wrap items-center gap-3 text-xs">
-          <span className="text-muted-foreground font-medium">Progression:</span>
+          <span className="text-muted-foreground font-medium">{t('creator.phase4.gtmView.progression', 'Progression:')}</span>
           <span className="px-3 py-1 rounded-md bg-card border border-border font-semibold text-foreground shadow-xs">
-            Now: Customer conversations
+            {t('creator.phase4.gtmView.nowCustomerConversations', 'Now: Customer conversations')}
           </span>
           <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-muted text-muted-foreground border border-border/60">
             <Lock className="w-3 h-3" />
-            <span>Later: Product demo</span>
+            <span>{t('creator.phase4.gtmView.laterProductDemo', 'Later: Product demo')}</span>
             <span className="text-[10px] bg-muted-foreground/15 px-1.5 py-0.5 rounded ml-1 font-mono">
-              Requires usable demo
+              {t('creator.phase4.gtmView.requiresUsableDemo', 'Requires usable demo')}
             </span>
           </div>
         </div>
@@ -729,7 +731,7 @@ export function GtmStrategyView({
         {/* Small Pricing Reference Card */}
         <div className="bg-muted/20 border border-border/60 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">Current chosen price:</span>
+            <span className="text-muted-foreground">{t('creator.phase4.gtmView.currentChosenPrice', 'Current chosen price:')}</span>
             <strong className="text-foreground font-semibold">
               €{strategy.primarySegment?.selectedPrice || 15} per business / month
             </strong>
@@ -741,7 +743,7 @@ export function GtmStrategyView({
             href={`/dashboard/creator/phase-4/pricing?ideaId=${ideaId}`}
             className="text-primary hover:underline font-semibold flex items-center gap-1"
           >
-            <span>Review pricing</span>
+            <span>{t('creator.phase4.gtmView.reviewPricing', 'Review pricing')}</span>
             <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
@@ -754,7 +756,7 @@ export function GtmStrategyView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-0.5">
             <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
-              Where to reach them
+              {t('creator.phase4.gtmView.whereToReachThem', 'Where to reach them')}
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
               Focus on one starting channel.
@@ -764,7 +766,7 @@ export function GtmStrategyView({
             onClick={() => setIsChangeChannelOpen(true)}
             className="px-3.5 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-xs font-semibold text-foreground transition-colors shrink-0 self-start sm:self-auto"
           >
-            Change channel
+            {t('creator.phase4.gtmView.changeChannel', 'Change channel')}
           </button>
         </div>
 
@@ -775,7 +777,7 @@ export function GtmStrategyView({
               {primaryChannel?.channelName || 'Direct outreach'}
             </h3>
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[11px] font-mono font-medium">
-              Primary focus
+              {t('creator.phase4.gtmView.primaryFocus', 'Primary focus')}
             </span>
           </div>
 
@@ -788,7 +790,7 @@ export function GtmStrategyView({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
             <div className="bg-card border border-border/60 rounded-xl p-3 space-y-1">
               <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
-                WHY START HERE?
+                {t('creator.phase4.gtmView.whyStartHere', 'WHY START HERE?')}
               </span>
               <p className="text-xs text-foreground leading-snug">
                 {primaryChannel?.rationale ||
@@ -798,7 +800,7 @@ export function GtmStrategyView({
 
             <div className="bg-card border border-border/60 rounded-xl p-3 space-y-1">
               <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
-                WHAT YOU’LL DO
+                {t('creator.phase4.gtmView.whatYoullDo', 'WHAT YOU’LL DO')}
               </span>
               <p className="text-xs text-foreground leading-snug">
                 {primaryChannel?.firstStep ||
@@ -808,7 +810,7 @@ export function GtmStrategyView({
 
             <div className="bg-card border border-border/60 rounded-xl p-3 space-y-1">
               <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
-                WHAT NEEDS CHECKING
+                {t('creator.phase4.gtmView.whatNeedsChecking', 'WHAT NEEDS CHECKING')}
               </span>
               <p className="text-xs text-foreground leading-snug">
                 {primaryChannel?.evidenceGrounded ||
@@ -829,7 +831,7 @@ export function GtmStrategyView({
       <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
         <div className="space-y-0.5">
           <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
-            What you can commit
+            {t('creator.phase4.gtmView.whatYouCanCommit', 'What you can commit')}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
             Balance marketing effort against your current workload.
@@ -842,7 +844,7 @@ export function GtmStrategyView({
           <div className="bg-muted/20 border border-border/70 rounded-2xl p-5 flex flex-col justify-between space-y-4">
             <div className="space-y-1.5">
               <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
-                PROJECT TIME
+                {t('creator.phase4.gtmView.projectTime', 'PROJECT TIME')}
               </span>
               <div className="text-2xl sm:text-3xl font-bold text-foreground font-mono tabular-nums">
                 {effectiveHours} hours / week
@@ -868,7 +870,7 @@ export function GtmStrategyView({
                 }}
                 className="px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-semibold text-foreground transition-colors"
               >
-                Review available time
+                {t('creator.phase4.gtmView.reviewAvailableTime', 'Review available time')}
               </button>
             </div>
           </div>
@@ -877,7 +879,7 @@ export function GtmStrategyView({
           <div className="bg-muted/20 border border-border/70 rounded-2xl p-5 flex flex-col justify-between space-y-4">
             <div className="space-y-1.5">
               <span className="text-[10px] font-mono text-muted-foreground uppercase font-semibold block">
-                MARKETING BUDGET
+                {t('creator.phase4.gtmView.marketingBudget', 'MARKETING BUDGET')}
               </span>
               <div className="text-2xl sm:text-3xl font-bold text-foreground font-mono tabular-nums">
                 {effectiveBudget !== undefined && effectiveBudget !== null
@@ -904,7 +906,7 @@ export function GtmStrategyView({
                 }}
                 className="px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-semibold text-foreground transition-colors"
               >
-                Set budget
+                {t('creator.phase4.gtmView.setBudget', 'Set budget')}
               </button>
             </div>
           </div>
@@ -917,7 +919,7 @@ export function GtmStrategyView({
       <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
         <div className="space-y-0.5">
           <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
-            Your launch actions
+            {t('creator.phase4.gtmView.yourLaunchActions', 'Your launch actions')}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
             Review these suggested actions alongside your existing roadmap.
@@ -994,7 +996,7 @@ export function GtmStrategyView({
                 href={`/dashboard/creator/phase-4/roadmap?ideaId=${ideaId}`}
                 className="px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-accent text-xs font-semibold text-foreground flex items-center gap-1.5 transition-colors"
               >
-                <span>Review roadmap task</span>
+                <span>{t('creator.phase4.gtmView.reviewRoadmapTask', 'Review roadmap task')}</span>
                 <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
@@ -1077,7 +1079,7 @@ export function GtmStrategyView({
       <section className="bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-xs space-y-4">
         <div className="space-y-0.5">
           <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
-            What to track
+            {t('creator.phase4.gtmView.whatToTrack', 'What to track')}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
             Record what happens so you can improve your next actions.
@@ -1113,14 +1115,14 @@ export function GtmStrategyView({
           return (
             <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs">
               <div className="grid grid-cols-12 bg-muted/50 px-4 py-2.5 text-[11px] font-mono font-bold text-muted-foreground uppercase border-b border-border">
-                <div className="col-span-6">MEASURE</div>
-                <div className="col-span-3">TARGET</div>
-                <div className="col-span-3 text-right">ACTUAL</div>
+                <div className="col-span-6">{t('creator.phase4.gtmView.measure', 'MEASURE')}</div>
+                <div className="col-span-3">{t('creator.phase4.gtmView.target', 'TARGET')}</div>
+                <div className="col-span-3 text-right">{t('creator.phase4.gtmView.actual', 'ACTUAL')}</div>
               </div>
 
               <div className="divide-y divide-border/60 text-xs sm:text-sm">
                 <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
-                  <div className="col-span-6 font-medium text-foreground">Businesses contacted</div>
+                  <div className="col-span-6 font-medium text-foreground">{t('creator.phase4.gtmView.businessesContacted', 'Businesses contacted')}</div>
                   <div className="col-span-3 text-muted-foreground font-mono tabular-nums text-xs">
                     {effectiveTargetContacted ? `${effectiveTargetContacted}` : 'Not set'}
                   </div>
@@ -1130,7 +1132,7 @@ export function GtmStrategyView({
                 </div>
 
                 <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
-                  <div className="col-span-6 font-medium text-foreground">Replies received</div>
+                  <div className="col-span-6 font-medium text-foreground">{t('creator.phase4.gtmView.repliesReceived', 'Replies received')}</div>
                   <div className="col-span-3 text-muted-foreground font-mono tabular-nums text-xs">
                     {effectiveTargetReplies ? `${effectiveTargetReplies}` : 'Not set'}
                   </div>
@@ -1140,7 +1142,7 @@ export function GtmStrategyView({
                 </div>
 
                 <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
-                  <div className="col-span-6 font-medium text-foreground">Demo requests</div>
+                  <div className="col-span-6 font-medium text-foreground">{t('creator.phase4.gtmView.demoRequests', 'Demo requests')}</div>
                   <div className="col-span-3 text-muted-foreground font-mono tabular-nums text-xs">
                     {effectiveTargetDemos ? `${effectiveTargetDemos}` : 'Not set'}
                   </div>
@@ -1150,7 +1152,7 @@ export function GtmStrategyView({
                 </div>
 
                 <div className="grid grid-cols-12 px-4 py-3 items-center hover:bg-muted/10 transition-colors">
-                  <div className="col-span-6 font-medium text-foreground">Purchases</div>
+                  <div className="col-span-6 font-medium text-foreground">{t('creator.phase4.gtmView.purchases', 'Purchases')}</div>
                   <div className="col-span-3 text-muted-foreground font-mono tabular-nums text-xs">
                     {effectiveTargetPurchases ? `${effectiveTargetPurchases}` : 'Not set'}
                   </div>
@@ -1182,13 +1184,13 @@ export function GtmStrategyView({
               }}
               className="px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-accent text-xs font-semibold text-foreground transition-colors"
             >
-              Set targets
+              {t('creator.phase4.gtmView.setTargets', 'Set targets')}
             </button>
             <button
               onClick={() => setIsRecordResultsOpen(true)}
               className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors"
             >
-              Record results
+              {t('creator.phase4.gtmView.recordResults', 'Record results')}
             </button>
           </div>
         </div>
@@ -1203,7 +1205,7 @@ export function GtmStrategyView({
             NEXT STEP PREVIEW
           </span>
           <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
-            Your plan will guide your launch assets
+            {t('creator.phase4.gtmView.planGuideAssets', 'Your plan will guide your launch assets')}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
             Your customer group, message, offer, and next action will help shape your website.
@@ -1221,7 +1223,7 @@ export function GtmStrategyView({
           </div>
 
           <div className="px-3 py-1.5 rounded-lg bg-muted/40 border border-border/70 text-xs font-medium text-foreground">
-            Proposed CTA:{' '}
+            {t('creator.phase4.gtmView.proposedCta', 'Proposed CTA:')}{' '}
             <strong className="font-semibold">
               {strategy.experiments?.[0]?.offer
                 ? `Express interest in ${strategy.experiments[0].offer}`
@@ -1244,7 +1246,7 @@ export function GtmStrategyView({
           className="text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 self-start sm:self-auto"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Pricing</span>
+          <span>{t('creator.phase4.gtmView.backToPricing', 'Back to Pricing')}</span>
         </Link>
 
         <p className="text-xs text-muted-foreground text-center max-w-sm">
@@ -1257,7 +1259,7 @@ export function GtmStrategyView({
             disabled={isActivating || isLoading}
             className="w-full sm:w-auto px-6 py-3 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-colors disabled:opacity-50"
           >
-            <span>{isActivating ? 'Activating plan...' : 'Activate plan & continue'}</span>
+            <span>{isActivating ? t('creator.phase4.gtmView.activating', 'Activating plan...') : t('creator.phase4.gtmView.activateAndContinue', 'Activate plan & continue')}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
           <span className="text-[11px] text-muted-foreground font-mono">
@@ -1366,7 +1368,7 @@ export function GtmStrategyView({
           <div className="bg-card border border-border rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold font-heading text-foreground">
-                Select Starting Outreach Channel
+                {t('creator.phase4.gtmView.selectOutreachChannel', 'Select Starting Outreach Channel')}
               </h3>
               <button
                 onClick={() => setIsChangeChannelOpen(false)}
@@ -1408,7 +1410,7 @@ export function GtmStrategyView({
                     }}
                     className="px-3 py-1 rounded-md bg-primary text-primary-foreground text-xs font-semibold shrink-0"
                   >
-                    Set as Primary
+                    {t('creator.phase4.gtmView.setAsPrimary', 'Set as Primary')}
                   </button>
                 </div>
               ))}
@@ -1590,7 +1592,7 @@ export function GtmStrategyView({
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold font-heading text-foreground">
-                Record Launch Outreach Activity
+                {t('creator.phase4.gtmView.recordOutreachActivity', 'Record Launch Outreach Activity')}
               </h3>
               <button
                 type="button"

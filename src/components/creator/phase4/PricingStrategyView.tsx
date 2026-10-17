@@ -16,6 +16,7 @@ import {
   X,
   Edit3,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import type {
   PricingStrategy,
   PricingOffer,
@@ -63,6 +64,7 @@ export function PricingStrategyView({
   onRefresh,
   onUpdateOffer,
 }: PricingStrategyViewProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const offers = useMemo(() => strategy?.offers || [], [strategy]);
   const defaultOfferKey = useMemo(() => {
@@ -322,7 +324,7 @@ export function PricingStrategyView({
             <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0 mt-0.5" />
             <div>
               <h3 className="text-base sm:text-lg font-bold font-heading text-amber-900 dark:text-amber-200">
-                Prerequisite Gates Incomplete
+                {t('creator.phase4.pricingView.prerequisiteGatesIncomplete', 'Prerequisite Gates Incomplete')}
               </h3>
               <p className="text-xs sm:text-sm text-amber-800 dark:text-amber-300/90 mt-1">
                 {gateError.message}
@@ -339,7 +341,7 @@ export function PricingStrategyView({
               href={`/dashboard/creator/phase-4/support?ideaId=${ideaId}`}
               className="px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-secondary-foreground text-xs font-medium transition-colors"
             >
-              ← Back to Phase 4.5 Aids & Grants
+              ← {t('creator.phase4.pricingView.backToAids', 'Back to Phase 4.5 Aids & Grants')}
             </Link>
             <Link
               href={`/dashboard/creator/phase-4/snapshot?ideaId=${ideaId}`}
@@ -366,7 +368,7 @@ export function PricingStrategyView({
               PHASE 4.6 · COMMERCIAL LAUNCH LAYER
             </span>
             <h2 className="text-2xl font-bold font-heading text-foreground">
-              Launch Pricing & Revenue Model Engine
+              {t('creator.phase4.pricingView.engineTitle', 'Launch Pricing & Revenue Model Engine')}
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans">
               Synthesizes your Phase 3 Business Model, French cost structure, Financial Forecast benchmarks, and customer segments into mathematically floor-tested launch offers.
@@ -379,11 +381,11 @@ export function PricingStrategyView({
             </div>
             <div className="flex items-center gap-2">
               <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span>Multi-stream revenue model support (hybrid aware)</span>
+              <span>{t('creator.phase4.pricingView.featureMultiStream', 'Multi-stream revenue model support')} (hybrid aware)</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span>Rigorous price floor: VariableCost / (1 - m)</span>
+              <span>{t('creator.phase4.pricingView.featurePriceFloor', 'Rigorous price floor')}: VariableCost / (1 - m)</span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -408,7 +410,7 @@ export function PricingStrategyView({
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                <span>Generate Pricing Strategy</span>
+                <span>{t('creator.phase4.pricingView.generatePricingStrategy', 'Generate Pricing Strategy')}</span>
               </>
             )}
           </button>
@@ -515,12 +517,12 @@ export function PricingStrategyView({
             </span>
             {strategy.founderEdited && (
               <span className="text-[11px] font-mono bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 px-2 py-0.5 rounded-full font-medium">
-                Founder Customized
+                {t('creator.phase4.pricingView.founderCustomized', 'Founder Customized')}
               </span>
             )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold font-heading text-foreground tracking-tight">
-            Launch Pricing & Revenue Model Strategy
+            {t('creator.phase4.pricingView.strategyTitle', 'Launch Pricing & Revenue Model Strategy')}
           </h1>
           <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
             Financial packaging and launch offers for <span className="text-foreground font-medium">{projectName}</span>. Built from underlying unit economics, contribution margins, and forecast benchmarks.
@@ -587,7 +589,7 @@ export function PricingStrategyView({
         <div className="bg-card border border-border rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-              Select Tier ({offers.length}):
+              {t('creator.phase4.pricingView.selectTier', 'Select Tier ({{count}}):', { count: offers.length })}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -629,7 +631,7 @@ export function PricingStrategyView({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block font-sans">
-              YOUR CHOSEN PRICE
+              {t('creator.phase4.pricingView.yourChosenPrice', 'YOUR CHOSEN PRICE')}
             </span>
             <p className="text-3xl sm:text-4xl font-semibold text-foreground font-mono tabular-nums tracking-tight">
               {`${currencySymbol}${chosenPrice} per business / ${activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'}`}
@@ -769,7 +771,7 @@ export function PricingStrategyView({
           <div className="bg-muted/30 border border-border rounded-xl p-5 flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-sans block">
-                SUGGESTED PRICE
+                {t('creator.phase4.pricingView.suggestedPrice', 'SUGGESTED PRICE')}
               </span>
               <p className="text-3xl font-semibold text-foreground font-mono tabular-nums">
                 {`${currencySymbol}${recommendedPrice} per business / ${activeOffer?.billingPeriod ? activeOffer.billingPeriod.toLowerCase() : 'month'}`}
@@ -849,7 +851,7 @@ export function PricingStrategyView({
           <div className="bg-card border border-primary rounded-xl p-5 flex flex-col justify-between space-y-4">
             <div className="space-y-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-primary font-sans block">
-                YOUR CHOSEN PRICE
+                {t('creator.phase4.pricingView.yourChosenPrice', 'YOUR CHOSEN PRICE')}
               </span>
 
               <div className="flex items-center">
@@ -931,7 +933,7 @@ export function PricingStrategyView({
       {/* ========================================================================= */}
       <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 space-y-4 shadow-sm">
         <h2 className="text-lg sm:text-xl font-bold font-heading text-foreground">
-          Why this suggestion?
+          {t('creator.phase4.pricingView.whyThisSuggestion', 'Why This Suggestion?')}
         </h2>
 
         <div className="border border-border rounded-xl divide-y divide-border text-xs font-sans">
@@ -980,7 +982,7 @@ export function PricingStrategyView({
         <div className="bg-muted/30 border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-sans">
           <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-muted-foreground">
             <div className="flex items-center gap-1.5">
-              <span>Minimum viable price:</span>
+              <span>{t('creator.phase4.pricingView.minViablePrice', 'Minimum viable price')}:</span>
               <span className="rounded-full bg-muted text-muted-foreground text-[11px] px-2 py-0.5 flex items-center gap-1 border border-border font-mono">
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60" />
                 {priceFloor
@@ -989,7 +991,7 @@ export function PricingStrategyView({
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span>Market reference:</span>
+              <span>{t('creator.phase4.pricingView.marketReference', 'Market reference')}:</span>
               <span className="rounded-full bg-muted text-muted-foreground text-[11px] px-2 py-0.5 flex items-center gap-1 border border-border font-mono">
                 <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60" />
                 {activeOffer?.marketReferencePrice
@@ -1003,7 +1005,7 @@ export function PricingStrategyView({
             onClick={() => setShowAssumptions(!showAssumptions)}
             className="text-xs text-muted-foreground hover:text-foreground font-medium inline-flex items-center gap-1 self-start sm:self-center cursor-pointer"
           >
-            <span>{showAssumptions ? 'Hide assumptions ▴' : 'View assumptions ▾'}</span>
+            <span>{showAssumptions ? 'Hide assumptions ▴' : `${t('creator.phase4.pricingView.viewAssumptions', 'View assumptions')} ▾`}</span>
           </button>
         </div>
 
@@ -1016,25 +1018,25 @@ export function PricingStrategyView({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5 bg-card p-3 rounded-lg border border-border">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">MBC Recommended Price:</span>
+                  <span className="text-muted-foreground">{t('creator.phase4.pricingView.mbcRecommendedPrice', 'MBC Recommended Price:')}</span>
                   <span className="text-foreground font-bold">
                     {currencySymbol}{activeOffer?.recommendedPrice} per unit
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Founder / Chosen Price:</span>
+                  <span className="text-muted-foreground">{t('creator.phase4.pricingView.founderChosenPrice', 'Founder / Chosen Price:')}</span>
                   <span className="text-primary font-bold">
                     {currencySymbol}{activeOffer?.founderPrice ?? activeOffer?.recommendedPrice} per unit
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Market Reference Price:</span>
+                  <span className="text-muted-foreground">{t('creator.phase4.pricingView.marketReferencePrice', 'Market Reference Price:')}</span>
                   <span className="text-foreground">
                     {activeOffer?.marketReferencePrice ? `${currencySymbol}${activeOffer.marketReferencePrice}` : 'Not specified'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Empirically Validated Price:</span>
+                  <span className="text-muted-foreground">{t('creator.phase4.pricingView.empiricallyValidatedPrice', 'Empirically Validated Price:')}</span>
                   <span className="text-foreground">
                     {activeOffer?.validatedMarketPrice ? `${currencySymbol}${activeOffer.validatedMarketPrice}` : 'Not validated yet'}
                   </span>

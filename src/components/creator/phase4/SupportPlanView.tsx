@@ -27,6 +27,7 @@ import {
   X,
   Building2,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import type {
   SupportPlan,
   SupportMatch,
@@ -64,6 +65,7 @@ export function SupportPlanView({
   onUpdateState,
   onAnswerFact,
 }: SupportPlanViewProps) {
+  const { t } = useTranslation();
   const [selectedAuditMatch, setSelectedAuditMatch] = useState<SupportMatch | null>(null);
   const [editingMatchKey, setEditingMatchKey] = useState<string | null>(null);
   const [targetState, setTargetState] = useState<FounderApplicationState>('NotStarted');
@@ -99,7 +101,7 @@ export function SupportPlanView({
           <div className="inline-flex p-3 rounded-full bg-destructive/15 text-destructive">
             <AlertCircle className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-foreground font-heading">Support Engine Unavailable</h2>
+          <h2 className="text-xl font-bold text-foreground font-heading">{t('creator.phase4.supportView.unavailableTitle', 'Support Engine Unavailable')}</h2>
           <p className="text-muted-foreground max-w-lg mx-auto text-sm leading-relaxed font-sans">
             {gateError.message}
           </p>
@@ -109,7 +111,7 @@ export function SupportPlanView({
                 href={`/dashboard/creator/phase-4/needs?ideaId=${ideaId}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm transition-all shadow"
               >
-                <span>Go to Step 4.3 Needs Analysis</span>
+                <span>{t('creator.phase4.supportView.goToNeeds', 'Go to Step 4.3 Needs Analysis')}</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
             )}
@@ -118,7 +120,7 @@ export function SupportPlanView({
                 href={`/dashboard/creator/phase-4/skills?ideaId=${ideaId}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm transition-all shadow"
               >
-                <span>Go to Step 4.4 Skills & Training</span>
+                <span>{t('creator.phase4.supportView.goToSkills', 'Go to Step 4.4 Skills & Training')}</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
             )}
@@ -127,7 +129,7 @@ export function SupportPlanView({
                 href={`/dashboard/creator/phase-4/phase-3?ideaId=${ideaId}`}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-semibold text-sm transition-colors"
               >
-                Review Prior Steps
+                <span>{t('creator.phase4.supportView.reviewPriorSteps', 'Review Prior Steps')}</span>
               </Link>
             )}
           </div>
@@ -146,7 +148,7 @@ export function SupportPlanView({
           </div>
           <div className="space-y-2 max-w-xl mx-auto">
             <h2 className="text-2xl font-bold tracking-tight text-foreground font-heading">
-              Aids, Grants & Public Support Engine
+              {t('creator.phase4.supportView.engineTitle', 'Aids, Grants & Public Support Engine')}
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed font-sans">
               Match{' '}
@@ -199,12 +201,12 @@ export function SupportPlanView({
             {isLoading ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                Evaluating Authoritative Opportunities...
+                <span>{t('creator.phase4.supportView.evaluating', 'Evaluating Authoritative Opportunities...')}</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                Evaluate Support Opportunities
+                <span>{t('creator.phase4.supportView.evaluateButton', 'Evaluate Support Opportunities')}</span>
               </>
             )}
           </button>
@@ -318,7 +320,7 @@ export function SupportPlanView({
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="space-y-1">
             <h2 className="text-2xl sm:text-[28px] font-bold text-foreground tracking-tight font-heading leading-tight">
-              {totalOptions} options to explore
+              {t('creator.phase4.supportView.optionsToExplore', '{{count}} options to explore', { count: totalOptions })}
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground font-sans">
               Based on your project, learning needs and current situation.
@@ -560,12 +562,12 @@ export function SupportPlanView({
                     ) : isEligibleStatutory ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-light dark:bg-emerald-950/40 text-success-strong dark:text-emerald-400 border border-emerald-500/20">
                         <span className="w-1.5 h-1.5 rounded-full bg-success-strong dark:bg-emerald-400" />
-                        Eligible (Statutory)
+                        {t('creator.phase4.supportView.eligibleStatutory', 'Eligible (Statutory)')}
                       </span>
                     ) : isEligibleToApply ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        Eligible to Apply
+                        {t('creator.phase4.supportView.eligibleToApply', 'Eligible to Apply')}
                       </span>
                     ) : isNeedsCheck ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 dark:bg-amber-950/40 text-warning dark:text-amber-400 border border-amber-500/20">
@@ -835,7 +837,7 @@ export function SupportPlanView({
                           onClick={() => setSelectedAuditMatch(match)}
                           className="px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground font-medium text-sm transition-colors"
                         >
-                          Audit Details
+                          {t('creator.phase4.supportView.auditDetails', 'Audit Details')}
                         </button>
                         <button
                           onClick={() => handleToggleBookmark(match)}
@@ -898,7 +900,7 @@ export function SupportPlanView({
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary hover:bg-secondary/80 text-secondary-foreground text-sm font-medium transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Skills & Training</span>
+          <span>{t('creator.phase4.supportView.backToSkills', 'Back to Skills & Training')}</span>
         </Link>
 
         <span className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
@@ -909,7 +911,7 @@ export function SupportPlanView({
           href={`/dashboard/creator/phase-4/pricing?ideaId=${ideaId}`}
           className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-sm transition-all shadow-sm"
         >
-          <span>Continue to Pricing & Revenue</span>
+          <span>{t('creator.phase4.supportView.continueToPricing', 'Continue to Pricing & Revenue')}</span>
           <ArrowRight className="w-4 h-4" />
         </Link>
       </footer>
@@ -921,7 +923,7 @@ export function SupportPlanView({
             <div className="flex items-start justify-between border-b border-border pb-3">
               <div>
                 <span className="text-[10px] font-mono uppercase text-primary font-semibold tracking-wider">
-                  Audit Provenance & Eligibility Trace
+                  {t('creator.phase4.supportView.auditProvenance', 'Audit Provenance & Eligibility Trace')}
                 </span>
                 <h2 className="text-base font-bold text-foreground mt-0.5">
                   {selectedAuditMatch.name}
@@ -973,7 +975,7 @@ export function SupportPlanView({
 
             {/* Conditions Met / Missing / Failed */}
             <div className="space-y-3 text-xs">
-              <h4 className="font-bold text-foreground">Conditions Met:</h4>
+              <h4 className="font-bold text-foreground">{t('creator.phase4.supportView.conditionsMet', 'Conditions Met:')}</h4>
               <div className="space-y-1.5 pl-2">
                 {(selectedAuditMatch.conditionsMet || []).map((c, i) => (
                   <div key={i} className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium">
