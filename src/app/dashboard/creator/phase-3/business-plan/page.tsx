@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { withIdeaContext } from '@/lib/creator-routes';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   FileText,
   ArrowLeft,
@@ -41,6 +42,7 @@ function friendlyError(e: unknown, fallback: string): string {
 
 export default function BusinessPlanPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const ideaId = searchParams.get('ideaId');
   const { state: { activeIdeaId }, completeStep } = useCreatorProgress();
@@ -385,13 +387,13 @@ export default function BusinessPlanPage() {
       <Phase3SetupShell
         fullWidth
         hideHeader={showDocument}
-        stepEyebrow="STEP 3.6 · EXECUTIVE BUSINESS PLAN"
-        title="Executive Business Plan"
-        description="Comprehensive 12-chapter executive business plan synthesized directly from your verified venture inputs."
+        stepEyebrow={t('creator.phase3.businessPlan.eyebrow')}
+        title={project.name ? t('creator.phase3.businessPlan.projectTitle', { name: project.name }) : t('creator.phase3.businessPlan.defaultTitle')}
+        description={t('creator.phase3.businessPlan.defaultDesc')}
       >
         {loading && (
           <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center">
-            <Loader2 className="h-5 w-5 animate-spin" /> Loading business plan…
+            <Loader2 className="h-5 w-5 animate-spin" /> {t('creator.phase3.businessPlan.loadingPlan', 'Loading business plan…')}
           </div>
         )}
 
@@ -399,20 +401,20 @@ export default function BusinessPlanPage() {
           <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 max-w-xl mx-auto shadow-sm">
             <h3 className="font-bold text-base font-sans">
               {startError?.kind === 'credits'
-                ? "You've used all your AI credits"
-                : 'Generate your business plan'}
+                ? t('creator.phase3.businessPlan.creditsUsed', "You've used all your AI credits")
+                : t('creator.phase3.businessPlan.emptyHeader', 'Generate your business plan')}
             </h3>
             <p className="text-sm text-muted-foreground font-sans leading-relaxed">
               {startError?.kind === 'credits'
-                ? "You've used all your AI credits."
-                : 'We will synthesize a 12-section investor-ready document from your clarified idea and venture core.'}
+                ? t('creator.phase3.businessPlan.creditsUsedDesc', "You've used all your AI credits.")
+                : t('creator.phase3.businessPlan.emptyDescription', 'We will synthesize a 12-section investor-ready document from your clarified idea and venture core.')}
             </p>
             {startError && startError.kind !== 'credits' && (
               <div className="space-y-2">
                 <p className="text-sm text-destructive">{startError.message}</p>
                 {(startError.kind === 'service' || startError.kind === 'rateLimited') && (
                   <Button variant="outline" size="sm" onClick={handleStart} disabled={startBp.isPending} className="gap-1.5">
-                    <RotateCw className="h-3.5 w-3.5" /> Try again
+                    <RotateCw className="h-3.5 w-3.5" /> {t('creator.phase3.businessPlan.tryAgain', 'Try again')}
                   </Button>
                 )}
               </div>
@@ -423,7 +425,7 @@ export default function BusinessPlanPage() {
                 onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/formation', effectiveIdeaId))}
                 className="text-xs font-bold text-muted-foreground font-sans"
               >
-                <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Company Formation
+                <ArrowLeft className="w-4 h-4 mr-1.5" /> {t('creator.phase3.businessPlan.backToFormation', 'Company Formation')}
               </Button>
               <Button
                 onClick={handleStart}
@@ -436,10 +438,10 @@ export default function BusinessPlanPage() {
                   <FileText className="h-4 w-4" />
                 )}
                 {isCostLoading
-                  ? 'Loading cost…'
+                  ? t('creator.phase3.marketStudy.loadingCost')
                   : isCostError
-                  ? 'Cost unavailable'
-                  : `Generate plan (${planCost} credits)`}
+                  ? t('creator.phase3.marketStudy.costUnavailable')
+                  : t('creator.phase3.businessPlan.generateCta', { cost: planCost })}
               </Button>
             </div>
             {insufficientCredits && planCost != null && (
@@ -456,9 +458,11 @@ export default function BusinessPlanPage() {
               <RotateCw className="w-6 h-6 animate-spin" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-foreground font-sans">Synthesizing Executive Business Plan</h3>
+              <h3 className="text-lg font-semibold text-foreground font-sans">
+                {t('creator.phase3.businessPlan.synthesizingExecutiveTitle', 'Synthesizing Executive Business Plan')}
+              </h3>
               <p className="text-xs text-muted-foreground max-w-md mx-auto font-sans">
-                Assembling 12-chapter investor-ready plan across market sizing, operations, unit economics, and governance…
+                {t('creator.phase3.businessPlan.synthesizingExecutiveDesc', 'Assembling 12-chapter investor-ready plan across market sizing, operations, unit economics, and governance…')}
               </p>
             </div>
             <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">
@@ -470,12 +474,12 @@ export default function BusinessPlanPage() {
         {bpSessionId && session.phase === 'timedout' && (
           <div className="flex flex-col items-center gap-3 py-16 text-center max-w-md mx-auto">
             <FileWarning className="h-10 w-10 text-warning" />
-            <h3 className="font-bold text-base">Generation timed out</h3>
+            <h3 className="font-bold text-base">{t('creator.phase3.businessPlan.timedOutTitle', 'Generation timed out')}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              This generation is taking longer than expected. The job may still finish in the background.
+              {t('creator.phase3.businessPlan.timedOutDesc', 'This generation is taking longer than expected. The job may still finish in the background.')}
             </p>
             <Button variant="outline" onClick={session.retry} className="gap-2 mt-2">
-              <RotateCw className="h-4 w-4" /> Check Status
+              <RotateCw className="h-4 w-4" /> {t('creator.phase3.businessPlan.checkStatus', 'Check Status')}
             </Button>
           </div>
         )}
@@ -483,10 +487,10 @@ export default function BusinessPlanPage() {
         {bpSessionId && session.isError && session.phase !== 'polling' && !showDocument && (
           <div className="flex flex-col items-center gap-3 py-16 text-center max-w-md mx-auto">
             <AlertTriangle className="h-10 w-10 text-destructive" />
-            <h3 className="font-bold text-base text-destructive">Unable to load business plan</h3>
-            <p className="text-sm text-muted-foreground">An error occurred while retrieving the session data.</p>
+            <h3 className="font-bold text-base text-destructive">{t('creator.phase3.businessPlan.loadErrorTitle', 'Unable to load business plan')}</h3>
+            <p className="text-sm text-muted-foreground">{t('creator.phase3.businessPlan.loadErrorDesc', 'An error occurred while retrieving the session data.')}</p>
             <Button variant="outline" onClick={session.retry} className="gap-2 mt-2">
-              <RotateCw className="h-4 w-4" /> Retry
+              <RotateCw className="h-4 w-4" /> {t('creator.phase3.compliance.retry', 'Retry')}
             </Button>
           </div>
         )}
@@ -497,16 +501,16 @@ export default function BusinessPlanPage() {
               <AlertTriangle className="h-5 w-5 text-destructive" />
               <h3 className="font-bold text-base font-sans">
                 {startError?.kind === 'credits' || failedIsCredits
-                  ? "You've used all your AI credits"
-                  : 'We couldn’t generate your business plan'}
+                  ? t('creator.phase3.businessPlan.creditsUsed', "You've used all your AI credits")
+                  : t('creator.phase3.businessPlan.failedTitle', 'We couldn’t generate your business plan')}
               </h3>
             </div>
             <p className="text-sm text-muted-foreground font-sans leading-relaxed">
               {startError?.kind === 'credits' || failedIsCredits
-                ? "You've used all your AI credits."
+                ? t('creator.phase3.businessPlan.creditsUsedDesc', "You've used all your AI credits.")
                 : failedIsProviderBilling
-                ? 'The AI service is temporarily unavailable on our side. Your credits have been safeguarded — please try again shortly.'
-                : 'The AI service was temporarily unavailable (provider rate limit or timeout). Please try generating again.'}
+                ? t('creator.phase3.businessPlan.failedDescProvider', 'The AI service is temporarily unavailable on our side. Your credits have been safeguarded — please try again shortly.')
+                : t('creator.phase3.businessPlan.failedDescDefault', 'The AI service was temporarily unavailable (provider rate limit or timeout). Please try generating again.')}
             </p>
             {startError && startError.kind !== 'credits' && (
               <div className="space-y-1">
@@ -518,7 +522,7 @@ export default function BusinessPlanPage() {
               disabled={startBp.isPending || startError?.kind === 'credits' || failedIsCredits}
               className="gap-2 font-sans font-semibold"
             >
-              {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Generate again
+              {startBp.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} {t('creator.phase3.businessPlan.generateAgain', 'Generate again')}
             </Button>
           </Card>
         )}
@@ -540,9 +544,11 @@ export default function BusinessPlanPage() {
                 <RotateCw className="w-6 h-6 animate-spin" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-base font-semibold text-foreground font-sans">Regenerating Executive Business Plan</h3>
+                <h3 className="text-base font-semibold text-foreground font-sans">
+                  {t('creator.phase3.businessPlan.regeneratingExecutiveTitle', 'Regenerating Executive Business Plan')}
+                </h3>
                 <p className="text-xs text-muted-foreground max-w-md mx-auto font-sans">
-                  Updating 12-chapter document with latest verified inputs across financials, market data, and formation…
+                  {t('creator.phase3.businessPlan.regeneratingExecutiveDesc', 'Updating 12-chapter document with latest verified inputs across financials, market data, and formation…')}
                 </p>
               </div>
               <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">

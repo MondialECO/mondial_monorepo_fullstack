@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 import type {
   FormationGenerator,
   FormationTypeCode,
@@ -43,6 +44,7 @@ export function FormationFigmaFlow({
   onBack,
   isSaving = false,
 }: FormationFigmaFlowProps) {
+  const { t } = useTranslation();
   // Dynamic context
   const sectorName = project?.sector ? project.sector : 'digital';
   const jurisdictionName = project?.geography || project?.country || 'France';
@@ -76,12 +78,12 @@ export function FormationFigmaFlow({
     }
     return [
       startingMode === 'solo'
-        ? 'You’re starting alone.'
-        : 'You have a collaborative founding team.',
-      'You’re building a company designed to grow.',
-      'You may want to add investors or shareholders later.',
+        ? t('creator.phase3.formation.startingSoloReason', 'You’re starting alone.')
+        : t('creator.phase3.formation.startingTeamReason', 'You have a collaborative founding team.'),
+      t('creator.phase3.formation.buildingToGrowReason', 'You’re building a company designed to grow.'),
+      t('creator.phase3.formation.addInvestorsReason', 'You may want to add investors or shareholders later.'),
     ];
-  }, [formation.recommendationFactors, startingMode]);
+  }, [formation.recommendationFactors, startingMode, t]);
 
   // -------------------------------------------------------------
   // SECTION 5: Ownership Split
@@ -176,7 +178,7 @@ export function FormationFigmaFlow({
           ======================================================== */}
       <div className="pt-2 pb-1">
         <p className="text-body text-muted-foreground font-sans">
-          Let’s work out how your company could be set up.
+          {t('creator.phase3.formation.intro', 'Let’s work out how your company could be set up.')}
         </p>
       </div>
 
@@ -185,10 +187,13 @@ export function FormationFigmaFlow({
           ======================================================== */}
       <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-2">
         <h2 className="text-card-title font-heading font-semibold text-foreground">
-          Your setup so far
+          {t('creator.phase3.formation.setupSoFar', 'Your setup so far')}
         </h2>
         <p className="text-body text-muted-foreground leading-relaxed">
-          Based on your project, you’re planning a {sectorName.toLowerCase()} business in {jurisdictionName}. We’ll help you think through the structure, ownership and people you may need to get started.
+          {t('creator.phase3.formation.setupSoFarDesc', {
+            sector: sectorName.toLowerCase(),
+            country: jurisdictionName,
+          })}
         </p>
       </Card>
 
@@ -198,10 +203,10 @@ export function FormationFigmaFlow({
       <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-4">
         <div>
           <h2 className="text-card-title font-heading font-semibold text-foreground">
-            How are you planning to start?
+            {t('creator.phase3.formation.planningStartTitle', 'How are you planning to start?')}
           </h2>
           <p className="text-label text-muted-foreground mt-0.5">
-            Choose what best matches your plan today. You can change this before formal company creation.
+            {t('creator.phase3.formation.planningStartDesc', 'Choose what best matches your plan today. You can change this before formal company creation.')}
           </p>
         </div>
 
@@ -218,7 +223,7 @@ export function FormationFigmaFlow({
             )}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="text-body font-semibold text-foreground">Just me</span>
+              <span className="text-body font-semibold text-foreground">{t('creator.phase3.formation.modeSolo', 'Just me')}</span>
               <span
                 className={cn(
                   'size-4 rounded-full flex items-center justify-center transition-colors',
@@ -231,7 +236,7 @@ export function FormationFigmaFlow({
               </span>
             </div>
             <p className="text-label text-muted-foreground mt-2 leading-relaxed">
-              I’m starting the company on my own.
+              {t('creator.phase3.formation.modeSoloDesc', 'I’m starting the company on my own.')}
             </p>
           </button>
 
@@ -247,7 +252,7 @@ export function FormationFigmaFlow({
             )}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="text-body font-semibold text-foreground">With co-founders</span>
+              <span className="text-body font-semibold text-foreground">{t('creator.phase3.formation.modeTeam', 'With co-founders')}</span>
               <span
                 className={cn(
                   'size-4 rounded-full flex items-center justify-center transition-colors',
@@ -260,7 +265,7 @@ export function FormationFigmaFlow({
               </span>
             </div>
             <p className="text-label text-muted-foreground mt-2 leading-relaxed">
-              One or more people will own the company with me.
+              {t('creator.phase3.formation.modeTeamDesc', 'One or more people will own the company with me.')}
             </p>
           </button>
 
@@ -276,7 +281,7 @@ export function FormationFigmaFlow({
             )}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="text-body font-semibold text-foreground">I’m not sure yet</span>
+              <span className="text-body font-semibold text-foreground">{t('creator.phase3.formation.modeUndecided', 'I’m not sure yet')}</span>
               <span
                 className={cn(
                   'size-4 rounded-full flex items-center justify-center transition-colors',
@@ -289,7 +294,7 @@ export function FormationFigmaFlow({
               </span>
             </div>
             <p className="text-label text-muted-foreground mt-2 leading-relaxed">
-              Help me understand what changes.
+              {t('creator.phase3.formation.modeUndecidedDesc', 'Help me understand what changes.')}
             </p>
           </button>
         </div>
@@ -301,10 +306,10 @@ export function FormationFigmaFlow({
       <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-5">
         <div>
           <h2 className="text-card-title font-heading font-semibold text-foreground">
-            Your company structure
+            {t('creator.phase3.formation.structureTitle', 'Your company structure')}
           </h2>
           <p className="text-label text-muted-foreground mt-0.5">
-            MBC is not choosing a legal structure for you. We’re showing an option that matches what you’ve told us so far.
+            {t('creator.phase3.formation.structureDesc', 'MBC is not choosing a legal structure for you. We’re showing an option that matches what you’ve told us so far.')}
           </p>
         </div>
 
@@ -312,10 +317,10 @@ export function FormationFigmaFlow({
         <div className="rounded-xl border border-border/60 bg-muted/30 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-footnote font-semibold uppercase tracking-wider text-muted-foreground">
-              A STRUCTURE TO CONSIDER
+              {t('creator.phase3.formation.structureConsider', 'A STRUCTURE TO CONSIDER')}
             </span>
             <span className="inline-flex items-center rounded-full bg-secondary border border-primary/20 px-2.5 py-0.5 text-badge font-medium text-primary">
-              Worth considering
+              {t('creator.phase3.formation.worthConsidering', 'Worth considering')}
             </span>
           </div>
 
@@ -325,10 +330,10 @@ export function FormationFigmaFlow({
             </h3>
             <p className="text-label text-muted-foreground mt-1">
               {displayStructureCode === 'SASU'
-                ? 'A structure often considered by founders who start alone and want flexibility if the company grows later.'
+                ? t('creator.phase3.formation.sasuDesc', 'A structure often considered by founders who start alone and want flexibility if the company grows later.')
                 : displayStructureCode === 'SAS'
-                ? 'Simplified joint-stock company designed for multiple shareholders and high growth potential.'
-                : 'Traditional limited liability structure suited for family ventures and stable commercial trade.'}
+                ? t('creator.phase3.formation.sasDesc', 'Simplified joint-stock company designed for multiple shareholders and high growth potential.')
+                : t('creator.phase3.formation.sarlDesc', 'Traditional limited liability structure suited for family ventures and stable commercial trade.')}
             </p>
           </div>
 
@@ -337,7 +342,7 @@ export function FormationFigmaFlow({
             {/* Left: Why it may fit */}
             <div className="space-y-2.5">
               <h4 className="text-footnote font-semibold uppercase tracking-wider text-foreground">
-                WHY IT MAY FIT YOUR PLAN
+                {t('creator.phase3.formation.whyFit', 'WHY IT MAY FIT YOUR PLAN')}
               </h4>
               <ul className="space-y-2">
                 {fitReasons.map((reason, idx) => (
@@ -352,14 +357,14 @@ export function FormationFigmaFlow({
             {/* Right: Things to think about */}
             <div className="space-y-2.5">
               <h4 className="text-footnote font-semibold uppercase tracking-wider text-foreground">
-                THINGS TO THINK ABOUT
+                {t('creator.phase3.formation.thingsToThink', 'THINGS TO THINK ABOUT')}
               </h4>
               <ul className="space-y-2">
                 {[
-                  'How you plan to pay yourself',
-                  'Social contributions',
-                  'Accounting and administration',
-                  'What happens if ownership changes later',
+                  t('creator.phase3.formation.thinkPay', 'How you plan to pay yourself'),
+                  t('creator.phase3.formation.thinkSocial', 'Social contributions'),
+                  t('creator.phase3.formation.thinkAccounting', 'Accounting and administration'),
+                  t('creator.phase3.formation.thinkOwnership', 'What happens if ownership changes later'),
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-2 text-label text-muted-foreground">
                     <span className="w-1.5 h-0.5 bg-muted-foreground/60 rounded-full shrink-0" />
@@ -374,39 +379,41 @@ export function FormationFigmaFlow({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3">
             <div className="rounded-lg bg-secondary/60 border border-primary/10 p-3 space-y-1">
               <div className="text-footnote font-medium uppercase tracking-wider text-muted-foreground">
-                OWNERS
+                {t('creator.phase3.formation.factsOwners', 'OWNERS')}
               </div>
               <div className="text-label font-semibold text-foreground">
-                {startingMode === 'solo' ? '1 shareholder' : '2+ shareholders'}
+                {startingMode === 'solo'
+                  ? t('creator.phase3.formation.factsOwnersSolo', '1 shareholder')
+                  : t('creator.phase3.formation.factsOwnersTeam', '2+ shareholders')}
               </div>
             </div>
 
             <div className="rounded-lg bg-secondary/60 border border-primary/10 p-3 space-y-1">
               <div className="text-footnote font-medium uppercase tracking-wider text-muted-foreground">
-                MANAGEMENT
+                {t('creator.phase3.formation.factsManagement', 'MANAGEMENT')}
               </div>
               <div className="text-label font-semibold text-foreground">
                 {currentStructureCode === 'SARL'
-                  ? 'Led by a Gérant'
-                  : 'Usually led by a President'}
+                  ? t('creator.phase3.formation.factsGerant', 'Led by a Gérant')
+                  : t('creator.phase3.formation.factsPresident', 'Usually led by a President')}
               </div>
             </div>
 
             <div className="rounded-lg bg-secondary/60 border border-primary/10 p-3 space-y-1">
               <div className="text-footnote font-medium uppercase tracking-wider text-muted-foreground">
-                OWNERSHIP LATER
+                {t('creator.phase3.formation.factsOwnershipLater', 'OWNERSHIP LATER')}
               </div>
               <div className="text-label font-semibold text-foreground leading-snug">
-                Can change if new shareholders join
+                {t('creator.phase3.formation.factsOwnershipLaterDesc', 'Can change if new shareholders join')}
               </div>
             </div>
 
             <div className="rounded-lg bg-secondary/60 border border-primary/10 p-3 space-y-1">
               <div className="text-footnote font-medium uppercase tracking-wider text-muted-foreground">
-                BEFORE REGISTRATION
+                {t('creator.phase3.formation.factsBeforeReg', 'BEFORE REGISTRATION')}
               </div>
               <div className="text-label font-semibold text-foreground leading-snug">
-                Professional advice may be useful
+                {t('creator.phase3.formation.factsBeforeRegDesc', 'Professional advice may be useful')}
               </div>
             </div>
           </div>
@@ -421,7 +428,9 @@ export function FormationFigmaFlow({
             onClick={() => setShowOtherStructures(!showOtherStructures)}
             className="rounded-lg text-button font-medium border-border/80 h-9 px-4"
           >
-            {showOtherStructures ? 'Hide options' : 'Explore this option'}
+            {showOtherStructures
+              ? t('creator.phase3.formation.hideOptions', 'Hide options')
+              : t('creator.phase3.formation.exploreOption', 'Explore this option')}
           </Button>
 
           <Button
@@ -431,7 +440,7 @@ export function FormationFigmaFlow({
             onClick={() => setShowOtherStructures(!showOtherStructures)}
             className="text-button text-primary hover:text-primary/90 hover:bg-secondary h-9 px-3"
           >
-            See another structure
+            {t('creator.phase3.formation.seeAnother', 'See another structure')}
           </Button>
         </div>
 
@@ -456,7 +465,7 @@ export function FormationFigmaFlow({
                       {opt.code}
                     </span>
                     {isSelected && (
-                      <span className="text-badge font-semibold text-primary">Selected</span>
+                      <span className="text-badge font-semibold text-primary">{t('creator.phase3.formation.selected', 'Selected')}</span>
                     )}
                   </div>
                   <p className="text-caption text-muted-foreground mt-1.5 leading-snug">
@@ -464,11 +473,11 @@ export function FormationFigmaFlow({
                   </p>
                   <div className="mt-3 pt-2 border-t border-border/40 text-footnote space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Capital:</span>
+                      <span className="text-muted-foreground">{t('creator.phase3.formation.capital', 'Capital:')}</span>
                       <span className="font-mono text-foreground">{opt.capital}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Filing:</span>
+                      <span className="text-muted-foreground">{t('creator.phase3.formation.filing', 'Filing:')}</span>
                       <span className="font-mono text-foreground">{opt.formationTime}</span>
                     </div>
                   </div>
@@ -485,11 +494,11 @@ export function FormationFigmaFlow({
       <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-4">
         <div>
           <h2 className="text-card-title font-heading font-semibold text-foreground">
-            Who will own the company?
+            {t('creator.phase3.formation.whoOwns', 'Who will own the company?')}
           </h2>
           <div className="flex items-baseline justify-between mt-2">
             <span className="text-label font-bold uppercase tracking-wider text-foreground">
-              YOU
+              {t('creator.phase3.formation.you', 'YOU')}
             </span>
             <span className="text-card-title font-bold font-mono text-primary">
               {founderEquity}%
@@ -512,7 +521,7 @@ export function FormationFigmaFlow({
         </div>
 
         <p className="text-label text-muted-foreground leading-relaxed">
-          Ownership means who legally owns shares in the company. It is different from who does the most day-to-day work.
+          {t('creator.phase3.formation.ownershipExplain', 'Ownership means who legally owns shares in the company. It is different from who does the most day-to-day work.')}
         </p>
 
         <div className="flex items-center gap-3 pt-1">
@@ -523,7 +532,7 @@ export function FormationFigmaFlow({
             onClick={() => setIsAdjustingOwnership(!isAdjustingOwnership)}
             className="text-button text-primary hover:text-primary/90 hover:bg-secondary h-8 px-2.5"
           >
-            Adjust ownership
+            {t('creator.phase3.formation.adjustOwnership', 'Adjust ownership')}
           </Button>
 
           {isAdjustingOwnership && (
@@ -553,7 +562,7 @@ export function FormationFigmaFlow({
           ======================================================== */}
       <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-4">
         <h2 className="text-card-title font-heading font-semibold text-foreground">
-          Who will lead the company?
+          {t('creator.phase3.formation.whoLeads', 'Who will lead the company?')}
         </h2>
 
         <div className="rounded-xl border border-border/60 bg-muted/20 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -563,13 +572,15 @@ export function FormationFigmaFlow({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-body font-semibold text-foreground">You</span>
+                <span className="text-body font-semibold text-foreground">
+                  {t('creator.phase3.formation.day1Founder', 'You — Founder').split(' — ')[0]}
+                </span>
                 <span className="inline-flex items-center rounded bg-secondary px-2 py-0.5 text-badge font-medium text-primary">
-                  Planned role: {plannedRole}
+                  {t('creator.phase3.formation.plannedRole', { role: plannedRole })}
                 </span>
               </div>
               <p className="text-caption text-muted-foreground mt-1 max-w-lg leading-relaxed">
-                The company will need a legal representative. The exact role depends on the structure you eventually choose.
+                {t('creator.phase3.formation.leadExplain', 'The company will need a legal representative. The exact role depends on the structure you eventually choose.')}
               </p>
             </div>
           </div>
@@ -586,9 +597,9 @@ export function FormationFigmaFlow({
                   }}
                   className="rounded-lg border border-border bg-card px-2.5 py-1 text-label font-medium text-foreground outline-none"
                 >
-                  <option value="President">President</option>
-                  <option value="CEO">Chief Executive Officer</option>
-                  <option value="Managing Director (Gérant)">Managing Director (Gérant)</option>
+                  <option value="President">{t('creator.phase3.formation.rolePresident', 'President')}</option>
+                  <option value="CEO">{t('creator.phase3.formation.roleCeo', 'Chief Executive Officer')}</option>
+                  <option value="Managing Director (Gérant)">{t('creator.phase3.formation.roleGerant', 'Managing Director (Gérant)')}</option>
                 </select>
               </div>
             ) : (
@@ -599,7 +610,7 @@ export function FormationFigmaFlow({
                 onClick={() => setIsChangingRole(true)}
                 className="text-button text-primary hover:text-primary/90 hover:bg-secondary h-8 px-2.5"
               >
-                Change
+                {t('creator.phase3.formation.change', 'Change')}
               </Button>
             )}
           </div>
@@ -612,10 +623,10 @@ export function FormationFigmaFlow({
       <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-3">
         <div>
           <h2 className="text-card-title font-heading font-semibold text-foreground">
-            Starting capital plan
+            {t('creator.phase3.formation.capitalPlan', 'Starting capital plan')}
           </h2>
           <p className="text-label text-muted-foreground mt-0.5">
-            This comes from your current company and financial plan.
+            {t('creator.phase3.formation.capitalPlanDesc', 'This comes from your current company and financial plan.')}
           </p>
         </div>
 
@@ -638,7 +649,7 @@ export function FormationFigmaFlow({
                 }}
                 className="rounded-lg h-9 px-3"
               >
-                Save
+                {t('creator.phase3.formation.save', 'Save')}
               </Button>
             </div>
           ) : (
@@ -664,7 +675,7 @@ export function FormationFigmaFlow({
             )}
           >
             <Check className="size-3.5 stroke-[2.5]" />
-            <span>Looks right</span>
+            <span>{t('creator.phase3.formation.looksRight', 'Looks right')}</span>
           </Button>
 
           <Button
@@ -674,7 +685,7 @@ export function FormationFigmaFlow({
             onClick={() => setIsEditingCapital(true)}
             className="text-button text-muted-foreground hover:text-foreground h-8 px-2"
           >
-            Update this
+            {t('creator.phase3.formation.updateThis', 'Update this')}
           </Button>
         </div>
       </Card>
@@ -685,10 +696,10 @@ export function FormationFigmaFlow({
       <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-4">
         <div>
           <h2 className="text-card-title font-heading font-semibold text-foreground">
-            Who do you actually need to get started?
+            {t('creator.phase3.formation.whoNeeded', 'Who do you actually need to get started?')}
           </h2>
           <p className="text-label text-muted-foreground mt-0.5">
-            You probably don’t need a full team on day one. MBC compared your project needs with the skills you already have.
+            {t('creator.phase3.formation.whoNeededDesc', 'You probably don’t need a full team on day one. MBC compared your project needs with the skills you already have.')}
           </p>
         </div>
 
@@ -699,7 +710,7 @@ export function FormationFigmaFlow({
               <div className="flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-success-strong" />
                 <span className="text-footnote font-bold uppercase tracking-wider text-success-strong">
-                  YOU CAN HANDLE
+                  {t('creator.phase3.formation.canHandle', 'YOU CAN HANDLE')}
                 </span>
               </div>
               <ul className="space-y-2">
@@ -714,7 +725,7 @@ export function FormationFigmaFlow({
               </ul>
             </div>
             <p className="text-caption text-muted-foreground leading-relaxed pt-2 border-t border-border/40">
-              Your current profile suggests you can cover these yourself.
+              {t('creator.phase3.formation.canHandleDesc', 'Your current profile suggests you can cover these yourself.')}
             </p>
           </div>
 
@@ -724,7 +735,7 @@ export function FormationFigmaFlow({
               <div className="flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-amber-600 dark:text-amber-400" />
                 <span className="text-footnote font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                  YOU MAY NEED HELP WITH
+                  {t('creator.phase3.formation.needHelp', 'YOU MAY NEED HELP WITH')}
                 </span>
               </div>
               <ul className="space-y-2">
@@ -739,7 +750,7 @@ export function FormationFigmaFlow({
               </ul>
             </div>
             <p className="text-caption text-muted-foreground leading-relaxed pt-2 border-t border-border/40">
-              These capabilities may be important before launch or company setup.
+              {t('creator.phase3.formation.needHelpDesc', 'These capabilities may be important before launch or company setup.')}
             </p>
           </div>
 
@@ -749,7 +760,7 @@ export function FormationFigmaFlow({
               <div className="flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-muted-foreground/60" />
                 <span className="text-footnote font-bold uppercase tracking-wider text-muted-foreground">
-                  NOT NEEDED YET
+                  {t('creator.phase3.formation.notNeededYet', 'NOT NEEDED YET')}
                 </span>
               </div>
               <ul className="space-y-2">
@@ -764,7 +775,7 @@ export function FormationFigmaFlow({
               </ul>
             </div>
             <p className="text-caption text-muted-foreground leading-relaxed pt-2 border-t border-border/40">
-              These roles can probably wait until the business grows.
+              {t('creator.phase3.formation.notNeededYetDesc', 'These roles can probably wait until the business grows.')}
             </p>
           </div>
         </div>
@@ -776,10 +787,10 @@ export function FormationFigmaFlow({
       <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <span className="text-footnote font-semibold uppercase tracking-wider text-muted-foreground">
-            TEAM NEED
+            {t('creator.phase3.formation.teamNeed', 'TEAM NEED')}
           </span>
           <span className="inline-flex items-center rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-badge font-medium text-amber-700 dark:text-amber-400">
-            Needed before launch
+            {t('creator.phase3.formation.neededBeforeLaunch', 'Needed before launch')}
           </span>
         </div>
 
@@ -788,27 +799,29 @@ export function FormationFigmaFlow({
             {primaryExpandedNeed}
           </h3>
           <p className="text-label text-muted-foreground mt-1 leading-relaxed">
-            Your project requires specialized capability in {primaryExpandedNeed.toLowerCase()}, which is not fully covered in your initial capability profile.
+            {t('creator.phase3.formation.needDesc', { need: primaryExpandedNeed.toLowerCase() })}
           </p>
         </div>
 
         {/* Starting Option Card */}
         <div className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-1.5">
           <div className="text-footnote font-medium uppercase tracking-wider text-muted-foreground">
-            A practical starting option
+            {t('creator.phase3.formation.practicalOption', 'A practical starting option')}
           </div>
-          <div className="text-body font-semibold text-foreground">External specialist</div>
+          <div className="text-body font-semibold text-foreground">
+            {t('creator.phase3.formation.externalSpecialist', 'External specialist')}
+          </div>
           <p className="text-label text-muted-foreground leading-relaxed">
-            You need this capability before launch, but a full-time employee may be unnecessary at the beginning.
+            {t('creator.phase3.formation.practicalDesc', 'You need this capability before launch, but a full-time employee may be unnecessary at the beginning.')}
           </p>
         </div>
 
         {/* 3 Action Pathways */}
         <div className="flex flex-wrap gap-2.5 pt-1">
           {[
-            { id: 'learn', label: 'Learn later' },
-            { id: 'cofounder', label: 'Consider a technical co-founder' },
-            { id: 'hire', label: 'Hire when the business grows' },
+            { id: 'learn', label: t('creator.phase3.formation.pathLearn', 'Learn later') },
+            { id: 'cofounder', label: t('creator.phase3.formation.pathCofounder', 'Consider a technical co-founder') },
+            { id: 'hire', label: t('creator.phase3.formation.pathHire', 'Hire when the business grows') },
           ].map((pathway) => (
             <button
               key={pathway.id}
@@ -833,10 +846,10 @@ export function FormationFigmaFlow({
       <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-4">
         <div>
           <h2 className="text-card-title font-heading font-semibold text-foreground">
-            Professional support you may use
+            {t('creator.phase3.formation.profSupport', 'Professional support you may use')}
           </h2>
           <p className="text-label text-muted-foreground mt-0.5">
-            Some support is useful without becoming part of your permanent team.
+            {t('creator.phase3.formation.profSupportDesc', 'Some support is useful without becoming part of your permanent team.')}
           </p>
         </div>
 
@@ -844,26 +857,30 @@ export function FormationFigmaFlow({
           {/* Support 1: Chartered accountant */}
           <div className="rounded-xl border border-border/60 bg-muted/20 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
-              <h3 className="text-body font-semibold text-foreground">Chartered accountant</h3>
+              <h3 className="text-body font-semibold text-foreground">
+                {t('creator.phase3.formation.accountant', 'Chartered accountant')}
+              </h3>
               <p className="text-caption text-muted-foreground mt-0.5">
-                Useful around setup, accounting and financial obligations.
+                {t('creator.phase3.formation.accountantDesc', 'Useful around setup, accounting and financial obligations.')}
               </p>
             </div>
             <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-footnote font-medium text-muted-foreground shrink-0 border border-border/50">
-              Around company setup
+              {t('creator.phase3.formation.aroundSetup', 'Around company setup')}
             </span>
           </div>
 
           {/* Support 2: Legal professional */}
           <div className="rounded-xl border border-border/60 bg-muted/20 p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
-              <h3 className="text-body font-semibold text-foreground">Legal professional</h3>
+              <h3 className="text-body font-semibold text-foreground">
+                {t('creator.phase3.formation.lawyer', 'Legal professional')}
+              </h3>
               <p className="text-caption text-muted-foreground mt-0.5">
-                Useful before finalising company documents or unusual ownership arrangements.
+                {t('creator.phase3.formation.lawyerDesc', 'Useful before finalising company documents or unusual ownership arrangements.')}
               </p>
             </div>
             <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-footnote font-medium text-muted-foreground shrink-0 border border-border/50">
-              Before final registration, if needed
+              {t('creator.phase3.formation.beforeRegistrationIf', 'Before final registration, if needed')}
             </span>
           </div>
         </div>
@@ -875,7 +892,7 @@ export function FormationFigmaFlow({
       <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-4">
         <div>
           <h2 className="text-card-title font-heading font-semibold text-foreground">
-            Your starting team
+            {t('creator.phase3.formation.startingTeam', 'Your starting team')}
           </h2>
         </div>
 
@@ -885,13 +902,13 @@ export function FormationFigmaFlow({
             <div className="flex items-center gap-2">
               <span className="size-2 rounded-full bg-primary" />
               <span className="text-footnote font-bold uppercase tracking-wider text-foreground">
-                DAY 1
+                {t('creator.phase3.formation.day1', 'DAY 1')}
               </span>
             </div>
             <ul className="space-y-2 text-label text-foreground">
               <li className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-primary" />
-                <span>You — Founder</span>
+                <span>{t('creator.phase3.formation.day1Founder', 'You — Founder')}</span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-primary" />
@@ -901,7 +918,7 @@ export function FormationFigmaFlow({
               </li>
               <li className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-primary" />
-                <span>Accountant support</span>
+                <span>{t('creator.phase3.formation.day1Accountant', 'Accountant support')}</span>
               </li>
             </ul>
           </div>
@@ -911,21 +928,21 @@ export function FormationFigmaFlow({
             <div className="flex items-center gap-2">
               <span className="size-2 rounded-full bg-muted-foreground/60" />
               <span className="text-footnote font-bold uppercase tracking-wider text-muted-foreground">
-                LATER
+                {t('creator.phase3.formation.later', 'LATER')}
               </span>
             </div>
             <ul className="space-y-2 text-label text-muted-foreground">
               <li className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-muted-foreground/60" />
-                <span>Sales support</span>
+                <span>{t('creator.phase3.formation.laterSales', 'Sales support')}</span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-muted-foreground/60" />
-                <span>Customer support</span>
+                <span>{t('creator.phase3.formation.laterCustomer', 'Customer support')}</span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-muted-foreground/60" />
-                <span>Operations</span>
+                <span>{t('creator.phase3.formation.laterOps', 'Operations')}</span>
               </li>
             </ul>
           </div>
@@ -937,44 +954,46 @@ export function FormationFigmaFlow({
           ======================================================== */}
       <Card className="rounded-2xl border border-border/70 bg-card p-6 shadow-xs space-y-5">
         <h2 className="text-card-title font-heading font-semibold text-foreground">
-          Your company setup plan
+          {t('creator.phase3.formation.setupPlan', 'Your company setup plan')}
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Sub A: COMPANY */}
           <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
             <span className="text-footnote font-bold uppercase tracking-wider text-muted-foreground">
-              COMPANY
+              {t('creator.phase3.formation.company', 'COMPANY')}
             </span>
             <div className="space-y-2 text-label">
               <div className="flex items-center justify-between rounded bg-card border border-border/50 px-3 py-1.5">
-                <span className="text-muted-foreground">Starting</span>
+                <span className="text-muted-foreground">{t('creator.phase3.formation.starting', 'Starting')}</span>
                 <span className="font-semibold text-foreground">
                   {startingMode === 'solo'
-                    ? 'Solo founder'
+                    ? t('creator.phase3.formation.soloFounder', 'Solo founder')
                     : startingMode === 'team'
-                    ? 'With co-founders'
-                    : 'Flexible plan'}
+                    ? t('creator.phase3.formation.withCofounders', 'With co-founders')
+                    : t('creator.phase3.formation.flexiblePlan', 'Flexible plan')}
                 </span>
               </div>
               <div className="flex items-center justify-between rounded bg-card border border-border/50 px-3 py-1.5">
-                <span className="text-muted-foreground">Structure to consider</span>
+                <span className="text-muted-foreground">{t('creator.phase3.formation.structureToConsider', 'Structure to consider')}</span>
                 <span className="font-mono font-semibold text-foreground">
                   {displayStructureCode}
                 </span>
               </div>
               <div className="flex items-center justify-between rounded bg-card border border-border/50 px-3 py-1.5">
-                <span className="text-muted-foreground">Ownership</span>
+                <span className="text-muted-foreground">{t('creator.phase3.formation.ownership', 'Ownership')}</span>
                 <span className="font-semibold text-foreground">
-                  You · {founderEquity}%
+                  {t('creator.phase3.formation.ownershipValue', { equity: founderEquity })}
                 </span>
               </div>
               <div className="flex items-center justify-between rounded bg-card border border-border/50 px-3 py-1.5">
-                <span className="text-muted-foreground">Planned leader</span>
-                <span className="font-semibold text-foreground">You</span>
+                <span className="text-muted-foreground">{t('creator.phase3.formation.plannedLeader', 'Planned leader')}</span>
+                <span className="font-semibold text-foreground">
+                  {t('creator.phase3.formation.day1Founder', 'You — Founder').split(' — ')[0]}
+                </span>
               </div>
               <div className="flex items-center justify-between rounded bg-card border border-border/50 px-3 py-1.5">
-                <span className="text-muted-foreground">Starting capital</span>
+                <span className="text-muted-foreground">{t('creator.phase3.formation.startingCapital', 'Starting capital')}</span>
                 <span className="font-mono font-semibold text-foreground">
                   {currencySymbol}{capitalAmount.toLocaleString('en-US')}
                 </span>
@@ -985,29 +1004,31 @@ export function FormationFigmaFlow({
           {/* Sub B: TEAM */}
           <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
             <span className="text-footnote font-bold uppercase tracking-wider text-muted-foreground">
-              TEAM
+              {t('creator.phase3.formation.team', 'TEAM')}
             </span>
             <div className="space-y-2 text-label">
               <div className="flex items-center justify-between rounded bg-card border border-border/50 px-3 py-1.5">
-                <span className="text-muted-foreground">You can handle</span>
+                <span className="text-muted-foreground">{t('creator.phase3.formation.canHandle', 'YOU CAN HANDLE')}</span>
                 <span className="font-mono font-bold text-foreground">
-                  {youCanHandleItems.length} areas
+                  {t('creator.phase3.formation.areasCount', { count: youCanHandleItems.length })}
                 </span>
               </div>
               <div className="flex items-center justify-between rounded bg-card border border-border/50 px-3 py-1.5">
-                <span className="text-muted-foreground">Help likely needed</span>
+                <span className="text-muted-foreground">{t('creator.phase3.formation.needHelp', 'YOU MAY NEED HELP WITH')}</span>
                 <span className="font-mono font-bold text-foreground">
-                  {youMayNeedHelpItems.length} areas
+                  {t('creator.phase3.formation.areasCount', { count: youMayNeedHelpItems.length })}
                 </span>
               </div>
               <div className="flex items-center justify-between rounded bg-card border border-border/50 px-3 py-1.5">
-                <span className="text-muted-foreground">Needed on day one</span>
-                <span className="font-mono font-bold text-foreground">2 support needs</span>
+                <span className="text-muted-foreground">{t('creator.phase3.formation.neededDayOne', 'Needed on day one')}</span>
+                <span className="font-mono font-bold text-foreground">
+                  {t('creator.phase3.formation.twoSupportNeeds', '2 support needs')}
+                </span>
               </div>
               <div className="flex items-center justify-between rounded bg-card border border-border/50 px-3 py-1.5">
-                <span className="text-muted-foreground">Can wait</span>
+                <span className="text-muted-foreground">{t('creator.phase3.formation.canWait', 'Can wait')}</span>
                 <span className="font-mono font-bold text-foreground">
-                  {notNeededYetItems.length} roles
+                  {t('creator.phase3.formation.rolesCount', { count: notNeededYetItems.length })}
                 </span>
               </div>
             </div>
@@ -1015,7 +1036,7 @@ export function FormationFigmaFlow({
         </div>
 
         <p className="text-footnote text-muted-foreground/80 leading-relaxed pt-1">
-          This is a planning recommendation based on your current project. Final legal, tax and ownership decisions may require professional advice before company registration.
+          {t('creator.phase3.formation.disclaimer', 'This is a planning recommendation based on your current project. Final legal, tax and ownership decisions may require professional advice before company registration.')}
         </p>
       </Card>
 
@@ -1031,7 +1052,7 @@ export function FormationFigmaFlow({
           className="gap-2 text-button font-medium font-sans text-muted-foreground hover:text-foreground rounded-xl"
         >
           <ArrowLeft className="size-4" />
-          <span>Legal Roadmap</span>
+          <span>{t('creator.phase3.formation.backToCompliance', 'Legal Roadmap')}</span>
         </Button>
 
         <Button
@@ -1047,7 +1068,7 @@ export function FormationFigmaFlow({
           disabled={isSaving}
           className="gap-2 rounded-xl text-button font-semibold h-11 px-6 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm font-sans"
         >
-          <span>Continue to Executive Business Plan</span>
+          <span>{t('creator.phase3.formation.continueToBusinessPlan', 'Continue to Executive Business Plan')}</span>
           <ArrowRight className="size-4" />
         </Button>
       </div>

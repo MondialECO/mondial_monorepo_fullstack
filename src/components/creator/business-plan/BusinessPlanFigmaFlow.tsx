@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { BusinessPlanOutput, ClarifierOutput, LegalRegulatoryFramework } from '@/types/creator/ai';
 
 export interface BusinessPlanFigmaFlowProps {
@@ -100,6 +101,43 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
   onBack,
   effectiveIdeaId,
 }) => {
+  const { t } = useTranslation();
+
+  const getChapterTitle = (chOrNum: typeof CHAPTERS_META[number] | string) => {
+    const ch = typeof chOrNum === 'string'
+      ? CHAPTERS_META.find(c => c.num === chOrNum || c.id === chOrNum)
+      : chOrNum;
+    if (!ch) return typeof chOrNum === 'string' ? chOrNum : '';
+    switch (ch.id) {
+      case 'executive':
+        return t('creator.phase3.businessPlan.flow.chapters.executive', ch.title);
+      case 'problem-solution':
+        return t('creator.phase3.businessPlan.flow.chapters.problemSolution', ch.title);
+      case 'target-market':
+        return t('creator.phase3.businessPlan.flow.chapters.targetMarket', ch.title);
+      case 'business-model':
+        return t('creator.phase3.businessPlan.flow.chapters.businessModel', ch.title);
+      case 'competitive':
+        return t('creator.phase3.businessPlan.flow.chapters.competitive', ch.title);
+      case 'gtm':
+        return t('creator.phase3.businessPlan.flow.chapters.gtm', ch.title);
+      case 'financials':
+        return t('creator.phase3.businessPlan.flow.chapters.financials', ch.title);
+      case 'team':
+        return t('creator.phase3.businessPlan.flow.chapters.team', ch.title);
+      case 'funding':
+        return t('creator.phase3.businessPlan.flow.chapters.funding', ch.title);
+      case 'operations':
+        return t('creator.phase3.businessPlan.flow.chapters.operations', ch.title);
+      case 'risks':
+        return t('creator.phase3.businessPlan.flow.chapters.risks', ch.title);
+      case 'legal-framework':
+        return t('creator.phase3.businessPlan.flow.chapters.legalFramework', ch.title);
+      default:
+        return ch.title;
+    }
+  };
+
   // Navigation active section scrollspy / selection
   const [activeChapter, setActiveChapter] = useState('01');
 
@@ -157,6 +195,57 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
       ...prev,
       [chapterNum]: !prev[chapterNum],
     }));
+  };
+
+  const renderReviewedBadge = (num: string) => (
+    <Badge
+      variant="outline"
+      className={`text-badge font-medium rounded-full font-sans ${
+        reviewedChapters[num]
+          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+          : 'bg-muted/60 text-muted-foreground'
+      }`}
+    >
+      {reviewedChapters[num]
+        ? t('creator.phase3.businessPlan.flow.reviewed', 'Reviewed')
+        : t('creator.phase3.businessPlan.flow.draft', 'Draft')}
+    </Badge>
+  );
+
+  const renderReviewedButton = (num: string, variant: 'button' | 'ghost' = 'ghost') => {
+    if (variant === 'button') {
+      return (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => toggleReviewed(num)}
+          className={`gap-1.5 text-button font-semibold rounded-lg font-sans ${
+            reviewedChapters[num]
+              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/40'
+              : 'bg-muted/40 text-foreground hover:bg-muted/70'
+          }`}
+        >
+          <Check className={`h-3.5 w-3.5 ${reviewedChapters[num] ? 'text-emerald-600' : 'text-emerald-700'}`} />
+          <span>
+            {reviewedChapters[num]
+              ? t('creator.phase3.businessPlan.flow.reviewed', 'Reviewed')
+              : t('creator.phase3.businessPlan.flow.markReviewed', 'Mark reviewed')}
+          </span>
+        </Button>
+      );
+    }
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => toggleReviewed(num)}
+        className="text-button text-muted-foreground hover:text-foreground font-sans"
+      >
+        {reviewedChapters[num]
+          ? t('creator.phase3.businessPlan.flow.reviewed', 'Reviewed')
+          : t('creator.phase3.businessPlan.flow.markReviewed', 'Mark reviewed')}
+      </Button>
+    );
   };
 
   const scrollToChapter = (chapterNum: string) => {
@@ -260,7 +349,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-page-heading font-bold tracking-tight text-foreground font-heading">
-              Your business plan
+              {t('creator.phase3.businessPlan.flow.title', 'Your business plan')}
             </h1>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-card border border-border shadow-xs">
               <span className="text-badge font-semibold text-foreground font-sans">{projectName}</span>
@@ -269,11 +358,11 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
               variant="outline"
               className="text-badge font-semibold tracking-wider uppercase bg-muted/60 text-muted-foreground border-border/80 px-2.5 py-0.5 rounded-full font-sans"
             >
-              DRAFT
+              {t('creator.phase3.businessPlan.flow.draft', 'DRAFT')}
             </Badge>
           </div>
           <p className="text-body text-muted-foreground mt-1 font-sans">
-            Built from the work you&apos;ve already completed.
+            {t('creator.phase3.businessPlan.flow.builtFromCompleted', "Built from the work you've already completed.")}
           </p>
         </div>
 
@@ -284,7 +373,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
             className="gap-2 text-button font-semibold rounded-xl bg-card border-border hover:bg-muted/40 transition-colors shadow-xs font-sans"
           >
             <FileDown className="h-4 w-4 text-muted-foreground" />
-            <span>Download</span>
+            <span>{t('creator.phase3.businessPlan.flow.download', 'Download')}</span>
             <ChevronDown className="h-3 w-3 text-muted-foreground ml-0.5" />
           </Button>
 
@@ -304,7 +393,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
             disabled={isGenerating}
             className="gap-2 text-button font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-xs font-sans"
           >
-            <span>Regenerate Business Plan</span>
+            <span>{t('creator.phase3.businessPlan.flow.regenerate', 'Regenerate Business Plan')}</span>
             <RotateCw className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
           </Button>
         </div>
@@ -313,7 +402,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
       {/* 2. QUIET CONTEXT NOTICE */}
       <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-muted/50 border border-border/50 text-caption text-muted-foreground font-sans">
         <Info className="h-4 w-4 text-muted-foreground shrink-0" />
-        <span>All chapters are currently in Draft status based on assembled project data.</span>
+        <span>{t('creator.phase3.businessPlan.flow.contextNotice', 'All chapters are currently in Draft status based on assembled project data.')}</span>
       </div>
 
       {/* 3. MAIN WORKSPACE (2-Column: Left Chapter Navigator + Right Continuous Document) */}
@@ -323,10 +412,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <div className="rounded-2xl border border-border bg-card p-4 shadow-xs space-y-2 max-h-[calc(100vh-6rem)] overflow-y-auto">
             <div className="flex items-center justify-between px-2 pb-2 border-b border-border/60">
               <span className="text-badge font-bold uppercase tracking-wider text-muted-foreground font-sans">
-                CONTENTS
+                {t('creator.phase3.businessPlan.flow.contents', 'CONTENTS')}
               </span>
               <span className="text-badge font-medium text-muted-foreground font-sans">
-                12 Sections
+                {t('creator.phase3.businessPlan.flow.sectionsCount', '12 Sections')}
               </span>
             </div>
 
@@ -349,7 +438,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                       <span className={`font-mono text-badge ${isActive ? 'text-primary' : 'text-muted-foreground/80'}`}>
                         {ch.num}
                       </span>
-                      <span className="truncate">{ch.title}</span>
+                      <span className="truncate">{getChapterTitle(ch)}</span>
                     </div>
 
                     <span
@@ -361,7 +450,9 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                           : 'bg-muted/60 text-muted-foreground'
                       }`}
                     >
-                      {isReviewed ? 'Reviewed' : 'Draft'}
+                      {isReviewed
+                        ? t('creator.phase3.businessPlan.flow.reviewed', 'Reviewed')
+                        : t('creator.phase3.businessPlan.flow.draft', 'Draft')}
                     </span>
                   </button>
                 );
@@ -377,13 +468,17 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
             <h1 className="text-stat-xl font-bold tracking-tight text-foreground font-heading">
               {projectName}
             </h1>
-            <p className="text-section-title font-medium text-muted-foreground font-sans">Business Plan</p>
+            <p className="text-section-title font-medium text-muted-foreground font-sans">
+              {t('creator.phase3.businessPlan.flow.businessPlanTitle', 'Business Plan')}
+            </p>
             <div className="flex items-center gap-2 text-caption text-muted-foreground pt-1 flex-wrap font-sans">
               <span>{countryName}</span>
               <span>•</span>
               <span>{categoryName}</span>
               <span>•</span>
-              <span className="text-primary font-medium">Draft Status</span>
+              <span className="text-primary font-medium">
+                {t('creator.phase3.businessPlan.flow.draftStatus', 'Draft Status')}
+              </span>
             </div>
           </div>
 
@@ -391,17 +486,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-01" className="space-y-4 pt-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">01 · Executive Summary</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['01']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['01'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  01 · {getChapterTitle(CHAPTERS_META[0])}
+                </h2>
+                {renderReviewedBadge('01')}
               </div>
             </div>
 
@@ -438,13 +526,18 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 onClick={() => setSourceChipsExpanded(!sourceChipsExpanded)}
                 className="flex items-center justify-between w-full text-badge font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground font-sans"
               >
-                <span>BUILT FROM ASSEMBLED INPUTS</span>
+                <span>{t('creator.phase3.businessPlan.flow.builtFromAssembled', 'BUILT FROM ASSEMBLED INPUTS')}</span>
                 {sourceChipsExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
               </button>
 
               {sourceChipsExpanded && (
                 <div className="flex items-center gap-2 flex-wrap pt-1">
-                  {['Project Concept', 'Business Model', 'Financial Forecast', 'Company Setup'].map((chip) => (
+                  {[
+                    t('creator.phase3.businessPlan.flow.sourceChips.projectConcept', 'Project Concept'),
+                    t('creator.phase3.businessPlan.flow.sourceChips.businessModel', 'Business Model'),
+                    t('creator.phase3.businessPlan.flow.sourceChips.financialForecast', 'Financial Forecast'),
+                    t('creator.phase3.businessPlan.flow.sourceChips.companySetup', 'Company Setup'),
+                  ].map((chip) => (
                     <span
                       key={chip}
                       className="px-2.5 py-1 rounded-md text-badge font-medium bg-card border border-border text-foreground/80 shadow-xs font-sans"
@@ -458,19 +551,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
 
             {/* Action Row */}
             <div className="flex items-center gap-2 flex-wrap pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toggleReviewed('01')}
-                className={`gap-1.5 text-button font-semibold rounded-lg font-sans ${
-                  reviewedChapters['01']
-                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/40'
-                    : 'bg-muted/40 text-foreground hover:bg-muted/70'
-                }`}
-              >
-                <Check className={`h-3.5 w-3.5 ${reviewedChapters['01'] ? 'text-emerald-600' : 'text-emerald-700'}`} />
-                <span>{reviewedChapters['01'] ? 'Reviewed' : 'Mark reviewed'}</span>
-              </Button>
+              {renderReviewedButton('01', 'button')}
 
               <Button
                 variant="outline"
@@ -478,14 +559,14 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 onClick={() =>
                   openEditor(
                     'executive',
-                    '01 · Executive Summary',
+                    `01 · ${getChapterTitle(CHAPTERS_META[0])}`,
                     bpOutput?.executiveSummary?.overview || ''
                   )
                 }
                 className="gap-1.5 text-button font-semibold rounded-lg bg-muted/40 text-foreground hover:bg-muted/70 font-sans"
               >
                 <Pencil className="h-3.5 w-3.5 text-foreground/70" />
-                <span>Edit text</span>
+                <span>{t('creator.phase3.businessPlan.flow.editText', 'Edit text')}</span>
               </Button>
 
               <Button
@@ -500,7 +581,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 ) : (
                   <Sparkles className="h-3.5 w-3.5" />
                 )}
-                <span>Rewrite with AI</span>
+                <span>{t('creator.phase3.businessPlan.flow.rewriteWithAi', 'Rewrite with AI')}</span>
               </Button>
             </div>
           </section>
@@ -511,17 +592,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-02" className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">02 · Problem & Solution</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['02']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['02'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  02 · {getChapterTitle(CHAPTERS_META[1])}
+                </h2>
+                {renderReviewedBadge('02')}
               </div>
             </div>
 
@@ -574,19 +648,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
 
             {/* Action Row */}
             <div className="flex items-center gap-2 flex-wrap pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toggleReviewed('02')}
-                className={`gap-1.5 text-button font-semibold rounded-lg font-sans ${
-                  reviewedChapters['02']
-                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/40'
-                    : 'bg-muted/40 text-foreground hover:bg-muted/70'
-                }`}
-              >
-                <Check className={`h-3.5 w-3.5 ${reviewedChapters['02'] ? 'text-emerald-600' : 'text-emerald-700'}`} />
-                <span>{reviewedChapters['02'] ? 'Reviewed' : 'Mark reviewed'}</span>
-              </Button>
+              {renderReviewedButton('02', 'button')}
 
               <Button
                 variant="outline"
@@ -594,14 +656,14 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 onClick={() =>
                   openEditor(
                     'problem-solution',
-                    '02 · Problem & Solution',
+                    `02 · ${getChapterTitle(CHAPTERS_META[1])}`,
                     bpOutput?.problemSolution?.problem || clarifierOutput?.problemDefinition?.statement || project.problem || ''
                   )
                 }
                 className="gap-1.5 text-button font-semibold rounded-lg bg-muted/40 text-foreground hover:bg-muted/70 font-sans"
               >
                 <Pencil className="h-3.5 w-3.5 text-foreground/70" />
-                <span>Edit text</span>
+                <span>{t('creator.phase3.businessPlan.flow.editText', 'Edit text')}</span>
               </Button>
 
               <Button
@@ -616,14 +678,14 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 ) : (
                   <Sparkles className="h-3.5 w-3.5" />
                 )}
-                <span>Rewrite with AI</span>
+                <span>{t('creator.phase3.businessPlan.flow.rewriteWithAi', 'Rewrite with AI')}</span>
               </Button>
 
               <Link
                 href={effectiveIdeaId ? `/dashboard/creator/phase-2/clarifier?ideaId=${effectiveIdeaId}` : '/dashboard/creator/phase-2/clarifier'}
                 className="inline-flex items-center gap-1.5 text-button font-semibold text-primary hover:underline font-sans ml-auto"
               >
-                <span>View project concept</span>
+                <span>{t('creator.phase3.businessPlan.flow.viewProjectConcept', 'View project concept')}</span>
                 <ExternalLink className="h-3 w-3" />
               </Link>
             </div>
@@ -635,17 +697,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-03" className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">03 · Market & Customers</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['03']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['03'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  03 · {getChapterTitle(CHAPTERS_META[2])}
+                </h2>
+                {renderReviewedBadge('03')}
               </div>
             </div>
 
@@ -701,18 +756,11 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 href={effectiveIdeaId ? `/dashboard/creator/phase-3/market-study?ideaId=${effectiveIdeaId}` : '/dashboard/creator/phase-3/market-study'}
                 className="inline-flex items-center gap-1.5 text-button font-semibold text-primary hover:underline font-sans"
               >
-                <span>View Market Intelligence</span>
+                <span>{t('creator.phase3.businessPlan.flow.viewMarketIntelligence', 'View Market Intelligence')}</span>
                 <ExternalLink className="h-3 w-3" />
               </Link>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleReviewed('03')}
-                className="text-button text-muted-foreground hover:text-foreground font-sans"
-              >
-                {reviewedChapters['03'] ? 'Reviewed' : 'Mark reviewed'}
-              </Button>
+              {renderReviewedButton('03')}
             </div>
           </section>
 
@@ -722,17 +770,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-04" className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">04 · Business Model</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['04']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['04'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  04 · {getChapterTitle(CHAPTERS_META[3])}
+                </h2>
+                {renderReviewedBadge('04')}
               </div>
             </div>
 
@@ -788,18 +829,11 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 href={effectiveIdeaId ? `/dashboard/creator/phase-3/business-model?ideaId=${effectiveIdeaId}` : '/dashboard/creator/phase-3/business-model'}
                 className="inline-flex items-center gap-1.5 text-button font-semibold text-primary hover:underline font-sans"
               >
-                <span>Update Business Model</span>
+                <span>{t('creator.phase3.businessPlan.flow.updateBusinessModel', 'Update Business Model')}</span>
                 <ExternalLink className="h-3 w-3" />
               </Link>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleReviewed('04')}
-                className="text-button text-muted-foreground hover:text-foreground font-sans"
-              >
-                {reviewedChapters['04'] ? 'Reviewed' : 'Mark reviewed'}
-              </Button>
+              {renderReviewedButton('04')}
             </div>
           </section>
 
@@ -809,17 +843,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-05" className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">05 · Competition & Positioning</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['05']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['05'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  05 · {getChapterTitle(CHAPTERS_META[4])}
+                </h2>
+                {renderReviewedBadge('05')}
               </div>
             </div>
 
@@ -887,14 +914,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
             </p>
 
             <div className="flex items-center justify-end pt-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleReviewed('05')}
-                className="text-button text-muted-foreground hover:text-foreground font-sans"
-              >
-                {reviewedChapters['05'] ? 'Reviewed' : 'Mark reviewed'}
-              </Button>
+              {renderReviewedButton('05')}
             </div>
           </section>
 
@@ -904,17 +924,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-06" className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">06 · Go-to-Market</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['06']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['06'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  06 · {getChapterTitle(CHAPTERS_META[5])}
+                </h2>
+                {renderReviewedBadge('06')}
               </div>
             </div>
 
@@ -946,25 +959,18 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 onClick={() =>
                   openEditor(
                     'gtm',
-                    '06 · Go-to-Market',
+                    `06 · ${getChapterTitle(CHAPTERS_META[5])}`,
                     bpOutput?.goToMarket?.strategy || ''
                   )
                 }
                 className="text-button font-semibold rounded-lg bg-card font-sans"
               >
-                Add your approach
+                {t('creator.phase3.businessPlan.flow.addYourApproach', 'Add your approach')}
               </Button>
             </div>
 
             <div className="flex items-center justify-end pt-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleReviewed('06')}
-                className="text-button text-muted-foreground hover:text-foreground font-sans"
-              >
-                {reviewedChapters['06'] ? 'Reviewed' : 'Mark reviewed'}
-              </Button>
+              {renderReviewedButton('06')}
             </div>
           </section>
 
@@ -974,17 +980,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-07" className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">07 · Financial Plan</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['07']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['07'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  07 · {getChapterTitle(CHAPTERS_META[6])}
+                </h2>
+                {renderReviewedBadge('07')}
               </div>
             </div>
 
@@ -1167,18 +1166,11 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 href={effectiveIdeaId ? `/dashboard/creator/phase-3/forecast?ideaId=${effectiveIdeaId}` : '/dashboard/creator/phase-3/forecast'}
                 className="inline-flex items-center gap-1.5 text-button font-semibold text-primary hover:underline font-sans"
               >
-                <span>Update financial forecast</span>
+                <span>{t('creator.phase3.businessPlan.flow.updateFinancialForecast', 'Update financial forecast')}</span>
                 <ExternalLink className="h-3 w-3" />
               </Link>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleReviewed('07')}
-                className="text-button text-muted-foreground hover:text-foreground font-sans"
-              >
-                {reviewedChapters['07'] ? 'Reviewed' : 'Mark reviewed'}
-              </Button>
+              {renderReviewedButton('07')}
             </div>
           </section>
 
@@ -1188,17 +1180,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-08" className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">08 · Company & Team</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['08']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['08'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  08 · {getChapterTitle(CHAPTERS_META[7])}
+                </h2>
+                {renderReviewedBadge('08')}
               </div>
             </div>
 
@@ -1299,18 +1284,11 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 href={effectiveIdeaId ? `/dashboard/creator/phase-3/formation?ideaId=${effectiveIdeaId}` : '/dashboard/creator/phase-3/formation'}
                 className="inline-flex items-center gap-1.5 text-button font-semibold text-primary hover:underline font-sans"
               >
-                <span>Update company setup</span>
+                <span>{t('creator.phase3.businessPlan.flow.updateCompanySetup', 'Update company setup')}</span>
                 <ExternalLink className="h-3 w-3" />
               </Link>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleReviewed('08')}
-                className="text-button text-muted-foreground hover:text-foreground font-sans"
-              >
-                {reviewedChapters['08'] ? 'Reviewed' : 'Mark reviewed'}
-              </Button>
+              {renderReviewedButton('08')}
             </div>
           </section>
 
@@ -1320,17 +1298,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-09" className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">09 · Funding Requirements</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['09']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['09'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  09 · {getChapterTitle(CHAPTERS_META[8])}
+                </h2>
+                {renderReviewedBadge('09')}
               </div>
             </div>
 
@@ -1360,14 +1331,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
             </p>
 
             <div className="flex items-center justify-end pt-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleReviewed('09')}
-                className="text-button text-muted-foreground hover:text-foreground font-sans"
-              >
-                {reviewedChapters['09'] ? 'Reviewed' : 'Mark reviewed'}
-              </Button>
+              {renderReviewedButton('09')}
             </div>
           </section>
 
@@ -1377,17 +1341,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-10" className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">10 · Operations & Milestones</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['10']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['10'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  10 · {getChapterTitle(CHAPTERS_META[9])}
+                </h2>
+                {renderReviewedBadge('10')}
               </div>
             </div>
 
@@ -1448,14 +1405,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
             </div>
 
             <div className="flex items-center justify-end pt-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleReviewed('10')}
-                className="text-button text-muted-foreground hover:text-foreground font-sans"
-              >
-                {reviewedChapters['10'] ? 'Reviewed' : 'Mark reviewed'}
-              </Button>
+              {renderReviewedButton('10')}
             </div>
           </section>
 
@@ -1465,17 +1415,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-11" className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">11 · Risks & Next Steps</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['11']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['11'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  11 · {getChapterTitle(CHAPTERS_META[10])}
+                </h2>
+                {renderReviewedBadge('11')}
               </div>
             </div>
 
@@ -1558,14 +1501,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
             </div>
 
             <div className="flex items-center justify-end pt-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleReviewed('11')}
-                className="text-button text-muted-foreground hover:text-foreground font-sans"
-              >
-                {reviewedChapters['11'] ? 'Reviewed' : 'Mark reviewed'}
-              </Button>
+              {renderReviewedButton('11')}
             </div>
           </section>
 
@@ -1575,17 +1511,10 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
           <section id="chapter-12" className="space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
-                <h2 className="text-section-title font-bold text-foreground font-heading">12 · Legal & Compliance</h2>
-                <Badge
-                  variant="outline"
-                  className={`text-badge font-medium rounded-full font-sans ${
-                    reviewedChapters['12']
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                      : 'bg-muted/60 text-muted-foreground'
-                  }`}
-                >
-                  {reviewedChapters['12'] ? 'Reviewed' : 'Draft'}
-                </Badge>
+                <h2 className="text-section-title font-bold text-foreground font-heading">
+                  12 · {getChapterTitle(CHAPTERS_META[11])}
+                </h2>
+                {renderReviewedBadge('12')}
               </div>
             </div>
 
@@ -1609,18 +1538,11 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 href={effectiveIdeaId ? `/dashboard/creator/phase-3/compliance?ideaId=${effectiveIdeaId}` : '/dashboard/creator/phase-3/compliance'}
                 className="inline-flex items-center gap-1.5 text-button font-semibold text-primary hover:underline font-sans"
               >
-                <span>View legal roadmap</span>
+                <span>{t('creator.phase3.businessPlan.flow.viewLegalRoadmap')}</span>
                 <ExternalLink className="h-3 w-3" />
               </Link>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => toggleReviewed('12')}
-                className="text-button text-muted-foreground hover:text-foreground font-sans"
-              >
-                {reviewedChapters['12'] ? 'Reviewed' : 'Mark reviewed'}
-              </Button>
+              {renderReviewedButton('12')}
             </div>
           </section>
         </article>
@@ -1629,7 +1551,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
       {/* 4. FOOTER - JOURNEY NAVIGATION FOOTER */}
       <div className="p-4 sm:p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <p className="text-caption text-muted-foreground font-sans text-center sm:text-left">
-          You can return to this plan and update it as your project develops.
+          {t('creator.phase3.businessPlan.flow.footerNote')}
         </p>
 
         <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
@@ -1639,14 +1561,14 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
             className="gap-2 text-button font-bold text-muted-foreground hover:text-foreground font-sans"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Back to Company Setup</span>
+            <span>{t('creator.phase3.businessPlan.flow.backToFormation')}</span>
           </Button>
 
           <Button
             onClick={() => onNext(reviewedChapters)}
             className="gap-2 text-button font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs font-sans"
           >
-            <span>Continue to Investor Readiness</span>
+            <span>{t('creator.phase3.businessPlan.flow.continueToReadiness')}</span>
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
@@ -1657,7 +1579,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
         <DialogContent className="sm:max-w-xl font-sans">
           <DialogHeader>
             <DialogTitle className="text-base font-bold font-sans">
-              Edit {editModal.title}
+              {t('creator.phase3.businessPlan.flow.editSection', { title: editModal.title })}
             </DialogTitle>
           </DialogHeader>
 
@@ -1667,7 +1589,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
               onChange={(e) => setEditModal((prev) => ({ ...prev, content: e.target.value }))}
               rows={8}
               className="text-sm font-sans resize-none"
-              placeholder="Enter section content..."
+              placeholder={t('creator.phase3.businessPlan.flow.enterContent')}
             />
             {editModal.error && (
               <p className="text-xs text-destructive font-medium">{editModal.error}</p>
@@ -1681,7 +1603,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
               onClick={() => setEditModal((prev) => ({ ...prev, open: false }))}
               disabled={editModal.isSaving}
             >
-              Cancel
+              {t('creator.phase3.businessPlan.flow.cancel')}
             </Button>
             <Button
               size="sm"
@@ -1690,7 +1612,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
               className="gap-1.5"
             >
               {editModal.isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              Save changes
+              {t('creator.phase3.businessPlan.flow.saveChanges')}
             </Button>
           </DialogFooter>
         </DialogContent>

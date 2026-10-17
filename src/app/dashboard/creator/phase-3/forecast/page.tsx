@@ -63,6 +63,7 @@ import {
   type BusinessModelOutput,
 } from '@/types/creator/ai';
 import { withIdeaContext } from '@/lib/creator-routes';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function inputWarnings(growth: number, churn: number) {
   const w: string[] = [];
@@ -77,6 +78,7 @@ function inputWarnings(growth: number, churn: number) {
 
 export default function ForecastPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const ideaId = searchParams.get('ideaId');
   const { completeStep } = useCreatorProgress();
@@ -905,13 +907,13 @@ export default function ForecastPage() {
 
       <Phase3SetupShell
         fullWidth
-        stepEyebrow="STEP 3.3 · FINANCIAL FORECAST"
-        title={hasValidCompletedForecast ? "Financial Projections & Simulations" : "Adjust Forecast Assumptions"}
-        description={hasValidCompletedForecast ? "Unified 36-month financial model. Adjust key assumptions and re-simulate, or explore detailed projections and break-even trajectories." : "Review the assumptions prepared from your Market Study and Business Model before generating your forecast."}
+        stepEyebrow={t('creator.phase3.forecast.eyebrow')}
+        title={hasValidCompletedForecast ? (project.name ? t('creator.phase3.forecast.projectTitle', { name: project.name }) : t('creator.phase3.forecast.defaultTitle')) : t('creator.phase3.forecast.adjustAssumptions')}
+        description={hasValidCompletedForecast ? t('creator.phase3.forecast.defaultDesc') : t('creator.phase3.forecast.emptyDesc')}
       >
         {(loadingJourney || !ideaId) && (
           <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center font-sans">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading financial workspace…
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> {t('creator.phase3.forecast.loadingWorkspace', 'Loading financial workspace…')}
           </div>
         )}
 
@@ -929,10 +931,10 @@ export default function ForecastPage() {
                   </div>
                   <div className="space-y-2">
                     <h3 className="text-lg font-semibold text-foreground font-sans">
-                      Generating Your Financial Forecast…
+                      {t('creator.phase3.forecast.generatingTitle', 'Generating Your Financial Forecast…')}
                     </h3>
                     <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto font-sans leading-relaxed">
-                      Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes.
+                      {t('creator.phase3.forecast.generatingDesc', 'Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes.')}
                     </p>
                   </div>
                   <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">
@@ -947,10 +949,10 @@ export default function ForecastPage() {
               <Card className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 space-y-4 max-w-xl mx-auto font-sans my-8" role="alert">
                 <div className="flex items-center gap-2 text-destructive font-bold text-body">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>We couldn’t generate your forecast.</span>
+                  <span>{t('creator.phase3.forecast.generationErrorTitle', 'We couldn’t generate your forecast.')}</span>
                 </div>
                 <p className="text-caption text-muted-foreground leading-relaxed">
-                  Your assumptions are still saved. You can review them and try again.
+                  {t('creator.phase3.forecast.generationErrorDesc', 'Your assumptions are still saved. You can review them and try again.')}
                 </p>
                 <div className="flex items-center gap-3 pt-2">
                   <Button
@@ -959,7 +961,7 @@ export default function ForecastPage() {
                     disabled={startForecast.isPending || isSubmittingAssumptions}
                     className="gap-1.5 text-button font-semibold rounded-xl"
                   >
-                    <RotateCw className="h-3.5 w-3.5" /> Try Again
+                    <RotateCw className="h-3.5 w-3.5" /> {t('creator.phase3.forecast.tryAgain', 'Try Again')}
                   </Button>
                   <Button
                     variant="outline"
@@ -968,7 +970,7 @@ export default function ForecastPage() {
                     disabled={startForecast.isPending || isSubmittingAssumptions}
                     className="gap-1.5 text-button font-medium rounded-xl"
                   >
-                    <Sliders className="h-3.5 w-3.5" /> Adjust Assumptions
+                    <Sliders className="h-3.5 w-3.5" /> {t('creator.phase3.forecast.adjustAssumptions', 'Adjust Assumptions')}
                   </Button>
                 </div>
               </Card>
@@ -1014,10 +1016,10 @@ export default function ForecastPage() {
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-lg font-semibold text-foreground font-sans">
-                    Regenerating Financial Forecast…
+                    {t('creator.phase3.forecast.regeneratingTitle', 'Regenerating Financial Forecast…')}
                   </h3>
                   <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto font-sans leading-relaxed">
-                    Recalculating projections with your updated assumptions. This may take up to two minutes.
+                    {t('creator.phase3.forecast.regeneratingDesc', 'Recalculating projections with your updated assumptions. This may take up to two minutes.')}
                   </p>
                 </div>
                 <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">
@@ -1034,13 +1036,13 @@ export default function ForecastPage() {
                 <div className="space-y-1.5">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-badge font-sans font-semibold tracking-wider uppercase">
                     <span className="h-1.5 w-1.5 rounded-full bg-primary inline-block" />
-                    STEP 3.3 · FINANCIAL FORECAST
+                    {t('creator.phase3.forecast.eyebrow')}
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-foreground">
-                    Your 3-year financial forecast
+                    {t('creator.phase3.forecast.mainTitle', 'Your 3-year financial forecast')}
                   </h1>
                   <p className="text-caption text-muted-foreground font-sans">
-                    36 months · Months 1–12 modelled, 13–36 projected · EUR
+                    {t('creator.phase3.forecast.timeframeSubtitle', '36 months · Months 1–12 modelled, 13–36 projected · EUR')}
                   </p>
                 </div>
 
@@ -1052,7 +1054,7 @@ export default function ForecastPage() {
                       onClick={() => setShowExport(true)}
                       className="gap-2 text-button font-medium rounded-xl h-9 border-border bg-card hover:bg-muted"
                     >
-                      <FileDown className="h-4 w-4" /> Download report
+                      <FileDown className="h-4 w-4" /> {t('creator.phase3.forecast.exportPdf', 'Export PDF')}
                     </Button>
 
                     <Button
@@ -1067,7 +1069,7 @@ export default function ForecastPage() {
                       ) : (
                         <Sliders className="h-4 w-4 text-primary" />
                       )}
-                      <span>Adjust Assumptions</span>
+                      <span>{t('creator.phase3.forecast.adjustAssumptions', 'Adjust Assumptions')}</span>
                     </Button>
                   </div>
                   <span className="text-badge text-muted-foreground font-sans pr-1">
@@ -2129,25 +2131,25 @@ export default function ForecastPage() {
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-badge font-sans font-bold uppercase tracking-wider text-muted-foreground">
-                  MILESTONES COMPLETE
+                  {t('creator.phase3.forecast.milestonesTitle')}
                 </span>
                 <span className="text-badge font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                  Step complete (6/6)
+                  {t('creator.phase3.forecast.stepComplete')}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 pt-1">
                 {[
-                  'Revenue saved',
-                  'Cost saved',
-                  '36-mo forecast',
-                  'Cash flow',
-                  'Break-even',
-                  'Scenario saved',
+                  { key: 'revenueSaved', fallback: 'Revenue saved' },
+                  { key: 'costSaved', fallback: 'Cost saved' },
+                  { key: 'forecast36', fallback: '36-mo forecast' },
+                  { key: 'cashFlow', fallback: 'Cash flow' },
+                  { key: 'breakEven', fallback: 'Break-even' },
+                  { key: 'scenarioSaved', fallback: 'Scenario saved' },
                 ].map((item) => (
-                  <div key={item} className="flex items-center gap-2 text-caption text-foreground font-sans">
+                  <div key={item.key} className="flex items-center gap-2 text-caption text-foreground font-sans">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>{item}</span>
+                    <span>{t(`creator.phase3.forecast.milestones.${item.key}`, item.fallback)}</span>
                   </div>
                 ))}
               </div>
@@ -2160,14 +2162,14 @@ export default function ForecastPage() {
                 onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/business-model', ideaId))}
                 className="gap-2 text-button font-medium font-sans text-muted-foreground hover:text-foreground rounded-xl"
               >
-                <ArrowLeft className="w-4 h-4" /> Business Model
+                <ArrowLeft className="w-4 h-4" /> {t('creator.phase3.forecast.backToBusinessModel', 'Back to Business Model')}
               </Button>
 
               <Button
                 onClick={handleNext}
                 className="gap-2 text-button font-medium font-sans rounded-xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-11 px-6"
               >
-                <span>Continue to Legal &amp; Compliance</span>
+                <span>{t('creator.phase3.forecast.continueToCompliance')}</span>
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

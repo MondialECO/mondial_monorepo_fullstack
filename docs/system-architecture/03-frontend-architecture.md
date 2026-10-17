@@ -562,6 +562,18 @@ The internationalization system provides native bilingual support for **English 
 - **Phase 3: Business Plan Intelligence (`src/app/dashboard/creator/phase-3/*`)**:
   - `phase-3/page.tsx`: Localized intelligent milestone resumption loader.
   - `src/components/creator/Phase3SetupShell.tsx`: Localized default step eyebrow ("Phase 3 · Business Plan Intelligence" / "Phase 3 · Intelligence du Business Plan").
+  - `phase-3/market-study/page.tsx`: Step 3.1 Market Study with 8 sections, TAM calculator, competitors, customer segments, 5 checklist items, regeneration & continue CTAs (`creator.phase3.marketStudy.*`).
+  - `phase-3/business-model/page.tsx`: Step 3.2 Business Model Canvas with 9 building blocks, item counters, completion checklist, regeneration, and forecast transition (`creator.phase3.businessModel.*`).
+  - `phase-3/forecast/page.tsx`: Step 3.3 3-Year Financial Forecast with interactive 36-month P&L model, unit economics, risk assessment, Section 8 Milestones Complete (6/6 milestones localized), and transition to legal compliance (`creator.phase3.forecast.*`).
+  - `src/components/creator/forecast/ForecastAssumptionsModal.tsx`: Forecast Assumptions modal/page form with dynamic archetype drivers, credit cost badges, active model banner, driver labels, validation error messages, and calculation CTAs (`creator.phase3.forecast.assumptions.*`).
+  - `phase-3/compliance/page.tsx`: Step 3.4 Statutory Legal & Compliance Roadmap for France with state machine filtering, timing guidance, action steps, official service links, and transition to company formation (`creator.phase3.compliance.*`).
+  - `src/components/creator/legal/LegalFigmaStageSection.tsx`: Chronological stage tabs (`before_register`, `register_launch`, `running_business`), expandable requirements with why/when/what guidance, official guidance card, and `markedDone` state tracking.
+  - `src/components/creator/Phase3LegalCard.tsx`: Dashboard legal readiness card, stale signal detection banner, planning progress bar, stage counts, and archetype chips (`creator.phase3.legalCard.*`).
+  - `phase-3/formation/page.tsx`: Step 3.5 Company Formation & Team setup shell with evaluation state and error retry (`creator.phase3.formation.*`).
+  - `src/components/creator/formation/FormationFigmaFlow.tsx`: 12-section formation flow covering starting mode (solo/team/undecided), SASU/SAS/SARL structural comparisons, cap table ownership split, leadership role, starting capital, and skills assessment.
+  - `phase-3/business-plan/page.tsx`: Step 3.6 12-Chapter Executive Business Plan generation, timeout & credit safeguards, version tracking, and PDF export (`creator.phase3.businessPlan.*`).
+  - `src/components/creator/business-plan/BusinessPlanFigmaFlow.tsx`: Complete 12-chapter continuous document view with chapter titles, reviewed badges & buttons, source attribution chips, inline section edit dialog, and footer journey navigation (`creator.phase3.businessPlan.flow.*`).
+  - `src/components/creator/readiness/InvestorReadinessFigmaFlow.tsx`: Step 3.7 Institutional Investor Readiness Audit with 100-point score breakdown across 5 dimensions, gap recommendations, document vault, and Phase 4 unlock (`creator.phase3.readiness.*`).
 - **Phase 4: Construction Engine & Snapshot (`src/app/dashboard/creator/phase-4/page.tsx`)**: Localized construction snapshot header, status pillars, and execution overview.
 - **Creator Sidebar Navigation (`src/lib/menu.ts`)**: **Deliberately Deferred**. Per user explicit instruction, Creator sidebar menus remain in English during the initial phase and will be localized in a subsequent dedicated pass.
 - **Landing Page & Marketing Surfaces**: Queued for execution following the Creator dashboard audit.
