@@ -11,6 +11,7 @@ import {
   refreshConstructionSnapshot 
 } from '@/lib/api-creator-phase4';
 import { ConstructionSnapshot, ConstructionSnapshotResponse } from '@/types/creator/phase4';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function CreatorPhase4Page() {
   return (
@@ -33,6 +34,7 @@ function CreatorPhase4Inner() {
 }
 
 function Phase4Content({ ideaId }: { ideaId: string }) {
+  const { t } = useTranslation();
   const { state: progressState, refetch } = useCreatorProgress();
   const [snapshot, setSnapshot] = useState<ConstructionSnapshot | null>(null);
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
@@ -136,10 +138,10 @@ function Phase4Content({ ideaId }: { ideaId: string }) {
           PHASE 4 · STEP 4.1
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
-          Construction Snapshot
+          {t("creator.phase4.title")}
         </h1>
         <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
-          See what’s ready, what needs attention, and where to go next.
+          {t("creator.phase4.subtitle")}
         </p>
       </div>
 

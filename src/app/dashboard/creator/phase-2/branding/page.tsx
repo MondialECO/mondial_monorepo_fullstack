@@ -15,24 +15,26 @@ import { Button } from "@/components/ui/button";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorJourneyApi } from "@/lib/api-creator-journey";
 import { withIdeaContext } from "@/lib/creator-routes";
-
-const STUDIO_DELIVERABLES = [
-  "Brand strategy confirmed from your idea",
-  "A visual direction you choose",
-  "Logo concepts in the style you pick",
-  "Seven logo variations — SVG and PNG",
-  "Five-role colour system, contrast checked",
-  "Four-role typography system, open licence",
-];
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function BrandingOptionsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
   const { state, setState } = useCreatorProgress();
   const [skipping, setSkipping] = useState(false);
   const [skipError, setSkipError] = useState<string | null>(null);
 
   const effectiveIdeaId = searchParams.get("ideaId") || state.activeIdeaId;
+
+  const studioDeliverables = [
+    t("creator.phase2.branding.deliverables.strategy"),
+    t("creator.phase2.branding.deliverables.direction"),
+    t("creator.phase2.branding.deliverables.concepts"),
+    t("creator.phase2.branding.deliverables.variations"),
+    t("creator.phase2.branding.deliverables.colours"),
+    t("creator.phase2.branding.deliverables.typography"),
+  ];
 
   const handleOpenStudio = () => {
     setState((prev) => ({
@@ -60,7 +62,7 @@ export default function BrandingOptionsPage() {
     try {
       await creatorJourneyApi.skipBranding(effectiveIdeaId || undefined);
     } catch {
-      setSkipError("Couldn't skip branding — please try again.");
+      setSkipError(t("creator.phase2.branding.skipError"));
       setSkipping(false);
       return;
     }
@@ -90,10 +92,10 @@ export default function BrandingOptionsPage() {
         {/* Page Header */}
         <div className="text-center space-y-3">
           <h1 className="text-page-heading font-semibold tracking-tight text-foreground leading-tight font-heading">
-            Build your brand identity
+            {t("creator.phase2.branding.headerTitle")}
           </h1>
           <p className="text-body text-muted-foreground font-sans leading-relaxed max-w-xl mx-auto">
-            Establish a distinctive identity with our AI Brand Studio or collaborate with an M50 designer. Downstream generators automatically read from your brand configuration.
+            {t("creator.phase2.branding.headerSubtitle")}
           </p>
         </div>
 
@@ -101,26 +103,26 @@ export default function BrandingOptionsPage() {
         <div className="w-full rounded-2xl sm:rounded-3xl border border-border/80 bg-card p-6 sm:p-8 shadow-xs space-y-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold font-mono">
-              <Palette className="h-3.5 w-3.5" /> Option 1 · Autonomous
+              <Palette className="h-3.5 w-3.5" /> {t("creator.phase2.branding.opt1Badge")}
             </div>
             <h2 className="text-section-title font-semibold text-foreground tracking-tight font-heading">
-              Brand Visual Identity Studio
+              {t("creator.phase2.branding.studioTitle")}
             </h2>
             <p className="text-body text-muted-foreground font-sans leading-relaxed">
-              A guided 7-step studio that builds your full identity step by step, using the clarified idea details you&apos;ve already given.
+              {t("creator.phase2.branding.studioDesc")}
             </p>
           </div>
 
           {/* Studio Details Badges */}
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <span className="px-3 py-1.5 rounded-lg bg-muted/70 text-foreground/85 text-xs font-medium border border-border/40 font-sans">
-              <span className="font-mono font-semibold text-foreground">7</span> steps
+              <span className="font-mono font-semibold text-foreground">7</span> {t("creator.phase2.branding.badgeSteps")}
             </span>
             <span className="px-3 py-1.5 rounded-lg bg-muted/70 text-foreground/85 text-xs font-medium border border-border/40 font-sans">
-              ~<span className="font-mono font-semibold text-foreground">5</span> minutes
+              ~<span className="font-mono font-semibold text-foreground">5</span> {t("creator.phase2.branding.badgeMinutes")}
             </span>
             <span className="px-3 py-1.5 rounded-lg bg-muted/70 text-foreground/85 text-xs font-medium border border-border/40 font-sans">
-              Editable later
+              {t("creator.phase2.branding.badgeEditable")}
             </span>
           </div>
 
@@ -128,7 +130,7 @@ export default function BrandingOptionsPage() {
 
           {/* Deliverables Checklist */}
           <ul className="space-y-3">
-            {STUDIO_DELIVERABLES.map((item, index) => (
+            {studioDeliverables.map((item, index) => (
               <li
                 key={index}
                 className="flex items-start gap-3 text-sm font-sans text-foreground/90 leading-relaxed"
@@ -146,7 +148,7 @@ export default function BrandingOptionsPage() {
             size="lg"
             className="w-full h-12 sm:h-13 rounded-xl font-semibold text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-xs inline-flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>Open Brand Studio</span>
+            <span>{t("creator.phase2.branding.openStudio")}</span>
             <ArrowRight className="size-4" />
           </Button>
         </div>
@@ -155,13 +157,13 @@ export default function BrandingOptionsPage() {
         <div className="w-full rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1.5 max-w-md">
             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[11px] font-semibold font-mono">
-              <Sparkles className="h-3 w-3" /> Option 2 · Human Expert
+              <Sparkles className="h-3 w-3" /> {t("creator.phase2.branding.opt2Badge")}
             </div>
             <h3 className="text-sm font-bold text-foreground font-heading">
-              Work with an M50 Verified Designer
+              {t("creator.phase2.branding.designerTitle")}
             </h3>
             <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-              Match with vetted agency designers on the Mondial network. Completing a designer brief earns full Team Credibility points in your Investor Readiness Audit.
+              {t("creator.phase2.branding.designerDesc")}
             </p>
           </div>
           <Button
@@ -170,7 +172,7 @@ export default function BrandingOptionsPage() {
             onClick={handleWorkWithDesigner}
             className="shrink-0 rounded-xl text-xs font-semibold px-4 h-9 gap-1.5 border-border hover:bg-muted"
           >
-            <span>Browse Designers</span>
+            <span>{t("creator.phase2.branding.browseDesigners")}</span>
             <ArrowRight className="size-3.5" />
           </Button>
         </div>
@@ -184,7 +186,7 @@ export default function BrandingOptionsPage() {
             className="text-sm font-medium text-foreground hover:text-foreground inline-flex items-center gap-2 px-3 py-2 cursor-pointer"
           >
             <ArrowLeft className="size-4" />
-            <span>Back</span>
+            <span>{t("creator.phase2.branding.back")}</span>
           </Button>
 
           <div className="flex flex-col sm:items-end gap-1">
@@ -195,11 +197,11 @@ export default function BrandingOptionsPage() {
               disabled={skipping}
               className="rounded-full border-border/90 px-5 py-2 text-sm font-medium text-foreground hover:bg-muted/60 inline-flex items-center gap-2 cursor-pointer self-start sm:self-auto"
             >
-              <span>{skipping ? "Skipping…" : "Skip Branding for Now"}</span>
+              <span>{skipping ? t("creator.phase2.branding.skipping") : t("creator.phase2.branding.skipBranding")}</span>
               <ArrowRight className="size-3.5" />
             </Button>
             <span className="text-[11px] text-muted-foreground font-sans">
-              Neutral placeholders will be used; you can brand your venture anytime.
+              {t("creator.phase2.branding.skipHint")}
             </span>
           </div>
         </div>

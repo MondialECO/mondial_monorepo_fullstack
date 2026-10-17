@@ -14,6 +14,7 @@ import {
   POLL_MAX_ATTEMPTS as SHARED_POLL_MAX_ATTEMPTS,
   POLL_MAX_MS,
 } from "@/hooks/queries/creator-ai";
+import { useTranslation } from "@/hooks/useTranslation";
 
 type Message = {
   id: string;
@@ -28,37 +29,11 @@ type CanvasBlock = {
   key: string;
 };
 
-// The opener (first question) is shown client-side before the first turn; the
-// backend chat-message endpoint drives every follow-up question and the
-// completion line, so the rest of the script lives server-side (6 questions).
-const OPENER =
-  "Welcome. Tell me your idea — in your own words, however rough it is. What problem are you solving?";
 const TOTAL_QUESTIONS = 6;
-
-// Right-panel step labels, derived from the backend's six scripted questions
-// (CreatorPhase2Controller.Questions), in order.
-const STEP_LABELS = [
-  "Problem",
-  "Target Users",
-  "Alternatives",
-  "Solution",
-  "Differentiation & Edge",
-  "Timing & Key Risk",
-];
-
-// Progress bands for the clarity ring. The ring fills from questions ANSWERED, not
-// idea quality — so labels describe progress (grey → amber → blue → green) and the
-// six-answer state says "All Answered", never "Complete": finalize is still required.
-function ringBand(answered: number, total: number): { label: string; color: string } {
-  if (answered <= 0) return { label: "Not Started", color: "var(--muted-foreground)" };
-  if (answered <= 2) return { label: "Getting Started", color: "var(--dr-yellow)" };
-  if (answered <= 4) return { label: "Developing", color: "var(--dr-yellow)" };
-  if (answered < total) return { label: "Almost There", color: "var(--primary)" };
-  return { label: "All Answered", color: "var(--p8-green)" };
-}
 
 export default function AIClarifierPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const urlIdeaId = searchParams.get("ideaId");
   const { state, setState, refetch } = useCreatorProgress();
@@ -119,7 +94,7 @@ export default function AIClarifierPage() {
     { title: "YOUR EDGE", unlockQ: 6, value: "", key: "creatorEdge" },
   ]);
 
-  const [journalText, setJournalText] = useState("Your refined idea will be saved here automatically.");
+  const [journalText, setJournalText] = useState("");
 
   // Load chat history and current status from global state
   useEffect(() => {
@@ -147,7 +122,7 @@ export default function AIClarifierPage() {
       );
     } else {
       // Initialize with the opener (follow-ups come from the backend).
-      const initialMsgs: Message[] = [{ id: "1", sender: "ai", text: OPENER }];
+      const initialMsgs: Message[] = [{ id: "1", sender: "ai", text: t("creator.phase2.clarifier.opener") }];
       setMessages(initialMsgs);
       setCurrentStep(1);
       setIdeaScore(0);
@@ -265,7 +240,7 @@ export default function AIClarifierPage() {
     try {
       const res = await creatorJourneyApi.chatMessage(userText, effectiveIdeaId);
       const lastAi = [...res.messages].reverse().find((m) => m.sender === "ai");
-      const aiText = lastAi?.text ?? "Thanks — let's continue.";
+      const aiText = lastAi?.text ?? t("creator.phase2.clarifier.thanksContinue");
       const aiMsgId = (Date.now() + 1).toString();
       const finalMessages = [...updatedMessages, { id: aiMsgId, sender: "ai" as const, text: aiText }];
       setMessages(finalMessages);
@@ -349,7 +324,7 @@ export default function AIClarifierPage() {
     try {
       const answers = messages.filter((m) => m.sender === "user").map((m) => m.text);
       const rawIdea = {
-        title: state.project?.name?.trim() || (answers[0]?.slice(0, 60) ?? "My idea"),
+        title: state.project?.name?.trim() || (answers[0]?.slice(0, 60) ?? t("creator.phase2.clarifier.defaultIdeaName", "My Idea")),
         problemStatement: answers[0] ?? "",
         targetAudience: answers[1] ?? "",
         description: answers[3] ?? answers[0] ?? "",
@@ -365,7 +340,7 @@ export default function AIClarifierPage() {
         businessIdeaId: effectiveIdeaId ?? undefined,
       });
       const session = await pollClarifier(sessionId);
-      if (!session) throw new Error("This is taking longer than expected. Please try again.");
+      if (!session) throw new Error(t("creator.phase2.clarifier.timeoutError"));
 
       // finalize-clarifier is tolerant of a partial/failed output (falls back to a
       // 50 clarity score + editable summary), so we map on any terminal status.
@@ -375,17 +350,13 @@ export default function AIClarifierPage() {
       // Do NOT navigate or spread empty fields into state on either failure.
       if (result.aiRequestFailed) {
         // The AI service was unavailable (unreachable / rate-limited) — rewording won't help.
-        setFinalizeError(
-          "The AI service is temporarily unavailable. Please try again in a moment."
-        );
+        setFinalizeError(t("creator.phase2.clarifier.aiUnavailableError"));
         setFinalizing(false);
         return;
       }
       if (result.aiParseFailed) {
         // The AI replied but we couldn't interpret it — rewording the idea can help.
-        setFinalizeError(
-          "We couldn't interpret that just now. Please try again, or reword your idea and resubmit."
-        );
+        setFinalizeError(t("creator.phase2.clarifier.aiParseError"));
         setFinalizing(false);
         return;
       }
@@ -396,7 +367,7 @@ export default function AIClarifierPage() {
       const conceptFinal =
         (result.project?.concept as string) ||
         firstAnswer.slice(0, 100) ||
-        "My Idea";
+        t("creator.phase2.clarifier.defaultIdeaName");
 
       setState((prev) => ({
         ...prev,
@@ -421,7 +392,25 @@ export default function AIClarifierPage() {
   // in-flight optimistic step. Kept for the ring, band and step list (stage 2).
   const answeredCount = messages.filter((m) => m.sender === "user").length;
   const ringPct = Math.min(Math.round((answeredCount / totalQuestions) * 100), 100);
-  const band = ringBand(answeredCount, totalQuestions);
+
+  const getRingBand = (answered: number, total: number): { label: string; color: string } => {
+    if (answered <= 0) return { label: t("creator.phase2.clarifier.ringBands.notStarted"), color: "var(--muted-foreground)" };
+    if (answered <= 2) return { label: t("creator.phase2.clarifier.ringBands.gettingStarted"), color: "var(--dr-yellow)" };
+    if (answered <= 4) return { label: t("creator.phase2.clarifier.ringBands.developing"), color: "var(--dr-yellow)" };
+    if (answered < total) return { label: t("creator.phase2.clarifier.ringBands.almostThere"), color: "var(--primary)" };
+    return { label: t("creator.phase2.clarifier.ringBands.allAnswered"), color: "var(--p8-green)" };
+  };
+
+  const stepLabels = [
+    t("creator.phase2.clarifier.stepLabels.problem"),
+    t("creator.phase2.clarifier.stepLabels.targetUsers"),
+    t("creator.phase2.clarifier.stepLabels.alternatives"),
+    t("creator.phase2.clarifier.stepLabels.solution"),
+    t("creator.phase2.clarifier.stepLabels.edge"),
+    t("creator.phase2.clarifier.stepLabels.risk"),
+  ];
+
+  const band = getRingBand(answeredCount, totalQuestions);
   const currentQuestion = Math.min(answeredCount + 1, totalQuestions);
   const ringR = 52;
   const ringC = 2 * Math.PI * ringR;
@@ -434,10 +423,10 @@ export default function AIClarifierPage() {
         {/* ── Heading block ── */}
         <div className="space-y-2">
           <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
-            Let&apos;s sharpen your idea
+            {t("creator.phase2.clarifier.mainTitle")}
           </h1>
           <p className="text-base max-w-[780px]" style={{ color: "var(--muted-foreground)" }}>
-            Answer {totalQuestions} focused questions. Our AI will analyze your responses and build your concept canvas.
+            {t("creator.phase2.clarifier.mainSubtitle", { count: totalQuestions })}
           </p>
         </div>
 
@@ -472,10 +461,10 @@ export default function AIClarifierPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-lg font-medium" style={{ color: "var(--foreground)" }}>
-                  AI Idea Clarifier
+                  {t("creator.phase2.clarifier.title")}
                 </p>
                 <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-                  {totalQuestions} focused questions to sharpen your idea
+                  {t("creator.phase2.clarifier.subtitle", { count: totalQuestions })}
                 </p>
               </div>
             </div>
@@ -507,7 +496,7 @@ export default function AIClarifierPage() {
                       {/* "Editing" tag on the answer currently pulled into the input */}
                       {isEditing && (
                         <span className="mb-1 text-badge font-semibold uppercase tracking-wide" style={{ color: "var(--primary)" }}>
-                          Editing…
+                          {t("creator.phase2.clarifier.editingBadge")}
                         </span>
                       )}
                       {/* Assistant and user bubbles share bg/border/radius by design —
@@ -522,7 +511,7 @@ export default function AIClarifierPage() {
                           color: isError ? "var(--destructive)" : "var(--foreground)",
                         }}
                       >
-                        <span className="sr-only">{isError ? "Error: " : isUser ? "You: " : "Assistant: "}</span>
+                        <span className="sr-only">{isError ? t("creator.phase2.clarifier.sr.errorPrefix", "Error: ") : isUser ? t("creator.phase2.clarifier.sr.youPrefix", "You: ") : t("creator.phase2.clarifier.sr.assistantPrefix", "Assistant: ")}</span>
                         {msg.text}
                       </div>
 
@@ -535,7 +524,7 @@ export default function AIClarifierPage() {
                           <button
                             onClick={() => handleEditStart(index)}
                             disabled={isTyping || finalizing}
-                            aria-label="Edit your answer"
+                            aria-label={t("creator.phase2.clarifier.aria.editAnswer", "Edit your answer")}
                             className="inline-flex items-center text-badge transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                             style={{ color: "var(--muted-foreground)" }}
                             onMouseEnter={(e) => { if (!isTyping && !finalizing) e.currentTarget.style.color = "var(--foreground)"; }}
@@ -545,7 +534,7 @@ export default function AIClarifierPage() {
                           </button>
                           <button
                             onClick={() => handleCopy(msg.id, msg.text)}
-                            aria-label="Copy your answer"
+                            aria-label={t("creator.phase2.clarifier.aria.copyAnswer", "Copy your answer")}
                             className="inline-flex items-center gap-1 text-badge transition-colors"
                             style={{ color: copiedId === msg.id ? "var(--p8-green)" : "var(--muted-foreground)" }}
                             onMouseEnter={(e) => { if (copiedId !== msg.id) e.currentTarget.style.color = "var(--foreground)"; }}
@@ -553,7 +542,7 @@ export default function AIClarifierPage() {
                           >
                             {copiedId === msg.id ? (
                               <>
-                                <Check className="h-4 w-4" /> Copied
+                                <Check className="h-4 w-4" /> {t("creator.phase2.clarifier.copied")}
                               </>
                             ) : (
                               <Copy className="h-4 w-4" />
@@ -572,10 +561,10 @@ export default function AIClarifierPage() {
                       className="rounded-2xl border px-[18px] py-[14px] max-w-[580px] flex items-center gap-2"
                       style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
                     >
-                      <span className="sr-only">Assistant is typing</span>
+                      <span className="sr-only">{t("creator.phase2.clarifier.sr.assistantTyping", "Assistant is typing")}</span>
                       <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--primary)" }} />
                       <span className="text-body" style={{ color: "var(--muted-foreground)" }}>
-                        Thinking…
+                        {t("creator.phase2.clarifier.thinking")}
                       </span>
                     </div>
                   </div>
@@ -593,7 +582,7 @@ export default function AIClarifierPage() {
                 {editingIndex !== null && (
                   <div className="mb-2 flex items-center justify-between px-1">
                     <span className="text-badge font-medium" style={{ color: "var(--primary)" }}>
-                      Editing your answer
+                      {t("creator.phase2.clarifier.editingTitle")}
                     </span>
                     <button
                       onClick={handleEditCancel}
@@ -602,7 +591,7 @@ export default function AIClarifierPage() {
                       onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
                       onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted-foreground)")}
                     >
-                      <X className="h-3.5 w-3.5" /> Cancel
+                      <X className="h-3.5 w-3.5" /> {t("creator.phase2.clarifier.cancel")}
                     </button>
                   </div>
                 )}
@@ -614,7 +603,7 @@ export default function AIClarifierPage() {
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    placeholder={editingIndex !== null ? "Revise your answer..." : "Type your answer..."}
+                    placeholder={editingIndex !== null ? t("creator.phase2.clarifier.placeholderRevise") : t("creator.phase2.clarifier.placeholderType")}
                     rows={1}
                     disabled={isTyping}
                     className="flex-1 resize-none bg-transparent outline-none border-none px-3 py-2.5 text-input min-h-[40px] max-h-[120px] placeholder:text-muted-foreground"
@@ -623,7 +612,7 @@ export default function AIClarifierPage() {
                   <button
                     onClick={handleSend}
                     disabled={!inputValue.trim() || isTyping}
-                    aria-label={editingIndex !== null ? "Save edit" : "Send answer"}
+                    aria-label={editingIndex !== null ? t("creator.phase2.clarifier.aria.saveEdit", "Save edit") : t("creator.phase2.clarifier.aria.sendAnswer", "Send answer")}
                     className="flex items-center justify-center rounded-lg shrink-0 transition-opacity disabled:opacity-50"
                     style={{ width: 44, height: 44, backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                   >
@@ -638,8 +627,8 @@ export default function AIClarifierPage() {
                 </div>
                 <p className="mt-2 text-center text-caption" style={{ color: "var(--muted-foreground)" }}>
                   {editingIndex !== null
-                    ? "Press Enter to save your edit"
-                    : "Press Enter to send  Shift + Enter for new line"}
+                    ? t("creator.phase2.clarifier.pressEnterSave")
+                    : t("creator.phase2.clarifier.pressEnterSend")}
                 </p>
               </div>
             ) : finalizeError ? (
@@ -657,13 +646,13 @@ export default function AIClarifierPage() {
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-card-title font-semibold" style={{ color: "var(--foreground)" }}>
-                    We couldn&apos;t finish that
+                    {t("creator.phase2.clarifier.errorTitle")}
                   </h3>
                   <p className="text-caption max-w-xs" style={{ color: "var(--destructive)" }}>
                     {finalizeError}
                   </p>
                   <p className="text-caption max-w-xs mx-auto" style={{ color: "var(--muted-foreground)" }}>
-                    Your answers are saved — nothing was lost. You can try again.
+                    {t("creator.phase2.clarifier.errorNotice")}
                   </p>
                 </div>
                 <button
@@ -672,7 +661,7 @@ export default function AIClarifierPage() {
                   className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-button font-semibold transition-opacity disabled:opacity-60"
                   style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
-                  Try again <ArrowRight className="h-4 w-4" />
+                  {t("creator.phase2.clarifier.tryAgain")} <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             ) : finalizing ? (
@@ -688,12 +677,12 @@ export default function AIClarifierPage() {
                   <Loader2 className="h-5 w-5 animate-spin" style={{ color: "var(--muted-foreground)" }} />
                 </div>
                 <h3 className="text-card-title font-semibold" style={{ color: "var(--foreground)" }}>
-                  Clarifying your idea…
+                  {t("creator.phase2.clarifier.finalizingTitle")}
                 </h3>
                 <p className="text-caption max-w-xs" style={{ color: "var(--muted-foreground)" }}>
                   {finalizeSlow
-                    ? "Still working — this is taking longer than usual. Hang tight."
-                    : "Analyzing your answers and scoring clarity. This can take a moment."}
+                    ? t("creator.phase2.clarifier.finalizingSlow")
+                    : t("creator.phase2.clarifier.finalizingNormal")}
                 </p>
               </div>
             ) : (
@@ -711,11 +700,10 @@ export default function AIClarifierPage() {
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-card-title font-semibold" style={{ color: "var(--foreground)" }}>
-                    All questions answered
+                    {t("creator.phase2.clarifier.allQuestionsAnswered")}
                   </h3>
                   <p className="text-caption max-w-sm mx-auto" style={{ color: "var(--muted-foreground)" }}>
-                    Finalizing runs the AI analysis to score your idea&apos;s clarity and build your
-                    concept canvas, then takes you to your summary. You&apos;re not done until you do this.
+                    {t("creator.phase2.clarifier.finalizeDesc")}
                   </p>
                 </div>
                 <button
@@ -724,7 +712,7 @@ export default function AIClarifierPage() {
                   className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-button font-semibold transition-opacity disabled:opacity-60"
                   style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
-                  Generate my summary <ArrowRight className="h-4 w-4" />
+                  {t("creator.phase2.clarifier.generateSummary")} <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             )}
@@ -775,7 +763,7 @@ export default function AIClarifierPage() {
               {summaryReady ? (
                 <div className="w-full flex flex-col items-center gap-2 pt-1">
                   <p className="text-caption text-center" style={{ color: "var(--muted-foreground)" }}>
-                    You&apos;re not done yet — finalize to save your clarity score.
+                    {t("creator.phase2.clarifier.notDoneYet")}
                   </p>
                   <button
                     onClick={handleComplete}
@@ -785,11 +773,11 @@ export default function AIClarifierPage() {
                   >
                     {finalizing ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> Finalizing…
+                        <Loader2 className="h-4 w-4 animate-spin" /> {t("creator.phase2.clarifier.finalizing")}
                       </>
                     ) : (
                       <>
-                        Generate my summary <ArrowRight className="h-4 w-4" />
+                        {t("creator.phase2.clarifier.generateSummary")} <ArrowRight className="h-4 w-4" />
                       </>
                     )}
                   </button>
@@ -798,7 +786,7 @@ export default function AIClarifierPage() {
                 <div className="w-full flex flex-col items-center gap-1.5 pt-1">
                   <Loader2 className="h-4 w-4 animate-spin" style={{ color: band.color }} />
                   <p className="text-caption text-center" style={{ color: "var(--muted-foreground)" }}>
-                    Saving your final answer…
+                    {t("creator.phase2.clarifier.savingFinalAnswer")}
                   </p>
                 </div>
               ) : null}
@@ -811,11 +799,11 @@ export default function AIClarifierPage() {
             <div className="flex flex-col gap-3">
               <p className="text-label font-medium" style={{ color: "var(--foreground)" }}>
                 {summaryReady
-                  ? `All ${totalQuestions} questions answered`
-                  : `Progress: Question ${currentQuestion} of ${totalQuestions}`}
+                  ? t("creator.phase2.clarifier.allQuestionsAnsweredCount", { count: totalQuestions })
+                  : t("creator.phase2.clarifier.progressTitle", { current: currentQuestion, total: totalQuestions })}
               </p>
               <div className="flex flex-col gap-2">
-                {STEP_LABELS.map((label, idx) => {
+                {stepLabels.map((label, idx) => {
                   const stepNum = idx + 1;
                   const done = answeredCount >= stepNum;
                   const current = !done && answeredCount === stepNum - 1;
@@ -858,7 +846,7 @@ export default function AIClarifierPage() {
                         </span>
                         {!done && !current && (
                           <span className="text-badge" style={{ color: "var(--muted-foreground)" }}>
-                            (Unlocks after Q{stepNum - 1})
+                            {t("creator.phase2.clarifier.unlocksAfter", { num: stepNum - 1 })}
                           </span>
                         )}
                       </div>
@@ -868,22 +856,18 @@ export default function AIClarifierPage() {
               </div>
             </div>
 
-            {/* ── Idea Journal ──
-                mt-auto pins it to the bottom so the right column fills its stretched
-                height (equal to the taller left column, per items-stretch) with no dead
-                space — the agreed fix for the fixed-transcript deviation. The content
-                mirrors the first transcript answer and is redundant (CI-14), kept as-is. */}
+            {/* ── Idea Journal ── */}
             <div
               className="mt-auto rounded-xl border p-4 flex flex-col gap-2"
               style={{ backgroundColor: "var(--muted)", borderColor: "var(--border)" }}
             >
               <span className="text-badge font-semibold uppercase tracking-wider" style={{ color: "var(--muted-foreground)" }}>
-                Idea Journal
+                {t("creator.phase2.clarifier.ideaJournal")}
               </span>
               <div className="flex items-start gap-2">
                 <FileText className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "var(--muted-foreground)" }} />
                 <p className="text-caption leading-relaxed line-clamp-4 font-sans" style={{ color: "var(--muted-foreground)" }}>
-                  {journalText}
+                  {journalText || t("creator.phase2.clarifier.journalDefault")}
                 </p>
               </div>
             </div>

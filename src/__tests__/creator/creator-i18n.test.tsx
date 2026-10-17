@@ -188,4 +188,69 @@ describe('Creator Dashboard — Multi-language (i18n EN / FR) Integration', () =
     expect(screen.getByText('Clarity Score')).toBeInTheDocument();
     expect(screen.getByText('New Idea')).toBeInTheDocument();
   });
+
+  it('translates Phase 1, Phase 2, Phase 3, and Phase 4 keys in English and French', () => {
+    function TestPhaseKeys() {
+      const { t, setLocale } = useTranslation();
+      return (
+        <div>
+          <span data-testid="p1-title">{t('creator.phase1.headerTitle')}</span>
+          <span data-testid="p2-clarifier">{t('creator.phase2.clarifier.title')}</span>
+          <span data-testid="p2-naming">{t('creator.phase2.conceptName.title')}</span>
+          <span data-testid="p2-summary">{t('creator.phase2.ideaSummary.headerTitle')}</span>
+          <span data-testid="p2-branding">{t('creator.phase2.branding.headerTitle')}</span>
+          <span data-testid="p2-complete">{t('creator.phase2.complete.heroTitle')}</span>
+          <span data-testid="p2-hire-designer">{t('creator.phase2.hireDesigner.title')}</span>
+          <span data-testid="p2-core-brand">{t('creator.phase2.complete.coreBrandTitle')}</span>
+          <span data-testid="p2-logo-tool">{t('creator.phase2.logoTool.redirecting')}</span>
+          <span data-testid="p2-brand-kit">{t('creator.phase2.brandKit.notInitializedTitle')}</span>
+          <span data-testid="p3-resuming">{t('creator.phase3.resuming')}</span>
+          <span data-testid="p3-eyebrow">{t('creator.phase3.shell.stepEyebrow')}</span>
+          <span data-testid="p4-title">{t('creator.phase4.title')}</span>
+          <button onClick={() => setLocale('fr')} data-testid="toggle-fr">FR</button>
+        </div>
+      );
+    }
+
+    render(
+      <LanguageProvider>
+        <TestPhaseKeys />
+      </LanguageProvider>
+    );
+
+    // English assertions
+    expect(screen.getByTestId('p1-title')).toHaveTextContent('Complete your profile');
+    expect(screen.getByTestId('p2-clarifier')).toHaveTextContent('AI Idea Clarifier');
+    expect(screen.getByTestId('p2-naming')).toHaveTextContent('Name Your Project');
+    expect(screen.getByTestId('p2-summary')).toHaveTextContent('Your Idea - First draft.');
+    expect(screen.getByTestId('p2-branding')).toHaveTextContent('Build your brand identity');
+    expect(screen.getByTestId('p2-complete')).toHaveTextContent('Your identity is ready');
+    expect(screen.getByTestId('p2-hire-designer')).toHaveTextContent('Matched Designers for Your Project');
+    expect(screen.getByTestId('p2-core-brand')).toHaveTextContent('Core Brand Identity');
+    expect(screen.getByTestId('p2-logo-tool')).toHaveTextContent('Redirecting to Brand Identity Studio…');
+    expect(screen.getByTestId('p2-brand-kit')).toHaveTextContent('Brand Kit Not Initialized');
+    expect(screen.getByTestId('p3-resuming')).toHaveTextContent('Resuming Phase 3: Business Plan Intelligence...');
+    expect(screen.getByTestId('p3-eyebrow')).toHaveTextContent('Phase 3 · Business Plan Intelligence');
+    expect(screen.getByTestId('p4-title')).toHaveTextContent('Construction Engine & Execution Snapshot');
+
+    // Toggle to French
+    act(() => {
+      screen.getByTestId('toggle-fr').click();
+    });
+
+    // French assertions
+    expect(screen.getByTestId('p1-title')).toHaveTextContent('Complétez votre profil');
+    expect(screen.getByTestId('p2-clarifier')).toHaveTextContent("Clarificateur d'Idée IA");
+    expect(screen.getByTestId('p2-naming')).toHaveTextContent('Nommez votre projet');
+    expect(screen.getByTestId('p2-summary')).toHaveTextContent('Votre Idée - Premier brouillon.');
+    expect(screen.getByTestId('p2-branding')).toHaveTextContent('Créez votre identité de marque');
+    expect(screen.getByTestId('p2-complete')).toHaveTextContent('Votre identité est prête');
+    expect(screen.getByTestId('p2-hire-designer')).toHaveTextContent('Designers Correspondants pour Votre Projet');
+    expect(screen.getByTestId('p2-core-brand')).toHaveTextContent('Identité de Marque Principale');
+    expect(screen.getByTestId('p2-logo-tool')).toHaveTextContent("Redirection vers le Studio d'Identité de Marque…");
+    expect(screen.getByTestId('p2-brand-kit')).toHaveTextContent('Kit de Marque Non Initialisé');
+    expect(screen.getByTestId('p3-resuming')).toHaveTextContent('Reprise de la Phase 3 : Intelligence du Business Plan...');
+    expect(screen.getByTestId('p3-eyebrow')).toHaveTextContent('Phase 3 · Intelligence du Business Plan');
+    expect(screen.getByTestId('p4-title')).toHaveTextContent("Moteur de construction & Vue d'ensemble de l'exécution");
+  });
 });

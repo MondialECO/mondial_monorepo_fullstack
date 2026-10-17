@@ -6,11 +6,13 @@ import { Loader2 } from "lucide-react";
 import { withIdeaContext } from "@/lib/creator-routes";
 import { creatorJourneyApi, getCreatorWorkspaceIdea } from "@/lib/api-creator-journey";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
+import { useTranslation } from "@/hooks/useTranslation";
 
 // Artifact-derived Phase 3 resume: routes directly to the next unfinished milestone
 // 3.1 Market -> 3.2 Business Model -> 3.3 Forecast -> 3.4 Legal -> 3.5 Formation -> 3.6 Business Plan -> 3.7 Complete
 export default function Phase3IndexPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const queryIdeaId = searchParams.get("ideaId");
   const { state: { activeIdeaId } } = useCreatorProgress();
@@ -63,7 +65,7 @@ export default function Phase3IndexPage() {
   return (
     <div className="w-full flex-1 flex flex-col min-h-screen items-center justify-center gap-3 bg-background">
       <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      <p className="text-sm text-muted-foreground">Resuming Phase 3: Business Plan Intelligence...</p>
+      <p className="text-sm text-muted-foreground">{t("creator.phase3.resuming")}</p>
     </div>
   );
 }

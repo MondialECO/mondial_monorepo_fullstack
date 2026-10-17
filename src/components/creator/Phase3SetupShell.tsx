@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface Phase3SetupShellProps {
   children: React.ReactNode;
@@ -29,6 +30,9 @@ export function Phase3SetupShell({
   title,
   titleClassName,
 }: Phase3SetupShellProps) {
+  const { t } = useTranslation();
+  const effectiveEyebrow = stepEyebrow || t("creator.phase3.shell.stepEyebrow");
+
   return (
     <div className="flex w-full max-w-full flex-col text-foreground">
       <div
@@ -46,9 +50,9 @@ export function Phase3SetupShell({
             )}
           >
             <div className="space-y-1.5">
-              {stepEyebrow && (
+              {effectiveEyebrow && (
                 <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-sans">
-                  {stepEyebrow}
+                  {effectiveEyebrow}
                 </span>
               )}
               <h1 className={cn("text-page-heading font-bold tracking-tight text-foreground font-sans", titleClassName)}>

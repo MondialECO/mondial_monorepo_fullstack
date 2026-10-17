@@ -547,8 +547,25 @@ The internationalization system provides native bilingual support for **English 
 - **Creator Dashboard Overview (`src/app/dashboard/creator/page.tsx`)**: Fully localized across both states:
   - **Empty / Welcome State**: Hero title, subtitle, 4-phase visual roadmap, IP protection disclaimer, and "Start Your First Idea Now" action.
   - **Active Journey State**: Time-aware greeting ("Bonjour / Welcome back"), 4 primary metric cards (Clarity Score, AI Assets, Legal Readiness, Reports), Project Info card, Attention Items, Creator Journey progress stepper, Phase 5 Gate warning, AI Forecast preview, and Verified Outputs.
+- **Phase 1: Profile & Identity Gate (`src/app/dashboard/creator/phase-1/client.tsx`)**: Fully localized onboarding hero, progress indicator, 5 verification milestones, AML/KYC notices, and locked phase tooltips.
+- **Phase 2: Project Identity & Branding (`src/app/dashboard/creator/phase-2/*`)**:
+  - `phase-2/page.tsx`: Localized loading state and transition to Clarifier.
+  - `phase-2/clarifier/page.tsx`: Localized conversation opener, AI fallback prompt, ring progress bands, step indicator labels, input box with keyboard shortcuts, finalize state with long-poll feedback, timeout/parse/service error boundaries, accessible aria labels (`aria.editAnswer`, `aria.copyAnswer`, `aria.saveEdit`, `aria.sendAnswer`), screen-reader text (`sr.errorPrefix`, `sr.assistantTyping`), and Idea Journal.
+  - `phase-2/concept-name/page.tsx`: Localized header, suggested names, custom naming form, French Company Registry Search (SIREN / NAF lookup with authentic `Actif`/`Fermé` badges and race-condition guards), category selectors, save error boundary, and skip hints.
+  - `phase-2/idea-summary/page.tsx`: Localized structured concept canvas, iDeal Clarity score, synthesis progression, and naming transition CTAs.
+  - `phase-2/branding/page.tsx`: Localized AI Brand Studio deliverables checklist, designer hire matching card, and skip branding dialog.
+  - `phase-2/hire-designer/page.tsx`: Localized verified designer directory, M50 tier badges, completed projects count, price & delivery estimates, workroom booking action, sector tags fallback (`allSectors`), and auto-sent brief message.
+  - `phase-2/logo-tool/page.tsx`: Localized Brand Identity Studio redirection state.
+  - `phase-2/brand-kit/page.tsx`: Localized Brand Kit Hub loading state, uninitialized error boundary, and studio transition action.
+  - `phase-2/complete/page.tsx`: Localized Brand Kit summary showcase, palette roles, typography pairings, 4 logo lockup tooltips/alts (`Horizontal Lockup`, `Stacked Lockup`, `Symbol / Icon Mark`, `Wordmark`), strategy snapshot with bilingual fallbacks (`fallbackBrandName`, `fallbackTagline`, `fallbackIndustry`, `fallbackTargetAudience`, `fallbackPositioning`, `fallbackProblem`, `fallbackPersonality`), master lockup image alt, next phase preview (4 tools), and navigation CTAs.
+  - `src/components/layout/Phase2Footer.tsx`: Localized shared Phase 2 footer with copyright, Privacy Policy, Support Center, and Terms of Service links.
+- **Phase 3: Business Plan Intelligence (`src/app/dashboard/creator/phase-3/*`)**:
+  - `phase-3/page.tsx`: Localized intelligent milestone resumption loader.
+  - `src/components/creator/Phase3SetupShell.tsx`: Localized default step eyebrow ("Phase 3 · Business Plan Intelligence" / "Phase 3 · Intelligence du Business Plan").
+- **Phase 4: Construction Engine & Snapshot (`src/app/dashboard/creator/phase-4/page.tsx`)**: Localized construction snapshot header, status pillars, and execution overview.
 - **Creator Sidebar Navigation (`src/lib/menu.ts`)**: **Deliberately Deferred**. Per user explicit instruction, Creator sidebar menus remain in English during the initial phase and will be localized in a subsequent dedicated pass.
 - **Landing Page & Marketing Surfaces**: Queued for execution following the Creator dashboard audit.
-- **Testing Integrity**: Tested via `src/__tests__/creator/creator-dashboard.test.tsx` (10/10 PASS) and dedicated i18n switcher suite `src/__tests__/creator/creator-i18n.test.tsx` (11/11 PASS with live toggle verification).
+- **Testing Integrity**: Tested via `src/__tests__/creator/` (17/17 test suites, 201/201 tests PASS) including dedicated i18n switcher suite `src/__tests__/creator/creator-i18n.test.tsx` verifying live bilingual toggling across Phases 1–4.
+
 
 

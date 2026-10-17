@@ -4,10 +4,12 @@ import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
 import { withIdeaContext } from "@/lib/creator-routes";
 
 export default function Phase2EntryPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const ideaId = searchParams.get("ideaId");
   const { setEntryPath, updateProject } = useCreatorProgress();
@@ -24,7 +26,7 @@ export default function Phase2EntryPage() {
       style={{ backgroundColor: "var(--background)" }}
     >
       <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      <p className="text-sm text-muted-foreground">Entering Idea Clarifier...</p>
+      <p className="text-sm text-muted-foreground">{t("creator.phase2.enteringClarifier")}</p>
     </div>
   );
 }

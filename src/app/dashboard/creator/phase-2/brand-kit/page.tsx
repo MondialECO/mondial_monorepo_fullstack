@@ -6,9 +6,11 @@ import { BrandKit } from "@/types/creator/brand-kit";
 import { apiCreatorBrandKit } from "@/lib/api-creator-brand-kit";
 import { BrandKitHubView } from "@/components/creator/brand-kit/BrandKitHubView";
 import { Loader2, Sparkles, ArrowRight } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 function BrandKitHubContent() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const ideaId = searchParams.get("ideaId") || undefined;
 
@@ -29,7 +31,7 @@ function BrandKitHubContent() {
         }
       } catch (err: any) {
         if (isMounted) {
-          setError(err.message || "Failed to load Brand Kit.");
+          setError(err.message || t("creator.phase2.brandKit.loadError", "Failed to load Brand Kit."));
         }
       } finally {
         if (isMounted) {
@@ -50,7 +52,7 @@ function BrandKitHubContent() {
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#EFEFF1] gap-3">
         <Loader2 className="size-8 animate-spin text-primary" />
         <p className="text-xs font-mono text-muted-foreground">
-          Loading Brand Kit Hub...
+          {t("creator.phase2.brandKit.loadingHub")}
         </p>
       </div>
     );
@@ -62,17 +64,17 @@ function BrandKitHubContent() {
         <div className="p-8 rounded-2xl border border-border bg-card max-w-md space-y-4 shadow-sm">
           <Sparkles className="size-8 text-primary mx-auto" />
           <h2 className="text-lg font-bold text-foreground">
-            Brand Kit Not Initialized
+            {t("creator.phase2.brandKit.notInitializedTitle")}
           </h2>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            {error || "Complete the 6-step Visual Identity Studio to view your verified brand kit."}
+            {error || t("creator.phase2.brandKit.notInitializedDesc")}
           </p>
           <button
             type="button"
             onClick={() => router.push("/dashboard/creator/phase-2/brand-studio")}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-white shadow-sm hover:bg-primary/90 transition-colors"
           >
-            <span>Open Studio</span>
+            <span>{t("creator.phase2.brandKit.openStudio")}</span>
             <ArrowRight className="size-3.5" />
           </button>
         </div>
