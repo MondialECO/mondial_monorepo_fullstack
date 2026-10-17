@@ -1006,6 +1006,26 @@
       "attention": "Nécessite une attention"
     },
     "proceedToCrossroads": "Accéder au Carrefour (Phase 5)",
+    "roadmapPage": {
+      "stepBadge": "PHASE 4 · STEP 4.2",
+      "title": "Feuille de route opérationnelle",
+      "subtitle": "Transformez les exigences de votre projet en un plan pratique adapté à votre disponibilité."
+    },
+    "needsPage": {
+      "stepBadge": "PHASE 4 · STEP 4.3",
+      "title": "Besoins et exigences",
+      "subtitle": "Examinez ce dont votre projet a besoin, ce que vous avez déjà et ce qui reste à couvrir."
+    },
+    "skillsPage": {
+      "stepBadge": "PHASE 4 · STEP 4.4",
+      "title": "Plan de compétences et formation",
+      "subtitle": "Cartographiez les compétences à acquérir, à déléguer ou à vérifier en fonction de votre parcours, de la portée du projet et de votre temps disponible."
+    },
+    "supportPage": {
+      "stepBadge": "PHASE 4 · STEP 4.5",
+      "title": "Aides, subventions et soutien public",
+      "subtitle": "Explorez les dispositifs de financement, l'aide à la formation et le soutien institutionnel pour votre entreprise."
+    },
     "profileGuard": {
       "gateBadge": "PORTAIL DE PERSONNALISATION PHASE 4",
       "title": "Personnalisez votre plan de construction",
@@ -1304,7 +1324,38 @@
       "savingNotice": "L'enregistrement de cette revue ne marque pas le travail inachevé comme terminé.",
       "backToAssets": "Retour aux ressources de lancement",
       "saveGoDashboard": "Enregistrer l'examen et aller au tableau de bord",
-      "savedSuccess": "Examen enregistré"
+      "savedSuccess": "Examen enregistré",
+      "updateAvailable": "Mise à jour disponible",
+      "upstreamInputsChanged": "Les entrées en amont ont changé ({{sources}}). Votre examen précédemment enregistré est conservé ci-dessous avec les nouveaux résultats d'évaluation.",
+      "saveError": "Erreur d'enregistrement",
+      "dismiss": "Ignorer",
+      "evaluating": "Évaluation en cours...",
+      "statusUnavailable": "Statut non disponible",
+      "evaluatingWork": "Évaluation des travaux et des exigences du projet enregistrés...",
+      "assessmentUnavailable": "Détails de l'évaluation non disponibles.",
+      "constructionReadiness": "PRÉPARATION À LA CONSTRUCTION",
+      "scoreAvailabilityExplanation": "Consultez les travaux disponibles et les éléments non résolus ci-dessous.",
+      "basedOnSaved": "Basé sur les informations enregistrées du projet",
+      "savedWorkNotice": "Vos travaux enregistrés constituent un point de départ pour les prochaines actions.",
+      "artifactsLoading": "Chargement des artéfacts...",
+      "focusIssues": "Concentrez-vous sur les problèmes qui influent sur vos prochaines actions.",
+      "reviewNeed": "Examiner le besoin",
+      "openRoadmapTask": "Ouvrir la tâche de feuille de route connectée",
+      "review": "Examiner",
+      "viewRoadmap": "Voir la feuille de route",
+      "reviewCompares": "Cet examen compare vos exigences enregistrées, décisions, statut des travaux et preuves à l'appui.",
+      "principle1": "Principe 1",
+      "principle1Heading": "Les plans et les travaux achevés sont évalués séparément.",
+      "principle1Desc": "Avoir un plan ne signifie pas que les livrables du produit ou les tests clients sont terminés.",
+      "principle2": "Principe 2",
+      "principle2Heading": "Les informations inconnues restent ouvertes à l'examen.",
+      "principle2Desc": "Les décisions sans preuves à l'appui restent visibles plutôt que d'être remplies d'hypothèses.",
+      "principle3": "Principe 3",
+      "principle3Heading": "Les dépendances critiques restent visibles.",
+      "principle3Desc": "Les blocages de livraison non résolus restent mis en évidence même lorsque les actifs secondaires sont prêts.",
+      "principleNote": "Vous pouvez inspecter les sources, décisions enregistrées et critères requis tout au long de votre parcours à tout moment sans jargon technique de base de données.",
+      "savedOutputsRemain": "Vos résultats enregistrés et vos actions inachevées resteront disponibles afin que vous puissiez continuer à votre rythme.",
+      "savingReview": "Enregistrement de l'examen..."
     }
   }
 }

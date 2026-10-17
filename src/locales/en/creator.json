@@ -1006,6 +1006,26 @@
       "attention": "Needs Attention"
     },
     "proceedToCrossroads": "Proceed to The Crossroads (Phase 5)",
+    "roadmapPage": {
+      "stepBadge": "PHASE 4 · STEP 4.2",
+      "title": "Operational Roadmap",
+      "subtitle": "Turn your project requirements into a practical plan that fits your availability."
+    },
+    "needsPage": {
+      "stepBadge": "PHASE 4 · STEP 4.3",
+      "title": "Needs & Requirements",
+      "subtitle": "Review what your project needs, what you already have, and what remains to be covered."
+    },
+    "skillsPage": {
+      "stepBadge": "PHASE 4 · STEP 4.4",
+      "title": "Skills & Training Plan",
+      "subtitle": "Map capabilities to learn, delegate, or verify based on your background, project scope, and weekly time."
+    },
+    "supportPage": {
+      "stepBadge": "PHASE 4 · STEP 4.5",
+      "title": "Aids, Grants & Public Support",
+      "subtitle": "Explore funding schemes, training support, and institutional backing for your venture."
+    },
     "profileGuard": {
       "gateBadge": "PHASE 4 PERSONALIZATION GATE",
       "title": "Personalize your construction plan",
@@ -1304,7 +1324,38 @@
       "savingNotice": "Saving this review does not mark unfinished work complete.",
       "backToAssets": "Back to Launch Assets",
       "saveGoDashboard": "Save review & go to dashboard",
-      "savedSuccess": "Review saved"
+      "savedSuccess": "Review saved",
+      "updateAvailable": "Update available",
+      "upstreamInputsChanged": "Upstream inputs changed ({{sources}}). Your previously saved review is preserved below with fresh assessment findings.",
+      "saveError": "Save Error",
+      "dismiss": "Dismiss",
+      "evaluating": "Evaluating...",
+      "statusUnavailable": "Status unavailable",
+      "evaluatingWork": "Evaluating saved project work and requirements...",
+      "assessmentUnavailable": "Assessment details unavailable.",
+      "constructionReadiness": "CONSTRUCTION READINESS",
+      "scoreAvailabilityExplanation": "Review the available work and unresolved items below.",
+      "basedOnSaved": "Based on saved project information",
+      "savedWorkNotice": "Your saved work gives you a starting point for the next actions.",
+      "artifactsLoading": "Artifacts loading...",
+      "focusIssues": "Focus on the issues that affect your next actions.",
+      "reviewNeed": "Review need",
+      "openRoadmapTask": "Open connected roadmap task",
+      "review": "Review",
+      "viewRoadmap": "View roadmap",
+      "reviewCompares": "This review compares your saved requirements, decisions, work status, and supporting evidence.",
+      "principle1": "Principle 1",
+      "principle1Heading": "Plans and completed work are assessed separately.",
+      "principle1Desc": "Having a plan does not mean product deliverables or customer tests are completed.",
+      "principle2": "Principle 2",
+      "principle2Heading": "Unknown information remains open for review.",
+      "principle2Desc": "Decisions that lack supporting evidence are kept visible rather than filled with assumptions.",
+      "principle3": "Principle 3",
+      "principle3Heading": "Critical dependencies remain visible.",
+      "principle3Desc": "Unresolved delivery blockers stay highlighted even when secondary assets are ready.",
+      "principleNote": "You can inspect sources, saved decisions, and required criteria across your journey at any time without technical database jargon.",
+      "savedOutputsRemain": "Your saved outputs and unfinished actions will remain available so you can continue at your own pace.",
+      "savingReview": "Saving review..."
     }
   }
 }

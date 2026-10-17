@@ -16,6 +16,7 @@ import type {
   SkillsPlanResponse,
   UpdateResolutionRequest,
 } from '@/types/creator/skills';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function CreatorPhase4SkillsPage() {
   return (
@@ -44,6 +45,7 @@ function CreatorPhase4SkillsInner() {
 }
 
 function SkillsPageContent({ ideaId }: { ideaId: string }) {
+  const { t } = useTranslation();
   const { state: progressState, refetch } = useCreatorProgress();
   const [data, setData] = useState<SkillsPlanResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -171,13 +173,13 @@ function SkillsPageContent({ ideaId }: { ideaId: string }) {
       {/* Compact Page Header (Aligned with Phase 4 Canon & Figma) */}
       <div className="space-y-1">
         <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
-          PHASE 4 · STEP 4.4
+          {t('creator.phase4.skillsPage.stepBadge', 'PHASE 4 · STEP 4.4')}
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
-          Skills & Training Plan
+          {t('creator.phase4.skillsPage.title', 'Skills & Training Plan')}
         </h1>
         <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
-          Map capabilities to learn, delegate, or verify based on your background, project scope, and weekly time.
+          {t('creator.phase4.skillsPage.subtitle', 'Map capabilities to learn, delegate, or verify based on your background, project scope, and weekly time.')}
         </p>
       </div>
 

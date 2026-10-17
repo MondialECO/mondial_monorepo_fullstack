@@ -19,6 +19,7 @@ import type {
   RoadmapTaskStatus,
   UpdateRoadmapTaskRequest,
 } from '@/types/creator/roadmap';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function CreatorPhase4RoadmapPage() {
   return (
@@ -47,6 +48,7 @@ function CreatorPhase4RoadmapInner() {
 }
 
 function RoadmapPageContent({ ideaId }: { ideaId: string }) {
+  const { t } = useTranslation();
   const { state: progressState, refetch } = useCreatorProgress();
   const [data, setData] = useState<OperationalRoadmapResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -216,13 +218,13 @@ function RoadmapPageContent({ ideaId }: { ideaId: string }) {
       {/* Compact Page Header (Aligned with 4.1 Canon) */}
       <div className="space-y-1">
         <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
-          PHASE 4 · STEP 4.2
+          {t('creator.phase4.roadmapPage.stepBadge', 'PHASE 4 · STEP 4.2')}
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
-          Operational Roadmap
+          {t('creator.phase4.roadmapPage.title', 'Operational Roadmap')}
         </h1>
         <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
-          Turn your project requirements into a practical plan that fits your availability.
+          {t('creator.phase4.roadmapPage.subtitle', 'Turn your project requirements into a practical plan that fits your availability.')}
         </p>
       </div>
 

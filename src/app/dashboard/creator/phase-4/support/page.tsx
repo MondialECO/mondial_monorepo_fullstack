@@ -17,6 +17,7 @@ import type {
   SupportPlanResponse,
   UpdateFounderSupportStateRequest,
 } from '@/types/creator/support';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function CreatorPhase4SupportPage() {
   return (
@@ -45,6 +46,7 @@ function CreatorPhase4SupportInner() {
 }
 
 function SupportPageContent({ ideaId }: { ideaId: string }) {
+  const { t } = useTranslation();
   const { state: progressState, refetch } = useCreatorProgress();
   const effectiveIdeaId = ideaId || progressState?.activeIdeaId || '';
   const projectName = progressState?.project?.name || 'Your Venture';
@@ -166,13 +168,13 @@ function SupportPageContent({ ideaId }: { ideaId: string }) {
       {/* Compact Page-Level Header (Aligned with Phase 4 Canon & Figma) */}
       <div className="space-y-1">
         <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
-          PHASE 4 · STEP 4.5
+          {t('creator.phase4.supportPage.stepBadge', 'PHASE 4 · STEP 4.5')}
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
-          Aids, Grants & Public Support
+          {t('creator.phase4.supportPage.title', 'Aids, Grants & Public Support')}
         </h1>
         <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
-          Explore funding schemes, training support, and institutional backing for your venture.
+          {t('creator.phase4.supportPage.subtitle', 'Explore funding schemes, training support, and institutional backing for your venture.')}
         </p>
       </div>
 
