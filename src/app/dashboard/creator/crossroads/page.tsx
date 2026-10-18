@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLanguage } from "@/providers/LanguageProvider";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, ArrowRight, ArrowLeft, Store, Building2, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import type { ComputedJourneyStatus } from "@/types/creator/journey-api";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 export default function CrossroadsPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlIdeaId = searchParams?.get("ideaId");
@@ -74,8 +76,8 @@ export default function CrossroadsPage() {
             <p className="text-sm text-muted-foreground">{project.tagline || project.solution}</p>
           </div>
           <div className="text-right">
-            <div className="text-xs text-muted-foreground">Clarity {project.clarityScore} · Readiness {readiness}</div>
-            <div className="text-xs text-muted-foreground">Choose how you move forward</div>
+            <div className="text-xs text-muted-foreground">{t('creator.crossroads.clarity', 'Clarity')} {project.clarityScore}{' · '}{t('creator.crossroads.readiness', 'Readiness')} {readiness}</div>
+            <div className="text-xs text-muted-foreground">{t('creator.crossroads.chooseForward', 'Choose how you move forward')}</div>
           </div>
         </Card>
 
@@ -94,10 +96,10 @@ export default function CrossroadsPage() {
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/10 text-warning"><Store className="h-6 w-6" /></div>
                   <div className="flex items-center gap-1.5">
                     {isSold ? (
-                      <Badge variant="destructive" className="font-bold text-badge">SOLD</Badge>
+                      <Badge variant="destructive" className="font-bold text-badge">{t('creator.crossroads.sold', 'SOLD')}</Badge>
                     ) : isPublished ? (
                       <Badge className={`text-badge font-bold ${isPaused ? "bg-warning/10 text-warning border-warning/30" : "bg-success-light text-success-strong border-success-strong/30"}`}>
-                        {isPaused ? "PAUSED" : "LIVE"}
+                        {isPaused ? t('creator.crossroads.paused', 'PAUSED') : t('creator.crossroads.live', 'LIVE')}
                       </Badge>
                     ) : null}
                     {path === "sell" && <CheckCircle2 className="h-5 w-5 text-primary" />}
@@ -106,40 +108,36 @@ export default function CrossroadsPage() {
 
                 <div>
                   <h3 className="text-lg font-bold">
-                    {isSold ? "Sold — Marketplace Listing Closed" : isPublished ? (isPaused ? "Marketplace Listing Paused" : "Marketplace Listing Active") : "Marketplace Push"}
+                    {isSold ? t('creator.crossroads.soldTitle', 'Sold — Marketplace Listing Closed') : isPublished ? (isPaused ? t('creator.crossroads.pausedTitle', 'Marketplace Listing Paused') : t('creator.crossroads.activeTitle', 'Marketplace Listing Active')) : t('creator.crossroads.pushTitle', 'Marketplace Push')}
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {isSold
-                      ? "This project has been sold via Full Buyout. The marketplace listing is permanently closed."
-                      : isPublished
-                      ? "Your project is live on the marketplace. You can update the public listing whenever your project information changes."
-                      : "Make your project discoverable on the marketplace for Full Buyout acquisition or Co-founder / Equity partnership."}
+                    {isSold ? t('creator.crossroads.soldDesc', 'This project has been sold via Full Buyout. The marketplace listing is permanently closed.') : isPublished ? t('creator.crossroads.liveDesc', 'Your project is live on the marketplace. You can update the public listing whenever your project information changes.') : t('creator.crossroads.pushDesc', 'Make your project discoverable on the marketplace for Full Buyout acquisition or Co-founder / Equity partnership.')}
                   </p>
                 </div>
 
                 {isPublished && !isSold && (
                   <div className="rounded-xl border border-border/80 bg-background/60 p-3 text-xs space-y-1.5">
                     <div className="flex items-center justify-between text-muted-foreground">
-                      <span>Modes:</span>
+                      <span>{t('creator.crossroads.modes', 'Modes:')}</span>
                       <span className="font-medium text-foreground capitalize">
-                        {listing?.dealModes?.map(m => m.replace(/_/g, " ")).join(", ") || "Full Buyout"}
+                        {listing?.dealModes?.map(m => m.replace(/_/g, " ")).join(", ") || t('creator.crossroads.fullBuyout', 'Full Buyout')}
                       </span>
                     </div>
                     {listing?.askingPrice != null && listing.askingPrice > 0 && (
                       <div className="flex items-center justify-between text-muted-foreground">
-                        <span>Asking Price:</span>
-                        <span className="font-bold text-primary">€{listing.askingPrice.toLocaleString()}</span>
+                        <span>{t('creator.crossroads.askingPrice', 'Asking Price:')}</span>
+                        <span className="font-bold text-primary">{'€'}{listing.askingPrice.toLocaleString()}</span>
                       </div>
                     )}
                     {listing?.publishedAt && (
                       <div className="flex items-center justify-between text-muted-foreground text-caption">
-                        <span>Published:</span>
+                        <span>{t('creator.crossroads.published', 'Published:')}</span>
                         <span>{new Date(listing.publishedAt).toLocaleDateString()}</span>
                       </div>
                     )}
                     {listing?.updatedAt && (
                       <div className="flex items-center justify-between text-muted-foreground text-caption">
-                        <span>Last updated:</span>
+                        <span>{t('creator.crossroads.lastUpdated', 'Last updated:')}</span>
                         <span>{new Date(listing.updatedAt).toLocaleDateString()}</span>
                       </div>
                     )}
@@ -148,11 +146,7 @@ export default function CrossroadsPage() {
 
                 <div className="pt-1 flex flex-col gap-2">
                   <Button variant={path === "sell" ? "default" : "outline"} className="w-full" disabled={selectingPath}>
-                    {isSold
-                      ? "View Sold Deal"
-                      : isPublished
-                      ? "Manage Marketplace Listing"
-                      : "Explore Marketplace Push"}
+                    {isSold ? t('creator.crossroads.viewSoldDeal', 'View Sold Deal') : isPublished ? t('creator.crossroads.manageListing', 'Manage Marketplace Listing') : t('creator.crossroads.explorePush', 'Explore Marketplace Push')}
                   </Button>
                 </div>
               </Card>
@@ -164,11 +158,11 @@ export default function CrossroadsPage() {
             <div className="flex items-center justify-between">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><Building2 className="h-6 w-6" /></div>
               {path === "build" && <CheckCircle2 className="h-5 w-5 text-primary" />}
-              {recommendB && path !== "build" && <Badge className="bg-primary text-primary-foreground">Recommended</Badge>}
+              {recommendB && path !== "build" && <Badge className="bg-primary text-primary-foreground">{t('creator.crossroads.recommended', 'Recommended')}</Badge>}
             </div>
-            <h3 className="text-lg font-bold">Build the Company</h3>
-            <p className="text-sm text-muted-foreground">Continue as founder and prepare ownership, team, funding and your launch plan.</p>
-            <Button variant={path === "build" ? "default" : "outline"} className="w-full" disabled={selectingPath}>{selectingPath ? "Saving choice…" : "Continue Building"}</Button>
+            <h3 className="text-lg font-bold">{t('creator.crossroads.buildTitle', 'Build the Company')}</h3>
+            <p className="text-sm text-muted-foreground">{t('creator.crossroads.buildDesc', 'Continue as founder and prepare ownership, team, funding and your launch plan.')}</p>
+            <Button variant={path === "build" ? "default" : "outline"} className="w-full" disabled={selectingPath}>{selectingPath ? t('creator.crossroads.savingChoice', 'Saving choice…') : t('creator.crossroads.continueBuilding', 'Continue Building')}</Button>
           </Card>
         </div>
 
@@ -176,7 +170,7 @@ export default function CrossroadsPage() {
 
         {path === "sell_license" && (
           <Card className="rounded-2xl border border-warning/30 bg-warning/5 p-4 text-sm text-muted-foreground">
-            This idea has a historical licensing intent. It has been preserved and has not been converted into a Full Buyout listing. Choose “Marketplace Push” to configure a Full Buyout listing.
+            {t('creator.crossroads.historicalLicensingNotice', 'This idea has a historical licensing intent. It has been preserved and has not been converted into a Full Buyout listing. Choose “Marketplace Push” to configure a Full Buyout listing.')}
           </Card>
         )}
 
@@ -205,15 +199,15 @@ export default function CrossroadsPage() {
 
         {/* Derived completion gate */}
         <div className="flex items-center justify-between border-t border-border pt-6">
-          <Button variant="ghost" onClick={() => router.push("/dashboard/creator")}><ArrowLeft className="h-4 w-4 mr-1" /> Dashboard</Button>
+          <Button variant="ghost" onClick={() => router.push("/dashboard/creator")}><ArrowLeft className="h-4 w-4 mr-1" /> {t('creator.crossroads.dashboard', 'Dashboard')}</Button>
           {loading ? (
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           ) : computed?.phase6.status !== "locked" ? (
-            <Button onClick={() => router.push("/dashboard/creator/investors")} className="gap-2">Continue to Readiness &amp; Matching <ArrowRight className="h-4 w-4" /></Button>
+            <Button onClick={() => router.push("/dashboard/creator/investors")} className="gap-2">{t('creator.crossroads.continueToReadiness', 'Continue to Readiness & Matching')} <ArrowRight className="h-4 w-4" /></Button>
           ) : path === "sell" && computed?.phase5.status === "completed" ? (
-            <Badge className="bg-success-light text-success-text">Listing live — you remain a Creator</Badge>
+            <Badge className="bg-success-light text-success-text">{t('creator.crossroads.listingLiveRemainCreator', 'Listing live — you remain a Creator')}</Badge>
           ) : (
-            <span className="text-xs text-muted-foreground">Complete your chosen path to continue.</span>
+            <span className="text-xs text-muted-foreground">{t('creator.crossroads.completePathToContinue', 'Complete your chosen path to continue.')}</span>
           )}
         </div>
     </PageContainer>

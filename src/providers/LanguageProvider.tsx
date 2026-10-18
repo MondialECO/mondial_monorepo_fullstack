@@ -254,3 +254,5 @@ export function useTranslation(_namespace?: string) {
   }
   return context;
 }
+
+export const useLanguage = useTranslation;

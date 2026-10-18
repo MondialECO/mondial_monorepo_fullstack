@@ -610,7 +610,7 @@ export default function MarketStudyPage() {
                               {comp.name}
                             </div>
                             <div className="text-xs font-sans font-normal text-muted-foreground pt-0.5">
-                              {comp.segment || displaySector} · {displayRegion}
+                              {comp.segment || displaySector}{' · '}{displayRegion}
                             </div>
                           </td>
 
@@ -619,7 +619,7 @@ export default function MarketStudyPage() {
                             {comp.segment ? (
                               <span>{comp.segment}</span>
                             ) : (
-                              <span className="font-mono text-muted-foreground">—</span>
+                              <span className="font-mono text-muted-foreground">{'—'}</span>
                             )}
                           </td>
 
@@ -628,7 +628,7 @@ export default function MarketStudyPage() {
                             {comp.strengths && comp.strengths.length > 0 ? (
                               comp.strengths.join(', ')
                             ) : (
-                              <span className="font-mono text-muted-foreground">—</span>
+                              <span className="font-mono text-muted-foreground">{'—'}</span>
                             )}
                           </td>
 
@@ -637,13 +637,13 @@ export default function MarketStudyPage() {
                             {comp.weaknesses && comp.weaknesses.length > 0 ? (
                               comp.weaknesses.join(', ')
                             ) : (
-                              <span className="font-mono text-muted-foreground">—</span>
+                              <span className="font-mono text-muted-foreground">{'—'}</span>
                             )}
                           </td>
 
                           {/* OPPORTUNITY FOR YOU */}
                           <td className="py-4 px-4 text-sm font-sans font-medium text-foreground align-top">
-                            {comp.exploitableGap || <span className="font-mono text-muted-foreground">—</span>}
+                            {comp.exploitableGap || <span className="font-mono text-muted-foreground">{'—'}</span>}
                           </td>
                         </tr>
                       ))}

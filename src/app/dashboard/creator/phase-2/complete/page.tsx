@@ -694,7 +694,7 @@ export default function Phase2CompletePage() {
               >
                 {t("creator.phase2.complete.backToDashboard")}
               </button>
-              <span>•</span>
+              <span>{'•'}</span>
               <button
                 type="button"
                 onClick={() => router.push(hubUrl)}

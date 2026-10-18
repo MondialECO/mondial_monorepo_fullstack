@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useLanguage } from '@/providers/LanguageProvider';
 import marketplaceProjectsApi, { PartnershipSummary } from '@/lib/api-marketplace-projects';
 import {
   Sparkles,
@@ -21,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { PageContainer } from '@/components/layout/PageContainer';
 
 export default function MyPartnershipsPage() {
+  const { t } = useLanguage();
   const [partnerships, setPartnerships] = useState<PartnershipSummary[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,14 +52,14 @@ export default function MyPartnershipsPage() {
           <div className="inline-flex items-center gap-2">
             <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-semibold uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 mr-1" />
-              Active Ventures
+              {t('creator.partnerships.activeVentures', 'Active Ventures')}
             </Badge>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight font-heading">
-            My Partnerships &amp; Equity
+            {t('creator.partnerships.title', 'My Partnerships & Equity')}
           </h1>
           <p className="text-muted-foreground text-sm">
-            Overview of your co-founded ventures, company ownership stakes, and partner collaborations.
+            {t('creator.partnerships.subtitle', 'Overview of your co-founded ventures, company ownership stakes, and partner collaborations.')}
           </p>
         </div>
 
@@ -67,17 +69,17 @@ export default function MyPartnershipsPage() {
           onClick={fetchPartnerships}
           disabled={loading}
           className="gap-2 text-xs border-border bg-background hover:bg-muted self-start sm:self-auto"
-          title="Refresh"
+          title={t('creator.partnerships.refresh', 'Refresh')}
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('creator.partnerships.refresh', 'Refresh')}
         </Button>
       </div>
 
       {loading && partnerships.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-3 text-muted-foreground">
           <RefreshCw className="w-7 h-7 text-primary animate-spin" />
-          <p className="text-xs font-medium">Loading partnerships...</p>
+          <p className="text-xs font-medium">{t('creator.partnerships.loading', 'Loading partnerships...')}</p>
         </div>
       ) : error ? (
         <Card className="p-6 bg-destructive/10 border-destructive/30 rounded-2xl text-center space-y-3">
@@ -89,19 +91,19 @@ export default function MyPartnershipsPage() {
             onClick={fetchPartnerships}
             className="text-xs"
           >
-            Try Again
+            {t('creator.partnerships.tryAgain', 'Try Again')}
           </Button>
         </Card>
       ) : partnerships.length === 0 ? (
         <Card className="p-12 border-dashed border-border bg-card rounded-3xl text-center space-y-4">
           <Award className="w-12 h-12 text-muted-foreground/50 mx-auto" />
-          <h3 className="text-lg font-bold text-foreground font-heading">No Active Partnerships Yet</h3>
+          <h3 className="text-lg font-bold text-foreground font-heading">{t('creator.partnerships.noActivePartnerships', 'No Active Partnerships Yet')}</h3>
           <p className="text-xs text-muted-foreground max-w-md mx-auto">
-            When you finalize co-founder terms and activate a venture via Path A, your equity holdings and venture workspaces will appear here.
+            {t('creator.partnerships.noActivePartnershipsDesc', 'When you finalize co-founder terms and activate a venture via Path A, your equity holdings and venture workspaces will appear here.')}
           </p>
           <Button asChild size="sm" className="gap-2 text-xs font-semibold">
             <Link href="/dashboard/creator">
-              Go to Creator Dashboard
+              {t('creator.partnerships.goToDashboard', 'Go to Creator Dashboard')}
             </Link>
           </Button>
         </Card>
@@ -140,19 +142,19 @@ export default function MyPartnershipsPage() {
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <div className="p-3 bg-background border border-border rounded-xl space-y-1">
                       <span className="text-label text-muted-foreground uppercase tracking-wider font-bold">
-                        Your Equity
+                        {t('creator.partnerships.yourEquity', 'Your Equity')}
                       </span>
                       <p className="text-lg font-black text-primary font-mono">
                         {p.creatorEquityPercent}%
                       </p>
                       <span className="text-caption text-muted-foreground">
-                        {p.creatorShares.toLocaleString()} shares
+                        {p.creatorShares.toLocaleString()} {t('creator.partnerships.shares', 'shares')}
                       </span>
                     </div>
 
                     <div className="p-3 bg-background border border-border rounded-xl space-y-1">
                       <span className="text-label text-muted-foreground uppercase tracking-wider font-bold">
-                        Partner
+                        {t('creator.partnerships.partner', 'Partner')}
                       </span>
                       <p className="text-sm font-bold text-foreground truncate">
                         {p.entrepreneurName}
@@ -164,9 +166,9 @@ export default function MyPartnershipsPage() {
                   </div>
 
                   <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground border-t border-border">
-                    <span>Role: <strong className="text-foreground">{p.creatorRole}</strong></span>
+                    <span>{t('creator.partnerships.role', 'Role:')} <strong className="text-foreground">{p.creatorRole}</strong></span>
                     <span className="text-primary font-semibold text-xs flex items-center gap-1">
-                      Open Workspace <ChevronRight className="w-3.5 h-3.5" />
+                      {t('creator.partnerships.openWorkspace', 'Open Workspace')} <ChevronRight className="w-3.5 h-3.5" />
                     </span>
                   </div>
                 </div>

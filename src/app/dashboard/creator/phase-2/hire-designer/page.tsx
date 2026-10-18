@@ -238,9 +238,9 @@ export default function HireDesignerPage() {
                           <span className="flex items-center gap-1">
                             <Star className="w-3.5 h-3.5 fill-current text-amber-500" /> {designer.rating}
                           </span>
-                          <span>·</span>
+                          <span>{'·'}</span>
                           <span>{t("creator.phase2.hireDesigner.projectsCompleted", { count: designer.projects })}</span>
-                          <span>·</span>
+                          <span>{'·'}</span>
                           <span className="flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5" /> {designer.location}
                           </span>
