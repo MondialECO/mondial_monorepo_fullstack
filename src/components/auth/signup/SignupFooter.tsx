@@ -1,17 +1,22 @@
+'use client';
+
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-
-const LINKS = [
-  { href: "/legal/terms", label: "Terms of Service" },
-  { href: "/legal/privacy", label: "Privacy Policy" },
-  { href: "/legal/accessibility", label: "Accessibility" },
-];
+import { useTranslation } from "@/hooks/useTranslation";
 
 /**
- * Bottom bar: copyright left, legal links right. Server component.
+ * Bottom bar: copyright left, legal links right.
  */
 export function SignupFooter({ className }: { className?: string }) {
+  const { t } = useTranslation();
   const year = new Date().getFullYear();
+
+  const links = [
+    { href: "/legal/terms", label: t('auth.footer.terms', 'Terms of Service') },
+    { href: "/legal/privacy", label: t('auth.footer.privacy', 'Privacy Policy') },
+    { href: "/legal/accessibility", label: t('auth.footer.accessibility', 'Accessibility') },
+  ];
+
   return (
     <footer
       className={cn(
@@ -20,10 +25,10 @@ export function SignupFooter({ className }: { className?: string }) {
         className,
       )}
     >
-      <p>© {year} Mondial. All rights reserved.</p>
-      <nav aria-label="Legal">
+      <p>{t('auth.footer.copyright', '© {{year}} Mondial. All rights reserved.', { year })}</p>
+      <nav aria-label={t('auth.footer.legalAria', 'Legal')}>
         <ul className="flex flex-wrap items-center gap-x-5 gap-y-1">
-          {LINKS.map((link) => (
+          {links.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}

@@ -38,5 +38,98 @@
     "search": "Rechercher...",
     "filter": "Filtrer",
     "all": "Tous"
+  },
+  "auth": {
+    "login": {
+      "title": "Bon retour",
+      "subtitle": "Connectez-vous à votre compte",
+      "emailLabel": "Adresse e-mail",
+      "emailPlaceholder": "nom@exemple.com",
+      "passwordLabel": "Mot de passe",
+      "passwordPlaceholder": "••••••••",
+      "forgotPassword": "Mot de passe oublié ?",
+      "noAccount": "Vous n'avez pas de compte ?",
+      "signUp": "S'inscrire",
+      "signIn": "Se connecter",
+      "signingIn": "Connexion en cours...",
+      "loading": "Chargement...",
+      "initAuth": "Veuillez patienter pendant l'initialisation du système d'authentification...",
+      "loginFailed": "Échec de la connexion. Veuillez réessayer.",
+      "emailRequired": "L'adresse e-mail est requise",
+      "invalidEmail": "Adresse e-mail invalide",
+      "passwordRequired": "Le mot de passe est requis",
+      "passwordMinLength": "Le mot de passe doit comporter au moins 8 caractères"
+    },
+    "signup": {
+      "title": "Créer un compte",
+      "subtitle": "Rejoignez notre communauté dès aujourd'hui",
+      "selectedRole": "Rôle sélectionné :",
+      "change": "Modifier",
+      "fullNameLabel": "Nom complet",
+      "emailLabel": "Adresse e-mail",
+      "passwordLabel": "Mot de passe",
+      "requirementsTitle": "Exigences relatives au mot de passe :",
+      "rules": {
+        "minLength": "Au moins 6 caractères",
+        "minLengthError": "Le mot de passe doit comporter au moins 6 caractères.",
+        "uppercase": "Au moins une lettre majuscule",
+        "uppercaseError": "Le mot de passe doit contenir une lettre majuscule.",
+        "lowercase": "Au moins une lettre minuscule",
+        "lowercaseError": "Le mot de passe doit contenir une lettre minuscule.",
+        "digit": "Au moins un chiffre",
+        "digitError": "Le mot de passe doit contenir un chiffre."
+      },
+      "submit": "S'inscrire",
+      "submitting": "Création du compte en cours...",
+      "alreadyHaveAccount": "Vous avez déjà un compte ?",
+      "logIn": "Se connecter",
+      "selectRoleFirst": "Veuillez d'abord sélectionner un rôle.",
+      "sessionInitFailed": "L'inscription a réussi mais l'initialisation de la session a échoué. Veuillez vous connecter.",
+      "registrationFailed": "Échec de l'inscription",
+      "loadingFlow": "Chargement du parcours d'inscription...",
+      "loading": "Chargement..."
+    },
+    "roles": {
+      "protocolBadge": "Protocole d'embarquement",
+      "choosePathTitle": "Choisissez votre parcours",
+      "choosePathSubtitle": "Sélectionnez votre profil opérationnel pour initialiser votre espace de travail.",
+      "radiogroupAria": "Sélectionnez votre rôle",
+      "exploreRole": "Découvrir ce rôle",
+      "initializeAccount": "Initialiser le compte",
+      "initializing": "Initialisation...",
+      "alreadyHaveAccount": "Vous avez déjà un compte ?",
+      "signIn": "Se connecter",
+      "entrepreneur": {
+        "name": "Entrepreneur",
+        "description": "Lancez une entreprise, recrutez une équipe et levez des fonds auprès d'investisseurs alignés."
+      },
+      "investor": {
+        "name": "Investisseur",
+        "description": "Découvrez des opportunités sélectionnées, suivez les performances de votre portefeuille et co-investissez avec vos pairs."
+      },
+      "creator": {
+        "name": "Créateur",
+        "description": "Transformez votre audience en capital, publiez, restreignez du contenu et monétisez."
+      },
+      "serviceProvider": {
+        "name": "Prestataire de services",
+        "description": "Proposez des services juridiques, de design ou de croissance aux fondateurs de l'écosystème."
+      }
+    },
+    "footer": {
+      "copyright": "© {{year}} Mondial. Tous droits réservés.",
+      "legalAria": "Mentions légales",
+      "terms": "Conditions d'utilisation",
+      "privacy": "Politique de confidentialité",
+      "accessibility": "Accessibilité"
+    },
+    "forgotPassword": {
+      "title": "Mot de passe oublié",
+      "emailLabel": "E-mail",
+      "sendResetLink": "Envoyer le lien de réinitialisation",
+      "sending": "Envoi en cours...",
+      "successMessage": "Vérifiez vos e-mails pour le lien de réinitialisation.",
+      "errorMessage": "Échec de l'envoi de l'e-mail de réinitialisation"
+    }
   }
 }

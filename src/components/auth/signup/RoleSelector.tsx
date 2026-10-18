@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { RoleCardGrid, RoleCardList, type RoleOption } from "./RoleCard";
 import { cn } from "@/lib/utils";
 import { SIGNUP_ROLE_STORAGE_KEY } from "@/lib/signup-role";
+import { useTranslation } from "@/hooks/useTranslation";
 
 type Variant = "grid" | "list";
 
@@ -30,6 +31,7 @@ export function RoleSelector({
   persistSelection?: boolean;
   className?: string;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [selected, setSelected] = useState<string | undefined>(defaultRoleId);
   const [submitting, setSubmitting] = useState(false);
@@ -55,7 +57,7 @@ export function RoleSelector({
     <div className={cn("flex w-full flex-col items-center gap-8", className)}>
       <div
         role="radiogroup"
-        aria-label="Select your role"
+        aria-label={t('auth.roles.radiogroupAria', 'Select your role')}
         className={cn(
           "w-full",
           variant === "grid"
@@ -89,19 +91,20 @@ export function RoleSelector({
           disabled={!selected || submitting}
           onClick={handleSubmit}
         >
-          {submitting ? "Initializing..." : "Initialize Account"}
+          {submitting
+            ? t('auth.roles.initializing', 'Initializing...')
+            : t('auth.roles.initializeAccount', 'Initialize Account')}
         </Button>
         <p className="text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t('auth.roles.alreadyHaveAccount', 'Already have an account?')}{" "}
           <Link
             href={signInHref}
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
-            Sign in
+            {t('auth.roles.signIn', 'Sign in')}
           </Link>
         </p>
       </div>
     </div>
   );
 }
-

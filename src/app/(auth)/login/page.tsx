@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { z } from "zod";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,22 +9,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { resolvePostLoginRedirect } from "@/lib/roles";
-
-const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, "Email is required")
-    .email("Invalid email address"),
-  password: z
-    .string()
-    .min(1, "Password is required")
-    .min(8, "Password must be at least 8 characters"),
-});
+import { useTranslation } from "@/hooks/useTranslation";
 
 function LoginForm() {
+  const { t } = useTranslation();
   const { login, isLoading: authLoading, user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const loginSchema = useMemo(() => z.object({
+    email: z
+      .string()
+      .min(1, t('auth.login.emailRequired', 'Email is required'))
+      .email(t('auth.login.invalidEmail', 'Invalid email address')),
+    password: z
+      .string()
+      .min(1, t('auth.login.passwordRequired', 'Password is required'))
+      .min(8, t('auth.login.passwordMinLength', 'Password must be at least 8 characters')),
+  }), [t]);
 
   const rawTarget =
     searchParams?.get("callbackUrl") ||
@@ -60,7 +62,7 @@ function LoginForm() {
 
     // Prevent form submission during provider hydration
     if (authLoading) {
-      setError("Please wait while we initialize the authentication system...");
+      setError(t('auth.login.initAuth', 'Please wait while we initialize the authentication system...'));
       return;
     }
 
@@ -71,7 +73,7 @@ function LoginForm() {
       await login(email, password);
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error("Failed to login");
-      setError(error.message || "Failed to login. Please try again.");
+      setError(error.message || t('auth.login.loginFailed', 'Failed to login. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +86,7 @@ function LoginForm() {
         <div className="w-full max-w-md space-y-8 p-8 bg-card rounded-2xl shadow-lg border border-border text-center">
           <div className="flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-muted-foreground">{t('auth.login.loading', 'Loading...')}</p>
           </div>
         </div>
       </div>
@@ -102,10 +104,10 @@ function LoginForm() {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Welcome back
+            {t('auth.login.title', 'Welcome back')}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Sign in to your account
+            {t('auth.login.subtitle', 'Sign in to your account')}
           </p>
         </div>
 
@@ -124,14 +126,14 @@ function LoginForm() {
               htmlFor="email"
               className="block text-sm font-medium text-foreground mb-1.5"
             >
-              Email address
+              {t('auth.login.emailLabel', 'Email address')}
             </label>
             <Input
               id="email"
               type="email"
               autoComplete="email"
               required
-              placeholder="name@example.com"
+              placeholder={t('auth.login.emailPlaceholder', 'name@example.com')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
@@ -144,7 +146,7 @@ function LoginForm() {
               htmlFor="password"
               className="block text-sm font-medium text-foreground mb-1.5"
             >
-              Password
+              {t('auth.login.passwordLabel', 'Password')}
             </label>
             <div className="relative">
               <Input
@@ -152,7 +154,7 @@ function LoginForm() {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
-                placeholder="••••••••"
+                placeholder={t('auth.login.passwordPlaceholder', '••••••••')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
@@ -180,7 +182,11 @@ function LoginForm() {
             size="lg"
           >
             {(isLoading || authLoading) && <Loader2 className="h-5 w-5 animate-spin" />}
-            {isLoading ? "Signing in..." : authLoading ? "Loading..." : "Sign in"}
+            {isLoading
+              ? t('auth.login.signingIn', 'Signing in...')
+              : authLoading
+              ? t('auth.login.loading', 'Loading...')
+              : t('auth.login.signIn', 'Sign in')}
           </Button>
         </form>
 
@@ -188,13 +194,13 @@ function LoginForm() {
         <div className="text-center text-sm text-muted-foreground space-y-2 pt-4">
           <div>
             <Link href="/forgot-password" className="text-primary hover:underline font-medium">
-              Forgot password?
+              {t('auth.login.forgotPassword', 'Forgot password?')}
             </Link>
           </div>
           <div>
-            Don&#39;t have an account?{" "}
+            {t('auth.login.noAccount', "Don't have an account?")}{" "}
             <Link href="/signup" className="text-primary font-medium hover:underline">
-              Sign up
+              {t('auth.login.signUp', 'Sign up')}
             </Link>
           </div>
         </div>
