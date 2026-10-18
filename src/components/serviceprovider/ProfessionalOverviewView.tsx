@@ -1,8 +1,12 @@
+"use client";
+
 import type { CSSProperties, ReactNode } from "react";
 import { professionalOverviewPlainText, sanitizeProfessionalOverview } from "@/lib/service-provider/professional-overview";
 import type { ProfessionalOverviewContent, TiptapJson } from "@/types/service-provider";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 export function ProfessionalOverviewView({ content }: { content?: ProfessionalOverviewContent | any | null }) {
+  const { t } = useLanguage();
   const docRaw = content && typeof content === "object" && "document" in content ? content.document : content;
   const document = sanitizeProfessionalOverview(docRaw);
   const plainText =
@@ -17,8 +21,8 @@ export function ProfessionalOverviewView({ content }: { content?: ProfessionalOv
     <details className="group">
       <summary className="cursor-pointer list-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3C61DD] focus-visible:ring-offset-2">
         <p className="line-clamp-6 whitespace-pre-line text-sm leading-7 text-[#4B5563] group-open:hidden">{plainText}</p>
-        <span className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-[#3C61DD] group-open:hidden">Show more</span>
-        <span className="mt-3 hidden min-h-11 items-center text-sm font-semibold text-[#3C61DD] group-open:inline-flex">Show less</span>
+        <span className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-[#3C61DD] group-open:hidden">{t('common.showMore', 'Show more')}</span>
+        <span className="mt-3 hidden min-h-11 items-center text-sm font-semibold text-[#3C61DD] group-open:inline-flex">{t('common.showLess', 'Show less')}</span>
       </summary>
       <div className="mt-2">{rendered}</div>
     </details>

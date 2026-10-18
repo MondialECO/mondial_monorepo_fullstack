@@ -37,7 +37,9 @@
     "loading": "Chargement...",
     "search": "Rechercher...",
     "filter": "Filtrer",
-    "all": "Tous"
+    "all": "Tous",
+    "showMore": "Afficher plus",
+    "showLess": "Afficher moins"
   },
   "auth": {
     "login": {
