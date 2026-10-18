@@ -221,7 +221,7 @@ export default function CreatorDashboard() {
             <Lightbulb className="w-7 h-7" />
           </div>
           <div className="space-y-1.5 max-w-md mx-auto">
-            <h2 className="text-xl font-bold text-foreground">Welcome to Creator Studio, {firstName}!</h2>
+            <h2 className="text-xl font-bold text-foreground">{t('creator.dashboard.welcome', 'Welcome to Creator Studio,')} {firstName}!</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {error instanceof Error && !error.message.includes('403')
                 ? error.message
@@ -235,7 +235,7 @@ export default function CreatorDashboard() {
               className="rounded-xl gap-2 font-bold px-5 bg-primary text-primary-foreground shadow-md hover:bg-primary/90"
             >
               {isCreatingIdea ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Create Your First Idea
+              {t('creator.dashboard.createFirstIdea', 'Create Your First Idea')}
             </Button>
             <Button
               asChild
@@ -243,12 +243,11 @@ export default function CreatorDashboard() {
               className="rounded-xl gap-2 font-semibold"
             >
               <Link href="/dashboard/creator/phase-2/clarifier">
-                <Sparkles className="w-4 h-4 text-primary" /> Start AI Clarifier
+                <Sparkles className="w-4 h-4 text-primary" /> {t('creator.dashboard.startClarifier', 'Start AI Clarifier')}
               </Link>
             </Button>
             <Button onClick={() => void refetch()} variant="ghost" className="rounded-xl gap-2 text-muted-foreground">
-              <RotateCw className="w-4 h-4" /> Try Again
-            </Button>
+              <RotateCw className="w-4 h-4" />{t('creator.dashboard.tryAgain', 'Try Again')}</Button>
           </div>
         </div>
       </div>
@@ -287,7 +286,7 @@ export default function CreatorDashboard() {
             <Button
               variant="outline"
               size="icon"
-              aria-label="Back to dashboard"
+              aria-label={t('creator.dashboard.backToDashboard', 'Back to dashboard')}
               className="h-8 w-8 rounded-lg border-border/70"
               asChild
             >
@@ -296,9 +295,9 @@ export default function CreatorDashboard() {
               </Link>
             </Button>
             <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <span>Creator Flow</span>
+              <span>{t('creator.dashboard.creatorFlow', 'Creator Flow')}</span>
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />
-              <span className="text-foreground">Getting Started</span>
+              <span className="text-foreground">{t('creator.dashboard.gettingStarted', 'Getting Started')}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -397,9 +396,7 @@ export default function CreatorDashboard() {
                   {t('creator.dashboard.roadmap.phase2Desc')}
                 </p>
               </div>
-              <Badge variant="outline" className="text-xs text-primary bg-primary/5 border-primary/20">
-                Phase 2
-              </Badge>
+              <Badge variant="outline" className="text-xs text-primary bg-primary/5 border-primary/20">{'Phase 2'}</Badge>
             </Card>
 
             <Card className="rounded-2xl border-border bg-card p-5 space-y-3 hover:border-primary/40 transition-all shadow-sm">
@@ -412,9 +409,7 @@ export default function CreatorDashboard() {
                   {t('creator.dashboard.roadmap.phase3Desc')}
                 </p>
               </div>
-              <Badge variant="outline" className="text-xs text-blue-500 bg-blue-500/5 border-blue-500/20">
-                Phase 3
-              </Badge>
+              <Badge variant="outline" className="text-xs text-blue-500 bg-blue-500/5 border-blue-500/20">{'Phase 3'}</Badge>
             </Card>
 
             <Card className="rounded-2xl border-border bg-card p-5 space-y-3 hover:border-primary/40 transition-all shadow-sm">
@@ -427,9 +422,7 @@ export default function CreatorDashboard() {
                   {t('creator.dashboard.roadmap.phase4Desc')}
                 </p>
               </div>
-              <Badge variant="outline" className="text-xs text-purple-500 bg-purple-500/5 border-purple-500/20">
-                Phase 4
-              </Badge>
+              <Badge variant="outline" className="text-xs text-purple-500 bg-purple-500/5 border-purple-500/20">{'Phase 4'}</Badge>
             </Card>
 
             <Card className="rounded-2xl border-border bg-card p-5 space-y-3 hover:border-primary/40 transition-all shadow-sm">
@@ -442,9 +435,7 @@ export default function CreatorDashboard() {
                   {t('creator.dashboard.roadmap.phase5Desc')}
                 </p>
               </div>
-              <Badge variant="outline" className="text-xs text-emerald-500 bg-emerald-500/5 border-emerald-500/20">
-                Phase 5
-              </Badge>
+              <Badge variant="outline" className="text-xs text-emerald-500 bg-emerald-500/5 border-emerald-500/20">{'Phase 5'}</Badge>
             </Card>
           </div>
         </div>
@@ -459,18 +450,18 @@ export default function CreatorDashboard() {
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-primary" />
-                  Creator Security & IP
+                  {t('creator.dashboard.securityTitle', 'Creator Security & IP')}
                 </h3>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                All ideas created in Mondial are timestamped, encrypted, and remain 100% your intellectual property until formal transfer.
+                {t('creator.dashboard.securityDesc', 'All ideas created in Mondial are timestamped, encrypted, and remain 100% your intellectual property until formal transfer.')}
               </p>
               <Button
                 onClick={handleCreateIdea}
                 disabled={isCreatingIdea}
                 className="w-full rounded-xl text-xs font-bold h-9 bg-primary text-primary-foreground"
               >
-                Start Your First Idea Now
+                {t('creator.dashboard.startFirstIdeaNow', 'Start Your First Idea Now')}
               </Button>
             </Card>
           </div>
@@ -511,7 +502,7 @@ export default function CreatorDashboard() {
     (r) => r.key === 'legal_assessment' || r.title.toLowerCase().includes('legal')
   );
 
-  // Truthful count of compiled reports and strategic plans
+  // Truthful count {' '}{t('creator.dashboard.of', 'of')}{' '} compiled reports and strategic plans
   const reportsCount = results.filter(
     (r) =>
       r.downloadable ||
@@ -529,7 +520,7 @@ export default function CreatorDashboard() {
           <Button
             variant="outline"
             size="icon"
-            aria-label="Back to dashboard"
+            aria-label={t('creator.dashboard.backToDashboard', 'Back to dashboard')}
             className="h-8 w-8 rounded-lg border-border/70"
             asChild
           >
@@ -538,9 +529,9 @@ export default function CreatorDashboard() {
             </Link>
           </Button>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            <span>Creator Flow</span>
+            <span>{t('creator.dashboard.creatorFlow', 'Creator Flow')}</span>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30" />
-            <span className="text-foreground">Command Center</span>
+            <span className="text-foreground">{t('creator.dashboard.commandCenter', 'Command Center')}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -581,7 +572,7 @@ export default function CreatorDashboard() {
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-white/15 border border-white/20 text-white text-[11px] font-bold uppercase tracking-wider">
               <Sparkles className="w-3 h-3" />
-              Phase {nextAction.phase} · {getPhaseTitle(nextAction.phase)}
+              {t('creator.dashboard.phase', 'Phase')} {nextAction.phase}{' · '}{getPhaseTitle(nextAction.phase)}
             </div>
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white font-heading">
               {heroGreeting}
@@ -795,7 +786,7 @@ export default function CreatorDashboard() {
                     </Badge>
                   )}
                   <Badge variant="outline" className="text-[11px] font-medium border-border text-muted-foreground">
-                    Phase {journey.currentPhase} — {getPhaseTitle(journey.currentPhase)}
+                    {t('creator.dashboard.phase', 'Phase')} {journey.currentPhase}{' — '}{getPhaseTitle(journey.currentPhase)}
                   </Badge>
                 </div>
               </div>
@@ -845,7 +836,7 @@ export default function CreatorDashboard() {
                   {t('creator.dashboard.bento.journey.title')}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Phase {journey.currentPhase} — {getPhaseTitle(journey.currentPhase)}
+                  {t('creator.dashboard.phase', 'Phase')} {journey.currentPhase}{' — '}{getPhaseTitle(journey.currentPhase)}
                 </p>
               </div>
               <Badge variant="outline" className="text-xs font-semibold">
@@ -877,7 +868,7 @@ export default function CreatorDashboard() {
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-footnote font-bold text-muted-foreground font-mono">
-                        Phase {phaseNum}
+                        {t('creator.dashboard.phase', 'Phase')} {phaseNum}
                       </span>
                       {isCompleted ? (
                         <Check className="w-3.5 h-3.5 text-emerald-500" />
@@ -903,10 +894,10 @@ export default function CreatorDashboard() {
               <div className="space-y-2.5 pt-3 border-t border-border/60">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-foreground">
-                    Phase {journey.currentPhase} Milestones
+                    {t('creator.dashboard.phase', 'Phase')} {journey.currentPhase} {t('creator.dashboard.milestones', 'Milestones')}
                   </span>
                   <span className="text-muted-foreground font-mono">
-                    {activeSubstages.filter((s: DashboardSubstage) => s.isCompleted ?? s.status === 'Completed').length} of {activeSubstages.length} done
+                    {activeSubstages.filter((s: DashboardSubstage) => s.isCompleted ?? s.status === 'Completed').length} {t('creator.dashboard.of', 'of')} {activeSubstages.length} {' '}{t('creator.dashboard.done', 'done')}
                   </span>
                 </div>
 
@@ -996,7 +987,7 @@ export default function CreatorDashboard() {
                     </Badge>
                     {chosenPath && (
                       <Badge variant="secondary" className="text-badge font-semibold">
-                        Path: {chosenPath === 'sell' ? 'Full Buyout' : 'Build Company'}
+                        {t('creator.dashboard.path', 'Path:')} {chosenPath === 'sell' ? t('creator.crossroads.fullBuyout', 'Full Buyout') : t('creator.crossroads.buildTitle', 'Build Company')}
                       </Badge>
                     )}
                   </div>
@@ -1077,7 +1068,7 @@ export default function CreatorDashboard() {
               </div>
               <div className="space-y-0.5 border-x border-border/60">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block truncate">
-                  Starting From
+                  {t('creator.dashboard.startingFrom', 'Starting From')}
                 </span>
                 <span className="text-xs font-black text-foreground font-mono truncate block">
                   {forecastSummary?.breakEvenMonth != null
@@ -1087,7 +1078,7 @@ export default function CreatorDashboard() {
               </div>
               <div className="space-y-0.5">
                 <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block truncate">
-                  Model Type
+                  {t('creator.dashboard.modelType', 'Model Type')}
                 </span>
                 <span className="text-xs font-black text-foreground font-mono truncate block">
                   {project.category || project.sector || 'Deterministic'}
@@ -1231,7 +1222,7 @@ export default function CreatorDashboard() {
             ) : conversationsQ.isError ? (
               <div className="flex flex-col items-center gap-2 py-4 text-center">
                 <AlertTriangle className="h-4 w-4 text-destructive" />
-                <p className="text-caption text-destructive">Couldn&apos;t load messages.</p>
+                <p className="text-caption text-destructive">{t('creator.dashboard.cantLoadMessages', "Couldn't load messages.")}</p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -1324,7 +1315,7 @@ export default function CreatorDashboard() {
             ) : notif.isError ? (
               <div className="flex flex-col items-center gap-2 py-4 text-center">
                 <AlertTriangle className="h-4 w-4 text-destructive" />
-                <p className="text-caption text-destructive">Couldn&apos;t load notifications.</p>
+                <p className="text-caption text-destructive">{t('creator.dashboard.cantLoadNotifications', "Couldn't load notifications.")}</p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -1378,10 +1369,8 @@ export default function CreatorDashboard() {
           <Card className="rounded-[20px] border border-border bg-card p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 font-heading">
-                <Users className="w-4 h-4 text-purple-500" />
-                Marketplace
-              </h3>
-              <Badge variant="outline" className="text-[10px] font-mono">Phase 5</Badge>
+                <Users className="w-4 h-4 text-purple-500" />{t('creator.dashboard.marketplace', 'Marketplace')}</h3>
+              <Badge variant="outline" className="text-[10px] font-mono">{'Phase 5'}</Badge>
             </div>
             <div>
               <h4 className="text-xs font-bold text-foreground">
@@ -1400,8 +1389,7 @@ export default function CreatorDashboard() {
               </p>
             </div>
             <div className="pt-1 flex items-center justify-between">
-              <span className="text-footnote text-muted-foreground">
-                Listing: <span className="font-semibold text-foreground">{phase5.isUnlocked ? 'Active' : 'Gated'}</span>
+              <span className="text-footnote text-muted-foreground">{t('creator.dashboard.listing', 'Listing:')}<span className="font-semibold text-foreground">{phase5.isUnlocked ? 'Active' : 'Gated'}</span>
               </span>
             </div>
             <Button
@@ -1426,7 +1414,7 @@ export default function CreatorDashboard() {
       <div className="space-y-4 pt-2">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-foreground font-heading uppercase tracking-wider text-muted-foreground">
-            Quick Actions
+            {t('creator.dashboard.quickActions', 'Quick Actions')}
           </h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1442,8 +1430,8 @@ export default function CreatorDashboard() {
                 <FileText className="w-4 h-4" />
               </div>
               <div className="text-left min-w-0">
-                <span className="block font-bold text-foreground truncate">Business Plan</span>
-                <span className="block text-[11px] text-muted-foreground font-normal truncate">Synthesize executive plan</span>
+                <span className="block font-bold text-foreground truncate">{t('creator.dashboard.businessPlan', 'Business Plan')}</span>
+                <span className="block text-[11px] text-muted-foreground font-normal truncate">{t('creator.dashboard.synthesizePlan', 'Synthesize executive plan')}</span>
               </div>
             </Link>
           </Button>
@@ -1460,8 +1448,8 @@ export default function CreatorDashboard() {
                 <Users className="w-4 h-4" />
               </div>
               <div className="text-left min-w-0">
-                <span className="block font-bold text-foreground truncate">Marketplace</span>
-                <span className="block text-[11px] text-muted-foreground font-normal truncate">Browse ecosystem services</span>
+                <span className="block font-bold text-foreground truncate">{t('creator.dashboard.marketplace', 'Marketplace')}</span>
+                <span className="block text-[11px] text-muted-foreground font-normal truncate">{t('creator.dashboard.browseServices', 'Browse ecosystem services')}</span>
               </div>
             </Link>
           </Button>
@@ -1478,8 +1466,8 @@ export default function CreatorDashboard() {
                 <Sparkles className="w-4 h-4" />
               </div>
               <div className="text-left min-w-0">
-                <span className="block font-bold text-foreground truncate">Hire Providers</span>
-                <span className="block text-[11px] text-muted-foreground font-normal truncate">Design & legal experts</span>
+                <span className="block font-bold text-foreground truncate">{t('creator.dashboard.hireProviders', 'Hire Providers')}</span>
+                <span className="block text-[11px] text-muted-foreground font-normal truncate">{t('creator.dashboard.hireExperts', 'Design & legal experts')}</span>
               </div>
             </Link>
           </Button>
@@ -1496,8 +1484,8 @@ export default function CreatorDashboard() {
                 <Briefcase className="w-4 h-4" />
               </div>
               <div className="text-left min-w-0">
-                <span className="block font-bold text-foreground truncate">Construction</span>
-                <span className="block text-[11px] text-muted-foreground font-normal truncate">Roadmap & strategy</span>
+                <span className="block font-bold text-foreground truncate">{t('creator.dashboard.construction', 'Construction')}</span>
+                <span className="block text-[11px] text-muted-foreground font-normal truncate">{t('creator.dashboard.roadmapStrategy', 'Roadmap & strategy')}</span>
               </div>
             </Link>
           </Button>

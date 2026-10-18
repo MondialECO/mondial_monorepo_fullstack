@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/providers/LanguageProvider";
 import type { CreatorForecastVersion, CreatorJourneyState } from "@/types/creator/creator-journey";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { getNextCreatorAction } from "@/lib/creator-state-resolver";
@@ -33,6 +34,7 @@ const PHASE_LABEL: Record<number, string> = {
 };
 
 export default function MyIdeasPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { state, resetJourney, updateProject, setEntryPath, refetch } = useCreatorProgress();
   const { journeyState, project } = state;
@@ -206,10 +208,10 @@ export default function MyIdeasPage() {
     <Card className="rounded-2xl border-border bg-card shadow-xs p-6 mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <p className="text-sm text-destructive font-semibold">
-          Couldn&apos;t load your ideas — the list may be incomplete.
+          {t('creator.myideas.cantLoad', "Couldn't load your ideas — the list may be incomplete.")}
         </p>
         <Button onClick={() => void loadIdeas()} variant="outline" size="sm" className="rounded-xl text-xs font-bold">
-          <Repeat className="w-3.5 h-3.5 mr-1" /> Retry
+          <Repeat className="w-3.5 h-3.5 mr-1" /> {t('creator.myideas.retry', 'Retry')}
         </Button>
       </div>
     </Card>
@@ -218,7 +220,7 @@ export default function MyIdeasPage() {
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
           <Lightbulb className="w-4 h-4 text-primary" />
-          My Ideas ({ideas.length})
+          {t('creator.myideas.title', 'My Ideas')} ({ideas.length})
         </h3>
         <Button
           onClick={handleStartNewIdea}
@@ -227,7 +229,7 @@ export default function MyIdeasPage() {
           size="sm"
           className="rounded-xl text-xs font-bold"
         >
-          <Plus className="w-3.5 h-3.5 mr-1" /> New idea
+          <Plus className="w-3.5 h-3.5 mr-1" /> {t('creator.myideas.newIdea', 'New idea')}
         </Button>
       </div>
       {/* Switch/continue failures surface HERE (the modal isn't open for those). */}
@@ -243,20 +245,16 @@ export default function MyIdeasPage() {
                   {idea.name || "Untitled idea"}
                 </span>
                 {idea.projectOutcome === "SOLD" ? (
-                  <Badge className="bg-success-light border border-success-strong/30 text-success-strong text-badge font-bold uppercase">
-                    SOLD
-                  </Badge>
+                  <Badge className="bg-success-light border border-success-strong/30 text-success-strong text-badge font-bold uppercase">{t('creator.myideas.sold', 'SOLD')}</Badge>
                 ) : idea.projectOutcome === "CO_FOUNDED" ? (
-                  <Badge className="bg-primary/10 border border-primary/30 text-primary text-badge font-bold uppercase">
-                    CO-FOUNDED
-                  </Badge>
+                  <Badge className="bg-primary/10 border border-primary/30 text-primary text-badge font-bold uppercase">{t('creator.myideas.coFounded', 'CO-FOUNDED')}</Badge>
                 ) : (
                   <>
                     {idea.isActive && (
-                      <Badge className="bg-primary/10 hover:bg-primary/10 border-0 text-primary text-badge font-bold">Active</Badge>
+                      <Badge className="bg-primary/10 hover:bg-primary/10 border-0 text-primary text-badge font-bold">{t('creator.myideas.active', 'Active')}</Badge>
                     )}
                     {idea.isLeveledUp && (
-                      <Badge className="bg-success-light hover:bg-success-light border-0 text-success-strong text-badge font-bold">Leveled up</Badge>
+                      <Badge className="bg-success-light hover:bg-success-light border-0 text-success-strong text-badge font-bold">{t('creator.myideas.leveledUp', 'Leveled up')}</Badge>
                     )}
                   </>
                 )}
@@ -264,11 +262,11 @@ export default function MyIdeasPage() {
               <p className="text-xs text-muted-foreground truncate mt-0.5">
                 {idea.projectOutcome === "SOLD" ? (
                   <span className="text-success-strong font-semibold">
-                    Transferred via Full Buyout {idea.salePrice ? `for €${idea.salePrice.toLocaleString()} EUR` : ""} {idea.soldAt ? `on ${new Date(idea.soldAt).toLocaleDateString()}` : ""}
+                    {t('creator.myideas.transferredBuyout', 'Transferred via Full Buyout')} {idea.salePrice ? `for €${idea.salePrice.toLocaleString()} EUR` : ""} {idea.soldAt ? `on ${new Date(idea.soldAt).toLocaleDateString()}` : ""}
                   </span>
                 ) : idea.projectOutcome === "CO_FOUNDED" ? (
                   <span className="text-primary font-semibold">
-                    Active Co-Founder Partnership
+                    {t('creator.myideas.activePartnership', 'Active Co-Founder Partnership')}
                   </span>
                 ) : (
                   idea.concept || idea.problem || "No concept yet — continue to define it."
@@ -288,8 +286,7 @@ export default function MyIdeasPage() {
                   className="rounded-xl text-xs font-bold bg-success-strong hover:bg-success-strong/90 text-white shadow-sm gap-1.5"
                 >
                   <Link href={`/dashboard/creator/sales/${idea.activeBuyoutDealId || idea.ideaId}`}>
-                    <FileCheck className="w-3.5 h-3.5" /> View Sale Record
-                  </Link>
+                    <FileCheck className="w-3.5 h-3.5" />{t('creator.myideas.viewSaleRecord', 'View Sale Record')}</Link>
                 </Button>
               ) : idea.projectOutcome === "CO_FOUNDED" ? (
                 <Button
@@ -298,8 +295,7 @@ export default function MyIdeasPage() {
                   variant="default"
                   className="rounded-xl text-xs font-bold shadow-sm"
                 >
-                  <Link href="/dashboard/creator/partnerships">
-                    Open Partnership <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  <Link href="/dashboard/creator/partnerships">{t('creator.myideas.openPartnership', 'Open Partnership')}<ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </Link>
                 </Button>
               ) : (
@@ -313,7 +309,7 @@ export default function MyIdeasPage() {
                       className="rounded-xl text-xs font-bold"
                     >
                       {busy === idea.ideaId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Repeat className="w-3.5 h-3.5 mr-1" />}
-                      Switch
+                      {t('creator.myideas.switch', 'Switch')}
                     </Button>
                   )}
                   <Button
@@ -323,7 +319,7 @@ export default function MyIdeasPage() {
                     className="rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/95"
                   >
                     {busy === idea.ideaId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                    Continue <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    {t('creator.myideas.continue', 'Continue')} <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </Button>
                 </>
               )}
@@ -339,10 +335,10 @@ export default function MyIdeasPage() {
     return (
       <div className="mx-auto w-full max-w-[1140px] py-6">
         <div className="mb-8 space-y-2">
-          <div className="text-xs font-bold text-primary uppercase tracking-wider">Phase 2 — Project Identity</div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">My Idea</h1>
+          <div className="text-xs font-bold text-primary uppercase tracking-wider">{t('creator.myideas.phase2ProjectIdentity', 'Phase 2 — Project Identity')}</div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">{t('creator.myideas.myIdea', 'My Idea')}</h1>
           <p className="text-sm text-muted-foreground">
-            Turn an observation or concept into a clear project identity.
+            {t('creator.myideas.turnObservationDesc', 'Turn an observation or concept into a clear project identity.')}
           </p>
         </div>
 
@@ -356,9 +352,9 @@ export default function MyIdeasPage() {
                 <Lightbulb className="h-6 w-6" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-foreground sm:text-xl">I already have an idea</h3>
+                <h3 className="text-lg font-bold text-foreground sm:text-xl">{t('creator.myideas.alreadyHaveIdea', 'I already have an idea')}</h3>
                 <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">
-                  I have a concept in mind — let's refine and sharpen it together through focused questions.
+                  {t('creator.myideas.haveConceptPrompt', "I have a concept in mind — let's refine and sharpen it together through focused questions.")}
                 </p>
               </div>
             </div>
@@ -366,7 +362,7 @@ export default function MyIdeasPage() {
               onClick={handleRefinePath}
               className="group mt-6 w-full rounded-xl py-5 text-xs font-bold sm:text-sm bg-primary text-primary-foreground hover:bg-primary/95"
             >
-              Refine my idea
+              {t('creator.myideas.refineIdea', 'Refine my idea')}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
           </Card>
@@ -392,10 +388,10 @@ export default function MyIdeasPage() {
     return (
       <div className="mx-auto w-full max-w-[1140px] py-6">
         <div className="mb-8 space-y-2">
-          <div className="text-xs font-bold text-primary uppercase tracking-wider">Phase 2 — Project Identity</div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Project Identity in progress</h1>
+          <div className="text-xs font-bold text-primary uppercase tracking-wider">{t('creator.myideas.phase2ProjectIdentity', 'Phase 2 — Project Identity')}</div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">{t('creator.myideas.identityInProgress', 'Project Identity in progress')}</h1>
           <p className="text-sm text-muted-foreground">
-            Continue from where you left off.
+            {t('creator.myideas.continueWhereLeftOff', 'Continue from where you left off.')}
           </p>
         </div>
 
@@ -404,8 +400,8 @@ export default function MyIdeasPage() {
         <Card className="max-w-2xl border-border bg-card rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
           <div className="space-y-4">
             <div className="flex justify-between items-center text-xs font-semibold">
-              <span className="text-foreground">Onboarding Progress</span>
-              <span className="text-muted-foreground">{progressPercent}% complete</span>
+              <span className="text-foreground">{t('creator.myideas.onboardingProgress', 'Onboarding Progress')}</span>
+              <span className="text-muted-foreground">{progressPercent}{t('creator.myideas.percentComplete', '% complete')}</span>
             </div>
             <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
               <div className="h-full bg-primary rounded-full" style={{ width: `${progressPercent}%` }} />
@@ -414,7 +410,7 @@ export default function MyIdeasPage() {
 
           <div className="grid grid-cols-2 gap-4 border-y border-border py-4 text-xs">
             <div>
-              <span className="text-muted-foreground uppercase tracking-wider block font-bold text-label">Current Step</span>
+              <span className="text-muted-foreground uppercase tracking-wider block font-bold text-label">{t('creator.myideas.currentStep', 'Current Step')}</span>
               <span className="text-foreground font-bold text-sm mt-1 block">{currentStepLabel}</span>
             </div>
           </div>
@@ -424,14 +420,14 @@ export default function MyIdeasPage() {
               onClick={() => router.push(nextAction.route)}
               className="flex-1 rounded-xl py-5 font-bold text-sm bg-primary text-primary-foreground hover:bg-primary/95"
             >
-              Resume Setup
+              {t('creator.myideas.resumeSetup', 'Resume Setup')}
             </Button>
             <Button
               onClick={() => setShowConfirmStartOver(true)}
               variant="outline"
               className="rounded-xl py-5 text-sm font-bold text-destructive hover:bg-destructive/5 border-destructive/20"
             >
-              Start Over
+              {t('creator.myideas.startOver', 'Start Over')}
             </Button>
           </div>
         </Card>
@@ -442,10 +438,10 @@ export default function MyIdeasPage() {
             <Card className="max-w-md w-full border border-border bg-card p-6 shadow-xl space-y-4 rounded-2xl">
               <div className="flex items-center gap-3 text-primary">
                 <Lightbulb className="w-6 h-6" />
-                <h3 className="font-extrabold text-lg">Start a new idea?</h3>
+                <h3 className="font-extrabold text-lg">{t('creator.myideas.startNewIdeaTitle', 'Start a new idea?')}</h3>
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Your current draft stays in My Ideas — you can switch back to it anytime. We&apos;ll start a fresh journey for the new idea.
+                {t('creator.myideas.startNewIdeaDesc', "Your current draft stays in My Ideas — you can switch back to it anytime. We'll start a fresh journey for the new idea.")}
               </p>
               {createError && <p className="text-sm text-destructive font-semibold">{createError}</p>}
               <div className="flex gap-3 pt-2">
@@ -455,16 +451,14 @@ export default function MyIdeasPage() {
                   className="flex-1 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold"
                 >
                   {busy === "new" ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
-                  Yes, start new idea
+                  {t('creator.myideas.yesStartNewIdea', 'Yes, start new idea')}
                 </Button>
                 <Button
                   onClick={() => { setShowConfirmStartOver(false); setCreateError(null); }}
                   disabled={!!busy}
                   variant="outline"
                   className="flex-1 rounded-xl font-bold border-border"
-                >
-                  Cancel
-                </Button>
+                >{t('creator.myideas.cancel', 'Cancel')}</Button>
               </div>
             </Card>
           </div>
@@ -485,10 +479,10 @@ export default function MyIdeasPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 sm:mb-8">
         <div className="space-y-1">
-          <div className="text-xs font-bold text-primary uppercase tracking-wider">Phase 2 — Project Identity</div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">My Idea</h1>
+          <div className="text-xs font-bold text-primary uppercase tracking-wider">{t('creator.myideas.phase2ProjectIdentity', 'Phase 2 — Project Identity')}</div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{t('creator.myideas.myIdea', 'My Idea')}</h1>
           <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-            {project.name}{project.category ? ` · ${project.category}` : ""} · Idea Clarity {project.clarityScore}/100
+            {project.name}{project.category ? ` · ${project.category}` : ""} {'· '}{t('creator.myideas.ideaClarity', 'Idea Clarity')} {project.clarityScore}/100
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -497,14 +491,14 @@ export default function MyIdeasPage() {
             className="flex-1 sm:flex-none rounded-xl bg-primary text-primary-foreground hover:bg-primary/95 text-xs font-bold h-10 px-4"
           >
             <Pencil className="w-3.5 h-3.5 mr-1.5" />
-            Edit Concept
+            {t('creator.myideas.editConcept', 'Edit Concept')}
           </Button>
           <Button
             onClick={handleStartNewIdea}
             variant="outline"
             className="flex-1 sm:flex-none rounded-xl border-border hover:bg-muted text-xs font-bold h-10 px-4"
           >
-            Start New Idea
+            {t('creator.myideas.startNewIdea', 'Start New Idea')}
           </Button>
         </div>
       </div>
@@ -514,44 +508,42 @@ export default function MyIdeasPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: First Draft Summary + Clarity Score + Journal */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Your Idea — First Draft */}
+          {/* {t('creator.myideas.firstDraft', 'Your Idea — First Draft')} */}
           <Card className="rounded-2xl border-border bg-card shadow-xs p-6 space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <Flame className="w-4 h-4 text-primary" />
-                Your Idea — First Draft
-              </h3>
+                <Flame className="w-4 h-4 text-primary" />{t('creator.myideas.firstDraft', 'Your Idea — First Draft')}</h3>
               <Badge variant="outline" className="text-muted-foreground border-border text-badge font-bold">
-                AI Structured
+                {t('creator.myideas.aiStructured', 'AI Structured')}
               </Badge>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 border border-border rounded-xl overflow-hidden divide-y md:divide-y-0 md:divide-x divide-border">
               <div className="divide-y divide-border flex flex-col">
                 <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Concept</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.concept', 'Concept')}</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.concept || "—"}</p>
                 </div>
                 <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Core Problem</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.coreProblem', 'Core Problem')}</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.problem || "—"}</p>
                 </div>
                 <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Market Gap</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.marketGap', 'Market Gap')}</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.marketGap || "—"}</p>
                 </div>
               </div>
               <div className="divide-y divide-border flex flex-col">
                 <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Target User</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.targetUser', 'Target User')}</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.targetUser || "—"}</p>
                 </div>
                 <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Your Solution</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.yourSolution', 'Your Solution')}</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.solution || "—"}</p>
                 </div>
                 <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Your Edge</span>
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.yourEdge', 'Your Edge')}</span>
                   <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.creatorEdge || "—"}</p>
                 </div>
               </div>
@@ -562,7 +554,7 @@ export default function MyIdeasPage() {
           <Card className="rounded-2xl border-border bg-card shadow-xs p-6 space-y-6">
             <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" />
-              Idea Clarity Score
+              {t('creator.myideas.clarityScore', 'Idea Clarity Score')}
             </h3>
 
             <div className="flex flex-col sm:flex-row items-center gap-6 bg-muted/20 p-4 rounded-xl border border-border/50">
@@ -590,7 +582,7 @@ export default function MyIdeasPage() {
                 {/* Real score only. No invented verdicts, badges, or per-dimension
                     bars: no such data exists in the journey. */}
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Scored by the AI clarifier from your refined idea.
+                  {t('creator.myideas.clarityScoreDesc', 'Scored by the AI clarifier from your refined idea.')}
                 </p>
               </div>
             </div>
@@ -604,7 +596,7 @@ export default function MyIdeasPage() {
           <Card className="rounded-2xl border-border bg-card shadow-xs p-6 space-y-6">
             <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
               <Layout className="w-4 h-4 text-primary" />
-              Project Identity
+              {t('creator.myideas.projectIdentity', 'Project Identity')}
             </h3>
 
             <div className="text-center space-y-3.5 border-b border-border/80 pb-6 flex flex-col items-center">
@@ -613,9 +605,7 @@ export default function MyIdeasPage() {
                   {project.name ? project.name.charAt(0).toUpperCase() : "?"}
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-2xl bg-muted border border-dashed border-border flex items-center justify-center font-bold text-muted-foreground text-xs shrink-0">
-                  No Logo
-                </div>
+                <div className="w-16 h-16 rounded-2xl bg-muted border border-dashed border-border flex items-center justify-center font-bold text-muted-foreground text-xs shrink-0">{t('creator.myideas.noLogo', 'No Logo')}</div>
               )}
               <div className="space-y-1">
                 <h4 className="text-lg font-black text-foreground tracking-tight">{project.name}</h4>
@@ -630,7 +620,7 @@ export default function MyIdeasPage() {
                   </Badge>
                 )}
                 <Badge className="bg-green-500/10 hover:bg-green-500/10 border-0 text-green-600 dark:text-green-400 text-badge font-bold">
-                  ✓ Identity ready
+                  {t('creator.myideas.identityReady', '✓ Identity ready')}
                 </Badge>
               </div>
             </div>
@@ -638,7 +628,7 @@ export default function MyIdeasPage() {
             <div className="space-y-3">
               {/* Target Audience */}
               <div className="bg-muted/30 p-3 rounded-xl space-y-1">
-                <span className="text-label text-muted-foreground font-bold tracking-wider uppercase">Target Audience</span>
+                <span className="text-label text-muted-foreground font-bold tracking-wider uppercase">{t('creator.myideas.targetAudience', 'Target Audience')}</span>
                 <p className="text-xs text-foreground font-semibold leading-relaxed">
                   {project.targetUser || "—"}
                 </p>
@@ -646,7 +636,7 @@ export default function MyIdeasPage() {
 
               {/* Branding */}
               <div className="bg-muted/30 p-3 rounded-xl space-y-2">
-                <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">Branding</span>
+                <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.branding', 'Branding')}</span>
                 <div className="flex items-center justify-between text-xs font-semibold">
                   <span className="text-foreground">{brandingMethod}</span>
                   {project.branding.colorPalette && project.branding.colorPalette.length > 0 && (
@@ -662,8 +652,8 @@ export default function MyIdeasPage() {
 
               {isPhase3Complete && (
                 <div className="bg-primary/5 border border-primary/10 p-3 rounded-xl space-y-1">
-                  <span className="text-label text-primary font-bold tracking-wider uppercase">Project Intelligence</span>
-                  <div className="text-xs font-bold text-foreground">Phase 3 complete</div>
+                  <span className="text-label text-primary font-bold tracking-wider uppercase">{t('creator.myideas.projectIntelligence', 'Project Intelligence')}</span>
+                  <div className="text-xs font-bold text-foreground">{t('creator.myideas.phase3Complete', 'Phase 3 complete')}</div>
                   <span className="text-caption text-muted-foreground block font-medium">
                     {(latestForecast?.summary as any)?.year3Revenue
                       ? `Forecast saved with Year 3 revenue €${(latestForecast?.summary as any)?.year3Revenue.toLocaleString()}.`
@@ -682,10 +672,10 @@ export default function MyIdeasPage() {
           <Card className="max-w-md w-full border border-border bg-card p-6 shadow-xl space-y-4 rounded-2xl">
             <div className="flex items-center gap-3 text-primary">
               <Lightbulb className="w-6 h-6" />
-              <h3 className="font-extrabold text-lg">Start a new idea?</h3>
+              <h3 className="font-extrabold text-lg">{t('creator.myideas.startNewIdeaTitle', 'Start a new idea?')}</h3>
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              Your current idea stays in My Ideas — you can switch back to it anytime. We&apos;ll start a fresh journey for the new one.
+              {t('creator.myideas.startNewIdeaDesc', "Your current draft stays in My Ideas — you can switch back to it anytime. We'll start a fresh journey for the new idea.")}
             </p>
             <div className="flex gap-3 pt-2">
               <Button
@@ -694,16 +684,14 @@ export default function MyIdeasPage() {
                 className="flex-1 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold"
               >
                 {busy === "new" ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
-                Yes, start new idea
+                {t('creator.myideas.yesStartNewIdea', 'Yes, start new idea')}
               </Button>
               <Button
                 onClick={() => setShowConfirmStartOver(false)}
                 disabled={!!busy}
                 variant="outline"
                 className="flex-1 rounded-xl font-bold border-border"
-              >
-                Cancel
-              </Button>
+              >{t('creator.myideas.cancel', 'Cancel')}</Button>
             </div>
           </Card>
         </div>
