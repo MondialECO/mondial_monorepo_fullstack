@@ -1,3 +1,4 @@
+import { useTranslation } from "@/hooks/useTranslation";
 "use client";
 
 import React from "react";
@@ -12,12 +13,11 @@ interface CascadeWarningModalProps {
   onClose: () => void;
 }
 
-export function CascadeWarningModal({
-  isOpen,
+export function CascadeWarningModal({ isOpen,
   targetSection,
   onConfirm,
-  onClose,
-}: CascadeWarningModalProps) {
+  onClose, }: CascadeWarningModalProps) {
+  const { t } = useTranslation("creator");
   if (!isOpen) return null;
 
   const isDirection = targetSection === "direction";
@@ -60,7 +60,7 @@ export function CascadeWarningModal({
           <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
             <AlertTriangle className="size-5 shrink-0" />
             <span className="font-mono text-badge font-bold uppercase tracking-wider">
-              Cascade Invalidation Warning
+              {t("modals.cascadeTitle")}
             </span>
           </div>
 
@@ -68,7 +68,7 @@ export function CascadeWarningModal({
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            aria-label="Close dialog"
+            aria-label={t("modals.cascadeClose")}
           >
             <X className="size-4" />
           </button>
@@ -90,7 +90,7 @@ export function CascadeWarningModal({
 
           <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 space-y-2">
             <span className="font-mono text-badge font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
-              AFFECTED DOWNSTREAM ASSETS
+              {t("modals.cascadeAffected")}
             </span>
             <ul className="space-y-1.5">
               {invalidations.map((item, idx) => (
@@ -103,7 +103,7 @@ export function CascadeWarningModal({
           </div>
 
           <p className="text-caption text-muted-foreground italic">
-            A version snapshot of your current brand kit will be automatically saved in Version History before entering Studio.
+            {t("modals.cascadeNotice")}
           </p>
         </div>
 
@@ -114,14 +114,14 @@ export function CascadeWarningModal({
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-button font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
-            Cancel
+            {t("modals.cascadeCancel")}
           </button>
           <button
             type="button"
             onClick={onConfirm}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-button font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-colors"
           >
-            <span>Proceed to Studio</span>
+            <span>{t("modals.cascadeProceed")}</span>
             <ArrowRight className="size-3.5" />
           </button>
         </div>

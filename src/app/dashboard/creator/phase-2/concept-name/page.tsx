@@ -454,9 +454,9 @@ export default function ConceptNamePage() {
                               {match.name}
                             </span>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                              {match.siren && <span>SIREN: {match.siren}</span>}
+                              {match.siren && <span>{t("creator.phase2.conceptName.companySearch.siren", "SIREN: {{siren}}", { siren: match.siren })}</span>}
                               {location && <span>{t("creator.phase2.conceptName.companySearch.location", { location })}</span>}
-                              {match.activityCode && <span>NAF: {match.activityCode}</span>}
+                              {match.activityCode && <span>{t("creator.phase2.conceptName.companySearch.naf", "NAF: {{naf}}", { naf: match.activityCode })}</span>}
                             </div>
                           </div>
 

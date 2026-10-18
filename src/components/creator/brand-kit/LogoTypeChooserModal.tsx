@@ -1,3 +1,4 @@
+import { useTranslation } from "@/hooks/useTranslation";
 "use client";
 
 import React, { useState, useMemo } from "react";
@@ -132,7 +133,7 @@ export function computeLogoTypeFit(
 }
 
 // 6 Canonical Architectural Form Options (Figma Node 57004:10297)
-const LOGO_TYPE_OPTIONS: LogoTypeOption[] = [
+const getLogoTypeOptions = (t: (k: string) => string): LogoTypeOption[] => [
   {
     key: "wordmark",
     name: "Wordmark",
@@ -170,7 +171,7 @@ const LOGO_TYPE_OPTIONS: LogoTypeOption[] = [
             {brandName || "Northline"}
           </span>
           <span className="text-footnote text-muted-foreground font-mono tracking-widest uppercase">
-            STUDIO
+            {t("modals.logoTypeStudioTag")}
           </span>
         </div>
       </div>
@@ -257,6 +258,8 @@ export function LogoTypeChooserModal({
   onSuccess,
   onKitUpdated,
 }: LogoTypeChooserModalProps) {
+  const { t } = useTranslation("creator");
+  const LOGO_TYPE_OPTIONS = useMemo(() => getLogoTypeOptions(t), [t]);
   const initialType = kit?.logo?.logoType || "symbol_plus_name";
   const [selectedType, setSelectedType] = useState<string>(initialType);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -344,7 +347,7 @@ export function LogoTypeChooserModal({
         
         {/* 1. Modal Header & 6-Step Workflow Track (Figma Node 57004:10297) */}
         <ModalWorkflowHeader
-          title="What kind of logo?"
+          title={t("modals.logoTypeModalTitle")}
           subtitle={`Pick the form first — then we'll draw six concepts in that form, inside ${directionName}.`}
           currentStep={3}
           onClose={onClose}
@@ -367,17 +370,17 @@ export function LogoTypeChooserModal({
               {/* Context 1: Your Name */}
               <div className="flex flex-col">
                 <span className="text-footnote font-semibold text-muted-foreground uppercase tracking-wider font-mono">
-                  YOUR NAME
+                  {t("modals.logoTypeYourName")}
                 </span>
                 <span className="text-xs sm:text-sm font-semibold text-foreground font-sans">
-                  {businessName} · <span className="font-mono text-xs">{charLength}</span> characters
+                  {businessName} · <span className="font-mono text-xs">{charLength}</span> {t("modals.logoTypeCharacters")}
                 </span>
               </div>
 
               {/* Context 2: First Appears On */}
               <div className="flex flex-col">
                 <span className="text-footnote font-semibold text-muted-foreground uppercase tracking-wider font-mono">
-                  FIRST APPEARS ON
+                  {t("modals.logoTypeFirstAppears")}
                 </span>
                 <span className="text-xs sm:text-sm font-semibold text-foreground font-sans capitalize">
                   {firstAppearance}
@@ -387,7 +390,7 @@ export function LogoTypeChooserModal({
               {/* Context 3: Direction */}
               <div className="flex flex-col">
                 <span className="text-footnote font-semibold text-muted-foreground uppercase tracking-wider font-mono">
-                  DIRECTION
+                  {t("modals.logoTypeDirection")}
                 </span>
                 <span className="text-xs sm:text-sm font-semibold text-foreground font-sans">
                   {directionName}
@@ -396,7 +399,7 @@ export function LogoTypeChooserModal({
             </div>
 
             <div className="text-xs text-muted-foreground font-sans hidden md:block text-right">
-              These shape which types work best for you.
+              {t("modals.logoTypeShapeNotice")}
             </div>
           </div>
 
@@ -453,13 +456,13 @@ export function LogoTypeChooserModal({
                         <div className="flex items-start gap-2 text-xs font-sans">
                           <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 stroke-[2.5]" />
                           <span className="text-foreground/90 leading-snug">
-                            <strong className="font-semibold text-foreground">Good when:</strong> {option.goodWhen}
+                            <strong className="font-semibold text-foreground">{t("modals.logoTypeGoodWhen")}</strong> {option.goodWhen}
                           </span>
                         </div>
                         <div className="flex items-start gap-2 text-xs font-sans">
                           <span className="font-mono text-xs text-muted-foreground shrink-0 leading-none mt-0.5 select-none">—</span>
                           <span className="text-muted-foreground leading-snug">
-                            <strong className="font-semibold text-foreground/80">Trade-off:</strong> {option.tradeOff}
+                            <strong className="font-semibold text-foreground/80">{t("modals.logoTypeTradeOff")}</strong> {option.tradeOff}
                           </span>
                         </div>
                       </div>
@@ -498,7 +501,7 @@ export function LogoTypeChooserModal({
         <div className="flex items-center justify-between px-6 sm:px-8 py-4 border-t border-border/60 bg-muted/15 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs sm:text-sm text-muted-foreground font-sans">
-              Selected Type:{" "}
+              {t("modals.logoTypeSelectedType")}{" "}
               <strong className="text-foreground font-semibold">
                 {selectedOption.name}
               </strong>
@@ -514,7 +517,7 @@ export function LogoTypeChooserModal({
               disabled={isSubmitting}
               className="cursor-pointer font-sans"
             >
-              Cancel
+              {t("modals.logoTypeCancel")}
             </Button>
 
             <Button
@@ -527,12 +530,12 @@ export function LogoTypeChooserModal({
               {isSubmitting ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  <span>Saving Type...</span>
+                  <span>{t("modals.logoTypeSaving")}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="size-3.5" />
-                  <span>Use {selectedOption.name}</span>
+                  <span>{t("modals.logoTypeUseBtn")} {selectedOption.name}</span>
                 </>
               )}
             </Button>

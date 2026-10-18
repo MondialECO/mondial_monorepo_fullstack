@@ -1,3 +1,4 @@
+import { useTranslation } from "@/hooks/useTranslation";
 "use client";
 
 import React, { useState } from "react";
@@ -58,14 +59,13 @@ const VARIATION_SPECS: Record<string, VariationMeta> = {
   },
 };
 
-export function VariationTile({
-  variationKey,
+export function VariationTile({ variationKey,
   variation,
   brandName = "Brand",
   isWide = false,
   onRedraw,
-  isRedrawing = false,
-}: VariationTileProps) {
+  isRedrawing = false, }: VariationTileProps) {
+  const { t } = useTranslation("creator");
   const [downloaded, setDownloaded] = useState(false);
   const meta = VARIATION_SPECS[variationKey] || {
     title: variationKey.toUpperCase().replace(/_/g, "-"),
@@ -141,7 +141,7 @@ export function VariationTile({
         {isPrimary && (
           <div className="absolute top-3.5 right-3.5 z-10">
             <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-badge font-semibold tracking-wider uppercase">
-              PRIMARY
+              {t("modals.variationPrimary")}
             </span>
           </div>
         )}
@@ -150,7 +150,7 @@ export function VariationTile({
         {isTransparentStage && (
           <div className="absolute top-3.5 right-3.5 z-10">
             <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-background/80 dark:bg-background/90 backdrop-blur-xs border border-border/60 text-muted-foreground font-sans text-badge font-semibold tracking-wider">
-              PNG · ALPHA
+              {t("modals.variationFormatProof")}
             </span>
           </div>
         )}
@@ -162,8 +162,8 @@ export function VariationTile({
               type="button"
               onClick={handleDownload}
               className="flex size-7 items-center justify-center rounded-md border border-border/80 bg-background/90 backdrop-blur-xs text-muted-foreground hover:text-foreground hover:border-primary/50 shadow-2xs transition-colors cursor-pointer"
-              title="Download this variation"
-              aria-label="Download this variation"
+              title={t("modals.variationDownloadTitle")}
+              aria-label={t("modals.variationDownloadAria")}
             >
               {downloaded ? <Check className="size-3.5 text-emerald-600" /> : <ArrowDownToLine className="size-3.5" />}
             </button>
@@ -179,12 +179,12 @@ export function VariationTile({
                 }}
                 disabled={isRedrawing}
                 className="flex size-7 items-center justify-center rounded-md border border-border/80 bg-background/90 backdrop-blur-xs text-muted-foreground hover:text-foreground hover:border-primary/50 shadow-2xs transition-colors cursor-pointer"
-                title="Redraw just this variation"
+                title={t("modals.variationRedrawTitle")}
               >
                 <RefreshCw className={`size-3.5 ${isRedrawing ? "animate-spin text-primary" : ""}`} />
               </button>
               <div className="absolute right-0 top-full mt-1.5 hidden group-hover/btn:block z-30 whitespace-nowrap px-2 py-1 rounded bg-popover text-popover-foreground text-badge font-mono shadow-md border border-border">
-                Redraw just this variation
+                {t("modals.variationRedrawBtn")}
               </div>
             </div>
           )}
@@ -212,10 +212,10 @@ export function VariationTile({
                 <div className="size-7 rounded border border-border/60 bg-card flex items-center justify-center p-0.5 shadow-2xs">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {assetUri && (
-                    <img src={assetUri} alt="64px proof" className="size-full object-contain" />
+                    <img src={assetUri} alt={t("modals.variation64pxProof")} className="size-full object-contain" />
                   )}
                 </div>
-                <span className="font-sans text-badge text-muted-foreground">64px</span>
+                <span className="font-sans text-badge text-muted-foreground">{t("modals.variation64px")}</span>
               </div>
 
               {/* 32px */}
@@ -223,10 +223,10 @@ export function VariationTile({
                 <div className="size-5 rounded-[3px] border border-border/60 bg-card flex items-center justify-center p-0.5 shadow-2xs">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {assetUri && (
-                    <img src={assetUri} alt="32px proof" className="size-full object-contain" />
+                    <img src={assetUri} alt={t("modals.variation32pxProof")} className="size-full object-contain" />
                   )}
                 </div>
-                <span className="font-sans text-badge text-muted-foreground">32px</span>
+                <span className="font-sans text-badge text-muted-foreground">{t("modals.variation32px")}</span>
               </div>
 
               {/* 16px */}
@@ -234,10 +234,10 @@ export function VariationTile({
                 <div className="size-3.5 rounded-[2px] border border-border/60 bg-card flex items-center justify-center p-[1px] shadow-2xs">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {assetUri && (
-                    <img src={assetUri} alt="16px proof" className="size-full object-contain" />
+                    <img src={assetUri} alt={t("modals.variation16pxProof")} className="size-full object-contain" />
                   )}
                 </div>
-                <span className="font-sans text-badge text-muted-foreground">16px</span>
+                <span className="font-sans text-badge text-muted-foreground">{t("modals.variation16px")}</span>
               </div>
             </div>
           </div>

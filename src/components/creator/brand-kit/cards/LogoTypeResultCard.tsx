@@ -1,3 +1,4 @@
+import { useTranslation } from "@/hooks/useTranslation";
 "use client";
 
 import React from "react";
@@ -24,6 +25,7 @@ function formatLogoType(type?: string): string {
 }
 
 export function LogoTypeResultCard({ logo, onEdit }: LogoTypeResultCardProps) {
+  const { t } = useTranslation("creator");
   if (!logo?.logoType) return null;
 
   const formattedType = formatLogoType(logo.logoType);
@@ -42,10 +44,10 @@ export function LogoTypeResultCard({ logo, onEdit }: LogoTypeResultCardProps) {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-badge font-semibold text-primary uppercase tracking-wider">
-                STEP 3
+                {t("cards.logoTypeStep3")}
               </span>
               <span className="text-badge text-muted-foreground">•</span>
-              <span className="text-caption text-muted-foreground font-medium">Logo Type Archetype</span>
+              <span className="text-caption text-muted-foreground font-medium">{t("cards.logoTypeTitle")}</span>
             </div>
             <h3 className="text-card-title font-bold text-foreground tracking-tight">
               {formattedType}
@@ -62,7 +64,7 @@ export function LogoTypeResultCard({ logo, onEdit }: LogoTypeResultCardProps) {
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/60 text-button font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
         >
           <Edit3 className="size-3.5" />
-          Review & Edit
+          {t("cards.logoTypeReviewEdit")}
         </button>
       </div>
 
@@ -73,10 +75,10 @@ export function LogoTypeResultCard({ logo, onEdit }: LogoTypeResultCardProps) {
           </div>
           <div>
             <span className="text-body font-semibold text-foreground">
-              Selected Family: {formattedType}
+              {t("cards.logoTypeSelectedFamily")} {formattedType}
             </span>
             <p className="text-caption text-muted-foreground">
-              Directs parametric geometry generation across the 6 candidate concept models.
+              {t("cards.logoTypeDirectsGeometry")}
             </p>
           </div>
         </div>

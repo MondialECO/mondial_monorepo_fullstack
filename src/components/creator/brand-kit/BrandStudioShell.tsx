@@ -7,6 +7,7 @@ import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import { exportBrandKitZip } from "@/lib/brand-kit-export";
 import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/hooks/useTranslation";
 import { StrategyResultCard } from "./cards/StrategyResultCard";
 import { DirectionResultCard } from "./cards/DirectionResultCard";
 import { ColorsResultCard } from "./cards/ColorsResultCard";
@@ -151,6 +152,7 @@ function IncompleteSectionCard({
   icon: Icon,
   onAction,
 }: IncompleteSectionCardProps) {
+  const { t } = useTranslation();
   return (
     <div className="w-full rounded-2xl border border-dashed border-border/80 bg-card/60 p-6 shadow-2xs text-card-foreground">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -161,11 +163,11 @@ function IncompleteSectionCard({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-badge font-semibold text-muted-foreground uppercase tracking-wider">
-                STEP {stepNumber}
+                {t("creator.phase2.brandKit.shell.stepNumber", "STEP {{step}}", { step: stepNumber })}
               </span>
               <span className="text-badge text-muted-foreground">•</span>
               <span className="text-badge font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                Incomplete
+                {t("creator.phase2.brandKit.shell.incomplete", "Incomplete")}
               </span>
             </div>
             <h3 className="font-heading text-card-title font-bold text-foreground tracking-tight mt-0.5">
@@ -196,6 +198,7 @@ export function BrandStudioShell({
   initialStep,
 }: BrandStudioShellProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [kit, setKit] = useState<BrandKit | null>(initialKit ?? null);
   const [activeModal, setActiveModal] = useState<StudioModalKey | null>(() => {
     const stepModal = normalizeModalKey(initialStep);
@@ -508,7 +511,7 @@ export function BrandStudioShell({
 
       {/* 2. Full-Bleed Dot-Grid Canvas & Accumulated View Mode Sections */}
       <section
-        aria-label="Brand Canvas"
+        aria-label={t("creator.phase2.brandKit.shell.canvasAria", "Brand Canvas")}
         className="flex-1 w-full px-4 md:px-8 py-8 flex flex-col items-center justify-start gap-6 overflow-y-auto"
         style={{
           backgroundImage:
@@ -520,7 +523,7 @@ export function BrandStudioShell({
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <Loader2 className="size-8 animate-spin text-primary" />
             <p className="text-sm font-medium text-muted-foreground">
-              Loading Brand Studio...
+              {t("creator.phase2.brandKit.shell.loadingStudio", "Loading Brand Studio...")}
             </p>
           </div>
         ) : (
@@ -530,10 +533,10 @@ export function BrandStudioShell({
             <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
               <div>
                 <h1 className="text-2xl font-bold font-heading text-foreground tracking-tight">
-                  Brand Studio
+                  {t("creator.phase2.brandKit.shell.studioTitle", "Brand Studio")}
                 </h1>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  Your Visual Identity — Review and manage your complete brand identity.
+                  {t("creator.phase2.brandKit.shell.studioSubtitle", "Your Visual Identity — Review and manage your complete brand identity.")}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -550,7 +553,7 @@ export function BrandStudioShell({
                   ) : (
                     <Download className="size-3.5" />
                   )}
-                  <span>Download Brand</span>
+                  <span>{t("creator.phase2.brandKit.shell.downloadBrand", "Download Brand")}</span>
                 </Button>
                 <Button
                   type="button"
@@ -565,7 +568,7 @@ export function BrandStudioShell({
                   className="gap-1.5 text-xs font-semibold cursor-pointer"
                 >
                   <ExternalLink className="size-3.5" />
-                  <span>View Full Brand Kit</span>
+                  <span>{t("creator.phase2.brandKit.shell.viewFullKit", "View Full Brand Kit")}</span>
                 </Button>
               </div>
             </div>
@@ -579,9 +582,9 @@ export function BrandStudioShell({
             ) : (
               <IncompleteSectionCard
                 stepNumber={1}
-                title="Brand Strategy"
-                description="Define your core concept, target audience, industry, positioning, and personality traits."
-                actionLabel="Create Strategy"
+                title={t("creator.phase2.brandKit.shell.step1Title", "Brand Strategy")}
+                description={t("creator.phase2.brandKit.shell.step1Desc", "Define your core concept, target audience, industry, positioning, and personality traits.")}
+                actionLabel={t("creator.phase2.brandKit.shell.step1Action", "Create Strategy")}
                 icon={Sparkles}
                 onAction={() => handleCreateModal("strategy")}
               />
@@ -596,9 +599,9 @@ export function BrandStudioShell({
             ) : (
               <IncompleteSectionCard
                 stepNumber={2}
-                title="Visual Direction"
-                description="Explore curated aesthetic directions, moodboards, and harmonized color & typography pairings."
-                actionLabel="Create Visual Direction"
+                title={t("creator.phase2.brandKit.shell.step2Title", "Visual Direction")}
+                description={t("creator.phase2.brandKit.shell.step2Desc", "Explore curated aesthetic directions, moodboards, and harmonized color & typography pairings.")}
+                actionLabel={t("creator.phase2.brandKit.shell.step2Action", "Create Visual Direction")}
                 icon={Palette}
                 onAction={() => handleCreateModal("direction")}
               />
@@ -626,15 +629,15 @@ export function BrandStudioShell({
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-badge font-semibold text-primary uppercase tracking-wider">
-                        SECTION 3
+                        {t("creator.phase2.brandKit.shell.section3Tag", "SECTION 3")}
                       </span>
                       <span className="text-badge text-muted-foreground">•</span>
                       <span className="text-caption text-muted-foreground font-medium">
-                        Logo System
+                        {t("creator.phase2.brandKit.shell.section3System", "Logo System")}
                       </span>
                     </div>
                     <h3 className="font-heading text-card-title font-semibold tracking-tight">
-                      Primary Brand Mark & Lockup
+                      {t("creator.phase2.brandKit.shell.section3Title", "Primary Brand Mark & Lockup")}
                     </h3>
                   </div>
                 </div>
@@ -653,7 +656,7 @@ export function BrandStudioShell({
                   >
                     <Edit3 className="size-3" />
                     <span>
-                      {isLogoTypeComplete ? "Edit Logo Type" : "Choose Logo Type"}
+                      {isLogoTypeComplete ? t("creator.phase2.brandKit.shell.editLogoType", "Edit Logo Type") : t("creator.phase2.brandKit.shell.chooseLogoType", "Choose Logo Type")}
                     </span>
                   </Button>
                   <Button
@@ -670,8 +673,8 @@ export function BrandStudioShell({
                     <Edit3 className="size-3" />
                     <span>
                       {isLogoConceptSelected || isLogoApproved
-                        ? "Edit Logo"
-                        : "Create Logo"}
+                        ? t("creator.phase2.brandKit.shell.editLogo", "Edit Logo")
+                        : t("creator.phase2.brandKit.shell.createLogo", "Create Logo")}
                     </span>
                   </Button>
                 </div>
@@ -682,7 +685,7 @@ export function BrandStudioShell({
                 {/* Primary Logo Lockup Preview */}
                 <div className="flex flex-col gap-2 rounded-xl bg-muted/20 border border-border/40 p-4">
                   <span className="text-badge font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                    Primary Lockup
+                    {t("creator.phase2.brandKit.shell.primaryLockup", "Primary Lockup")}
                   </span>
                   <div className="relative flex h-28 w-full items-center justify-center rounded-lg bg-card border border-border/60 p-3 shadow-2xs">
                     {lockupAsset ? (
@@ -697,7 +700,7 @@ export function BrandStudioShell({
                       <div className="flex flex-col items-center justify-center text-center p-2">
                         <Layers className="size-6 text-muted-foreground/40 mb-1" />
                         <span className="text-xs text-muted-foreground">
-                          No primary logo selected yet
+                          {t("creator.phase2.brandKit.shell.noPrimaryLogo", "No primary logo selected yet")}
                         </span>
                       </div>
                     )}
@@ -710,7 +713,7 @@ export function BrandStudioShell({
                     <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                       <Compass className="size-3.5 text-primary" />
                       <span className="text-badge font-mono font-semibold uppercase tracking-wider">
-                        Logo Type Archetype
+                        {t("creator.phase2.brandKit.shell.logoTypeArchetype", "Logo Type Archetype")}
                       </span>
                     </div>
                     <p className="text-body font-semibold text-foreground mt-1">
@@ -718,8 +721,8 @@ export function BrandStudioShell({
                     </p>
                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                       {kit?.logo?.logoType
-                        ? "Parametric vector geometry configured according to this structural archetype."
-                        : "Archetype not selected yet. Choose a structural family for your brand mark."}
+                        ? t("creator.phase2.brandKit.shell.archetypeConfigured", "Parametric vector geometry configured according to this structural archetype.")
+                        : t("creator.phase2.brandKit.shell.archetypeEmpty", "Archetype not selected yet. Choose a structural family for your brand mark.")}
                     </p>
                   </div>
                   <div className="mt-3">
@@ -733,10 +736,10 @@ export function BrandStudioShell({
                       }`}
                     >
                       {isLogoApproved
-                        ? "APPROVED FOR PRODUCTION"
+                        ? t("creator.phase2.brandKit.shell.badgeApproved", "APPROVED FOR PRODUCTION")
                         : isLogoConceptSelected
-                        ? "CONCEPT SELECTED (DRAFT)"
-                        : "NOT CREATED YET"}
+                        ? t("creator.phase2.brandKit.shell.badgeConceptDraft", "CONCEPT SELECTED (DRAFT)")
+                        : t("creator.phase2.brandKit.shell.badgeNotCreated", "NOT CREATED YET")}
                     </span>
                   </div>
                 </div>
@@ -765,15 +768,15 @@ export function BrandStudioShell({
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-badge font-semibold text-primary uppercase tracking-wider">
-                        SECTION 4
+                        {t("shell.section4Tag")}
                       </span>
                       <span className="text-badge text-muted-foreground">•</span>
                       <span className="text-caption text-muted-foreground font-medium">
-                        Logo Variations
+                        {t("shell.section4System")}
                       </span>
                     </div>
                     <h3 className="font-heading text-card-title font-semibold tracking-tight">
-                      Canonical Multi-Context Variations
+                      {t("shell.section4Title")}
                     </h3>
                   </div>
                 </div>
@@ -791,7 +794,7 @@ export function BrandStudioShell({
                 >
                   <Edit3 className="size-3" />
                   <span>
-                    {variationCount > 0 ? "Edit Variations" : "Generate Variations"}
+                    {variationCount > 0 ? t("creator.phase2.brandKit.shell.editVariations", "Edit Variations") : t("creator.phase2.brandKit.shell.generateVariations", "Generate Variations")}
                   </span>
                 </Button>
               </div>
@@ -826,7 +829,7 @@ export function BrandStudioShell({
                           />
                         ) : (
                           <span className="text-[10px] text-muted-foreground">
-                            Pending
+                            {t("creator.phase2.brandKit.shell.variationPending", "Pending")}
                           </span>
                         )}
                       </div>
@@ -853,9 +856,9 @@ export function BrandStudioShell({
             ) : (
               <IncompleteSectionCard
                 stepNumber={5}
-                title="Color System"
-                description="5 harmonized brand roles (Primary, Secondary, Accent, Background, Text) with WCAG contrast verification."
-                actionLabel="Create Color System"
+                title={t("creator.phase2.brandKit.shell.step5Title", "Color System")}
+                description={t("creator.phase2.brandKit.shell.step5Desc", "5 harmonized brand roles (Primary, Secondary, Accent, Background, Text) with WCAG contrast verification.")}
+                actionLabel={t("creator.phase2.brandKit.shell.step5Action", "Create Color System")}
                 icon={Palette}
                 onAction={() => handleCreateModal("colors")}
               />
@@ -870,9 +873,9 @@ export function BrandStudioShell({
             ) : (
               <IncompleteSectionCard
                 stepNumber={6}
-                title="Typography System"
-                description="Display & Text typefaces, licensing verification, and typographic role specimens."
-                actionLabel="Create Typography"
+                title={t("creator.phase2.brandKit.shell.step6Title", "Typography System")}
+                description={t("creator.phase2.brandKit.shell.step6Desc", "Display & Text typefaces, licensing verification, and typographic role specimens.")}
+                actionLabel={t("creator.phase2.brandKit.shell.step6Action", "Create Typography")}
                 icon={Type}
                 onAction={() => handleCreateModal("typography")}
               />
@@ -887,10 +890,10 @@ export function BrandStudioShell({
                   </div>
                   <div>
                     <h3 className="font-heading text-card-title font-semibold tracking-tight">
-                      Final Brand Assets & Production Deliverables
+                      {t("creator.phase2.brandKit.shell.section7Title", "Final Brand Assets & Production Deliverables")}
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Access high-resolution vector lockups, brand guide, color tokens, and export packages.
+                      {t("creator.phase2.brandKit.shell.section7Desc", "Access high-resolution vector lockups, brand guide, color tokens, and export packages.")}
                     </p>
                   </div>
                 </div>
@@ -909,7 +912,7 @@ export function BrandStudioShell({
                     ) : (
                       <Download className="size-3.5" />
                     )}
-                    <span>Download Brand</span>
+                    <span>{t("creator.phase2.brandKit.shell.downloadBrand", "Download Brand")}</span>
                   </Button>
                   <Button
                     type="button"
@@ -924,7 +927,7 @@ export function BrandStudioShell({
                     className="gap-1.5 text-xs font-semibold cursor-pointer"
                   >
                     <ExternalLink className="size-3.5" />
-                    <span>View Full Brand Kit</span>
+                    <span>{t("creator.phase2.brandKit.shell.viewFullKit", "View Full Brand Kit")}</span>
                   </Button>
                 </div>
               </div>
@@ -933,31 +936,31 @@ export function BrandStudioShell({
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
                   <span className="text-badge font-mono text-muted-foreground uppercase">
-                    Strategy
+                    {t("creator.phase2.brandKit.shell.statusStrategy", "Strategy")}
                   </span>
                   <span
                     className={`text-xs font-semibold mt-1 ${
                       isStrategyComplete ? "text-emerald-600" : "text-muted-foreground"
                     }`}
                   >
-                    {isStrategyComplete ? "✓ 6 Pillars Set" : "Incomplete"}
+                    {isStrategyComplete ? t("creator.phase2.brandKit.shell.statusStrategyDone", "✓ 6 Pillars Set") : t("creator.phase2.brandKit.shell.incomplete", "Incomplete")}
                   </span>
                 </div>
                 <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
                   <span className="text-badge font-mono text-muted-foreground uppercase">
-                    Direction
+                    {t("creator.phase2.brandKit.shell.statusDirection", "Direction")}
                   </span>
                   <span
                     className={`text-xs font-semibold mt-1 ${
                       isDirectionComplete ? "text-emerald-600" : "text-muted-foreground"
                     }`}
                   >
-                    {isDirectionComplete ? "✓ Board Selected" : "Incomplete"}
+                    {isDirectionComplete ? t("creator.phase2.brandKit.shell.statusDirectionDone", "✓ Board Selected") : t("creator.phase2.brandKit.shell.incomplete", "Incomplete")}
                   </span>
                 </div>
                 <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
                   <span className="text-badge font-mono text-muted-foreground uppercase">
-                    Primary Logo
+                    {t("creator.phase2.brandKit.shell.statusPrimaryLogo", "Primary Logo")}
                   </span>
                   <span
                     className={`text-xs font-semibold mt-1 ${
@@ -969,15 +972,15 @@ export function BrandStudioShell({
                     }`}
                   >
                     {isLogoApproved
-                      ? "✓ Approved"
+                      ? t("creator.phase2.brandKit.shell.statusLogoApproved", "✓ Approved")
                       : isLogoConceptSelected
-                      ? "Draft"
-                      : "Incomplete"}
+                      ? t("creator.phase2.brandKit.shell.statusLogoDraft", "Draft")
+                      : t("creator.phase2.brandKit.shell.incomplete", "Incomplete")}
                   </span>
                 </div>
                 <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
                   <span className="text-badge font-mono text-muted-foreground uppercase">
-                    Variations
+                    {t("creator.phase2.brandKit.shell.statusVariations", "Variations")}
                   </span>
                   <span
                     className={`text-xs font-semibold mt-1 ${
@@ -989,25 +992,25 @@ export function BrandStudioShell({
                     }`}
                   >
                     {variationCount >= 7
-                      ? "✓ 7/7 Formats"
-                      : `${variationCount}/7 Formats`}
+                      ? t("creator.phase2.brandKit.shell.statusVariationsDone", "✓ 7/7 Formats")
+                      : t("creator.phase2.brandKit.shell.statusVariationsCount", "{{count}}/7 Formats", { count: variationCount })}
                   </span>
                 </div>
                 <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
                   <span className="text-badge font-mono text-muted-foreground uppercase">
-                    Color Tokens
+                    {t("creator.phase2.brandKit.shell.statusColors", "Color Tokens")}
                   </span>
                   <span
                     className={`text-xs font-semibold mt-1 ${
                       isColorsComplete ? "text-emerald-600" : "text-muted-foreground"
                     }`}
                   >
-                    {isColorsComplete ? "✓ 5 Roles AAA/AA" : "Incomplete"}
+                    {isColorsComplete ? t("creator.phase2.brandKit.shell.statusColorsDone", "✓ 5 Roles AAA/AA") : t("creator.phase2.brandKit.shell.incomplete", "Incomplete")}
                   </span>
                 </div>
                 <div className="rounded-xl bg-muted/20 border border-border/40 p-3 flex flex-col justify-between">
                   <span className="text-badge font-mono text-muted-foreground uppercase">
-                    Typography
+                    {t("creator.phase2.brandKit.shell.statusTypography", "Typography")}
                   </span>
                   <span
                     className={`text-xs font-semibold mt-1 ${
@@ -1016,7 +1019,7 @@ export function BrandStudioShell({
                         : "text-muted-foreground"
                     }`}
                   >
-                    {isTypographyComplete ? "✓ Dual Typeface" : "Incomplete"}
+                    {isTypographyComplete ? t("creator.phase2.brandKit.shell.statusTypographyDone", "✓ Dual Typeface") : t("creator.phase2.brandKit.shell.incomplete", "Incomplete")}
                   </span>
                 </div>
               </div>

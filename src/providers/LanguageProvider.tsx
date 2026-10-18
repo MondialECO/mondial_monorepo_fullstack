@@ -113,6 +113,22 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       if (val === undefined && locale !== 'en') {
         val = getNestedValue(dictionaries.en, key);
       }
+      // Check standard sub-namespaces (e.g. creator, brandKit)
+      if (val === undefined) {
+        const candidatePrefixes = [
+          'creator.phase2.brandKit.',
+          'creator.phase2.',
+          'creator.',
+          'common.',
+        ];
+        for (const p of candidatePrefixes) {
+          val = getNestedValue(dictionaries[locale], p + key);
+          if (val === undefined && locale !== 'en') {
+            val = getNestedValue(dictionaries.en, p + key);
+          }
+          if (val !== undefined) break;
+        }
+      }
       if (val === undefined) {
         return fallback !== undefined ? interpolate(fallback, vars) : key;
       }
@@ -183,7 +199,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   return <LanguageContext.Provider value={contextValue}>{children}</LanguageContext.Provider>;
 }
 
-export function useTranslation() {
+export function useTranslation(_namespace?: string) {
   const context = useContext(LanguageContext);
   if (!context) {
     // Graceful fallback if called outside provider (e.g. isolated test environments)
@@ -206,6 +222,18 @@ export function useTranslation() {
         }
 
         let val = getNestedValue(dictionaries.en, key);
+        if (val === undefined) {
+          const candidatePrefixes = [
+            'creator.phase2.brandKit.',
+            'creator.phase2.',
+            'creator.',
+            'common.',
+          ];
+          for (const p of candidatePrefixes) {
+            val = getNestedValue(dictionaries.en, p + key);
+            if (val !== undefined) break;
+          }
+        }
         if (val === undefined) return fallback !== undefined ? interpolate(fallback, vars) : key;
         return interpolate(val, vars);
       }) as LanguageContextType['t'],

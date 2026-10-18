@@ -1,3 +1,4 @@
+import { useTranslation } from "@/hooks/useTranslation";
 "use client";
 
 import React, { useState, useEffect, useMemo, useTransition } from "react";
@@ -83,12 +84,12 @@ const CANONICAL_PAIRING_PRESETS: PairingPreset[] = [
   },
 ];
 
-const CANONICAL_ROLE_NOTES: Record<string, string> = {
-  "Logo type": "Locked to your wordmark. Changing this would redraw your logo.",
-  Heading: "Page titles, section headers, deck slides.",
-  Body: "Paragraph copy, descriptions, customer communication.",
-  "Button & label": "Action triggers, badges, navigation items, metrics.",
-};
+const getCanonicalRoleNotes = (t: (k: string) => string): Record<string, string> => ({
+  "Logo type": t("modals.typographyLockedDesc"),
+  Heading: t("modals.typographyHeadingDesc"),
+  Body: t("modals.typographyBodyDesc"),
+  "Button & label": t("modals.typographyButtonDesc"),
+});
 
 export function TypographySystemModal({
   isOpen,
@@ -98,6 +99,7 @@ export function TypographySystemModal({
   onSuccess,
   onKitUpdated,
 }: TypographySystemModalProps) {
+  const { t } = useTranslation("creator");
   const [currentKit, setCurrentKit] = useState<BrandKit>(kit);
   const [localTypography, setLocalTypography] = useState<BrandTypography>(() => {
     return kit.typography ?? {
@@ -424,7 +426,7 @@ export function TypographySystemModal({
         
         {/* Header & 6-Step Workflow Track (Figma Node 57004:11793) */}
         <ModalWorkflowHeader
-          title="Your typography"
+          title={t("modals.typographyModalTitle")}
           subtitle="Two families, four roles. The display face carries personality; the text face carries everything people actually read."
           currentStep={6}
           onClose={onClose}
@@ -442,9 +444,9 @@ export function TypographySystemModal({
                     isRegenerating ? "animate-spin text-primary" : ""
                   }`}
                 />
-                <span>Suggest other pairings</span>
+                <span>{t("modals.typographySuggestOther")}</span>
                 <span className="px-1.5 py-0.5 rounded text-badge font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                  {Math.max(0, 3 - regenerateCount)}/3 LEFT
+                  {Math.max(0, 3 - regenerateCount)}{t("modals.typographySuggestLeft")}
                 </span>
               </Button>
             ) : undefined
@@ -463,10 +465,10 @@ export function TypographySystemModal({
           <div className="mx-6 mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertCircle className="size-4 shrink-0 text-amber-600" />
-              <span>Insufficient AI credits to suggest alternative pairings.</span>
+              <span>{t("modals.typographyInsufficientCredits")}</span>
             </div>
             <span className="text-caption font-semibold opacity-80 ml-3 shrink-0">
-              (Credit top-ups are currently unavailable)
+              {t("modals.typographyCreditsUnavailable")}
             </span>
           </div>
         )}
@@ -479,14 +481,14 @@ export function TypographySystemModal({
                 <Type className="size-8" />
               </div>
               <h3 className="font-heading text-lg font-bold tracking-tight mb-2">
-                Generate Typography System
+                {t("modals.typographyGenerateTitle")}
               </h3>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-md">
-                Generate a curated typographic pairing (Display and Body typefaces) mapped to 4 functional roles for headings, body copy, and UI elements.
+                {t("modals.typographyGenerateDesc")}
               </p>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/20 text-xs font-mono font-medium text-primary mb-6">
                 <Sparkles className="size-3.5" />
-                <span>Cost: {isCostLoading ? "Loading cost…" : isCostError || typographyCost == null ? "Unavailable" : `${typographyCost} AI credits`}</span>
+                <span>{t("modals.typographyCost")} {isCostLoading ? "Loading cost…" : isCostError || typographyCost == null ? "Unavailable" : `${typographyCost} AI credits`}</span>
               </div>
               <Button
                 size="lg"
@@ -497,7 +499,7 @@ export function TypographySystemModal({
                 {isLoadingInitial ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    <span>Generating typography system...</span>
+                    <span>{t("modals.typographyGeneratingTitle")}</span>
                   </>
                 ) : (
                   <>
@@ -514,16 +516,16 @@ export function TypographySystemModal({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-caption font-mono font-bold tracking-wider text-muted-foreground uppercase">
-                      PICK A PAIRING
-                    </span>
+            {t("modals.typographyPickPairing")}
+          </span>
                     <span className="hidden sm:inline text-xs text-muted-foreground">·</span>
                     <span className="text-caption font-mono text-muted-foreground">
-                      DISPLAY FAMILY: <strong className="text-foreground font-semibold">{displayFamilyName}</strong> · TEXT FAMILY: <strong className="text-foreground font-semibold">{textFamilyName}</strong>
+                      {t("modals.typographyDisplayFamilyLabel")} <strong className="text-foreground font-semibold">{displayFamilyName}</strong> {t("modals.typographyTextFamilyLabel")} <strong className="text-foreground font-semibold">{textFamilyName}</strong>
                     </span>
                   </div>
 
               <span className="text-xs font-mono text-muted-foreground">
-                Tuning below updates automatically
+                {t("modals.typographyTuningNotice")}
               </span>
             </div>
 
@@ -579,9 +581,9 @@ export function TypographySystemModal({
                       <div className="flex items-center gap-2 pt-2 border-t border-border/60 text-badge font-mono text-muted-foreground">
                         <span>{preset.license}</span>
                         <span>·</span>
-                        <span>{preset.displayWeights.length + preset.textWeights.length} weights</span>
+                        <span>{preset.displayWeights.length + preset.textWeights.length} {t("modals.typographyWeights")}</span>
                         <span>·</span>
-                        <span>{preset.bundleKb}kb</span>
+                        <span>{preset.bundleKb}{t("modals.typographyKb")}</span>
                       </div>
                     </div>
                   </div>
@@ -594,10 +596,10 @@ export function TypographySystemModal({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-caption font-mono font-bold tracking-wider text-muted-foreground uppercase">
-                FOUR ROLES
-              </span>
+            {t("modals.typographyFourRoles")}
+          </span>
               <span className="text-xs font-mono text-muted-foreground">
-                Tuning is free
+                {t("modals.typographyTuningFree")}
               </span>
             </div>
 
@@ -609,24 +611,24 @@ export function TypographySystemModal({
                 <div className="space-y-1 max-w-xs">
                   <div className="flex items-center gap-2">
                     <span className="text-base font-bold font-heading text-foreground">
-                      Logo type
-                    </span>
+                    {t("modals.typographyRoleLogoType")}
+                  </span>
                     <span className="inline-flex items-center gap-1 text-badge font-mono font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">
-                      <Lock className="size-2.5" /> LOCKED
+                      <Lock className="size-2.5" /> {t("modals.typographyLocked")}
                     </span>
                   </div>
                   <p className="text-xs font-sans text-muted-foreground leading-normal">
-                    Locked to your wordmark. Changing this would redraw your logo.
+                    {t("modals.typographyLockedDesc")}
                   </p>
                   <span className="text-badge font-mono text-muted-foreground block pt-0.5">
-                    Bound to approved logo concept
+                    {t("modals.typographyBoundToLogo")}
                   </span>
                 </div>
 
                 {/* Right Specimen */}
                 <div className="flex-1 flex flex-col items-start md:items-end gap-1.5 min-w-[280px]">
                   <span className="text-xs font-mono text-muted-foreground">
-                    Custom Vector Font · Display · Bold
+                    {t("modals.typographyLogoTypeSpec")}
                   </span>
                   <div
                     className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground md:text-right"
@@ -641,27 +643,27 @@ export function TypographySystemModal({
               <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/20 transition-colors">
                 <div className="space-y-1 max-w-xs">
                   <span className="text-base font-bold font-heading text-foreground block">
-                    Heading
+                    {t("modals.typographyRoleHeading")}
                   </span>
                   <p className="text-xs font-sans text-muted-foreground leading-normal">
-                    Page titles, section headers, deck slides.
+                    {t("modals.typographyHeadingDesc")}
                   </p>
                   
                   {/* Step Font Controls */}
                   <div className="flex items-center gap-2 pt-2">
                     <label className="text-badge font-mono text-muted-foreground">
-                      Heading font weight:
+                      {t("modals.typographyHeadingWeightLabel")}
                     </label>
                     <select
-                      aria-label="Heading font weight"
+                      aria-label={t("modals.typographyHeadingWeightAria")}
                       value={headingRole?.weight || "700"}
                       onChange={(e) => handleTuningChange("Heading", { weight: e.target.value })}
                       className="text-xs font-mono rounded-md border border-border bg-background px-2 py-1 text-foreground"
                     >
-                      <option value="400">Regular (400)</option>
-                      <option value="600">SemiBold (600)</option>
-                      <option value="700">Bold (700)</option>
-                      <option value="800">ExtraBold (800)</option>
+                      <option value="400">{t("modals.typographyWeightRegular400")}</option>
+                      <option value="600">{t("modals.typographyWeightSemiBold600")}</option>
+                      <option value="700">{t("modals.typographyWeightBold700")}</option>
+                      <option value="800">{t("modals.typographyWeightExtraBold800")}</option>
                     </select>
                   </div>
                 </div>
@@ -687,26 +689,26 @@ export function TypographySystemModal({
               <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/20 transition-colors">
                 <div className="space-y-1 max-w-xs">
                   <span className="text-base font-bold font-heading text-foreground block">
-                    Body
+                    {t("modals.typographyRoleBody")}
                   </span>
                   <p className="text-xs font-sans text-muted-foreground leading-normal">
-                    Paragraph copy, descriptions, customer communication.
+                    {t("modals.typographyBodyDesc")}
                   </p>
 
                   {/* Step Font Controls */}
                   <div className="flex items-center gap-2 pt-2">
                     <label className="text-badge font-mono text-muted-foreground">
-                      Body font weight:
+                      {t("modals.typographyBodyWeightLabel")}
                     </label>
                     <select
-                      aria-label="Body font weight"
+                      aria-label={t("modals.typographyBodyWeightAria")}
                       value={bodyRole?.weight || "400"}
                       onChange={(e) => handleTuningChange("Body", { weight: e.target.value })}
                       className="text-xs font-mono rounded-md border border-border bg-background px-2 py-1 text-foreground"
                     >
-                      <option value="400">Regular (400)</option>
-                      <option value="500">Medium (500)</option>
-                      <option value="600">SemiBold (600)</option>
+                      <option value="400">{t("modals.typographyWeightRegular400")}</option>
+                      <option value="500">{t("modals.typographyWeightMedium500")}</option>
+                      <option value="600">{t("modals.typographyWeightSemiBold600")}</option>
                     </select>
                   </div>
                 </div>
@@ -714,7 +716,7 @@ export function TypographySystemModal({
                 {/* Right Specimen */}
                 <div className="flex-1 flex flex-col items-start md:items-end gap-1.5 min-w-[280px]">
                   <span className="text-xs font-mono text-muted-foreground">
-                    {textFamilyName} · Regular · {bodyRole?.size || "16px"} / {bodyRole?.lineHeight || "1.5"}
+                    {textFamilyName} {t("modals.typographySampleRegular")} {bodyRole?.size || "16px"} / {bodyRole?.lineHeight || "1.5"}
                   </span>
                   <p
                     className="text-sm font-sans text-muted-foreground leading-relaxed max-w-md md:text-right"
@@ -723,7 +725,7 @@ export function TypographySystemModal({
                       fontWeight: bodyRole?.weight || "400",
                     }}
                   >
-                    Crafted specifically for autonomous workflows. Clean typography hierarchy ensures complete legibility across high-density creator dashboards.
+                    {t("modals.typographySampleBodyText")}
                   </p>
                 </div>
               </div>
@@ -732,17 +734,17 @@ export function TypographySystemModal({
               <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/20 transition-colors">
                 <div className="space-y-1 max-w-xs">
                   <span className="text-base font-bold font-heading text-foreground block">
-                    Button & label
+                    {t("modals.typographyRoleButton")}
                   </span>
                   <p className="text-xs font-sans text-muted-foreground leading-normal">
-                    Action triggers, badges, navigation items, metrics.
+                    {t("modals.typographyButtonDesc")}
                   </p>
                 </div>
 
                 {/* Right Specimen */}
                 <div className="flex-1 flex flex-col items-start md:items-end gap-2.5 min-w-[280px]">
                   <span className="text-xs font-mono text-muted-foreground">
-                    {textFamilyName} · Medium · {buttonRole?.size || "14px"} / {buttonRole?.lineHeight || "1.0"}
+                    {textFamilyName} {t("modals.typographySampleMedium")} {buttonRole?.size || "14px"} / {buttonRole?.lineHeight || "1.0"}
                   </span>
                   <div className="flex items-center gap-3 flex-wrap">
                     <button
@@ -750,13 +752,13 @@ export function TypographySystemModal({
                       className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold shadow-xs"
                       style={{ fontFamily: textFamilyName }}
                     >
-                      Explore {brandName}
+                      {t("modals.typographySampleExplore")} {brandName}
                     </button>
                     <span
                       className="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
                       style={{ fontFamily: textFamilyName }}
                     >
-                      ● Active Network
+                      {t("modals.typographySampleActiveNetwork")}
                     </span>
                   </div>
                 </div>
@@ -773,12 +775,12 @@ export function TypographySystemModal({
         <div className="flex items-center justify-between border-t border-border px-6 py-4 bg-card shrink-0">
           <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
             <Info className="size-3.5 text-primary shrink-0" />
-            <span>2 Font Families · 4 Canonical Roles · Zero Credit Hand-Tuning</span>
+            <span>{t("modals.typographyFooterSummary")}</span>
           </div>
 
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={onClose} disabled={isConfirming}>
-              Cancel
+              {t("modals.typographyCancel")}
             </Button>
             <Button
               onClick={handleConfirm}

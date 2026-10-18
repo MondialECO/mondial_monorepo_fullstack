@@ -453,7 +453,7 @@ export default function AIClarifierPage() {
                     Native 456x376 → crisp at this ~30px leaf. Source: exported from Figma. */}
                 <Image
                   src="/icons/phase2/robot.png"
-                  alt="AI assistant"
+                  alt={t("creator.phase2.clarifier.aiAssistantAlt", "AI assistant")}
                   width={30}
                   height={25}
                   className="object-contain"

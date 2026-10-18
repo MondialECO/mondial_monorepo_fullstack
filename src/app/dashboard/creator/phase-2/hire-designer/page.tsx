@@ -141,7 +141,7 @@ export default function HireDesignerPage() {
         <div className="h-full bg-primary" style={{ width: "86%" }} />
       </div>
 
-      <section aria-label="Matched Designers" className="flex-1 max-w-[1140px] mx-auto w-full py-6 space-y-8">
+      <section aria-label={t("creator.phase2.hireDesigner.matchedDesignersAria", "Matched Designers")} className="flex-1 max-w-[1140px] mx-auto w-full py-6 space-y-8">
 
         {/* Title Block */}
         <div className="space-y-2">
@@ -171,7 +171,7 @@ export default function HireDesignerPage() {
             <div className="bg-card border border-border rounded-xl p-4 text-xs space-y-1">
               <span className="text-badge font-bold text-muted-foreground uppercase tracking-wider block">{t("creator.phase2.hireDesigner.autoSentLabel")}</span>
               <p className="text-foreground font-medium italic">
-                &quot;{t("creator.phase2.hireDesigner.autoSentMessage", { name: bookedDesigner.name, project: state.project.name || t("creator.phase2.hireDesigner.defaultProject", "my project") })}&quot;
+                {`"${t("creator.phase2.hireDesigner.autoSentMessage", { name: bookedDesigner.name, project: state.project.name || t("creator.phase2.hireDesigner.defaultProject", "my project") })}"`}
               </p>
             </div>
             <Button onClick={handleContinue} className="w-full bg-primary text-primary-foreground font-bold rounded-xl py-5">

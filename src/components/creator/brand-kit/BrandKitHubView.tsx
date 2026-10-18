@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useRouter } from "next/navigation";
 import { BrandKit, BrandLogoVariation } from "@/types/creator/brand-kit";
 import { resolveMediaUrl } from "@/lib/brand-kit-media";
@@ -53,6 +54,7 @@ export interface BrandKitHubViewProps {
 }
 
 export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
+  const { t } = useTranslation("creator");
   const router = useRouter();
   const [kit, setKit] = useState<BrandKit>(initialKit);
   const [isZipping, setIsZipping] = useState(false);
@@ -272,13 +274,13 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             onClick={() => setExportError(null)}
             className="hover:underline text-badge uppercase tracking-wider font-mono shrink-0 cursor-pointer"
           >
-            Dismiss
+            {t("hub.dismiss")}
           </button>
         </div>
       )}
 
       {/* Main Canonical 1080px Centered Container (Figma Node 57004:12057) */}
-      <section aria-label="Brand Kit Hub" className="mx-auto max-w-[1080px] w-full px-4 sm:px-6 pt-10 space-y-10">
+      <section aria-label={t("hub.hubAria")} className="mx-auto max-w-[1080px] w-full px-4 sm:px-6 pt-10 space-y-10">
         
         {/* =========================================================================
             1. IDENTITY BLOCK (Figma Node 57004:12057)
@@ -311,7 +313,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                     {brandName}
                   </h1>
                   <span className="text-sm font-normal text-muted-foreground">
-                    {kit.strategy?.industry?.value || "FinTech SaaS"} · Brand Kit
+                    {kit.strategy?.industry?.value || "FinTech SaaS"} {t("hub.brandKitTag")}
                   </span>
                 </div>
 
@@ -319,7 +321,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                 <div>
                   <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium border border-emerald-500/20">
                     <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
-                    <span>All six steps complete</span>
+                    <span>{t("hub.allStepsComplete")}</span>
                   </span>
                 </div>
               </div>
@@ -334,7 +336,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                 className="h-10 px-4 gap-2 text-xs font-semibold rounded-lg border-border/80 bg-background text-foreground shadow-xs hover:bg-muted"
               >
                 <Pencil className="size-3.5 text-muted-foreground" />
-                <span>Edit in Studio</span>
+                <span>{t("hub.editInStudio")}</span>
               </Button>
 
               <Button
@@ -357,7 +359,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:divide-x md:divide-border/60 text-xs">
             <div className="space-y-1">
               <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
-                CREATED
+                {t("hub.createdLabel")}
               </span>
               <p className="font-semibold font-mono text-foreground uppercase">
                 {kit.createdAt ? new Date(kit.createdAt).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase() : "12 SEP 2026"}
@@ -366,7 +368,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
 
             <div className="space-y-1 md:pl-6">
               <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
-                UPDATED
+                {t("hub.updatedLabel")}
               </span>
               <p className="font-semibold font-mono text-foreground uppercase">
                 {kit.updatedAt ? new Date(kit.updatedAt).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase() : "15 SEP 2026"}
@@ -375,19 +377,19 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
 
             <div className="space-y-1 md:pl-6">
               <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
-                VERSION
+                {t("hub.versionLabel")}
               </span>
               <p className="font-semibold font-mono text-foreground uppercase">
-                V{kit.version || 1}
+                {t("hub.versionTag", { version: kit.version || 1 })}
               </p>
             </div>
 
             <div className="space-y-1 md:pl-6">
               <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
-                ASSETS
+                {t("hub.assetsLabel")}
               </span>
               <p className="font-semibold font-mono text-foreground uppercase">
-                {totalAssetFiles} FILES
+                {totalAssetFiles} {t("hub.filesTag")}
               </p>
             </div>
           </div>
@@ -400,19 +402,19 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
           {/* Header row */}
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold font-heading text-foreground">
-              Logo
+              {t("hub.logoSection")}
             </h2>
 
             <div className="flex items-center gap-3">
               <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-mono font-semibold text-muted-foreground">
-                7 VARIATIONS
+                {t("hub.variationsCount")}
               </span>
               <button
                 type="button"
                 onClick={handleOpenLogo}
                 className="text-xs font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1"
               >
-                <span>Open in Studio</span>
+                <span>{t("hub.openInStudio")}</span>
                 <ChevronRight className="size-3" />
               </button>
             </div>
@@ -438,13 +440,13 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             ) : (
               <div className="flex flex-col items-center gap-2 text-muted-foreground">
                 <Sparkles className="size-8" />
-                <span className="text-xs font-mono">Select a lockup to preview</span>
+                <span className="text-xs font-mono">{t("hub.selectLockupPreview")}</span>
               </div>
             )}
 
             {/* Active Lockup Tag Pill */}
             <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-md bg-background/90 backdrop-blur-xs border border-border/70 text-badge font-mono font-semibold shadow-xs">
-              {activeLockup.label} · SVG
+              {activeLockup.label} {t("hub.svgTag")}
             </div>
           </div>
 
@@ -508,23 +510,23 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
           {/* Header row */}
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold font-heading text-foreground">
-              Colour
+              {t("hub.colourSection")}
             </h2>
 
             <div className="flex items-center gap-3">
               <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-mono font-semibold text-muted-foreground">
-                5 ROLES
+                {t("hub.rolesCount")}
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-badge font-mono font-medium flex items-center gap-1 border border-emerald-500/20">
                 <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
-                <span>Contrast checked</span>
+                <span>{t("hub.contrastChecked")}</span>
               </span>
               <button
                 type="button"
                 onClick={() => setActiveModal("colors")}
                 className="text-xs font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1"
               >
-                <span>Open in Studio</span>
+                <span>{t("hub.openInStudio")}</span>
                 <ChevronRight className="size-3" />
               </button>
             </div>
@@ -550,7 +552,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                       type="button"
                       onClick={() => handleCopyHex(hex)}
                       className="px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-xs text-white text-badge font-mono font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 shadow-sm cursor-pointer"
-                      title="Copy HEX code"
+                      title={t("hub.copyHexTitle")}
                     >
                       {isCopied ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
                       <span>{isCopied ? "COPIED" : hex.toUpperCase()}</span>
@@ -571,7 +573,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                           type="button"
                           onClick={() => handleCopyHex(hex)}
                           className="text-muted-foreground hover:text-foreground transition-colors p-1"
-                          title="Copy Hex"
+                          title={t("hub.copyHexTitle")}
                         >
                           {isCopied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
                         </button>
@@ -598,23 +600,23 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
           {/* Header row */}
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold font-heading text-foreground">
-              Typography
+              {t("hub.typographySection")}
             </h2>
 
             <div className="flex items-center gap-3">
               <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-mono font-semibold text-muted-foreground">
-                4 ROLES · 2 FAMILIES
+                {t("hub.typographySub")}
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-badge font-mono font-medium flex items-center gap-1 border border-emerald-500/20">
                 <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
-                <span>Open licence</span>
+                <span>{t("hub.openLicence")}</span>
               </span>
               <button
                 type="button"
                 onClick={() => setActiveModal("typography")}
                 className="text-xs font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1"
               >
-                <span>Open in Studio</span>
+                <span>{t("hub.openInStudio")}</span>
                 <ChevronRight className="size-3" />
               </button>
             </div>
@@ -626,10 +628,10 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="md:w-56 shrink-0 space-y-0.5">
                 <span className="font-semibold text-foreground block text-sm">
-                  Logo type
+                  {t("hub.roleLogoType")}
                 </span>
                 <p className="text-xs font-sans text-muted-foreground">
-                  {typographyRoles.find((r) => r.roleName === "Logo type")?.family || "Syne"} Bold · 40px / 44
+                  {typographyRoles.find((r) => r.roleName === "Logo type")?.family || "Syne"} {t("hub.roleLogoTypeSpec")}
                 </p>
               </div>
 
@@ -644,10 +646,10 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="md:w-56 shrink-0 space-y-0.5">
                 <span className="font-semibold text-foreground block text-sm">
-                  Heading
+                  {t("hub.roleHeading")}
                 </span>
                 <p className="text-xs font-sans text-muted-foreground">
-                  {typographyRoles.find((r) => r.roleName === "Heading")?.family || "Syne"} {typographyRoles.find((r) => r.roleName === "Heading")?.weight || "Bold"} · 28px / 36
+                  {typographyRoles.find((r) => r.roleName === "Heading")?.family || "Syne"} {typographyRoles.find((r) => r.roleName === "Heading")?.weight || "Bold"} {t("hub.roleHeadingSpec")}
                 </p>
               </div>
 
@@ -662,10 +664,10 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="md:w-56 shrink-0 space-y-0.5">
                 <span className="font-semibold text-foreground block text-sm">
-                  Body
+                  {t("hub.roleBody")}
                 </span>
                 <p className="text-xs font-sans text-muted-foreground">
-                  {typographyRoles.find((r) => r.roleName === "Body")?.family || "DM Sans"} · 15px / 24
+                  {typographyRoles.find((r) => r.roleName === "Body")?.family || "DM Sans"} {t("hub.roleBodySpec")}
                 </p>
               </div>
 
@@ -681,10 +683,10 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="md:w-56 shrink-0 space-y-0.5">
                 <span className="font-semibold text-foreground block text-sm">
-                  Button & label
+                  {t("hub.roleButton")}
                 </span>
                 <p className="text-xs font-sans text-muted-foreground">
-                  {typographyRoles.find((r) => r.roleName === "Button & label")?.family || "DM Sans"} Medium · 14px / 20
+                  {typographyRoles.find((r) => r.roleName === "Button & label")?.family || "DM Sans"} {t("hub.roleButtonSpec")}
                 </p>
               </div>
 
@@ -693,10 +695,10 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                   type="button"
                   className="px-4 py-2 rounded-lg border border-border/80 bg-white dark:bg-zinc-800 text-foreground text-xs font-semibold shadow-xs"
                 >
-                  Start free
+                  {t("hub.startFreeMock")}
                 </button>
                 <span className="text-xs font-mono font-medium tracking-wider text-muted-foreground uppercase">
-                  INVOICE NUMBER
+                  {t("hub.invoiceNumberMock")}
                 </span>
               </div>
             </div>
@@ -710,7 +712,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
           {/* Header row */}
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold font-heading text-foreground">
-              Strategy
+              {t("hub.strategySection")}
             </h2>
 
             <button
@@ -718,7 +720,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
               onClick={() => setActiveModal("strategy")}
               className="text-xs font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1"
             >
-              <span>Open in Studio</span>
+              <span>{t("hub.openInStudio")}</span>
               <ChevronRight className="size-3" />
             </button>
           </div>
@@ -729,7 +731,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             <div className="space-y-6">
               <div className="space-y-1">
                 <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
-                  BUSINESS NAME
+                  {t("hub.businessNameLabel")}
                 </span>
                 <p className="font-semibold font-mono text-foreground text-sm">
                   {brandName}
@@ -738,7 +740,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
 
               <div className="space-y-1">
                 <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
-                  AUDIENCE
+                  {t("hub.audienceLabel")}
                 </span>
                 <p className="font-sans text-body text-foreground leading-relaxed">
                   {kit.strategy?.targetAudience?.value || "Freelancers and 2-10 person agencies who bill hourly."}
@@ -747,7 +749,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
 
               <div className="space-y-1">
                 <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
-                  POSITIONING
+                  {t("hub.positioningLabel")}
                 </span>
                 <p className="font-sans text-body text-foreground leading-relaxed">
                   {kit.strategy?.positioning?.value || "The invoicing tool that does the awkward follow-up for you."}
@@ -759,7 +761,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             <div className="space-y-6">
               <div className="space-y-1">
                 <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
-                  CONCEPT
+                  {t("hub.conceptLabel")}
                 </span>
                 <p className="font-sans text-body text-foreground leading-relaxed">
                   {kit.strategy?.concept?.value || "Automated invoicing and payment chasing for freelance teams."}
@@ -768,7 +770,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
 
               <div className="space-y-2">
                 <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
-                  INDUSTRY
+                  {t("hub.industryLabel")}
                 </span>
                 <div>
                   <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-medium border border-emerald-500/20">
@@ -779,7 +781,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
 
               <div className="space-y-2">
                 <span className="text-badge font-mono uppercase tracking-wider text-muted-foreground block">
-                  PERSONALITY
+                  {t("hub.personalityLabel")}
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {(kit.strategy?.personalityTraits && kit.strategy.personalityTraits.length > 0
@@ -806,11 +808,11 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
           {/* Header row */}
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold font-heading text-foreground">
-              Used by
+              {t("hub.usedBySection")}
             </h2>
 
             <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-mono font-semibold text-muted-foreground uppercase">
-              {connectedCount} OF 4 CONNECTED
+              {connectedCount} {t("hub.usedByConnected")}
             </span>
           </div>
 
@@ -834,11 +836,11 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                     {item.isApplied ? (
                       <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-badge font-medium flex items-center gap-1 w-fit border border-emerald-500/20">
                         <Check className="size-3 text-emerald-600 dark:text-emerald-400" />
-                        <span>Applied</span>
+                        <span>{t("hub.appliedStatus")}</span>
                       </span>
                     ) : (
                       <span className="text-caption font-sans text-muted-foreground">
-                        Not generated yet
+                        {t("hub.notGeneratedStatus")}
                       </span>
                     )}
                   </div>
@@ -858,15 +860,15 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
               <div className="flex items-center gap-2">
                 <Clock className="size-4 text-muted-foreground" />
                 <h3 className="font-semibold font-heading text-sm text-foreground">
-                  Brand assets
+                  {t("hub.brandAssetsSection")}
                 </h3>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-badge font-sans font-medium text-amber-700 dark:text-amber-400">
-                Coming soon
+                {t("hub.comingSoon")}
               </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Business card, invoice header, social covers and presentation cover, generated from this kit.
+              {t("hub.brandAssetsDesc")}
             </p>
           </div>
 
@@ -876,15 +878,15 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
               <div className="flex items-center gap-2">
                 <Clock className="size-4 text-muted-foreground" />
                 <h3 className="font-semibold font-heading text-sm text-foreground">
-                  Brand guidelines PDF
+                  {t("hub.guidelinesSection")}
                 </h3>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-badge font-sans font-medium text-amber-700 dark:text-amber-400">
-                Coming soon
+                {t("hub.comingSoon")}
               </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              A shareable document covering logo use, spacing, colour and type.
+              {t("hub.guidelinesDesc")}
             </p>
           </div>
         </section>
@@ -898,11 +900,11 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
               <div className="flex items-center gap-2">
                 <History className="size-5 text-primary" />
                 <h2 className="text-lg font-bold font-heading text-foreground">
-                  Version History
+                  {t("hub.historySection")}
                 </h2>
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-mono font-semibold text-muted-foreground">
-                {kit.snapshots.length} SNAPSHOT{kit.snapshots.length > 1 ? "S" : ""}
+                {kit.snapshots.length} {t("hub.snapshotTag")}{kit.snapshots.length > 1 ? "S" : ""}
               </span>
             </div>
 
@@ -933,7 +935,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
                     className="h-8 text-xs font-semibold gap-1.5"
                   >
                     <History className="size-3" />
-                    <span>Restore this snapshot</span>
+                    <span>{t("hub.restoreSnapshot")}</span>
                   </Button>
                 </div>
               ))}
@@ -947,7 +949,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
         <footer className="p-4 rounded-xl border border-border/70 bg-card/60 flex items-center gap-2.5 text-xs text-muted-foreground shadow-xs">
           <Info className="size-4 text-muted-foreground shrink-0" />
           <span>
-            Edits apply the next time a generator runs. Already-generated documents keep the version they were made with.
+            {t("hub.editsNotice")}
           </span>
         </footer>
 
@@ -957,10 +959,10 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 rounded-2xl border border-border/80 bg-card shadow-xs text-card-foreground">
           <div>
             <h3 className="font-semibold font-heading text-base text-foreground">
-              Ready to proceed with your verified brand?
+              {t("hub.proceedTitle")}
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
-              Advance to view your completed Phase 2 summary and unlock Phase 3.
+              {t("hub.proceedDesc")}
             </p>
           </div>
 
@@ -969,7 +971,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
             onClick={handleNext}
             className="w-full sm:w-auto h-11 px-6 gap-2 text-sm font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm cursor-pointer shrink-0"
           >
-            <span>Next: Complete Phase 2</span>
+            <span>{t("hub.nextCompleteBtn")}</span>
             <ArrowRight className="size-4" />
           </Button>
         </div>

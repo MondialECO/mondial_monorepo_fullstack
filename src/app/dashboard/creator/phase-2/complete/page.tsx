@@ -359,7 +359,7 @@ export default function Phase2CompletePage() {
 
       {/* Eligible — Figma matching completion screen */}
       {!statusLoading && !statusError && canContinue && (
-        <section aria-label="Phase 2 Completion" className="w-full max-w-[1000px] mx-auto py-6 sm:py-8 space-y-6 sm:space-y-8">
+        <section aria-label={t("creator.phase2.complete.pageAria", "Phase 2 Completion")} className="w-full max-w-[1000px] mx-auto py-6 sm:py-8 space-y-6 sm:space-y-8">
           {/* =========================================================================
               HEADER BLOCK (Centred text, no card — Figma matching)
              ========================================================================= */}
@@ -462,7 +462,7 @@ export default function Phase2CompletePage() {
                 </span>
                 <div className="flex items-baseline gap-2 text-lg sm:text-xl font-medium text-foreground">
                   <span className="font-heading font-bold">{displayFont}</span>
-                  <span className="text-muted-foreground text-sm font-sans">+</span>
+                  <span className="text-muted-foreground text-sm font-sans">{"+"}</span>
                   <span className="font-sans">{textFont}</span>
                 </div>
                 <p className="text-caption text-muted-foreground font-sans">
@@ -489,7 +489,7 @@ export default function Phase2CompletePage() {
                         className="max-h-full max-w-full object-contain"
                       />
                     ) : (
-                      <span className="text-badge text-muted-foreground font-mono">H</span>
+                      <span className="text-badge text-muted-foreground font-mono">{"H"}</span>
                     )}
                   </div>
                   {/* 2. Stacked */}
@@ -505,7 +505,7 @@ export default function Phase2CompletePage() {
                         className="max-h-full max-w-full object-contain"
                       />
                     ) : (
-                      <span className="text-badge text-muted-foreground font-mono">V</span>
+                      <span className="text-badge text-muted-foreground font-mono">{"V"}</span>
                     )}
                   </div>
                   {/* 3. Mark */}
@@ -521,7 +521,7 @@ export default function Phase2CompletePage() {
                         className="max-h-full max-w-full object-contain"
                       />
                     ) : (
-                      <span className="text-badge text-muted-foreground font-mono">M</span>
+                      <span className="text-badge text-muted-foreground font-mono">{"M"}</span>
                     )}
                   </div>
                   {/* 4. Wordmark */}
@@ -537,7 +537,7 @@ export default function Phase2CompletePage() {
                         className="max-h-full max-w-full object-contain"
                       />
                     ) : (
-                      <span className="text-badge text-muted-foreground font-mono">W</span>
+                      <span className="text-badge text-muted-foreground font-mono">{"W"}</span>
                     )}
                   </div>
                 </div>
@@ -571,7 +571,7 @@ export default function Phase2CompletePage() {
             {/* Tagline callout banner */}
             <div className="rounded-xl border border-border/60 bg-muted/30 p-4 sm:p-5">
               <p className="text-base sm:text-lg font-medium text-foreground italic font-sans leading-relaxed">
-                &ldquo;{brandTagline}&rdquo;
+                {`“${brandTagline}”`}
               </p>
             </div>
 
