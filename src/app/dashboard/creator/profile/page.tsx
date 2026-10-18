@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { creatorProfileApi } from '@/lib/api-creator-profile';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   type HumainXFormData,
   type HumainXExperience,
@@ -55,6 +56,19 @@ import {
   PROGRESS_PREFERENCE_OPTIONS,
   FRENCH_REGIONS,
 } from '@/types/creator/profile';
+
+const STEP_KEYS = [
+  'experience',
+  'education',
+  'skills',
+  'languages',
+  'situation',
+  'availability',
+  'region',
+  'businessExperience',
+  'learnDelegate',
+  'summary',
+] as const;
 
 const STEP_TITLES = [
   'Experience',
@@ -85,6 +99,7 @@ const SKILL_LEVELS: SkillLevel[] = ['Beginner', 'Comfortable', 'Advanced'];
 const LANGUAGE_LEVELS: LanguageLevel[] = ['Basic', 'Conversational', 'Professional', 'Fluent', 'Native'];
 
 function HumainXProfileBuilderInner() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -411,7 +426,7 @@ function HumainXProfileBuilderInner() {
     return (
       <div className="min-h-[500px] flex flex-col items-center justify-center space-y-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm font-medium text-muted-foreground">Loading your builder profile...</p>
+        <p className="text-sm font-medium text-muted-foreground">{t('creator.humainx.profileBuilder.loading', 'Loading your builder profile...')}</p>
       </div>
     );
   }
@@ -423,10 +438,10 @@ function HumainXProfileBuilderInner() {
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
             <Compass className="w-3.5 h-3.5" />
-            HUMAINX PROFILE BUILDER
+            {t('creator.humainx.profileBuilder.eyebrow', 'HUMAINX PROFILE BUILDER')}
           </div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-            Build your professional identity
+            {t('creator.humainx.profileBuilder.mainTitle', 'Build your professional identity')}
           </h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -438,7 +453,7 @@ function HumainXProfileBuilderInner() {
             className="rounded-xl border-border text-xs font-semibold"
           >
             <Save className="w-3.5 h-3.5 mr-1.5" />
-            Save &amp; Continue Later
+            {t('creator.humainx.profileBuilder.saveAndContinueLater', 'Save & Continue Later')}
           </Button>
           <Button
             variant="ghost"
@@ -446,7 +461,7 @@ function HumainXProfileBuilderInner() {
             asChild
             className="rounded-xl text-xs font-medium text-muted-foreground"
           >
-            <Link href={returnTo}>Exit</Link>
+            <Link href={returnTo}>{t('creator.humainx.profileBuilder.exit', 'Exit')}</Link>
           </Button>
         </div>
       </div>
@@ -480,7 +495,7 @@ function HumainXProfileBuilderInner() {
               >
                 {isCompleted ? <Check className="w-3 h-3" /> : idx + 1}
               </span>
-              <span>{title}</span>
+              <span>{t(`creator.humainx.profileBuilder.steps.${STEP_KEYS[idx]}`, title)}</span>
             </button>
           );
         })}
@@ -491,7 +506,7 @@ function HumainXProfileBuilderInner() {
         <Card className="p-4 rounded-2xl border-success/30 bg-success/10 text-success space-y-1">
           <div className="flex items-center gap-2 font-bold text-sm">
             <CheckCircle2 className="w-4 h-4" />
-            Profile Saved Successfully
+            {t('creator.humainx.profileBuilder.savedSuccess', 'Profile Saved Successfully')}
           </div>
           <p className="text-xs text-foreground/80 leading-relaxed">{saveSuccessMessage}</p>
         </Card>
@@ -503,13 +518,12 @@ function HumainXProfileBuilderInner() {
         {step === 0 && (
           <Card className="p-6 sm:p-8 rounded-3xl border-border bg-card space-y-6 shadow-sm">
             <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">STEP 1</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('creator.humainx.profileBuilder.step1Eyebrow', 'STEP 1')}</span>
               <h2 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-                What have you already done?
+                {t('creator.humainx.profileBuilder.step1Title', 'What have you already done?')}
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Add anything that helped you build useful skills — a job, internship, freelance work,
-                school project, personal project, volunteering, association work or a previous business.
+                {t('creator.humainx.profileBuilder.step1Desc', 'Add anything that helped you build useful skills — a job, internship, freelance work, school project, personal project, volunteering, association work or a previous business.')}
               </p>
             </div>
 
@@ -518,7 +532,7 @@ function HumainXProfileBuilderInner() {
                 <Card key={exp.id || index} className="p-5 rounded-2xl border-border/70 bg-background/50 space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-muted-foreground uppercase">
-                      Experience #{index + 1}
+                      {t('creator.humainx.profileBuilder.experienceNumber', 'Experience #{{number}}', { number: index + 1 })}
                     </span>
                     <Button
                       variant="ghost"
@@ -526,75 +540,75 @@ function HumainXProfileBuilderInner() {
                       onClick={() => handleRemoveExperience(index)}
                       className="text-destructive hover:bg-destructive/10 h-8 px-2"
                     >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Remove
+                      <Trash2 className="w-3.5 h-3.5 mr-1" /> {t('creator.humainx.profileBuilder.remove', 'Remove')}
                     </Button>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Type of Experience</Label>
+                      <Label className="text-xs">{t('creator.humainx.profileBuilder.typeOfExperience', 'Type of Experience')}</Label>
                       <Select
                         value={exp.experienceType}
                         onValueChange={(val) => handleUpdateExperience(index, { experienceType: val })}
                       >
                         <SelectTrigger className="rounded-xl">
-                          <SelectValue placeholder="Select type" />
+                          <SelectValue placeholder={t('creator.humainx.profileBuilder.selectType', 'Select type')} />
                         </SelectTrigger>
                         <SelectContent>
-                          {EXPERIENCE_TYPES.map((t) => (
-                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                          {EXPERIENCE_TYPES.map((expType) => (
+                            <SelectItem key={expType} value={expType}>{t(`creator.humainx.profileBuilder.expTypes.${expType.toLowerCase().replace(/\s+/g, '_')}`, expType)}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Role or Project Title</Label>
+                      <Label className="text-xs">{t('creator.humainx.profileBuilder.roleOrProjectTitle', 'Role or Project Title')}</Label>
                       <Input
                         value={exp.roleOrProjectTitle}
                         onChange={(e) => handleUpdateExperience(index, { roleOrProjectTitle: e.target.value })}
-                        placeholder="e.g. Lead Designer, Founder, Volunteer"
+                        placeholder={t('creator.humainx.profileBuilder.rolePlaceholder', 'e.g. Lead Designer, Founder, Volunteer')}
                         className="rounded-xl"
                       />
                     </div>
 
                     <div className="space-y-1.5 sm:col-span-2">
-                      <Label className="text-xs">Organization, Company, or Project Name</Label>
+                      <Label className="text-xs">{t('creator.humainx.profileBuilder.organizationName', 'Organization, Company, or Project Name')}</Label>
                       <Input
                         value={exp.organizationOrProjectName}
                         onChange={(e) => handleUpdateExperience(index, { organizationOrProjectName: e.target.value })}
-                        placeholder="e.g. Acme Corp, EcoClub, Personal App"
+                        placeholder={t('creator.humainx.profileBuilder.organizationPlaceholder', 'e.g. Acme Corp, EcoClub, Personal App')}
                         className="rounded-xl"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Start Date (Year or Month/Year)</Label>
+                      <Label className="text-xs">{t('creator.humainx.profileBuilder.startDate', 'Start Date (Year or Month/Year)')}</Label>
                       <Input
                         value={exp.startDate}
                         onChange={(e) => handleUpdateExperience(index, { startDate: e.target.value })}
-                        placeholder="e.g. 2022-01"
+                        placeholder={t('creator.humainx.profileBuilder.startDatePlaceholder', 'e.g. 2022-01')}
                         className="rounded-xl"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs">End Date</Label>
+                      <Label className="text-xs">{t('creator.humainx.profileBuilder.endDate', 'End Date')}</Label>
                       <Input
                         value={exp.endDate || ''}
                         disabled={exp.isCurrent}
                         onChange={(e) => handleUpdateExperience(index, { endDate: e.target.value })}
-                        placeholder="e.g. 2024-06 or Present"
+                        placeholder={t('creator.humainx.profileBuilder.endDatePlaceholder', 'e.g. 2024-06 or Present')}
                         className="rounded-xl"
                       />
                     </div>
 
                     <div className="space-y-1.5 sm:col-span-2">
-                      <Label className="text-xs">Description &amp; Key Accomplishments</Label>
+                      <Label className="text-xs">{t('creator.humainx.profileBuilder.descriptionAccomplishments', 'Description & Key Accomplishments')}</Label>
                       <Textarea
                         value={exp.description || ''}
                         onChange={(e) => handleUpdateExperience(index, { description: e.target.value })}
-                        placeholder="Briefly summarize what you achieved or learned..."
+                        placeholder={t('creator.humainx.profileBuilder.descriptionPlaceholder', 'Briefly summarize what you achieved or learned...')}
                         className="rounded-xl min-h-[70px]"
                       />
                     </div>
@@ -607,7 +621,7 @@ function HumainXProfileBuilderInner() {
                 onClick={handleAddExperience}
                 className="w-full rounded-2xl border-dashed border-border/80 py-6 text-xs font-semibold text-primary hover:bg-primary/5"
               >
-                <Plus className="w-4 h-4 mr-2" /> Add an Experience
+                <Plus className="w-4 h-4 mr-2" /> {t('creator.humainx.profileBuilder.addExperience', 'Add an Experience')}
               </Button>
             </div>
           </Card>
@@ -617,12 +631,12 @@ function HumainXProfileBuilderInner() {
         {step === 1 && (
           <Card className="p-6 sm:p-8 rounded-3xl border-border bg-card space-y-6 shadow-sm">
             <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">STEP 2</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('creator.humainx.profileBuilder.step2Eyebrow', 'STEP 2')}</span>
               <h2 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-                What have you learned so far?
+                {t('creator.humainx.profileBuilder.step2Title', 'What have you learned so far?')}
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Include university degrees, diplomas, bootcamps, online certifications, or self-directed learning paths.
+                {t('creator.humainx.profileBuilder.step2Desc', 'Include university degrees, diplomas, bootcamps, online certifications, or self-directed learning paths.')}
               </p>
             </div>
 
@@ -631,7 +645,7 @@ function HumainXProfileBuilderInner() {
                 <Card key={edu.id || index} className="p-5 rounded-2xl border-border/70 bg-background/50 space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-muted-foreground uppercase">
-                      Learning #{index + 1}
+                      {t('creator.humainx.profileBuilder.learningNumber', 'Learning #{{number}}', { number: index + 1 })}
                     </span>
                     <Button
                       variant="ghost"
@@ -639,44 +653,44 @@ function HumainXProfileBuilderInner() {
                       onClick={() => handleRemoveEducation(index)}
                       className="text-destructive hover:bg-destructive/10 h-8 px-2"
                     >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Remove
+                      <Trash2 className="w-3.5 h-3.5 mr-1" /> {t('creator.humainx.profileBuilder.remove', 'Remove')}
                     </Button>
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Institution or Platform</Label>
+                      <Label className="text-xs">{t('creator.humainx.profileBuilder.institution', 'Institution or Platform')}</Label>
                       <Input
                         value={edu.institution}
                         onChange={(e) => handleUpdateEducation(index, { institution: e.target.value })}
-                        placeholder="e.g. University of Paris, Coursera, Le Wagon"
+                        placeholder={t('creator.humainx.profileBuilder.institutionPlaceholder', 'e.g. University of Paris, Coursera, Le Wagon')}
                         className="rounded-xl"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Subject or Field of Study</Label>
+                      <Label className="text-xs">{t('creator.humainx.profileBuilder.subjectField', 'Subject or Field of Study')}</Label>
                       <Input
                         value={edu.subjectOrField}
                         onChange={(e) => handleUpdateEducation(index, { subjectOrField: e.target.value })}
-                        placeholder="e.g. Business Administration, Computer Science"
+                        placeholder={t('creator.humainx.profileBuilder.subjectPlaceholder', 'e.g. Business Administration, Computer Science')}
                         className="rounded-xl"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Degree / Qualification / Level</Label>
+                      <Label className="text-xs">{t('creator.humainx.profileBuilder.degreeLevel', 'Degree / Qualification / Level')}</Label>
                       <Input
                         value={edu.qualification || edu.level || ''}
                         onChange={(e) => handleUpdateEducation(index, { qualification: e.target.value, level: e.target.value })}
-                        placeholder="e.g. Bachelor's, Certificate, Master's"
+                        placeholder={t('creator.humainx.profileBuilder.degreePlaceholder', "e.g. Bachelor's, Certificate, Master's")}
                         className="rounded-xl"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Start Year</Label>
+                        <Label className="text-xs">{t('creator.humainx.profileBuilder.startYear', 'Start Year')}</Label>
                         <Input
                           type="number"
                           value={edu.startYear || ''}
@@ -686,7 +700,7 @@ function HumainXProfileBuilderInner() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Completion Year</Label>
+                        <Label className="text-xs">{t('creator.humainx.profileBuilder.completionYear', 'Completion Year')}</Label>
                         <Input
                           type="number"
                           value={edu.completionYear || ''}
@@ -705,7 +719,7 @@ function HumainXProfileBuilderInner() {
                 onClick={handleAddEducation}
                 className="w-full rounded-2xl border-dashed border-border/80 py-6 text-xs font-semibold text-primary hover:bg-primary/5"
               >
-                <Plus className="w-4 h-4 mr-2" /> Add Education or Certification
+                <Plus className="w-4 h-4 mr-2" /> {t('creator.humainx.profileBuilder.addEducation', 'Add Education or Certification')}
               </Button>
             </div>
           </Card>
@@ -715,20 +729,19 @@ function HumainXProfileBuilderInner() {
         {step === 2 && (
           <Card className="p-6 sm:p-8 rounded-3xl border-border bg-card space-y-6 shadow-sm">
             <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">STEP 3</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('creator.humainx.profileBuilder.step3Eyebrow', 'STEP 3')}</span>
               <h2 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-                What can you already do?
+                {t('creator.humainx.profileBuilder.step3Title', 'What can you already do?')}
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Declare your practical skills and proficiency. Skill level is your self-declared proficiency:
-                Beginner, Comfortable, or Advanced. It is never guessed or auto-inferred.
+                {t('creator.humainx.profileBuilder.step3Desc', 'Declare your practical skills and proficiency. Skill level is your self-declared proficiency: Beginner, Comfortable, or Advanced. It is never guessed or auto-inferred.')}
               </p>
             </div>
 
             {/* Add Skill Bar */}
             <div className="flex flex-col sm:flex-row gap-3 p-4 rounded-2xl border border-border bg-background/60">
               <div className="flex-1 space-y-1">
-                <Label className="text-xs">Skill Name</Label>
+                <Label className="text-xs">{t('creator.humainx.profileBuilder.skillName', 'Skill Name')}</Label>
                 <Input
                   value={newSkillName}
                   onChange={(e) => setNewSkillName(e.target.value)}
@@ -738,12 +751,12 @@ function HumainXProfileBuilderInner() {
                       handleAddSkill();
                     }
                   }}
-                  placeholder="e.g. Figma, Python, B2B Sales, Financial Modeling"
+                  placeholder={t('creator.humainx.profileBuilder.skillNamePlaceholder', 'e.g. Figma, Python, B2B Sales, Financial Modeling')}
                   className="rounded-xl"
                 />
               </div>
               <div className="w-full sm:w-48 space-y-1">
-                <Label className="text-xs">Your Level</Label>
+                <Label className="text-xs">{t('creator.humainx.profileBuilder.yourLevel', 'Your Level')}</Label>
                 <Select
                   value={newSkillLevel}
                   onValueChange={(val) => setNewSkillLevel(val as SkillLevel)}
@@ -753,7 +766,7 @@ function HumainXProfileBuilderInner() {
                   </SelectTrigger>
                   <SelectContent>
                     {SKILL_LEVELS.map((lvl) => (
-                      <SelectItem key={lvl} value={lvl}>{lvl}</SelectItem>
+                      <SelectItem key={lvl} value={lvl}>{t(`creator.humainx.profileBuilder.langLevels.${lvl.toLowerCase()}`, lvl)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -764,7 +777,7 @@ function HumainXProfileBuilderInner() {
                   disabled={!newSkillName.trim()}
                   className="rounded-xl font-semibold text-xs px-5 h-10 w-full sm:w-auto"
                 >
-                  <Plus className="w-4 h-4 mr-1.5" /> Add Skill
+                  <Plus className="w-4 h-4 mr-1.5" /> {t('creator.humainx.profileBuilder.addSkill', 'Add Skill')}
                 </Button>
               </div>
             </div>
@@ -772,11 +785,11 @@ function HumainXProfileBuilderInner() {
             {/* Active Skills List */}
             <div className="space-y-3 pt-2">
               <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Declared Skills ({formData.skills.length})
+                {t('creator.humainx.profileBuilder.declaredSkillsCount', 'Declared Skills ({{count}})', { count: formData.skills.length })}
               </h3>
               {formData.skills.length === 0 ? (
                 <div className="p-8 text-center border border-dashed rounded-2xl border-border text-muted-foreground text-xs">
-                  No skills declared yet. Add at least one skill to qualify for Phase 4.
+                  {t('creator.humainx.profileBuilder.noSkillsPrompt', 'No skills declared yet. Add at least one skill to qualify for Phase 4.')}
                 </div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -794,7 +807,7 @@ function HumainXProfileBuilderInner() {
                             {skill.level ? (
                               <span className="text-primary font-bold">{skill.level}</span>
                             ) : (
-                              <span className="italic text-muted-foreground/70">Unleveled</span>
+                              <span className="italic text-muted-foreground/70">{t('creator.humainx.profileBuilder.unleveled', 'Unleveled')}</span>
                             )}
                           </span>
                           {skill.source && (
@@ -812,7 +825,7 @@ function HumainXProfileBuilderInner() {
                           onValueChange={(val) => handleUpdateSkillLevel(skill.name, val as SkillLevel)}
                         >
                           <SelectTrigger className="h-8 rounded-lg text-xs w-28">
-                            <SelectValue placeholder="Set level" />
+                            <SelectValue placeholder={t('creator.humainx.profileBuilder.setLevel', 'Set level')} />
                           </SelectTrigger>
                           <SelectContent>
                             {SKILL_LEVELS.map((lvl) => (
@@ -842,12 +855,12 @@ function HumainXProfileBuilderInner() {
         {step === 3 && (
           <Card className="p-6 sm:p-8 rounded-3xl border-border bg-card space-y-6 shadow-sm">
             <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">STEP 4</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('creator.humainx.profileBuilder.step4Eyebrow', 'STEP 4')}</span>
               <h2 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-                Which languages can you use?
+                {t('creator.humainx.profileBuilder.step4Title', 'Which languages can you use?')}
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Add languages you can comfortably communicate in for business, sales, or technical work.
+                {t('creator.humainx.profileBuilder.step4Desc', 'Add languages you can comfortably communicate in for business, sales, or technical work.')}
               </p>
             </div>
 
@@ -855,16 +868,16 @@ function HumainXProfileBuilderInner() {
               {formData.languages.map((lang, index) => (
                 <div key={lang.id || index} className="flex flex-col sm:flex-row items-center gap-3 p-4 rounded-2xl border border-border bg-background/50">
                   <div className="flex-1 w-full space-y-1">
-                    <Label className="text-xs">Language</Label>
+                    <Label className="text-xs">{t('creator.humainx.profileBuilder.language', 'Language')}</Label>
                     <Input
                       value={lang.language}
                       onChange={(e) => handleUpdateLanguage(index, { language: e.target.value })}
-                      placeholder="e.g. French, English, Spanish"
+                      placeholder={t('creator.humainx.profileBuilder.languagePlaceholder', 'e.g. French, English, Spanish')}
                       className="rounded-xl"
                     />
                   </div>
                   <div className="w-full sm:w-56 space-y-1">
-                    <Label className="text-xs">Proficiency Level</Label>
+                    <Label className="text-xs">{t('creator.humainx.profileBuilder.proficiencyLevel', 'Proficiency Level')}</Label>
                     <Select
                       value={lang.level}
                       onValueChange={(val) => handleUpdateLanguage(index, { level: val })}
@@ -897,7 +910,7 @@ function HumainXProfileBuilderInner() {
                 onClick={handleAddLanguage}
                 className="w-full rounded-2xl border-dashed border-border/80 py-6 text-xs font-semibold text-primary hover:bg-primary/5"
               >
-                <Plus className="w-4 h-4 mr-2" /> Add a Language
+                <Plus className="w-4 h-4 mr-2" /> {t('creator.humainx.profileBuilder.addLanguage', 'Add a Language')}
               </Button>
             </div>
           </Card>
@@ -907,12 +920,12 @@ function HumainXProfileBuilderInner() {
         {step === 4 && (
           <Card className="p-6 sm:p-8 rounded-3xl border-border bg-card space-y-6 shadow-sm">
             <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">STEP 5</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('creator.humainx.profileBuilder.step5Eyebrow', 'STEP 5')}</span>
               <h2 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-                What best describes your current situation?
+                {t('creator.humainx.profileBuilder.step5Title', 'What best describes your current situation?')}
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                This helps MBC personalize recommendations and aids matching. It is not an eligibility score.
+                {t('creator.humainx.profileBuilder.step5Desc', 'This helps MBC personalize recommendations and aids matching. It is not an eligibility score.')}
               </p>
             </div>
 
@@ -950,12 +963,12 @@ function HumainXProfileBuilderInner() {
         {step === 5 && (
           <Card className="p-6 sm:p-8 rounded-3xl border-border bg-card space-y-6 shadow-sm">
             <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">STEP 6</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('creator.humainx.profileBuilder.step6Eyebrow', 'STEP 6')}</span>
               <h2 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-                How much time can you realistically dedicate to your project?
+                {t('creator.humainx.profileBuilder.step6Title', 'How much time can you realistically dedicate to your project?')}
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                This directly drives Phase 4 roadmap pacing, realistic workload calculations, and launch timelines.
+                {t('creator.humainx.profileBuilder.step6Desc', 'This directly drives Phase 4 roadmap pacing, realistic workload calculations, and launch timelines.')}
               </p>
             </div>
 
@@ -993,18 +1006,18 @@ function HumainXProfileBuilderInner() {
         {step === 6 && (
           <Card className="p-6 sm:p-8 rounded-3xl border-border bg-card space-y-6 shadow-sm">
             <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">STEP 7</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('creator.humainx.profileBuilder.step7Eyebrow', 'STEP 7')}</span>
               <h2 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-                Where are you based?
+                {t('creator.humainx.profileBuilder.step7Title', 'Where are you based?')}
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Your region will be used for local grants, French administrative aids, and regional partner matching.
+                {t('creator.humainx.profileBuilder.step7Desc', 'Your region will be used for local grants, French administrative aids, and regional partner matching.')}
               </p>
             </div>
 
             <div className="space-y-4 max-w-lg">
               <div className="space-y-1.5">
-                <Label className="text-xs">Primary Region</Label>
+                <Label className="text-xs">{t('creator.humainx.profileBuilder.primaryRegion', 'Primary Region')}</Label>
                 <Select
                   value={formData.ventureContext.region}
                   onValueChange={(val) =>
@@ -1015,7 +1028,7 @@ function HumainXProfileBuilderInner() {
                   }
                 >
                   <SelectTrigger className="rounded-xl h-11">
-                    <SelectValue placeholder="Select your region" />
+                    <SelectValue placeholder={t('creator.humainx.profileBuilder.selectRegion', 'Select your region')} />
                   </SelectTrigger>
                   <SelectContent>
                     {FRENCH_REGIONS.map((r) => (
@@ -1026,7 +1039,7 @@ function HumainXProfileBuilderInner() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Or specify city/custom region</Label>
+                <Label className="text-xs">{t('creator.humainx.profileBuilder.cityCustomRegion', 'Or specify city/custom region')}</Label>
                 <Input
                   value={formData.ventureContext.region || ''}
                   onChange={(e) =>
@@ -1035,7 +1048,7 @@ function HumainXProfileBuilderInner() {
                       ventureContext: { ...prev.ventureContext, region: e.target.value },
                     }))
                   }
-                  placeholder="e.g. Île-de-France, Paris, Lyon"
+                  placeholder={t('creator.humainx.profileBuilder.cityCustomPlaceholder', 'e.g. Île-de-France, Paris, Lyon')}
                   className="rounded-xl h-11"
                 />
               </div>
@@ -1047,12 +1060,12 @@ function HumainXProfileBuilderInner() {
         {step === 7 && (
           <Card className="p-6 sm:p-8 rounded-3xl border-border bg-card space-y-6 shadow-sm">
             <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">STEP 8</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('creator.humainx.profileBuilder.step8Eyebrow', 'STEP 8')}</span>
               <h2 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-                Have you worked on a business project before?
+                {t('creator.humainx.profileBuilder.step8Title', 'Have you worked on a business project before?')}
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Select the statement that best reflects your past entrepreneurial journey.
+                {t('creator.humainx.profileBuilder.step8Desc', 'Select the statement that best reflects your past entrepreneurial journey.')}
               </p>
             </div>
 
@@ -1090,13 +1103,12 @@ function HumainXProfileBuilderInner() {
         {step === 8 && (
           <Card className="p-6 sm:p-8 rounded-3xl border-border bg-card space-y-6 shadow-sm">
             <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary">STEP 9</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('creator.humainx.profileBuilder.step9Eyebrow', 'STEP 9')}</span>
               <h2 className="font-heading text-xl sm:text-2xl font-bold text-foreground">
-                How do you prefer to handle skills you are missing?
+                {t('creator.humainx.profileBuilder.step9Title', 'How do you prefer to handle skills you are missing?')}
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                This dictates whether Phase 4 suggests self-paced training modules, freelance delegates,
-                or hybrid workflows.
+                {t('creator.humainx.profileBuilder.step9Desc', 'This dictates whether Phase 4 suggests self-paced training modules, freelance delegates, or hybrid workflows.')}
               </p>
             </div>
 
@@ -1141,18 +1153,17 @@ function HumainXProfileBuilderInner() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-primary">
-                  YOUR BUILDER PROFILE
+                  {t('creator.humainx.profileBuilder.step10Eyebrow', 'YOUR BUILDER PROFILE')}
                 </span>
                 <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-xs font-semibold px-2 py-0.5">
-                  <CheckCircle2 className="w-3 h-3 mr-1" /> Ready to Confirm
+                  <CheckCircle2 className="w-3 h-3 mr-1" /> {t('creator.humainx.profileBuilder.readyToConfirm', 'Ready to Confirm')}
                 </Badge>
               </div>
               <h2 className="font-heading text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
-                This is how MBC understands you.
+                {t('creator.humainx.profileBuilder.summaryTitle', 'This is how MBC understands you.')}
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Review your profile summary below. MBC will use this information to tailor your Phase 4
-                construction roadmap, training suggestions, and resource recommendations.
+                {t('creator.humainx.profileBuilder.summaryDesc', 'Review your profile summary below. MBC will use this information to tailor your Phase 4 construction roadmap, training suggestions, and resource recommendations.')}
               </p>
             </div>
 
@@ -1160,7 +1171,7 @@ function HumainXProfileBuilderInner() {
               {/* Experience Summary */}
               <div className="p-5 rounded-2xl border border-border bg-card space-y-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Briefcase className="w-3.5 h-3.5 text-primary" /> Your Experience
+                  <Briefcase className="w-3.5 h-3.5 text-primary" /> {t('creator.humainx.profileBuilder.yourExperience', 'Your Experience')}
                 </span>
                 <div className="text-sm font-semibold text-foreground">
                   {formData.experiences.length > 0
@@ -1182,10 +1193,10 @@ function HumainXProfileBuilderInner() {
               {/* Skills Summary */}
               <div className="p-5 rounded-2xl border border-border bg-card space-y-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" /> Your Skills
+                  <Sparkles className="w-3.5 h-3.5 text-primary" /> {t('creator.humainx.profileBuilder.yourSkills', 'Your Skills')}
                 </span>
                 <div className="text-sm font-semibold text-foreground">
-                  {formData.skills.length} declared skill(s)
+                  {t('creator.humainx.profileBuilder.declaredSkills', '{{count}} declared skill(s)', { count: formData.skills.length })}
                 </div>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {formData.skills.map((s) => (
@@ -1199,36 +1210,36 @@ function HumainXProfileBuilderInner() {
               {/* Current Capacity */}
               <div className="p-5 rounded-2xl border border-border bg-card space-y-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-primary" /> Your Current Capacity
+                  <Clock className="w-3.5 h-3.5 text-primary" /> {t('creator.humainx.profileBuilder.yourCurrentCapacity', 'Your Current Capacity')}
                 </span>
                 <div className="text-sm font-semibold text-foreground">
                   {formData.ventureContext.weeklyAvailability || 'Not specified'}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Situation: <span className="font-medium text-foreground">{formData.ventureContext.currentSituation || 'Not specified'}</span>
+                  {t('creator.humainx.profileBuilder.situationPrefix', 'Situation:')} <span className="font-medium text-foreground">{formData.ventureContext.currentSituation || t('creator.humainx.profileBuilder.notSpecified', 'Not specified')}</span>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Region: <span className="font-medium text-foreground">{formData.ventureContext.region || 'Not specified'}</span>
+                  {t('creator.humainx.profileBuilder.regionPrefix', 'Region:')} <span className="font-medium text-foreground">{formData.ventureContext.region || t('creator.humainx.profileBuilder.notSpecified', 'Not specified')}</span>
                 </div>
               </div>
 
               {/* Business-Building Experience */}
               <div className="p-5 rounded-2xl border border-border bg-card space-y-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5 text-primary" /> Business Experience
+                  <Award className="w-3.5 h-3.5 text-primary" /> {t('creator.humainx.profileBuilder.businessExperienceCard', 'Business Experience')}
                 </span>
                 <div className="text-sm font-semibold text-foreground">
-                  {formData.ventureContext.previousEntrepreneurialExperience || 'No previous experience recorded'}
+                  {formData.ventureContext.previousEntrepreneurialExperience || t('creator.humainx.profileBuilder.noPreviousExperience', 'No previous experience recorded')}
                 </div>
               </div>
 
               {/* How You Prefer to Progress */}
               <div className="p-5 rounded-2xl border border-border bg-card space-y-2 md:col-span-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Compass className="w-3.5 h-3.5 text-primary" /> How You Prefer to Progress
+                  <Compass className="w-3.5 h-3.5 text-primary" /> {t('creator.humainx.profileBuilder.howYouPreferToProgress', 'How You Prefer to Progress')}
                 </span>
                 <div className="text-sm font-semibold text-foreground">
-                  {formData.ventureContext.learningPreference || 'Balanced learning and delegation'}
+                  {formData.ventureContext.learningPreference || t('creator.humainx.profileBuilder.balancedDefault', 'Balanced learning and delegation')}
                 </div>
               </div>
             </div>
@@ -1245,7 +1256,7 @@ function HumainXProfileBuilderInner() {
                 }}
                 className="w-full sm:w-auto rounded-xl border-border text-xs font-semibold"
               >
-                Edit Profile
+                {t('creator.humainx.profileBuilder.editProfile', 'Edit Profile')}
               </Button>
               <Button
                 onClick={handleConfirmProfile}
@@ -1254,11 +1265,11 @@ function HumainXProfileBuilderInner() {
               >
                 {saveMutation.isPending ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t('creator.humainx.profileBuilder.saving', 'Saving...')}
                   </>
                 ) : (
                   <>
-                    Confirm My Profile
+                    {t('creator.humainx.profileBuilder.confirmMyProfile', 'Confirm My Profile')}
                     <Check className="w-4 h-4 ml-2" />
                   </>
                 )}
@@ -1277,14 +1288,14 @@ function HumainXProfileBuilderInner() {
             disabled={step === 0}
             className="rounded-xl border-border text-xs font-semibold px-5"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" /> Back
+            <ArrowLeft className="w-4 h-4 mr-2" /> {t('creator.humainx.profileBuilder.back', 'Back')}
           </Button>
 
           <Button
             onClick={handleNextStep}
             className="rounded-xl bg-primary text-primary-foreground text-xs font-semibold px-6 shadow-sm"
           >
-            Next <ArrowRight className="w-4 h-4 ml-2" />
+            {t('creator.humainx.profileBuilder.next', 'Next')} <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
       )}

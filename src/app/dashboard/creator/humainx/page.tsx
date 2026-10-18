@@ -29,6 +29,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useAuth } from '@/app/_providers/AuthProvider';
+import { useTranslation } from '@/hooks/useTranslation';
 import { creatorProfileApi } from '@/lib/api-creator-profile';
 import {
   FRENCH_REGIONS,
@@ -78,6 +79,7 @@ const PROGRESS_ICONS: Record<string, React.ElementType> = {
 };
 
 function HumainXQuickStartInner() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -474,7 +476,7 @@ function HumainXQuickStartInner() {
   const handleSkipSkills = () => {
     if (skills.length === 0) {
       // Step 2 remains strictly incomplete. Show validation feedback without fake data
-      setSubmitError('Add at least one skill to continue.');
+      setSubmitError(t('creator.humainx.quickStart.addAtLeastOneSkill', 'Add at least one skill to continue.'));
       return;
     }
     // If user already has valid skills, proceed normally
@@ -495,7 +497,7 @@ function HumainXQuickStartInner() {
     try {
       const success = await persistChanges();
       if (!success) {
-        setSubmitError("Couldn't save your profile. Please check your connection and try again.");
+        setSubmitError(t('creator.humainx.quickStart.couldntSaveConnection', "Couldn't save your profile. Please check your connection and try again."));
         setIsSubmitting(false);
         return;
       }
@@ -549,7 +551,7 @@ function HumainXQuickStartInner() {
         className="min-h-[70vh] flex flex-col items-center justify-center gap-3 text-muted-foreground"
       >
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="font-sans text-body font-medium">Preparing your HumainX Quick Start…</p>
+        <p className="font-sans text-body font-medium">{t('creator.humainx.quickStart.preparing', 'Preparing your HumainX Quick Start…')}</p>
       </div>
     );
   }
@@ -562,7 +564,7 @@ function HumainXQuickStartInner() {
         <div className="w-full flex flex-col gap-2">
           <div className="flex items-center justify-between text-caption font-sans">
             <span className="font-semibold tracking-wider text-muted-foreground uppercase text-xs">
-              STEP <span className="font-mono">{currentStep}</span> OF <span className="font-mono">3</span>
+              {t('creator.humainx.quickStart.stepWord', 'STEP')} <span className="font-mono">{currentStep}</span> {t('creator.humainx.quickStart.ofWord', 'OF')} <span className="font-mono">3</span>
             </span>
             <span className="text-primary font-medium text-xs">
               {currentStep === 1
@@ -577,7 +579,7 @@ function HumainXQuickStartInner() {
             aria-valuenow={currentStep}
             aria-valuemin={1}
             aria-valuemax={3}
-            aria-label={`Step ${currentStep} of 3`}
+            aria-label={t('creator.humainx.quickStart.stepAria', 'Step {{current}} of 3', { current: currentStep })}
             className="w-full bg-border/60 rounded-full h-1 overflow-hidden"
           >
             <div
@@ -595,7 +597,7 @@ function HumainXQuickStartInner() {
           >
             <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
             <div>
-              <p className="font-heading font-semibold text-card-title">Unable to proceed</p>
+              <p className="font-heading font-semibold text-card-title">{t('creator.humainx.quickStart.unableToProceed', 'Unable to proceed')}</p>
               <p className="font-sans text-caption mt-0.5">{submitError}</p>
             </div>
           </div>
@@ -609,10 +611,10 @@ function HumainXQuickStartInner() {
             {/* Header / Editorial Lead */}
             <div>
               <h1 className="font-heading font-semibold text-[32px] sm:text-[36px] leading-[40px] sm:leading-[44px] tracking-tight text-foreground">
-                Tell us about your situation.
+                {t('creator.humainx.quickStart.step1Title', 'Tell us about your situation.')}
               </h1>
               <p className="mt-2.5 font-sans text-[15px] sm:text-[16px] leading-relaxed text-muted-foreground">
-                Three quick questions. We&apos;ll use them to shape your roadmap, your paperwork, and the statutory financial support you may qualify for.
+                {t('creator.humainx.quickStart.step1Subtitle', "Three quick questions. We'll use them to shape your roadmap, your paperwork, and the statutory financial support you may qualify for.")}
               </p>
             </div>
 
@@ -623,7 +625,7 @@ function HumainXQuickStartInner() {
                   htmlFor="region-select"
                   className="font-sans font-semibold text-sm text-foreground"
                 >
-                  Your region
+                  {t('creator.humainx.quickStart.yourRegion', 'Your region')}
                 </label>
                 {/* Truthful badge reflecting real frontend context (FIX 04) */}
                 <div
@@ -632,7 +634,7 @@ function HumainXQuickStartInner() {
                   className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium"
                 >
                   <Lock className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span>{isTerritoryVerified ? 'Territory Verified' : 'Selected region'}</span>
+                  <span>{isTerritoryVerified ? t('creator.humainx.quickStart.territoryVerified', 'Territory Verified') : t('creator.humainx.quickStart.selectedRegion', 'Selected region')}</span>
                 </div>
               </div>
 
@@ -640,10 +642,10 @@ function HumainXQuickStartInner() {
               <div className="relative">
                 <div className="h-11 w-full rounded-xl border border-input bg-card px-3.5 flex items-center justify-between text-sm hover:border-primary/50 transition-colors pointer-events-none">
                   <div className="flex items-center gap-2">
-                    <span className="text-base" role="img" aria-label="France">
-                      🇫🇷
+                    <span className="text-base" role="img" aria-label={t('creator.humainx.quickStart.france', 'France')}>
+                      {/* flag */}
                     </span>
-                    <span className="font-medium text-foreground">France</span>
+                    <span className="font-medium text-foreground">{t('creator.humainx.quickStart.france', 'France')}</span>
                   </div>
                   <span className="text-muted-foreground font-normal">{region}</span>
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -651,21 +653,21 @@ function HumainXQuickStartInner() {
 
                 <select
                   id="region-select"
-                  aria-label="Your region"
+                  aria-label={t('creator.humainx.quickStart.yourRegion', 'Your region')}
                   value={region}
                   onChange={(e) => handleRegionChange(e.target.value)}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-foreground bg-card"
                 >
                   {FRENCH_REGIONS.map((r) => (
                     <option key={r} value={r}>
-                      France • {r}
+                      {t('creator.humainx.quickStart.franceWithRegion', 'France • {{region}}', { region: r })}
                     </option>
                   ))}
                 </select>
               </div>
 
               <p className="font-sans text-xs text-muted-foreground">
-                From your verified address — change it if this isn&apos;t right.
+                {t('creator.humainx.quickStart.regionNote', "From your verified address — change it if this isn't right.")}
               </p>
             </div>
 
@@ -673,16 +675,16 @@ function HumainXQuickStartInner() {
             <div className="space-y-4">
               <div>
                 <h2 className="font-heading font-semibold text-[19px] sm:text-[20px] text-foreground">
-                  What are you doing right now?
+                  {t('creator.humainx.quickStart.situationTitle', 'What are you doing right now?')}
                 </h2>
                 <p className="font-sans text-xs sm:text-sm text-muted-foreground mt-0.5">
-                  Select the activity that occupies most of your daytime schedule.
+                  {t('creator.humainx.quickStart.situationSubtitle', 'Select the activity that occupies most of your daytime schedule.')}
                 </p>
               </div>
 
               <div
                 role="radiogroup"
-                aria-label="Current Situation"
+                aria-label={t('creator.humainx.quickStart.currentSituationAria', 'Current Situation')}
                 className="grid grid-cols-1 sm:grid-cols-3 gap-3.5"
               >
                 {CURRENT_SITUATION_UI_OPTIONS.map((opt) => {
@@ -737,16 +739,16 @@ function HumainXQuickStartInner() {
             <div className="space-y-4">
               <div>
                 <h2 className="font-heading font-semibold text-[19px] sm:text-[20px] text-foreground">
-                  How much time can you give this each week?
+                  {t('creator.humainx.quickStart.availabilityTitle', 'How much time can you give this each week?')}
                 </h2>
                 <p className="font-sans text-xs sm:text-sm text-muted-foreground mt-0.5">
-                  Realistic time commitments help us calibrate actionable development sprints.
+                  {t('creator.humainx.quickStart.availabilitySubtitle', 'Realistic time commitments help us calibrate actionable development sprints.')}
                 </p>
               </div>
 
               <div
                 role="radiogroup"
-                aria-label="Weekly Availability"
+                aria-label={t('creator.humainx.quickStart.weeklyAvailabilityAria', 'Weekly Availability')}
                 className="flex flex-wrap gap-2.5"
               >
                 {WEEKLY_AVAILABILITY_UI_OPTIONS.map((opt) => {
@@ -764,14 +766,14 @@ function HumainXQuickStartInner() {
                           : 'border-border bg-card hover:bg-muted/50 text-foreground'
                       }`}
                     >
-                      <span>{opt.label}</span>
+                      <span>{t(`creator.humainx.quickStart.availability.${opt.id}`, opt.label)}</span>
                     </button>
                   );
                 })}
               </div>
 
               <p className="font-sans text-xs text-muted-foreground mt-2">
-                You can change this later as your venture accelerates.
+                {t('creator.humainx.quickStart.availabilityNote', 'You can change this later as your venture accelerates.')}
               </p>
             </div>
 
@@ -779,9 +781,9 @@ function HumainXQuickStartInner() {
             <div className="p-4 rounded-xl bg-muted/60 dark:bg-muted/30 border border-border/50 flex items-start gap-3 mt-4">
               <Shield className="w-4 h-4 text-primary mt-0.5 shrink-0" />
               <p className="font-sans text-xs leading-relaxed text-muted-foreground">
-                Your information is protected under French commercial privacy laws and strictly used to personalize government grant applications and statutory support opportunities.{' '}
+                {t('creator.humainx.quickStart.privacyNotice', 'Your information is protected under French commercial privacy laws and strictly used to personalize government grant applications and statutory support opportunities.')}{' '}
                 <Link href="/privacy" className="text-primary hover:underline font-medium">
-                  Privacy Policy
+                  {t('creator.humainx.quickStart.privacyPolicy', 'Privacy Policy')}
                 </Link>
               </p>
             </div>
@@ -796,10 +798,10 @@ function HumainXQuickStartInner() {
             {/* Header per Figma Node 57126:16624 */}
             <div>
               <h1 className="font-heading font-semibold text-[32px] sm:text-[36px] leading-[40px] sm:leading-[44px] tracking-tight text-foreground">
-                What can you already do?
+                {t('creator.humainx.quickStart.step2Title', 'What can you already do?')}
               </h1>
               <p className="mt-2.5 font-sans text-[15px] sm:text-[16px] leading-relaxed text-muted-foreground">
-                Tap anything that applies. School projects and self-taught skills count.
+                {t('creator.humainx.quickStart.step2Subtitle', 'Tap anything that applies. School projects and self-taught skills count.')}
               </p>
             </div>
 
@@ -827,7 +829,7 @@ function HumainXQuickStartInner() {
                       ) : (
                         <Plus className="w-3.5 h-3.5 text-muted-foreground" />
                       )}
-                      <span>{skill}</span>
+                      <span>{t(`creator.humainx.quickStart.skills.${skill.toLowerCase().replace(/[\s-]/g, '_')}`, skill)}</span>
                     </button>
                   );
                 })}
@@ -840,7 +842,7 @@ function HumainXQuickStartInner() {
                     className="h-[38px] px-4 rounded-full border border-dashed border-border hover:border-primary/60 bg-transparent text-muted-foreground hover:text-foreground font-sans text-xs sm:text-sm transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Add something else</span>
+                    <span>{t('creator.humainx.quickStart.addSomethingElse', 'Add something else')}</span>
                   </button>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -848,7 +850,7 @@ function HumainXQuickStartInner() {
                       id="custom-skill-input"
                       type="text"
                       autoFocus
-                      placeholder="Type custom skill..."
+                      placeholder={t('creator.humainx.quickStart.customSkillPlaceholder', 'Type custom skill...')}
                       value={customSkillInput}
                       onChange={(e) => setCustomSkillInput(e.target.value)}
                       onKeyDown={(e) => {
@@ -867,14 +869,14 @@ function HumainXQuickStartInner() {
                       disabled={!customSkillInput.trim()}
                       className="h-[38px] px-4 rounded-full bg-primary text-primary-foreground font-sans text-xs font-semibold hover:bg-primary/90 disabled:opacity-40 transition-colors cursor-pointer"
                     >
-                      Add
+                      {t('creator.humainx.quickStart.add', 'Add')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowCustomSkillInput(false)}
                       className="h-[38px] px-3 rounded-full text-muted-foreground hover:text-foreground font-sans text-xs transition-colors cursor-pointer"
                     >
-                      Cancel
+                      {t('creator.humainx.quickStart.cancel', 'Cancel')}
                     </button>
                   </div>
                 )}
@@ -885,10 +887,10 @@ function HumainXQuickStartInner() {
             <div className="space-y-4 pt-4 border-t border-border/60">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <h2 className="font-heading font-semibold text-[19px] sm:text-[20px] text-foreground">
-                  How confident are you with each?
+                  {t('creator.humainx.quickStart.confidenceTitle', 'How confident are you with each?')}
                 </h2>
                 <span className="font-sans text-xs text-muted-foreground font-medium">
-                  Your selected skills ({skills.length})
+                  {t('creator.humainx.quickStart.selectedSkillsCount', 'Your selected skills ({{count}})', { count: skills.length })}
                 </span>
               </div>
 
@@ -896,22 +898,22 @@ function HumainXQuickStartInner() {
               <div className="flex flex-wrap items-center gap-4 text-xs font-sans text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
-                  <span>Beginner — I know the basics</span>
+                  <span>{t('creator.humainx.quickStart.legendBeginner', 'Beginner — I know the basics')}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                  <span>Comfortable — I can do this on my own</span>
+                  <span>{t('creator.humainx.quickStart.legendComfortable', 'Comfortable — I can do this on my own')}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-blue-700 shrink-0" />
-                  <span>Advanced — I can handle complex work</span>
+                  <span>{t('creator.humainx.quickStart.legendAdvanced', 'Advanced — I can handle complex work')}</span>
                 </div>
               </div>
 
               {/* Selected Skills List */}
               {skills.length === 0 ? (
                 <div className="p-6 rounded-2xl border border-dashed border-border text-center font-sans text-sm text-muted-foreground bg-card">
-                  Tap skills above or add a custom skill to establish your founder capacity.
+                  {t('creator.humainx.quickStart.emptySkillsPrompt', 'Tap skills above or add a custom skill to establish your founder capacity.')}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -930,14 +932,14 @@ function HumainXQuickStartInner() {
                         {/* Segmented Level selector buttons */}
                         <div
                           role="radiogroup"
-                          aria-label={`Proficiency level for ${skill.name}`}
+                          aria-label={t('creator.humainx.quickStart.proficiencyLevelAria', 'Proficiency level for {{skill}}', { skill: skill.name })}
                           className="inline-flex rounded-lg border border-input p-0.5 bg-muted/40"
                         >
                           {SKILL_LEVELS.map((lvl) => {
                             const active = skill.level === lvl;
                             return (
                               <button
-                                key={lvl}
+                                key={t(`creator.humainx.quickStart.levels.${lvl.toLowerCase()}`, lvl)}
                                 type="button"
                                 role="radio"
                                 aria-checked={active}
@@ -957,7 +959,7 @@ function HumainXQuickStartInner() {
                         {/* Remove skill button */}
                         <button
                           type="button"
-                          aria-label={`Remove ${skill.name}`}
+                          aria-label={t('creator.humainx.quickStart.removeSkillAria', 'Remove {{skill}}', { skill: skill.name })}
                           onClick={() => removeSkill(skill.name)}
                           className="text-muted-foreground hover:text-destructive p-1 rounded-md transition-colors cursor-pointer"
                         >
@@ -981,13 +983,13 @@ function HumainXQuickStartInner() {
             <div className="space-y-4">
               <div>
                 <h2 className="font-heading font-semibold text-[19px] sm:text-[20px] text-foreground">
-                  Have you built something before?
+                  {t('creator.humainx.quickStart.step3Title', 'Have you built something before?')}
                 </h2>
               </div>
 
               <div
                 role="radiogroup"
-                aria-label="Previous entrepreneurial experience"
+                aria-label={t('creator.humainx.quickStart.previousExperienceAria', 'Previous entrepreneurial experience')}
                 className="flex flex-col gap-3"
               >
                 {PREVIOUS_EXPERIENCE_UI_OPTIONS.map((opt) => {
@@ -1036,13 +1038,13 @@ function HumainXQuickStartInner() {
             <div className="space-y-4">
               <div>
                 <h2 className="font-heading font-semibold text-[19px] sm:text-[20px] text-foreground">
-                  When you hit something you can&apos;t do yet?
+                  {t('creator.humainx.quickStart.progressTitle', "When you hit something you can't do yet?")}
                 </h2>
               </div>
 
               <div
                 role="radiogroup"
-                aria-label="Progress preference"
+                aria-label={t('creator.humainx.quickStart.progressPreferenceAria', 'Progress preference')}
                 className="grid grid-cols-1 sm:grid-cols-2 gap-3.5"
               >
                 {PROGRESS_PREFERENCE_UI_OPTIONS.map((opt) => {
@@ -1098,7 +1100,7 @@ function HumainXQuickStartInner() {
               </div>
 
               <p className="font-sans text-xs text-muted-foreground mt-1">
-                You can change this any time — we&apos;ll check in when it actually matters.
+                {t('creator.humainx.quickStart.progressNote', "You can change this any time — we'll check in when it actually matters.")}
               </p>
             </div>
           </div>
@@ -1115,15 +1117,15 @@ function HumainXQuickStartInner() {
                 {saveStatus === 'saving' ? (
                   <>
                     <Loader2 className="w-3 h-3 animate-spin text-primary" />
-                    <span>Saving…</span>
+                    <span>{t('creator.humainx.quickStart.saving', 'Saving…')}</span>
                   </>
                 ) : saveStatus === 'error' ? (
                   <>
                     <AlertCircle className="w-3 h-3 text-destructive" />
-                    <span className="text-destructive font-medium">Couldn’t save — try again</span>
+                    <span className="text-destructive font-medium">{t('creator.humainx.quickStart.couldntSaveTryAgain', 'Couldn’t save — try again')}</span>
                   </>
                 ) : (
-                  <span>Auto-saved to draft profile</span>
+                  <span>{t('creator.humainx.quickStart.autosaved', 'Auto-saved to draft profile')}</span>
                 )}
               </div>
             ) : currentStep === 2 ? (
@@ -1132,7 +1134,7 @@ function HumainXQuickStartInner() {
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                   <span>
                     <span className="font-mono font-semibold text-foreground">{skills.length}</span>{' '}
-                    {skills.length === 1 ? 'skill' : 'skills'} added
+                    {skills.length === 1 ? t('creator.humainx.quickStart.skillSingular', 'skill') : t('creator.humainx.quickStart.skillPlural', 'skills')} {t('creator.humainx.quickStart.added', 'added')}
                   </span>
                 </div>
                 {/* Safe "I'll add these later" link (FIX 01 — does not bypass validation or inject fake skills) */}
@@ -1141,13 +1143,13 @@ function HumainXQuickStartInner() {
                   onClick={handleSkipSkills}
                   className="text-xs font-sans text-muted-foreground hover:text-foreground underline text-left cursor-pointer"
                 >
-                  I&apos;ll add these later
+                  {t('creator.humainx.quickStart.illAddTheseLater', "I'll add these later")}
                 </button>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-xs font-sans text-muted-foreground">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span>Preferences saved to draft</span>
+                <span>{t('creator.humainx.quickStart.preferencesSaved', 'Preferences saved to draft')}</span>
               </div>
             )}
           </div>
@@ -1160,7 +1162,7 @@ function HumainXQuickStartInner() {
                 className="h-11 px-5 rounded-full border border-border bg-card text-foreground font-sans text-sm font-medium hover:bg-muted transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" />
-                <span>Back</span>
+                <span>{t('creator.humainx.quickStart.back', 'Back')}</span>
               </button>
             )}
 
@@ -1175,7 +1177,7 @@ function HumainXQuickStartInner() {
                 }
                 className="h-11 px-7 rounded-full bg-primary text-primary-foreground font-sans text-sm font-medium hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs flex items-center gap-2 cursor-pointer"
               >
-                <span>Continue</span>
+                <span>{t('creator.humainx.quickStart.continue', 'Continue')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
@@ -1188,11 +1190,11 @@ function HumainXQuickStartInner() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Preparing workspace…</span>
+                    <span>{t('creator.humainx.quickStart.preparingWorkspace', 'Preparing workspace…')}</span>
                   </>
                 ) : (
                   <>
-                    <span>Start my project</span>
+                    <span>{t('creator.humainx.quickStart.startMyProject', 'Start my project')}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -1204,16 +1206,16 @@ function HumainXQuickStartInner() {
 
       {/* Page Footer per Figma (© 2025 Mondial Eco Systems. All rights reserved. • Support • Privacy • Terms) */}
       <footer className="w-full max-w-[656px] mx-auto pt-14 pb-4 flex items-center justify-between text-xs text-muted-foreground font-sans border-t border-border/40 mt-8">
-        <span>© 2025 Mondial Eco Systems. All rights reserved.</span>
+        <span>{t('creator.humainx.quickStart.copyright', '© 2025 Mondial Eco Systems. All rights reserved.')}</span>
         <div className="flex items-center gap-6 font-medium">
           <Link href="/support" className="hover:text-foreground transition-colors">
-            Support
+            {t('creator.humainx.quickStart.support', 'Support')}
           </Link>
           <Link href="/privacy" className="hover:text-foreground transition-colors">
-            Privacy
+            {t('creator.humainx.quickStart.privacy', 'Privacy')}
           </Link>
           <Link href="/terms" className="hover:text-foreground transition-colors">
-            Terms
+            {t('creator.humainx.quickStart.terms', 'Terms')}
           </Link>
         </div>
       </footer>

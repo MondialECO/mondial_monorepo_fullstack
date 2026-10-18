@@ -116,6 +116,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       // Check standard sub-namespaces (e.g. creator, brandKit)
       if (val === undefined) {
         const candidatePrefixes = [
+          'creator.humainx.',
           'creator.phase2.brandKit.',
           'creator.phase2.',
           'creator.',
@@ -224,6 +225,7 @@ export function useTranslation(_namespace?: string) {
         let val = getNestedValue(dictionaries.en, key);
         if (val === undefined) {
           const candidatePrefixes = [
+            'creator.humainx.',
             'creator.phase2.brandKit.',
             'creator.phase2.',
             'creator.',
