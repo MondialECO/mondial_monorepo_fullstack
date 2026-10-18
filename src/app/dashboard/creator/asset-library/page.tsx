@@ -62,7 +62,7 @@ interface ArtifactItem {
 }
 
 export default function CreatorAssetLibraryPage() {
-  const { t } = useLanguage();
+  const { t, formatDate: formatLocaleDate } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryIdeaId = searchParams.get('ideaId');
@@ -160,11 +160,13 @@ export default function CreatorAssetLibraryPage() {
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return null;
     try {
-      return new Date(dateStr).toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      });
+      return (
+        formatLocaleDate(dateStr, {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        }) || null
+      );
     } catch {
       return null;
     }
@@ -305,122 +307,122 @@ export default function CreatorAssetLibraryPage() {
     {
       id: 'brand-kit',
       phaseId: 2,
-      phaseTitle: 'Phase 2 // Brand & Visual Identity',
+      phaseTitle: t('creator.assetLibrary.phase2GroupTitle', 'Phase 2 // Brand & Visual Identity'),
       stepNumber: 'Step 2.3',
-      title: 'Brand Identity Kit',
-      description: 'Production vector lockups (6 SVG variations), 5-role WCAG color palette, typography scale definitions, and CSS custom properties.',
+      title: t('creator.assetLibrary.brandKitTitle', 'Brand Identity Kit'),
+      description: t('creator.assetLibrary.brandKitDesc', 'Production vector lockups (6 SVG variations), 5-role WCAG color palette, typography scale definitions, and CSS custom properties.'),
       fileFormat: 'ZIP',
       isDownloadableV1: true,
       isReady: isBrandKitReady,
       lastUpdatedText: formatDate(brandKit?.updatedAt || journey?.updatedAt),
       versionNumber: brandKit?.version ?? 1,
       stepUrl: withIdeaContext('/dashboard/creator/phase-2/brand-kit', currentIdeaId),
-      downloadLabel: 'Download ZIP',
+      downloadLabel: t('creator.assetLibrary.downloadZip', 'Download ZIP'),
       onDownloadOrView: handleDownloadBrandKit,
     },
     // Phase 3
     {
       id: 'market-study',
       phaseId: 3,
-      phaseTitle: 'Phase 3 // Business Foundations',
+      phaseTitle: t('creator.assetLibrary.phase3GroupTitle', 'Phase 3 // Business Foundations'),
       stepNumber: 'Step 3.1',
-      title: 'Market Study & Sizing Funnel',
-      description: 'TAM/SAM/SOM market sizing constriction, direct & indirect competitor benchmarking matrix, verified demand signals, and founder gap validation.',
+      title: t('creator.assetLibrary.marketStudyTitle', 'Market Study & Sizing Funnel'),
+      description: t('creator.assetLibrary.marketStudyDesc', 'TAM/SAM/SOM market sizing constriction, direct & indirect competitor benchmarking matrix, verified demand signals, and founder gap validation.'),
       fileFormat: 'PDF',
       isDownloadableV1: true,
       isReady: isMarketStudyReady,
       lastUpdatedText: formatDate(journey?.updatedAt),
       stepUrl: withIdeaContext('/dashboard/creator/phase-3/market-study', currentIdeaId),
-      downloadLabel: 'Export PDF',
+      downloadLabel: t('creator.assetLibrary.exportPdf', 'Export PDF'),
       onDownloadOrView: handleOpenMarketStudy,
     },
     {
       id: 'business-model',
       phaseId: 3,
-      phaseTitle: 'Phase 3 // Business Foundations',
+      phaseTitle: t('creator.assetLibrary.phase3GroupTitle', 'Phase 3 // Business Foundations'),
       stepNumber: 'Step 3.2',
-      title: 'Business Model Canvas & Unit Economics',
-      description: 'Canonical 9-box Osterwalder canvas, pricing tier architecture, customer acquisition cost benchmarks, and lifetime value unit economics.',
+      title: t('creator.assetLibrary.businessModelTitle', 'Business Model Canvas & Unit Economics'),
+      description: t('creator.assetLibrary.businessModelDesc', 'Canonical 9-box Osterwalder canvas, pricing tier architecture, customer acquisition cost benchmarks, and lifetime value unit economics.'),
       fileFormat: 'PDF',
       isDownloadableV1: true,
       isReady: isBusinessModelReady,
       lastUpdatedText: formatDate(journey?.updatedAt),
       stepUrl: withIdeaContext('/dashboard/creator/phase-3/business-model', currentIdeaId),
-      downloadLabel: 'Export PDF',
+      downloadLabel: t('creator.assetLibrary.exportPdf', 'Export PDF'),
       onDownloadOrView: handleOpenBusinessModel,
     },
     {
       id: 'financial-forecast',
       phaseId: 3,
-      phaseTitle: 'Phase 3 // Business Foundations',
+      phaseTitle: t('creator.assetLibrary.phase3GroupTitle', 'Phase 3 // Business Foundations'),
       stepNumber: 'Step 3.3',
-      title: 'Financial Forecast & Break-Even Model',
-      description: '36-month pro forma projections, monthly fixed & variable cost breakdown, net cashflow trajectory, and dynamic break-even horizon analysis.',
+      title: t('creator.assetLibrary.financialForecastTitle', 'Financial Forecast & Break-Even Model'),
+      description: t('creator.assetLibrary.financialForecastDesc', '36-month pro forma projections, monthly fixed & variable cost breakdown, net cashflow trajectory, and dynamic break-even horizon analysis.'),
       fileFormat: 'PDF',
       isDownloadableV1: true,
       isReady: isForecastReady,
       lastUpdatedText: formatDate(journey?.updatedAt),
       stepUrl: withIdeaContext('/dashboard/creator/phase-3/forecast', currentIdeaId),
-      downloadLabel: 'Export PDF',
+      downloadLabel: t('creator.assetLibrary.exportPdf', 'Export PDF'),
       onDownloadOrView: handleOpenForecast,
     },
     {
       id: 'legal-checklist',
       phaseId: 3,
-      phaseTitle: 'Phase 3 // Business Foundations',
+      phaseTitle: t('creator.assetLibrary.phase3GroupTitle', 'Phase 3 // Business Foundations'),
       stepNumber: 'Step 3.4',
-      title: 'Legal & Regulatory Compliance Checklist',
-      description: 'Corporate bylaws, IP assignment agreements, GDPR data processing registers, employment contracts, and statutory compliance status.',
+      title: t('creator.assetLibrary.legalChecklistTitle', 'Legal & Regulatory Compliance Checklist'),
+      description: t('creator.assetLibrary.legalChecklistDesc', 'Corporate bylaws, IP assignment agreements, GDPR data processing registers, employment contracts, and statutory compliance status.'),
       fileFormat: 'IN_APP',
       isDownloadableV1: false,
       isReady: isLegalChecklistReady,
       lastUpdatedText: formatDate(phase3?.legalAssessment?.updatedAt || phase3?.legalAssessment?.evaluatedAt || phase3?.legalChecklist?.updatedAt || journey?.updatedAt),
       stepUrl: withIdeaContext('/dashboard/creator/phase-3/compliance', currentIdeaId),
-      nonDownloadableNote: 'Compliance checklist active · Standalone PDF export is not yet supported for this format.',
+      nonDownloadableNote: t('creator.assetLibrary.legalChecklistNote', 'Compliance checklist active · Standalone PDF export is not yet supported for this format.'),
     },
     {
       id: 'formation-memo',
       phaseId: 3,
-      phaseTitle: 'Phase 3 // Business Foundations',
+      phaseTitle: t('creator.assetLibrary.phase3GroupTitle', 'Phase 3 // Business Foundations'),
       stepNumber: 'Step 3.5',
-      title: 'Corporate Formation & Skill Architecture',
-      description: 'Recommended legal entity structure (SAS / SARL / Delaware C-Corp), founder equity allocation ranges, and specialist co-founder baseline.',
+      title: t('creator.assetLibrary.formationMemoTitle', 'Corporate Formation & Skill Architecture'),
+      description: t('creator.assetLibrary.formationMemoDesc', 'Recommended legal entity structure (SAS / SARL / Delaware C-Corp), founder equity allocation ranges, and specialist co-founder baseline.'),
       fileFormat: 'IN_APP',
       isDownloadableV1: false,
       isReady: isFormationReady,
       lastUpdatedText: formatDate(journey?.updatedAt),
       stepUrl: withIdeaContext('/dashboard/creator/phase-3/formation', currentIdeaId),
-      nonDownloadableNote: 'Entity structure and skills configured · Standalone PDF export is not yet supported for this format.',
+      nonDownloadableNote: t('creator.assetLibrary.formationMemoNote', 'Entity structure and skills configured · Standalone PDF export is not yet supported for this format.'),
     },
     {
       id: 'business-plan',
       phaseId: 3,
-      phaseTitle: 'Phase 3 // Business Foundations',
+      phaseTitle: t('creator.assetLibrary.phase3GroupTitle', 'Phase 3 // Business Foundations'),
       stepNumber: 'Step 3.6',
-      title: 'Executive Business Plan',
-      description: 'Investor-grade business plan covering value proposition, addressable target market, revenue streams, operational milestones, and risk register.',
+      title: t('creator.assetLibrary.businessPlanTitle', 'Executive Business Plan'),
+      description: t('creator.assetLibrary.businessPlanDesc', 'Investor-grade business plan covering value proposition, addressable target market, revenue streams, operational milestones, and risk register.'),
       fileFormat: 'PDF',
       isDownloadableV1: true,
       isReady: isBusinessPlanReady,
       lastUpdatedText: formatDate(journey?.updatedAt),
       stepUrl: withIdeaContext('/dashboard/creator/phase-3/business-plan', currentIdeaId),
-      downloadLabel: 'Export PDF',
+      downloadLabel: t('creator.assetLibrary.exportPdf', 'Export PDF'),
       onDownloadOrView: handleOpenBusinessPlan,
     },
     // Phase 4
     {
       id: 'investor-readiness',
       phaseId: 4,
-      phaseTitle: 'Phase 4 // Venture Packaging & Readiness',
+      phaseTitle: t('creator.assetLibrary.phase4GroupTitle', 'Phase 4 // Venture Packaging & Readiness'),
       stepNumber: 'Phase 4',
-      title: 'Investor Readiness & Offer Architecture',
-      description: 'Complete commercial offer packaging, resource allocation budget, and go-to-market runway plan prepared for investor diligence.',
+      title: t('creator.assetLibrary.investorReadinessTitle', 'Investor Readiness & Offer Architecture'),
+      description: t('creator.assetLibrary.investorReadinessDesc', 'Complete commercial offer packaging, resource allocation budget, and go-to-market runway plan prepared for investor diligence.'),
       fileFormat: 'IN_APP',
       isDownloadableV1: false,
       isReady: isPhase4Ready,
       lastUpdatedText: formatDate(journey?.updatedAt),
       stepUrl: withIdeaContext('/dashboard/creator/phase-4', currentIdeaId),
-      nonDownloadableNote: 'Offer architecture confirmed · Standalone PDF export is not yet supported for this format.',
+      nonDownloadableNote: t('creator.assetLibrary.investorReadinessNote', 'Offer architecture confirmed · Standalone PDF export is not yet supported for this format.'),
     },
   ];
 
@@ -431,17 +433,17 @@ export default function CreatorAssetLibraryPage() {
   const phaseGroups = [
     {
       phaseId: 2,
-      phaseTitle: 'Phase 2 // Brand & Visual Identity',
+      phaseTitle: t('creator.assetLibrary.phase2GroupTitle', 'Phase 2 // Brand & Visual Identity'),
       items: artifacts.filter((a) => a.phaseId === 2),
     },
     {
       phaseId: 3,
-      phaseTitle: 'Phase 3 // Business Foundations',
+      phaseTitle: t('creator.assetLibrary.phase3GroupTitle', 'Phase 3 // Business Foundations'),
       items: artifacts.filter((a) => a.phaseId === 3),
     },
     {
       phaseId: 4,
-      phaseTitle: 'Phase 4 // Venture Packaging & Readiness',
+      phaseTitle: t('creator.assetLibrary.phase4GroupTitle', 'Phase 4 // Venture Packaging & Readiness'),
       items: artifacts.filter((a) => a.phaseId === 4),
     },
   ];
@@ -450,9 +452,9 @@ export default function CreatorAssetLibraryPage() {
     <Phase3SetupShell
       fullWidth
       headerAlign="left"
-      stepEyebrow="Assets & IP"
+      stepEyebrow={t('creator.assetLibrary.stepEyebrow', 'Assets & IP')}
       title={t('creator.assetLibrary.title', 'Creator Asset Library')}
-      description="All documents and exports are generated on demand from your project's current data."
+      description={t('creator.assetLibrary.description', "All documents and exports are generated on demand from your project's current data.")}
     >
       <div className="w-full space-y-10 pb-16">
         {/* Loading State */}
@@ -628,8 +630,8 @@ export default function CreatorAssetLibraryPage() {
                           <div className="flex items-center justify-between text-caption text-muted-foreground">
                             <span>
                               {item.isReady && item.lastUpdatedText
-                                ? `Updated: ${item.lastUpdatedText}`
-                                : 'Not yet generated'}
+                                ? t('creator.assetLibrary.updated', { date: item.lastUpdatedText }, 'Updated: {{date}}')
+                                : t('creator.assetLibrary.notYetGenerated', 'Not yet generated')}
                             </span>
                             {item.versionNumber && (
                               <span className="text-muted-foreground/80">{'v'}{item.versionNumber}</span>
@@ -652,11 +654,11 @@ export default function CreatorAssetLibraryPage() {
                                     </>
                                   ) : item.fileFormat === 'ZIP' ? (
                                     <>
-                                      <FolderArchive className="w-3.5 h-3.5" /> {item.downloadLabel || 'Download ZIP'}
+                                      <FolderArchive className="w-3.5 h-3.5" /> {item.downloadLabel || t('creator.assetLibrary.downloadZip', 'Download ZIP')}
                                     </>
                                   ) : (
                                     <>
-                                      <Download className="w-3.5 h-3.5" /> {item.downloadLabel || 'Export PDF'}
+                                      <Download className="w-3.5 h-3.5" /> {item.downloadLabel || t('creator.assetLibrary.exportPdf', 'Export PDF')}
                                     </>
                                   )}
                                 </Button>
