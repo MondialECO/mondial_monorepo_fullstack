@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface MessageComposerProps {
   disabled?: boolean;
@@ -16,6 +17,7 @@ export default function MessageComposer({
   sending,
   onSend,
 }: MessageComposerProps) {
+  const { t } = useLanguage();
   const [value, setValue] = useState("");
 
   const submit = () => {
@@ -36,11 +38,11 @@ export default function MessageComposer({
             submit();
           }
         }}
-        placeholder="Write a message…"
+        placeholder={t("creator.messages.composer.placeholder", "Write a message…")}
         rows={1}
         disabled={disabled}
         className="max-h-32 min-h-[42px] resize-none"
-        aria-label="Message"
+        aria-label={t("creator.messages.composer.inputAria", "Message")}
       />
       <Button
         type="button"
@@ -48,7 +50,7 @@ export default function MessageComposer({
         onClick={submit}
         disabled={disabled || sending || !value.trim()}
         className="h-[42px] w-[42px] shrink-0"
-        aria-label="Send message"
+        aria-label={t("creator.messages.composer.sendAria", "Send message")}
       >
         <SendHorizontal className="h-4 w-4" />
       </Button>

@@ -5,6 +5,7 @@ import { ArrowLeft, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import EmptyState from "@/components/ui/empty-state";
+import { useLanguage } from "@/providers/LanguageProvider";
 import MessageBubble from "./MessageBubble";
 import MessageComposer from "./MessageComposer";
 import { ThreadSkeleton } from "./Skeletons";
@@ -33,6 +34,7 @@ export default function ConversationThread({
   currentRole,
   onBack,
 }: ConversationThreadProps) {
+  const { t, locale } = useLanguage();
   const { messages, isLoading, isError, loadOlder, hasMore, isLoadingOlder } =
     useThreadMessages(conversationId);
   const sendMutation = useSendMessage(conversationId);
@@ -53,7 +55,7 @@ export default function ConversationThread({
   const other = conversation
     ? otherParticipant(conversation.participants, currentUserId)
     : undefined;
-  const label = participantDisplayName(other, currentRole);
+  const label = participantDisplayName(other, currentRole, locale);
 
   return (
     <div className="flex h-full flex-col">
@@ -64,7 +66,7 @@ export default function ConversationThread({
           size="icon"
           onClick={onBack}
           className="md:hidden"
-          aria-label="Back to conversations"
+          aria-label={t("creator.messages.thread.backAria", "Back to conversations")}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -78,7 +80,9 @@ export default function ConversationThread({
           <div className="truncate text-sm font-semibold text-foreground">
             {label}
           </div>
-          <div className="text-xs text-muted-foreground">Direct conversation</div>
+          <div className="text-xs text-muted-foreground">
+            {t("creator.messages.thread.subtitle", "Direct conversation")}
+          </div>
         </div>
       </div>
 
@@ -89,8 +93,11 @@ export default function ConversationThread({
         <div className="flex flex-1 items-center justify-center p-4">
           <EmptyState
             icon={MessageSquare}
-            title="Couldn't load messages"
-            description="Please try again in a moment."
+            title={t("creator.messages.thread.errorTitle", "Couldn't load messages")}
+            description={t(
+              "creator.messages.thread.errorDescription",
+              "Please try again in a moment."
+            )}
           />
         </div>
       ) : (
@@ -103,7 +110,9 @@ export default function ConversationThread({
                 onClick={loadOlder}
                 disabled={isLoadingOlder}
               >
-                {isLoadingOlder ? "Loading…" : "Load older messages"}
+                {isLoadingOlder
+                  ? t("creator.messages.thread.loading", "Loading…")
+                  : t("creator.messages.thread.loadOlder", "Load older messages")}
               </Button>
             </div>
           ) : null}
@@ -112,8 +121,11 @@ export default function ConversationThread({
             <div className="flex h-full items-center justify-center">
               <EmptyState
                 icon={MessageSquare}
-                title="No messages yet"
-                description="Send the first message to start the conversation."
+                title={t("creator.messages.thread.emptyTitle", "No messages yet")}
+                description={t(
+                  "creator.messages.thread.emptyDescription",
+                  "Send the first message to start the conversation."
+                )}
               />
             </div>
           ) : (

@@ -3895,5 +3895,59 @@
       "ResubmissionRequired": "Resubmission Required",
       "Expired": "Expired"
     }
+  },
+  "messages": {
+    "header": {
+      "title": "Messages",
+      "subtitle": "Direct conversations between entrepreneurs and investors. Start one from a deal in Discovery or your Pipeline."
+    },
+    "status": {
+      "offline": "Offline",
+      "connecting": "Connecting…",
+      "live": "Live",
+      "reconnecting": "Reconnecting…"
+    },
+    "workspace": {
+      "emptySelection": "Select a conversation to start messaging."
+    },
+    "list": {
+      "errorTitle": "Couldn't load conversations",
+      "errorDescription": "Please try again in a moment.",
+      "emptyTitle": "No conversations yet",
+      "emptyDescription": "Start a new message to reach an investor or entrepreneur."
+    },
+    "item": {
+      "noMessages": "No messages yet"
+    },
+    "thread": {
+      "backAria": "Back to conversations",
+      "subtitle": "Direct conversation",
+      "errorTitle": "Couldn't load messages",
+      "errorDescription": "Please try again in a moment.",
+      "loadOlder": "Load older messages",
+      "loading": "Loading…",
+      "emptyTitle": "No messages yet",
+      "emptyDescription": "Send the first message to start the conversation."
+    },
+    "composer": {
+      "placeholder": "Write a message…",
+      "inputAria": "Message",
+      "sendAria": "Send message"
+    },
+    "founderButton": {
+      "label": "Message Founder",
+      "opening": "Opening…"
+    },
+    "roles": {
+      "entrepreneur": "Entrepreneur",
+      "investor": "Investor",
+      "participant": "Participant"
+    },
+    "time": {
+      "now": "now",
+      "minuteShort": "{{count}}m",
+      "hourShort": "{{count}}h",
+      "dayShort": "{{count}}d"
+    }
   }
 }

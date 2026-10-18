@@ -3,6 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/providers/LanguageProvider";
 import {
   formatRelativeTime,
   initialsFromLabel,
@@ -28,8 +29,9 @@ export default function ConversationListItem({
   active,
   onSelect,
 }: ConversationListItemProps) {
+  const { t, locale } = useLanguage();
   const other = otherParticipant(conversation.participants, currentUserId);
-  const label = participantDisplayName(other, currentRole);
+  const label = participantDisplayName(other, currentRole, locale);
   const unread = conversation.unreadCount ?? 0;
 
   return (
@@ -60,7 +62,7 @@ export default function ConversationListItem({
             {label}
           </span>
           <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">
-            {formatRelativeTime(conversation.lastMessageAt)}
+            {formatRelativeTime(conversation.lastMessageAt, locale)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-2">
@@ -70,7 +72,7 @@ export default function ConversationListItem({
               unread > 0 ? "font-medium text-foreground" : "text-muted-foreground"
             )}
           >
-            {conversation.lastMessage ?? "No messages yet"}
+            {conversation.lastMessage ?? t("creator.messages.item.noMessages", "No messages yet")}
           </span>
           {unread > 0 ? (
             <Badge className="h-5 min-w-5 justify-center px-1.5 text-[10px] tabular-nums">

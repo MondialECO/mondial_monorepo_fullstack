@@ -3895,5 +3895,59 @@
       "ResubmissionRequired": "Révision requise",
       "Expired": "Expiré"
     }
+  },
+  "messages": {
+    "header": {
+      "title": "Messages",
+      "subtitle": "Conversations directes entre entrepreneurs et investisseurs. Démarrez-en une depuis une opportunité dans Découverte ou votre Pipeline."
+    },
+    "status": {
+      "offline": "Hors ligne",
+      "connecting": "Connexion…",
+      "live": "En direct",
+      "reconnecting": "Reconnexion…"
+    },
+    "workspace": {
+      "emptySelection": "Sélectionnez une conversation pour commencer à échanger."
+    },
+    "list": {
+      "errorTitle": "Impossible de charger les conversations",
+      "errorDescription": "Veuillez réessayer dans un instant.",
+      "emptyTitle": "Aucune conversation pour l'instant",
+      "emptyDescription": "Démarrez un nouveau message pour contacter un investisseur ou un entrepreneur."
+    },
+    "item": {
+      "noMessages": "Aucun message pour l'instant"
+    },
+    "thread": {
+      "backAria": "Retour aux conversations",
+      "subtitle": "Conversation directe",
+      "errorTitle": "Impossible de charger les messages",
+      "errorDescription": "Veuillez réessayer dans un instant.",
+      "loadOlder": "Charger les messages précédents",
+      "loading": "Chargement…",
+      "emptyTitle": "Aucun message pour l'instant",
+      "emptyDescription": "Envoyez le premier message pour démarrer la conversation."
+    },
+    "composer": {
+      "placeholder": "Écrivez un message…",
+      "inputAria": "Message",
+      "sendAria": "Envoyer le message"
+    },
+    "founderButton": {
+      "label": "Contacter le fondateur",
+      "opening": "Ouverture…"
+    },
+    "roles": {
+      "entrepreneur": "Entrepreneur",
+      "investor": "Investisseur",
+      "participant": "Participant"
+    },
+    "time": {
+      "now": "à l'instant",
+      "minuteShort": "{{count}} min",
+      "hourShort": "{{count}} h",
+      "dayShort": "{{count}} j"
+    }
   }
 }

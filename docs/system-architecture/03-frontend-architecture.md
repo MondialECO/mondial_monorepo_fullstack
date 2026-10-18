@@ -603,12 +603,21 @@ The internationalization system provides native bilingual support for **English 
   - Localized section cards: About, Creator Projects & Focus, Founded Companies & Ventures, Investment Profile, Experience, Education, Skills & Domains, Languages (with CEFR/proficiency tiers), Social Links, Credentials (with status badges), and Reviews (`creator.profile.sections.*`, `creator.profile.proficiencies.*`, `creator.profile.credentialStatus.*`).
 - **Document Vault (`src/app/dashboard/creator/documents/*`)**:
   - `documents/page.tsx`: Real-file document storage vault for venture business plans and financial forecasts with localized document types, file sizes, download triggers, and error recovery (`creator.documents.*`).
+- **Creator Messaging Workspace (`src/app/dashboard/creator/messages/*` & `src/components/messaging/*`)**:
+  - `creator/messages/page.tsx`: Route entry point with SEO metadata and React Suspense wrapper around `MessagingWorkspace`.
+  - `MessagingWorkspace.tsx`: Multi-pane chat layout with dynamic thread selection, unselected thread placeholder, and deep-link query param routing (`?c=<id>`, `?to=<userId>`).
+  - `MessagesHeader.tsx`: Real-time SignalR status badges (`Live` / `En direct`, `Offline` / `Hors ligne`, `Connecting…` / `Connexion…`, `Reconnecting…` / `Reconnexion…`), title, and subtitle (`creator.messages.header.*`, `creator.messages.status.*`).
+  - `ConversationList.tsx` & `ConversationListItem.tsx`: Error states, empty states, unread badge pills, fallback preview strings, and locale-aware relative timestamp formatting (`now` / `à l'instant`, `5m` / `5 min`, `2h` / `2 h`, `3d` / `3 j`).
+  - `ConversationThread.tsx` & `MessageBubble.tsx`: Direct conversation header, back button aria-label, pagination for older messages, empty thread prompts, and locale-aware 24h/12h clock time formatting (`creator.messages.thread.*`).
+  - `MessageComposer.tsx` & `MessageFounderButton.tsx`: Localized input placeholder, send/message aria-labels, and contextual founder action with pending state (`creator.messages.composer.*`, `creator.messages.founderButton.*`).
+  - `src/lib/messaging-utils.ts`: Counterparty role fallbacks (`Investor` / `Investisseur`, `Entrepreneur`, `Participant`), relative time, and clock time formatting.
 - **Creator Sidebar Navigation (`src/lib/menu.ts`)**: **Deliberately Deferred**. Per user explicit instruction, Creator sidebar menus remain in English during the initial phase and will be localized in a subsequent dedicated pass.
 - **Landing Page & Marketing Surfaces**: Queued for execution following the Creator dashboard audit.
 - **Testing & Translation Integrity**:
-  - Full dictionary symmetry between `src/locales/en/creator.json` and `src/locales/fr/creator.json` (3,595 total keys in EN, 3,595 total keys in FR, 0 missing keys in either direction).
+  - Full dictionary symmetry between `src/locales/en/creator.json` and `src/locales/fr/creator.json` (3,627 total keys in EN, 3,627 total keys in FR, 0 missing keys in either direction).
   - Full dictionary symmetry in shared catalogs (`src/locales/en/common.json` and `src/locales/fr/common.json`: 210 total keys in EN and FR, 0 missing).
-  - Verified across all unit test suites (`universal-profile.test.tsx`, `profile-view-and-wizard.test.tsx`, `creator-dashboard.test.tsx`, `creator-i18n.test.tsx`, `analytics-profile.test.tsx`) with 100% pass rate.
+  - Verified across all unit test suites (`creator-messages-i18n.test.tsx` 13/13 PASS, `universal-profile.test.tsx`, `profile-view-and-wizard.test.tsx`, `creator-dashboard.test.tsx`, `creator-i18n.test.tsx`, `analytics-profile.test.tsx`) with 100% pass rate.
+
 
 
 

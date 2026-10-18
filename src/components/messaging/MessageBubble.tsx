@@ -1,5 +1,8 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { formatClockTime } from "@/lib/messaging-utils";
+import { useLanguage } from "@/providers/LanguageProvider";
 import type { ChatMessage } from "@/types/chat";
 
 interface MessageBubbleProps {
@@ -8,6 +11,8 @@ interface MessageBubbleProps {
 }
 
 export default function MessageBubble({ message, isOwn }: MessageBubbleProps) {
+  const { locale } = useLanguage();
+
   return (
     <div className={cn("flex", isOwn ? "justify-end" : "justify-start")}>
       <div
@@ -25,7 +30,7 @@ export default function MessageBubble({ message, isOwn }: MessageBubbleProps) {
             isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
           )}
         >
-          {formatClockTime(message.createdAt)}
+          {formatClockTime(message.createdAt, locale)}
         </div>
       </div>
     </div>

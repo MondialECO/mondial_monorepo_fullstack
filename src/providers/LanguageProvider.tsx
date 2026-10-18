@@ -14,7 +14,7 @@ export interface LanguageContextType {
   t: (
     key: string,
     variablesOrFallback?: Record<string, string | number | null | undefined> | string,
-    variables?: Record<string, string | number | null | undefined>
+    variablesOrFallback2?: Record<string, string | number | null | undefined> | string
   ) => string;
   formatDate: (date: Date | string | number, options?: Intl.DateTimeFormatOptions) => string;
   formatCurrency: (amount: number, currency?: string) => string;
@@ -99,16 +99,21 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     (
       key: string,
       variablesOrFallback?: Record<string, string | number | null | undefined> | string,
-      variables?: Record<string, string | number | null | undefined>
+      variablesOrFallback2?: Record<string, string | number | null | undefined> | string
     ): string => {
       let fallback: string | undefined;
       let vars: Record<string, string | number | null | undefined> | undefined;
 
       if (typeof variablesOrFallback === 'string') {
         fallback = variablesOrFallback;
-        vars = variables;
-      } else {
+        if (typeof variablesOrFallback2 === 'object' && variablesOrFallback2 !== null) {
+          vars = variablesOrFallback2;
+        }
+      } else if (typeof variablesOrFallback === 'object' && variablesOrFallback !== null) {
         vars = variablesOrFallback;
+        if (typeof variablesOrFallback2 === 'string') {
+          fallback = variablesOrFallback2;
+        }
       }
 
       // First try current locale
@@ -216,16 +221,21 @@ export function useTranslation(_namespace?: string) {
       t: ((
         key: string,
         variablesOrFallback?: Record<string, string | number | null | undefined> | string,
-        variables?: Record<string, string | number | null | undefined>
+        variablesOrFallback2?: Record<string, string | number | null | undefined> | string
       ) => {
         let fallback: string | undefined;
         let vars: Record<string, string | number | null | undefined> | undefined;
 
         if (typeof variablesOrFallback === 'string') {
           fallback = variablesOrFallback;
-          vars = variables;
-        } else {
+          if (typeof variablesOrFallback2 === 'object' && variablesOrFallback2 !== null) {
+            vars = variablesOrFallback2;
+          }
+        } else if (typeof variablesOrFallback === 'object' && variablesOrFallback !== null) {
           vars = variablesOrFallback;
+          if (typeof variablesOrFallback2 === 'string') {
+            fallback = variablesOrFallback2;
+          }
         }
 
         let val = getNestedValue(dictionaries.en, key);

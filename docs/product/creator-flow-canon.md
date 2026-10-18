@@ -2207,18 +2207,21 @@ RC1 Freeze
   - Microscopic AST scanning verified 0 raw text nodes across all 79 Phase 2–4 files.
   - Tested via `src/__tests__/creator/` (17/17 test suites, 201/201 tests PASS).
 
-**2026-10-19 — HumainX, Asset Library, Billing History, Documents Vault & Universal Profile: Complete Bilingual Localization (EN / FR).**
-- **Components:** `src/app/dashboard/creator/humainx/page.tsx`, `src/app/dashboard/creator/profile/page.tsx`, `src/app/dashboard/creator/asset-library/page.tsx`, `src/app/dashboard/creator/billinghistory/page.tsx`, `src/components/billing/*`, `src/app/dashboard/creator/documents/page.tsx`, `src/app/dashboard/profile/page.tsx`, `src/components/serviceprovider/profile/ProfileView.tsx`, `src/components/serviceprovider/ProfessionalOverviewView.tsx`.
+**2026-10-19 — Creator Messaging Workspace: Complete Bilingual Localization (EN / FR) & Real-time Chat UX.**
+- **Components:** `src/app/dashboard/creator/messages/page.tsx`, `src/components/messaging/MessagingWorkspace.tsx`, `src/components/messaging/MessagesHeader.tsx`, `src/components/messaging/ConversationList.tsx`, `src/components/messaging/ConversationListItem.tsx`, `src/components/messaging/ConversationThread.tsx`, `src/components/messaging/MessageBubble.tsx`, `src/components/messaging/MessageComposer.tsx`, `src/components/messaging/MessageFounderButton.tsx`, `src/lib/messaging-utils.ts`.
 - **Specification:**
-  - HumainX Quick Start Gate & 10-step HumainX Profile Builder wizard fully localized (`creator.humainx.*`, `creator.profileBuilder.*`).
-  - Asset Library localized across all 8 canonical venture artifact types, descriptions, dates, and interactive print preview modals (`creator.assetLibrary.*`).
-  - Billing History localized with table headers, rows, pagination, localized status pills (`Paid`, `Pending`, `Failed`, `Refunded`), and currency formatting (`creator.billing.*`).
-  - Document Vault localized with document types (`Business Plan`, `Financial Forecast`), file sizes, download aria-labels, and error handling (`creator.documents.*`).
-  - Universal Profile (`/dashboard/profile` & `ProfileView.tsx`) fully localized across all roles with unified header, avatar, badges, member dates, response times, and 11 section cards (`creator.profile.*`).
-  - Dictionary symmetry at 3,595 total keys in both `en/creator.json` and `fr/creator.json` (0 missing keys, 100% symmetry) and 210 keys in `common.json`.
+  - Route wrapper SEO metadata and Suspense boundary.
+  - Multi-pane workspace with responsive split view, unselected thread state, and query-param deep link support (`creator.messages.workspace.*`).
+  - Real-time SignalR connection status badges (`Live` / `En direct`, `Offline` / `Hors ligne`, `Connecting…` / `Connexion…`, `Reconnecting…` / `Reconnexion…`), title, and subtitle (`creator.messages.header.*`, `creator.messages.status.*`).
+  - Conversation list error and empty state messaging, unread message count badges, and relative time formatting with French units (`à l'instant`, `min`, `h`, `j`) (`creator.messages.list.*`, `creator.messages.item.*`).
+  - Conversation thread with back button navigation, localized subtitle (`Direct conversation` / `Conversation directe`), error/empty states, load older history pagination, and clock time formatting (`creator.messages.thread.*`).
+  - Message composer input with Enter-to-send, shift-enter newline, localized placeholder, and aria labels (`creator.messages.composer.*`).
+  - Contextual founder outreach action button with loading state (`creator.messages.founderButton.*`).
+  - Full dictionary symmetry at 3,627 total keys in both `en/creator.json` and `fr/creator.json` (0 missing keys, 100% symmetry).
 - **Verification Evidence:**
-  - Vitest test suites: `universal-profile.test.tsx` (9/9 PASS), `profile-view-and-wizard.test.tsx` (24/24 PASS), `analytics-profile.test.tsx` (15/15 PASS).
-  - Clean dev server verification on ports 3000 (`200 OK`) and 5093.
+  - Dedicated unit test suite `src/__tests__/creator/creator-messages-i18n.test.tsx` (13/13 PASS).
+  - TypeScript compilation check (`npx tsc --noEmit`) verified 0 errors platform-wide.
+  - HTTP 200 OK verified on `http://localhost:3000/dashboard/creator/messages`.
 
 ---
 
