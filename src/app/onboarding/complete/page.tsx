@@ -3,12 +3,14 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/app/_providers/AuthProvider';
-import { getRoleDashboardRoute, ROLE_DASHBOARD_ROUTES } from '@/lib/roles';
+import { getRoleDashboardRoute } from '@/lib/roles';
 import { CheckCircle2, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function CompletePage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -29,9 +31,11 @@ export default function CompletePage() {
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 className="w-12 h-12 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">Verification Complete</h2>
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              {t('onboarding.complete.title', 'Verification Complete')}
+            </h2>
             <p className="text-muted-foreground">
-              Your identity has been verified successfully. You now have full access to Mondial.eco.
+              {t('onboarding.complete.subtitle', 'Your identity has been verified successfully. You now have full access to Mondial.eco.')}
             </p>
           </div>
 
@@ -40,8 +44,12 @@ export default function CompletePage() {
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
               <div className="text-left text-sm">
-                <p className="font-semibold text-foreground">Enterprise-grade encryption</p>
-                <p className="text-muted-foreground">protecting your personal data and identity documents.</p>
+                <p className="font-semibold text-foreground">
+                  {t('onboarding.complete.encryptionTitle', 'Enterprise-grade encryption')}
+                </p>
+                <p className="text-muted-foreground">
+                  {t('onboarding.complete.encryptionDesc', 'protecting your personal data and identity documents.')}
+                </p>
               </div>
             </div>
           </div>
@@ -49,7 +57,7 @@ export default function CompletePage() {
           {/* CTA Button */}
           <Button asChild size="lg" className="w-full">
             <Link href={user ? getRoleDashboardRoute(user) : '/'}>
-              Go to Dashboard
+              {t('onboarding.complete.goToDashboard', 'Go to Dashboard')}
             </Link>
           </Button>
         </div>

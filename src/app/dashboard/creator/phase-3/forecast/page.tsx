@@ -50,7 +50,7 @@ import {
   type ForecastDriverValues,
 } from '@/components/creator/forecast/ForecastAssumptionsModal';
 import creatorAiApi from '@/lib/api-creator-ai';
-import { creatorJourneyApi } from '@/lib/api-creator-journey';
+import { creatorJourneyApi, getCreatorWorkspaceIdea } from '@/lib/api-creator-journey';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { toAiError, type AiError } from '@/lib/ai-errors';
 import { formatMoney } from '@/lib/format-money';
@@ -88,8 +88,10 @@ export default function ForecastPage() {
   const router = useRouter();
   const { t } = useTranslation();
   const searchParams = useSearchParams();
-  const ideaId = searchParams.get('ideaId');
-  const { completeStep } = useCreatorProgress();
+  const queryIdeaId = searchParams.get('ideaId');
+  const { state, completeStep } = useCreatorProgress();
+  const activeIdeaId = state?.activeIdeaId;
+  const ideaId = queryIdeaId || activeIdeaId || getCreatorWorkspaceIdea() || null;
 
   const [loadingJourney, setLoadingJourney] = useState(true);
   const [forecastSessionId, setForecastSessionId] = useState<string | null>(null);
@@ -919,7 +921,7 @@ export default function ForecastPage() {
         title={hasValidCompletedForecast ? (project.name ? t('creator.phase3.forecast.projectTitle', { name: project.name }) : t('creator.phase3.forecast.defaultTitle')) : t('creator.phase3.forecast.adjustAssumptions')}
         description={hasValidCompletedForecast ? t('creator.phase3.forecast.defaultDesc') : t('creator.phase3.forecast.emptyDesc')}
       >
-        {(loadingJourney || !ideaId) && (
+        {loadingJourney && (
           <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center font-sans">
             <Loader2 className="h-5 w-5 animate-spin text-primary" /> {t('creator.phase3.forecast.loadingWorkspace', 'Loading financial workspace…')}
           </div>

@@ -158,7 +158,7 @@ export default function CreatorPhase1Client() {
                     />
                   </svg>
                   <span className="absolute text-badge font-bold text-foreground">
-                    {progressPercent}%
+                    {progressPercent}{'%'}
                   </span>
                 </div>
                 <div className="text-left hidden sm:block">

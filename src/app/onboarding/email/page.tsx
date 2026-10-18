@@ -8,8 +8,10 @@ import { useOnboarding } from "@/providers/OnboardingProvider";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { getRoleDashboardRoute } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function OnboardingEmailPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { refresh, status } = useOnboarding();
   const { user, refreshAuthMe } = useAuth();
@@ -68,9 +70,9 @@ export default function OnboardingEmailPage() {
         <div className="bg-card border border-border rounded-lg p-6 w-full max-w-[400px] space-y-6">
           {/* Title Section */}
           <div className="space-y-4">
-            <h1 className="text-2xl font-semibold text-foreground">Email Verification</h1>
+            <h1 className="text-2xl font-semibold text-foreground">{t('onboarding.email.title', 'Email Verification')}</h1>
             <p className="text-base text-muted-foreground">
-              Your information is encrypted and secured by VeriSure, our trusted security partner.
+              {t('onboarding.email.subtitle', 'Your information is encrypted and secured by VeriSure, our trusted security partner.')}
             </p>
           </div>
 
@@ -86,7 +88,7 @@ export default function OnboardingEmailPage() {
           <form onSubmit={verifyCode} className="space-y-6">
             <div className="flex flex-col gap-2">
               <label htmlFor="email-code" className="text-sm font-medium text-foreground">
-                Verification Code
+                {t('onboarding.email.codeTitle', 'Verification Code')}
               </label>
               <input
                 id="email-code"
@@ -102,14 +104,14 @@ export default function OnboardingEmailPage() {
                 className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-center text-2xl tracking-widest font-mono outline-none focus:ring-2 focus:ring-primary/50 transition"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Sent to {maskedEmail}.{" "}
+                {t('onboarding.email.sentTo', 'Sent to {{email}}.', { email: maskedEmail })}{" "}
                 <button
                   type="button"
                   className="text-primary hover:underline"
                   onClick={sendCode}
                   disabled={busy}
                 >
-                  Resend code
+                  {t('onboarding.email.resend', 'Resend code')}
                 </button>
               </p>
             </div>
@@ -123,10 +125,10 @@ export default function OnboardingEmailPage() {
               {busy ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Verifying...
+                  {t('onboarding.email.verifying', 'Verifying...')}
                 </>
               ) : (
-                "Verify Code"
+                t('onboarding.email.verifyCode', 'Verify Code')
               )}
             </Button>
           </form>

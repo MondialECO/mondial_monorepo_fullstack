@@ -8,12 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { creatorProfileApi } from '@/lib/api-creator-profile';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface HumainXDashboardCardProps {
   ideaId?: string | null;
 }
 
 export function HumainXDashboardCard({ ideaId }: HumainXDashboardCardProps) {
+  const { t } = useTranslation();
   const { data: completeness, isLoading } = useQuery({
     queryKey: ['creator', 'profile-completeness'],
     queryFn: () => creatorProfileApi.getCompleteness(),
@@ -31,10 +33,10 @@ export function HumainXDashboardCard({ ideaId }: HumainXDashboardCardProps) {
   const ctaHref = `/dashboard/creator/profile${queryString ? `?${queryString}` : ''}`;
 
   const ctaLabel = isComplete
-    ? 'View My Profile'
+    ? t('creator.humainx.dashboardCard.viewProfile', 'View My Profile')
     : isStarted
-      ? 'Continue My Profile'
-      : 'Build My Profile';
+      ? t('creator.humainx.dashboardCard.continueProfile', 'Continue My Profile')
+      : t('creator.humainx.dashboardCard.buildProfile', 'Build My Profile');
 
   return (
     <Card className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-card via-card to-primary/[0.03] p-6 shadow-sm">
@@ -42,27 +44,29 @@ export function HumainXDashboardCard({ ideaId }: HumainXDashboardCardProps) {
         <div className="space-y-2 max-w-2xl">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold uppercase tracking-wider text-primary">
-              PERSONALIZE YOUR JOURNEY
+              {t('creator.humainx.dashboardCard.eyebrow', 'PERSONALIZE YOUR JOURNEY')}
             </span>
             {isComplete && (
               <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-xs font-semibold px-2 py-0.5">
                 <CheckCircle2 className="w-3 h-3 mr-1" />
-                Phase 4 Ready
+                {t('creator.humainx.dashboardCard.phase4Ready', 'Phase 4 Ready')}
               </Badge>
             )}
           </div>
           <h2 className="font-heading text-lg sm:text-xl font-bold text-foreground">
-            Build your professional profile
+            {t('creator.humainx.dashboardCard.title', 'Build your professional profile')}
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Help MBC understand your experience, skills and availability so your roadmap, training and recommendations can be personalized.
+            {t('creator.humainx.dashboardCard.description', 'Help MBC understand your experience, skills and availability so your roadmap, training and recommendations can be personalized.')}
           </p>
 
           <div className="pt-2 space-y-1.5 max-w-md">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-foreground">Builder Profile</span>
+              <span className="font-medium text-foreground">
+                {t('creator.humainx.dashboardCard.builderProfile', 'Builder Profile')}
+              </span>
               <span className="font-mono font-semibold text-primary">
-                {isLoading ? '...' : `${completion}% complete`}
+                {isLoading ? '...' : t('creator.humainx.dashboardCard.percentComplete', '{{completion}}% complete', { completion })}
               </span>
             </div>
             <Progress value={completion} className="h-2 rounded-full bg-secondary" />

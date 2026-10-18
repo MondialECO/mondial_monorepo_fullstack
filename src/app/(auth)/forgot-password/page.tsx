@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import axios from "@/lib/axios";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function ForgotPassword() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -18,11 +20,11 @@ export default function ForgotPassword() {
 
     try {
       const res = await axios.post("/auth/forgot-password", { email });
-      setMessage(res.data.message || "Check your email for the reset link.");
+      setMessage(res.data.message || t('auth.forgotPassword.successMessage', 'Check your email for the reset link.'));
     } catch (err: unknown) {
       const axiosErr = err as Record<string, any>;
       const message = axiosErr?.response?.data?.message;
-      setError(typeof message === 'string' ? message : "Failed to send reset email");
+      setError(typeof message === 'string' ? message : t('auth.forgotPassword.errorMessage', 'Failed to send reset email'));
     } finally {
       setLoading(false);
     }
@@ -30,12 +32,16 @@ export default function ForgotPassword() {
 
   return (
     <div className="max-w-md mx-auto mt-10 p-6 border rounded-md">
-      <h1 className="text-xl font-bold mb-4">Forgot Password</h1>
+      <h1 className="text-xl font-bold mb-4">
+        {t('auth.forgotPassword.title', 'Forgot Password')}
+      </h1>
       {message && <p className="text-green-600 mb-3">{message}</p>}
       {error && <p className="text-red-600 mb-3">{error}</p>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="email" className="block mb-1 font-medium">Email</label>
+          <label htmlFor="email" className="block mb-1 font-medium">
+            {t('auth.forgotPassword.emailLabel', 'Email')}
+          </label>
           <input
             type="email"
             id="email"
@@ -46,7 +52,9 @@ export default function ForgotPassword() {
           />
         </div>
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Sending..." : "Send Reset Link"}
+          {loading
+            ? t('auth.forgotPassword.sending', 'Sending...')
+            : t('auth.forgotPassword.sendResetLink', 'Send Reset Link')}
         </Button>
       </form>
     </div>

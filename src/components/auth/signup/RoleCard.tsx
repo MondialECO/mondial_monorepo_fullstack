@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export type RoleOption = {
   id: string;
@@ -24,6 +25,11 @@ type BaseProps = {
  * Keyboard: Space/Enter toggles. Radio is visual; the whole card is the control.
  */
 export function RoleCardGrid({ role, selected, onSelect, className }: BaseProps) {
+  const { t } = useTranslation();
+  const roleKey = role.id === 'service-provider' ? 'serviceProvider' : role.id;
+  const roleName = t(`auth.roles.${roleKey}.name`, role.name);
+  const roleDescription = t(`auth.roles.${roleKey}.description`, role.description);
+
   return (
     <button
       type="button"
@@ -54,9 +60,9 @@ export function RoleCardGrid({ role, selected, onSelect, className }: BaseProps)
       </div>
 
       <div className="space-y-1">
-        <h3 className="text-base font-semibold leading-tight">{role.name}</h3>
+        <h3 className="text-base font-semibold leading-tight">{roleName}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
-          {role.description}
+          {roleDescription}
         </p>
       </div>
 
@@ -66,8 +72,8 @@ export function RoleCardGrid({ role, selected, onSelect, className }: BaseProps)
           "text-muted-foreground group-hover:text-primary transition-colors",
         )}
       >
-        Explore this role
-        <span aria-hidden="true">→</span>
+        {t('auth.roles.exploreRole', 'Explore this role')}
+        <span aria-hidden="true">{'\u2192'}</span>
       </span>
     </button>
   );
@@ -77,6 +83,11 @@ export function RoleCardGrid({ role, selected, onSelect, className }: BaseProps)
  * LIST variant — wide single-row card stacked vertically.
  */
 export function RoleCardList({ role, selected, onSelect, className }: BaseProps) {
+  const { t } = useTranslation();
+  const roleKey = role.id === 'service-provider' ? 'serviceProvider' : role.id;
+  const roleName = t(`auth.roles.${roleKey}.name`, role.name);
+  const roleDescription = t(`auth.roles.${roleKey}.description`, role.description);
+
   return (
     <button
       type="button"
@@ -105,9 +116,9 @@ export function RoleCardList({ role, selected, onSelect, className }: BaseProps)
       </div>
 
       <div className="min-w-0 flex-1 space-y-0.5">
-        <h3 className="text-sm font-semibold leading-tight">{role.name}</h3>
+        <h3 className="text-sm font-semibold leading-tight">{roleName}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-          {role.description}
+          {roleDescription}
         </p>
       </div>
 

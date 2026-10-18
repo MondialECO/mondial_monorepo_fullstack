@@ -38,5 +38,243 @@
     "search": "Search...",
     "filter": "Filter",
     "all": "All"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to your account",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "name@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up",
+      "signIn": "Sign in",
+      "signingIn": "Signing in...",
+      "loading": "Loading...",
+      "initAuth": "Please wait while we initialize the authentication system...",
+      "loginFailed": "Failed to login. Please try again.",
+      "emailRequired": "Email is required",
+      "invalidEmail": "Invalid email address",
+      "passwordRequired": "Password is required",
+      "passwordMinLength": "Password must be at least 8 characters"
+    },
+    "signup": {
+      "title": "Create Account",
+      "subtitle": "Join our community today",
+      "selectedRole": "Selected role:",
+      "change": "Change",
+      "fullNameLabel": "Full Name",
+      "emailLabel": "Email Address",
+      "passwordLabel": "Password",
+      "requirementsTitle": "Password requirements:",
+      "rules": {
+        "minLength": "At least 6 characters",
+        "minLengthError": "Password must be at least 6 characters.",
+        "uppercase": "At least one uppercase letter",
+        "uppercaseError": "Password must contain an uppercase letter.",
+        "lowercase": "At least one lowercase letter",
+        "lowercaseError": "Password must contain a lowercase letter.",
+        "digit": "At least one digit",
+        "digitError": "Password must contain a digit."
+      },
+      "submit": "Sign Up",
+      "submitting": "Creating Account...",
+      "alreadyHaveAccount": "Already have an account?",
+      "logIn": "Log in",
+      "selectRoleFirst": "Please select a role first.",
+      "sessionInitFailed": "Registration succeeded but session initialization failed. Please log in.",
+      "registrationFailed": "Registration failed",
+      "loadingFlow": "Loading signup flow...",
+      "loading": "Loading..."
+    },
+    "roles": {
+      "protocolBadge": "Onboarding Protocol",
+      "choosePathTitle": "Choose Your Path",
+      "choosePathSubtitle": "Select your operational profile to initialize your workspace.",
+      "radiogroupAria": "Select your role",
+      "exploreRole": "Explore this role",
+      "initializeAccount": "Initialize Account",
+      "initializing": "Initializing...",
+      "alreadyHaveAccount": "Already have an account?",
+      "signIn": "Sign in",
+      "entrepreneur": {
+        "name": "Entrepreneur",
+        "description": "Launch a venture, recruit a team, and raise capital from aligned investors."
+      },
+      "investor": {
+        "name": "Investor",
+        "description": "Discover curated deals, track portfolio performance, and co-invest with peers."
+      },
+      "creator": {
+        "name": "Creator",
+        "description": "Turn your audience into capital and publish, gate content, and monetize."
+      },
+      "serviceProvider": {
+        "name": "Service Provider",
+        "description": "Offer legal, design, or growth services to founders in the ecosystem."
+      }
+    },
+    "footer": {
+      "copyright": "© {{year}} Mondial. All rights reserved.",
+      "legalAria": "Legal",
+      "terms": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "accessibility": "Accessibility"
+    },
+    "forgotPassword": {
+      "title": "Forgot Password",
+      "emailLabel": "Email",
+      "sendResetLink": "Send Reset Link",
+      "sending": "Sending...",
+      "successMessage": "Check your email for the reset link.",
+      "errorMessage": "Failed to send reset email"
+    }
+  },
+  "onboarding": {
+    "hub": {
+      "loading": "Loading your verification…",
+      "title": "Profile Verification",
+      "subtitle": "Your data is encrypted and handled by our certified security partner.",
+      "mandatorySteps": "Mandatory Steps",
+      "requiredBadge": "Required",
+      "optionalBadge": "Optional",
+      "completedOf": "{{completed}} of {{total}} Completed",
+      "additionalDocuments": "Additional Document",
+      "additionalDocumentsPlural": "Additional Steps & Documents",
+      "regulatoryNotice": "Verification is mandatory for compliance with global AML/KYC regulations. Mondial.eco uses SecureShield AI's enterprise-grade encryption. Your private information is never shared with third parties.",
+      "completing": "Completing...",
+      "completeVerification": "Complete Verification",
+      "verified": "Verified",
+      "actionRequired": "Action Required",
+      "underReview": "Under Review",
+      "notConnected": "{{item}} verification coming soon",
+      "loadError": "Failed to load onboarding status",
+      "errorLoading": "Error Loading Verification",
+      "retry": "Retry",
+      "items": {
+        "identity": {
+          "label": "Identity Document",
+          "description": "Upload Passport or Government ID"
+        },
+        "phone": {
+          "label": "Phone Verification",
+          "description": "Verify your mobile number via SMS"
+        },
+        "email": {
+          "label": "Email Verification",
+          "description": "Confirm your secure primary email"
+        },
+        "residence": {
+          "label": "Proof of Residence",
+          "description": "Utility bill or bank statement"
+        },
+        "income": {
+          "label": "Proof of Income",
+          "description": "Pay slips or tax returns"
+        },
+        "tax": {
+          "label": "Tax Documents",
+          "description": "Utility bill or bank statement"
+        },
+        "license": {
+          "label": "Driver's license",
+          "description": "Supplementary ID Document"
+        }
+      },
+      "requiredForRole": "Required for your role",
+      "startVerification": "Start verification",
+      "allStepsDone": "All required steps done"
+    },
+    "identity": {
+      "checkingStatus": "Checking identity verification status...",
+      "onboardingHub": "Onboarding Hub",
+      "title": "Identity Verification",
+      "subtitle": "Fast, secure document verification powered by Sumsub Live Capture.",
+      "verifiedTitle": "Identity Verified",
+      "verifiedDesc": "Your identity document has been verified. You can now return to the onboarding hub to complete any remaining steps.",
+      "continueToHub": "Continue to Hub",
+      "notApprovedTitle": "Verification Not Approved",
+      "notApprovedDefault": "The document could not be validated. Please ensure your document is valid, unexpired, and clearly visible during live capture.",
+      "resetting": "Resetting...",
+      "tryAgain": "Try Again",
+      "selectDocStep": "Select France Identity Document",
+      "selectDocSubtitle": "Select the government-issued document you will scan with your camera.",
+      "requirementsTitle": "Live Document Capture Requirements",
+      "req1": "Have your physical document ready in good lighting.",
+      "req2": "Your device camera will capture the document securely in real time.",
+      "req3": "Driver's licenses and uploaded image files are not accepted for France KYC.",
+      "req4": "Biometric face scanning and selfies are not required.",
+      "encryptedSession": "256-bit encrypted provider session",
+      "startingSession": "Starting Session...",
+      "startVerification": "Start Secure Verification",
+      "changeDocument": "Change Document",
+      "checkStatus": "Check Status",
+      "submittedTitle": "Verification submitted. We're checking your document.",
+      "submittedDesc": "Our verification system is reviewing your document. This usually takes under a minute.",
+      "initCamera": "Initializing secure camera session...",
+      "docs": {
+        "idCard": {
+          "label": "Carte Nationale d'Identité",
+          "sublabel": "CNI Format 2021+ or classic card",
+          "description": "Front and back capture required"
+        },
+        "passport": {
+          "label": "Passport",
+          "sublabel": "French or EU passport",
+          "description": "Photo & MRZ data page scan"
+        },
+        "residencePermit": {
+          "label": "Titre de Séjour",
+          "sublabel": "French residence permit",
+          "description": "Valid biometric residence card"
+        }
+      }
+    },
+    "upload": {
+      "backToHub": "← Back to Hub",
+      "required": "Required",
+      "alreadyUploaded": "Already uploaded. Upload a new file to replace it.",
+      "dragDrop": "Click to upload or drag and drop",
+      "uploading": "Uploading...",
+      "uploadDocument": "Upload Document",
+      "uploadFailed": "Upload failed. Please try again."
+    },
+    "backToHub": {
+      "label": "Back to verification"
+    },
+    "phone": {
+      "title": "Phone Verification",
+      "subtitle": "Your information is encrypted and secured by VeriSure, our trusted security partner.",
+      "countryLabel": "Country",
+      "phoneLabel": "Phone number",
+      "skipping": "Skipping...",
+      "skip": "Skip for now",
+      "sending": "Sending...",
+      "sendCode": "Send Code",
+      "codeTitle": "Verification Code",
+      "sentTo": "Sent to {{phone}}.",
+      "changeNumber": "Use a different number",
+      "resend": "Resend code",
+      "verifying": "Verifying...",
+      "verifyCode": "Verify Code"
+    },
+    "email": {
+      "title": "Email Verification",
+      "subtitle": "Your information is encrypted and secured by VeriSure, our trusted security partner.",
+      "codeTitle": "Verification Code",
+      "sentTo": "Sent to {{email}}.",
+      "resend": "Resend code",
+      "verifying": "Verifying...",
+      "verifyCode": "Verify Code"
+    },
+    "complete": {
+      "title": "Verification Complete",
+      "subtitle": "Your identity has been verified successfully. You now have full access to Mondial.eco.",
+      "encryptionTitle": "Enterprise-grade encryption",
+      "encryptionDesc": "protecting your personal data and identity documents.",
+      "goToDashboard": "Go to Dashboard"
+    }
   }
 }

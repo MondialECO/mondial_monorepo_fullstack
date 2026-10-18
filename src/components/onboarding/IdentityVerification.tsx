@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import api from '@/lib/axios';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export type DocumentType = 'national_id' | 'passport' | 'residence_permit';
 
@@ -91,6 +92,7 @@ export function loadSumsubScript(): Promise<void> {
 }
 
 export default function IdentityVerification() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [initialChecking, setInitialChecking] = useState(true);
   const [status, setStatus] = useState<IdentityStatusResponse | null>(null);
@@ -341,7 +343,7 @@ export default function IdentityVerification() {
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="flex flex-col items-center gap-4 text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Checking identity verification status...</p>
+          <p className="text-sm text-muted-foreground">{t('onboarding.identity.checkingStatus', 'Checking identity verification status...')}</p>
         </div>
       </div>
     );
@@ -357,18 +359,18 @@ export default function IdentityVerification() {
             className="hover:text-foreground transition flex items-center gap-1 cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Onboarding Hub</span>
+            <span>{t('onboarding.identity.onboardingHub', 'Onboarding Hub')}</span>
           </button>
           <ChevronRight className="w-4 h-4" />
-          <span className="text-primary font-medium">Identity Verification</span>
+          <span className="text-primary font-medium">{t('onboarding.identity.title', 'Identity Verification')}</span>
         </div>
 
         <div>
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
-            Identity Verification
+            {t('onboarding.identity.title', 'Identity Verification')}
           </h1>
           <p className="text-base text-muted-foreground">
-            Fast, secure document verification powered by Sumsub Live Capture.
+            {t('onboarding.identity.subtitle', 'Fast, secure document verification powered by Sumsub Live Capture.')}
           </p>
         </div>
       </div>
@@ -388,17 +390,16 @@ export default function IdentityVerification() {
               <CheckCircle2 className="w-10 h-10" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-foreground">Identity Verified</h2>
+              <h2 className="text-2xl font-bold text-foreground">{t('onboarding.identity.verifiedTitle', 'Identity Verified')}</h2>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto text-sm">
-                Your identity document has been verified. You can now return to the onboarding hub
-                to complete any remaining steps.
+                {t('onboarding.identity.verifiedDesc', 'Your identity document has been verified. You can now return to the onboarding hub to complete any remaining steps.')}
               </p>
             </div>
             <Button
               onClick={() => router.push('/onboarding')}
               className="px-8 font-semibold cursor-pointer"
             >
-              Continue to Hub
+              {t('onboarding.identity.continueToHub', 'Continue to Hub')}
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
@@ -411,7 +412,7 @@ export default function IdentityVerification() {
               <AlertCircle className="w-10 h-10" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-foreground">Verification Not Approved</h2>
+              <h2 className="text-2xl font-bold text-foreground">{t('onboarding.identity.notApprovedTitle', 'Verification Not Approved')}</h2>
               <p className="text-muted-foreground mt-2 max-w-md mx-auto text-sm">
                 {status?.reviewReason ||
                   'The document could not be validated. Please ensure your document is valid, unexpired, and clearly visible during live capture.'}
@@ -425,12 +426,12 @@ export default function IdentityVerification() {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Resetting...
+                  {t('onboarding.identity.resetting', 'Resetting...')}
                 </>
               ) : (
                 <>
                   <RefreshCw className="w-4 h-4" />
-                  Try Again
+                  {t('onboarding.identity.tryAgain', 'Try Again')}
                 </>
               )}
             </Button>
@@ -446,11 +447,11 @@ export default function IdentityVerification() {
                   1
                 </div>
                 <h2 className="text-lg font-semibold text-foreground">
-                  Select France Identity Document
+                  {t('onboarding.identity.selectDocStep', 'Select France Identity Document')}
                 </h2>
               </div>
               <p className="text-sm text-muted-foreground">
-                Select the government-issued document you will scan with your camera.
+                {t('onboarding.identity.selectDocSubtitle', 'Select the government-issued document you will scan with your camera.')}
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
@@ -498,13 +499,13 @@ export default function IdentityVerification() {
             <div className="bg-muted/50 border border-border rounded-xl p-5 space-y-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Camera className="w-4 h-4 text-primary" />
-                <span>Live Document Capture Requirements</span>
+                <span>{t('onboarding.identity.requirementsTitle', 'Live Document Capture Requirements')}</span>
               </div>
               <ul className="text-xs text-muted-foreground space-y-1.5 pl-6 list-disc">
-                <li>Have your physical document ready in good lighting.</li>
-                <li>Your device camera will capture the document securely in real time.</li>
-                <li>Driver's licenses and uploaded image files are not accepted for France KYC.</li>
-                <li>Biometric face scanning and selfies are not required.</li>
+                <li>{t('onboarding.identity.req1', 'Have your physical document ready in good lighting.')}</li>
+                <li>{t('onboarding.identity.req2', 'Your device camera will capture the document securely in real time.')}</li>
+                <li>{t('onboarding.identity.req3', "Driver's licenses and uploaded image files are not accepted for France KYC.")}</li>
+                <li>{t('onboarding.identity.req4', 'Biometric face scanning and selfies are not required.')}</li>
               </ul>
             </div>
 
@@ -512,7 +513,7 @@ export default function IdentityVerification() {
             <div className="flex items-center justify-between border-t border-border pt-6">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Shield className="w-4 h-4 text-primary" />
-                <span>256-bit encrypted provider session</span>
+                <span>{t('onboarding.identity.encryptedSession', '256-bit encrypted provider session')}</span>
               </div>
               <Button
                 onClick={startVerification}
@@ -522,11 +523,11 @@ export default function IdentityVerification() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Starting Session...
+                    {t('onboarding.identity.startingSession', 'Starting Session...')}
                   </>
                 ) : (
                   <>
-                    Start Secure Verification
+                    {t('onboarding.identity.startVerification', 'Start Secure Verification')}
                     <ChevronRight className="w-4 h-4" />
                   </>
                 )}
@@ -546,7 +547,7 @@ export default function IdentityVerification() {
                 className="cursor-pointer gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Change Document
+                {t('onboarding.identity.changeDocument', 'Change Document')}
               </Button>
               <Button
                 variant="ghost"
@@ -555,7 +556,7 @@ export default function IdentityVerification() {
                 className="cursor-pointer gap-2 text-xs text-muted-foreground"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                Check Status
+                {t('onboarding.identity.checkStatus', 'Check Status')}
               </Button>
             </div>
 
@@ -564,10 +565,10 @@ export default function IdentityVerification() {
                 <Loader2 className="w-5 h-5 animate-spin flex-shrink-0" />
                 <div>
                   <p className="font-semibold text-foreground">
-                    Verification submitted. We're checking your document.
+                    {t('onboarding.identity.submittedTitle', "Verification submitted. We're checking your document.")}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Our verification system is reviewing your document. This usually takes under a minute.
+                    {t('onboarding.identity.submittedDesc', 'Our verification system is reviewing your document. This usually takes under a minute.')}
                   </p>
                 </div>
               </div>
@@ -579,7 +580,7 @@ export default function IdentityVerification() {
                 <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   <p className="text-sm text-muted-foreground">
-                    Initializing secure camera session...
+                    {t('onboarding.identity.initCamera', 'Initializing secure camera session...')}
                   </p>
                 </div>
               )}

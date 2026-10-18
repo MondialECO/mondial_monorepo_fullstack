@@ -13,6 +13,7 @@ import {
   resolveTargetQuickStartStep,
   resetQuickStartJourneyState,
 } from '@/lib/humainx-quick-start';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export interface CreatorHumainXQuickStartGuardProps {
   children: React.ReactNode;
@@ -21,6 +22,7 @@ export interface CreatorHumainXQuickStartGuardProps {
 export default function CreatorHumainXQuickStartGuard({
   children,
 }: CreatorHumainXQuickStartGuardProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -124,7 +126,7 @@ export default function CreatorHumainXQuickStartGuard({
         className="min-h-[calc(100vh-140px)] flex items-center justify-center text-muted-foreground bg-background"
       >
         <Loader2 className="w-6 h-6 animate-spin mr-2 text-primary" />
-        <span>Checking HumainX profile…</span>
+        <span>{t('creator.humainx.guard.checking', 'Checking HumainX profile…')}</span>
       </div>
     );
   }
@@ -137,7 +139,7 @@ export default function CreatorHumainXQuickStartGuard({
         className="min-h-[calc(100vh-140px)] flex items-center justify-center text-muted-foreground bg-background"
       >
         <Loader2 className="w-6 h-6 animate-spin mr-2 text-primary" />
-        <span>Redirecting to HumainX Quick Start…</span>
+        <span>{t('creator.humainx.guard.redirectingQuickStart', 'Redirecting to HumainX Quick Start…')}</span>
       </div>
     );
   }
@@ -150,7 +152,7 @@ export default function CreatorHumainXQuickStartGuard({
         className="min-h-[calc(100vh-140px)] flex items-center justify-center text-muted-foreground bg-background"
       >
         <Loader2 className="w-6 h-6 animate-spin mr-2 text-primary" />
-        <span>Redirecting to Creator Dashboard…</span>
+        <span>{t('creator.humainx.guard.redirectingDashboard', 'Redirecting to Creator Dashboard…')}</span>
       </div>
     );
   }

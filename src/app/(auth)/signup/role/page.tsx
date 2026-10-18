@@ -11,16 +11,10 @@ export const metadata: Metadata = {
 /**
  * /signup/role - role picker step. Server component; hands the interactive
  * RoleSelector (client) only the data it needs.
- *
- * Flip `variant` to "list" for the single-column card layout.
  */
 export default function SignupRolePage() {
   return (
-    <SignupShell
-      badge="Onboarding Protocol"
-      title="Choose Your Path"
-      subtitle="Select your operational profile to initialize your workspace."
-    >
+    <SignupShell>
       <RoleSelector roles={SIGNUP_ROLES} variant="grid" />
     </SignupShell>
   );

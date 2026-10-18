@@ -8,6 +8,7 @@ import { useOnboarding } from "@/providers/OnboardingProvider";
 import { OnboardingItemKey } from "@/lib/onboarding-routes";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useTranslation } from "@/hooks/useTranslation";
 import { LucideIcon } from "lucide-react";
 
 interface DocumentUploadStepProps {
@@ -32,6 +33,7 @@ export default function DocumentUploadStep({
   acceptHint = "PDF, DOC, DOCX, PPT, PPTX. Up to 20MB.",
   accept = ".pdf,.doc,.docx,.ppt,.pptx",
 }: DocumentUploadStepProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { refresh, status } = useOnboarding();
   const [file, setFile] = useState<File | null>(null);
@@ -70,7 +72,7 @@ export default function DocumentUploadStep({
           href="/onboarding"
           className="text-muted-foreground hover:text-foreground transition flex items-center gap-2 text-sm"
         >
-          ← Back to Hub
+          {t('onboarding.upload.backToHub', '← Back to Hub')}
         </Link>
       </div>
 
@@ -87,7 +89,7 @@ export default function DocumentUploadStep({
                 <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
                 {isRequired && (
                   <span className="inline-block text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-1 rounded-full mt-2">
-                    Required
+                    {t('onboarding.upload.required', 'Required')}
                   </span>
                 )}
               </div>
@@ -99,7 +101,7 @@ export default function DocumentUploadStep({
           {alreadyUploaded && (
             <div className="rounded-lg border border-green-600/30 bg-green-600/5 px-4 py-3 text-sm text-green-700 dark:text-green-300 flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-              <span>Already uploaded. Upload a new file to replace it.</span>
+              <span>{t('onboarding.upload.alreadyUploaded', 'Already uploaded. Upload a new file to replace it.')}</span>
             </div>
           )}
 
@@ -128,7 +130,7 @@ export default function DocumentUploadStep({
                 <Upload className="w-8 h-8 text-primary" />
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    Click to upload or drag and drop
+                    {t('onboarding.upload.dragDrop', 'Click to upload or drag and drop')}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">{helper}</p>
                 </div>
@@ -142,7 +144,7 @@ export default function DocumentUploadStep({
                     <span className="text-foreground font-medium">{file.name}</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                    {(file.size / 1024 / 1024).toFixed(2)} {'MB'}
                   </p>
                 </div>
               )}
@@ -159,10 +161,10 @@ export default function DocumentUploadStep({
               {busy ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Uploading...
+                  {t('onboarding.upload.uploading', 'Uploading...')}
                 </>
               ) : (
-                "Upload Document"
+                t('onboarding.upload.uploadDocument', 'Upload Document')
               )}
             </Button>
           </form>
