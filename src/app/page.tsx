@@ -1,61 +1,30 @@
-import type { Metadata } from 'next';
+import type { Metadata } from "next";
 import Navbar from "@/components/shared/Navbar";
 import Footer from "@/components/shared/Footer";
-import FigmaHero from "@/components/homepage/FigmaHero";
-import FigmaOutputsShowcase from "@/components/homepage/FigmaOutputsShowcase";
-import FigmaHowItWorks from "@/components/homepage/FigmaHowItWorks";
-import FigmaTrustSources from "@/components/homepage/FigmaTrustSources";
-import FigmaWhatsNext from "@/components/homepage/FigmaWhatsNext";
-import FigmaFaq from "@/components/homepage/FigmaFaq";
-import FigmaFinalCta from "@/components/homepage/FigmaFinalCta";
+import ToolboxHomepage from "@/components/homepage/ToolboxHomepage";
 
 export const metadata: Metadata = {
-  title: "MBC — Start your digital business for €0 | Mondial.eco",
+  title: "MBC — The Intelligent Toolbox | Mondial Business Creation",
   description:
-    "One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch. 6 structured phases from raw idea to French company formation.",
+    "Create your Creator Profile, access your dashboard and use connected generators to turn your project into concrete, reusable business outputs.",
   openGraph: {
-    title: "MBC — Start your digital business for €0 | Mondial.eco",
+    title: "MBC — The Intelligent Toolbox",
     description:
-      "One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch. 6 structured phases from raw idea to French company formation.",
+      "One profile. One dashboard. Connected generators for your project, brand, finances, CV, website and roadmap.",
     url: "https://mondialbusiness.eu",
-    siteName: "Mondial.eco",
+    siteName: "MBC — Mondial Business Creation",
     type: "website",
   },
 };
 
 export default function Home() {
   return (
-    <div className="w-full min-h-screen bg-white dark:bg-background text-foreground flex flex-col justify-between overflow-x-clip" data-testid="homepage-root">
-      {/* 1. Global Public Header */}
+    <div className="min-h-screen w-full overflow-x-clip bg-white text-foreground">
       <Navbar />
-
-      <main className="w-full flex-1 flex flex-col">
-        {/* Section 1: Hero — MBC The Intelligent Toolbox (Figma 57449:112) */}
-        <FigmaHero />
-
-        {/* Section 2: Real Deliverables Showcase — 6 Business-Ready Outputs (Figma 57360:15973) */}
-        <FigmaOutputsShowcase />
-
-        {/* Section 3: How It Works — From Idea to Company in 6 Steps (Figma 57377:9704) */}
-        <FigmaHowItWorks />
-
-        {/* Section 4: Where The Facts Come From — Official French Sources (Figma 57424:508) */}
-        <FigmaTrustSources />
-
-        {/* Section 5: What's Next — Creator is Just the Beginning (Figma 57381:10328) */}
-        <FigmaWhatsNext />
-
-        {/* Section 5: FAQ — What "Start for €0" Really Means (Figma 57354:15783) */}
-        <FigmaFaq />
-
-        {/* Section 6: Final Call to Action Banner (Figma 57354:15831) */}
-        <FigmaFinalCta />
+      <main>
+        <ToolboxHomepage />
       </main>
-
-      {/* Global Public Footer */}
       <Footer />
     </div>
   );
 }
-
-

@@ -5,14 +5,20 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, Menu, X } from 'lucide-react';
 
+const navItems = [
+  { label: 'How it works', href: '/#how-it-works' },
+  { label: 'Generators', href: '/#generators' },
+  { label: 'Dashboard', href: '/#dashboard' },
+  { label: 'Full toolbox', href: '/#all-tools' },
+  { label: 'Pricing', href: '/pricing' },
+];
+
 export default function PublicHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   React.useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 8);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 8);
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
@@ -20,113 +26,69 @@ export default function PublicHeader() {
 
   return (
     <header
-      className={`w-full sticky top-0 z-50 bg-white/95 dark:bg-[#0b0f19]/95 backdrop-blur-md border-b border-[#e8ecf2] dark:border-border/80 transition-all duration-200 ${
+      className={`sticky top-0 z-50 w-full border-b border-[#e8ecf2] bg-white/95 backdrop-blur-md transition-all duration-200 dark:border-border/80 dark:bg-[#0b0f19]/95 ${
         isScrolled ? 'shadow-xs bg-white/98 dark:bg-[#0b0f19]/98' : ''
       }`}
       data-testid="public-header-bar"
     >
-      <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-16 h-20 flex items-center justify-between">
-
-        {/* ========================================================================= */}
-        {/* LEFT: Brand Logo & Titles (Figma 57381:10848) */}
-        {/* ========================================================================= */}
+      <div className="flex h-20 w-full items-center justify-between px-4 sm:px-8 lg:px-12 xl:px-16">
         <Link
           href="/"
-          className="flex items-center gap-3 group focus:outline-none focus:ring-2 focus:ring-[#3c61dd]/40 rounded-lg p-1"
-          aria-label="Mondial Business Creation - Creator Home"
+          className="group flex items-center gap-3 rounded-lg p-1 focus:outline-none focus:ring-2 focus:ring-[#3c61dd]/40"
+          aria-label="MBC — Mondial Business Creation"
         >
-          {/* New MBC Logo Image (95px width, 46px height) */}
-          <div className="w-[95px] h-[46px] rounded-[11px] p-1 overflow-hidden flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+          <div className="flex h-[46px] w-[95px] shrink-0 items-center justify-center overflow-hidden rounded-[11px] p-1 transition-transform group-hover:scale-105">
             <Image
               src="/images/mbc-logo.png"
               alt="MBC Logo"
               width={95}
               height={46}
-              className="w-full h-full object-contain"
+              className="h-full w-full object-contain"
               priority
             />
           </div>
-
-          {/* Brand Titles (Figma 57381:10854) */}
-          <div className="flex flex-col justify-center space-y-1">
-            <div className="flex items-center">
-              <span className="px-2 py-0.5 rounded-[4px] bg-[#e8eeff] dark:bg-blue-950/70 text-[#1f3faf] dark:text-blue-300 text-[10px] font-bold font-mono tracking-wider leading-none">
+          <div className="hidden flex-col justify-center space-y-1 sm:flex">
+            <div>
+              <span className="rounded-[4px] bg-[#e8eeff] px-2 py-0.5 font-mono text-[10px] font-bold leading-none tracking-wider text-[#1f3faf] dark:bg-blue-950/70 dark:text-blue-300">
                 CREATOR
               </span>
             </div>
-            <span className="text-[10.5px] font-semibold text-[#667085] dark:text-muted-foreground tracking-wider uppercase font-mono leading-none">
-              MONDIAL BUSINESS CREATION
+            <span className="font-mono text-[10.5px] font-semibold uppercase leading-none tracking-wider text-[#667085] dark:text-muted-foreground">
+              THE INTELLIGENT TOOLBOX
             </span>
           </div>
         </Link>
 
-        {/* ========================================================================= */}
-        {/* CENTER: Main Navigation Menus (Figma 57381:10863) */}
-        {/* ========================================================================= */}
-        <nav className="hidden md:flex items-center gap-7 lg:gap-9" aria-label="Main Navigation">
-          <Link
-            href="/#how-it-works"
-            className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
-          >
-            How it works
-          </Link>
-
-          <Link
-            href="/#outputs"
-            className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans inline-flex items-center gap-1.5"
-          >
-            <span>Creator Tools</span>
-            {/* Blue dot indicator (Figma 57381:10868) */}
-            <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd]" />
-          </Link>
-
-          <Link
-            href="/#outputs"
-            className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
-          >
-            What you get
-          </Link>
-
-          <Link
-            href="/pricing"
-            className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
-          >
-            Pricing
-          </Link>
-
-          <Link
-            href="/#faq"
-            className="text-[14.5px] font-medium text-[#101828]/90 dark:text-foreground/90 hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors font-sans"
-          >
-            FAQ
-          </Link>
+        <nav className="hidden items-center gap-6 md:flex lg:gap-8" aria-label="Main Navigation">
+          {navItems.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className="font-sans text-[14px] font-medium text-[#101828]/90 transition-colors hover:text-[#3c61dd] dark:text-foreground/90 dark:hover:text-[#60a5fa]"
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
-        {/* ========================================================================= */}
-        {/* RIGHT: Dual CTAs (Conversion Focused) (Figma 57381:10873) */}
-        {/* ========================================================================= */}
-        <div className="hidden md:flex items-center gap-4">
-          {/* Secondary: Sign In (Figma 57381:10874) */}
+        <div className="hidden items-center gap-3 md:flex">
           <Link
             href="/login"
-            className="text-[14px] font-medium text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-white px-3 py-2 transition-colors font-sans"
+            className="px-3 py-2 font-sans text-[14px] font-medium text-[#667085] transition-colors hover:text-[#101828] dark:text-muted-foreground dark:hover:text-white"
           >
             Sign in
           </Link>
-
-          {/* Primary Conversion CTA: Start for €0 (Figma 57381:10876) */}
           <Link
             href="/signup"
-            className="h-[42px] px-5 bg-[#3c61dd] hover:bg-[#3252be] text-white font-medium text-[14px] rounded-[12px] transition-all shadow-sm inline-flex items-center justify-center gap-2 font-sans group active:scale-[0.98]"
+            className="group inline-flex h-[42px] items-center justify-center gap-2 rounded-[12px] bg-[#3c61dd] px-5 font-sans text-[14px] font-medium text-white shadow-sm transition-all hover:bg-[#3252be] active:scale-[0.98]"
           >
-            <span>Start for €0</span>
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            <span>Create Creator Profile</span>
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
 
-        {/* Mobile Hamburger Toggle */}
         <button
-          className="md:hidden p-2 rounded-lg text-[#101828] dark:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="rounded-lg p-2 text-[#101828] transition-colors hover:bg-slate-100 dark:text-foreground dark:hover:bg-slate-800 md:hidden"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label="Toggle navigation menu"
           aria-expanded={mobileMenuOpen}
@@ -135,70 +97,36 @@ export default function PublicHeader() {
         </button>
       </div>
 
-      {/* ========================================================================= */}
-      {/* MOBILE MENU ACCORDION / DRAWER */}
-      {/* ========================================================================= */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-[#e8ecf2] dark:border-border/80 bg-white dark:bg-[#0b0f19] px-6 py-5 space-y-4 shadow-lg animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="animate-in fade-in slide-in-from-top-2 space-y-4 border-t border-[#e8ecf2] bg-white px-6 py-5 shadow-lg duration-150 dark:border-border/80 dark:bg-[#0b0f19] md:hidden">
           <nav className="flex flex-col space-y-3 font-sans">
-            <Link
-              href="/#how-it-works"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors"
-            >
-              How it works
-            </Link>
-
-            <Link
-              href="/#outputs"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors inline-flex items-center justify-between"
-            >
-              <span>Creator Tools</span>
-              <span className="w-2 h-2 rounded-full bg-[#3c61dd]" />
-            </Link>
-
-            <Link
-              href="/#outputs"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors"
-            >
-              What you get
-            </Link>
-
-            <Link
-              href="/pricing"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors"
-            >
-              Pricing
-            </Link>
-
-            <Link
-              href="/#faq"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-[15px] font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] py-1 transition-colors"
-            >
-              FAQ
-            </Link>
+            {navItems.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1 text-[15px] font-medium text-[#101828] transition-colors hover:text-[#3c61dd] dark:text-foreground"
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
 
-          <div className="pt-3 border-t border-[#e8ecf2] dark:border-border/60 flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2.5 border-t border-[#e8ecf2] pt-3 dark:border-border/60">
             <Link
               href="/login"
               onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center py-2.5 rounded-[8px] border border-[#e8ecf2] dark:border-border text-[14px] font-medium text-[#101828] dark:text-foreground hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors font-sans"
+              className="w-full rounded-[8px] border border-[#e8ecf2] py-2.5 text-center font-sans text-[14px] font-medium text-[#101828] transition-colors hover:bg-slate-50 dark:border-border dark:text-foreground dark:hover:bg-slate-900"
             >
               Sign in
             </Link>
-
             <Link
               href="/signup"
               onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center py-2.5 rounded-[8px] bg-[#3c61dd] hover:bg-[#3252be] text-white text-[14px] font-medium shadow-sm inline-flex items-center justify-center gap-2 font-sans transition-colors"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[8px] bg-[#3c61dd] py-2.5 font-sans text-[14px] font-medium text-white shadow-sm transition-colors hover:bg-[#3252be]"
             >
-              <span>Start for €0</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Create Creator Profile</span>
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
