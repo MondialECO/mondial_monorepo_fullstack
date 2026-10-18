@@ -131,5 +131,150 @@
       "successMessage": "Check your email for the reset link.",
       "errorMessage": "Failed to send reset email"
     }
+  },
+  "onboarding": {
+    "hub": {
+      "loading": "Loading your verification…",
+      "title": "Profile Verification",
+      "subtitle": "Your data is encrypted and handled by our certified security partner.",
+      "mandatorySteps": "Mandatory Steps",
+      "requiredBadge": "Required",
+      "optionalBadge": "Optional",
+      "completedOf": "{{completed}} of {{total}} Completed",
+      "additionalDocuments": "Additional Document",
+      "additionalDocumentsPlural": "Additional Steps & Documents",
+      "regulatoryNotice": "Verification is mandatory for compliance with global AML/KYC regulations. Mondial.eco uses SecureShield AI's enterprise-grade encryption. Your private information is never shared with third parties.",
+      "completing": "Completing...",
+      "completeVerification": "Complete Verification",
+      "verified": "Verified",
+      "actionRequired": "Action Required",
+      "underReview": "Under Review",
+      "notConnected": "{{item}} verification coming soon",
+      "loadError": "Failed to load onboarding status",
+      "errorLoading": "Error Loading Verification",
+      "retry": "Retry",
+      "items": {
+        "identity": {
+          "label": "Identity Document",
+          "description": "Upload Passport or Government ID"
+        },
+        "phone": {
+          "label": "Phone Verification",
+          "description": "Verify your mobile number via SMS"
+        },
+        "email": {
+          "label": "Email Verification",
+          "description": "Confirm your secure primary email"
+        },
+        "residence": {
+          "label": "Proof of Residence",
+          "description": "Utility bill or bank statement"
+        },
+        "income": {
+          "label": "Proof of Income",
+          "description": "Pay slips or tax returns"
+        },
+        "tax": {
+          "label": "Tax Documents",
+          "description": "Utility bill or bank statement"
+        },
+        "license": {
+          "label": "Driver's license",
+          "description": "Supplementary ID Document"
+        }
+      },
+      "requiredForRole": "Required for your role",
+      "startVerification": "Start verification",
+      "allStepsDone": "All required steps done"
+    },
+    "identity": {
+      "checkingStatus": "Checking identity verification status...",
+      "onboardingHub": "Onboarding Hub",
+      "title": "Identity Verification",
+      "subtitle": "Fast, secure document verification powered by Sumsub Live Capture.",
+      "verifiedTitle": "Identity Verified",
+      "verifiedDesc": "Your identity document has been verified. You can now return to the onboarding hub to complete any remaining steps.",
+      "continueToHub": "Continue to Hub",
+      "notApprovedTitle": "Verification Not Approved",
+      "notApprovedDefault": "The document could not be validated. Please ensure your document is valid, unexpired, and clearly visible during live capture.",
+      "resetting": "Resetting...",
+      "tryAgain": "Try Again",
+      "selectDocStep": "Select France Identity Document",
+      "selectDocSubtitle": "Select the government-issued document you will scan with your camera.",
+      "requirementsTitle": "Live Document Capture Requirements",
+      "req1": "Have your physical document ready in good lighting.",
+      "req2": "Your device camera will capture the document securely in real time.",
+      "req3": "Driver's licenses and uploaded image files are not accepted for France KYC.",
+      "req4": "Biometric face scanning and selfies are not required.",
+      "encryptedSession": "256-bit encrypted provider session",
+      "startingSession": "Starting Session...",
+      "startVerification": "Start Secure Verification",
+      "changeDocument": "Change Document",
+      "checkStatus": "Check Status",
+      "submittedTitle": "Verification submitted. We're checking your document.",
+      "submittedDesc": "Our verification system is reviewing your document. This usually takes under a minute.",
+      "initCamera": "Initializing secure camera session...",
+      "docs": {
+        "idCard": {
+          "label": "Carte Nationale d'Identité",
+          "sublabel": "CNI Format 2021+ or classic card",
+          "description": "Front and back capture required"
+        },
+        "passport": {
+          "label": "Passport",
+          "sublabel": "French or EU passport",
+          "description": "Photo & MRZ data page scan"
+        },
+        "residencePermit": {
+          "label": "Titre de Séjour",
+          "sublabel": "French residence permit",
+          "description": "Valid biometric residence card"
+        }
+      }
+    },
+    "upload": {
+      "backToHub": "← Back to Hub",
+      "required": "Required",
+      "alreadyUploaded": "Already uploaded. Upload a new file to replace it.",
+      "dragDrop": "Click to upload or drag and drop",
+      "uploading": "Uploading...",
+      "uploadDocument": "Upload Document",
+      "uploadFailed": "Upload failed. Please try again."
+    },
+    "backToHub": {
+      "label": "Back to verification"
+    },
+    "phone": {
+      "title": "Phone Verification",
+      "subtitle": "Your information is encrypted and secured by VeriSure, our trusted security partner.",
+      "countryLabel": "Country",
+      "phoneLabel": "Phone number",
+      "skipping": "Skipping...",
+      "skip": "Skip for now",
+      "sending": "Sending...",
+      "sendCode": "Send Code",
+      "codeTitle": "Verification Code",
+      "sentTo": "Sent to {{phone}}.",
+      "changeNumber": "Use a different number",
+      "resend": "Resend code",
+      "verifying": "Verifying...",
+      "verifyCode": "Verify Code"
+    },
+    "email": {
+      "title": "Email Verification",
+      "subtitle": "Your information is encrypted and secured by VeriSure, our trusted security partner.",
+      "codeTitle": "Verification Code",
+      "sentTo": "Sent to {{email}}.",
+      "resend": "Resend code",
+      "verifying": "Verifying...",
+      "verifyCode": "Verify Code"
+    },
+    "complete": {
+      "title": "Verification Complete",
+      "subtitle": "Your identity has been verified successfully. You now have full access to Mondial.eco.",
+      "encryptionTitle": "Enterprise-grade encryption",
+      "encryptionDesc": "protecting your personal data and identity documents.",
+      "goToDashboard": "Go to Dashboard"
+    }
   }
 }

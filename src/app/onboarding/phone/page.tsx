@@ -8,8 +8,10 @@ import { useOnboarding } from "@/providers/OnboardingProvider";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { getRoleDashboardRoute } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function OnboardingPhonePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { refresh } = useOnboarding();
   const { user, refreshAuthMe } = useAuth();
@@ -91,9 +93,9 @@ export default function OnboardingPhonePage() {
         <div className="bg-card border border-border rounded-lg p-6 w-full max-w-[400px] space-y-6">
           {/* Title Section */}
           <div className="space-y-4">
-            <h1 className="text-2xl font-semibold text-foreground">Phone Verification</h1>
+            <h1 className="text-2xl font-semibold text-foreground">{t('onboarding.phone.title', 'Phone Verification')}</h1>
             <p className="text-base text-muted-foreground">
-              Your information is encrypted and secured by VeriSure, our trusted security partner.
+              {t('onboarding.phone.subtitle', 'Your information is encrypted and secured by VeriSure, our trusted security partner.')}
             </p>
           </div>
 
@@ -111,24 +113,24 @@ export default function OnboardingPhonePage() {
               <div className="flex gap-2">
                 {/* Country Selector */}
                 <div className="flex flex-col gap-2 w-28">
-                  <label className="text-sm font-medium text-foreground">Country</label>
+                  <label className="text-sm font-medium text-foreground">{t('onboarding.phone.countryLabel', 'Country')}</label>
                   <div className="relative">
                     <select
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
                       className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-sm appearance-none cursor-pointer outline-none focus:ring-2 focus:ring-primary/50"
                     >
-                      <option value="+1">🇺🇸 +1</option>
-                      <option value="+44">🇬🇧 +44</option>
-                      <option value="+33">🇫🇷 +33</option>
-                      <option value="+49">🇩🇪 +49</option>
-                      <option value="+39">🇮🇹 +39</option>
-                      <option value="+34">🇪🇸 +34</option>
-                      <option value="+61">🇦🇺 +61</option>
-                      <option value="+81">🇯🇵 +81</option>
-                      <option value="+86">🇨🇳 +86</option>
-                      <option value="+880">🇧🇩 +880</option>
-                      <option value="+91">🇮🇳 +91</option>
+                      <option value="+1">{'🇺🇸 +1'}</option>
+                      <option value="+44">{'🇬🇧 +44'}</option>
+                      <option value="+33">{'🇫🇷 +33'}</option>
+                      <option value="+49">{'🇩🇪 +49'}</option>
+                      <option value="+39">{'🇮🇹 +39'}</option>
+                      <option value="+34">{'🇪🇸 +34'}</option>
+                      <option value="+61">{'🇦🇺 +61'}</option>
+                      <option value="+81">{'🇯🇵 +81'}</option>
+                      <option value="+86">{'🇨🇳 +86'}</option>
+                      <option value="+880">{'🇧🇩 +880'}</option>
+                      <option value="+91">{'🇮🇳 +91'}</option>
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
                   </div>
@@ -137,7 +139,7 @@ export default function OnboardingPhonePage() {
                 {/* Phone Input */}
                 <div className="flex flex-col gap-2 flex-1">
                   <label htmlFor="phone" className="text-sm font-medium text-foreground">
-                    Phone number
+                    {t('onboarding.phone.phoneLabel', 'Phone number')}
                   </label>
                   <input
                     id="phone"
@@ -164,10 +166,10 @@ export default function OnboardingPhonePage() {
                   {busy ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Skipping...
+                      {t('onboarding.phone.skipping', 'Skipping...')}
                     </>
                   ) : (
-                    "Skip"
+                    t('onboarding.phone.skip', 'Skip')
                   )}
                 </Button>
                 <Button
@@ -178,10 +180,10 @@ export default function OnboardingPhonePage() {
                   {busy ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Sending...
+                      {t('onboarding.phone.sending', 'Sending...')}
                     </>
                   ) : (
-                    "Send Code"
+                    t('onboarding.phone.sendCode', 'Send Code')
                   )}
                 </Button>
               </div>
@@ -191,7 +193,7 @@ export default function OnboardingPhonePage() {
               {/* Code Input */}
               <div className="flex flex-col gap-2">
                 <label htmlFor="code" className="text-sm font-medium text-foreground">
-                  Verification Code
+                  {t('onboarding.phone.codeTitle', 'Verification Code')}
                 </label>
                 <input
                   id="code"
@@ -207,13 +209,13 @@ export default function OnboardingPhonePage() {
                   className="w-full px-4 py-3 border border-border rounded-lg bg-card text-foreground text-center text-2xl tracking-widest font-mono outline-none focus:ring-2 focus:ring-primary/50 transition"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Sent to {countryCode} {phone}.{" "}
+                  {t('onboarding.phone.sentTo', 'Sent to {{phone}}.', { phone: countryCode + ' ' + phone })}{" "}
                   <button
                     type="button"
                     className="text-primary hover:underline"
                     onClick={() => setStage("enter-phone")}
                   >
-                    Use a different number
+                    {t('onboarding.phone.changeNumber', 'Use a different number')}
                   </button>
                 </p>
               </div>
@@ -230,10 +232,10 @@ export default function OnboardingPhonePage() {
                   {busy ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Skipping...
+                      {t('onboarding.phone.skipping', 'Skipping...')}
                     </>
                   ) : (
-                    "Skip for now"
+                    t('onboarding.phone.skip', 'Skip for now')
                   )}
                 </Button>
                 <Button
@@ -244,10 +246,10 @@ export default function OnboardingPhonePage() {
                   {busy ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Verifying...
+                      {t('onboarding.phone.verifying', 'Verifying...')}
                     </>
                   ) : (
-                    "Verify Code"
+                    t('onboarding.phone.verifyCode', 'Verify Code')
                   )}
                 </Button>
               </div>

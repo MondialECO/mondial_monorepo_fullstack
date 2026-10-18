@@ -31,6 +31,7 @@ const dictionaries: Record<Locale, Record<string, unknown>> = {
     status: commonEn.status,
     priority: commonEn.priority,
     auth: (commonEn as Record<string, unknown>).auth,
+    onboarding: (commonEn as Record<string, unknown>).onboarding,
     creator: creatorEn,
   },
   fr: {
@@ -39,6 +40,7 @@ const dictionaries: Record<Locale, Record<string, unknown>> = {
     status: commonFr.status,
     priority: commonFr.priority,
     auth: (commonFr as Record<string, unknown>).auth,
+    onboarding: (commonFr as Record<string, unknown>).onboarding,
     creator: creatorFr,
   },
 };
@@ -118,6 +120,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       // Check standard sub-namespaces (e.g. creator, brandKit)
       if (val === undefined) {
         const candidatePrefixes = [
+          'onboarding.',
           'auth.',
           'creator.humainx.',
           'creator.phase2.brandKit.',
@@ -228,6 +231,7 @@ export function useTranslation(_namespace?: string) {
         let val = getNestedValue(dictionaries.en, key);
         if (val === undefined) {
           const candidatePrefixes = [
+            'onboarding.',
             'auth.',
             'creator.humainx.',
             'creator.phase2.brandKit.',

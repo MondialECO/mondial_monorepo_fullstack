@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/providers/OnboardingProvider";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { ONBOARDING_ITEMS, OnboardingItem } from "@/lib/onboarding-routes";
-import { getRoleDashboardRoute, type UserRole } from "@/lib/roles";
+import { getRoleDashboardRoute } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import api from "@/lib/axios";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function OnboardingHubPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { status, isLoading, isComplete, nextRequired, refresh } = useOnboarding();
   const { user, refreshAuthMe } = useAuth();
@@ -57,7 +59,7 @@ export default function OnboardingHubPage() {
       router.replace(destination || "/dashboard/creator");
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setCompleteError(msg ?? "Failed to complete verification. Please try again.");
+      setCompleteError(msg ?? t('onboarding.hub.loadError', "Failed to complete verification. Please try again."));
     } finally {
       setCompleting(false);
     }
@@ -65,35 +67,31 @@ export default function OnboardingHubPage() {
 
   if (isLoading || !status) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-        Loading your verification…
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center gap-3 text-muted-foreground text-sm">
+          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          <span>{t('onboarding.hub.loading', 'Loading your verification…')}</span>
+        </div>
       </div>
     );
   }
 
   const supplementary = ONBOARDING_ITEMS.filter((i) => i.group === "supplementary");
-  const optionalCore = core.filter((i) => status ? !status.items[i.key]?.required : false);
-  const optionalItems = [...optionalCore, ...supplementary];
+  const optionalItems = supplementary;
 
-  // Show supplementary items the role requires PLUS any user-uploaded optional
-  // ones (so a Creator who chose to upload Residence still sees that card).
-  // The hub always shows all four supplementary cards so the user can opt in
-  // even when they're not required.
   const requiredCoreDone = mandatoryItems.filter((i) => status.items[i.key]?.verified).length;
   const requiredCoreTotal = mandatoryItems.length;
 
-  // Additional items the user's role requires (Investor: income+tax; SP: license)
   const extraRequired = supplementary.filter((i) => status.items[i.key]?.required);
 
   return (
     <div className="mx-auto max-w-[720px] px-4 sm:px-6 py-10 sm:py-14">
       <header className="mb-10">
         <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
-          Profile Verification
+          {t('onboarding.hub.title', 'Profile Verification')}
         </h1>
         <p className="mt-2 text-muted-foreground">
-          Your data is encrypted and handled by our certified security partner.
+          {t('onboarding.hub.subtitle', 'Your data is encrypted and handled by our certified security partner.')}
         </p>
       </header>
 
@@ -101,13 +99,18 @@ export default function OnboardingHubPage() {
       <section className="mb-10">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <h2 className="text-base font-semibold text-foreground">Mandatory Steps</h2>
+            <h2 className="text-base font-semibold text-foreground">
+              {t('onboarding.hub.mandatorySteps', 'Mandatory Steps')}
+            </h2>
             <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground">
-              Required
+              {t('onboarding.hub.requiredBadge', 'Required')}
             </span>
           </div>
           <span className="text-sm text-muted-foreground">
-            {requiredCoreDone} of {requiredCoreTotal + extraRequired.length} Completed
+            {t('onboarding.hub.completedOf', '{{completed}} of {{total}} Completed', {
+              completed: requiredCoreDone,
+              total: requiredCoreTotal + extraRequired.length,
+            })}
           </span>
         </div>
 
@@ -127,9 +130,13 @@ export default function OnboardingHubPage() {
       {/* Additional Documents */}
       <section className="mb-10">
         <div className="flex items-center gap-3 mb-4">
-          <h2 className="text-base font-semibold text-foreground">Additional Steps & Documents</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            {t('onboarding.hub.additionalDocumentsPlural', 'Additional Steps & Documents')}
+          </h2>
           <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-            {extraRequired.length > 0 ? "Required for your role" : "Optional"}
+            {extraRequired.length > 0
+              ? t('onboarding.hub.requiredForRole', 'Required for your role')
+              : t('onboarding.hub.optionalBadge', 'Optional')}
           </span>
         </div>
 
@@ -160,7 +167,7 @@ export default function OnboardingHubPage() {
             <ShieldCheck className="w-6 h-6 text-primary" />
           </span>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Verification is mandatory for compliance with global AML/KYC regulations. Mondial.eco uses enterprise-grade encryption. Your private information is never shared with third parties.
+            {t('onboarding.hub.regulatoryNotice', 'Verification is mandatory for compliance with global AML/KYC regulations. Mondial.eco uses enterprise-grade encryption. Your private information is never shared with third parties.')}
           </p>
         </div>
         {allMandatoryVerified ? (
@@ -172,16 +179,18 @@ export default function OnboardingHubPage() {
             {completing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Completing...
+                {t('onboarding.hub.completing', 'Completing...')}
               </>
             ) : (
-              "Complete Verification"
+              t('onboarding.hub.completeVerification', 'Complete Verification')
             )}
           </Button>
         ) : (
           <Button asChild className="w-full sm:w-auto whitespace-nowrap" disabled={!nextRequired}>
             <Link href={nextRequired?.href ?? "/onboarding"}>
-              {nextRequired ? "Start verification" : "All required steps done"}
+              {nextRequired
+                ? t('onboarding.hub.startVerification', 'Start verification')
+                : t('onboarding.hub.allStepsDone', 'All required steps done')}
             </Link>
           </Button>
         )}
@@ -201,9 +210,13 @@ function ItemRow({
   status?: string;
   required?: boolean;
 }) {
+  const { t } = useTranslation();
   const Icon = item.icon;
   const isPendingReview = status === 'submitted' || status === 'processing' || status === 'manual_review';
   const isActionRequired = status === 'rejected' || status === 'retry_required';
+
+  const title = t(`onboarding.hub.items.${item.key}.label`, item.title);
+  const description = t(`onboarding.hub.items.${item.key}.description`, item.description);
 
   return (
     <li>
@@ -235,20 +248,20 @@ function ItemRow({
           {verified ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block text-sm font-semibold text-foreground">{item.title}</span>
-          <span className="block text-xs text-muted-foreground">{item.description}</span>
+          <span className="block text-sm font-semibold text-foreground">{title}</span>
+          <span className="block text-xs text-muted-foreground">{description}</span>
         </span>
         {verified ? (
           <span className="text-xs font-medium text-green-700 dark:text-green-300 uppercase tracking-wide">
-            Verified
+            {t('onboarding.hub.verified', 'Verified')}
           </span>
         ) : isActionRequired ? (
           <span className="text-xs font-semibold text-destructive uppercase tracking-wide">
-            Action Required
+            {t('onboarding.hub.actionRequired', 'Action Required')}
           </span>
         ) : isPendingReview ? (
           <span className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide">
-            Under Review
+            {t('onboarding.hub.underReview', 'Under Review')}
           </span>
         ) : (
           <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -267,7 +280,11 @@ function ItemCard({
   verified?: boolean;
   required?: boolean;
 }) {
+  const { t } = useTranslation();
   const Icon = item.icon;
+  const title = t(`onboarding.hub.items.${item.key}.label`, item.title);
+  const description = t(`onboarding.hub.items.${item.key}.description`, item.description);
+
   return (
     <Link
       href={item.href}
@@ -286,12 +303,14 @@ function ItemCard({
       </span>
       <span className="flex-1 min-w-0">
         <span className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">{item.title}</span>
+          <span className="text-sm font-semibold text-foreground">{title}</span>
           {required && !verified && (
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-primary">Required</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+              {t('onboarding.hub.requiredBadge', 'Required')}
+            </span>
           )}
         </span>
-        <span className="block text-xs text-muted-foreground mt-0.5">{item.description}</span>
+        <span className="block text-xs text-muted-foreground mt-0.5">{description}</span>
       </span>
     </Link>
   );

@@ -131,5 +131,150 @@
       "successMessage": "Vérifiez vos e-mails pour le lien de réinitialisation.",
       "errorMessage": "Échec de l'envoi de l'e-mail de réinitialisation"
     }
+  },
+  "onboarding": {
+    "hub": {
+      "loading": "Chargement de votre vérification…",
+      "title": "Vérification du profil",
+      "subtitle": "Vos données sont chiffrées et traitées par notre partenaire de sécurité certifié.",
+      "mandatorySteps": "Étapes obligatoires",
+      "requiredBadge": "Requis",
+      "optionalBadge": "Optionnel",
+      "completedOf": "{{completed}} sur {{total}} terminés",
+      "additionalDocuments": "Document supplémentaire",
+      "additionalDocumentsPlural": "Documents & étapes supplémentaires",
+      "regulatoryNotice": "La vérification est obligatoire pour la conformité aux réglementations mondiales AML/KYC. Mondial.eco utilise le chiffrement de niveau entreprise de SecureShield AI. Vos informations privées ne sont jamais partagées avec des tiers.",
+      "completing": "Finalisation...",
+      "completeVerification": "Finaliser la vérification",
+      "verified": "Vérifié",
+      "actionRequired": "Action requise",
+      "underReview": "En cours d'examen",
+      "notConnected": "Vérification {{item}} bientôt disponible",
+      "loadError": "Échec du chargement du statut d'embarquement",
+      "errorLoading": "Erreur lors du chargement de la vérification",
+      "retry": "Réessayer",
+      "items": {
+        "identity": {
+          "label": "Document d'identité",
+          "description": "Téléversez un passeport ou une pièce d'identité officielle"
+        },
+        "phone": {
+          "label": "Vérification du téléphone",
+          "description": "Vérifiez votre numéro de mobile par SMS"
+        },
+        "email": {
+          "label": "Vérification de l'e-mail",
+          "description": "Confirmez votre adresse e-mail principale sécurisée"
+        },
+        "residence": {
+          "label": "Justificatif de domicile",
+          "description": "Facture d'électricité ou relevé bancaire"
+        },
+        "income": {
+          "label": "Justificatif de revenus",
+          "description": "Bulletins de paie ou avis d'imposition"
+        },
+        "tax": {
+          "label": "Documents fiscaux",
+          "description": "Facture d'électricité ou relevé bancaire"
+        },
+        "license": {
+          "label": "Permis de conduire",
+          "description": "Document d'identité complémentaire"
+        }
+      },
+      "requiredForRole": "Requis pour votre rôle",
+      "startVerification": "Démarrer la vérification",
+      "allStepsDone": "Toutes les étapes requises sont terminées"
+    },
+    "identity": {
+      "checkingStatus": "Vérification de l'état de validation d'identité...",
+      "onboardingHub": "Hub d'embarquement",
+      "title": "Vérification d'identité",
+      "subtitle": "Vérification documentaire rapide et sécurisée optimisée par Sumsub Live Capture.",
+      "verifiedTitle": "Identité vérifiée",
+      "verifiedDesc": "Votre document d'identité a été validé. Vous pouvez maintenant retourner au hub d'embarquement pour compléter les étapes restantes.",
+      "continueToHub": "Continuer vers le Hub",
+      "notApprovedTitle": "Vérification non approuvée",
+      "notApprovedDefault": "Le document n'a pas pu être validé. Veuillez vous assurer que votre document est valide, non expiré et clairement visible lors de la capture en direct.",
+      "resetting": "Réinitialisation...",
+      "tryAgain": "Réessayer",
+      "selectDocStep": "Sélectionnez le document d'identité français",
+      "selectDocSubtitle": "Sélectionnez le document officiel que vous numériserez avec votre caméra.",
+      "requirementsTitle": "Exigences pour la capture en direct du document",
+      "req1": "Ayez votre document physique prêt avec un bon éclairage.",
+      "req2": "La caméra de votre appareil capturera le document en toute sécurité en temps réel.",
+      "req3": "Les permis de conduire et fichiers images importés ne sont pas acceptés pour le KYC France.",
+      "req4": "L'analyse faciale biométrique et les selfies ne sont pas requis.",
+      "encryptedSession": "Session de fournisseur chiffrée en 256 bits",
+      "startingSession": "Démarrage de la session...",
+      "startVerification": "Démarrer la vérification sécurisée",
+      "changeDocument": "Changer de document",
+      "checkStatus": "Vérifier le statut",
+      "submittedTitle": "Vérification envoyée. Nous vérifions votre document.",
+      "submittedDesc": "Notre système de vérification examine votre document. Cela prend généralement moins d'une minute.",
+      "initCamera": "Initialisation de la session caméra sécurisée...",
+      "docs": {
+        "idCard": {
+          "label": "Carte Nationale d'Identité",
+          "sublabel": "Format CNI 2021+ ou carte classique",
+          "description": "Capture recto et verso requise"
+        },
+        "passport": {
+          "label": "Passeport",
+          "sublabel": "Passeport français ou de l'UE",
+          "description": "Numérisation de la page photo et bande MRZ"
+        },
+        "residencePermit": {
+          "label": "Titre de Séjour",
+          "sublabel": "Titre de séjour français",
+          "description": "Carte de séjour biométrique en cours de validité"
+        }
+      }
+    },
+    "upload": {
+      "backToHub": "← Retour au Hub",
+      "required": "Requis",
+      "alreadyUploaded": "Déjà téléversé. Téléversez un nouveau fichier pour le remplacer.",
+      "dragDrop": "Cliquez pour téléverser ou glissez-déposez",
+      "uploading": "Téléversement en cours...",
+      "uploadDocument": "Téléverser le document",
+      "uploadFailed": "Échec du téléversement. Veuillez réessayer."
+    },
+    "backToHub": {
+      "label": "Retour à la vérification"
+    },
+    "phone": {
+      "title": "Vérification du téléphone",
+      "subtitle": "Vos informations sont chiffrées et sécurisées par VeriSure, notre partenaire de sécurité de confiance.",
+      "countryLabel": "Pays",
+      "phoneLabel": "Numéro de téléphone",
+      "skipping": "Passage en cours...",
+      "skip": "Passer pour l'instant",
+      "sending": "Envoi en cours...",
+      "sendCode": "Envoyer le code",
+      "codeTitle": "Code de vérification",
+      "sentTo": "Envoyé à {{phone}}.",
+      "changeNumber": "Utiliser un autre numéro",
+      "resend": "Renvoyer le code",
+      "verifying": "Vérification en cours...",
+      "verifyCode": "Vérifier le code"
+    },
+    "email": {
+      "title": "Vérification de l'e-mail",
+      "subtitle": "Vos informations sont chiffrées et sécurisées par VeriSure, notre partenaire de sécurité de confiance.",
+      "codeTitle": "Code de vérification",
+      "sentTo": "Envoyé à {{email}}.",
+      "resend": "Renvoyer le code",
+      "verifying": "Vérification en cours...",
+      "verifyCode": "Vérifier le code"
+    },
+    "complete": {
+      "title": "Vérification terminée",
+      "subtitle": "Votre identité a été vérifiée avec succès. Vous avez désormais un accès complet à Mondial.eco.",
+      "encryptionTitle": "Chiffrement de niveau entreprise",
+      "encryptionDesc": "protégeant vos données personnelles et vos documents d'identité.",
+      "goToDashboard": "Aller au tableau de bord"
+    }
   }
 }

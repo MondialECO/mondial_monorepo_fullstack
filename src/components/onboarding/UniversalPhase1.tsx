@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface OnboardingItem {
   key: string;
@@ -48,28 +49,66 @@ interface OnboardingStatus {
 type CoreItemKey = 'identity' | 'phone' | 'email';
 const ALL_CORE_ITEM_KEYS: CoreItemKey[] = ['identity', 'phone', 'email'];
 
-const MANDATORY_ITEMS = {
-  identity: { label: 'Identity Document', description: 'Upload Passport or Government ID', icon: FileText },
-  phone: { label: 'Phone Verification', description: 'Verify your mobile number via SMS', icon: Phone },
-  email: { label: 'Email Verification', description: 'Confirm your secure primary email', icon: Mail },
-};
-
-const OPTIONAL_ITEMS = [
-  { id: 'residence', label: 'Proof of Residence', description: 'Utility bill or bank statement', icon: Home },
-  { id: 'income', label: 'Proof of Income', description: 'Pay slips or tax returns', icon: DollarSign },
-  { id: 'tax', label: 'Tax Documents', description: 'Utility bill or bank statement', icon: FileText },
-  { id: 'license', label: "Driver's license", description: 'Supplementary ID Document', icon: Lock },
-];
-
 export default function UniversalPhase1() {
+  const { t } = useTranslation();
   const router = useRouter();
-  const { user, refreshAuthMe } = useAuth();
+  const { user } = useAuth();
   const [status, setStatus] = useState<OnboardingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [verifying, setVerifying] = useState<string | null>(null);
+
+  const getMandatoryConfig = (key: CoreItemKey) => {
+    switch (key) {
+      case 'identity':
+        return {
+          label: t('onboarding.hub.items.identity.label', 'Identity Document'),
+          description: t('onboarding.hub.items.identity.description', 'Upload Passport or Government ID'),
+          icon: FileText,
+        };
+      case 'phone':
+        return {
+          label: t('onboarding.hub.items.phone.label', 'Phone Verification'),
+          description: t('onboarding.hub.items.phone.description', 'Verify your mobile number via SMS'),
+          icon: Phone,
+        };
+      case 'email':
+        return {
+          label: t('onboarding.hub.items.email.label', 'Email Verification'),
+          description: t('onboarding.hub.items.email.description', 'Confirm your secure primary email'),
+          icon: Mail,
+        };
+    }
+  };
+
+  const optionalItems = [
+    {
+      id: 'residence',
+      label: t('onboarding.hub.items.residence.label', 'Proof of Residence'),
+      description: t('onboarding.hub.items.residence.description', 'Utility bill or bank statement'),
+      icon: Home,
+    },
+    {
+      id: 'income',
+      label: t('onboarding.hub.items.income.label', 'Proof of Income'),
+      description: t('onboarding.hub.items.income.description', 'Pay slips or tax returns'),
+      icon: DollarSign,
+    },
+    {
+      id: 'tax',
+      label: t('onboarding.hub.items.tax.label', 'Tax Documents'),
+      description: t('onboarding.hub.items.tax.description', 'Utility bill or bank statement'),
+      icon: FileText,
+    },
+    {
+      id: 'license',
+      label: t('onboarding.hub.items.license.label', "Driver's license"),
+      description: t('onboarding.hub.items.license.description', 'Supplementary ID Document'),
+      icon: Lock,
+    },
+  ];
 
   useEffect(() => {
     if (successMessage) {
@@ -87,7 +126,7 @@ export default function UniversalPhase1() {
         setStatus(data);
         setLoadError(null);
       } catch (err) {
-        setLoadError('Failed to load onboarding status');
+        setLoadError(t('onboarding.hub.loadError', 'Failed to load onboarding status'));
         console.error(err);
       } finally {
         setLoading(false);
@@ -97,7 +136,7 @@ export default function UniversalPhase1() {
     if (user) {
       fetchStatus();
     }
-  }, [user]);
+  }, [user, t]);
 
   const handleVerifyItem = (itemKey: CoreItemKey) => {
     setActionError(null);
@@ -110,7 +149,7 @@ export default function UniversalPhase1() {
     }
 
     // Phone and email OTP flows would be handled in a separate modal/step
-    setActionError(`${itemKey} verification coming soon`);
+    setActionError(t('onboarding.hub.notConnected', `${itemKey} verification coming soon`, { item: itemKey }));
   };
 
   if (loading) {
@@ -118,7 +157,7 @@ export default function UniversalPhase1() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading verification status...</p>
+          <p className="text-muted-foreground">{t('onboarding.hub.loading', 'Loading verification status...')}</p>
         </div>
       </div>
     );
@@ -131,11 +170,11 @@ export default function UniversalPhase1() {
           <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-6">
             <div className="flex items-center gap-3 mb-4">
               <AlertCircle className="w-6 h-6 text-destructive" />
-              <h3 className="font-semibold text-destructive">Error Loading Verification</h3>
+              <h3 className="font-semibold text-destructive">{t('onboarding.hub.errorLoading', 'Error Loading Verification')}</h3>
             </div>
             <p className="text-destructive/80 text-sm mb-4">{loadError}</p>
             <Button className="w-full" onClick={() => window.location.reload()}>
-              Retry
+              {t('onboarding.hub.retry', 'Retry')}
             </Button>
           </div>
         </div>
@@ -155,9 +194,11 @@ export default function UniversalPhase1() {
       <div className="max-w-2xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Profile Verification</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            {t('onboarding.hub.title', 'Profile Verification')}
+          </h1>
           <p className="text-base text-muted-foreground">
-            Your data is encrypted and handled by our certified security partner.
+            {t('onboarding.hub.subtitle', 'Your data is encrypted and handled by our certified security partner.')}
           </p>
         </div>
 
@@ -169,12 +210,7 @@ export default function UniversalPhase1() {
           </div>
         )}
 
-        {/* Success Message.
-            Uses success-light/success-text, NOT success-bg/success-border/success: those
-            three have no --color-* mapping in @theme inline, so Tailwind generates no
-            utility for them and they emit nothing. Note this banner is currently
-            unreachable — setSuccessMessage is only ever called to clear, never to set —
-            so the styling is correct for whoever wires it rather than a live fix. */}
+        {/* Success Message */}
         {successMessage && (
           <div className="mb-6 p-4 bg-success-light border border-success-text/20 rounded-lg flex gap-3">
             <CheckCircle2 className="text-success-text flex-shrink-0 mt-0.5" size={20} />
@@ -187,18 +223,25 @@ export default function UniversalPhase1() {
           <div>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-foreground">Mandatory Steps</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                  {t('onboarding.hub.mandatorySteps', 'Mandatory Steps')}
+                </h2>
                 <span className="inline-flex items-center justify-center bg-primary text-white text-xs font-medium px-3 py-1 rounded-full">
-                  Required
+                  {t('onboarding.hub.requiredBadge', 'Required')}
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground">{completedCount} of {activeCoreKeys.length} Completed</p>
+              <p className="text-sm text-muted-foreground">
+                {t('onboarding.hub.completedOf', '{{completed}} of {{total}} Completed', {
+                  completed: completedCount,
+                  total: activeCoreKeys.length,
+                })}
+              </p>
             </div>
 
             <div className="space-y-3">
               {activeCoreKeys.map((key) => {
                 const item = status.items[key];
-                const config = MANDATORY_ITEMS[key];
+                const config = getMandatoryConfig(key);
                 if (!item) return null;
 
                 const Icon = config.icon;
@@ -243,11 +286,11 @@ export default function UniversalPhase1() {
                         <CheckCircle2 className="text-success-text" size={20} />
                       ) : isActionRequired ? (
                         <span className="text-xs font-semibold text-destructive uppercase tracking-wide">
-                          Action Required
+                          {t('onboarding.hub.actionRequired', 'Action Required')}
                         </span>
                       ) : isPendingReview ? (
                         <span className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide">
-                          Under Review
+                          {t('onboarding.hub.underReview', 'Under Review')}
                         </span>
                       ) : (
                         <ChevronRight className="text-muted-foreground" size={20} />
@@ -262,14 +305,16 @@ export default function UniversalPhase1() {
           {/* Optional Documents */}
           <div>
             <div className="flex items-center gap-2 mb-6">
-              <h2 className="text-lg font-semibold text-foreground">Additional Document</h2>
+              <h2 className="text-lg font-semibold text-foreground">
+                {t('onboarding.hub.additionalDocuments', 'Additional Document')}
+              </h2>
               <span className="inline-flex items-center justify-center bg-muted text-foreground text-xs font-medium px-3 py-1 rounded-full">
-                Optional
+                {t('onboarding.hub.optionalBadge', 'Optional')}
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {OPTIONAL_ITEMS.map((item) => {
+              {optionalItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <div
@@ -297,9 +342,7 @@ export default function UniversalPhase1() {
               <CheckCircle2 className="w-6 h-6 text-white" />
             </div>
             <p className="text-sm text-foreground leading-relaxed">
-              Verification is mandatory for compliance with global AML/KYC regulations. Mondial.eco
-              uses SecureShield AI's enterprise-grade encryption. Your private information is never
-              shared with third parties.
+              {t('onboarding.hub.regulatoryNotice', "Verification is mandatory for compliance with global AML/KYC regulations. Mondial.eco uses SecureShield AI's enterprise-grade encryption. Your private information is never shared with third parties.")}
             </p>
           </div>
         </div>
