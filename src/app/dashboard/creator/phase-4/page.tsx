@@ -11,10 +11,20 @@ import {
   refreshConstructionSnapshot 
 } from '@/lib/api-creator-phase4';
 import { ConstructionSnapshot, ConstructionSnapshotResponse } from '@/types/creator/phase4';
+import { useTranslation } from '@/hooks/useTranslation';
+
+function Phase4PageFallback() {
+  const { t } = useTranslation();
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-mono text-sm">
+      {t('creator.phase4.loading', 'Loading Construction Snapshot...')}
+    </div>
+  );
+}
 
 export default function CreatorPhase4Page() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">Loading Construction Snapshot...</div>}>
+    <Suspense fallback={<Phase4PageFallback />}>
       <CreatorPhase4Inner />
     </Suspense>
   );
@@ -33,6 +43,7 @@ function CreatorPhase4Inner() {
 }
 
 function Phase4Content({ ideaId }: { ideaId: string }) {
+  const { t } = useTranslation();
   const { state: progressState, refetch } = useCreatorProgress();
   const [snapshot, setSnapshot] = useState<ConstructionSnapshot | null>(null);
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
@@ -133,13 +144,13 @@ function Phase4Content({ ideaId }: { ideaId: string }) {
       {/* Compact Page Header */}
       <div className="space-y-1">
         <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
-          PHASE 4 · STEP 4.1
+          {t('creator.phase4.stepBadge', 'PHASE 4 · STEP 4.1')}
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
-          Construction Snapshot
+          {t("creator.phase4.title")}
         </h1>
         <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
-          See what’s ready, what needs attention, and where to go next.
+          {t("creator.phase4.subtitle")}
         </p>
       </div>
 

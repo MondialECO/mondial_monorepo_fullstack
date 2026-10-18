@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { BrandKit, BrandLogoConcept } from "@/types/creator/brand-kit";
@@ -37,6 +38,7 @@ export function LogoCreationModal({
   onClose,
   onKitUpdated,
 }: LogoCreationModalProps) {
+  const { t } = useTranslation("creator");
   const [kit, setKit] = useState<BrandKit | null>(initialKit ?? null);
   const [concepts, setConcepts] = useState<BrandLogoConcept[]>(
     initialKit?.logo?.concepts ?? []
@@ -394,7 +396,7 @@ export function LogoCreationModal({
         
         {/* 1. Modal Header & 6-Step Workflow Track (Figma Node 57004:10578) */}
         <ModalWorkflowHeader
-          title="Choose your logo"
+          title={t("modals.logoCreationModalTitle")}
           subtitle={`Six ${logoTypeName} concepts, drawn inside ${directionName}. Pick the one you'd defend to a customer.`}
           currentStep={4}
           onClose={closeHandler}
@@ -418,7 +420,7 @@ export function LogoCreationModal({
                 }
               >
                 <RefreshCw className={`size-3.5 ${isBatchRegenerating ? "animate-spin text-primary" : ""}`} />
-                <span>Redraw all six</span>
+                <span>{t("modals.logoCreationRedrawAll")}</span>
               </Button>
 
               <span
@@ -440,7 +442,7 @@ export function LogoCreationModal({
           {/* Left: SHOW AS chips */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-footnote font-semibold text-muted-foreground tracking-wider uppercase font-mono pr-1">
-              SHOW AS
+              {t("modals.logoCreationShowAs")}
             </span>
             <button
               type="button"
@@ -451,7 +453,7 @@ export function LogoCreationModal({
                   : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
               }`}
             >
-              Mark only
+              {t("modals.logoCreationMarkOnly")}
             </button>
             <button
               type="button"
@@ -462,7 +464,7 @@ export function LogoCreationModal({
                   : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
               }`}
             >
-              On an invoice
+              {t("modals.logoCreationOnInvoice")}
             </button>
             <button
               type="button"
@@ -473,7 +475,7 @@ export function LogoCreationModal({
                   : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
               }`}
             >
-              At 16px
+              {t("modals.logoCreationAt16px")}
             </button>
           </div>
 
@@ -498,7 +500,7 @@ export function LogoCreationModal({
             </Button>
 
             <span className="font-mono text-badge font-semibold bg-muted/60 text-muted-foreground px-2 py-0.5 rounded border border-border/60 uppercase">
-              6 CONCEPTS
+              {t("modals.logoCreationConceptsTag")}
             </span>
           </div>
         </div>
@@ -511,7 +513,7 @@ export function LogoCreationModal({
               <span className="font-medium">{globalError.message}</span>
             </div>
             {globalError.type === "credits" && (
-              <span className="text-footnote opacity-80 font-medium">(Credit top-ups are currently unavailable)</span>
+              <span className="text-footnote opacity-80 font-medium">{t("modals.logoCreationCreditsUnavailable")}</span>
             )}
           </div>
         )}
@@ -520,7 +522,7 @@ export function LogoCreationModal({
         {isCompareMode && (
           <div className="px-6 sm:px-8 py-2 bg-primary/5 border-b border-primary/20 text-xs flex items-center justify-between shrink-0">
             <span className="font-medium text-foreground font-sans">
-              Select {2 - compareSelection.length} more concept{compareSelection.length === 1 ? "" : "s"} to compare side-by-side.
+              {t("modals.logoCreationSelect")} {2 - compareSelection.length} {t("modals.logoCreationMoreConcept")}{compareSelection.length === 1 ? "" : "s"} {t("modals.logoCreationCompareSideBySide")}
             </span>
             {compareSelection.length === 2 && (
               <Button
@@ -528,7 +530,7 @@ export function LogoCreationModal({
                 onClick={() => setShowCompareOverlay(true)}
                 className="h-6 px-2.5 text-xs bg-primary text-primary-foreground font-sans"
               >
-                Open Comparison
+                {t("modals.logoCreationOpenComparison")}
               </Button>
             )}
           </div>
@@ -541,10 +543,10 @@ export function LogoCreationModal({
               <RefreshCw className="size-8 text-primary animate-spin" />
               <div className="text-center">
                 <h3 className="font-heading font-semibold text-sm text-foreground">
-                  Generating 6 parametric brand concepts...
+                  {t("modals.logoCreationGeneratingTitle")}
                 </h3>
                 <p className="text-xs text-muted-foreground mt-1 font-sans">
-                  Synthesizing direction archetype, motif geometry, and typographic pairings.
+                  {t("modals.logoCreationGeneratingDesc")}
                 </p>
               </div>
             </div>
@@ -555,15 +557,15 @@ export function LogoCreationModal({
               </div>
               <div className="space-y-1.5">
                 <h3 className="font-heading font-semibold text-lg sm:text-xl text-foreground">
-                  Generate Logo Concepts
+                  {t("modals.logoCreationGenerateTitle")}
                 </h3>
                 <p className="text-sm font-sans text-muted-foreground leading-relaxed">
-                  The AI engine will draw 6 distinct {logoTypeName} logo concepts inside your confirmed {directionName} visual direction.
+                  {t("modals.logoCreationGenerateDesc1")} {logoTypeName} {t("modals.logoCreationGenerateDesc2")} {directionName} {t("modals.logoCreationGenerateDesc3")}
                 </p>
               </div>
               <div className="flex items-center gap-2 font-mono text-xs font-semibold px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                 <Sparkles className="size-3.5" />
-                <span>Cost: {isCostLoading ? "Loading cost…" : isCostError || batchRedrawCost == null ? "Unavailable" : `${batchRedrawCost} AI Credits`}</span>
+                <span>{t("modals.logoCreationCost")} {isCostLoading ? "Loading cost…" : isCostError || batchRedrawCost == null ? "Unavailable" : `${batchRedrawCost} AI Credits`}</span>
               </div>
               <Button
                 type="button"
@@ -603,7 +605,7 @@ export function LogoCreationModal({
         <div className="flex items-center justify-between px-6 sm:px-8 py-4 border-t border-border/60 bg-muted/15 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs sm:text-sm text-muted-foreground font-sans">
-              Selected:{" "}
+              {t("modals.logoCreationSelected")}{" "}
               <strong className="text-foreground font-semibold">
                 {selectedConceptTitle}
               </strong>
@@ -619,7 +621,7 @@ export function LogoCreationModal({
               disabled={isConfirming}
               className="cursor-pointer font-sans"
             >
-              Cancel
+              {t("modals.logoCreationCancel")}
             </Button>
 
             <Button
@@ -632,12 +634,12 @@ export function LogoCreationModal({
               {isConfirming ? (
                 <>
                   <RefreshCw className="size-3.5 animate-spin" />
-                  <span>Confirming Mark...</span>
+                  <span>{t("modals.logoCreationConfirmingMark")}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="size-3.5" />
-                  <span>Use {selectedConceptTitle}</span>
+                  <span>{t("modals.logoCreationUseBtn")} {selectedConceptTitle}</span>
                 </>
               )}
             </Button>

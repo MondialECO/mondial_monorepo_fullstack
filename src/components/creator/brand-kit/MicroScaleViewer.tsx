@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React from "react";
 import { resolveMediaUrl } from "@/lib/brand-kit-media";
@@ -9,6 +10,7 @@ interface MicroScaleViewerProps {
 }
 
 export function MicroScaleViewer({ markUri, conceptName }: MicroScaleViewerProps) {
+  const { t } = useTranslation("creator");
   const resolvedUri = resolveMediaUrl(markUri);
 
   return (
@@ -25,7 +27,7 @@ export function MicroScaleViewer({ markUri, conceptName }: MicroScaleViewerProps
             />
           </div>
           <span className="text-badge font-mono text-muted-foreground tabular-nums">
-            16×16px
+            {t("modals.micro16px")}
           </span>
         </div>
 
@@ -51,12 +53,12 @@ export function MicroScaleViewer({ markUri, conceptName }: MicroScaleViewerProps
             />
           </div>
           <span className="text-badge font-mono text-muted-foreground tabular-nums">
-            4× Inspection
+            {t("modals.microInspection")}
           </span>
         </div>
       </div>
       <p className="text-caption text-muted-foreground text-center">
-        Micro-scale favicon and taskbar legibility preview
+        {t("modals.microPreview")}
       </p>
     </div>
   );

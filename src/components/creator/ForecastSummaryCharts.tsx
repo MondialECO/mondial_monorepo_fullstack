@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export interface ForecastRowCalculated {
   month: number;
@@ -31,6 +32,7 @@ export function RevenueAreaSvg({
   breakEvenMonth: number;
   idPrefix?: string;
 }) {
+  const { t } = useTranslation();
   const width = 341;
   const height = 112;
   const padLeft = 4;
@@ -60,7 +62,7 @@ export function RevenueAreaSvg({
       viewBox={`0 0 ${width} ${height}`}
       className="w-full h-[112px] overflow-visible"
       preserveAspectRatio="none"
-      aria-label="Revenue 36-month trajectory"
+      aria-label={t('creator.phase3.forecast.charts.revTrajectoryAria', 'Revenue 36-month trajectory')}
     >
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -90,10 +92,10 @@ export function RevenueAreaSvg({
         strokeDasharray="2.5 2.5"
       />
       <text x={m12X - 4} y={height - 2} textAnchor="end" className="text-[9px] fill-slate-400 font-sans">
-        Modelled
+        {t('creator.phase3.forecast.charts.modelled', 'Modelled')}
       </text>
       <text x={m12X + 4} y={height - 2} textAnchor="start" className="text-[9px] fill-slate-400 font-sans">
-        Projected
+        {t('creator.phase3.forecast.charts.projected', 'Projected')}
       </text>
 
       {/* Break-even point marker on curve */}
@@ -113,7 +115,7 @@ export function RevenueAreaSvg({
           className="dark:fill-slate-900 shadow-sm"
         />
         <text x={0} y={2.5} textAnchor="middle" className="text-[9.5px] font-sans font-semibold fill-teal-600 dark:fill-teal-400">
-          M{breakEvenMonth} break-even
+          {t('creator.phase3.forecast.charts.breakEvenMonth', 'M{{month}} break-even', { month: breakEvenMonth })}
         </text>
       </g>
     </svg>
@@ -132,6 +134,7 @@ export function CostVsRevenueCrossingSvg({
   breakEvenSubs: number;
   idPrefix?: string;
 }) {
+  const { t } = useTranslation();
   const width = 341;
   const height = 112;
   const padLeft = 4;
@@ -160,7 +163,7 @@ export function CostVsRevenueCrossingSvg({
       viewBox={`0 0 ${width} ${height}`}
       className="w-full h-[112px] overflow-visible"
       preserveAspectRatio="none"
-      aria-label="Cost vs revenue inflection point"
+      aria-label={t('creator.phase3.forecast.charts.costVsRevAria', 'Cost vs revenue inflection point')}
     >
       {/* Total Cost Curve */}
       <path d={costPath} fill="none" stroke="#505C8C" strokeWidth={2} strokeLinecap="round" />
@@ -198,7 +201,7 @@ export function CostVsRevenueCrossingSvg({
           className="dark:fill-slate-900 dark:stroke-slate-700 shadow-sm"
         />
         <text x={0} y={2.5} textAnchor="middle" className="text-[9.5px] font-sans font-semibold fill-foreground">
-          €{Math.round(breakEvenRevenue).toLocaleString()} ({breakEvenSubs} subs)
+          {t('creator.phase3.forecast.charts.breakEvenPill', '€{{revenue}} ({{subs}} subs)', { revenue: Math.round(breakEvenRevenue).toLocaleString(), subs: breakEvenSubs })}
         </text>
       </g>
     </svg>
@@ -219,6 +222,7 @@ export function Cash36BarSvg({
   fundingGap: number;
   idPrefix?: string;
 }) {
+  const { t } = useTranslation();
   const width = 341;
   const height = 112;
   const baselineY = 56;
@@ -234,7 +238,7 @@ export function Cash36BarSvg({
       viewBox={`0 0 ${width} ${height}`}
       className="w-full h-[112px] overflow-visible"
       preserveAspectRatio="none"
-      aria-label="36-month cash position bar chart"
+      aria-label={t('creator.phase3.forecast.charts.cashBarAria', '36-month cash position bar chart')}
     >
       {/* Zero baseline */}
       <line
@@ -286,7 +290,7 @@ export function Cash36BarSvg({
             rx={1}
             fill={fill}
           >
-            <title>{`Month ${m}: €${Math.round(cash).toLocaleString()}`}</title>
+            <title>{t('creator.phase3.forecast.charts.barTooltip', 'Month {{month}}: €{{cash}}', { month: m, cash: Math.round(cash).toLocaleString() })}</title>
           </rect>
         );
       })}
@@ -314,7 +318,7 @@ export function Cash36BarSvg({
                   y={baselineY + 46}
                   className="text-[9px] font-sans font-semibold fill-[#965F11] dark:fill-amber-400"
                 >
-                  Budget runs out · M{budgetRunsOutMonth}
+                  {t('creator.phase3.forecast.charts.budgetRunsOut', 'Budget runs out · M{{month}}', { month: budgetRunsOutMonth })}
                 </text>
               </>
             );
@@ -345,7 +349,7 @@ export function Cash36BarSvg({
                   y={baselineY - 36}
                   className="text-[9px] font-sans font-semibold fill-[#0D9488] dark:fill-teal-400"
                 >
-                  Cash positive · M{cashPositiveMonth}
+                  {t('creator.phase3.forecast.charts.cashPositive', 'Cash positive · M{{month}}', { month: cashPositiveMonth })}
                 </text>
               </>
             );

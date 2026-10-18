@@ -21,34 +21,35 @@ import { resolveMediaUrl } from "@/lib/brand-kit-media";
 import type { ComputedJourneyStatus } from "@/types/creator/journey-api";
 import { useState, useEffect } from "react";
 import { withIdeaContext } from "@/lib/creator-routes";
-
-// Phase 3 Tools as specified in Figma node 57007:12780
-const PHASE3_TOOLS = [
-  {
-    icon: TrendingUp,
-    title: "Financial forecast",
-    subtitle: "1-3 year projection",
-  },
-  {
-    icon: FileText,
-    title: "Business plan",
-    subtitle: "Investor-ready document",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Legal checklist",
-    subtitle: "Structure and filings",
-  },
-  {
-    icon: Users,
-    title: "Formation generator",
-    subtitle: "Skill gaps and matches",
-  },
-] as const;
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function Phase2CompletePage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { state, isLoading, error, refetch, advancePhase } = useCreatorProgress();
+
+  const phase3Tools = [
+    {
+      icon: TrendingUp,
+      title: t("creator.phase2.complete.phase3Tools.financialForecast.title"),
+      subtitle: t("creator.phase2.complete.phase3Tools.financialForecast.subtitle"),
+    },
+    {
+      icon: FileText,
+      title: t("creator.phase2.complete.phase3Tools.businessPlan.title"),
+      subtitle: t("creator.phase2.complete.phase3Tools.businessPlan.subtitle"),
+    },
+    {
+      icon: ShieldCheck,
+      title: t("creator.phase2.complete.phase3Tools.legalChecklist.title"),
+      subtitle: t("creator.phase2.complete.phase3Tools.legalChecklist.subtitle"),
+    },
+    {
+      icon: Users,
+      title: t("creator.phase2.complete.phase3Tools.formationGenerator.title"),
+      subtitle: t("creator.phase2.complete.phase3Tools.formationGenerator.subtitle"),
+    },
+  ];
 
   const [logoError, setLogoError] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
@@ -125,22 +126,19 @@ export default function Phase2CompletePage() {
   const notReady =
     computed?.phase2?.currentStep === 8
       ? {
-          message:
-            "You haven't named your concept yet. Finish naming it to unlock Project Intelligence.",
-          cta: "Name your concept",
+          message: t("creator.phase2.complete.notReady.step8Message"),
+          cta: t("creator.phase2.complete.notReady.step8Cta"),
           href: withIdeaContext("/dashboard/creator/phase-2/concept-name", state.activeIdeaId || state.project?.projectId),
         }
       : computed?.phase2?.currentStep === 9
       ? {
-          message:
-            "Your branding decision isn't complete yet. Finish it to unlock Project Intelligence.",
-          cta: "Finish branding",
+          message: t("creator.phase2.complete.notReady.step9Message"),
+          cta: t("creator.phase2.complete.notReady.step9Cta"),
           href: withIdeaContext("/dashboard/creator/phase-2/branding", state.activeIdeaId || state.project?.projectId),
         }
       : {
-          message:
-            "Your idea setup isn't finished yet. Complete the remaining Phase 2 steps to unlock Project Intelligence.",
-          cta: "Finish idea setup",
+          message: t("creator.phase2.complete.notReady.generalMessage"),
+          cta: t("creator.phase2.complete.notReady.generalCta"),
           href: withIdeaContext("/dashboard/creator/phase-2", state.activeIdeaId || state.project?.projectId),
         };
 
@@ -149,7 +147,7 @@ export default function Phase2CompletePage() {
     return (
       <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="mt-4 text-sm text-muted-foreground">Loading your branding...</p>
+        <p className="mt-4 text-sm text-muted-foreground">{t("creator.phase2.complete.loadingBranding")}</p>
       </div>
     );
   }
@@ -158,9 +156,9 @@ export default function Phase2CompletePage() {
   if (error) {
     return (
       <div className="w-full flex-1 flex flex-col bg-background text-foreground min-h-screen items-center justify-center gap-3">
-        <p className="text-destructive text-sm">Couldn&apos;t load your data. Please try again.</p>
+        <p className="text-destructive text-sm">{t("creator.phase2.complete.loadError")}</p>
         <Button variant="outline" size="sm" onClick={() => refetch()}>
-          Retry
+          {t("creator.phase2.complete.retry")}
         </Button>
       </div>
     );
@@ -174,42 +172,43 @@ export default function Phase2CompletePage() {
     brandKit?.strategy?.businessName ||
     brandKit?.strategy?.nameDisplayForm ||
     project.name ||
-    "AutoInvoice";
+    t("creator.phase2.complete.fallbackBrandName", "AutoInvoice");
 
   const brandTagline =
     brandKit?.strategy?.positioning?.value ||
     brandKit?.strategy?.concept?.value ||
     project.tagline ||
     project.solution ||
-    "Automated invoicing and payment chasing for freelance teams.";
+    t("creator.phase2.complete.fallbackTagline", "Automated invoicing and payment chasing for freelance teams.");
 
   const industry =
     brandKit?.strategy?.industry?.value ||
     project.category ||
     project.sector ||
-    "FinTech SaaS";
+    t("creator.phase2.complete.fallbackIndustry", "FinTech SaaS");
 
   const targetAudience =
     brandKit?.strategy?.targetAudience?.value ||
     project.targetUser ||
     project.targetMarket ||
-    "Freelancers and 2-10 person agencies who bill hourly.";
+    t("creator.phase2.complete.fallbackTargetAudience", "Freelancers and 2-10 person agencies who bill hourly.");
 
   const positioning =
     brandKit?.strategy?.positioning?.value ||
     project.marketGap ||
     project.solution ||
-    "The invoicing tool that does the awkward follow-up for you.";
+    t("creator.phase2.complete.fallbackPositioning");
 
   const coreProblem =
     project.problem ||
     brandKit?.strategy?.concept?.value ||
-    "Chasing late payments costs time and strains client relationships.";
+    t("creator.phase2.complete.fallbackProblem");
 
+  const fallbackTraits = t("creator.phase2.complete.fallbackPersonality");
   const personalityTraits =
     brandKit?.strategy?.personalityTraits && brandKit.strategy.personalityTraits.length > 0
       ? brandKit.strategy.personalityTraits
-      : ["Direct", "Calm", "Practical", "Modern", "Trustworthy"];
+      : (Array.isArray(fallbackTraits) ? fallbackTraits : ["Direct", "Calm", "Practical", "Modern", "Trustworthy"]);
 
   const selectedConcept =
     brandKit?.logo?.concepts?.find(
@@ -306,7 +305,7 @@ export default function Phase2CompletePage() {
       {statusLoading && (
         <div className="flex-1 flex flex-col items-center justify-center gap-2 py-24 text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="text-sm">Checking your progress…</span>
+          <span className="text-sm">{t("creator.phase2.complete.checkingProgress")}</span>
         </div>
       )}
 
@@ -314,15 +313,14 @@ export default function Phase2CompletePage() {
       {!statusLoading && statusError && (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 py-20 px-4 text-center">
           <p className="text-sm text-destructive">
-            Couldn&apos;t check your progress. This doesn&apos;t mean anything is missing — please
-            retry.
+            {t("creator.phase2.complete.statusError")}
           </p>
           <div className="flex items-center gap-3">
             <Button variant="outline" size="sm" onClick={() => setAttempt((a) => a + 1)}>
-              Retry
+              {t("creator.phase2.complete.retry")}
             </Button>
             <Button variant="ghost" size="sm" onClick={handleSkip} disabled={isSkipping}>
-              Skip to dashboard
+              {t("creator.phase2.complete.skipToDashboard")}
             </Button>
           </div>
         </div>
@@ -336,7 +334,7 @@ export default function Phase2CompletePage() {
               <AlertTriangle className="w-8 h-8" />
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
-              Phase 2 isn&apos;t finished yet
+              {t("creator.phase2.complete.notFinishedTitle")}
             </h1>
             <p className="text-sm text-muted-foreground leading-relaxed">{notReady.message}</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
@@ -346,14 +344,13 @@ export default function Phase2CompletePage() {
                 disabled={isSkipping}
                 className="text-xs font-semibold"
               >
-                {isSkipping && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />} Skip to
-                dashboard
+                {isSkipping && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />} {t("creator.phase2.complete.skipToDashboard")}
               </Button>
               <Button onClick={() => router.push(notReady.href)} className="gap-1.5">
                 {notReady.cta} <ArrowRight className="w-4 h-4" />
               </Button>
               <Button disabled className="gap-1.5 disabled:opacity-50">
-                Launch Masterplan
+                {t("creator.phase2.complete.launchMasterplan")}
               </Button>
             </div>
           </div>
@@ -362,7 +359,7 @@ export default function Phase2CompletePage() {
 
       {/* Eligible — Figma matching completion screen */}
       {!statusLoading && !statusError && canContinue && (
-        <section aria-label="Phase 2 Completion" className="w-full max-w-[1000px] mx-auto py-6 sm:py-8 space-y-6 sm:space-y-8">
+        <section aria-label={t("creator.phase2.complete.pageAria", "Phase 2 Completion")} className="w-full max-w-[1000px] mx-auto py-6 sm:py-8 space-y-6 sm:space-y-8">
           {/* =========================================================================
               HEADER BLOCK (Centred text, no card — Figma matching)
              ========================================================================= */}
@@ -375,19 +372,18 @@ export default function Phase2CompletePage() {
             {/* Green outline pill */}
             <div>
               <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
-                ✓ Phase 2 complete
+                {t("creator.phase2.complete.badgeComplete")}
               </span>
             </div>
 
             {/* Heading 1 */}
             <h1 className="text-3xl sm:text-4xl font-bold font-heading text-foreground tracking-tight">
-              Your identity is ready
+              {t("creator.phase2.complete.heroTitle")}
             </h1>
 
             {/* Subtitle */}
             <p className="text-sm sm:text-base text-muted-foreground font-sans max-w-xl mx-auto leading-relaxed">
-              {brandName} now has a name, a concept and a full brand identity. Phase 3 turns that
-              into an investor-ready business package.
+              {t("creator.phase2.complete.heroSubtitle", { brandName })}
             </p>
           </header>
 
@@ -397,11 +393,11 @@ export default function Phase2CompletePage() {
           <section className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-xs space-y-6 text-card-foreground">
             {/* Header row */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-xl font-bold font-heading text-foreground">Your Brand Kit</h2>
+              <h2 className="text-xl font-bold font-heading text-foreground">{t("creator.phase2.complete.brandKitTitle")}</h2>
 
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 rounded-full bg-muted/70 text-badge font-semibold text-muted-foreground border border-border/60 uppercase tracking-wider font-mono">
-                  {logoCount} LOGOS · {colorCount} COLOURS · {fontCount} FONTS
+                  {t("creator.phase2.complete.showcaseCounts", { logos: logoCount, colours: colorCount, fonts: fontCount })}
                 </span>
 
                 <button
@@ -409,7 +405,7 @@ export default function Phase2CompletePage() {
                   onClick={() => router.push(hubUrl)}
                   className="text-badge sm:text-body font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1"
                 >
-                  <span>Open Brand Kit</span>
+                  <span>{t("creator.phase2.complete.openBrandKit")}</span>
                   <ExternalLink className="size-3" />
                 </button>
               </div>
@@ -421,7 +417,7 @@ export default function Phase2CompletePage() {
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={resolveMediaUrl(primaryVariationSvg)}
-                  alt={`${brandName} Master Lockup`}
+                  alt={`${brandName} ${t("creator.phase2.complete.masterLockupAlt", "Master Lockup")}`}
                   className="max-h-[120px] max-w-[85%] object-contain"
                   onError={() => setLogoError(true)}
                 />
@@ -442,7 +438,7 @@ export default function Phase2CompletePage() {
               {/* Column 1: COLOURS */}
               <div className="md:pr-6 space-y-3 pt-4 md:pt-0">
                 <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
-                  COLOURS
+                  {t("creator.phase2.complete.colours")}
                 </span>
                 <div className="flex items-center gap-2">
                   {orderedColorRoles.map((c) => (
@@ -455,98 +451,98 @@ export default function Phase2CompletePage() {
                   ))}
                 </div>
                 <p className="text-caption text-muted-foreground font-sans">
-                  Primary, Secondary, Accent, Background, Text
+                  {t("creator.phase2.complete.coloursCaption")}
                 </p>
               </div>
 
               {/* Column 2: TYPOGRAPHY */}
               <div className="md:px-6 space-y-3 pt-4 md:pt-0">
                 <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
-                  TYPOGRAPHY
+                  {t("creator.phase2.complete.typographyLabel")}
                 </span>
                 <div className="flex items-baseline gap-2 text-lg sm:text-xl font-medium text-foreground">
                   <span className="font-heading font-bold">{displayFont}</span>
-                  <span className="text-muted-foreground text-sm font-sans">+</span>
+                  <span className="text-muted-foreground text-sm font-sans">{"+"}</span>
                   <span className="font-sans">{textFont}</span>
                 </div>
                 <p className="text-caption text-muted-foreground font-sans">
-                  Display and text, open licence
+                  {t("creator.phase2.complete.typographyCaption")}
                 </p>
               </div>
 
               {/* Column 3: LOGO FORMS */}
               <div className="md:pl-6 space-y-3 pt-4 md:pt-0">
                 <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
-                  LOGO FORMS
+                  {t("creator.phase2.complete.logoFormsLabel")}
                 </span>
                 <div className="flex items-center gap-2">
                   {/* 1. Horizontal */}
                   <div
                     className="w-10 h-8 rounded-lg border border-border/80 bg-white dark:bg-zinc-900 flex items-center justify-center p-1 shadow-2xs shrink-0"
-                    title="Horizontal Lockup"
+                    title={t("creator.phase2.complete.logoTooltips.horizontal")}
                   >
                     {logoForms?.horizontal ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={resolveMediaUrl(logoForms.horizontal)}
-                        alt="Horizontal"
+                        alt={t("creator.phase2.complete.logoTooltips.horizontal")}
                         className="max-h-full max-w-full object-contain"
                       />
                     ) : (
-                      <span className="text-badge text-muted-foreground font-mono">H</span>
+                      <span className="text-badge text-muted-foreground font-mono">{"H"}</span>
                     )}
                   </div>
                   {/* 2. Stacked */}
                   <div
                     className="w-10 h-8 rounded-lg border border-border/80 bg-white dark:bg-zinc-900 flex items-center justify-center p-1 shadow-2xs shrink-0"
-                    title="Stacked Lockup"
+                    title={t("creator.phase2.complete.logoTooltips.stacked")}
                   >
                     {logoForms?.stacked ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={resolveMediaUrl(logoForms.stacked)}
-                        alt="Stacked"
+                        alt={t("creator.phase2.complete.logoTooltips.stacked")}
                         className="max-h-full max-w-full object-contain"
                       />
                     ) : (
-                      <span className="text-badge text-muted-foreground font-mono">V</span>
+                      <span className="text-badge text-muted-foreground font-mono">{"V"}</span>
                     )}
                   </div>
                   {/* 3. Mark */}
                   <div
                     className="w-10 h-8 rounded-lg border border-border/80 bg-white dark:bg-zinc-900 flex items-center justify-center p-1 shadow-2xs shrink-0"
-                    title="Symbol / Icon Mark"
+                    title={t("creator.phase2.complete.logoTooltips.mark")}
                   >
                     {logoForms?.mark ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={resolveMediaUrl(logoForms.mark)}
-                        alt="Mark"
+                        alt={t("creator.phase2.complete.logoTooltips.mark")}
                         className="max-h-full max-w-full object-contain"
                       />
                     ) : (
-                      <span className="text-badge text-muted-foreground font-mono">M</span>
+                      <span className="text-badge text-muted-foreground font-mono">{"M"}</span>
                     )}
                   </div>
                   {/* 4. Wordmark */}
                   <div
                     className="w-10 h-8 rounded-lg border border-border/80 bg-white dark:bg-zinc-900 flex items-center justify-center p-1 shadow-2xs shrink-0"
-                    title="Wordmark"
+                    title={t("creator.phase2.complete.logoTooltips.wordmark")}
                   >
                     {logoForms?.wordmark ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={resolveMediaUrl(logoForms.wordmark)}
-                        alt="Wordmark"
+                        alt={t("creator.phase2.complete.logoTooltips.wordmark")}
                         className="max-h-full max-w-full object-contain"
                       />
                     ) : (
-                      <span className="text-badge text-muted-foreground font-mono">W</span>
+                      <span className="text-badge text-muted-foreground font-mono">{"W"}</span>
                     )}
                   </div>
                 </div>
                 <p className="text-caption text-muted-foreground font-sans">
-                  Horizontal, stacked, mark, wordmark
+                  {t("creator.phase2.complete.logoFormsCaption")}
                 </p>
               </div>
             </div>
@@ -559,7 +555,7 @@ export default function Phase2CompletePage() {
             {/* Header row */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h3 className="text-card-title font-bold font-heading text-foreground">
-                Core Brand Identity
+                {t("creator.phase2.complete.coreBrandTitle")}
               </h3>
 
               <button
@@ -567,7 +563,7 @@ export default function Phase2CompletePage() {
                 onClick={() => router.push("/dashboard/creator/phase-2/brand-studio?step=strategy")}
                 className="text-badge sm:text-body font-semibold text-primary hover:underline cursor-pointer flex items-center gap-1"
               >
-                <span>Edit Strategy</span>
+                <span>{t("creator.phase2.complete.editStrategy")}</span>
                 <ArrowRight className="size-3" />
               </button>
             </div>
@@ -575,7 +571,7 @@ export default function Phase2CompletePage() {
             {/* Tagline callout banner */}
             <div className="rounded-xl border border-border/60 bg-muted/30 p-4 sm:p-5">
               <p className="text-base sm:text-lg font-medium text-foreground italic font-sans leading-relaxed">
-                &ldquo;{brandTagline}&rdquo;
+                {`“${brandTagline}”`}
               </p>
             </div>
 
@@ -584,7 +580,7 @@ export default function Phase2CompletePage() {
               {/* TARGET AUDIENCE */}
               <div className="space-y-1">
                 <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
-                  TARGET AUDIENCE
+                  {t("creator.phase2.complete.targetAudience")}
                 </span>
                 <p className="text-body text-foreground font-sans leading-relaxed">
                   {targetAudience}
@@ -594,7 +590,7 @@ export default function Phase2CompletePage() {
               {/* POSITIONING */}
               <div className="space-y-1">
                 <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
-                  POSITIONING
+                  {t("creator.phase2.complete.positioning")}
                 </span>
                 <p className="text-body text-foreground font-sans leading-relaxed">
                   {positioning}
@@ -604,7 +600,7 @@ export default function Phase2CompletePage() {
               {/* CORE PROBLEM */}
               <div className="space-y-1">
                 <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
-                  CORE PROBLEM
+                  {t("creator.phase2.complete.coreProblem")}
                 </span>
                 <p className="text-body text-foreground font-sans leading-relaxed">
                   {coreProblem}
@@ -614,7 +610,7 @@ export default function Phase2CompletePage() {
               {/* PERSONALITY */}
               <div className="space-y-1">
                 <span className="text-badge font-bold tracking-wider text-muted-foreground uppercase">
-                  PERSONALITY
+                  {t("creator.phase2.complete.personality")}
                 </span>
                 <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                   {personalityTraits.map((trait) => (
@@ -637,22 +633,22 @@ export default function Phase2CompletePage() {
             {/* Header row */}
             <div className="flex items-center justify-between">
               <h4 className="text-card-title font-semibold font-heading text-foreground">
-                Next: Phase 3 — Business plan
+                {t("creator.phase2.complete.nextPhaseTitle")}
               </h4>
               <span className="px-2.5 py-0.5 rounded-full bg-muted text-badge font-semibold text-muted-foreground border border-border/60 uppercase font-mono">
-                4 TOOLS
+                {t("creator.phase2.complete.toolsCount")}
               </span>
             </div>
 
             {/* 4 Compact items separated by hairline vertical dividers */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border/60 gap-4 sm:gap-0 pt-1">
-              {PHASE3_TOOLS.map(({ icon: Icon, title, subtitle }, idx) => (
+              {phase3Tools.map(({ icon: Icon, title, subtitle }, idx) => (
                 <div
                   key={title}
                   className={`flex items-start gap-3 pt-3 sm:pt-0 ${
                     idx === 0
                       ? "sm:pr-4"
-                      : idx === PHASE3_TOOLS.length - 1
+                      : idx === phase3Tools.length - 1
                       ? "sm:pl-4"
                       : "sm:px-4"
                   }`}
@@ -670,7 +666,7 @@ export default function Phase2CompletePage() {
 
             {/* Beneath row note */}
             <p className="text-caption text-muted-foreground font-sans pt-1 border-t border-border/40">
-              Each one reads from your Brand Kit automatically.
+              {t("creator.phase2.complete.toolsNote")}
             </p>
           </section>
 
@@ -685,7 +681,7 @@ export default function Phase2CompletePage() {
               className="h-12 sm:h-13 px-8 text-base font-semibold rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isNavigating && <Loader2 className="size-4 animate-spin" />}
-              <span>Continue to Phase 3</span>
+              <span>{t("creator.phase2.complete.continueToPhase3")}</span>
               {!isNavigating && <ArrowRight className="size-4.5" />}
             </Button>
 
@@ -696,7 +692,7 @@ export default function Phase2CompletePage() {
                 onClick={handleSkip}
                 className="hover:text-foreground transition-colors cursor-pointer"
               >
-                Back to dashboard
+                {t("creator.phase2.complete.backToDashboard")}
               </button>
               <span>•</span>
               <button
@@ -704,7 +700,7 @@ export default function Phase2CompletePage() {
                 onClick={() => router.push(hubUrl)}
                 className="hover:text-foreground transition-colors cursor-pointer"
               >
-                Edit Brand Kit
+                {t("creator.phase2.complete.editBrandKit")}
               </button>
             </div>
           </footer>

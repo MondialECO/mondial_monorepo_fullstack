@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React, { useState } from "react";
 import { BrandLogoConcept, formatLogoFamily } from "@/types/creator/brand-kit";
@@ -18,15 +19,14 @@ export interface CompareOverlayProps {
   onSelect?: (key: string) => void;
 }
 
-export function CompareOverlay({
-  concepts,
+export function CompareOverlay({ concepts,
   selectedKeys,
   conceptA: propConceptA,
   conceptB: propConceptB,
   onClose,
   onSelectWinningConcept,
-  onSelect,
-}: CompareOverlayProps) {
+  onSelect, }: CompareOverlayProps) {
+  const { t } = useTranslation("creator");
   const [backgroundTheme, setBackgroundTheme] = useState<"light" | "dark">(
     "light"
   );
@@ -63,7 +63,7 @@ export function CompareOverlay({
             className="h-8 gap-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Check className="size-3.5" />
-            <span>Select this concept</span>
+            <span>{t("modals.compareSelectThis")}</span>
           </Button>
         </div>
 
@@ -111,10 +111,10 @@ export function CompareOverlay({
         <div className="flex items-center justify-between border-b border-border/80 pb-4 mb-6">
           <div>
             <h3 className="font-heading font-bold text-lg text-foreground">
-              Side-by-Side Concept Comparison
+              {t("modals.compareTitle")}
             </h3>
             <p className="text-xs text-muted-foreground">
-              Compare mark geometry, context scalability, and contrast between two concepts.
+              {t("modals.compareSubtitle")}
             </p>
           </div>
 
@@ -130,7 +130,7 @@ export function CompareOverlay({
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Mark
+                {t("modals.compareMark")}
               </button>
               <button
                 type="button"
@@ -141,7 +141,7 @@ export function CompareOverlay({
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                Invoice
+                {t("modals.compareInvoice")}
               </button>
               <button
                 type="button"
@@ -152,7 +152,7 @@ export function CompareOverlay({
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                16px
+                {t("modals.compare16px")}
               </button>
             </div>
 
@@ -166,7 +166,7 @@ export function CompareOverlay({
                     ? "bg-card text-foreground shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
-                title="Preview on Light background"
+                title={t("modals.comparePreviewLight")}
               >
                 <Sun className="size-4" />
               </button>
@@ -178,7 +178,7 @@ export function CompareOverlay({
                     ? "bg-card text-foreground shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
-                title="Preview on Dark background"
+                title={t("modals.comparePreviewDark")}
               >
                 <Moon className="size-4" />
               </button>

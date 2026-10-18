@@ -43,6 +43,7 @@ import type {
   UpdateLaunchAssetsRequest,
 } from '@/types/creator/launch-assets';
 import { resolveMediaUrl } from '@/lib/brand-kit-media';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface LaunchAssetsViewProps {
   ideaId: string;
@@ -76,6 +77,7 @@ export function LaunchAssetsView({
   onShareWebsite,
 }: LaunchAssetsViewProps) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Viewport mode for website preview
   const [viewportMode, setViewportMode] = useState<'desktop' | 'mobile'>('desktop');
@@ -500,10 +502,10 @@ export function LaunchAssetsView({
           </div>
           <div className="max-w-xl mx-auto space-y-2">
             <h2 className="text-2xl font-heading font-semibold text-foreground">
-              Launch Assets · One-Page Launch Website
+              {t('creator.phase4.launchAssetsView.emptyTitle', 'Launch Assets · One-Page Launch Website')}
             </h2>
             <p className="text-sm font-sans text-muted-foreground leading-relaxed">
-              Generate an honest, branded one-page website synthesized directly from your Brand Kit, Value Proposition, Pricing Strategy, and GTM Plan.
+              {t('creator.phase4.launchAssetsView.emptySubtitle', 'Generate an honest, branded one-page website synthesized directly from your Brand Kit, Value Proposition, Pricing Strategy, and GTM Plan.')}
             </p>
           </div>
           <div className="pt-2">
@@ -513,7 +515,7 @@ export function LaunchAssetsView({
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-sm hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
             >
               <Sparkles className="w-4 h-4" />
-              {isLoading ? 'Generating Launch Website...' : 'Generate Launch Website'}
+              {isLoading ? t('creator.phase4.launchAssetsView.generatingWebsite', 'Generating Launch Website...') : t('creator.phase4.launchAssetsView.generateButton', 'Generate Launch Website')}
             </button>
           </div>
         </div>
@@ -579,14 +581,14 @@ export function LaunchAssetsView({
                 {brandName || projectName}
               </span>
               <span className="text-xs font-mono font-medium text-muted-foreground uppercase tracking-wider">
-                / {assets.assetType || 'ONE-PAGE WEBSITE'}
+                {'/'} {assets.assetType || t('creator.phase4.launchAssetsView.onePageWebsite', 'ONE-PAGE WEBSITE')}
               </span>
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
                 isVersionSelected
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                   : 'bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20'
               }`}>
-                {isVersionSelected ? 'Selected' : (assets.status || 'Draft')}
+                {isVersionSelected ? t('creator.phase4.launchAssetsView.selectedStatus', 'Selected') : (assets.status || t('creator.phase4.launchAssetsView.draftStatus', 'Draft'))}
               </span>
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono text-muted-foreground border border-border">
                 {assets.releaseTag || `v1.${assets.version}-rc`}
@@ -594,15 +596,15 @@ export function LaunchAssetsView({
             </div>
 
             <p className="text-sm font-sans text-muted-foreground leading-relaxed">
-              Review your website, adjust the content, and choose the version you want to keep.
+              {t('creator.phase4.launchAssetsView.websiteReviewSubtitle', 'Review your website, adjust the content, and choose the version you want to keep.')}
             </p>
 
             <div className="flex items-center gap-2 text-xs font-sans text-muted-foreground">
               <Globe className="w-3.5 h-3.5 text-muted-foreground/80 shrink-0" />
               <span>
                 {assets.shareToken
-                  ? 'Anyone with the link can view this website.'
-                  : (assets.publishedStatus || 'Anyone with the link can view this website.')}
+                  ? t('creator.phase4.launchAssetsView.anyoneWithLink', 'Anyone with the link can view this website.')
+                  : (assets.publishedStatus || t('creator.phase4.launchAssetsView.anyoneWithLink', 'Anyone with the link can view this website.'))}
               </span>
             </div>
           </div>
@@ -612,36 +614,36 @@ export function LaunchAssetsView({
               onClick={handleViewWebsite}
               disabled={isViewingWebsite}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-colors disabled:opacity-50"
-              title="Open public website in a new tab"
+              title={t('creator.phase4.launchAssetsView.openWebsiteTitle', 'Open public website in a new tab')}
             >
               {isViewingWebsite ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 <Eye className="w-3.5 h-3.5" />
               )}
-              <span>{isViewingWebsite ? 'Opening...' : 'View website'}</span>
+              <span>{isViewingWebsite ? t('creator.phase4.launchAssetsView.opening', 'Opening...') : t('creator.phase4.launchAssetsView.viewWebsite', 'View website')}</span>
             </button>
 
             <button
               onClick={handleCopyPublicLink}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors"
-              title="Copy public link to share"
+              title={t('creator.phase4.launchAssetsView.copyLinkTitle', 'Copy public link to share')}
             >
               {copiedLink ? (
                 <Check className="w-3.5 h-3.5 text-emerald-500" />
               ) : (
                 <Copy className="w-3.5 h-3.5 text-muted-foreground" />
               )}
-              <span>{copiedLink ? 'Link copied!' : 'Copy link'}</span>
+              <span>{copiedLink ? t('creator.phase4.launchAssetsView.linkCopied', 'Link copied!') : t('creator.phase4.launchAssetsView.copyLink', 'Copy link')}</span>
             </button>
 
             <button
               onClick={() => onDownloadSource(assets.version)}
               className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors"
-              title="Download standalone HTML source file"
+              title={t('creator.phase4.launchAssetsView.downloadSourceTitle', 'Download standalone HTML source file')}
             >
               <Download className="w-3.5 h-3.5 text-muted-foreground" />
-              <span>Download source</span>
+              <span>{t('creator.phase4.launchAssetsView.downloadSource', 'Download source')}</span>
             </button>
 
             <button
@@ -656,10 +658,10 @@ export function LaunchAssetsView({
               <Check className="w-3.5 h-3.5" />
               <span>
                 {isVersionSelected
-                  ? 'Active Version'
+                  ? t('creator.phase4.launchAssetsView.activeVersion', 'Active Version')
                   : isSelectingVersion
-                  ? 'Selecting...'
-                  : 'Use this version'}
+                  ? t('creator.phase4.launchAssetsView.selecting', 'Selecting...')
+                  : t('creator.phase4.launchAssetsView.useThisVersion', 'Use this version')}
               </span>
             </button>
           </div>
@@ -681,12 +683,16 @@ export function LaunchAssetsView({
         {/* Version Meta Footer */}
         <div className="pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-foreground">Current draft: Version {assets.version || 1}</span>
+            <span className="font-mono text-foreground">
+              {t('creator.phase4.launchAssetsView.currentDraftVersion', 'Current draft: Version {{version}}', { version: assets.version || 1 })}
+            </span>
             {assets.selectedVersion && assets.selectedVersion !== assets.version && (
-              <span className="text-amber-500 font-mono font-medium">(Selected: Version {assets.selectedVersion})</span>
+              <span className="text-amber-500 font-mono font-medium">
+                {t('creator.phase4.launchAssetsView.selectedVersionBadge', '(Selected: Version {{version}})', { version: assets.selectedVersion })}
+              </span>
             )}
-            <span>•</span>
-            <span>Generated recently</span>
+            <span>{'•'}</span>
+            <span>{t('creator.phase4.launchAssetsView.generatedRecently', 'Generated recently')}</span>
           </div>
 
           <button
@@ -695,7 +701,7 @@ export function LaunchAssetsView({
             className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isCreatingVersion ? 'animate-spin' : ''}`} />
-            <span>{versionSuccess ? 'Version Created!' : 'Create a new version'}</span>
+            <span>{versionSuccess ? t('creator.phase4.launchAssetsView.versionCreated', 'Version Created!') : t('creator.phase4.launchAssetsView.createNewVersion', 'Create a new version')}</span>
           </button>
         </div>
       </section>
@@ -711,10 +717,10 @@ export function LaunchAssetsView({
               <AlertTriangle className="w-5 h-5 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <h3 className="text-sm font-heading font-semibold text-foreground">
-                  Add a destination for your main button
+                  {t('creator.phase4.launchAssetsView.addDestinationTitle', 'Add a destination for your main button')}
                 </h3>
                 <p className="text-xs font-sans text-muted-foreground leading-relaxed">
-                  ‘{buttonLabel || 'Express interest'}’ needs a confirmed email address or existing link before visitors can interact.
+                  {t('creator.phase4.launchAssetsView.addDestinationDesc', '‘{{label}}’ needs a confirmed email address or existing link before visitors can interact.', { label: buttonLabel || t('creator.phase4.launchAssetsView.expressInterest', 'Express interest') })}
                 </p>
               </div>
             </div>
@@ -722,7 +728,7 @@ export function LaunchAssetsView({
               onClick={handleScrollToDestination}
               className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-sans font-medium text-xs hover:bg-amber-400 transition-colors shrink-0 shadow-sm"
             >
-              Set button destination
+              {t('creator.phase4.launchAssetsView.setButtonDestination', 'Set button destination')}
             </button>
           </div>
         ) : (
@@ -731,10 +737,11 @@ export function LaunchAssetsView({
               <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <h3 className="text-sm font-heading font-semibold text-foreground">
-                  Main button destination configured
+                  {t('creator.phase4.launchAssetsView.destinationConfiguredTitle', 'Main button destination configured')}
                 </h3>
                 <p className="text-xs font-sans text-muted-foreground leading-relaxed">
-                  Destination: <span className="font-mono text-foreground font-medium">{destType === 'Email' ? `mailto:${destValue}` : destValue}</span>
+                  {t('creator.phase4.launchAssetsView.destinationLabel', 'Destination:')}{' '}
+                  <span className="font-mono text-foreground font-medium">{destType === 'Email' ? `mailto:${destValue}` : destValue}</span>
                 </p>
               </div>
             </div>
@@ -742,7 +749,7 @@ export function LaunchAssetsView({
               onClick={handleScrollToDestination}
               className="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-border bg-background text-foreground text-xs font-medium hover:bg-muted transition-colors shrink-0"
             >
-              Edit destination
+              {t('creator.phase4.launchAssetsView.editDestination', 'Edit destination')}
             </button>
           </div>
         )}
@@ -755,9 +762,11 @@ export function LaunchAssetsView({
         {/* Controls Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <h2 className="text-base font-heading font-semibold text-foreground">Website preview</h2>
+            <h2 className="text-base font-heading font-semibold text-foreground">
+              {t('creator.phase4.launchAssetsView.websitePreview', 'Website preview')}
+            </h2>
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-sans text-muted-foreground border border-border bg-muted/40">
-              Draft preview
+              {t('creator.phase4.launchAssetsView.draftPreview', 'Draft preview')}
             </span>
           </div>
 
@@ -772,7 +781,7 @@ export function LaunchAssetsView({
               }`}
             >
               <Monitor className="w-3.5 h-3.5" />
-              <span>Desktop</span>
+              <span>{t('creator.phase4.launchAssetsView.desktop', 'Desktop')}</span>
             </button>
             <button
               onClick={() => setViewportMode('mobile')}
@@ -783,7 +792,7 @@ export function LaunchAssetsView({
               }`}
             >
               <Smartphone className="w-3.5 h-3.5" />
-              <span>Mobile</span>
+              <span>{t('creator.phase4.launchAssetsView.mobile', 'Mobile')}</span>
             </button>
           </div>
         </div>
@@ -806,7 +815,7 @@ export function LaunchAssetsView({
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
                 </div>
                 <div className="bg-background/80 border border-border/80 px-4 py-0.5 rounded-md font-mono text-[11px] text-muted-foreground/90">
-                  preview.{brandName?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'clairdesk'}.mondial.eco
+                  {`preview.${brandName?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'clairdesk'}.mondial.eco`}
                 </div>
                 <div className="w-10" />
               </div>
@@ -858,7 +867,7 @@ export function LaunchAssetsView({
                         backgroundColor: `${brandPrimary}15`,
                       }}
                     >
-                      In preparation
+                      {t('creator.phase4.launchAssetsView.inPreparation', 'In preparation')}
                     </span>
                   </div>
 
@@ -868,7 +877,7 @@ export function LaunchAssetsView({
                       className="inline-block text-[11px] font-mono uppercase tracking-widest font-semibold"
                       style={{ color: brandPrimary }}
                     >
-                      {assets.conceptBadge || 'PREVIEWING CONCEPT'}
+                      {assets.conceptBadge || t('creator.phase4.launchAssetsView.previewingConcept', 'PREVIEWING CONCEPT')}
                     </span>
                     <h1
                       className="text-2xl sm:text-4xl font-bold text-foreground leading-tight tracking-tight"
@@ -897,11 +906,11 @@ export function LaunchAssetsView({
                           </button>
                         </div>
                         <span className="inline-flex items-center px-2.5 py-1 rounded text-[11px] font-sans text-amber-500 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20">
-                          Interactive link disabled in preview
+                          {t('creator.phase4.launchAssetsView.interactiveLinkDisabled', 'Interactive link disabled in preview')}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {assets.heroHelpText || 'Help shape the project by sharing how you work today.'}
+                        {assets.heroHelpText || t('creator.phase4.launchAssetsView.helpShapeProject', 'Help shape the project by sharing how you work today.')}
                       </p>
                     </div>
                   </div>
@@ -912,11 +921,11 @@ export function LaunchAssetsView({
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: brandPrimary }} />
                         <span className="font-mono text-xs font-semibold uppercase tracking-wider text-foreground">
-                          {assets.plannedWorkflowTitle || 'PLANNED WORKFLOW'}
+                          {assets.plannedWorkflowTitle || t('creator.phase4.launchAssetsView.plannedWorkflowTitle', 'PLANNED WORKFLOW')}
                         </span>
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {assets.plannedWorkflowSubtitle || 'High-level interface structure'}
+                        {assets.plannedWorkflowSubtitle || t('creator.phase4.launchAssetsView.plannedWorkflowSubtitle', 'High-level interface structure')}
                       </span>
                     </div>
 
@@ -954,16 +963,16 @@ export function LaunchAssetsView({
                       ) : (
                         <>
                           <div className="bg-card border border-border rounded-lg p-4 space-y-2">
-                            <h4 className="text-sm font-semibold">1. Enquiry</h4>
-                            <p className="text-xs text-muted-foreground">Capture context and client requirements in one dedicated intake card.</p>
+                            <h4 className="text-sm font-semibold">{t('creator.phase4.launchAssetsView.defaultStep1Title', '1. Enquiry')}</h4>
+                            <p className="text-xs text-muted-foreground">{t('creator.phase4.launchAssetsView.defaultStep1Desc', 'Capture context and client requirements in one dedicated intake card.')}</p>
                           </div>
                           <div className="bg-card border border-border rounded-lg p-4 space-y-2">
-                            <h4 className="text-sm font-semibold">2. Quotation</h4>
-                            <p className="text-xs text-muted-foreground">Draft estimated scopes and convert directly into clear client proposals.</p>
+                            <h4 className="text-sm font-semibold">{t('creator.phase4.launchAssetsView.defaultStep2Title', '2. Quotation')}</h4>
+                            <p className="text-xs text-muted-foreground">{t('creator.phase4.launchAssetsView.defaultStep2Desc', 'Draft estimated scopes and convert directly into clear client proposals.')}</p>
                           </div>
                           <div className="bg-card border border-border rounded-lg p-4 space-y-2">
-                            <h4 className="text-sm font-semibold">3. Follow-up</h4>
-                            <p className="text-xs text-muted-foreground">Clear reminders and stage updates so no client is left waiting.</p>
+                            <h4 className="text-sm font-semibold">{t('creator.phase4.launchAssetsView.defaultStep3Title', '3. Follow-up')}</h4>
+                            <p className="text-xs text-muted-foreground">{t('creator.phase4.launchAssetsView.defaultStep3Desc', 'Clear reminders and stage updates so no client is left waiting.')}</p>
                           </div>
                         </>
                       )}
@@ -1090,10 +1099,10 @@ export function LaunchAssetsView({
                       className="text-lg sm:text-xl font-semibold text-foreground"
                       style={{ fontFamily: displayFont !== 'inherit' ? displayFont : undefined }}
                     >
-                      Transparent Pricing
+                      {t('creator.phase4.launchAssetsView.transparentPricing', 'Transparent Pricing')}
                     </h3>
                     <p className="text-xs sm:text-sm text-muted-foreground">
-                      Clear, straightforward options designed for your workflows.
+                      {t('creator.phase4.launchAssetsView.transparentPricingDesc', 'Clear, straightforward options designed for your workflows.')}
                     </p>
                   </div>
                   <div className="bg-card border border-border rounded-xl p-6 max-w-sm mx-auto space-y-3 shadow-xs">
@@ -1102,7 +1111,7 @@ export function LaunchAssetsView({
                     </h4>
                     <div className="text-3xl font-bold text-foreground">
                       {assets.pricingExclusion.priceStatus === 'ConfirmedZero'
-                        ? 'Free'
+                        ? t('creator.phase4.launchAssetsView.free', 'Free')
                         : `${assets.pricingExclusion.currency}${assets.pricingExclusion.chosenPrice ?? 0}`}
                       {assets.pricingExclusion.priceStatus !== 'ConfirmedZero' && (
                         <span className="text-xs text-muted-foreground font-normal"> / {assets.pricingExclusion.billingPeriod}</span>
@@ -1168,7 +1177,7 @@ export function LaunchAssetsView({
                     {!isDestinationConfigured && (
                       <p className="text-[11px] text-amber-500 dark:text-amber-400 mt-2 flex items-center justify-center gap-1">
                         <AlertTriangle className="w-3 h-3" />
-                        Button requires destination configuration
+                        {t('creator.phase4.launchAssetsView.buttonRequiresDestination', 'Button requires destination configuration')}
                       </p>
                     )}
                   </div>
@@ -1219,28 +1228,30 @@ export function LaunchAssetsView({
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div className="space-y-1">
-            <h2 className="text-base font-heading font-semibold text-foreground">Edit content</h2>
+            <h2 className="text-base font-heading font-semibold text-foreground">
+              {t('creator.phase4.launchAssetsView.editContent', 'Edit content')}
+            </h2>
             <p className="text-xs font-sans text-muted-foreground">
-              Change the wording without starting again. Choose a section below to customize.
+              {t('creator.phase4.launchAssetsView.editContentSubtitle', 'Change the wording without starting again. Choose a section below to customize.')}
             </p>
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-primary/10 border border-primary/20 text-xs text-primary font-medium">
             <Edit3 className="w-3.5 h-3.5 text-primary" />
             <span>
-              Section:{' '}
+              {t('creator.phase4.launchAssetsView.sectionLabel', 'Section:')}{' '}
               {selectedSectionKey === 'hero'
-                ? 'Hero (Headline, Description, Button)'
+                ? t('creator.phase4.launchAssetsView.sectionHeroLabel', 'Hero (Headline, Description, Button)')
                 : selectedSectionKey === 'problem'
-                ? 'Problem Statement'
+                ? t('creator.phase4.launchAssetsView.sectionProblemLabel', 'Problem Statement')
                 : selectedSectionKey === 'solution'
-                ? 'Planned Solution'
+                ? t('creator.phase4.launchAssetsView.sectionSolutionLabel', 'Planned Solution')
                 : selectedSectionKey === 'how-it-works'
-                ? 'How It Works'
+                ? t('creator.phase4.launchAssetsView.sectionHowItWorksLabel', 'How It Works')
                 : selectedSectionKey === 'faq'
-                ? 'FAQ'
+                ? t('creator.phase4.launchAssetsView.sectionFaqLabel', 'FAQ')
                 : selectedSectionKey === 'final-cta'
-                ? 'Final Call to Action'
-                : 'Footer'}
+                ? t('creator.phase4.launchAssetsView.sectionFinalCtaLabel', 'Final Call to Action')
+                : t('creator.phase4.launchAssetsView.sectionFooterLabel', 'Footer')}
             </span>
           </div>
         </div>
@@ -1276,11 +1287,11 @@ export function LaunchAssetsView({
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-start gap-2.5 text-xs text-muted-foreground">
                   <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                   <div className="space-y-0.5">
-                    <span className="font-semibold text-foreground">Brand Studio Alignment:</span>
+                    <span className="font-semibold text-foreground">{t('creator.phase4.launchAssetsView.brandStudioAlignment', 'Brand Studio Alignment:')}</span>
                     <p className="text-[11px] leading-relaxed">
-                      Positioning: <span className="text-foreground font-medium">{brandStudio.positioning}</span>
+                      {t('creator.phase4.launchAssetsView.positioningLabel', 'Positioning:')} <span className="text-foreground font-medium">{brandStudio.positioning}</span>
                       {brandStudio.targetAudience && (
-                        <> · Audience: <span className="text-foreground font-medium">{brandStudio.targetAudience}</span></>
+                        <> · {t('creator.phase4.launchAssetsView.audienceLabel', 'Audience:')} <span className="text-foreground font-medium">{brandStudio.targetAudience}</span></>
                       )}
                     </p>
                   </div>
@@ -1290,28 +1301,28 @@ export function LaunchAssetsView({
               {/* Headline */}
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  HEADLINE
+                  {t('creator.phase4.launchAssetsView.headline', 'HEADLINE')}
                 </label>
                 <input
                   type="text"
                   value={headline}
                   onChange={(e) => setHeadline(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                  placeholder="Enter headline..."
+                  placeholder={t('creator.phase4.launchAssetsView.headlinePlaceholder', 'Enter headline...')}
                 />
               </div>
 
               {/* Description */}
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  DESCRIPTION
+                  {t('creator.phase4.launchAssetsView.description', 'DESCRIPTION')}
                 </label>
                 <textarea
                   rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans resize-y"
-                  placeholder="Enter project description..."
+                  placeholder={t('creator.phase4.launchAssetsView.descriptionPlaceholder', 'Enter project description...')}
                 />
               </div>
 
@@ -1320,14 +1331,14 @@ export function LaunchAssetsView({
                 {/* Button Label */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                    BUTTON LABEL
+                    {t('creator.phase4.launchAssetsView.buttonLabel', 'BUTTON LABEL')}
                   </label>
                   <input
                     type="text"
                     value={buttonLabel}
                     onChange={(e) => setButtonLabel(e.target.value)}
                     className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                    placeholder="Express interest"
+                    placeholder={t('creator.phase4.launchAssetsView.expressInterest', 'Express interest')}
                   />
                 </div>
 
@@ -1335,15 +1346,15 @@ export function LaunchAssetsView({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                      BUTTON DESTINATION
+                      {t('creator.phase4.launchAssetsView.buttonDestination', 'BUTTON DESTINATION')}
                     </label>
                     {destValue.trim() ? (
                       <span className="text-[11px] font-sans font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        Configured
+                        {t('creator.phase4.launchAssetsView.configured', 'Configured')}
                       </span>
                     ) : (
                       <span className="text-[11px] font-sans font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                        Not set
+                        {t('creator.phase4.launchAssetsView.notSet', 'Not set')}
                       </span>
                     )}
                   </div>
@@ -1359,7 +1370,7 @@ export function LaunchAssetsView({
                           onChange={() => setDestType('Email')}
                           className="text-primary focus:ring-primary"
                         />
-                        <span>Email address</span>
+                        <span>{t('creator.phase4.launchAssetsView.emailAddress', 'Email address')}</span>
                       </label>
                       <label className="inline-flex items-center gap-2 cursor-pointer text-foreground">
                         <input
@@ -1369,12 +1380,12 @@ export function LaunchAssetsView({
                           onChange={() => setDestType('Link')}
                           className="text-primary focus:ring-primary"
                         />
-                        <span>Existing link</span>
+                        <span>{t('creator.phase4.launchAssetsView.existingLink', 'Existing link')}</span>
                       </label>
                     </div>
 
                     <p className="text-[11px] text-muted-foreground">
-                      Choose where visitors should go when they click.
+                      {t('creator.phase4.launchAssetsView.chooseDestinationNote', 'Choose where visitors should go when they click.')}
                     </p>
 
                     <input
@@ -1396,40 +1407,40 @@ export function LaunchAssetsView({
             <>
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  PROBLEM EYEBROW
+                  {t('creator.phase4.launchAssetsView.problemEyebrow', 'PROBLEM EYEBROW')}
                 </label>
                 <input
                   type="text"
                   value={problemEyebrow}
                   onChange={(e) => setProblemEyebrow(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                  placeholder="KEEP TRACK OF THE NEXT STEP"
+                  placeholder={t('creator.phase4.launchAssetsView.problemEyebrowPlaceholder', 'KEEP TRACK OF THE NEXT STEP')}
                 />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  PROBLEM STATEMENT
+                  {t('creator.phase4.launchAssetsView.problemStatement', 'PROBLEM STATEMENT')}
                 </label>
                 <textarea
                   rows={3}
                   value={problemStatement}
                   onChange={(e) => setProblemStatement(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans resize-y"
-                  placeholder="Describe the primary friction..."
+                  placeholder={t('creator.phase4.launchAssetsView.problemStatementPlaceholder', 'Describe the primary friction...')}
                 />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  OPERATIONAL MOMENTUM STATEMENT
+                  {t('creator.phase4.launchAssetsView.operationalMomentum', 'OPERATIONAL MOMENTUM STATEMENT')}
                 </label>
                 <textarea
                   rows={2}
                   value={operationalMomentumStatement}
                   onChange={(e) => setOperationalMomentumStatement(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans resize-y"
-                  placeholder="How your product maintains momentum..."
+                  placeholder={t('creator.phase4.launchAssetsView.operationalMomentumPlaceholder', 'How your product maintains momentum...')}
                 />
               </div>
             </>
@@ -1441,33 +1452,33 @@ export function LaunchAssetsView({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                    SOLUTION HEADER
+                    {t('creator.phase4.launchAssetsView.solutionHeader', 'SOLUTION HEADER')}
                   </label>
                   <input
                     type="text"
                     value={solutionHeader}
                     onChange={(e) => setSolutionHeader(e.target.value)}
                     className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                    placeholder="What’s being planned"
+                    placeholder={t('creator.phase4.launchAssetsView.solutionHeaderPlaceholder', 'What’s being planned')}
                   />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                    SOLUTION SUBHEADER
+                    {t('creator.phase4.launchAssetsView.solutionSubheader', 'SOLUTION SUBHEADER')}
                   </label>
                   <input
                     type="text"
                     value={solutionSubheader}
                     onChange={(e) => setSolutionSubheader(e.target.value)}
                     className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                    placeholder="Short summary of planned tools..."
+                    placeholder={t('creator.phase4.launchAssetsView.solutionSubheaderPlaceholder', 'Short summary of planned tools...')}
                   />
                 </div>
               </div>
 
               <div className="space-y-3 pt-2">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  SOLUTION CARDS (3 ITEMS)
+                  {t('creator.phase4.launchAssetsView.solutionCards', 'SOLUTION CARDS (3 ITEMS)')}
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {plannedSolutions.map((sol, index) => (
@@ -1481,7 +1492,7 @@ export function LaunchAssetsView({
                           setPlannedSolutions(updated);
                         }}
                         className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs font-semibold text-foreground"
-                        placeholder="Card title"
+                        placeholder={t('creator.phase4.launchAssetsView.cardTitlePlaceholder', 'Card title')}
                       />
                       <textarea
                         rows={2}
@@ -1492,7 +1503,7 @@ export function LaunchAssetsView({
                           setPlannedSolutions(updated);
                         }}
                         className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-muted-foreground"
-                        placeholder="Card description"
+                        placeholder={t('creator.phase4.launchAssetsView.cardDescriptionPlaceholder', 'Card description')}
                       />
                     </div>
                   ))}
@@ -1507,33 +1518,33 @@ export function LaunchAssetsView({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                    HEADER
+                    {t('creator.phase4.launchAssetsView.header', 'HEADER')}
                   </label>
                   <input
                     type="text"
                     value={howItWorksHeader}
                     onChange={(e) => setHowItWorksHeader(e.target.value)}
                     className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                    placeholder="A simpler flow for your work"
+                    placeholder={t('creator.phase4.launchAssetsView.howItWorksHeaderPlaceholder', 'A simpler flow for your work')}
                   />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                    SUBHEADER
+                    {t('creator.phase4.launchAssetsView.subheader', 'SUBHEADER')}
                   </label>
                   <input
                     type="text"
                     value={howItWorksSubheader}
                     onChange={(e) => setHowItWorksSubheader(e.target.value)}
                     className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                    placeholder="This describes the planned workflow."
+                    placeholder={t('creator.phase4.launchAssetsView.howItWorksSubheaderPlaceholder', 'This describes the planned workflow.')}
                   />
                 </div>
               </div>
 
               <div className="space-y-3 pt-2">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  WORKFLOW STEPS
+                  {t('creator.phase4.launchAssetsView.workflowSteps', 'WORKFLOW STEPS')}
                 </label>
                 <div className="space-y-2">
                   {workflowDetails.map((item, index) => (
@@ -1551,7 +1562,7 @@ export function LaunchAssetsView({
                             setWorkflowDetails(updated);
                           }}
                           className="w-full bg-background border border-border rounded px-2.5 py-1 text-xs font-semibold text-foreground"
-                          placeholder="Step title"
+                          placeholder={t('creator.phase4.launchAssetsView.stepTitlePlaceholder', 'Step title')}
                         />
                         <textarea
                           rows={2}
@@ -1562,7 +1573,7 @@ export function LaunchAssetsView({
                             setWorkflowDetails(updated);
                           }}
                           className="w-full bg-background border border-border rounded px-2.5 py-1 text-xs text-muted-foreground"
-                          placeholder="Step description"
+                          placeholder={t('creator.phase4.launchAssetsView.stepDescriptionPlaceholder', 'Step description')}
                         />
                       </div>
                     </div>
@@ -1578,33 +1589,33 @@ export function LaunchAssetsView({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                    FAQ HEADER
+                    {t('creator.phase4.launchAssetsView.faqHeader', 'FAQ HEADER')}
                   </label>
                   <input
                     type="text"
                     value={faqHeader}
                     onChange={(e) => setFaqHeader(e.target.value)}
                     className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                    placeholder="Frequently Asked Questions"
+                    placeholder={t('creator.phase4.launchAssetsView.faqHeaderPlaceholder', 'Frequently Asked Questions')}
                   />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                    FAQ SUBHEADER
+                    {t('creator.phase4.launchAssetsView.faqSubheader', 'FAQ SUBHEADER')}
                   </label>
                   <input
                     type="text"
                     value={faqSubheader}
                     onChange={(e) => setFaqSubheader(e.target.value)}
                     className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                    placeholder="Honest answers about development status..."
+                    placeholder={t('creator.phase4.launchAssetsView.faqSubheaderPlaceholder', 'Honest answers about development status...')}
                   />
                 </div>
               </div>
 
               <div className="space-y-3 pt-2">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  FAQ QUESTIONS & ANSWERS
+                  {t('creator.phase4.launchAssetsView.faqQuestionsAndAnswers', 'FAQ QUESTIONS & ANSWERS')}
                 </label>
                 <div className="space-y-3">
                   {faqs.map((faq, index) => (
@@ -1618,7 +1629,7 @@ export function LaunchAssetsView({
                           setFaqs(updated);
                         }}
                         className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs font-semibold text-foreground"
-                        placeholder="Question"
+                        placeholder={t('creator.phase4.launchAssetsView.questionPlaceholder', 'Question')}
                       />
                       <textarea
                         rows={2}
@@ -1629,7 +1640,7 @@ export function LaunchAssetsView({
                           setFaqs(updated);
                         }}
                         className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-muted-foreground"
-                        placeholder="Answer"
+                        placeholder={t('creator.phase4.launchAssetsView.answerPlaceholder', 'Answer')}
                       />
                     </div>
                   ))}
@@ -1643,27 +1654,27 @@ export function LaunchAssetsView({
             <>
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  FINAL CTA HEADER
+                  {t('creator.phase4.launchAssetsView.finalCtaHeader', 'FINAL CTA HEADER')}
                 </label>
                 <input
                   type="text"
                   value={finalCtaHeader}
                   onChange={(e) => setFinalCtaHeader(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                  placeholder="Share how you work today"
+                  placeholder={t('creator.phase4.launchAssetsView.finalCtaHeaderPlaceholder', 'Share how you work today')}
                 />
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                  FINAL CTA SUBHEADER
+                  {t('creator.phase4.launchAssetsView.finalCtaSubheader', 'FINAL CTA SUBHEADER')}
                 </label>
                 <textarea
                   rows={2}
                   value={finalCtaSubheader}
                   onChange={(e) => setFinalCtaSubheader(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans resize-y"
-                  placeholder="Your experience can help shape..."
+                  placeholder={t('creator.phase4.launchAssetsView.finalCtaSubheaderPlaceholder', 'Your experience can help shape...')}
                 />
               </div>
             </>
@@ -1675,26 +1686,26 @@ export function LaunchAssetsView({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                    BRAND NAME
+                    {t('creator.phase4.launchAssetsView.brandName', 'BRAND NAME')}
                   </label>
                   <input
                     type="text"
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
                     className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                    placeholder="ClairDesk"
+                    placeholder={t('creator.phase4.launchAssetsView.brandNamePlaceholder', 'ClairDesk')}
                   />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-                    FOOTER NOTICE
+                    {t('creator.phase4.launchAssetsView.footerNotice', 'FOOTER NOTICE')}
                   </label>
                   <input
                     type="text"
                     value={footerNotice}
                     onChange={(e) => setFooterNotice(e.target.value)}
                     className="w-full bg-background border border-border rounded-lg px-3.5 py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-sans"
-                    placeholder="Project in preparation"
+                    placeholder={t('creator.phase4.launchAssetsView.footerNoticePlaceholder', 'Project in preparation')}
                   />
                 </div>
               </div>
@@ -1713,12 +1724,12 @@ export function LaunchAssetsView({
               {appliedSuccess ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Changes Applied!</span>
+                  <span>{t('creator.phase4.launchAssetsView.changesApplied', 'Changes Applied!')}</span>
                 </>
               ) : (
                 <>
                   <Check className="w-3.5 h-3.5" />
-                  <span>{isApplying ? 'Applying...' : 'Apply changes'}</span>
+                  <span>{isApplying ? t('creator.phase4.launchAssetsView.applying', 'Applying...') : t('creator.phase4.launchAssetsView.applyChanges', 'Apply changes')}</span>
                 </>
               )}
             </button>
@@ -1730,7 +1741,7 @@ export function LaunchAssetsView({
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-border bg-background hover:bg-muted text-foreground text-xs font-medium transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5 text-primary" />
-              <span>Suggest new wording</span>
+              <span>{t('creator.phase4.launchAssetsView.suggestNewWording', 'Suggest new wording')}</span>
             </button>
           )}
         </div>
@@ -1741,7 +1752,7 @@ export function LaunchAssetsView({
             <div className="flex items-center justify-between">
               <span className="text-xs font-heading font-semibold text-foreground flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-primary" />
-                AI Generated Copy Variations
+                {t('creator.phase4.launchAssetsView.aiGeneratedVariations', 'AI Generated Copy Variations')}
               </span>
               <button
                 onClick={() => setIsSuggestWordingOpen(false)}
@@ -1760,7 +1771,7 @@ export function LaunchAssetsView({
                   <div className="flex items-center justify-between text-xs font-semibold text-primary">
                     <span>{s.label}</span>
                     <span className="text-[11px] opacity-0 group-hover:opacity-100 transition-opacity">
-                      Use &rarr;
+                      {t('creator.phase4.launchAssetsView.useSuggestion', 'Use →')}
                     </span>
                   </div>
                   <p className="text-xs font-medium text-foreground">{s.headline}</p>
@@ -1778,13 +1789,15 @@ export function LaunchAssetsView({
       <section className="bg-card border border-border rounded-xl p-6 space-y-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div className="space-y-1">
-            <h2 className="text-base font-heading font-semibold text-foreground">Website sections</h2>
+            <h2 className="text-base font-heading font-semibold text-foreground">
+              {t('creator.phase4.launchAssetsView.websiteSections', 'Website sections')}
+            </h2>
             <p className="text-xs font-sans text-muted-foreground">
-              Keep the sections that help explain your project. Click <strong>Edit</strong> to customize any section.
+              {t('creator.phase4.launchAssetsView.websiteSectionsSubtitle', 'Keep the sections that help explain your project. Click Edit to customize any section.')}
             </p>
           </div>
           <span className="inline-flex items-center px-3 py-1 rounded-md bg-muted/60 border border-border text-xs font-mono text-muted-foreground">
-            {includedCount} Included · {excludedCount} Excluded
+            {t('creator.phase4.launchAssetsView.includedExcludedCount', '{{included}} Included · {{excluded}} Excluded', { included: includedCount, excluded: excludedCount })}
           </span>
         </div>
 
@@ -1825,11 +1838,11 @@ export function LaunchAssetsView({
                           : 'bg-muted/40 text-muted-foreground/60 border-border/40'
                       }`}
                     >
-                      {sec.isIncluded ? sec.statusBadge || 'Included' : 'Excluded'}
+                      {sec.isIncluded ? sec.statusBadge || t('creator.phase4.launchAssetsView.included', 'Included') : t('creator.phase4.launchAssetsView.excluded', 'Excluded')}
                     </span>
                     {isActiveInEditor && (
                       <span className="text-[11px] font-medium text-primary font-mono">
-                        (Editing now)
+                        {t('creator.phase4.launchAssetsView.editingNow', '(Editing now)')}
                       </span>
                     )}
                   </div>
@@ -1843,50 +1856,50 @@ export function LaunchAssetsView({
                           : 'text-primary hover:text-primary/80 hover:bg-muted bg-primary/10'
                       }`}
                     >
-                      Edit
+                      {t('creator.phase4.launchAssetsView.edit', 'Edit')}
                     </button>
                   </div>
                 </div>
               );
             })
           ) : (
-            <div className="text-xs text-muted-foreground">Sections list</div>
+            <div className="text-xs text-muted-foreground">{t('creator.phase4.launchAssetsView.sectionsList', 'Sections list')}</div>
           )}
         </div>
 
         {/* Excluded & Pending Verification Block */}
         <div className="pt-4 border-t border-border space-y-3">
           <span className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
-            EXCLUDED & PENDING VERIFICATION
+            {t('creator.phase4.launchAssetsView.excludedPendingVerification', 'EXCLUDED & PENDING VERIFICATION')}
           </span>
 
           {/* Pricing Exclusion Card */}
           <div className="bg-muted/20 border border-border rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-heading font-semibold text-foreground">Pricing</span>
+                <span className="text-sm font-heading font-semibold text-foreground">{t('creator.phase4.launchAssetsView.pricing', 'Pricing')}</span>
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-muted-foreground border border-border">
                   {isPricingRendered
                     ? (assets.pricingExclusion?.priceStatus === 'ConfirmedZero'
-                      ? 'Confirmed Free · On site'
-                      : 'Confirmed · On site')
+                      ? t('creator.phase4.launchAssetsView.confirmedFreeOnSite', 'Confirmed Free · On site')
+                      : t('creator.phase4.launchAssetsView.confirmedOnSite', 'Confirmed · On site'))
                     : (assets.pricingExclusion?.priceStatus === 'ConfirmedZero'
-                      ? 'Confirmed Free · Not on site'
+                      ? t('creator.phase4.launchAssetsView.confirmedFreeNotOnSite', 'Confirmed Free · Not on site')
                       : assets.pricingExclusion?.priceStatus === 'ConfirmedPositive'
-                      ? 'Confirmed · Not on site'
-                      : 'Not included')}
+                      ? t('creator.phase4.launchAssetsView.confirmedNotOnSite', 'Confirmed · Not on site')
+                      : t('creator.phase4.launchAssetsView.notIncluded', 'Not included'))}
                 </span>
               </div>
               <p className="text-xs font-sans text-muted-foreground leading-relaxed">
                 {assets.pricingExclusion?.reason ||
-                  'Pricing has not been confirmed for this project yet. Review and confirm offer details before adding pricing to the website.'}
+                  t('creator.phase4.launchAssetsView.defaultPricingReason', 'Pricing has not been confirmed for this project yet. Review and confirm offer details before adding pricing to the website.')}
               </p>
             </div>
             <Link
               href={assets.pricingExclusion?.actionRoute || `/dashboard/creator/phase-4/pricing${ideaId ? `?ideaId=${ideaId}` : ''}`}
               className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0 flex items-center gap-1"
             >
-              <span>{assets.pricingExclusion?.actionLabel || 'Review pricing details →'}</span>
+              <span>{assets.pricingExclusion?.actionLabel || t('creator.phase4.launchAssetsView.reviewPricingDetails', 'Review pricing details →')}</span>
             </Link>
           </div>
 
@@ -1895,22 +1908,22 @@ export function LaunchAssetsView({
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-heading font-semibold text-foreground">
-                  Testimonials and customer proof
+                  {t('creator.phase4.launchAssetsView.testimonialsCustomerProof', 'Testimonials and customer proof')}
                 </span>
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-500/10 text-amber-500 dark:text-amber-400 border border-amber-500/20">
-                  Proof Needed
+                  {t('creator.phase4.launchAssetsView.proofNeeded', 'Proof Needed')}
                 </span>
               </div>
               <p className="text-xs font-sans text-muted-foreground leading-relaxed">
                 {assets.proofExclusion?.reason ||
-                  'No supporting evidence has been added, so this section is not included.'}
+                  t('creator.phase4.launchAssetsView.defaultProofReason', 'No supporting evidence has been added, so this section is not included.')}
               </p>
             </div>
             <Link
               href={assets.proofExclusion?.actionRoute || `/dashboard/creator/phase-3/evidence${ideaId ? `?ideaId=${ideaId}` : ''}`}
               className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0 flex items-center gap-1"
             >
-              <span>{assets.proofExclusion?.actionLabel || 'Review proof →'}</span>
+              <span>{assets.proofExclusion?.actionLabel || t('creator.phase4.launchAssetsView.reviewProof', 'Review proof →')}</span>
             </Link>
           </div>
         </div>
@@ -1925,18 +1938,18 @@ export function LaunchAssetsView({
           className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Launch Strategy</span>
+          <span>{t('creator.phase4.launchAssetsView.backToStrategy', 'Back to Launch Strategy')}</span>
         </Link>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <span className="text-xs font-sans text-muted-foreground">
-            Review your prepared assets and unresolved delivery requirements in Step 4.9.
+            {t('creator.phase4.launchAssetsView.footerReviewNote', 'Review your prepared assets and unresolved delivery requirements in Step 4.9.')}
           </span>
           <Link
             href={`/dashboard/creator/phase-4/readiness${ideaId ? `?ideaId=${ideaId}` : ''}`}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-sans font-medium text-xs hover:bg-primary/90 transition-colors shadow-sm"
           >
-            <span>Continue to Construction Readiness</span>
+            <span>{t('creator.phase4.launchAssetsView.continueToReadiness', 'Continue to Construction Readiness')}</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -1951,7 +1964,7 @@ export function LaunchAssetsView({
             <div className="flex items-center gap-2">
               <Globe className="w-5 h-5 text-primary" />
               <span className="text-sm font-heading font-semibold text-foreground">
-                {brandName || projectName} · Launch Preview
+                {brandName || projectName} {t('creator.phase4.launchAssetsView.launchPreview', '· Launch Preview')}
               </span>
             </div>
             <button
@@ -1994,7 +2007,7 @@ export function LaunchAssetsView({
                   backgroundColor: `${brandPrimary}15`,
                 }}
               >
-                In preparation
+                {t('creator.phase4.launchAssetsView.inPreparation', 'In preparation')}
               </span>
             </div>
 

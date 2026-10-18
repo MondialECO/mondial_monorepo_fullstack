@@ -5,9 +5,11 @@ import { useEffect, useState } from "react";
 import { ArrowRight, ArrowLeft, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function IdeaSummaryPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { state, setState, refetch } = useCreatorProgress();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -43,17 +45,21 @@ export default function IdeaSummaryPage() {
 
   // Synthesis progression label
   const progressionLabel =
-    clarityScore >= 85 ? "Sharp" : clarityScore >= 50 ? "Developing" : "Vague";
+    clarityScore >= 85
+      ? t("creator.phase2.ideaSummary.sharp")
+      : clarityScore >= 50
+      ? t("creator.phase2.ideaSummary.developing")
+      : t("creator.phase2.ideaSummary.vague");
   const progressionPercent =
     clarityScore >= 85 ? 100 : clarityScore >= 50 ? 66 : 33;
 
   const canvasItems = [
-    { title: "CONCEPT", value: conceptVal },
-    { title: "TARGET USER", value: targetUserVal },
-    { title: "CORE PROBLEM", value: problemVal },
-    { title: "YOUR SOLUTION", value: solutionVal },
-    { title: "MARKET GAP", value: marketGapVal },
-    { title: "YOUR EDGE", value: edgeVal },
+    { title: t("creator.phase2.ideaSummary.canvasConcept"), value: conceptVal },
+    { title: t("creator.phase2.ideaSummary.canvasTargetUser"), value: targetUserVal },
+    { title: t("creator.phase2.ideaSummary.canvasCoreProblem"), value: problemVal },
+    { title: t("creator.phase2.ideaSummary.canvasYourSolution"), value: solutionVal },
+    { title: t("creator.phase2.ideaSummary.canvasMarketGap"), value: marketGapVal },
+    { title: t("creator.phase2.ideaSummary.canvasYourEdge"), value: edgeVal },
   ];
 
   const handleRevisit = () => {
@@ -87,7 +93,7 @@ export default function IdeaSummaryPage() {
         {isLoading && (
           <div className="flex flex-col items-center justify-center gap-4 py-20">
             <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--primary)" }} />
-            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Loading your idea summary…</p>
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("creator.phase2.ideaSummary.loading")}</p>
           </div>
         )}
 
@@ -101,9 +107,9 @@ export default function IdeaSummaryPage() {
               <AlertTriangle className="h-7 w-7" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>No idea summary available</h3>
+              <h3 className="text-lg font-semibold" style={{ color: "var(--foreground)" }}>{t("creator.phase2.ideaSummary.emptyTitle")}</h3>
               <p className="text-sm max-w-md" style={{ color: "var(--muted-foreground)" }}>
-                Complete the Idea Clarifier questions to generate your structured project summary.
+                {t("creator.phase2.ideaSummary.emptySubtitle")}
               </p>
             </div>
             <Button
@@ -111,7 +117,7 @@ export default function IdeaSummaryPage() {
               className="rounded-xl px-6 py-5 text-sm font-semibold flex items-center gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Go to Clarifier
+              {t("creator.phase2.ideaSummary.goToClarifier")}
             </Button>
           </div>
         )}
@@ -135,14 +141,14 @@ export default function IdeaSummaryPage() {
                   }}
                 />
                 <span className="text-badge font-medium" style={{ color: "var(--primary)" }}>
-                  Synthesis Complete
+                  {t("creator.phase2.ideaSummary.synthesisComplete")}
                 </span>
               </div>
               <h1 className="text-page-heading font-semibold" style={{ color: "var(--foreground)" }}>
-                Your Idea - First draft.
+                {t("creator.phase2.ideaSummary.headerTitle")}
               </h1>
               <p className="text-body max-w-[548px]" style={{ color: "var(--muted-foreground)" }}>
-                Extracted from your own insights. AI provided the structure — the ownership is yours.
+                {t("creator.phase2.ideaSummary.headerSubtitle")}
               </p>
             </div>
 
@@ -180,7 +186,7 @@ export default function IdeaSummaryPage() {
                   style={{ borderColor: "var(--stroke-10)" }}
                 >
                   <span className="text-label font-medium" style={{ color: "var(--foreground)" }}>
-                    iDeal Clarity Score
+                    {t("creator.phase2.ideaSummary.clarityScore")}
                   </span>
                   <div className="relative" style={{ width: 100, height: 100 }}>
                     <svg width="100" height="100" viewBox="0 0 100 100" aria-hidden="true">
@@ -208,7 +214,7 @@ export default function IdeaSummaryPage() {
                   <div className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-3 h-3" style={{ color: "var(--p8-green)" }} />
                     <span className="text-badge font-medium" style={{ color: "var(--p8-green)" }}>
-                      Ready For Naming
+                      {t("creator.phase2.ideaSummary.readyForNaming")}
                     </span>
                   </div>
                 </div>
@@ -217,7 +223,7 @@ export default function IdeaSummaryPage() {
                 <div className="flex-1 min-w-0 flex flex-col justify-center gap-5 p-5 sm:p-7">
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between gap-4 text-body">
-                      <span style={{ color: "var(--muted-foreground)" }}>Synthesis Progression</span>
+                      <span style={{ color: "var(--muted-foreground)" }}>{t("creator.phase2.ideaSummary.synthesisProgression")}</span>
                       <span className="font-semibold" style={{ color: "var(--primary)" }}>{progressionLabel}</span>
                     </div>
                     {/* Progression bar */}
@@ -229,9 +235,9 @@ export default function IdeaSummaryPage() {
                     </div>
                     {/* Axis labels */}
                     <div className="flex items-center justify-between text-caption">
-                      <span className="flex-1" style={{ color: "var(--muted-foreground)" }}>Vague</span>
-                      <span className="flex-1 text-center" style={{ color: "var(--primary)" }}>Developing</span>
-                      <span className="flex-1 text-right" style={{ color: "var(--p8-green)" }}>Sharp</span>
+                      <span className="flex-1" style={{ color: "var(--muted-foreground)" }}>{t("creator.phase2.ideaSummary.vague")}</span>
+                      <span className="flex-1 text-center" style={{ color: "var(--primary)" }}>{t("creator.phase2.ideaSummary.developing")}</span>
+                      <span className="flex-1 text-right" style={{ color: "var(--p8-green)" }}>{t("creator.phase2.ideaSummary.sharp")}</span>
                     </div>
                   </div>
 
@@ -241,14 +247,14 @@ export default function IdeaSummaryPage() {
                       className="flex-1 min-w-0 rounded-lg border p-3 flex flex-col gap-2"
                       style={{ backgroundColor: "var(--card)", borderColor: "var(--stroke-10)" }}
                     >
-                      <span className="text-caption" style={{ color: "var(--muted-foreground)" }}>AI confidence</span>
+                      <span className="text-caption" style={{ color: "var(--muted-foreground)" }}>{t("creator.phase2.ideaSummary.aiConfidence")}</span>
                       <span className="text-base font-semibold text-center tabular-nums font-mono" style={{ color: "var(--foreground)" }}>89.4%</span>
                     </div>
                     <div
                       className="flex-1 min-w-0 rounded-lg border p-3 flex flex-col gap-2"
                       style={{ backgroundColor: "var(--card)", borderColor: "var(--stroke-10)" }}
                     >
-                      <span className="text-caption" style={{ color: "var(--muted-foreground)" }}>Latency</span>
+                      <span className="text-caption" style={{ color: "var(--muted-foreground)" }}>{t("creator.phase2.ideaSummary.latency")}</span>
                       <span className="text-base font-semibold text-center tabular-nums font-mono" style={{ color: "var(--foreground)" }}>89.4%</span>
                     </div>
                   </div>
@@ -262,7 +268,7 @@ export default function IdeaSummaryPage() {
                 onClick={handleContinue}
                 className="w-full rounded-full px-6 py-6 text-base font-medium flex items-center justify-center gap-2"
               >
-                Looks Good - Continue
+                {t("creator.phase2.ideaSummary.continueCta")}
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </div>

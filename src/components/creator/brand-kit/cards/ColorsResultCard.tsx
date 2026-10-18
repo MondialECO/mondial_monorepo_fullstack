@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React, { useState } from "react";
 import { BrandKit, BrandColorRole } from "@/types/creator/brand-kit";
@@ -10,6 +11,7 @@ interface ColorsResultCardProps {
 }
 
 export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
+  const { t } = useTranslation("creator");
   const [copiedRole, setCopiedRole] = useState<string | null>(null);
 
   const colors = kit.colors;
@@ -27,7 +29,7 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
     if (role.roleName === "Background") {
       return (
         <span className="text-badge font-mono text-muted-foreground">
-          Ground canvas
+          {t("cards.colorsGroundCanvas")}
         </span>
       );
     }
@@ -39,7 +41,7 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
       return (
         <span className="inline-flex items-center gap-1 text-badge font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
           <ShieldCheck className="size-3" />
-          {ratio} AAA
+          {ratio} {t("cards.colorsAaa")}
         </span>
       );
     }
@@ -57,7 +59,7 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
       return (
         <span className="inline-flex items-center gap-1 text-badge font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
           <AlertTriangle className="size-3" />
-          {ratio} FAIL
+          {ratio} {t("cards.colorsFail")}
         </span>
       );
     }
@@ -82,21 +84,21 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
       <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-muted/20">
         <div className="flex items-center gap-2">
           <span className="font-mono text-badge font-bold text-muted-foreground tracking-wider uppercase">
-            STEP 5
+            {t("cards.colorsStep5")}
           </span>
           <span className="text-card-title font-semibold text-foreground">
-            Harmonized Colour System
+            {t("cards.colorsTitle")}
           </span>
         </div>
         <div className="flex items-center gap-2">
           {isConfirmed ? (
             <span className="inline-flex items-center gap-1 font-mono text-badge font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
               <Check className="size-3 stroke-[3]" />
-              CONFIRMED
+              {t("cards.colorsConfirmed")}
             </span>
           ) : (
             <span className="font-mono text-badge text-muted-foreground">
-              Draft
+              {t("cards.colorsDraft")}
             </span>
           )}
           {onEdit && (
@@ -109,7 +111,7 @@ export function ColorsResultCard({ kit, onEdit }: ColorsResultCardProps) {
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border/60 text-button font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             >
               <Edit3 className="size-3" />
-              <span>Edit</span>
+              <span>{t("cards.colorsEdit")}</span>
             </button>
           )}
         </div>

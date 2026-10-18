@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   SlidersHorizontal,
   Loader2,
@@ -104,6 +105,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
   creditCost = 32,
   onConfirm,
 }) => {
+  const { t } = useTranslation();
   const [values, setValues] = useState<ForecastDriverValues>(() => ({
     ...initialValues,
     taxRatePct: initialValues.taxRatePct ?? undefined,
@@ -226,24 +228,40 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
     const provKey = provenance[field] || defaultProv;
     const isMod = isFieldUserModified(field);
     const info = formatProvenanceBadge(field, provKey, isMod);
+    const localizedLabel =
+      info.variant === "founder" && info.label === "Founder edited"
+        ? t("creator.phase3.forecast.assumptions.badges.founderEdited")
+        : info.variant === "confirmed" && info.label === "Founder confirmed"
+        ? t("creator.phase3.forecast.assumptions.badges.founderConfirmed")
+        : info.variant === "upstream" && info.label === "Based on Step 3.2 pricing"
+        ? t("creator.phase3.forecast.assumptions.badges.upstreamPricing")
+        : info.variant === "canonical" && info.label === "Canonical · Step 3.1 Market Study"
+        ? t("creator.phase3.forecast.assumptions.badges.canonicalMarket")
+        : info.variant === "canonical" && info.label === "Upstream · Legal context"
+        ? t("creator.phase3.forecast.assumptions.badges.upstreamLegal")
+        : info.variant === "ai" && info.label === "AI suggested"
+        ? t("creator.phase3.forecast.assumptions.badges.aiSuggested")
+        : info.variant === "warning" && info.label === "Needs Input"
+        ? t("creator.phase3.forecast.assumptions.badges.needsInput")
+        : info.label;
 
     if (info.variant === "founder" || info.variant === "confirmed") {
       return (
         <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-primary border-primary/30 bg-primary/5 font-semibold">
-          {info.label}
+          {localizedLabel}
         </Badge>
       );
     }
     if (info.variant === "canonical" || info.variant === "upstream") {
       return (
         <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5 font-semibold">
-          {info.label}
+          {localizedLabel}
         </Badge>
       );
     }
     return (
       <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-muted-foreground bg-muted font-normal">
-        {info.label}
+        {localizedLabel}
       </Badge>
     );
   };
@@ -254,50 +272,50 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
 
     // Validation
     if (values.startingBudget < 0) {
-      setFormError("Starting budget cannot be negative.");
+      setFormError(t("creator.phase3.forecast.assumptions.errors.negativeBudget"));
       return;
     }
     if (values.launchSubscribers < 0) {
-      setFormError("Launch volume cannot be negative.");
+      setFormError(t("creator.phase3.forecast.assumptions.errors.negativeLaunchVolume"));
       return;
     }
     if (values.monthlyGrowthPct < 0 || values.monthlyGrowthPct > 100) {
-      setFormError("Monthly growth rate must be between 0% and 100%.");
+      setFormError(t("creator.phase3.forecast.assumptions.errors.growthRange"));
       return;
     }
     if (resolvedActiveDrivers.monthlyChurnPct) {
       if (values.monthlyChurnPct <= 0 || values.monthlyChurnPct > 50) {
-        setFormError("Monthly churn must be between 0.1% and 50%.");
+        setFormError(t("creator.phase3.forecast.assumptions.errors.churnRange"));
         return;
       }
     }
     if (isMarketplace) {
       if ((values.takeRatePct ?? 0) <= 0 || (values.takeRatePct ?? 0) > 100) {
-        setFormError("Marketplace Take Rate must be between 0.1% and 100%.");
+        setFormError(t("creator.phase3.forecast.assumptions.errors.takeRateRange"));
         return;
       }
       if ((values.averageOrderValue ?? 0) <= 0) {
-        setFormError("Average Transaction Value must be greater than 0.");
+        setFormError(t("creator.phase3.forecast.assumptions.errors.atvPositive"));
         return;
       }
     } else if (isEcommerce) {
       if ((values.averageOrderValue ?? values.arpu ?? 0) <= 0) {
-        setFormError("Average Order Value (AOV) must be greater than 0.");
+        setFormError(t("creator.phase3.forecast.assumptions.errors.aovPositive"));
         return;
       }
     } else {
       if (values.arpu <= 0) {
-        setFormError("Pricing / ARPU must be greater than 0.");
+        setFormError(t("creator.phase3.forecast.assumptions.errors.arpuPositive"));
         return;
       }
     }
 
     if (values.opex < 0) {
-      setFormError("Fixed OPEX cannot be negative.");
+      setFormError(t("creator.phase3.forecast.assumptions.errors.negativeOpex"));
       return;
     }
     if (values.variableCost < 0) {
-      setFormError("Variable cost cannot be negative.");
+      setFormError(t("creator.phase3.forecast.assumptions.errors.negativeVarCost"));
       return;
     }
 
@@ -382,12 +400,12 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
             <Layers className="w-4 h-4 text-primary shrink-0" />
           )}
           <span>
-            Active Model: <strong className="text-foreground uppercase tracking-wider">{bm}</strong>. Drivers are dynamically tailored to your verified unit economics.
+            {t("creator.phase3.forecast.assumptions.activeModel", { model: bm.toUpperCase() })}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-[11px] font-mono bg-card text-foreground">
-            {creditCost} Credits
+            {t("creator.phase3.forecast.assumptions.credits", { cost: creditCost })}
           </Badge>
         </div>
       </div>
@@ -406,7 +424,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <DollarSign className="w-4 h-4 text-emerald-500" />
-              Starting Budget (€)
+              {t("creator.phase3.forecast.assumptions.startingBudget")}
             </label>
             {renderBadge("startingBudget")}
           </div>
@@ -423,7 +441,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
             />
           </div>
           <p className="text-[11px] text-muted-foreground">
-            {initialRationales.startingBudget || "Initial launch capital / cash reserve at Month 1."}
+            {initialRationales.startingBudget || t("creator.phase3.forecast.assumptions.startingBudgetDesc")}
           </p>
         </div>
 
@@ -481,7 +499,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <DollarSign className="w-4 h-4 text-primary" />
-                  Average Transaction Value (ATV) (€)
+                  {t("creator.phase3.forecast.assumptions.marketplaceAtvTitle", "Average Transaction Value (ATV) (€)")}
                 </label>
                 {renderBadge("averageOrderValue", "upstream_business_model")}
               </div>
@@ -497,7 +515,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
                   placeholder="100"
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground">Average GMV value per marketplace trade.</p>
+              <p className="text-[11px] text-muted-foreground">{t("creator.phase3.forecast.assumptions.marketplaceAtvDesc", "Average GMV value per marketplace trade.")}</p>
             </div>
 
             {/* Marketplace: Take Rate % */}
@@ -505,7 +523,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
                   <Percent className="w-4 h-4 text-purple-500" />
-                  Platform Take Rate (%)
+                  {t("creator.phase3.forecast.assumptions.marketplaceTakeRateTitle", "Platform Take Rate (%)")}
                 </label>
                 {renderBadge("takeRatePct", "upstream_business_model")}
               </div>
@@ -523,7 +541,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-muted-foreground">%</span>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Commission fee rate. Revenue = GMV × Take Rate.
+                {t("creator.phase3.forecast.assumptions.marketplaceTakeRateDesc", "Commission fee rate. Revenue = GMV × Take Rate.")}
               </p>
             </div>
           </>
@@ -607,7 +625,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <Building className="w-4 h-4 text-amber-600" />
-              Fixed Operating Costs / OPEX (€/mo)
+              {t("creator.phase3.forecast.assumptions.fixedOpexTitle")}
             </label>
             {renderBadge("opex", "upstream_business_model")}
           </div>
@@ -623,7 +641,9 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
               placeholder="8000"
             />
           </div>
-          <p className="text-[11px] text-muted-foreground">Monthly salaries, tools, legal, and operational overhead.</p>
+          <p className="text-[11px] text-muted-foreground">
+            {t("creator.phase3.forecast.assumptions.fixedOpexDesc")}
+          </p>
         </div>
 
         {/* 7. Churn Rate (Active for SaaS / Retainer; Inactive/N-A for E-commerce & Marketplace) */}
@@ -656,14 +676,14 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                 <TrendingDown className="w-4 h-4 text-muted-foreground" />
-                Monthly Churn Rate
+                {labels.churn}
               </label>
               <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-muted-foreground bg-muted/60">
-                N/A · Inactive Driver
+                {t("creator.phase3.forecast.assumptions.inactiveDriver")}
               </Badge>
             </div>
             <div className="text-xs font-mono text-muted-foreground py-2 leading-relaxed">
-              Not applicable for {bm} — forecast scales via monthly transaction/order growth.
+              {t("creator.phase3.forecast.assumptions.notApplicableForModel", { model: bm })}
             </div>
           </div>
         )}
@@ -673,7 +693,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <Percent className="w-4 h-4 text-indigo-500" />
-              Corporate Tax Rate (%)
+              {t("creator.phase3.forecast.assumptions.taxRateTitle")}
             </label>
             {renderBadge("taxRatePct", provenance.taxRatePct || "")}
           </div>
@@ -686,12 +706,12 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
               value={values.taxRatePct != null ? values.taxRatePct : ""}
               onChange={(e) => handleChange("taxRatePct", e.target.value)}
               className="pr-7 font-mono text-sm h-9 rounded-lg"
-              placeholder="e.g. 25"
+              placeholder={t("creator.phase3.forecast.assumptions.taxRatePlaceholder", "e.g. 25")}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-mono text-muted-foreground">%</span>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Applicable corporate income tax rate (or 0% if tax exempt / pass-through entity).
+            {t("creator.phase3.forecast.assumptions.taxRateDesc")}
           </p>
         </div>
 
@@ -700,10 +720,10 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <Target className="w-4 h-4 text-rose-500" />
-              Total Addressable Market / TAM (€)
+              {t("creator.phase3.forecast.assumptions.tamTitle")}
             </label>
             <Badge variant="outline" className="text-[10px] px-2 py-0.5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5 font-semibold">
-              Canonical · Step 3.1 Market Study
+              {t("creator.phase3.forecast.assumptions.badges.canonicalMarket")}
             </Badge>
           </div>
           <div className="relative">
@@ -717,7 +737,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
             />
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Canonical TAM ceiling from Step 3.1 Market Study (read-only linked fact).
+            {t("creator.phase3.forecast.assumptions.tamCanonical")}
           </p>
         </div>
       </div>
@@ -737,19 +757,19 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
           <div className="bg-gradient-to-r from-primary/10 via-emerald-600/10 to-transparent p-6 pb-4 border-b border-border/60 shrink-0">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[11px] font-mono uppercase tracking-widest text-primary font-semibold">
-                STEP 3.3 · FINANCIAL INPUTS & ASSUMPTIONS · {bm.toUpperCase()}
+                {t("creator.phase3.forecast.assumptions.eyebrow", { model: bm.toUpperCase() })}
               </span>
               <Badge variant="outline" className="text-[11px] font-mono bg-muted/60">
-                {creditCost} Credits
+                {t("creator.phase3.forecast.assumptions.credits", { cost: creditCost })}
               </Badge>
             </div>
             <DialogHeader>
               <DialogTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
                 <SlidersHorizontal className="w-5 h-5 text-primary" />
-                Adjust Forecast Assumptions
+                {t("creator.phase3.forecast.assumptions.headerTitle")}
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground mt-0.5">
-                Review saved inputs or edit any driver to recalculate 36 months of revenue, expenses, and cash flow.
+                {t("creator.phase3.forecast.assumptions.headerSubtitle")}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -760,7 +780,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
           {/* Modal Footer */}
           <div className="p-4 px-6 bg-muted/30 border-t border-border flex items-center justify-between shrink-0">
             <p className="text-xs text-muted-foreground">
-              Custom edits are authoritative and preserved across regenerations.
+              {t("creator.phase3.forecast.assumptions.customEditsNote")}
             </p>
             <div className="flex items-center gap-2.5">
               {onClose && (
@@ -771,7 +791,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
                   disabled={isSubmitting}
                   className="rounded-xl text-xs"
                 >
-                  Cancel
+                  {t("creator.phase3.forecast.assumptions.cancel")}
                 </Button>
               )}
               <Button
@@ -785,11 +805,11 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Recalculating Projections…
+                    {t("creator.phase3.forecast.assumptions.recalculating")}
                   </>
                 ) : (
                   <>
-                    Recalculate & Regenerate
+                    {t("creator.phase3.forecast.assumptions.recalculateCta")}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </>
                 )}
@@ -809,17 +829,17 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
           <div className="flex items-center justify-between">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[11px] font-mono font-semibold tracking-wider uppercase">
               <span className="h-1.5 w-1.5 rounded-full bg-primary inline-block" />
-              STEP 3.3 · FINANCIAL FORECAST
+              {t("creator.phase3.forecast.assumptions.stepEyebrow")}
             </div>
             <Badge variant="outline" className="text-xs font-mono bg-muted/60">
-              {creditCost} Credits
+              {t("creator.phase3.forecast.assumptions.credits", { cost: creditCost })}
             </Badge>
           </div>
           <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-foreground">
-            Adjust Forecast Assumptions
+            {t("creator.phase3.forecast.assumptions.headerTitle")}
           </h1>
           <p className="text-sm text-muted-foreground font-sans leading-relaxed">
-            Review the assumptions prepared from your Market Study and Business Model before generating your forecast.
+            {t("creator.phase3.forecast.assumptions.firstTimeSubtitle")}
           </p>
         </div>
 
@@ -827,7 +847,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
 
         <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            Assumptions are saved canonically and will seed your 36-month projections.
+            {t("creator.phase3.forecast.assumptions.savedCanonicalNote")}
           </p>
           <Button
             type="submit"
@@ -839,11 +859,11 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Generating Forecast…
+                {t("creator.phase3.forecast.assumptions.generating")}
               </>
             ) : (
               <>
-                Generate Forecast
+                {t("creator.phase3.forecast.assumptions.generateCta")}
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

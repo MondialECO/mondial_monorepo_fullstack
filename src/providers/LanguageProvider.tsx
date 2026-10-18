@@ -11,7 +11,11 @@ export type Locale = 'en' | 'fr';
 export interface LanguageContextType {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (key: string, variables?: Record<string, string | number>) => string;
+  t: (
+    key: string,
+    variablesOrFallback?: Record<string, string | number | null | undefined> | string,
+    variables?: Record<string, string | number | null | undefined>
+  ) => string;
   formatDate: (date: Date | string | number, options?: Intl.DateTimeFormatOptions) => string;
   formatCurrency: (amount: number, currency?: string) => string;
   formatNumber: (value: number) => string;
@@ -53,10 +57,10 @@ function getNestedValue(obj: unknown, path: string): string | undefined {
   return typeof current === 'string' ? current : undefined;
 }
 
-function interpolate(template: string, variables?: Record<string, string | number>): string {
+function interpolate(template: string, variables?: Record<string, string | number | null | undefined>): string {
   if (!variables) return template;
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => {
-    return variables[key] !== undefined ? String(variables[key]) : `{{${key}}}`;
+    return variables[key] !== undefined && variables[key] !== null ? String(variables[key]) : `{{${key}}}`;
   });
 }
 
@@ -88,17 +92,47 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: string, variables?: Record<string, string | number>): string => {
+    (
+      key: string,
+      variablesOrFallback?: Record<string, string | number | null | undefined> | string,
+      variables?: Record<string, string | number | null | undefined>
+    ): string => {
+      let fallback: string | undefined;
+      let vars: Record<string, string | number | null | undefined> | undefined;
+
+      if (typeof variablesOrFallback === 'string') {
+        fallback = variablesOrFallback;
+        vars = variables;
+      } else {
+        vars = variablesOrFallback;
+      }
+
       // First try current locale
       let val = getNestedValue(dictionaries[locale], key);
       // Fallback to English if missing in current locale
       if (val === undefined && locale !== 'en') {
         val = getNestedValue(dictionaries.en, key);
       }
+      // Check standard sub-namespaces (e.g. creator, brandKit)
       if (val === undefined) {
-        return key;
+        const candidatePrefixes = [
+          'creator.phase2.brandKit.',
+          'creator.phase2.',
+          'creator.',
+          'common.',
+        ];
+        for (const p of candidatePrefixes) {
+          val = getNestedValue(dictionaries[locale], p + key);
+          if (val === undefined && locale !== 'en') {
+            val = getNestedValue(dictionaries.en, p + key);
+          }
+          if (val !== undefined) break;
+        }
       }
-      return interpolate(val, variables);
+      if (val === undefined) {
+        return fallback !== undefined ? interpolate(fallback, vars) : key;
+      }
+      return interpolate(val, vars);
     },
     [locale]
   );
@@ -165,18 +199,44 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   return <LanguageContext.Provider value={contextValue}>{children}</LanguageContext.Provider>;
 }
 
-export function useTranslation() {
+export function useTranslation(_namespace?: string) {
   const context = useContext(LanguageContext);
   if (!context) {
     // Graceful fallback if called outside provider (e.g. isolated test environments)
     return {
       locale: 'en' as Locale,
       setLocale: () => {},
-      t: (key: string, variables?: Record<string, string | number>) => {
+      t: ((
+        key: string,
+        variablesOrFallback?: Record<string, string | number | null | undefined> | string,
+        variables?: Record<string, string | number | null | undefined>
+      ) => {
+        let fallback: string | undefined;
+        let vars: Record<string, string | number | null | undefined> | undefined;
+
+        if (typeof variablesOrFallback === 'string') {
+          fallback = variablesOrFallback;
+          vars = variables;
+        } else {
+          vars = variablesOrFallback;
+        }
+
         let val = getNestedValue(dictionaries.en, key);
-        if (val === undefined) return key;
-        return interpolate(val, variables);
-      },
+        if (val === undefined) {
+          const candidatePrefixes = [
+            'creator.phase2.brandKit.',
+            'creator.phase2.',
+            'creator.',
+            'common.',
+          ];
+          for (const p of candidatePrefixes) {
+            val = getNestedValue(dictionaries.en, p + key);
+            if (val !== undefined) break;
+          }
+        }
+        if (val === undefined) return fallback !== undefined ? interpolate(fallback, vars) : key;
+        return interpolate(val, vars);
+      }) as LanguageContextType['t'],
       formatDate: (d: Date | string | number) => new Date(d).toLocaleDateString('en-US'),
       formatCurrency: (a: number) => `€${a}`,
       formatNumber: (n: number) => String(n),

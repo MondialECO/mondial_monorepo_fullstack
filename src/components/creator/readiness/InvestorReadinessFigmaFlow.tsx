@@ -26,6 +26,7 @@ import { Card } from '@/components/ui/card';
 import { withIdeaContext } from '@/lib/creator-routes';
 import type { InvestorReadinessScore, ReadinessDeduction } from '@/lib/api-creator-journey';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export interface InvestorReadinessFigmaFlowProps {
   project: {
@@ -65,6 +66,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
   onExportPdf,
   ideaId,
 }) => {
+  const { t } = useTranslation();
   const projectName = project.name?.trim() || 'Your Venture';
   const totalScore = readiness?.total ?? 0;
 
@@ -267,17 +269,17 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
       <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4 pt-2 pb-1 border-b border-border/60">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider font-mono">
-            <span>PROJECT INTELLIGENCE</span>
+            <span>{t('creator.phase3.readiness.projectIntelligence')}</span>
             <span className="size-1.5 rounded-full bg-primary inline-block" />
-            <span>Phase 3.7</span>
+            <span>{t('creator.phase3.readiness.phaseBadge')}</span>
           </div>
 
           <h1 className="text-2xl sm:text-[30px] font-bold tracking-tight text-foreground font-sans mt-1.5">
-            Investor readiness
+            {t('creator.phase3.readiness.title')}
           </h1>
 
           <p className="text-sm text-muted-foreground mt-1 font-sans">
-            See what’s clear, what needs more work, and where to go next.
+            {t('creator.phase3.readiness.subtitle')}
           </p>
 
           <div className="flex items-center gap-2.5 mt-3">
@@ -288,7 +290,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
               variant="outline"
               className="text-badge font-semibold bg-muted/60 text-muted-foreground border-border/80 px-2.5 py-0.5 rounded-full font-mono uppercase tracking-wider"
             >
-              Live assessment
+              {t('creator.phase3.readiness.liveAssessment')}
             </Badge>
           </div>
         </div>
@@ -297,7 +299,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
           href={withIdeaContext('/dashboard/creator/phase-3/business-plan', ideaId)}
           className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1 shrink-0 pb-1"
         >
-          <span>View business plan</span>
+          <span>{t('creator.phase3.readiness.viewBusinessPlan')}</span>
           <span className="text-xs font-mono">↗</span>
         </Link>
       </div>
@@ -308,8 +310,8 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
             <div>
-              <span className="font-bold">Readiness update available:</span>{' '}
-              Upstream Phase 3 modules ({changedSources.join(', ') || 'Business Model / Legal / Projections'}) were modified since this score was computed.
+              <span className="font-bold">{t('creator.phase3.readiness.updateAvailable')}</span>{' '}
+              {t('creator.phase3.readiness.updateDesc', { sources: changedSources.join(', ') || 'Business Model / Legal / Projections' })}
             </div>
           </div>
           <Button
@@ -320,7 +322,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
             className="h-8 text-xs border-amber-500/40 text-amber-900 dark:text-amber-100 hover:bg-amber-500/20 shrink-0 font-medium"
           >
             {isRecomputing ? <Loader2 className="size-3.5 animate-spin mr-1.5" /> : <RotateCw className="size-3.5 mr-1.5" />}
-            Re-evaluate Score
+            {t('creator.phase3.readiness.reEvaluateScore')}
           </Button>
         </div>
       )}
@@ -331,9 +333,9 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
           <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
           <div>
             <span className="font-semibold text-amber-700 dark:text-amber-300">
-              Incomplete Phase 3 Prerequisite:
+              {t('creator.phase3.readiness.incompletePrerequisite')}
             </span>{' '}
-            One module still requires completion: <strong>{missingPrerequisite.replace(/_/g, ' ')}</strong>. Complete it to unlock Phase 4.
+            {t('creator.phase3.readiness.moduleRequiresCompletion', { module: missingPrerequisite.replace(/_/g, ' ') })}
           </div>
         </div>
       )}
@@ -342,7 +344,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
       {loading && (
         <Card className="flex items-center justify-center gap-3 py-16 border-border/70 bg-card text-muted-foreground">
           <Loader2 className="size-6 animate-spin text-primary" />
-          <span className="text-sm font-medium">Computing institutional readiness score &amp; component breakdown…</span>
+          <span className="text-sm font-medium">{t('creator.phase3.readiness.computingScore')}</span>
         </Card>
       )}
 
@@ -354,7 +356,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
               {/* Left Score Column */}
               <div className="w-full sm:w-[280px] shrink-0 space-y-2">
                 <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground font-sans">
-                  YOUR PLANNING READINESS
+                  {t('creator.phase3.readiness.yourPlanningReadiness')}
                 </span>
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl sm:text-[56px] font-extrabold font-mono tracking-tight text-foreground">
@@ -387,7 +389,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
               {/* Concept */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground font-sans">Concept</span>
+                  <span className="font-semibold text-foreground font-sans">{t('creator.phase3.readiness.dimensions.concept')}</span>
                   <span className="font-mono text-muted-foreground">{displayScore(conceptScore)}/20</span>
                 </div>
                 <div className="h-1.5 w-full bg-muted/80 rounded-full overflow-hidden">
@@ -401,7 +403,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
               {/* Market */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground font-sans">Market</span>
+                  <span className="font-semibold text-foreground font-sans">{t('creator.phase3.readiness.dimensions.market')}</span>
                   <span className="font-mono text-muted-foreground">{displayScore(marketScore)}/20</span>
                 </div>
                 <div className="h-1.5 w-full bg-muted/80 rounded-full overflow-hidden">
@@ -415,7 +417,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
               {/* Finance */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground font-sans">Finance</span>
+                  <span className="font-semibold text-foreground font-sans">{t('creator.phase3.readiness.dimensions.finance')}</span>
                   <span className="font-mono text-muted-foreground">{displayScore(financeScore)}/25</span>
                 </div>
                 <div className="h-1.5 w-full bg-muted/80 rounded-full overflow-hidden">
@@ -429,7 +431,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
               {/* Legal */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground font-sans">Legal</span>
+                  <span className="font-semibold text-foreground font-sans">{t('creator.phase3.readiness.dimensions.legal')}</span>
                   <span className="font-mono text-muted-foreground">{displayScore(legalScore)}/15</span>
                 </div>
                 <div className="h-1.5 w-full bg-muted/80 rounded-full overflow-hidden">
@@ -443,7 +445,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
               {/* Team */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground font-sans">Team</span>
+                  <span className="font-semibold text-foreground font-sans">{t('creator.phase3.readiness.dimensions.team')}</span>
                   <span className="font-mono text-muted-foreground">{displayScore(teamScore)}/20</span>
                 </div>
                 <div className="h-1.5 w-full bg-muted/80 rounded-full overflow-hidden">
@@ -459,7 +461,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
             <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-muted/40 border border-border/50 text-xs text-muted-foreground font-sans">
               <Info className="size-3.5 shrink-0 text-muted-foreground" />
               <span>
-                This score reflects your current planning information. It does not predict funding or certify your business.
+                {t('creator.phase3.readiness.scoreDisclaimer')}
               </span>
             </div>
           </Card>
@@ -468,10 +470,10 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
           <div className="space-y-3">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground font-sans">
-                What to improve
+                {t('creator.phase3.readiness.whatToImprove')}
               </h2>
               <p className="text-sm text-muted-foreground mt-0.5 font-sans">
-                Start with customer evidence, then work through the other gaps at your own pace.
+                {t('creator.phase3.readiness.whatToImproveDesc')}
               </p>
             </div>
 
@@ -491,7 +493,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                       </h3>
                       {row.isPrimaryGap && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200 font-sans">
-                          Start here
+                          {t('creator.phase3.readiness.startHere')}
                         </span>
                       )}
                       <span className="px-2 py-0.5 rounded-md bg-muted/60 text-xs font-semibold text-muted-foreground font-mono">
@@ -501,10 +503,10 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
 
                     <div className="space-y-1 text-sm font-sans">
                       <p className="text-foreground">
-                        <strong className="font-semibold">Current state:</strong> {row.currentState}
+                        <strong className="font-semibold">{t('creator.phase3.readiness.currentState')}</strong> {row.currentState}
                       </p>
                       <p className="text-muted-foreground">
-                        <strong className="font-semibold text-foreground/80">Recommendation:</strong> {row.recommendation}
+                        <strong className="font-semibold text-foreground/80">{t('creator.phase3.readiness.recommendation')}</strong> {row.recommendation}
                       </p>
                       {row.subtext && (
                         <p className="text-xs text-muted-foreground/80 italic pt-0.5">
@@ -517,11 +519,11 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-2 shrink-0 pt-2 md:pt-0">
                     {row.lost > 0 ? (
                       <span className="text-sm font-semibold text-amber-700 dark:text-amber-400 font-mono">
-                        −{displayScore(row.lost)} points
+                        {t('creator.phase3.readiness.pointsLost', { points: displayScore(row.lost) })}
                       </span>
                     ) : (
                       <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
-                        Full marks
+                        {t('creator.phase3.readiness.fullMarks')}
                       </span>
                     )}
                     <Link
@@ -541,10 +543,10 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
           <div className="space-y-3">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground font-sans">
-                Your project documents
+                {t('creator.phase3.readiness.projectDocuments')}
               </h2>
               <p className="text-sm text-muted-foreground mt-0.5 font-sans">
-                Keep the work you’ve created together and return to it whenever you need.
+                {t('creator.phase3.readiness.projectDocumentsDesc')}
               </p>
             </div>
 
@@ -557,10 +559,10 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-foreground font-sans">
-                      Market study
+                      {t('creator.phase3.readiness.docMarketStudyTitle', 'Market study')}
                     </h3>
                     <p className="text-xs text-muted-foreground font-sans">
-                      Your customers, competitors, and market assumptions.
+                      {t('creator.phase3.readiness.docMarketStudyDesc', 'Your customers, competitors, and market assumptions.')}
                     </p>
                   </div>
                 </div>
@@ -568,7 +570,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   href={withIdeaContext('/dashboard/creator/phase-3/market-study', ideaId)}
                   className="text-sm font-semibold text-primary hover:underline px-3 py-1.5 rounded-lg shrink-0"
                 >
-                  View
+                  {t('creator.phase3.readiness.docView', 'View')}
                 </Link>
               </div>
 
@@ -580,10 +582,10 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-foreground font-sans">
-                      Business model
+                      {t('creator.phase3.readiness.docBusinessModelTitle', 'Business model')}
                     </h3>
                     <p className="text-xs text-muted-foreground font-sans">
-                      How your business plans to create value and earn revenue.
+                      {t('creator.phase3.readiness.docBusinessModelDesc', 'How your business plans to create value and earn revenue.')}
                     </p>
                   </div>
                 </div>
@@ -591,7 +593,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   href={withIdeaContext('/dashboard/creator/phase-3/business-model', ideaId)}
                   className="text-sm font-semibold text-primary hover:underline px-3 py-1.5 rounded-lg shrink-0"
                 >
-                  View
+                  {t('creator.phase3.readiness.docView', 'View')}
                 </Link>
               </div>
 
@@ -604,14 +606,14 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-bold text-foreground font-sans">
-                        Business plan
+                        {t('creator.phase3.steps.businessPlan', 'Business plan')}
                       </h3>
                       <span className="px-2 py-0.5 rounded-md bg-muted/80 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider font-mono">
-                        Primary
+                        {t('creator.phase3.readiness.primary')}
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground font-sans">
-                      Your project brought together in one document.
+                      {t('creator.phase3.readiness.docBusinessPlanDesc', 'Your project brought together in one document.')}
                     </p>
                   </div>
                 </div>
@@ -621,7 +623,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                     href={withIdeaContext('/dashboard/creator/phase-3/business-plan', ideaId)}
                     className="text-sm font-semibold text-primary hover:underline px-3 py-1.5 rounded-lg"
                   >
-                    View
+                    {t('creator.phase3.readiness.docView')}
                   </Link>
                   <Button
                     variant="outline"
@@ -629,7 +631,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                     onClick={onExportPdf}
                     className="h-8 text-xs font-semibold gap-1.5 rounded-lg border-border bg-card shadow-2xs hover:bg-muted"
                   >
-                    <span>Download</span>
+                    <span>{t('creator.phase3.readiness.docDownload')}</span>
                     <ChevronDown className="size-3" />
                   </Button>
                 </div>
@@ -643,10 +645,10 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-foreground font-sans">
-                      Financial forecast
+                      {t('creator.phase3.readiness.docForecastTitle', 'Financial forecast')}
                     </h3>
                     <p className="text-xs text-muted-foreground font-sans">
-                      Your financial assumptions and projections.
+                      {t('creator.phase3.readiness.docForecastDesc', 'Your financial assumptions and projections.')}
                     </p>
                   </div>
                 </div>
@@ -654,7 +656,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   href={withIdeaContext('/dashboard/creator/phase-3/forecast', ideaId)}
                   className="text-sm font-semibold text-primary hover:underline px-3 py-1.5 rounded-lg shrink-0"
                 >
-                  View
+                  {t('creator.phase3.readiness.docView', 'View')}
                 </Link>
               </div>
 
@@ -666,10 +668,10 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-foreground font-sans">
-                      Company setup &amp; team
+                      {t('creator.phase3.readiness.docFormationTitle', 'Company setup & team')}
                     </h3>
                     <p className="text-xs text-muted-foreground font-sans">
-                      Your proposed structure, responsibilities, and support needs.
+                      {t('creator.phase3.readiness.docFormationDesc', 'Your proposed structure, responsibilities, and support needs.')}
                     </p>
                   </div>
                 </div>
@@ -677,7 +679,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   href={withIdeaContext('/dashboard/creator/phase-3/formation', ideaId)}
                   className="text-sm font-semibold text-primary hover:underline px-3 py-1.5 rounded-lg shrink-0"
                 >
-                  View
+                  {t('creator.phase3.readiness.docView', 'View')}
                 </Link>
               </div>
             </Card>
@@ -687,10 +689,10 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
           <Card className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-xs space-y-6">
             <div>
               <h2 className="text-xl font-bold tracking-tight text-foreground font-sans">
-                Next: shape your offer
+                {t('creator.phase3.readiness.nextOfferTitle')}
               </h2>
               <p className="text-sm text-muted-foreground mt-1 font-sans">
-                In Phase 4, you’ll turn your plan into a practical offer and launch approach.
+                {t('creator.phase3.readiness.nextOfferDesc')}
               </p>
             </div>
 
@@ -699,18 +701,18 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
               <div className="p-5 rounded-xl border border-border/60 bg-muted/20 flex flex-col justify-between space-y-4">
                 <div className="space-y-1.5">
                   <span className="text-xs font-bold text-primary font-mono tracking-wider">
-                    STEP 01
+                    {t('creator.phase3.readiness.stepBadge', 'STEP {{step}}', { step: '01' })}
                   </span>
                   <h3 className="text-base font-bold text-foreground font-sans">
-                    Pricing
+                    {t('creator.phase3.readiness.stepPricingTitle')}
                   </h3>
                   <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                    Decide what you’ll offer and how much you’ll charge.
+                    {t('creator.phase3.readiness.stepPricingDesc')}
                   </p>
                 </div>
                 <div className="pt-3 border-t border-border/50 flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
                   <Tag className="size-3.5 text-muted-foreground" />
-                  <span>Packaging &amp; tiers</span>
+                  <span>{t('creator.phase3.readiness.stepPricingTag', 'Packaging & tiers')}</span>
                 </div>
               </div>
 
@@ -718,18 +720,18 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
               <div className="p-5 rounded-xl border border-border/60 bg-muted/20 flex flex-col justify-between space-y-4">
                 <div className="space-y-1.5">
                   <span className="text-xs font-bold text-primary font-mono tracking-wider">
-                    STEP 02
+                    {t('creator.phase3.readiness.stepBadge', 'STEP {{step}}', { step: '02' })}
                   </span>
                   <h3 className="text-base font-bold text-foreground font-sans">
-                    Resources
+                    {t('creator.phase3.readiness.stepResourcesTitle')}
                   </h3>
                   <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                    Work out the skills, tools, and budget you’ll need.
+                    {t('creator.phase3.readiness.stepResourcesDesc')}
                   </p>
                 </div>
                 <div className="pt-3 border-t border-border/50 flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
                   <Wrench className="size-3.5 text-muted-foreground" />
-                  <span>Tooling &amp; operations</span>
+                  <span>{t('creator.phase3.readiness.stepResourcesTag', 'Tooling & operations')}</span>
                 </div>
               </div>
 
@@ -737,18 +739,18 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
               <div className="p-5 rounded-xl border border-border/60 bg-muted/20 flex flex-col justify-between space-y-4">
                 <div className="space-y-1.5">
                   <span className="text-xs font-bold text-primary font-mono tracking-wider">
-                    STEP 03
+                    {t('creator.phase3.readiness.stepBadge', 'STEP {{step}}', { step: '03' })}
                   </span>
                   <h3 className="text-base font-bold text-foreground font-sans">
-                    Go-to-market
+                    {t('creator.phase3.readiness.stepGtmTitle')}
                   </h3>
                   <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                    Plan how you’ll reach your first customers.
+                    {t('creator.phase3.readiness.stepGtmDesc')}
                   </p>
                 </div>
                 <div className="pt-3 border-t border-border/50 flex items-center gap-1.5 text-xs text-muted-foreground font-sans">
                   <Megaphone className="size-3.5 text-muted-foreground" />
-                  <span>Early traction channels</span>
+                  <span>{t('creator.phase3.readiness.stepGtmTag', 'Early traction channels')}</span>
                 </div>
               </div>
             </div>
@@ -757,7 +759,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
           {/* 6. SECTION 6: FOOTER WITH TWO FORWARD OPTIONS */}
           <div className="space-y-4 pt-4 border-t border-border/60">
             <p className="text-xs text-muted-foreground text-center font-sans">
-              Continue now, or save your progress and come back later.
+              {t('creator.phase3.readiness.footerNote')}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -766,7 +768,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                 className="text-sm font-semibold text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors"
               >
                 <ArrowLeft className="size-4" />
-                <span>Back to business plan</span>
+                <span>{t('creator.phase3.readiness.backToBusinessPlan')}</span>
               </Link>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -776,7 +778,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   className="flex-1 sm:flex-initial h-11 px-5 rounded-xl font-semibold border-border bg-card shadow-2xs hover:bg-muted"
                 >
                   <Link href="/dashboard/creator">
-                    Save &amp; go to dashboard
+                    {t('creator.phase3.readiness.saveGoDashboard')}
                   </Link>
                 </Button>
 
@@ -788,11 +790,11 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
                   {isNavigating ? (
                     <>
                       <Loader2 className="size-4 animate-spin" />
-                      <span>Advancing to Phase 4…</span>
+                      <span>{t('creator.phase3.readiness.advancingToPhase4')}</span>
                     </>
                   ) : (
                     <>
-                      <span>Continue to Phase 4</span>
+                      <span>{t('creator.phase3.readiness.continueToPhase4')}</span>
                       <ArrowRight className="size-4" />
                     </>
                   )}

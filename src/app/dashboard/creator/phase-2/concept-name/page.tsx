@@ -7,15 +7,22 @@ import { Button } from "@/components/ui/button";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorJourneyApi, type CompanySearchMatch } from "@/lib/api-creator-journey";
 import { toAiError } from "@/lib/ai-errors";
+import { useTranslation } from "@/hooks/useTranslation";
 
 type Suggestion = { name: string; tagline: string; score: number };
 
 const CATEGORIES = ["SaaS", "AI Tool", "Marketplace", "Fintech", "HealthTech", "CleanTech"];
-const NEXT_PHASES = ["Logo & Branding", "AI Masterplan", "Offer Setup"];
 
 export default function ConceptNamePage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { state, isLoading, error, refetch, setState } = useCreatorProgress();
+
+  const nextPhases = [
+    t("creator.phase2.conceptName.nextPhasesList.branding"),
+    t("creator.phase2.conceptName.nextPhasesList.masterplan"),
+    t("creator.phase2.conceptName.nextPhasesList.offerSetup"),
+  ];
 
   const [selectedSuggestion, setSelectedSuggestion] = useState<number | null>(null);
   const [customName, setCustomName] = useState("");
@@ -113,21 +120,26 @@ export default function ConceptNamePage() {
     ? suggestions[selectedSuggestion]?.tagline ?? ""
     : "";
 
+  const prevActiveNameRef = useRef(activeName);
   // Reset company search results immediately whenever the active name changes
   useEffect(() => {
-    if (searchAbortRef.current) {
-      searchAbortRef.current.abort();
-      searchAbortRef.current = null;
+    if (prevActiveNameRef.current !== activeName) {
+      prevActiveNameRef.current = activeName;
+      if (searchAbortRef.current) {
+        searchAbortRef.current.abort();
+        searchAbortRef.current = null;
+      }
+      setSearchStatus("idle");
+      setSearchMatches([]);
+      setSearchError(null);
     }
-    setSearchStatus("idle");
-    setSearchMatches([]);
-    setSearchError(null);
   }, [activeName]);
 
   const handleSearchCompanies = async () => {
     const query = activeName.trim();
     if (!query) return;
 
+    prevActiveNameRef.current = activeName;
     if (searchAbortRef.current) {
       searchAbortRef.current.abort();
     }
@@ -154,7 +166,7 @@ export default function ConceptNamePage() {
       if (controller.signal.aborted) return;
       if (currentSearchTargetRef.current !== activeName.trim()) return;
       setSearchStatus("error");
-      setSearchError("We couldn’t check right now. You can continue and try again later.");
+      setSearchError(t("creator.phase2.conceptName.checkError"));
     } finally {
       if (searchAbortRef.current === controller) {
         searchAbortRef.current = null;
@@ -178,7 +190,7 @@ export default function ConceptNamePage() {
     try {
       await creatorJourneyApi.updateProject({ name: activeName, tagline: activeTagline, category });
     } catch {
-      setNameError("Couldn't save your project name — please try again.");
+      setNameError(t("creator.phase2.conceptName.saveNameError", "Couldn't save your project name — please try again."));
       return;
     } finally {
       setSavingName(false);
@@ -211,7 +223,7 @@ export default function ConceptNamePage() {
     return (
       <div className="w-full flex flex-col items-center justify-center gap-4 py-24" style={{ backgroundColor: "var(--background)" }}>
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--primary)" }} />
-        <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>Loading your project...</p>
+        <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("creator.phase2.conceptName.loadingProject")}</p>
       </div>
     );
   }
@@ -220,8 +232,8 @@ export default function ConceptNamePage() {
   if (error) {
     return (
       <div className="w-full flex flex-col items-center justify-center gap-3 py-24" style={{ backgroundColor: "var(--background)" }}>
-        <p className="text-sm" style={{ color: "var(--destructive)" }}>Couldn&apos;t load your data. Please try again.</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
+        <p className="text-sm" style={{ color: "var(--destructive)" }}>{t("creator.phase2.conceptName.loadError")}</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>{t("creator.phase2.conceptName.retry")}</Button>
       </div>
     );
   }
@@ -238,24 +250,24 @@ export default function ConceptNamePage() {
           {/* Header */}
           <div className="flex flex-col gap-3">
             <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
-              Name Your Project
+              {t("creator.phase2.conceptName.title")}
             </h1>
             <p className="text-base" style={{ color: "var(--muted-foreground)" }}>
-              5 name ideas generated from your concept description. Pick one or define your own custom name.
+              {t("creator.phase2.conceptName.subtitle")}
             </p>
           </div>
 
           {/* Suggested Names */}
           <div className="flex flex-col gap-4">
             <span className="text-sm font-semibold" style={{ color: "var(--muted-foreground)" }}>
-              SUGGESTED NAMES
+              {t("creator.phase2.conceptName.suggestedNames")}
             </span>
             {nameError && <p className="text-xs" style={{ color: "var(--destructive)" }}>{nameError}</p>}
 
             {suggestions.length === 0 ? (
               <div className="flex items-center justify-center gap-2 py-12 text-sm" style={{ color: "var(--muted-foreground)" }}>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                {regenerating ? "Generating name suggestions…" : "No suggestions yet."}
+                {regenerating ? t("creator.phase2.conceptName.generatingSuggestions") : t("creator.phase2.conceptName.noSuggestions")}
               </div>
             ) : (
               <div className="flex flex-wrap gap-3">
@@ -321,33 +333,33 @@ export default function ConceptNamePage() {
               >
                 {useCustom && <Check className="w-3.5 h-3.5" strokeWidth={3} style={{ color: "var(--primary-foreground)" }} />}
               </span>
-              I have my own custom name in mind
+              {t("creator.phase2.conceptName.customNameToggle")}
             </button>
 
             {useCustom && (
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
-                    Project Name
+                    {t("creator.phase2.conceptName.projectName")}
                   </label>
                   <input
                     type="text"
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value)}
-                    placeholder="e.g. My Custom Brand"
+                    placeholder={t("creator.phase2.conceptName.projectNamePlaceholder")}
                     className="w-full rounded-xl px-4 py-3.5 text-input outline-none focus:ring-2 focus:ring-[var(--ring)]"
                     style={{ backgroundColor: "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--border)", color: "var(--foreground)" }}
                   />
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
-                    Tagline / Value Proposition
+                    {t("creator.phase2.conceptName.taglineLabel")}
                   </label>
                   <input
                     type="text"
                     value={customTagline}
                     onChange={(e) => setCustomTagline(e.target.value)}
-                    placeholder="e.g. A localized inventory tool for neighborhood grocery stores."
+                    placeholder={t("creator.phase2.conceptName.taglinePlaceholder")}
                     className="w-full rounded-xl px-4 py-3.5 text-input outline-none focus:ring-2 focus:ring-[var(--ring)]"
                     style={{ backgroundColor: "var(--popover)", borderWidth: "1px", borderStyle: "solid", borderColor: "var(--border)", color: "var(--foreground)" }}
                   />
@@ -361,10 +373,10 @@ export default function ConceptNamePage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex flex-col">
                 <span className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
-                  French Company Registry Check
+                  {t("creator.phase2.conceptName.registryCheck")}
                 </span>
                 <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
-                  Optional lookup against active and closed French enterprise records.
+                  {t("creator.phase2.conceptName.registryCheckDesc")}
                 </span>
               </div>
               <Button
@@ -378,12 +390,12 @@ export default function ConceptNamePage() {
                 {searchStatus === "loading" ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Checking…
+                    {t("creator.phase2.conceptName.checking")}
                   </>
                 ) : (
                   <>
                     <Search className="w-3.5 h-3.5" />
-                    Check similar names
+                    {t("creator.phase2.conceptName.checkSimilarNames")}
                   </>
                 )}
               </Button>
@@ -398,12 +410,12 @@ export default function ConceptNamePage() {
               >
                 <div className="flex items-center justify-between gap-2 border-b pb-2" style={{ borderColor: "var(--border)" }}>
                   <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
-                    Similar company names in France
+                    {t("creator.phase2.conceptName.similarCompaniesTitle")}
                   </span>
                   {searchStatus === "loading" && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1.5">
                       <Loader2 className="w-3 h-3 animate-spin" />
-                      Searching…
+                      {t("creator.phase2.conceptName.searching")}
                     </span>
                   )}
                 </div>
@@ -411,19 +423,19 @@ export default function ConceptNamePage() {
                 {searchStatus === "loading" && (
                   <div className="py-4 flex items-center justify-center gap-2 text-xs" style={{ color: "var(--muted-foreground)" }}>
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    Searching French enterprise database for &ldquo;{activeName.trim()}&rdquo;…
+                    {t("creator.phase2.conceptName.searchingDatabase", { query: activeName.trim(), name: activeName.trim() })}
                   </div>
                 )}
 
                 {searchStatus === "empty" && (
                   <p className="text-xs py-2" style={{ color: "var(--muted-foreground)" }}>
-                    No matching companies were found in this search.
+                    {t("creator.phase2.conceptName.noMatchingCompanies")}
                   </p>
                 )}
 
                 {searchStatus === "error" && (
                   <p className="text-xs py-2" style={{ color: "var(--destructive)" }}>
-                    {searchError || "We couldn’t check right now. You can continue and try again later."}
+                    {searchError || t("creator.phase2.conceptName.checkError")}
                   </p>
                 )}
 
@@ -442,26 +454,26 @@ export default function ConceptNamePage() {
                               {match.name}
                             </span>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                              {match.siren && <span>SIREN: {match.siren}</span>}
-                              {location && <span>Location: {location}</span>}
-                              {match.activityCode && <span>NAF: {match.activityCode}</span>}
+                              {match.siren && <span>{t("creator.phase2.conceptName.companySearch.siren", "SIREN: {{siren}}", { siren: match.siren })}</span>}
+                              {location && <span>{t("creator.phase2.conceptName.companySearch.location", { location })}</span>}
+                              {match.activityCode && <span>{t("creator.phase2.conceptName.companySearch.naf", "NAF: {{naf}}", { naf: match.activityCode })}</span>}
                             </div>
                           </div>
 
                           <div className="shrink-0 flex items-center gap-2">
                             {match.status === "active" && (
                               <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                Actif
+                                {t("creator.phase2.conceptName.companySearch.statusActive")}
                               </span>
                             )}
                             {match.status === "closed" && (
                               <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                Fermé
+                                {t("creator.phase2.conceptName.companySearch.statusClosed")}
                               </span>
                             )}
                             {match.status === "unknown" && (
                               <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 text-slate-500 border border-slate-200">
-                                Unknown status
+                                {t("creator.phase2.conceptName.companySearch.statusUnknown")}
                               </span>
                             )}
                           </div>
@@ -472,7 +484,7 @@ export default function ConceptNamePage() {
                 )}
 
                 <p className="text-[11px] leading-relaxed pt-1" style={{ color: "var(--muted-foreground)" }}>
-                  This search finds similar company names in France. It does not confirm trademark or name availability.
+                  {t("creator.phase2.conceptName.disclaimer")}
                 </p>
               </div>
             )}
@@ -483,7 +495,7 @@ export default function ConceptNamePage() {
             {/* Category */}
             <div className="flex-1 min-w-0 flex flex-col gap-3">
               <span className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
-                Project Category
+                {t("creator.phase2.conceptName.projectCategory")}
               </span>
               <div className="flex flex-wrap gap-3">
                 {CATEGORIES.map((cat) => {
@@ -512,10 +524,10 @@ export default function ConceptNamePage() {
             {/* Next phases */}
             <div className="flex-1 min-w-0 flex flex-col gap-3">
               <span className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--muted-foreground)" }}>
-                Next Phases (Skippable):
+                {t("creator.phase2.conceptName.nextPhases")}
               </span>
               <div className="flex flex-col gap-3">
-                {NEXT_PHASES.map((phase) => (
+                {nextPhases.map((phase) => (
                   <span key={phase} className="text-body" style={{ color: "var(--muted-foreground)" }}>
                     {phase}
                   </span>
@@ -532,7 +544,7 @@ export default function ConceptNamePage() {
               className="w-full rounded-xl py-4 h-auto text-button font-medium flex items-center justify-center gap-2 disabled:opacity-40"
             >
               {savingName ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Continue to Branding
+              {t("creator.phase2.conceptName.continueToBranding")}
               <ArrowRight className="w-4 h-4" />
             </Button>
             {/* Save failure surfaces HERE, next to the action that failed. */}

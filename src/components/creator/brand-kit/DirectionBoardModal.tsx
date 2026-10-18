@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
@@ -179,6 +180,7 @@ export function DirectionBoardModal({
   onSuccess,
   onKitUpdated,
 }: DirectionBoardModalProps) {
+  const { t } = useTranslation("creator");
   // 1. Core State
   const [currentKit, setCurrentKit] = useState<BrandKit>(kit);
   const initialSelectedKey =
@@ -442,7 +444,7 @@ export function DirectionBoardModal({
       <div className="relative w-full max-w-5xl 2xl:max-w-6xl max-h-[92vh] flex flex-col bg-card border border-border/80 rounded-2xl shadow-2xl overflow-hidden bg-white">
         {/* Modal Header & 6-Step Workflow Track (Figma Node 57003:9812 / 57012:9066) */}
         <ModalWorkflowHeader
-          title="Pick a visual direction"
+          title={t("modals.directionModalTitle")}
           subtitle="This sets the visual language. Logos are drawn inside the direction you pick."
           currentStep={2}
           onClose={onClose}
@@ -468,7 +470,7 @@ export function DirectionBoardModal({
                 <RefreshCw
                   className={`size-3.5 ${isGenerating ? "animate-spin" : ""}`}
                 />
-                <span>Regenerate all four</span>
+                <span>{t("modals.directionRegenAll")}</span>
               </Button>
 
               {/* Dynamic CREDITS chip */}
@@ -492,7 +494,7 @@ export function DirectionBoardModal({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 sm:px-8 py-3.5 border-b border-border/70 bg-muted/15 shrink-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-badge font-semibold text-muted-foreground tracking-wider uppercase font-sans pr-1">
-              SHOW ME
+              {t("modals.directionShowMe")}
             </span>
             <button
               type="button"
@@ -503,7 +505,7 @@ export function DirectionBoardModal({
                   : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
               }`}
             >
-              All four
+              {t("modals.directionAllFour")}
             </button>
             <button
               type="button"
@@ -514,7 +516,7 @@ export function DirectionBoardModal({
                   : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
               }`}
             >
-              Calmer
+              {t("modals.directionCalmer")}
             </button>
             <button
               type="button"
@@ -525,7 +527,7 @@ export function DirectionBoardModal({
                   : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
               }`}
             >
-              Bolder
+              {t("modals.directionBolder")}
             </button>
             <button
               type="button"
@@ -536,12 +538,12 @@ export function DirectionBoardModal({
                   : "bg-card hover:bg-muted text-muted-foreground hover:text-foreground border border-border/60"
               }`}
             >
-              More technical
+              {t("modals.directionMoreTechnical")}
             </button>
           </div>
 
           <span className="text-xs text-muted-foreground font-sans">
-            Filtering re-sorts what you see — it doesn't use a regenerate.
+            {t("modals.directionFilteringNotice")}
           </span>
         </div>
 
@@ -553,7 +555,7 @@ export function DirectionBoardModal({
               <span className="font-medium">{error.message}</span>
             </div>
             {error.type === "credits" && (
-              <span className="text-caption opacity-80 font-medium">(Credit top-ups are currently unavailable)</span>
+              <span className="text-caption opacity-80 font-medium">{t("modals.directionCreditsUnavailable")}</span>
             )}
           </div>
         )}
@@ -568,15 +570,15 @@ export function DirectionBoardModal({
               </div>
               <div className="space-y-1.5">
                 <h3 className="font-heading font-semibold text-lg sm:text-xl text-foreground">
-                  Generate Visual Directions
+                  {t("modals.directionGenerateTitle")}
                 </h3>
                 <p className="text-sm font-sans text-muted-foreground leading-relaxed">
-                  The AI visual engine will craft 4 divergent design directions tailored to your confirmed business strategy, font pairings, and color palettes.
+                  {t("modals.directionGenerateDesc")}
                 </p>
               </div>
               <div className="flex items-center gap-2 font-mono text-xs font-semibold px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                 <Sparkles className="size-3.5" />
-                <span>Cost: {isCostLoading ? "Loading cost…" : isCostError || directionCost == null ? "Unavailable" : `${directionCost} AI Credits`}</span>
+                <span>{t("modals.directionCost")} {isCostLoading ? "Loading cost…" : isCostError || directionCost == null ? "Unavailable" : `${directionCost} AI Credits`}</span>
               </div>
               <Button
                 type="button"
@@ -596,10 +598,10 @@ export function DirectionBoardModal({
               <div className="col-span-full flex flex-col items-center gap-3">
                 <RefreshCw className="size-8 text-primary animate-spin" />
                 <h3 className="text-base font-semibold text-foreground font-heading">
-                  Synthesizing Visual Directions...
+                  {t("modals.directionSynthesizingTitle")}
                 </h3>
                 <p className="text-xs text-muted-foreground max-w-md">
-                  Crafting 4 divergent design directions tailored to your business strategy, bundled typography, and harmonized color palettes.
+                  {t("modals.directionSynthesizingDesc")}
                 </p>
               </div>
             </div>
@@ -735,7 +737,7 @@ export function DirectionBoardModal({
                           </h3>
                           {isSelected && (
                             <span className="font-sans text-badge font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wider">
-                              ACTIVE SELECTION
+                              {t("modals.directionActiveSelection")}
                             </span>
                           )}
                         </div>
@@ -748,7 +750,7 @@ export function DirectionBoardModal({
                         {/* WHY THIS FITS section */}
                         <div className="pt-3 border-t border-border/50 space-y-1">
                           <span className="text-badge font-mono font-semibold uppercase tracking-wider text-muted-foreground block">
-                            WHY THIS FITS
+                            {t("modals.directionWhyThisFits")}
                           </span>
                           <p className="text-body font-sans text-foreground/80 leading-relaxed">
                             {candidate.rationale}
@@ -801,14 +803,14 @@ export function DirectionBoardModal({
                 <div className="flex items-center gap-2">
                   <Sliders className="size-4 text-primary" />
                   <span className="font-heading text-xs font-bold text-foreground">
-                    Fine-tune Selected Direction ({selectedCandidate.name})
+                    {t("modals.directionFineTune")}{selectedCandidate.name})
                   </span>
                   <span className="text-badge font-mono uppercase bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-full font-semibold border border-emerald-500/20">
-                    Free / No Credits
+                    {t("modals.directionFreeNoCredits")}
                   </span>
                 </div>
                 <span className="text-caption text-muted-foreground hidden sm:inline">
-                  Adjustments do not count against your 3/3 regenerate cap
+                  {t("modals.directionFineTuneNotice")}
                 </span>
               </div>
 
@@ -816,7 +818,7 @@ export function DirectionBoardModal({
                 {/* Palette Variant */}
                 <div className="space-y-1.5">
                   <label className="text-caption font-mono font-medium text-muted-foreground">
-                    Palette Variant
+                    {t("modals.directionPaletteVariant")}
                   </label>
                   <div className="grid grid-cols-3 gap-1">
                     {["default", "vibrant", "muted"].map((variant) => (
@@ -844,7 +846,7 @@ export function DirectionBoardModal({
                 {/* Contrast Position */}
                 <div className="space-y-1.5">
                   <label className="text-caption font-mono font-medium text-muted-foreground">
-                    Contrast Balance
+                    {t("modals.directionContrastBalance")}
                   </label>
                   <div className="grid grid-cols-3 gap-1">
                     {["soft", "balanced", "high"].map((contrast) => (
@@ -872,7 +874,7 @@ export function DirectionBoardModal({
                 {/* Type Weight */}
                 <div className="space-y-1.5">
                   <label className="text-caption font-mono font-medium text-muted-foreground">
-                    Display Weight
+                    {t("modals.directionDisplayWeight")}
                   </label>
                   <div className="grid grid-cols-3 gap-1">
                     {["regular", "medium", "bold"].map((weight) => (
@@ -907,7 +909,7 @@ export function DirectionBoardModal({
             <span className="text-xs text-muted-foreground font-sans">
               {selectedCandidate ? (
                 <>
-                  Selected:{" "}
+                  {t("modals.directionSelected")}{" "}
                   <strong className="text-foreground font-semibold">
                     {selectedCandidate.name}
                   </strong>
@@ -927,7 +929,7 @@ export function DirectionBoardModal({
               disabled={isSubmitting}
               className="font-sans cursor-pointer"
             >
-              Cancel
+              {t("modals.directionCancel")}
             </Button>
 
             <Button
@@ -940,13 +942,13 @@ export function DirectionBoardModal({
               {isSubmitting ? (
                 <>
                   <RefreshCw className="size-3.5 animate-spin" />
-                  <span>Confirming Direction...</span>
+                  <span>{t("modals.directionConfirming")}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="size-3.5" />
                   <span>
-                    Use {selectedCandidate?.name || "Selected Direction"}
+                    {t("modals.directionUseBtn")} {selectedCandidate?.name || "Selected Direction"}
                   </span>
                 </>
               )}

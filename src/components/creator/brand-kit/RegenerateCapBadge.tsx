@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React from "react";
 
@@ -8,11 +9,10 @@ interface RegenerateCapBadgeProps {
   className?: string;
 }
 
-export function RegenerateCapBadge({
-  usedCount,
+export function RegenerateCapBadge({ usedCount,
   maxCount = 3,
-  className = "",
-}: RegenerateCapBadgeProps) {
+  className = "", }: RegenerateCapBadgeProps) {
+  const { t } = useTranslation("creator");
   const remaining = Math.max(0, maxCount - usedCount);
   const isExhausted = remaining === 0;
 
@@ -22,7 +22,7 @@ export function RegenerateCapBadge({
         className={`inline-flex items-center gap-1 font-mono text-badge font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 tabular-nums shrink-0 ${className}`}
         title={`Maximum ${maxCount} regenerations reached`}
       >
-        0/{maxCount} LEFT
+        0/{maxCount} {t("modals.capLeft")}
       </span>
     );
   }
@@ -32,7 +32,7 @@ export function RegenerateCapBadge({
       className={`inline-flex items-center gap-1 font-mono text-badge font-medium px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border/50 tabular-nums shrink-0 ${className}`}
       title={`${remaining} of ${maxCount} regenerations left`}
     >
-      {remaining}/{maxCount} LEFT
+      {remaining}/{maxCount} {t("modals.capLeft")}
     </span>
   );
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { withIdeaContext } from '@/lib/creator-routes';
+import { useTranslation } from '@/hooks/useTranslation';
 import { isTabReloadingForSwitch } from '@/lib/creator-tab-sync';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ type PendingSkillsSave = {
 
 export default function FormationPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const queryIdeaId = searchParams.get('ideaId');
   const {
@@ -325,16 +327,16 @@ export default function FormationPage() {
   return (
     <Phase3SetupShell
       fullWidth
-      stepEyebrow="STEP 3.5 · COMPANY FORMATION & TEAM"
-      title="Company Formation & Team"
-      description="A rule-backed company structure baseline grounded in your venture profile, with transparent reasoning and skills assessment."
+      stepEyebrow={t('creator.phase3.formation.eyebrow')}
+      title={t('creator.phase3.formation.title')}
+      description={t('creator.phase3.formation.description')}
       contentClassName="mt-8 space-y-6 w-full min-w-0 max-w-none"
       titleClassName="text-3xl font-semibold leading-tight tracking-tight text-foreground font-sans"
     >
       {loading && (
         <div className="flex items-center gap-3 text-muted-foreground py-16 justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="text-sm font-medium">Evaluating venture signals and formation profile…</span>
+          <span className="text-sm font-medium">{t('creator.phase3.formation.evaluating')}</span>
         </div>
       )}
 
@@ -350,7 +352,7 @@ export default function FormationPage() {
             className="rounded-xl border-border"
           >
             {flushingSkills && <Loader2 className="size-4 animate-spin mr-2" />}
-            Retry Operation
+            {t('creator.phase3.formation.retryOperation')}
           </Button>
         </Card>
       )}

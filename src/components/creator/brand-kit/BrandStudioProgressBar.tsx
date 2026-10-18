@@ -3,6 +3,7 @@
 import React from "react";
 import { Check, Lock, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export type StudioStepKey =
   | "strategy"
@@ -36,6 +37,7 @@ export function BrandStudioProgressBar({
   onSelectStep,
   onBack,
 }: BrandStudioProgressBarProps) {
+  const { t } = useTranslation();
   return (
     <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-border/80 bg-card/95 px-4 md:px-8 backdrop-blur-md">
       {/* Left: Back button + Brand context */}
@@ -48,14 +50,14 @@ export function BrandStudioProgressBar({
           className="gap-1.5 text-button font-semibold text-muted-foreground hover:text-foreground h-8 px-2 sm:px-2.5 font-sans cursor-pointer shrink-0"
         >
           <ArrowLeft className="size-3.5" />
-          <span>Back</span>
+          <span>{t("creator.phase2.brandKit.bar.back", "Back")}</span>
         </Button>
         <div className="hidden sm:flex flex-col min-w-0 max-w-[140px] md:max-w-[200px]">
           <span className="text-badge font-bold text-foreground truncate font-heading">
             {brandName}
           </span>
           <span className="text-badge text-muted-foreground font-sans truncate">
-            Visual Identity Studio
+            {t("creator.phase2.brandKit.bar.visualStudio", "Visual Identity Studio")}
           </span>
         </div>
       </div>
@@ -137,7 +139,7 @@ export function BrandStudioProgressBar({
           </div>
         ) : (
           <span className="text-badge text-muted-foreground font-sans hidden sm:inline">
-            Studio Live
+            {t("creator.phase2.brandKit.bar.studioLive", "Studio Live")}
           </span>
         )}
       </div>

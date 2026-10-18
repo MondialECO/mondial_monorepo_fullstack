@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { BrandKit, BrandLogoVariation, formatConceptTitle } from "@/types/creator/brand-kit";
@@ -36,6 +37,7 @@ export function VariationSetModal({
   onClose,
   onKitUpdated,
 }: VariationSetModalProps) {
+  const { t } = useTranslation("creator");
   const [kit, setKit] = useState<BrandKit | null>(initialKit ?? null);
   const [variations, setVariations] = useState<Record<string, BrandLogoVariation>>(
     initialKit?.logo?.variations ?? {}
@@ -237,7 +239,7 @@ export function VariationSetModal({
       <div className="relative flex flex-col w-full max-w-6xl max-h-[94vh] rounded-2xl bg-card border border-border shadow-2xl overflow-hidden">
         {/* Modal Header & 6-Step Workflow Track (Figma Node 57004:11208) */}
         <ModalWorkflowHeader
-          title="Your logo, in every form"
+          title={t("modals.variationSetModalTitle")}
           subtitle={`Seven variations built from ${conceptLabel}. Same geometry throughout — only arrangement and colour change.`}
           currentStep={4}
           onClose={onClose || onBack || (() => {})}
@@ -254,7 +256,7 @@ export function VariationSetModal({
               ) : (
                 <Download className="size-3.5" />
               )}
-              <span>Download set</span>
+              <span>{t("modals.variationSetDownloadBtn")}</span>
             </Button>
           }
         />
@@ -273,7 +275,7 @@ export function VariationSetModal({
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Loader2 className="size-8 animate-spin text-primary" />
               <p className="text-body text-muted-foreground font-sans">
-                Generating and loading variation assets...
+                {t("modals.variationSetGeneratingTitle")}
               </p>
             </div>
           ) : (
@@ -284,7 +286,7 @@ export function VariationSetModal({
                   {/* SOURCE */}
                   <div className="flex items-center">
                     <span className="font-sans text-badge uppercase font-semibold text-muted-foreground tracking-wider">
-                      SOURCE
+                      {t("modals.variationSetSource")}
                     </span>
                     <span className="font-mono text-body font-medium text-foreground ml-2">
                       {conceptLabel}
@@ -296,7 +298,7 @@ export function VariationSetModal({
                   {/* VARIATIONS */}
                   <div className="flex items-center">
                     <span className="font-sans text-badge uppercase font-semibold text-muted-foreground tracking-wider">
-                      VARIATIONS
+                      {t("modals.variationSetVariations")}
                     </span>
                     <span className="font-sans text-body font-semibold text-foreground ml-2">
                       7
@@ -308,10 +310,10 @@ export function VariationSetModal({
                   {/* FORMATS */}
                   <div className="flex items-center">
                     <span className="font-sans text-badge uppercase font-semibold text-muted-foreground tracking-wider">
-                      FORMATS
+                      {t("modals.variationSetFormats")}
                     </span>
                     <span className="font-sans text-body font-semibold text-foreground ml-2">
-                      SVG + PNG
+                      {t("modals.variationSetFormatsSvgPng")}
                     </span>
                   </div>
 
@@ -320,10 +322,10 @@ export function VariationSetModal({
                   {/* COST */}
                   <div className="flex items-center">
                     <span className="font-sans text-badge uppercase font-semibold text-muted-foreground tracking-wider">
-                      COST
+                      {t("modals.variationSetCost")}
                     </span>
                     <span className="font-sans text-body text-foreground ml-2">
-                      Free, derived
+                      {t("modals.variationSetCostDerived")}
                     </span>
                   </div>
                 </div>
@@ -331,7 +333,7 @@ export function VariationSetModal({
                 {/* Right Green Outline Badge */}
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-sans text-xs font-medium">
                   <Check className="size-3.5 stroke-[2.5]" />
-                  <span>No credits used</span>
+                  <span>{t("modals.variationSetNoCreditsUsed")}</span>
                 </div>
               </div>
 
@@ -394,7 +396,7 @@ export function VariationSetModal({
                 className="gap-2 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <ArrowLeft className="size-3.5" />
-                Back to Concepts
+                {t("modals.variationSetBackToConcepts")}
               </Button>
             )}
           </div>
@@ -411,17 +413,17 @@ export function VariationSetModal({
               {isApproving ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Approving Variations...
+                  {t("modals.variationSetApproving")}
                 </>
               ) : isDeriving ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Preparing Variations...
+                  {t("modals.variationSetPreparing")}
                 </>
               ) : (
                 <>
                   <Check className="size-4 stroke-[2.5]" />
-                  Approve all seven
+                  {t("modals.variationSetApproveAll")}
                   <ArrowRight className="size-4 ml-1" />
                 </>
               )}

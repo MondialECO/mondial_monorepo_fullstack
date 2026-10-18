@@ -32,6 +32,7 @@ import MarketStudyPrintView from '@/components/creator/MarketStudyPrintView';
 import { brandKitApi } from '@/lib/api-creator-brand-kit';
 import { resolveMediaUrl } from '@/lib/brand-kit-media';
 import { withIdeaContext } from '@/lib/creator-routes';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function formatCurrency(amount?: number, currency = 'USD'): string {
   if (amount === undefined || amount === null || Number.isNaN(amount)) return '—';
@@ -53,6 +54,7 @@ function formatCurrency(amount?: number, currency = 'USD'): string {
 
 export default function MarketStudyPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const queryIdeaId = searchParams.get('ideaId');
   const { state, completeStep } = useCreatorProgress();
@@ -247,18 +249,18 @@ export default function MarketStudyPage() {
   const displaySector = sector || 'Small-business software';
   const displayRegion = geography || 'France';
   const displayTargetUser = targetUser || targetSegmentsList[0]?.title || 'independent retailers';
-  const metadataLine = `Generated ${formattedDate} · Sector: ${displaySector} · Region: ${displayRegion} · ${displaySector} · ${displayRegion}`;
+  const metadataLine = t('creator.phase3.marketStudy.metadata', { date: formattedDate, sector: displaySector, region: displayRegion });
 
   return (
     <Phase3SetupShell
       fullWidth
       headerAlign="left"
-      stepEyebrow="STEP 3.1 · MARKET STUDY"
-      title={projectName ? `Market study — ${projectName}` : 'Market Study & Competitive Intelligence'}
+      stepEyebrow={t('creator.phase3.marketStudy.eyebrow')}
+      title={projectName ? t('creator.phase3.marketStudy.projectTitle', { name: projectName }) : t('creator.phase3.marketStudy.defaultTitle')}
       description={
         completed && output
           ? metadataLine
-          : 'Comprehensive TAM/SAM/SOM sizing funnel, competitor benchmarking, demand signals, and sector validation.'
+          : t('creator.phase3.marketStudy.defaultDesc')
       }
       headerActions={
         completed && output ? (
@@ -270,7 +272,7 @@ export default function MarketStudyPage() {
               disabled={isGenerating || insufficientCredits}
               className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/70 rounded-lg shadow-none"
             >
-              <RotateCw className="w-3.5 h-3.5" /> Regenerate ({marketStudyCost} credits)
+              <RotateCw className="w-3.5 h-3.5" /> {t('creator.phase3.marketStudy.regenerateWithCost', { cost: marketStudyCost })}
             </Button>
             <Button
               variant="outline"
@@ -278,7 +280,7 @@ export default function MarketStudyPage() {
               onClick={handleExport}
               className="h-8 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border-border/70 rounded-lg shadow-none"
             >
-              <Download className="w-3.5 h-3.5" /> Export PDF
+              <Download className="w-3.5 h-3.5" /> {t('creator.phase3.marketStudy.exportPdf')}
             </Button>
           </div>
         ) : undefined
@@ -290,7 +292,7 @@ export default function MarketStudyPage() {
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-destructive font-sans">Generation Error</h4>
+              <h4 className="text-sm font-semibold text-destructive font-sans">{t('creator.phase3.marketStudy.generationError')}</h4>
               <p className="text-xs text-foreground/80 font-sans">{startError.message}</p>
             </div>
           </div>
@@ -303,20 +305,20 @@ export default function MarketStudyPage() {
               <div className="space-y-1">
                 <h4 className="text-sm font-semibold text-destructive font-sans">
                   {isTimedOut
-                    ? 'Market Study generation timed out'
-                    : 'Market Study generation was interrupted'}
+                    ? t('creator.phase3.marketStudy.timedOutTitle')
+                    : t('creator.phase3.marketStudy.interruptedTitle')}
                 </h4>
                 <p className="text-xs text-foreground/90 font-sans">
                   {isTimedOut
-                    ? 'The generation request took longer than expected to complete.'
-                    : 'The AI generation did not finish.'}{' '}
+                    ? t('creator.phase3.marketStudy.timedOutDesc')
+                    : t('creator.phase3.marketStudy.interruptedDesc')}{' '}
                   {credits.data
-                    ? `Current balance: ${credits.data.balance} credits (generation cost: ${marketStudyCost} credits).`
-                    : `Generation cost: ${marketStudyCost} credits.`}
+                    ? t('creator.phase3.marketStudy.balanceCostNote', { balance: credits.data.balance, cost: marketStudyCost })
+                    : t('creator.phase3.marketStudy.costOnlyNote', { cost: marketStudyCost })}
                 </p>
                 {studyError && (
                   <p className="text-xs text-muted-foreground font-mono">
-                    Detail: {studyError}
+                    {t('creator.phase3.marketStudy.errorDetail', 'Detail: {{detail}}', { detail: studyError })}
                   </p>
                 )}
               </div>
@@ -329,7 +331,7 @@ export default function MarketStudyPage() {
                   onClick={() => session.retry()}
                   className="gap-1.5 text-xs font-medium rounded-lg"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" /> Check Again
+                  <RefreshCw className="w-3.5 h-3.5" /> {t('creator.phase3.marketStudy.checkAgain')}
                 </Button>
               )}
               <Button
@@ -337,7 +339,7 @@ export default function MarketStudyPage() {
                 disabled={isGenerating || insufficientCredits}
                 className="gap-2 shrink-0 text-xs font-semibold rounded-lg"
               >
-                <RotateCw className="w-3.5 h-3.5" /> Retry Generation
+                <RotateCw className="w-3.5 h-3.5" /> {t('creator.phase3.marketStudy.retryGeneration')}
               </Button>
             </div>
           </div>
@@ -348,17 +350,17 @@ export default function MarketStudyPage() {
           <Card className="rounded-xl border border-border/70 bg-card p-8 md:p-12 text-center max-w-2xl mx-auto space-y-6 shadow-none">
             <div className="space-y-2 max-w-lg mx-auto">
               <h3 className="text-lg font-semibold tracking-tight text-foreground font-heading">
-                Generate Market Study &amp; Competitor Intelligence
+                {t('creator.phase3.marketStudy.emptyTitle')}
               </h3>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-sans">
-                Synthesize live market sizing funnels (TAM/SAM/SOM), assess direct and indirect competitors, uncover exploitable gaps, and surface demand signals.
+                {t('creator.phase3.marketStudy.emptyDesc')}
               </p>
             </div>
 
             <div className="flex items-center justify-center gap-2 text-xs font-mono text-muted-foreground">
-              <span>Cost: <strong className="text-foreground font-medium">{isCostLoading ? 'Loading cost…' : isCostError ? 'Unavailable' : `${marketStudyCost} credits`}</strong></span>
+              <span>{t('creator.phase3.marketStudy.costLabel')} <strong className="text-foreground font-medium">{isCostLoading ? t('creator.phase3.marketStudy.loadingCost') : isCostError ? t('creator.phase3.marketStudy.costUnavailable') : `${marketStudyCost} credits`}</strong></span>
               {credits.data && (
-                <span>(Balance: {credits.data.balance})</span>
+                <span>({t('creator.phase3.marketStudy.balanceLabel', { balance: credits.data.balance })})</span>
               )}
             </div>
 
@@ -368,7 +370,7 @@ export default function MarketStudyPage() {
                 onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-2/complete', effectiveIdeaId))}
                 className="w-full sm:w-auto text-xs font-medium rounded-lg"
               >
-                <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to Phase 2
+                <ArrowLeft className="w-4 h-4 mr-1.5" /> {t('creator.phase3.marketStudy.backToPhase2')}
               </Button>
               <Button
                 onClick={handleStart}
@@ -376,16 +378,16 @@ export default function MarketStudyPage() {
                 className="w-full sm:w-auto gap-2 text-xs font-semibold px-6 rounded-lg"
               >
                 {isCostLoading
-                  ? 'Loading cost…'
+                  ? t('creator.phase3.marketStudy.loadingCost')
                   : isCostError
-                    ? 'Cost unavailable'
-                    : `Generate Market Study (${marketStudyCost} credits)`}
+                    ? t('creator.phase3.marketStudy.costUnavailable')
+                    : t('creator.phase3.marketStudy.generateCta', { cost: marketStudyCost })}
               </Button>
             </div>
 
             {insufficientCredits && (
               <p className="text-xs text-destructive mt-2 font-sans">
-                Insufficient credit balance ({credits.data?.balance ?? 0} available). Please top up to proceed.
+                {t('creator.phase3.marketStudy.insufficientCredits', { balance: credits.data?.balance ?? 0 })}
               </p>
             )}
           </Card>
@@ -395,9 +397,9 @@ export default function MarketStudyPage() {
         {isGenerating && (
           <Card className="rounded-xl border border-border/70 bg-card p-10 text-center max-w-xl mx-auto space-y-5 shadow-none animate-pulse">
             <div className="space-y-1.5">
-              <h3 className="text-base font-semibold text-foreground font-heading">Synthesizing Market Intelligence</h3>
+              <h3 className="text-base font-semibold text-foreground font-heading">{t('creator.phase3.marketStudy.synthesizingTitle')}</h3>
               <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto font-sans">
-                Running bottom-up market sizing calculations, competitor benchmarking matrices, and demand signal verifications...
+                {t('creator.phase3.marketStudy.synthesizingDesc')}
               </p>
             </div>
             <div className="w-36 h-1 bg-muted rounded-full mx-auto overflow-hidden">
@@ -412,12 +414,15 @@ export default function MarketStudyPage() {
             {/* SECTION 1: Opportunity Summary Card */}
             <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-7 space-y-2 shadow-none">
               <div className="text-xs font-heading font-semibold uppercase tracking-wider text-muted-foreground">
-                YOUR MARKET OPPORTUNITY
+                {t('creator.phase3.marketStudy.opportunityHeader')}
               </div>
               <p className="text-base sm:text-lg font-sans font-normal leading-relaxed text-foreground">
-                Your project operates in the {displaySector.toLowerCase()} market, targeting{' '}
-                {displayTargetUser} in {displayRegion}, with an estimated addressable opportunity of{' '}
-                <span className="font-mono font-semibold">{formatCurrency(tam?.value, tam?.currency)}</span>.
+                {t('creator.phase3.marketStudy.opportunityText', {
+                  sector: displaySector.toLowerCase(),
+                  targetUser: displayTargetUser,
+                  region: displayRegion,
+                  opportunity: formatCurrency(tam?.value, tam?.currency),
+                })}
               </p>
             </div>
 
@@ -426,7 +431,7 @@ export default function MarketStudyPage() {
               {/* Industry */}
               <div className="rounded-xl border border-border/80 bg-card p-5 space-y-1.5 shadow-none flex flex-col justify-between min-h-[96px]">
                 <div className="text-xs font-heading font-medium uppercase tracking-wider text-muted-foreground">
-                  INDUSTRY
+                  {t('creator.phase3.marketStudy.industryLabel')}
                 </div>
                 <div className="text-base font-sans font-medium text-foreground truncate">
                   {displaySector}
@@ -436,7 +441,7 @@ export default function MarketStudyPage() {
               {/* Market */}
               <div className="rounded-xl border border-border/80 bg-card p-5 space-y-1.5 shadow-none flex flex-col justify-between min-h-[96px]">
                 <div className="text-xs font-heading font-medium uppercase tracking-wider text-muted-foreground">
-                  MARKET
+                  {t('creator.phase3.marketStudy.marketLabel')}
                 </div>
                 <div className="text-base font-sans font-medium text-foreground truncate">
                   {tam?.label || creatorMarketGap || `${displaySector} operations tools`}
@@ -446,7 +451,7 @@ export default function MarketStudyPage() {
               {/* Primary Geography */}
               <div className="rounded-xl border border-border/80 bg-card p-5 space-y-1.5 shadow-none flex flex-col justify-between min-h-[96px]">
                 <div className="text-xs font-heading font-medium uppercase tracking-wider text-muted-foreground">
-                  PRIMARY GEOGRAPHY
+                  {t('creator.phase3.marketStudy.primaryGeography')}
                 </div>
                 <div className="text-base font-sans font-medium text-foreground truncate">
                   {displayRegion}
@@ -456,12 +461,12 @@ export default function MarketStudyPage() {
               {/* Market Stage */}
               <div className="rounded-xl border border-border/80 bg-card p-5 space-y-1.5 shadow-none flex flex-col justify-between min-h-[96px]">
                 <div className="text-xs font-heading font-medium uppercase tracking-wider text-muted-foreground">
-                  MARKET STAGE
+                  {t('creator.phase3.marketStudy.marketStage')}
                 </div>
                 <div>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
-                    Growing
+                    {t('creator.phase3.marketStudy.stageGrowing')}
                   </span>
                 </div>
               </div>
@@ -474,44 +479,44 @@ export default function MarketStudyPage() {
                 {/* TAM */}
                 <div className="rounded-2xl border border-border/80 bg-card p-6 space-y-2.5 shadow-none flex flex-col justify-between min-h-[140px]">
                   <div className="flex items-center justify-between text-xs font-heading font-semibold uppercase tracking-wider text-muted-foreground">
-                    <span>TAM</span>
+                    <span>{t('creator.phase3.marketStudy.tamAcronym', 'TAM')}</span>
                     <span className="text-xs font-normal font-mono text-muted-foreground">100%</span>
                   </div>
                   <div className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-foreground font-mono">
                     {formatCurrency(tam?.value, tam?.currency)}
                   </div>
                   <div className="text-xs sm:text-sm font-sans font-normal text-muted-foreground">
-                    {tam?.label || 'Total addressable market'}
+                    {tam?.label || t('creator.phase3.marketStudy.tamTitle')}
                   </div>
                 </div>
 
                 {/* SAM */}
                 <div className="rounded-2xl border border-border/80 bg-card p-6 space-y-2.5 shadow-none flex flex-col justify-between min-h-[140px]">
                   <div className="flex items-center justify-between text-xs font-heading font-semibold uppercase tracking-wider text-muted-foreground">
-                    <span>SAM</span>
+                    <span>{t('creator.phase3.marketStudy.samAcronym', 'SAM')}</span>
                     <span className="text-xs font-normal font-mono text-muted-foreground">{formatPct(samPctOfTam)}%</span>
                   </div>
                   <div className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-foreground font-mono">
                     {formatCurrency(sam?.value, sam?.currency)}
                   </div>
                   <div className="text-xs sm:text-sm font-sans font-normal text-muted-foreground">
-                    {sam?.label || 'Serviceable available market'}
+                    {sam?.label || t('creator.phase3.marketStudy.samTitle')}
                   </div>
                 </div>
 
                 {/* SOM */}
                 <div className="rounded-2xl border border-border/80 bg-card p-6 space-y-2.5 shadow-none flex flex-col justify-between min-h-[140px]">
                   <div className="flex items-center justify-between text-xs font-heading font-semibold uppercase tracking-wider text-muted-foreground">
-                    <span>SOM</span>
+                    <span>{t('creator.phase3.marketStudy.somAcronym', 'SOM')}</span>
                     <span className="text-xs font-normal font-mono text-muted-foreground">
-                      {formatPct(somPctOfTam)}% ({formatPct(somPctOfSam)}% of SAM)
+                      {formatPct(somPctOfTam)}% {t('creator.phase3.marketStudy.pctOfSam', '({{pct}}% of SAM)', { pct: formatPct(somPctOfSam) })}
                     </span>
                   </div>
                   <div className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-foreground font-mono">
                     {formatCurrency(som?.value, som?.currency)}
                   </div>
                   <div className="text-xs sm:text-sm font-sans font-normal text-muted-foreground">
-                    {som?.label || 'Serviceable obtainable market'}
+                    {som?.label || t('creator.phase3.marketStudy.somTitle')}
                   </div>
                 </div>
               </div>
@@ -537,15 +542,15 @@ export default function MarketStudyPage() {
                 <div className="flex flex-wrap items-center gap-6 pt-1 text-xs font-mono text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-[2px] bg-foreground shrink-0" />
-                    <span>SOM {formatCurrency(som?.value, som?.currency)} ({formatPct(somPctOfTam)}%)</span>
+                    <span>{t('creator.phase3.marketStudy.somLegend', 'SOM {{val}} ({{pct}}%)', { val: formatCurrency(som?.value, som?.currency), pct: formatPct(somPctOfTam) })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-[2px] bg-muted-foreground/40 shrink-0" />
-                    <span>SAM {formatCurrency(sam?.value, sam?.currency)} ({formatPct(samPctOfTam)}%)</span>
+                    <span>{t('creator.phase3.marketStudy.samLegend', 'SAM {{val}} ({{pct}}%)', { val: formatCurrency(sam?.value, sam?.currency), pct: formatPct(samPctOfTam) })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-[2px] bg-muted border border-border shrink-0" />
-                    <span>TAM {formatCurrency(tam?.value, tam?.currency)} (100%)</span>
+                    <span>{t('creator.phase3.marketStudy.tamLegend', 'TAM {{val}} (100%)', { val: formatCurrency(tam?.value, tam?.currency) })}</span>
                   </div>
                 </div>
               </div>
@@ -554,7 +559,7 @@ export default function MarketStudyPage() {
             {/* SECTION 4: Target Segments */}
             <div className="space-y-3.5">
               <h2 className="text-lg sm:text-xl font-heading font-semibold text-foreground tracking-tight">
-                Target segments
+                {t('creator.phase3.marketStudy.targetSegmentsTitle')}
               </h2>
               <div className="space-y-3">
                 {targetSegmentsList.map((segment) => (
@@ -581,7 +586,7 @@ export default function MarketStudyPage() {
             {/* SECTION 5: Competitor Analysis */}
             <div className="space-y-3.5">
               <h2 className="text-lg sm:text-xl font-heading font-semibold text-foreground tracking-tight">
-                Competitor landscape
+                {t('creator.phase3.marketStudy.competitorLandscapeTitle')}
               </h2>
 
               <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-none">
@@ -589,11 +594,11 @@ export default function MarketStudyPage() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-border/80 bg-muted/40 text-xs font-heading font-semibold uppercase tracking-wider text-muted-foreground">
-                        <th className="py-3.5 px-4 w-[20%]">COMPETITOR</th>
-                        <th className="py-3.5 px-4 w-[20%]">POSITIONING</th>
-                        <th className="py-3.5 px-4 w-[20%]">STRENGTHS</th>
-                        <th className="py-3.5 px-4 w-[20%]">WEAKNESSES</th>
-                        <th className="py-3.5 px-4 w-[20%]">OPPORTUNITY FOR YOU</th>
+                        <th className="py-3.5 px-4 w-[20%]">{t('creator.phase3.marketStudy.tableCompetitor')}</th>
+                        <th className="py-3.5 px-4 w-[20%]">{t('creator.phase3.marketStudy.tablePositioning')}</th>
+                        <th className="py-3.5 px-4 w-[20%]">{t('creator.phase3.marketStudy.tableStrengths')}</th>
+                        <th className="py-3.5 px-4 w-[20%]">{t('creator.phase3.marketStudy.tableWeaknesses')}</th>
+                        <th className="py-3.5 px-4 w-[20%]">{t('creator.phase3.marketStudy.tableOpportunity')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/60 bg-card">
@@ -645,7 +650,7 @@ export default function MarketStudyPage() {
                       {(!output.competitorLandscape?.directCompetitors || output.competitorLandscape.directCompetitors.length === 0) && (
                         <tr>
                           <td colSpan={5} className="py-8 px-4 text-center text-sm text-muted-foreground">
-                            No direct competitors recorded for this study.
+                            {t('creator.phase3.marketStudy.noCompetitors')}
                           </td>
                         </tr>
                       )}
@@ -660,7 +665,7 @@ export default function MarketStudyPage() {
               {/* Demand Signals */}
               <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-7 space-y-4 shadow-none min-h-[227px]">
                 <h3 className="text-base sm:text-lg font-heading font-semibold text-foreground">
-                  Demand signals
+                  {t('creator.phase3.marketStudy.demandSignalsTitle')}
                 </h3>
                 {output.demandSignals && output.demandSignals.length > 0 ? (
                   <ul className="space-y-3.5">
@@ -678,7 +683,7 @@ export default function MarketStudyPage() {
                           )}
                           {sig.sourceAttribution && (
                             <span className="text-xs font-sans font-normal text-muted-foreground/80 block pt-0.5">
-                              Source: {sig.sourceAttribution}
+                              {t('creator.phase3.marketStudy.sourceAttribution', { source: sig.sourceAttribution })}
                             </span>
                           )}
                         </div>
@@ -687,7 +692,7 @@ export default function MarketStudyPage() {
                   </ul>
                 ) : (
                   <p className="text-sm text-muted-foreground italic font-sans">
-                    No discrete demand signals recorded.
+                    {t('creator.phase3.marketStudy.noDemandSignals')}
                   </p>
                 )}
               </div>
@@ -695,7 +700,7 @@ export default function MarketStudyPage() {
               {/* Market Gaps */}
               <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-7 space-y-4 shadow-none min-h-[227px]">
                 <h3 className="text-base sm:text-lg font-heading font-semibold text-foreground">
-                  Market gaps
+                  {t('creator.phase3.marketStudy.marketGapsTitle')}
                 </h3>
                 <ul className="space-y-3.5">
                   {output.sizingRisks?.map((risk, idx) => (
@@ -711,7 +716,7 @@ export default function MarketStudyPage() {
                   ))}
                   {(!output.sizingRisks || output.sizingRisks.length === 0) && (
                     <li className="text-sm text-muted-foreground italic font-sans">
-                      No specific market gaps flagged.
+                      {t('creator.phase3.marketStudy.noMarketGaps')}
                     </li>
                   )}
                 </ul>
@@ -721,15 +726,15 @@ export default function MarketStudyPage() {
             {/* SECTION 7: Completion Checklist */}
             <div className="rounded-xl border border-border/80 bg-card p-5 sm:p-6 space-y-3 shadow-none">
               <div className="text-xs font-heading font-semibold uppercase tracking-wider text-muted-foreground">
-                STEP COMPLETE
+                {t('creator.phase3.marketStudy.stepCompleteTitle')}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 {[
-                  'Market identified',
-                  'Target users defined',
-                  'TAM / SAM / SOM generated',
-                  'Competitor landscape analyzed',
-                  'Market gaps identified',
+                  t('creator.phase3.marketStudy.checklist.marketIdentified'),
+                  t('creator.phase3.marketStudy.checklist.targetUsersDefined'),
+                  t('creator.phase3.marketStudy.checklist.tamGenerated'),
+                  t('creator.phase3.marketStudy.checklist.competitorsAnalyzed'),
+                  t('creator.phase3.marketStudy.checklist.gapsIdentified'),
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-2.5">
                     <div className="w-4 h-4 rounded-full border border-emerald-600 dark:border-emerald-400 flex items-center justify-center shrink-0">
@@ -750,11 +755,11 @@ export default function MarketStudyPage() {
                 size="sm"
                 onClick={handleRegenerate}
                 disabled={isGenerating || insufficientCredits}
-                aria-label="Re-run market study"
+                aria-label={t('creator.phase3.marketStudy.regenerateAria', 'Re-run market study')}
                 className="inline-flex items-center gap-2 p-2 text-xs sm:text-sm font-sans font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 rounded-lg"
               >
                 <RotateCw className="w-4 h-4 text-muted-foreground" />
-                <span>Regenerate</span>
+                <span>{t('creator.phase3.marketStudy.regenerate')}</span>
               </Button>
 
               <div className="flex items-center gap-3">
@@ -762,7 +767,7 @@ export default function MarketStudyPage() {
                   onClick={handleNext}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6 py-2.5 text-xs sm:text-sm font-sans font-medium inline-flex items-center gap-2 shadow-none transition-colors"
                 >
-                  <span>Continue to Business Model</span>
+                  <span>{t('creator.phase3.marketStudy.continueToBusinessModel')}</span>
                   <ArrowRight className="w-4 h-4 text-primary-foreground" />
                 </Button>
               </div>

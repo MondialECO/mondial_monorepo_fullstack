@@ -19,6 +19,7 @@ import {
   Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export const CANONICAL_CATEGORIES: ConstructionCategory[] = [
   'Business Foundation',
@@ -154,6 +155,7 @@ export function ConstructionSnapshotView({
   onRefresh,
   onDismissStale,
 }: ConstructionSnapshotViewProps) {
+  const { t } = useTranslation();
   const [staleDismissed, setStaleDismissed] = useState(false);
   
   // Track open/collapsed state for categories and item explanations
@@ -212,10 +214,10 @@ export function ConstructionSnapshotView({
           <Layers className="w-6 h-6 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
         </div>
         <h3 className="text-section-title font-semibold text-foreground mb-2">
-          Building your construction snapshot…
+          {t('creator.phase4.snapshotView.buildingSnapshot', 'Building your construction snapshot…')}
         </h3>
         <p className="text-muted-foreground max-w-md text-body">
-          MBC is combining your business plan, project data and professional profile.
+          {t('creator.phase4.snapshotView.combiningData', 'MBC is combining your business plan, project data and professional profile.')}
         </p>
       </div>
     );
@@ -229,17 +231,17 @@ export function ConstructionSnapshotView({
           <AlertTriangle className="w-6 h-6" />
         </div>
         <h3 className="text-section-title font-semibold text-foreground mb-2">
-          We couldn't build your construction snapshot.
+          {t('creator.phase4.snapshotView.errorTitle', "We couldn't build your construction snapshot.")}
         </h3>
         <p className="text-muted-foreground max-w-md text-body mb-6">
-          Your existing project data is safe. ({error})
+          {t('creator.phase4.snapshotView.errorSafe', 'Your existing project data is safe.')} ({error})
         </p>
         <button
           onClick={onGenerate}
           className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl transition-colors inline-flex items-center gap-2"
         >
           <RefreshCw className="w-4 h-4" />
-          Try Again
+          {t('creator.phase4.snapshotView.tryAgain', 'Try Again')}
         </button>
       </div>
     );
@@ -253,16 +255,16 @@ export function ConstructionSnapshotView({
           <Layers className="w-8 h-8" />
         </div>
         <h2 className="text-page-heading font-bold text-foreground mb-3">
-          Your construction snapshot is ready to be generated.
+          {t('creator.phase4.snapshotView.readyTitle', 'Your construction snapshot is ready to be generated.')}
         </h2>
         <p className="text-muted-foreground max-w-lg text-body leading-relaxed mb-8">
-          MBC analyzes your Phase 2 branding, Phase 3 business intelligence, and HumainX professional profile to diagnose what is ready, what is partial, and what requires attention before building.
+          {t('creator.phase4.snapshotView.readyDesc', 'MBC analyzes your Phase 2 branding, Phase 3 business intelligence, and HumainX professional profile to diagnose what is ready, what is partial, and what requires attention before building.')}
         </p>
         <button
           onClick={onGenerate}
           className="px-8 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-xl transition-all duration-200 shadow-md hover:scale-[1.02] flex items-center gap-2"
         >
-          Generate My Snapshot
+          {t('creator.phase4.snapshotView.generateButton', 'Generate My Snapshot')}
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
@@ -316,7 +318,9 @@ export function ConstructionSnapshotView({
           <div className="space-y-1.5 lg:pr-6">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-500" />
-              <span className="text-body font-normal text-muted-foreground">Ready</span>
+              <span className="text-body font-normal text-muted-foreground">
+                {t('creator.phase4.snapshotView.statusReady', 'Ready')}
+              </span>
             </div>
             <div className="font-mono text-stat-lg font-semibold text-foreground">
               {readyCount}
@@ -327,13 +331,15 @@ export function ConstructionSnapshotView({
           <div className="space-y-1.5 lg:px-6">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-slate-500 dark:bg-slate-400" />
-              <span className="text-body font-normal text-muted-foreground">Partial</span>
+              <span className="text-body font-normal text-muted-foreground">
+                {t('creator.phase4.snapshotView.statusPartial', 'Partial')}
+              </span>
             </div>
             <div className="font-mono text-stat-lg font-semibold text-foreground">
               {partialCount}
             </div>
             <p className="text-badge text-muted-foreground font-normal">
-              Includes items needing review
+              {t('creator.phase4.snapshotView.partialNote', 'Includes items needing review')}
             </p>
           </div>
 
@@ -341,7 +347,9 @@ export function ConstructionSnapshotView({
           <div className="space-y-1.5 lg:px-6">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-600 dark:bg-amber-500" />
-              <span className="text-body font-normal text-muted-foreground">Missing</span>
+              <span className="text-body font-normal text-muted-foreground">
+                {t('creator.phase4.snapshotView.statusMissing', 'Missing')}
+              </span>
             </div>
             <div className="font-mono text-stat-lg font-semibold text-foreground">
               {missingCount}
@@ -352,7 +360,9 @@ export function ConstructionSnapshotView({
           <div className="space-y-1.5 lg:px-6">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-700 dark:bg-rose-500" />
-              <span className="text-body font-normal text-muted-foreground">Critical</span>
+              <span className="text-body font-normal text-muted-foreground">
+                {t('creator.phase4.snapshotView.statusCritical', 'Critical')}
+              </span>
             </div>
             <div className="font-mono text-stat-lg font-semibold text-foreground">
               {criticalCount}
@@ -363,7 +373,9 @@ export function ConstructionSnapshotView({
           <div className="space-y-1.5 lg:pl-6">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600" />
-              <span className="text-body font-normal text-muted-foreground">Optional</span>
+              <span className="text-body font-normal text-muted-foreground">
+                {t('creator.phase4.snapshotView.statusOptional', 'Optional')}
+              </span>
             </div>
             <div className="font-mono text-stat-lg font-semibold text-foreground">
               {optionalCount}
@@ -374,10 +386,11 @@ export function ConstructionSnapshotView({
         {/* Sub-strip Divider */}
         <div className="pt-4 mt-6 border-t border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div className="text-body text-muted-foreground font-normal">
-            <span className="font-mono">{totalRequirements}</span> requirements identified from your project and Creator profile.
+            <span className="font-mono">{totalRequirements}</span>{' '}
+            {t('creator.phase4.snapshotView.requirementsIdentified', 'requirements identified from your project and Creator profile.', { count: totalRequirements }).replace(/^\d+\s*/, '')}
           </div>
           <div className="text-badge font-mono font-medium text-muted-foreground uppercase tracking-wider">
-            {displayProjectName} · SCOPE V1
+            {t('creator.phase4.snapshotView.scopeV1', '{{name}} · SCOPE V1', { name: displayProjectName })}
           </div>
         </div>
       </div>
@@ -388,7 +401,7 @@ export function ConstructionSnapshotView({
           <div className="flex flex-wrap items-center gap-2.5">
             <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500 shrink-0" />
             <span className="text-body font-bold text-foreground">
-              Critical item identified
+              {t('creator.phase4.snapshotView.criticalItemIdentified', 'Critical item identified')}
             </span>
             <span className="text-badge font-medium px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
               {criticalItems[0].title}
@@ -398,7 +411,7 @@ export function ConstructionSnapshotView({
             onClick={() => handleScrollToCategory(criticalItems[0].category, criticalItems[0].key)}
             className="text-body text-muted-foreground hover:text-foreground font-medium flex items-center gap-1 transition-colors group cursor-pointer"
           >
-            <span>Detailed under {criticalItems[0].category} category below</span>
+            <span>{t('creator.phase4.snapshotView.detailedUnderCategory', 'Detailed under {{category}} category below', { category: criticalItems[0].category })}</span>
             <ArrowDownRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-transform" />
           </button>
         </div>
@@ -410,7 +423,7 @@ export function ConstructionSnapshotView({
           <div className="flex items-center gap-2.5">
             <RefreshCw className="w-4 h-4 text-primary shrink-0" />
             <span className="text-body font-semibold text-foreground">
-              Update available · Changes to your project information may affect this snapshot.
+              {t('creator.phase4.snapshotView.updateAvailableAlert', 'Update available · Changes to your project information may affect this snapshot.')}
             </span>
             {changedSources && changedSources.length > 0 && (
               <div className="flex flex-wrap gap-1.5 items-center">
@@ -430,14 +443,14 @@ export function ConstructionSnapshotView({
               }}
               className="text-badge text-muted-foreground hover:text-foreground font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted/80 transition-colors"
             >
-              Keep current version
+              {t('creator.phase4.snapshotView.keepCurrent', 'Keep current version')}
             </button>
             <button
               onClick={onRefresh}
               className="text-badge text-primary-foreground bg-primary hover:bg-primary/90 font-semibold px-3.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              Review changes
+              {t('creator.phase4.snapshotView.reviewChanges', 'Review changes')}
             </button>
           </div>
         </div>
@@ -540,7 +553,7 @@ export function ConstructionSnapshotView({
                           <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
                             {item.blocking && (
                               <span className="text-badge font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/40">
-                                Blocking
+                                {t('creator.phase4.snapshotView.blocking', 'Blocking')}
                               </span>
                             )}
                             <PriorityLabel priority={item.priority} />
@@ -556,7 +569,7 @@ export function ConstructionSnapshotView({
                               {/* 1. What is needed */}
                               <div className="space-y-1.5">
                                 <h4 className="text-badge font-semibold uppercase tracking-wider text-muted-foreground">
-                                  WHAT IS NEEDED
+                                  {t('creator.phase4.snapshotView.whatIsNeeded', 'WHAT IS NEEDED')}
                                 </h4>
                                 <p className="text-body text-foreground leading-relaxed">
                                   {whatIsNeeded}
@@ -566,7 +579,7 @@ export function ConstructionSnapshotView({
                               {/* 2. What we know */}
                               <div className="space-y-1.5">
                                 <h4 className="text-badge font-semibold uppercase tracking-wider text-muted-foreground">
-                                  WHAT WE KNOW
+                                  {t('creator.phase4.snapshotView.whatWeKnow', 'WHAT WE KNOW')}
                                 </h4>
                                 <p className="text-body text-foreground leading-relaxed">
                                   {whatWeKnow}
@@ -576,7 +589,7 @@ export function ConstructionSnapshotView({
                               {/* 3. Why this matters */}
                               <div className="space-y-1.5">
                                 <h4 className="text-badge font-semibold uppercase tracking-wider text-muted-foreground">
-                                  WHY THIS MATTERS
+                                  {t('creator.phase4.snapshotView.whyThisMatters', 'WHY THIS MATTERS')}
                                 </h4>
                                 <p className="text-body text-foreground leading-relaxed">
                                   {whyThisMatters}
@@ -588,7 +601,7 @@ export function ConstructionSnapshotView({
                             <div className="pt-4 border-t border-border/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-badge text-muted-foreground font-normal">
-                                  Built from
+                                  {t('creator.phase4.snapshotView.builtFrom', 'Built from')}
                                 </span>
                                 {item.source && item.source.length > 0 ? (
                                   item.source.map((src, idx) => (
@@ -601,7 +614,7 @@ export function ConstructionSnapshotView({
                                   ))
                                 ) : (
                                   <span className="text-badge font-medium px-2.5 py-0.5 rounded-md bg-card text-foreground border border-border shadow-2xs">
-                                    Project Intelligence
+                                    {t('creator.phase4.snapshotView.projectIntelligence', 'Project Intelligence')}
                                   </span>
                                 )}
                               </div>
@@ -610,7 +623,7 @@ export function ConstructionSnapshotView({
                                 href={sourceUrl}
                                 className="text-badge font-medium text-primary hover:text-primary/80 transition-colors inline-flex items-center gap-1 group"
                               >
-                                <span>View source</span>
+                                <span>{t('creator.phase4.snapshotView.viewSource', 'View source')}</span>
                                 <span className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">↗</span>
                               </Link>
                             </div>
@@ -625,7 +638,7 @@ export function ConstructionSnapshotView({
               {/* Clean Empty Category Placeholder */}
               {!isCollapsed && itemCount === 0 && (
                 <div className="pt-3 pb-1 text-badge text-muted-foreground font-normal">
-                  No evaluated requirements in this category yet.
+                  {t('creator.phase4.snapshotView.emptyCategory', 'No evaluated requirements in this category yet.')}
                 </div>
               )}
             </div>
@@ -640,13 +653,13 @@ export function ConstructionSnapshotView({
           className="text-body font-medium text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1.5"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back</span>
+          <span>{t('creator.phase4.snapshotView.back', 'Back')}</span>
         </Link>
         <Link
           href={`/dashboard/creator/phase-4/roadmap?ideaId=${encodeURIComponent(ideaId)}`}
           className="text-button font-medium text-primary-foreground bg-primary hover:bg-primary/90 px-6 py-2.5 rounded-xl transition-all inline-flex items-center gap-2 shadow-sm"
         >
-          <span>Continue to Roadmap</span>
+          <span>{t('creator.phase4.snapshotView.openRoadmap', 'Continue to Roadmap')}</span>
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -674,6 +687,7 @@ function StatusIndicatorDot({ status }: { status: ConstructionStatus }) {
 }
 
 function PriorityLabel({ priority }: { priority: ConstructionPriority }) {
+  const { t } = useTranslation();
   const isCritical = priority === 'Critical';
 
   return (
@@ -685,47 +699,48 @@ function PriorityLabel({ priority }: { priority: ConstructionPriority }) {
           : "text-muted-foreground"
       )}
     >
-      {priority} priority
+      {t('creator.phase4.snapshotView.prioritySuffix', '{{priority}} priority', { priority })}
     </span>
   );
 }
 
 function StatusBadge({ status }: { status: ConstructionStatus }) {
+  const { t } = useTranslation();
   switch (status) {
     case 'Ready':
       return (
         <span className="text-badge font-medium px-2.5 py-0.5 rounded border bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
-          Ready
+          {t('creator.phase4.snapshotView.statusReady', 'Ready')}
         </span>
       );
     case 'NeedsReview':
       return (
         <span className="text-badge font-medium px-2.5 py-0.5 rounded border bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
-          Needs Review
+          {t('creator.phase4.snapshotView.statusNeedsReview', 'Needs Review')}
         </span>
       );
     case 'Partial':
       return (
         <span className="text-badge font-medium px-2.5 py-0.5 rounded border bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
-          Partial
+          {t('creator.phase4.snapshotView.statusPartial', 'Partial')}
         </span>
       );
     case 'Critical':
       return (
         <span className="text-badge font-medium px-2.5 py-0.5 rounded border border-transparent bg-amber-700 text-white dark:bg-rose-700 dark:text-white shadow-2xs">
-          Critical
+          {t('creator.phase4.snapshotView.statusCritical', 'Critical')}
         </span>
       );
     case 'Missing':
       return (
         <span className="text-badge font-medium px-2.5 py-0.5 rounded border bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800">
-          Missing
+          {t('creator.phase4.snapshotView.statusMissing', 'Missing')}
         </span>
       );
     case 'Optional':
       return (
         <span className="text-badge font-medium px-2.5 py-0.5 rounded border border-border text-muted-foreground bg-transparent">
-          Optional
+          {t('creator.phase4.snapshotView.statusOptional', 'Optional')}
         </span>
       );
     default:

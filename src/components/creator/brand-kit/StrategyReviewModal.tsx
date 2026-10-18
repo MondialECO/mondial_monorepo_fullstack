@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React, { useState, useMemo } from "react";
 import { BrandKit, BrandStrategy } from "@/types/creator/brand-kit";
@@ -73,6 +74,7 @@ export function StrategyReviewModal({
   onConfirm,
   isSubmitting = false,
 }: StrategyReviewModalProps) {
+  const { t } = useTranslation("creator");
   const strategy = kit?.strategy;
 
   // Real Database Field Ingestion directly from MongoDB BrandKit/CreatorIdea
@@ -283,7 +285,7 @@ export function StrategyReviewModal({
         
         {/* Modal Header & 6-Step Workflow Track (Figma Node 57003:9812) */}
         <ModalWorkflowHeader
-          title="Confirm your brand strategy"
+          title={t("modals.strategyModalTitle")}
           subtitle="Pulled from your idea. Correct anything that's off — this drives every visual choice after it."
           currentStep={1}
           onClose={onClose}
@@ -298,14 +300,14 @@ export function StrategyReviewModal({
               <div className="flex items-center justify-between pb-1">
                 <div>
                   <h2 className="text-section-heading font-semibold text-foreground tracking-tight font-heading">
-                    Review what we derived from your idea
+                    {t("modals.strategyDerivedTitle")}
                   </h2>
                   <p className="text-caption text-muted-foreground font-sans">
-                    Click any field to correct — changes update downstream steps.
+                    {t("modals.strategyDerivedSubtitle")}
                   </p>
                 </div>
                 <span className="px-2.5 py-1 rounded-md text-badge font-medium bg-muted/70 text-foreground/80 border border-border/60 font-sans">
-                  <span className="font-mono font-semibold text-foreground">5</span> FIELDS
+                  <span className="font-mono font-semibold text-foreground">5</span> {t("modals.strategyFields")}
                 </span>
               </div>
 
@@ -313,7 +315,7 @@ export function StrategyReviewModal({
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-2 transition-all hover:border-border">
                 <div className="flex items-center justify-between">
                   <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
-                    BUSINESS NAME
+                    {t("modals.strategyBusinessName")}
                   </span>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-badge font-medium border font-sans ${
@@ -327,7 +329,7 @@ export function StrategyReviewModal({
                       type="button"
                       onClick={() => setEditingField(editingField === "businessName" ? null : "businessName")}
                       className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
-                      title="Edit Business Name"
+                      title={t("modals.strategyEditBusinessName")}
                     >
                       <Edit3 className="size-3.5" />
                     </button>
@@ -350,7 +352,7 @@ export function StrategyReviewModal({
                       onClick={() => setEditingField(null)}
                       className="h-8 px-3 text-button bg-primary text-primary-foreground cursor-pointer font-sans"
                     >
-                      Done
+                      {t("modals.strategyDone")}
                     </Button>
                   </div>
                 ) : (
@@ -362,7 +364,7 @@ export function StrategyReviewModal({
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-2 transition-all hover:border-border">
                 <div className="flex items-center justify-between">
                   <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
-                    ONE-LINE CONCEPT
+                    {t("modals.strategyOneLineConcept")}
                   </span>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-badge font-medium border font-sans ${
@@ -376,7 +378,7 @@ export function StrategyReviewModal({
                       type="button"
                       onClick={() => setEditingField(editingField === "concept" ? null : "concept")}
                       className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
-                      title="Edit Concept"
+                      title={t("modals.strategyEditConcept")}
                     >
                       <Edit3 className="size-3.5" />
                     </button>
@@ -399,7 +401,7 @@ export function StrategyReviewModal({
                       onClick={() => setEditingField(null)}
                       className="h-8 px-3 text-button bg-primary text-primary-foreground cursor-pointer font-sans"
                     >
-                      Done
+                      {t("modals.strategyDone")}
                     </Button>
                   </div>
                 ) : (
@@ -418,7 +420,7 @@ export function StrategyReviewModal({
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-2 transition-all hover:border-border">
                 <div className="flex items-center justify-between">
                   <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
-                    TARGET AUDIENCE
+                    {t("modals.strategyTargetAudience")}
                   </span>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-badge font-medium border font-sans ${
@@ -432,7 +434,7 @@ export function StrategyReviewModal({
                       type="button"
                       onClick={() => setEditingField(editingField === "targetAudience" ? null : "targetAudience")}
                       className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
-                      title="Edit Target Audience"
+                      title={t("modals.strategyEditAudience")}
                     >
                       <Edit3 className="size-3.5" />
                     </button>
@@ -455,7 +457,7 @@ export function StrategyReviewModal({
                       onClick={() => setEditingField(null)}
                       className="h-8 px-3 text-button bg-primary text-primary-foreground cursor-pointer font-sans"
                     >
-                      Done
+                      {t("modals.strategyDone")}
                     </Button>
                   </div>
                 ) : (
@@ -474,7 +476,7 @@ export function StrategyReviewModal({
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-2 transition-all hover:border-border">
                 <div className="flex items-center justify-between">
                   <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
-                    INDUSTRY
+                    {t("modals.strategyIndustry")}
                   </span>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-badge font-medium border font-sans ${
@@ -488,7 +490,7 @@ export function StrategyReviewModal({
                       type="button"
                       onClick={() => setEditingField(editingField === "industry" ? null : "industry")}
                       className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
-                      title="Edit Industry"
+                      title={t("modals.strategyEditIndustry")}
                     >
                       <Edit3 className="size-3.5" />
                     </button>
@@ -511,7 +513,7 @@ export function StrategyReviewModal({
                       onClick={() => setEditingField(null)}
                       className="h-8 px-3 text-button bg-primary text-primary-foreground cursor-pointer font-sans"
                     >
-                      Done
+                      {t("modals.strategyDone")}
                     </Button>
                   </div>
                 ) : (
@@ -521,7 +523,7 @@ export function StrategyReviewModal({
                         {industry}
                       </span>
                       <span className="text-caption text-muted-foreground font-sans">
-                        Used to shortlist visual directions.
+                        {t("modals.strategyIndustryHint")}
                       </span>
                     </div>
                     {industryEditedTime && (
@@ -537,7 +539,7 @@ export function StrategyReviewModal({
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-2 transition-all hover:border-border">
                 <div className="flex items-center justify-between">
                   <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
-                    POSITIONING
+                    {t("modals.strategyPositioning")}
                   </span>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-badge font-medium border font-sans ${
@@ -551,7 +553,7 @@ export function StrategyReviewModal({
                       type="button"
                       onClick={() => setEditingField(editingField === "positioning" ? null : "positioning")}
                       className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
-                      title="Edit Positioning"
+                      title={t("modals.strategyEditPositioning")}
                     >
                       <Edit3 className="size-3.5" />
                     </button>
@@ -574,7 +576,7 @@ export function StrategyReviewModal({
                       onClick={() => setEditingField(null)}
                       className="h-8 px-3 text-button bg-primary text-primary-foreground cursor-pointer font-sans"
                     >
-                      Done
+                      {t("modals.strategyDone")}
                     </Button>
                   </div>
                 ) : (
@@ -595,14 +597,14 @@ export function StrategyReviewModal({
               <div className="flex items-center justify-between pb-1">
                 <div>
                   <h2 className="text-section-heading font-semibold text-foreground tracking-tight font-heading">
-                    What we need from you
+                    {t("modals.strategyNeedFromYou")}
                   </h2>
                   <p className="text-caption text-muted-foreground font-sans">
-                    Six quick choices — nothing to type
+                    {t("modals.strategyQuickChoices")}
                   </p>
                 </div>
                 <span className="px-2.5 py-1 rounded-md text-badge font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 font-sans">
-                  <span className="font-mono font-semibold">{remainingCount}</span> LEFT
+                  <span className="font-mono font-semibold">{remainingCount}</span> {t("modals.strategyLeft")}
                 </span>
               </div>
 
@@ -610,7 +612,7 @@ export function StrategyReviewModal({
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
-                    NAME DISPLAY FORM
+                    {t("modals.strategyNameDisplayForm")}
                   </span>
                   {nameDisplayForm && (
                     <div className="flex size-4 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
@@ -649,7 +651,7 @@ export function StrategyReviewModal({
                 </div>
 
                 <p className="text-caption text-muted-foreground font-sans">
-                  How your name will be set in the logo.
+                  {t("modals.strategyNameDisplayHint")}
                 </p>
               </div>
 
@@ -657,7 +659,7 @@ export function StrategyReviewModal({
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
-                    BRAND PERSONALITY
+                    {t("modals.strategyBrandPersonality")}
                   </span>
                   {traits.length >= 3 && (
                     <div className="flex size-4 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
@@ -704,7 +706,7 @@ export function StrategyReviewModal({
                         type="text"
                         value={newTraitInput}
                         onChange={(e) => setNewTraitInput(e.target.value)}
-                        placeholder="Custom..."
+                        placeholder={t("modals.strategyCustomPlaceholder")}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
@@ -728,13 +730,13 @@ export function StrategyReviewModal({
                       onClick={() => setShowAddTraitInput(true)}
                       className="px-2.5 py-1 rounded-md text-caption font-medium border border-dashed border-border/90 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer font-sans"
                     >
-                      + Add your own
+                      {t("modals.strategyAddYourOwn")}
                     </button>
                   )}
                 </div>
 
                 <p className="text-caption text-muted-foreground font-sans">
-                  Pick <span className="font-mono font-medium text-foreground">3</span>-<span className="font-mono font-medium text-foreground">5</span>. This is the strongest signal for how your brand looks.
+                  {t("modals.strategyPick")} <span className="font-mono font-medium text-foreground">3</span>-<span className="font-mono font-medium text-foreground">5</span>{t("modals.strategyPersonalityHint")}
                 </p>
               </div>
 
@@ -742,7 +744,7 @@ export function StrategyReviewModal({
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
-                    TONE
+                    {t("modals.strategyTone")}
                   </span>
                   {toneScale && (
                     <div className="flex size-4 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
@@ -753,8 +755,8 @@ export function StrategyReviewModal({
 
                 <div className="space-y-2 pt-1">
                   <div className="flex items-center justify-between text-caption text-muted-foreground font-sans">
-                    <span className={toneScale <= 2 ? "text-foreground font-semibold" : ""}>Formal</span>
-                    <span className={toneScale >= 4 ? "text-foreground font-semibold" : ""}>Casual</span>
+                    <span className={toneScale <= 2 ? "text-foreground font-semibold" : ""}>{t("modals.strategyToneFormal")}</span>
+                    <span className={toneScale >= 4 ? "text-foreground font-semibold" : ""}>{t("modals.strategyToneCasual")}</span>
                   </div>
 
                   {/* 5 Tick Positions Interactive Track */}
@@ -792,7 +794,7 @@ export function StrategyReviewModal({
               <div className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-badge font-semibold uppercase tracking-wider text-muted-foreground font-heading">
-                    FIRST PLACE IT APPEARS
+                    {t("modals.strategyFirstPlace")}
                   </span>
                   {firstAppearance && (
                     <div className="flex size-4 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
@@ -831,9 +833,9 @@ export function StrategyReviewModal({
         <div className="px-6 sm:px-8 py-4 border-t border-border/80 bg-card/90 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-caption text-muted-foreground font-sans">
             <span className="font-mono text-badge font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
-              <span className="font-mono font-semibold">0</span> CREDITS
+              <span className="font-mono font-semibold">0</span> {t("modals.strategyCreditsTag")}
             </span>
-            <span>Refining strategy is free of charge. Everything cascades automatically.</span>
+            <span>{t("modals.strategyCreditsNotice")}</span>
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -843,7 +845,7 @@ export function StrategyReviewModal({
               onClick={onClose}
               className="rounded-xl border-border/80 text-button font-medium font-sans cursor-pointer"
             >
-              Cancel
+              {t("modals.strategyCancel")}
             </Button>
             <Button
               size="sm"
@@ -854,12 +856,12 @@ export function StrategyReviewModal({
               {isSubmitting ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  <span>Confirming…</span>
+                  <span>{t("modals.strategyConfirming")}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="size-3.5" />
-                  <span>Confirm Brand Strategy</span>
+                  <span>{t("modals.strategyConfirmBtn")}</span>
                 </>
               )}
             </Button>

@@ -34,6 +34,7 @@ import {
   type FigmaStageTabKey,
 } from '@/components/creator/legal/LegalFigmaStageSection';
 import { withIdeaContext } from '@/lib/creator-routes';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function generateProjectSummary(
   profile?: LegalBusinessProfileDto | null,
@@ -76,6 +77,7 @@ function generateProjectSummary(
 
 export default function ComplianceWorkspacePage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const queryIdeaId = searchParams.get('ideaId');
   const initialStageParam = searchParams.get('stage');
@@ -200,9 +202,9 @@ export default function ComplianceWorkspacePage() {
   return (
     <Phase3SetupShell
       fullWidth
-      stepEyebrow="STEP 3.4 · LEGAL & COMPLIANCE"
-      title="Legal & Compliance Intelligence"
-      description="Personalized statutory roadmap and evidence tracking based on your verified France business classification."
+      stepEyebrow={t('creator.phase3.compliance.eyebrow')}
+      title={t('creator.phase3.compliance.title')}
+      description={t('creator.phase3.compliance.description')}
     >
       {/* 1. Loading State */}
       {overviewLoading && !isGeneratingActive && (
@@ -219,9 +221,9 @@ export default function ComplianceWorkspacePage() {
       {!overviewLoading && !isGeneratingActive && overviewError && (
         <Card className="p-8 border-dashed border-destructive/40 bg-destructive/5 rounded-2xl text-center space-y-3 max-w-lg mx-auto">
           <AlertTriangle className="size-8 text-destructive mx-auto" />
-          <h3 className="text-sm font-bold text-foreground">We couldn&apos;t load your legal roadmap</h3>
+          <h3 className="text-sm font-bold text-foreground">{t('creator.phase3.compliance.loadErrorTitle')}</h3>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            There was a problem retrieving your personalized legal overview.
+            {t('creator.phase3.compliance.loadErrorDesc')}
           </p>
           <Button
             variant="outline"
@@ -229,7 +231,7 @@ export default function ComplianceWorkspacePage() {
             onClick={() => refetchOverview()}
             className="text-xs rounded-xl gap-1.5 mx-auto border-border"
           >
-            Retry
+            {t('creator.phase3.compliance.retry')}
           </Button>
         </Card>
       )}
@@ -246,12 +248,12 @@ export default function ComplianceWorkspacePage() {
           </div>
           <div className="space-y-1.5">
             <h3 className="text-base font-bold text-foreground">
-              {isGeneratingActive ? 'Generating Your France Legal Roadmap…' : 'Build Your France Legal Roadmap'}
+              {isGeneratingActive ? t('creator.phase3.compliance.generatingTitle') : t('creator.phase3.compliance.generateTitle')}
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-md mx-auto">
               {isGeneratingActive
-                ? 'Classifying your business model, customer types, and revenue tiers to synthesize a deterministic statutory roadmap for France. This may take a moment…'
-                : 'MBC will classify your current business model, customer types, and revenue tiers to synthesize a deterministic statutory roadmap for France.'}
+                ? t('creator.phase3.compliance.generatingDesc')
+                : t('creator.phase3.compliance.generateDesc')}
             </p>
           </div>
 
@@ -269,11 +271,11 @@ export default function ComplianceWorkspacePage() {
             {isGeneratingActive ? (
               <>
                 <RotateCw className="size-4 animate-spin" />
-                Analyzing Business…
+                {t('creator.phase3.compliance.analysingBtn')}
               </>
             ) : (
               <>
-                Analyse My Business
+                {t('creator.phase3.compliance.analyseBtn')}
                 <ArrowRight className="size-4" />
               </>
             )}
@@ -287,7 +289,7 @@ export default function ComplianceWorkspacePage() {
           {/* SECTION 1: SHORT INTRODUCTION (Figma 57156:9158) */}
           <div className="pb-1">
             <p className="text-body text-muted-foreground font-sans">
-              Let’s make the legal side of your project easier to understand.
+              {t('creator.phase3.compliance.intro')}
             </p>
           </div>
 
@@ -296,10 +298,10 @@ export default function ComplianceWorkspacePage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
                 <h2 className="text-page-heading sm:text-2xl font-semibold tracking-tight text-foreground font-heading">
-                  Your legal roadmap is ready.
+                  {t('creator.phase3.compliance.roadmapReady')}
                 </h2>
                 <p className="text-body text-muted-foreground leading-relaxed font-sans">
-                  Here’s what to prepare before registration, launch and day-to-day operations — based on your project.
+                  {t('creator.phase3.compliance.roadmapSubtitle', 'Here’s what to prepare before registration, launch and day-to-day operations — based on your project.')}
                 </p>
               </div>
               <Button
@@ -310,7 +312,7 @@ export default function ComplianceWorkspacePage() {
                 className="gap-1.5 text-xs rounded-lg border-border font-sans shrink-0"
               >
                 <RotateCw className={cn("size-3.5", isGeneratingActive && "animate-spin")} />
-                Re-evaluate
+                {t('creator.phase3.compliance.reevaluate', 'Re-evaluate')}
               </Button>
             </div>
           </Card>
@@ -320,7 +322,7 @@ export default function ComplianceWorkspacePage() {
             <div className="p-6 rounded-lg border border-primary/20 bg-secondary dark:bg-secondary/40 shadow-xs space-y-3">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-badge font-bold uppercase tracking-wider bg-card text-primary font-sans">
-                  START HERE
+                  {t('creator.phase3.compliance.startHere', 'START HERE')}
                 </span>
               </div>
 
@@ -338,7 +340,7 @@ export default function ComplianceWorkspacePage() {
                 onClick={() => handleReviewStep(nextAction)}
                 className="rounded text-button font-medium h-auto py-2.5 px-5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs gap-2 font-sans"
               >
-                Review this step
+                {t('creator.phase3.compliance.reviewStep', 'Review this step')}
                 <ArrowRight className="size-4" />
               </Button>
             </div>
@@ -346,10 +348,10 @@ export default function ComplianceWorkspacePage() {
             <div className="p-6 rounded-lg border border-success-strong/20 bg-success-light dark:bg-success-strong/10 shadow-xs space-y-2">
               <div className="flex items-center gap-2 text-success-strong">
                 <CheckCircle2 className="size-5" />
-                <h3 className="text-card-title font-semibold font-heading">All milestones marked as satisfied!</h3>
+                <h3 className="text-card-title font-semibold font-heading">{t('creator.phase3.compliance.allSatisfiedTitle', 'All milestones marked as satisfied!')}</h3>
               </div>
               <p className="text-caption text-muted-foreground font-sans">
-                You have verified and completed every statutory requirement identified for your France setup.
+                {t('creator.phase3.compliance.allSatisfiedDesc', 'You have verified and completed every statutory requirement identified for your France setup.')}
               </p>
             </div>
           )}
@@ -358,7 +360,7 @@ export default function ComplianceWorkspacePage() {
           <Card className="p-6 rounded-lg border border-border/80 bg-card shadow-xs space-y-3">
             <div className="space-y-1">
               <h3 className="text-card-title font-semibold text-foreground font-heading">
-                About your project
+                {t('creator.phase3.compliance.aboutProject', 'About your project')}
               </h3>
               <p className="text-body text-muted-foreground leading-relaxed font-sans">
                 {projectSummaryNarrative}
@@ -375,7 +377,7 @@ export default function ComplianceWorkspacePage() {
                 }
                 className="p-0 h-auto text-label font-medium text-primary hover:underline gap-1.5 inline-flex items-center font-sans"
               >
-                Update your project details
+                {t('creator.phase3.compliance.updateProjectDetails', 'Update your project details')}
                 <ExternalLink className="size-3.5" />
               </Button>
             </div>
@@ -395,7 +397,7 @@ export default function ComplianceWorkspacePage() {
           {/* SECTION 6: FOOTER REASSURANCE & CONTINUATION (Figma 57156:9158) */}
           <div className="pt-8 pb-16 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-border/60">
             <p className="text-body text-muted-foreground font-sans">
-              You can return to this roadmap as your project moves forward.
+              {t('creator.phase3.compliance.footerNote', 'You can return to this roadmap as your project moves forward.')}
             </p>
 
             <div className="flex items-center gap-3 shrink-0">
@@ -409,14 +411,14 @@ export default function ComplianceWorkspacePage() {
                 className="gap-2 text-button font-medium font-sans text-muted-foreground hover:text-foreground rounded"
               >
                 <ArrowLeft className="size-4" />
-                Back
+                {t('creator.branding.back', 'Back')}
               </Button>
 
               <Button
                 onClick={handleSaveAndContinue}
                 className="rounded text-button font-medium h-auto py-2.5 px-6 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs font-sans"
               >
-                Save and continue
+                {t('creator.phase3.compliance.continueToFormation', 'Save and continue')}
               </Button>
             </div>
           </div>

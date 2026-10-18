@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Printer, X, Check } from "lucide-react";
 import type { BusinessModelOutput } from "@/types/creator/ai";
 
@@ -76,6 +77,7 @@ export default function BusinessModelPrintView({
   version = 1,
   updatedAt,
 }: BusinessModelPrintProps) {
+  const { t } = useTranslation();
   const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
@@ -121,12 +123,12 @@ export default function BusinessModelPrintView({
           onClick={onClose}
           className="gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
         >
-          <X className="h-4 w-4" /> Close
+          <X className="h-4 w-4" /> {t('creator.phase3.businessModel.print.close', 'Close')}
         </Button>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>A4 Executive View · Browser &ldquo;Save as PDF&rdquo;</span>
+          <span>{t('creator.phase3.businessModel.print.a4Subtitle', 'A4 Executive View · Browser “Save as PDF”')}</span>
         </div>
 
         <Button
@@ -134,7 +136,7 @@ export default function BusinessModelPrintView({
           onClick={() => window.print()}
           className="gap-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm cursor-pointer"
         >
-          <Printer className="h-4 w-4" /> Print / Save as PDF
+          <Printer className="h-4 w-4" /> {t('creator.phase3.businessModel.print.printCta', 'Print / Save as PDF')}
         </Button>
       </div>
 
@@ -144,10 +146,10 @@ export default function BusinessModelPrintView({
         <header className="print-section mb-6 pb-4 border-b border-neutral-200">
           <div className="flex items-center justify-between gap-4 mb-3">
             <span className="text-xs font-mono font-semibold uppercase tracking-wider text-neutral-400">
-              3.2 / BUSINESS MODEL
+              {t('creator.phase3.businessModel.print.stepEyebrow', '3.2 / BUSINESS MODEL')}
             </span>
             <span className="text-xs font-mono text-neutral-400 uppercase">
-              Phase 3.2 Output · Version {version ?? 1}
+              {t('creator.phase3.businessModel.print.versionNote', 'Phase 3.2 Output · Version {{version}}', { version: version ?? 1 })}
             </span>
           </div>
 
@@ -162,7 +164,7 @@ export default function BusinessModelPrintView({
                       ? `data:image/svg+xml;utf8,${encodeURIComponent(logoUrl.trim())}`
                       : logoUrl
                   }
-                  alt={`${displayProjectName} Logo`}
+                  alt={t('creator.phase3.businessModel.print.logoAlt', '{{name}} Logo', { name: displayProjectName })}
                   className="w-full h-full object-contain"
                   onError={() => setLogoError(true)}
                 />
@@ -174,10 +176,10 @@ export default function BusinessModelPrintView({
             )}
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-neutral-900 leading-tight font-heading">
-                Business model : {displayProjectName}
+                {t('creator.phase3.businessModel.print.title', 'Business model : {{name}}', { name: displayProjectName })}
               </h1>
               <p className="mt-1 text-xs text-neutral-500 font-sans">
-                Derived from market study 3.1 · {displaySector} · Last edited {displayDate}
+                {t('creator.phase3.businessModel.print.metaDesc', 'Derived from market study 3.1 · {{sector}} · Last edited {{date}}', { sector: displaySector, date: displayDate })}
               </p>
             </div>
           </div>
@@ -189,13 +191,13 @@ export default function BusinessModelPrintView({
         <section className="print-section mb-6 break-inside-avoid space-y-3">
           {/* Upper Region: 5 Equal Columns */}
           <div className="grid grid-cols-5 gap-2.5 items-stretch text-neutral-900">
-            {/* Column 1: Key Partners (01) */}
+            {/* Column 1: {t('creator.phase3.businessModel.canvas.keyPartnersTitle', 'Key Partners')} (01) */}
             <div className="rounded-lg border border-neutral-300 bg-neutral-50/50 flex flex-col overflow-hidden">
               <div className="px-3 py-2 flex items-center justify-between border-b border-neutral-200 bg-white">
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono text-badge font-semibold text-neutral-400">01</span>
                   <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">
-                    Key Partners
+                    {t('creator.phase3.businessModel.canvas.keyPartnersTitle', 'Key Partners')}
                   </h4>
                 </div>
                 <span className="text-badge font-sans text-neutral-400">
@@ -213,21 +215,19 @@ export default function BusinessModelPrintView({
                     </div>
                   ))
                 ) : (
-                  <p className="text-caption text-neutral-400 italic py-1">None defined</p>
+                  <p className="text-caption text-neutral-400 italic py-1">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                 )}
               </div>
             </div>
 
-            {/* Column 2: Key Activities (02) & Key Resources (03) */}
+            {/* Column 2: {t('creator.phase3.businessModel.canvas.keyActivitiesTitle', 'Key Activities')} (02) & {t('creator.phase3.businessModel.canvas.keyResourcesTitle', 'Key Resources')} (03) */}
             <div className="flex flex-col gap-2.5">
               {/* 02 Key Activities */}
               <div className="rounded-lg border border-neutral-300 bg-neutral-50/50 flex-1 flex flex-col overflow-hidden">
                 <div className="px-3 py-2 flex items-center justify-between border-b border-neutral-200 bg-white">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-badge font-semibold text-neutral-400">02</span>
-                    <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">
-                      Key Activities
-                    </h4>
+                    <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">{t('creator.phase3.businessModel.canvas.keyActivitiesTitle', 'Key Activities')}</h4>
                   </div>
                   <span className="text-badge font-sans text-neutral-400">
                     {canvas?.keyActivities?.length ?? 0}
@@ -244,7 +244,7 @@ export default function BusinessModelPrintView({
                       </div>
                     ))
                   ) : (
-                    <p className="text-caption text-neutral-400 italic py-1">None defined</p>
+                    <p className="text-caption text-neutral-400 italic py-1">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                   )}
                 </div>
               </div>
@@ -254,9 +254,7 @@ export default function BusinessModelPrintView({
                 <div className="px-3 py-2 flex items-center justify-between border-b border-neutral-200 bg-white">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-badge font-semibold text-neutral-400">03</span>
-                    <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">
-                      Key Resources
-                    </h4>
+                    <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">{t('creator.phase3.businessModel.canvas.keyResourcesTitle', 'Key Resources')}</h4>
                   </div>
                   <span className="text-badge font-sans text-neutral-400">
                     {canvas?.keyResources?.length ?? 0}
@@ -273,19 +271,19 @@ export default function BusinessModelPrintView({
                       </div>
                     ))
                   ) : (
-                    <p className="text-caption text-neutral-400 italic py-1">None defined</p>
+                    <p className="text-caption text-neutral-400 italic py-1">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Column 3: Value Propositions (04) */}
+            {/* Column 3: {t('creator.phase3.businessModel.canvas.valuePropsTitle', 'Value Propositions')} (04) */}
             <div className="rounded-lg border-2 border-neutral-800 bg-neutral-50/50 flex flex-col overflow-hidden">
               <div className="px-3 py-2 flex items-center justify-between border-b border-neutral-300 bg-white">
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono text-badge font-semibold text-neutral-800">04</span>
                   <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-900">
-                    Value Propositions
+                    {t('creator.phase3.businessModel.canvas.valuePropsTitle', 'Value Propositions')}
                   </h4>
                 </div>
                 <span className="text-badge font-sans text-neutral-400">
@@ -310,21 +308,19 @@ export default function BusinessModelPrintView({
                     </div>
                   ))
                 ) : (
-                  <p className="text-caption text-neutral-400 italic py-1">None defined</p>
+                  <p className="text-caption text-neutral-400 italic py-1">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                 )}
               </div>
             </div>
 
-            {/* Column 4: Customer Relationships (05) & Channels (06) */}
+            {/* Column 4: Customer {t('creator.phase3.businessModel.canvas.relationshipsTitle', 'Relationships')} (05) & {t('creator.phase3.businessModel.canvas.channelsTitle', 'Channels')} (06) */}
             <div className="flex flex-col gap-2.5">
               {/* 05 Customer Relationships */}
               <div className="rounded-lg border border-neutral-300 bg-neutral-50/50 flex-1 flex flex-col overflow-hidden">
                 <div className="px-3 py-2 flex items-center justify-between border-b border-neutral-200 bg-white">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-badge font-semibold text-neutral-400">05</span>
-                    <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">
-                      Relationships
-                    </h4>
+                    <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">{t('creator.phase3.businessModel.canvas.relationshipsTitle', 'Relationships')}</h4>
                   </div>
                   <span className="text-badge font-sans text-neutral-400">
                     {canvas?.customerRelationships?.length ?? 0}
@@ -341,7 +337,7 @@ export default function BusinessModelPrintView({
                       </div>
                     ))
                   ) : (
-                    <p className="text-caption text-neutral-400 italic py-1">None defined</p>
+                    <p className="text-caption text-neutral-400 italic py-1">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                   )}
                 </div>
               </div>
@@ -351,9 +347,7 @@ export default function BusinessModelPrintView({
                 <div className="px-3 py-2 flex items-center justify-between border-b border-neutral-200 bg-white">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-badge font-semibold text-neutral-400">06</span>
-                    <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">
-                      Channels
-                    </h4>
+                    <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">{t('creator.phase3.businessModel.canvas.channelsTitle', 'Channels')}</h4>
                   </div>
                   <span className="text-badge font-sans text-neutral-400">
                     {canvas?.channels?.length ?? 0}
@@ -370,19 +364,19 @@ export default function BusinessModelPrintView({
                       </div>
                     ))
                   ) : (
-                    <p className="text-caption text-neutral-400 italic py-1">None defined</p>
+                    <p className="text-caption text-neutral-400 italic py-1">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Column 5: Customer Segments (07) */}
+            {/* Column 5: Customer {t('creator.phase3.businessModel.canvas.segmentsTitle', 'Segments')} (07) */}
             <div className="rounded-lg border border-neutral-300 bg-neutral-50/50 flex flex-col overflow-hidden">
               <div className="px-3 py-2 flex items-center justify-between border-b border-neutral-200 bg-white">
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono text-badge font-semibold text-neutral-400">07</span>
                   <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">
-                    Segments
+                    {t('creator.phase3.businessModel.canvas.segmentsTitle', 'Segments')}
                   </h4>
                 </div>
                 <span className="text-badge font-sans text-neutral-400">
@@ -400,13 +394,13 @@ export default function BusinessModelPrintView({
                     </div>
                   ))
                 ) : (
-                  <p className="text-caption text-neutral-400 italic py-1">None defined</p>
+                  <p className="text-caption text-neutral-400 italic py-1">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Lower Region: Cost Structure (08) & Revenue Streams (09) */}
+          {/* Lower Region: {t('creator.phase3.businessModel.canvas.costStructureTitle', 'Cost Structure')} (08) & {t('creator.phase3.businessModel.canvas.revenueStreamsTitle', 'Revenue Streams')} (09) */}
           <div className="grid grid-cols-11 gap-2.5 items-stretch">
             {/* Cost Structure (55%) -> 6 of 11 */}
             <div className="col-span-6 rounded-lg border border-neutral-300 bg-neutral-50/50 flex flex-col overflow-hidden">
@@ -414,11 +408,11 @@ export default function BusinessModelPrintView({
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono text-badge font-semibold text-neutral-400">08</span>
                   <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">
-                    Cost Structure
+                    {t('creator.phase3.businessModel.canvas.costStructureTitle', 'Cost Structure')}
                   </h4>
                 </div>
                 <span className="text-badge font-sans text-neutral-400">
-                  {canvas?.costStructure?.length ?? 0} items
+                  {t('creator.phase3.businessModel.canvas.itemsCount', { count: canvas?.costStructure?.length ?? 0 })}
                 </span>
               </div>
               <div className="p-2.5 flex-1">
@@ -434,7 +428,7 @@ export default function BusinessModelPrintView({
                     ))}
                   </div>
                 ) : (
-                  <p className="text-caption text-neutral-400 italic py-1">None defined</p>
+                  <p className="text-caption text-neutral-400 italic py-1">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                 )}
               </div>
             </div>
@@ -445,11 +439,11 @@ export default function BusinessModelPrintView({
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono text-badge font-semibold text-neutral-400">09</span>
                   <h4 className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-800">
-                    Revenue Streams
+                    {t('creator.phase3.businessModel.canvas.revenueStreamsTitle', 'Revenue Streams')}
                   </h4>
                 </div>
                 <span className="text-badge font-sans text-neutral-400">
-                  {canvas?.revenueStreams?.length ?? 0} items
+                  {t('creator.phase3.businessModel.canvas.itemsCount', { count: canvas?.revenueStreams?.length ?? 0 })}
                 </span>
               </div>
               <div className="p-2.5 flex-1 flex flex-col gap-1.5">
@@ -463,7 +457,7 @@ export default function BusinessModelPrintView({
                     </div>
                   ))
                 ) : (
-                  <p className="text-caption text-neutral-400 italic py-1">None defined</p>
+                  <p className="text-caption text-neutral-400 italic py-1">{t('creator.phase3.businessModel.canvas.noneDefined', 'None defined')}</p>
                 )}
               </div>
             </div>
@@ -471,16 +465,16 @@ export default function BusinessModelPrintView({
         </section>
 
         {/* ========================================================================= */}
-        {/* SECTION 1: UNIT ECONOMICS STRIP */}
+        {/* SECTION 1: {t('creator.phase3.businessModel.unitEconomics.eyebrow', 'UNIT ECONOMICS')} STRIP */}
         {/* ========================================================================= */}
         <section className="print-section mb-6 break-inside-avoid">
           <div className="rounded-lg border border-neutral-300 bg-white p-4 space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-neutral-200">
               <span className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-500">
-                UNIT ECONOMICS
+                {t('creator.phase3.businessModel.unitEconomics.eyebrow', 'UNIT ECONOMICS')}
               </span>
               <span className="font-sans text-caption text-neutral-400">
-                Calibrated based on benchmarks
+                {t('creator.phase3.businessModel.unitEconomics.calibratedDesc', 'Calibrated based on benchmarks')}
               </span>
             </div>
 
@@ -488,7 +482,7 @@ export default function BusinessModelPrintView({
               {/* CAC */}
               <div className="pr-4 space-y-1">
                 <div className="text-badge font-heading font-semibold uppercase tracking-wider text-neutral-400">
-                  CAC
+                  {t('creator.phase3.businessModel.unitEconomics.cacShort', 'CAC')}
                 </div>
                 <div className="text-stat-lg font-bold font-mono tracking-tight text-neutral-900">
                   {formatCurrencyAmount(unitEconomics?.cac?.amount, unitEconomics?.cac?.currency)}
@@ -498,7 +492,7 @@ export default function BusinessModelPrintView({
               {/* LTV */}
               <div className="px-4 space-y-1">
                 <div className="text-badge font-heading font-semibold uppercase tracking-wider text-neutral-400">
-                  LTV
+                  {t('creator.phase3.businessModel.unitEconomics.ltvShort', 'LTV')}
                 </div>
                 <div className="text-stat-lg font-bold font-mono tracking-tight text-neutral-900">
                   {formatCurrencyAmount(unitEconomics?.ltv?.amount, unitEconomics?.ltv?.currency)}
@@ -508,14 +502,14 @@ export default function BusinessModelPrintView({
               {/* LTV / CAC */}
               <div className="px-4 space-y-1">
                 <div className="text-badge font-heading font-semibold uppercase tracking-wider text-neutral-400">
-                  LTV / CAC
+                  {t('creator.phase3.businessModel.unitEconomics.ratioShort', 'LTV / CAC')}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-stat-lg font-bold font-mono tracking-tight text-neutral-900">
                     {ltvToCacRatio !== undefined ? `${Number(ltvToCacRatio).toFixed(1)}x` : "—"}
                   </span>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-badge font-sans font-medium bg-emerald-50 text-emerald-800 border border-emerald-300">
-                    Healthy
+                    {t('creator.phase3.businessModel.unitEconomics.statusHealthy', 'Healthy')}
                   </span>
                 </div>
               </div>
@@ -523,7 +517,7 @@ export default function BusinessModelPrintView({
               {/* ESTIMATED PAYBACK */}
               <div className="pl-4 space-y-1">
                 <div className="text-badge font-heading font-semibold uppercase tracking-wider text-neutral-400">
-                  ESTIMATED PAYBACK
+                  {t('creator.phase3.businessModel.unitEconomics.paybackShort', 'ESTIMATED PAYBACK')}
                 </div>
                 <div className="text-stat-lg font-bold font-mono tracking-tight text-neutral-900">
                   {paybackValue !== undefined ? `${paybackValue} months` : "—"}
@@ -539,7 +533,7 @@ export default function BusinessModelPrintView({
         <section className="print-section mb-6 break-inside-avoid">
           <div className="rounded-lg border border-neutral-300 bg-neutral-50/50 p-4 space-y-2.5">
             <div className="font-heading text-badge font-bold uppercase tracking-wider text-neutral-500">
-              STEP COMPLETE
+              {t('creator.phase3.businessModel.print.stepComplete', 'STEP COMPLETE')}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {[
@@ -564,8 +558,8 @@ export default function BusinessModelPrintView({
 
         {/* Document Footer */}
         <footer className="mt-8 pt-3 border-t border-neutral-200 flex items-center justify-between text-badge font-mono text-neutral-400">
-          <span>Mondial ECO Platform · Autonomous Startup Synthesis Engine</span>
-          <span>Verified Confidential · Phase 3.2</span>
+          <span>{t('creator.phase3.businessModel.print.footerPlatform', 'Mondial ECO Platform · Autonomous Startup Synthesis Engine')}</span>
+          <span>{t('creator.phase3.businessModel.print.footerConfidential', 'Verified Confidential · Phase 3.2')}</span>
         </footer>
       </div>
     </div>,

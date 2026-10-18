@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 import type {
   ExtendedLegalChecklistItem,
   ChecklistStatus,
@@ -150,7 +151,21 @@ export function LegalFigmaStageSection({
   disclaimer,
   className,
 }: LegalFigmaStageSectionProps) {
+  const { t } = useTranslation();
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
+
+  const getTabLabel = (tab: StageTabConfig) => {
+    switch (tab.key) {
+      case 'before_register':
+        return t('creator.phase3.compliance.stages.beforeRegister', tab.label);
+      case 'register_launch':
+        return t('creator.phase3.compliance.stages.registerLaunch', tab.label);
+      case 'running_business':
+        return t('creator.phase3.compliance.stages.runningBusiness', tab.label);
+      default:
+        return tab.label;
+    }
+  };
 
   // Filter items for current active tab
   const currentTabConfig = FIGMA_STAGE_TABS.find((t) => t.key === activeTab) || FIGMA_STAGE_TABS[0];
@@ -174,10 +189,10 @@ export function LegalFigmaStageSection({
       {/* 5.1 Section Header (Figma 57156:9158) */}
       <div className="space-y-1">
         <h2 className="text-card-title sm:text-xl font-semibold tracking-tight text-foreground font-heading">
-          Your steps, organised by stage
+          {t('creator.phase3.compliance.stagesTitle', 'Your steps, organised by stage')}
         </h2>
         <p className="text-body text-muted-foreground leading-relaxed font-sans">
-          Open a step to see why it matters, when to handle it and what to do.
+          {t('creator.phase3.compliance.stagesSubtitle', 'Open a step to see why it matters, when to handle it and what to do.')}
         </p>
       </div>
 
@@ -199,7 +214,7 @@ export function LegalFigmaStageSection({
                   : 'text-muted-foreground hover:text-foreground hover:bg-card/40'
               )}
             >
-              <span>{tab.label}</span>
+              <span>{getTabLabel(tab)}</span>
               <span
                 className={cn(
                   'px-2 py-0.5 rounded-full text-badge font-medium leading-none font-mono',
@@ -219,9 +234,11 @@ export function LegalFigmaStageSection({
       <div>
         {tabItems.length === 0 ? (
           <Card className="p-8 text-center rounded-lg border border-border/80 bg-card space-y-2">
-            <p className="text-card-title font-semibold text-foreground font-heading">No requirements in this stage</p>
+            <p className="text-card-title font-semibold text-foreground font-heading">
+              {t('creator.phase3.compliance.noReqsTitle', 'No requirements in this stage')}
+            </p>
             <p className="text-body text-muted-foreground font-sans">
-              Based on your active venture classification, no statutory tasks apply to this stage.
+              {t('creator.phase3.compliance.noReqsDesc', 'Based on your active venture classification, no statutory tasks apply to this stage.')}
             </p>
           </Card>
         ) : (
@@ -278,7 +295,7 @@ export function LegalFigmaStageSection({
                         {isCompleted && (
                           <div className="pt-0.5">
                             <span className="inline-flex items-center text-badge font-medium py-0.5 px-2.5 rounded-full bg-success-light text-success-strong dark:bg-success-strong/15 dark:text-emerald-300 font-sans">
-                              Marked done by you
+                              {t('creator.phase3.compliance.markedDone', 'Marked done by you')}
                             </span>
                           </div>
                         )}
@@ -301,7 +318,7 @@ export function LegalFigmaStageSection({
                       {/* A. WHY THIS APPLIES TO YOU */}
                       <div className="space-y-1">
                         <span className="text-caption font-bold uppercase tracking-wider text-foreground block font-heading">
-                          WHY THIS APPLIES TO YOU
+                          {t('creator.phase3.compliance.whyApplies', 'WHY THIS APPLIES TO YOU')}
                         </span>
                         <p className="text-body text-muted-foreground leading-relaxed font-sans">
                           {item.whyItApplies ||
@@ -312,7 +329,7 @@ export function LegalFigmaStageSection({
                       {/* B. WHEN TO DO IT */}
                       <div className="space-y-1">
                         <span className="text-caption font-bold uppercase tracking-wider text-foreground block font-heading">
-                          WHEN TO DO IT
+                          {t('creator.phase3.compliance.whenToDo', 'WHEN TO DO IT')}
                         </span>
                         <p className="text-body text-muted-foreground leading-relaxed font-sans">
                           {getTimingGuidance(item)}
@@ -322,7 +339,7 @@ export function LegalFigmaStageSection({
                       {/* C. WHAT TO DO */}
                       <div className="space-y-1">
                         <span className="text-caption font-bold uppercase tracking-wider text-foreground block font-heading">
-                          WHAT TO DO
+                          {t('creator.phase3.compliance.whatToDo', 'WHAT TO DO')}
                         </span>
                         <div className="space-y-1 text-body text-muted-foreground leading-relaxed font-sans">
                           {getActionSteps(item).map((step, idx) => (
@@ -334,7 +351,7 @@ export function LegalFigmaStageSection({
                       {/* D. OFFICIAL GUIDANCE CARD (Figma 57156:9158) */}
                       <div className="rounded border border-border/80 bg-card p-4 space-y-1 shadow-xs">
                         <div className="text-badge font-bold uppercase tracking-wider text-muted-foreground font-sans">
-                          OFFICIAL GUIDANCE
+                          {t('creator.phase3.compliance.officialGuidance', 'OFFICIAL GUIDANCE')}
                         </div>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                           <p className="text-body font-semibold text-foreground leading-snug font-sans">
@@ -349,7 +366,7 @@ export function LegalFigmaStageSection({
                               rel="noopener noreferrer"
                               className="text-label font-medium text-primary hover:underline shrink-0 inline-flex items-center gap-1 font-sans"
                             >
-                              Open the official guide ↗
+                              {t('creator.phase3.compliance.openOfficialGuide', 'Open the official guide ↗')}
                             </a>
                           )}
                         </div>
@@ -358,7 +375,7 @@ export function LegalFigmaStageSection({
                       {/* E. SUBTLE REMINDER (Figma 57156:9158) */}
                       <div className="pt-1">
                         <p className="text-footnote text-muted-foreground font-sans">
-                          Mark this step done once you have completed the checks.
+                          {t('creator.phase3.compliance.markDoneReminder', 'Mark this step done once you have completed the checks.')}
                         </p>
                       </div>
                     </div>
@@ -372,7 +389,7 @@ export function LegalFigmaStageSection({
 
       {/* 5.4 Quiet Legal Disclaimer (Figma 57156:9158) */}
       <p className="text-footnote text-muted-foreground text-center py-2 leading-relaxed font-sans">
-        Checkmarks record your progress; they do not represent legal verification by MBC.
+        {disclaimer || t('creator.phase3.compliance.disclaimer', 'Checkmarks record your progress; they do not represent legal verification by MBC.')}
       </p>
     </div>
   );

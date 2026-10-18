@@ -5,8 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { withIdeaContext } from "@/lib/creator-routes";
 
+import { useTranslation } from "@/hooks/useTranslation";
+
 export default function AILogoToolPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const ideaId = searchParams.get("ideaId");
 
@@ -17,7 +20,7 @@ export default function AILogoToolPage() {
   return (
     <div className="w-full flex-1 flex flex-col items-center justify-center min-h-screen p-4 bg-background text-foreground gap-3">
       <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      <p className="text-xs text-muted-foreground font-sans">Redirecting to Brand Identity Studio…</p>
+      <p className="text-xs text-muted-foreground font-sans">{t("creator.phase2.logoTool.redirecting")}</p>
     </div>
   );
 }

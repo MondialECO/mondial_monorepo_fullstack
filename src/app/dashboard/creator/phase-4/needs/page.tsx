@@ -16,16 +16,20 @@ import type {
   NeedsAnalysisResponse,
   UpdateNeedStateRequest,
 } from '@/types/creator/needs';
+import { useTranslation } from '@/hooks/useTranslation';
+
+function NeedsPageFallback() {
+  const { t } = useTranslation();
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-mono text-sm">
+      {t('creator.phase4.needsPage.loading', 'Loading Needs & Requirements...')}
+    </div>
+  );
+}
 
 export default function CreatorPhase4NeedsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
-          Loading Needs & Requirements...
-        </div>
-      }
-    >
+    <Suspense fallback={<NeedsPageFallback />}>
       <CreatorPhase4NeedsInner />
     </Suspense>
   );
@@ -44,6 +48,7 @@ function CreatorPhase4NeedsInner() {
 }
 
 function NeedsPageContent({ ideaId }: { ideaId: string }) {
+  const { t } = useTranslation();
   const { state: progressState, refetch } = useCreatorProgress();
   const [data, setData] = useState<NeedsAnalysisResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -169,13 +174,13 @@ function NeedsPageContent({ ideaId }: { ideaId: string }) {
       {/* Compact Page Header (Aligned with Phase 4 Canon) */}
       <div className="space-y-1">
         <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
-          PHASE 4 · STEP 4.3
+          {t('creator.phase4.needsPage.stepBadge', 'PHASE 4 · STEP 4.3')}
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
-          Needs & Requirements
+          {t('creator.phase4.needsPage.title', 'Needs & Requirements')}
         </h1>
         <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
-          Review what your project needs, what you already have, and what remains to be covered.
+          {t('creator.phase4.needsPage.subtitle', 'Review what your project needs, what you already have, and what remains to be covered.')}
         </p>
       </div>
 

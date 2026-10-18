@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React, { useState, useEffect, useMemo } from "react";
 import { BrandKit, BrandColorRole } from "@/types/creator/brand-kit";
@@ -193,6 +194,7 @@ export function ColorSystemModal({
   onSuccess,
   onKitUpdated,
 }: ColorSystemModalProps) {
+  const { t } = useTranslation("creator");
   const [currentKit, setCurrentKit] = useState<BrandKit>(kit);
   const [roles, setRoles] = useState<BrandColorRole[]>(kit.colors?.roles ?? []);
   const [regenerateCount, setRegenerateCount] = useState<number>(
@@ -569,7 +571,7 @@ export function ColorSystemModal({
     if (role.roleName === "Background") {
       return (
         <span className="text-xs font-mono text-muted-foreground">
-          Used as a ground, not for text.
+          {t("modals.colorGroundNotice")}
         </span>
       );
     }
@@ -581,7 +583,7 @@ export function ColorSystemModal({
       return (
         <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
           <ShieldCheck className="size-3.5" />
-          {ratio} AAA
+          {ratio} {t("modals.colorAaa")}
         </span>
       );
     }
@@ -599,7 +601,7 @@ export function ColorSystemModal({
       return (
         <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
           <AlertTriangle className="size-3.5" />
-          {ratio} FAIL
+          {ratio} {t("modals.colorFail")}
         </span>
       );
     }
@@ -629,7 +631,7 @@ export function ColorSystemModal({
         
         {/* Header & 6-Step Workflow Track (Figma Node 57004:11484) */}
         <ModalWorkflowHeader
-          title="Your colour system"
+          title={t("modals.colorModalTitle")}
           subtitle="Five roles pulled from your logo. Each one has a job — change any of them without touching the rest."
           currentStep={5}
           onClose={onClose}
@@ -643,9 +645,9 @@ export function ColorSystemModal({
                 className="gap-2 text-xs font-mono font-medium h-8 border-border bg-background hover:bg-muted/60"
               >
                 <RefreshCw className={`size-3.5 text-muted-foreground ${isRegenerating ? "animate-spin text-primary" : ""}`} />
-                <span>Regenerate Palette</span>
+                <span>{t("modals.colorRegenPalette")}</span>
                 <span className="px-1.5 py-0.5 rounded text-badge font-mono font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                  {Math.max(0, 3 - regenerateCount)}/3 LEFT
+                  {Math.max(0, 3 - regenerateCount)}{t("modals.colorRegenLeft")}
                 </span>
               </Button>
             ) : undefined
@@ -667,7 +669,7 @@ export function ColorSystemModal({
               <span>{creditError}</span>
             </div>
             <span className="text-badge font-semibold opacity-80 ml-3 shrink-0">
-              (Credit top-ups are currently unavailable)
+              {t("modals.colorCreditsUnavailable")}
             </span>
           </div>
         )}
@@ -681,14 +683,14 @@ export function ColorSystemModal({
                 <Palette className="size-8" />
               </div>
               <h3 className="font-heading text-lg font-bold tracking-tight mb-2">
-                Generate Colour System
+                {t("modals.colorGenerateTitle")}
               </h3>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-md">
-                Generate a 5-role colour palette (Primary, Secondary, Accent, Background, and Text) derived from your brand direction and logo, tuned for accessible contrast.
+                {t("modals.colorGenerateDesc")}
               </p>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/5 border border-primary/20 text-xs font-mono font-medium text-primary mb-6">
                 <Sparkles className="size-3.5" />
-                <span>Cost: {isCostLoading ? "Loading cost…" : isCostError || colorCost == null ? "Unavailable" : `${colorCost} AI credits`}</span>
+                <span>{t("modals.colorCost")} {isCostLoading ? "Loading cost…" : isCostError || colorCost == null ? "Unavailable" : `${colorCost} AI credits`}</span>
               </div>
               <Button
                 size="lg"
@@ -699,7 +701,7 @@ export function ColorSystemModal({
                 {isLoadingInitial ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    <span>Generating colour system...</span>
+                    <span>{t("modals.colorGeneratingTitle")}</span>
                   </>
                 ) : (
                   <>
@@ -716,8 +718,8 @@ export function ColorSystemModal({
                 <div className="flex items-center gap-2.5">
                   <SlidersHorizontal className="size-4 text-muted-foreground shrink-0" />
                   <span className="text-footnote font-mono font-bold tracking-wider text-muted-foreground uppercase">
-                    PALETTE MOOD:
-                  </span>
+            {t("modals.colorPaletteMood")}
+          </span>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {(
                       [
@@ -744,7 +746,7 @@ export function ColorSystemModal({
                 </div>
 
                 <span className="text-xs font-mono text-muted-foreground">
-                  Switching mood is free — it doesn't use a regenerate.
+                  {t("modals.colorMoodFreeNotice")}
                 </span>
               </div>
 
@@ -778,7 +780,7 @@ export function ColorSystemModal({
                       className={`relative size-[68px] rounded-xl border shrink-0 overflow-hidden shadow-2xs group/swatch cursor-pointer ${
                         isBg ? "border-black/15 shadow-inner" : "border-black/10"
                       }`}
-                      title="Click to pick custom color"
+                      title={t("modals.colorPickCustomTitle")}
                     >
                       <div
                         className="w-full h-full transition-transform group-hover/swatch:scale-105"
@@ -790,7 +792,7 @@ export function ColorSystemModal({
                         value={role.hex}
                         onChange={(e) => handleRoleHexChange(role.roleName, e.target.value)}
                         className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                        title="Click to adjust color"
+                        title={t("modals.colorAdjustColorTitle")}
                       />
                     </div>
 
@@ -803,20 +805,20 @@ export function ColorSystemModal({
 
                         {isPrimary && (
                           <span className="text-badge font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                            Core Brand
-                          </span>
+                      {t("modals.colorCoreBrand")}
+                    </span>
                         )}
 
                         {role.isLocked && (
                           <span className="inline-flex items-center gap-1 text-badge font-mono font-bold px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border/80">
-                            <Lock className="size-2.5" /> LOCKED
+                            <Lock className="size-2.5" /> {t("modals.colorLocked")}
                           </span>
                         )}
 
                         {isEdited && !role.isLocked && (
                           <span className="text-badge font-mono font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 uppercase">
-                            EDITED
-                          </span>
+                      {t("modals.colorEdited")}
+                    </span>
                         )}
                       </div>
                       <p className="text-xs font-sans text-muted-foreground leading-normal max-w-sm">
@@ -836,7 +838,7 @@ export function ColorSystemModal({
                           type="button"
                           onClick={(e) => handleCopyHex(e, role.hex, role.roleName)}
                           className="text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors hover:bg-muted"
-                          title="Copy Hex"
+                          title={t("modals.colorCopyHexTitle")}
                         >
                           {copiedRole === role.roleName ? (
                             <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -846,7 +848,7 @@ export function ColorSystemModal({
                         </button>
                       </div>
                       <span className="text-xs font-mono text-muted-foreground">
-                        RGB {role.rgb || hexToRgb(role.hex) ? `${hexToRgb(role.hex)?.r}, ${hexToRgb(role.hex)?.g}, ${hexToRgb(role.hex)?.b}` : "—"}
+                        {t("modals.colorRgbTag")} {role.rgb || hexToRgb(role.hex) ? `${hexToRgb(role.hex)?.r}, ${hexToRgb(role.hex)?.g}, ${hexToRgb(role.hex)?.b}` : "—"}
                       </span>
                     </div>
                   </div>
@@ -861,7 +863,7 @@ export function ColorSystemModal({
                     {/* Sliders / Color Picker Trigger */}
                     <label
                       className="relative p-2 rounded-lg border border-border/80 bg-background hover:bg-muted cursor-pointer transition-colors text-muted-foreground hover:text-foreground group/slider"
-                      title="Adjust this role only — free"
+                      title={t("modals.colorAdjustRoleOnlyTitle")}
                     >
                       <Sliders className="size-3.5" />
                       <input
@@ -877,7 +879,7 @@ export function ColorSystemModal({
                       type="button"
                       onClick={(e) => handleCopyHex(e, role.hex, role.roleName)}
                       className="p-2 rounded-lg border border-border/80 bg-background hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                      title="Copy Hex"
+                      title={t("modals.colorCopyHexTitle")}
                     >
                       {copiedRole === role.roleName ? (
                         <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -913,11 +915,11 @@ export function ColorSystemModal({
             })}
           </div>
 
-          {/* SECTION B: LIVE APPLICATION PREVIEW ("How it looks together", Figma Node 57004:11484) */}
+          {/* SECTION B: LIVE APPLICATION PREVIEW ("{t("modals.colorHowItLooks")}", Figma Node 57004:11484) */}
           <div className="space-y-3 pt-2">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold font-heading text-foreground">
-                How it looks together
+                {t("modals.colorHowItLooks")}
               </h3>
 
               {/* Segmented control: Website, Invoice, Deck */}
@@ -964,7 +966,7 @@ export function ColorSystemModal({
                           className="size-5 rounded-md flex items-center justify-center p-0.5 overflow-hidden"
                           style={{ backgroundColor: `${primaryColor}20`, border: `1px solid ${primaryColor}40` }}
                         >
-                          <img src={logoMarkUri} alt="Logo" className="w-full h-full object-contain" />
+                          <img src={logoMarkUri} alt={t("modals.colorCoreBrand")} className="w-full h-full object-contain" />
                         </div>
                       ) : (
                         <div
@@ -983,9 +985,9 @@ export function ColorSystemModal({
                     </div>
 
                     <div className="flex items-center gap-3 text-footnote font-medium" style={{ color: textColor }}>
-                      <span className="opacity-80">Platform</span>
-                      <span className="opacity-80">Solutions</span>
-                      <span className="opacity-80">Pricing</span>
+                      <span className="opacity-80">{t("modals.colorPlatform")}</span>
+                      <span className="opacity-80">{t("modals.colorSolutions")}</span>
+                      <span className="opacity-80">{t("modals.colorPricing")}</span>
                       <span
                         className="px-2 py-0.5 rounded text-badge font-mono font-bold"
                         style={{
@@ -994,7 +996,7 @@ export function ColorSystemModal({
                           border: `1px solid ${accentColor}30`,
                         }}
                       >
-                        Live Network
+                        {t("modals.colorLiveNetwork")}
                       </span>
                     </div>
                   </div>
@@ -1006,13 +1008,13 @@ export function ColorSystemModal({
                         className="text-lg font-bold font-heading tracking-tight leading-snug"
                         style={{ color: textColor }}
                       >
-                        Empowering Next-Gen Autonomous Systems
+                        {t("modals.colorHeroHeadline")}
                       </h4>
                       <p
                         className="text-xs font-sans max-w-md leading-relaxed"
                         style={{ color: textColor, opacity: 0.75 }}
                       >
-                        Engineered with pure contrast harmony, live WCAG 2.1 compliance, and verified enterprise security.
+                        {t("modals.colorHeroSubhead")}
                       </p>
                     </div>
 
@@ -1022,7 +1024,7 @@ export function ColorSystemModal({
                         className="px-4 py-2 rounded-lg text-xs font-bold shadow-xs transition-opacity hover:opacity-90"
                         style={{ backgroundColor: primaryColor, color: bgColor }}
                       >
-                        Get Started
+                        {t("modals.colorGetStarted")}
                       </button>
                       <button
                         type="button"
@@ -1033,18 +1035,18 @@ export function ColorSystemModal({
                           borderColor: `${textColor}30`,
                         }}
                       >
-                        Documentation
+                        {t("modals.colorDocumentation")}
                       </button>
                     </div>
                   </div>
 
                   {/* Footer Stats Strip */}
                   <div className="flex items-center gap-6 pt-2 border-t border-black/10 text-footnote font-mono" style={{ color: textColor, opacity: 0.65 }}>
-                    <span>99.99% Uptime SLA</span>
+                    <span>{t("modals.colorUptimeSla")}</span>
                     <span>·</span>
-                    <span>Zero-Trust Architecture</span>
+                    <span>{t("modals.colorZeroTrust")}</span>
                     <span>·</span>
-                    <span>Global Edge Deployments</span>
+                    <span>{t("modals.colorEdgeDeploy")}</span>
                   </div>
                 </div>
               )}
@@ -1059,7 +1061,7 @@ export function ColorSystemModal({
                           className="size-5 rounded-md flex items-center justify-center p-0.5 overflow-hidden"
                           style={{ backgroundColor: `${primaryColor}20`, border: `1px solid ${primaryColor}40` }}
                         >
-                          <img src={logoMarkUri} alt="Logo" className="w-full h-full object-contain" />
+                          <img src={logoMarkUri} alt={t("modals.colorCoreBrand")} className="w-full h-full object-contain" />
                         </div>
                       ) : (
                         <div
@@ -1070,13 +1072,13 @@ export function ColorSystemModal({
                         </div>
                       )}
                       <span className="font-bold text-sm font-heading" style={{ color: secondaryColor }}>
-                        {brandName} Technologies Inc.
+                        {brandName} {t("modals.colorInvoiceCompany")}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-footnote" style={{ color: textColor, opacity: 0.7 }}>
-                        #INV-2026-089
+                        {t("modals.colorInvoiceNum")}
                       </span>
                       <span
                         className="px-2 py-0.5 rounded text-badge font-mono font-bold"
@@ -1086,7 +1088,7 @@ export function ColorSystemModal({
                           border: `1px solid ${accentColor}30`,
                         }}
                       >
-                        PAID
+                        {t("modals.colorInvoicePaid")}
                       </span>
                     </div>
                   </div>
@@ -1094,15 +1096,15 @@ export function ColorSystemModal({
                   {/* Line Items Table */}
                   <div className="space-y-1.5 py-2">
                     <div className="flex justify-between font-mono text-table-header pb-1 border-b border-black/5" style={{ color: textColor, opacity: 0.6 }}>
-                      <span>DESCRIPTION</span>
-                      <span>AMOUNT</span>
+                      <span>{t("modals.colorInvoiceDescription")}</span>
+                      <span>{t("modals.colorInvoiceAmount")}</span>
                     </div>
                     <div className="flex justify-between font-medium text-xs" style={{ color: textColor }}>
-                      <span>Enterprise Platform Subscription (Annual)</span>
+                      <span>{t("modals.colorInvoiceItem1")}</span>
                       <span className="font-mono font-bold">$12,000.00</span>
                     </div>
                     <div className="flex justify-between font-medium text-xs" style={{ color: textColor }}>
-                      <span>Dedicated Edge Compute Cluster</span>
+                      <span>{t("modals.colorInvoiceItem2")}</span>
                       <span className="font-mono font-bold">$3,500.00</span>
                     </div>
                   </div>
@@ -1110,17 +1112,17 @@ export function ColorSystemModal({
                   {/* Invoice Total */}
                   <div className="flex items-center justify-between pt-2 border-t border-black/10">
                     <span className="text-footnote font-mono" style={{ color: textColor, opacity: 0.7 }}>
-                      DUE UPON RECEIPT
+                      {t("modals.colorInvoiceDue")}
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold" style={{ color: textColor }}>
-                        TOTAL:
+                        {t("modals.colorInvoiceTotal")}
                       </span>
                       <span
                         className="text-base font-bold font-mono"
                         style={{ color: primaryColor }}
                       >
-                        $15,500.00 USD
+                        {t("modals.colorInvoicePrice")}
                       </span>
                     </div>
                   </div>
@@ -1139,10 +1141,10 @@ export function ColorSystemModal({
                           border: `1px solid ${accentColor}30`,
                         }}
                       >
-                        EXECUTIVE SUMMARY
+                        {t("modals.colorSlideTitle")}
                       </span>
                       <span className="text-xs font-mono" style={{ color: textColor, opacity: 0.5 }}>
-                        SLIDE 04
+                        {t("modals.colorSlideNum")}
                       </span>
                     </div>
 
@@ -1156,10 +1158,10 @@ export function ColorSystemModal({
                       className="text-xl font-bold font-heading tracking-tight"
                       style={{ color: textColor }}
                     >
-                      Accelerating Market Adoption with Autonomous Value
+                      {t("modals.colorSlideHeadline")}
                     </h4>
                     <p className="text-xs max-w-lg leading-relaxed" style={{ color: textColor, opacity: 0.75 }}>
-                      Capturing market share through deterministic infrastructure, unified APIs, and zero friction creator-to-investor liquidity.
+                      {t("modals.colorSlideBody")}
                     </p>
                   </div>
 
@@ -1175,7 +1177,7 @@ export function ColorSystemModal({
                         +142%
                       </span>
                       <span className="text-footnote font-mono" style={{ color: textColor, opacity: 0.7 }}>
-                        MoM Growth
+                        {t("modals.colorSlideMomLabel")}
                       </span>
                     </div>
                     <div
@@ -1189,7 +1191,7 @@ export function ColorSystemModal({
                         99.4%
                       </span>
                       <span className="text-footnote font-mono" style={{ color: textColor, opacity: 0.7 }}>
-                        Retention Rate
+                        {t("modals.colorSlideRetentionLabel")}
                       </span>
                     </div>
                     <div
@@ -1200,10 +1202,10 @@ export function ColorSystemModal({
                       }}
                     >
                       <span className="text-base font-bold font-mono" style={{ color: secondaryColor }}>
-                        $4.2M
+                        {t("modals.colorSlideArrMetric")}
                       </span>
                       <span className="text-footnote font-mono" style={{ color: textColor, opacity: 0.7 }}>
-                        Annual ARR Run-Rate
+                        {t("modals.colorSlideArrLabel")}
                       </span>
                     </div>
                   </div>
@@ -1220,12 +1222,12 @@ export function ColorSystemModal({
         <div className="flex items-center justify-between border-t border-border px-6 py-4 bg-card shrink-0">
           <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
             <Info className="size-3.5 text-primary shrink-0" />
-            <span>5 Canonical Roles · Free Hex Edits · 3-Cap Palette Regen</span>
+            <span>{t("modals.colorFooterSummary")}</span>
           </div>
 
           <div className="flex items-center gap-3">
             <Button variant="ghost" onClick={onClose} disabled={isConfirming}>
-              Cancel
+              {t("modals.colorCancel")}
             </Button>
             <Button
               onClick={handleConfirm}

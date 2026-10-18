@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React from "react";
 import { BrandKitSnapshot } from "@/types/creator/brand-kit";
@@ -13,14 +14,13 @@ interface RestoreSnapshotModalProps {
   onClose: () => void;
 }
 
-export function RestoreSnapshotModal({
-  isOpen,
+export function RestoreSnapshotModal({ isOpen,
   snapshot,
   snapshotIndex,
   isRestoring,
   onConfirm,
-  onClose,
-}: RestoreSnapshotModalProps) {
+  onClose, }: RestoreSnapshotModalProps) {
+  const { t } = useTranslation("creator");
   if (!isOpen || !snapshot) return null;
 
   const formattedDate = new Date(snapshot.timestamp).toLocaleString("en-US", {
@@ -44,7 +44,7 @@ export function RestoreSnapshotModal({
           <div className="flex items-center gap-2 text-foreground">
             <History className="size-5 text-primary" />
             <span className="font-mono text-xs font-bold uppercase tracking-wider">
-              Restore Version Snapshot
+              {t("modals.restoreTitle")}
             </span>
           </div>
 
@@ -52,7 +52,7 @@ export function RestoreSnapshotModal({
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            aria-label="Close dialog"
+            aria-label={t("modals.restoreClose")}
           >
             <X className="size-4" />
           </button>
@@ -61,30 +61,30 @@ export function RestoreSnapshotModal({
         {/* Body */}
         <div className="p-6 space-y-4">
           <h3 id="restore-snapshot-title" className="text-lg font-bold text-foreground">
-            Restore to: {snapshot.description || `Snapshot #${snapshotIndex + 1}`}
+            {t("modals.restoreTo")} {snapshot.description || `Snapshot #${snapshotIndex + 1}`}
           </h3>
 
           <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-2 font-mono text-xs">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span>TIMESTAMP:</span>
+              <span>{t("modals.restoreTimestamp")}</span>
               <span className="font-semibold text-foreground">{formattedDate}</span>
             </div>
             <div className="flex items-center justify-between text-muted-foreground">
-              <span>DIRECTION:</span>
+              <span>{t("modals.restoreDirection")}</span>
               <span className="font-semibold text-foreground">
                 {snapshot.direction?.candidates?.find((c) => c.key === snapshot.direction?.selectedDirectionKey)?.name || "Default"}
               </span>
             </div>
             <div className="flex items-center justify-between text-muted-foreground">
-              <span>COLOURS:</span>
+              <span>{t("modals.restoreColours")}</span>
               <span className="font-semibold text-foreground">
-                {snapshot.colors?.roles?.length || 5} roles configured
+                {snapshot.colors?.roles?.length || 5} {t("modals.restoreRolesConfigured")}
               </span>
             </div>
             <div className="flex items-center justify-between text-muted-foreground">
-              <span>TYPOGRAPHY:</span>
+              <span>{t("modals.restoreTypography")}</span>
               <span className="font-semibold text-foreground">
-                {snapshot.typography?.roles?.length || 4} role specimens
+                {snapshot.typography?.roles?.length || 4} {t("modals.restoreRoleSpecimens")}
               </span>
             </div>
           </div>
@@ -92,7 +92,7 @@ export function RestoreSnapshotModal({
           <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300">
             <AlertTriangle className="size-4 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              Restoring will replace your active brand kit with this snapshot’s assets. An automatic backup of your current state will be saved to history first.
+              {t("modals.restoreNotice")}
             </p>
           </div>
         </div>
@@ -105,7 +105,7 @@ export function RestoreSnapshotModal({
             disabled={isRestoring}
             className="px-4 py-2 rounded-lg text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
-            Cancel
+            {t("modals.restoreCancel")}
           </button>
           <button
             type="button"

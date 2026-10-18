@@ -17,16 +17,20 @@ import type {
   SupportPlanResponse,
   UpdateFounderSupportStateRequest,
 } from '@/types/creator/support';
+import { useTranslation } from '@/hooks/useTranslation';
+
+function SupportPageFallback() {
+  const { t } = useTranslation();
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-mono text-sm">
+      {t('creator.phase4.supportPage.loading', 'Loading Aids, Grants & Public Support Engine...')}
+    </div>
+  );
+}
 
 export default function CreatorPhase4SupportPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground font-mono text-sm">
-          Loading Aids, Grants & Public Support Engine...
-        </div>
-      }
-    >
+    <Suspense fallback={<SupportPageFallback />}>
       <CreatorPhase4SupportInner />
     </Suspense>
   );
@@ -45,6 +49,7 @@ function CreatorPhase4SupportInner() {
 }
 
 function SupportPageContent({ ideaId }: { ideaId: string }) {
+  const { t } = useTranslation();
   const { state: progressState, refetch } = useCreatorProgress();
   const effectiveIdeaId = ideaId || progressState?.activeIdeaId || '';
   const projectName = progressState?.project?.name || 'Your Venture';
@@ -166,13 +171,13 @@ function SupportPageContent({ ideaId }: { ideaId: string }) {
       {/* Compact Page-Level Header (Aligned with Phase 4 Canon & Figma) */}
       <div className="space-y-1">
         <div className="text-xs font-semibold tracking-wider text-muted-foreground uppercase font-mono">
-          PHASE 4 · STEP 4.5
+          {t('creator.phase4.supportPage.stepBadge', 'PHASE 4 · STEP 4.5')}
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight font-heading">
-          Aids, Grants & Public Support
+          {t('creator.phase4.supportPage.title', 'Aids, Grants & Public Support')}
         </h1>
         <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed font-sans">
-          Explore funding schemes, training support, and institutional backing for your venture.
+          {t('creator.phase4.supportPage.subtitle', 'Explore funding schemes, training support, and institutional backing for your venture.')}
         </p>
       </div>
 
@@ -181,14 +186,16 @@ function SupportPageContent({ ideaId }: { ideaId: string }) {
         <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
           <div className="flex-1">
-            <h4 className="text-sm font-semibold text-foreground">Notice</h4>
+            <h4 className="text-sm font-semibold text-foreground">
+              {t('creator.phase4.notice', 'Notice')}
+            </h4>
             <p className="text-xs text-muted-foreground">{error}</p>
           </div>
           <button
             onClick={() => setError(null)}
             className="text-xs text-muted-foreground hover:text-foreground font-semibold"
           >
-            Dismiss
+            {t('creator.phase4.dismiss', 'Dismiss')}
           </button>
         </div>
       )}

@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React from "react";
 import { BrandKit } from "@/types/creator/brand-kit";
@@ -10,6 +11,7 @@ interface TypographyResultCardProps {
 }
 
 export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps) {
+  const { t } = useTranslation("creator");
   const typography = kit.typography;
   const roles = typography?.roles ?? [];
   const families = typography?.families;
@@ -36,21 +38,21 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
       <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 bg-muted/20">
         <div className="flex items-center gap-2">
           <span className="font-mono text-badge font-bold text-muted-foreground tracking-wider uppercase">
-            STEP 6
+            {t("cards.typographyStep6")}
           </span>
           <span className="text-card-title font-semibold text-foreground">
-            Typography System
+            {t("cards.typographyTitle")}
           </span>
         </div>
         <div className="flex items-center gap-2">
           {isConfirmed ? (
             <span className="inline-flex items-center gap-1 font-mono text-badge font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
               <Check className="size-3 stroke-[3]" />
-              CONFIRMED
+              {t("cards.typographyConfirmed")}
             </span>
           ) : (
             <span className="font-mono text-badge text-muted-foreground">
-              Draft
+              {t("cards.typographyDraft")}
             </span>
           )}
           {onEdit && (
@@ -63,7 +65,7 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border/60 text-button font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             >
               <Edit3 className="size-3" />
-              <span>Edit</span>
+              <span>{t("cards.typographyEdit")}</span>
             </button>
           )}
         </div>
@@ -73,7 +75,7 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
       <div className="grid grid-cols-2 gap-2 p-3 bg-muted/10 border-b border-border/40">
         <div className="p-2 rounded-lg bg-background/80 border border-border/60">
           <div className="flex items-center justify-between text-badge font-mono text-muted-foreground mb-0.5">
-            <span>DISPLAY FAMILY</span>
+            <span>{t("cards.typographyDisplayFamily")}</span>
             {families?.displayFamily?.license && (
               <span className="truncate max-w-[80px]">{families.displayFamily.license}</span>
             )}
@@ -85,7 +87,7 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
 
         <div className="p-2 rounded-lg bg-background/80 border border-border/60">
           <div className="flex items-center justify-between text-badge font-mono text-muted-foreground mb-0.5">
-            <span>TEXT FAMILY</span>
+            <span>{t("cards.typographyTextFamily")}</span>
             {families?.textFamily?.license && (
               <span className="truncate max-w-[80px]">{families.textFamily.license}</span>
             )}
@@ -103,7 +105,7 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
           <div className="flex items-center justify-between text-badge mb-1">
             <div className="flex items-center gap-1.5 font-medium text-foreground">
               <Type className="size-3 text-muted-foreground" />
-              <span>Logo type</span>
+              <span>{t("cards.typographyLogoType")}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="font-mono text-badge text-muted-foreground font-semibold">
@@ -111,7 +113,7 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
               </span>
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground text-badge font-mono">
                 <Lock className="size-2.5 text-muted-foreground" />
-                Permanent
+                {t("cards.typographyPermanent")}
               </span>
             </div>
           </div>
@@ -129,7 +131,7 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
         {/* 2. Heading */}
         <div className="p-2 rounded-lg bg-muted/20 border border-border/40">
           <div className="flex items-center justify-between text-badge mb-1">
-            <span className="font-medium text-foreground">Heading</span>
+            <span className="font-medium text-foreground">{t("cards.typographyHeading")}</span>
             <span className="font-mono text-badge text-muted-foreground">
               {headingRole?.family || displayFamily} · {headingRole?.weight || "700"} · {headingRole?.size || "32px"}
             </span>
@@ -148,7 +150,7 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
         {/* 3. Body */}
         <div className="p-2 rounded-lg bg-muted/20 border border-border/40">
           <div className="flex items-center justify-between text-badge mb-1">
-            <span className="font-medium text-foreground">Body</span>
+            <span className="font-medium text-foreground">{t("cards.typographyBody")}</span>
             <span className="font-mono text-badge text-muted-foreground">
               {bodyRole?.family || textFamily} · {bodyRole?.weight || "400"} · {bodyRole?.size || "16px"}
             </span>
@@ -167,7 +169,7 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
         {/* 4. Button & label */}
         <div className="p-2 rounded-lg bg-muted/20 border border-border/40">
           <div className="flex items-center justify-between text-badge mb-1">
-            <span className="font-medium text-foreground">Button & label</span>
+            <span className="font-medium text-foreground">{t("cards.typographyButton")}</span>
             <span className="font-mono text-badge text-muted-foreground">
               {buttonRole?.family || textFamily} · {buttonRole?.weight || "600"} · {buttonRole?.size || "14px"}
             </span>
@@ -189,7 +191,7 @@ export function TypographyResultCard({ kit, onEdit }: TypographyResultCardProps)
       {/* Footer */}
       <div className="mt-auto flex items-center justify-between border-t border-border/60 px-4 py-2 bg-muted/10 text-caption text-muted-foreground">
         <span className="font-mono text-badge">
-          {roles.length} roles active
+          {roles.length} {t("cards.typographyRolesActive")}
         </span>
         <span className="font-medium text-primary group-hover:underline">
           {isConfirmed ? "Inspect pairing →" : "Configure typography →"}

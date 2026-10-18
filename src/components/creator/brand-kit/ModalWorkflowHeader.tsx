@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React from "react";
 import { Check, Lock, X } from "lucide-react";
@@ -26,13 +27,12 @@ export interface ModalWorkflowHeaderProps {
   headerActions?: React.ReactNode;
 }
 
-export function ModalWorkflowHeader({
-  title,
+export function ModalWorkflowHeader({ title,
   subtitle,
   currentStep,
   onClose,
-  headerActions,
-}: ModalWorkflowHeaderProps) {
+  headerActions, }: ModalWorkflowHeaderProps) {
+  const { t } = useTranslation("creator");
   return (
     <div className="px-6 sm:px-8 pt-6 pb-0 border-b border-border/70 bg-card">
       {/* Top Header Row */}
@@ -53,11 +53,11 @@ export function ModalWorkflowHeader({
 
           {/* Step Counter Pill (Strict Digit Monospace Isolation) */}
           <span className="inline-flex items-center px-3 py-1 rounded-full text-badge font-medium bg-muted/80 text-foreground/80 border border-border/70 font-sans">
-            STEP{" "}
+            {t("modals.modalStep", { currentStep: "" }).trim()}{" "}
             <span className="font-mono font-semibold text-foreground mx-1">
               {currentStep}
             </span>{" "}
-            OF{" "}
+            {t("modals.modalOf", { totalSteps: "" }).trim()}{" "}
             <span className="font-mono font-semibold text-foreground ml-1">
               6
             </span>
@@ -68,7 +68,7 @@ export function ModalWorkflowHeader({
             type="button"
             onClick={onClose}
             className="inline-flex size-8 items-center justify-center rounded-lg border border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-            aria-label="Close dialog"
+            aria-label={t("modals.modalClose")}
           >
             <X className="size-4" />
           </button>

@@ -17,10 +17,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/providers/OnboardingProvider";
+import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
 
 export default function CreatorPhase1Client() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { status, isLoading, isComplete, nextRequired } = useOnboarding();
   const [activeAccordion, setActiveAccordion] = useState<number | null>(1);
 
@@ -33,7 +35,7 @@ export default function CreatorPhase1Client() {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center text-muted-foreground gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="text-sm font-medium tracking-wide">Loading your verification profile…</span>
+        <span className="text-sm font-medium tracking-wide">{t("creator.phase1.loadingProfile")}</span>
       </div>
     );
   }
@@ -70,13 +72,13 @@ export default function CreatorPhase1Client() {
           <div className="relative z-10 space-y-3">
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/80 backdrop-blur-md border border-border shadow-sm text-xs font-semibold text-primary">
               <Sparkles className="w-3.5 h-3.5" />
-              Mondial Onboarding Portal
+              {t("creator.phase1.portalBadge")}
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight leading-tight">
-              Begin your Creator Journey
+              {t("creator.phase1.heroTitle")}
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground max-w-md leading-relaxed">
-              Verify your identity to unlock powerful AI Business intelligence, funding matchmaking, and the service provider ecosystem.
+              {t("creator.phase1.heroDescription")}
             </p>
           </div>
 
@@ -110,7 +112,7 @@ export default function CreatorPhase1Client() {
           <div className="relative z-10 bg-background/50 backdrop-blur-md rounded-2xl p-4 border border-border shadow-sm flex items-center gap-3">
             <ShieldCheck className="w-5 h-5 text-green-500 shrink-0" />
             <span className="text-xs text-muted-foreground font-medium">
-              Enterprise-grade encryption protecting your personal data and identity documents.
+              {t("creator.phase1.encryptionBadge")}
             </span>
           </div>
         </div>
@@ -122,10 +124,10 @@ export default function CreatorPhase1Client() {
             <div className="flex items-center justify-between gap-6 border-b border-border/60 pb-6 mb-6">
               <div className="space-y-1">
                 <h1 className="text-xl sm:text-2xl font-extrabold text-foreground tracking-tight">
-                  Complete your profile
+                  {t("creator.phase1.headerTitle")}
                 </h1>
                 <p className="text-xs sm:text-sm text-muted-foreground font-normal">
-                  Universal Identity Gate &amp; Profile Setup
+                  {t("creator.phase1.headerSubtitle")}
                 </p>
               </div>
 
@@ -160,8 +162,12 @@ export default function CreatorPhase1Client() {
                   </span>
                 </div>
                 <div className="text-left hidden sm:block">
-                  <div className="text-xs font-bold text-foreground">Phase 1 of 6</div>
-                  <div className="text-caption font-medium text-muted-foreground">Identity verification</div>
+                  <div className="text-xs font-bold text-foreground">
+                    {t("creator.phase1.progressPhase", { current: currentPhase, total: totalPhases })}
+                  </div>
+                  <div className="text-caption font-medium text-muted-foreground">
+                    {t("creator.phase1.progressSubtitle")}
+                  </div>
                 </div>
               </div>
             </div>
@@ -185,7 +191,7 @@ export default function CreatorPhase1Client() {
                       1
                     </span>
                     <span className="text-sm sm:text-base font-bold">
-                      Phase 1: Profile Verification (Universal Identity Gate)
+                      {t("creator.phase1.accordionTitle")}
                     </span>
                   </div>
                   <ChevronDown className={cn(
@@ -197,7 +203,9 @@ export default function CreatorPhase1Client() {
                 {activeAccordion === 1 && (
                   <div className="px-4 pb-4 pt-0 border-t border-border/40 mt-1">
                     <div className="mt-4 space-y-4">
-                      <div className="text-label font-semibold uppercase tracking-wider text-muted-foreground mb-2">Mandatory Steps</div>
+                      <div className="text-label font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                        {t("creator.phase1.mandatorySteps")}
+                      </div>
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Step 1: Role Selection */}
@@ -208,7 +216,7 @@ export default function CreatorPhase1Client() {
                             <Circle className="w-5 h-5 text-muted-foreground/30 shrink-0" />
                           )}
                           <span className="text-xs sm:text-sm font-medium text-foreground">
-                            {status.role ? `Role selected (${status.role})` : "Role selection"}
+                            {status.role ? t("creator.phase1.roleSelected", { role: status.role }) : t("creator.phase1.roleSelection")}
                           </span>
                         </div>
 
@@ -220,7 +228,7 @@ export default function CreatorPhase1Client() {
                             <Circle className="w-5 h-5 text-muted-foreground/30 shrink-0" />
                           )}
                           <span className="text-xs sm:text-sm font-medium text-foreground">
-                            Identity Document
+                            {t("creator.phase1.identityDocument")}
                           </span>
                         </div>
 
@@ -232,7 +240,7 @@ export default function CreatorPhase1Client() {
                             <Circle className="w-5 h-5 text-muted-foreground/30 shrink-0" />
                           )}
                           <span className="text-xs sm:text-sm font-medium text-foreground">
-                            Phone verification
+                            {t("creator.phase1.phoneVerification")}
                           </span>
                         </div>
 
@@ -244,7 +252,7 @@ export default function CreatorPhase1Client() {
                             <Circle className="w-5 h-5 text-muted-foreground/30 shrink-0" />
                           )}
                           <span className="text-xs sm:text-sm font-medium text-foreground">
-                            Email verification
+                            {t("creator.phase1.emailVerification")}
                           </span>
                         </div>
 
@@ -256,7 +264,7 @@ export default function CreatorPhase1Client() {
                             <Circle className="w-5 h-5 text-muted-foreground/30 shrink-0" />
                           )}
                           <span className="text-xs sm:text-sm font-medium text-foreground">
-                            Final verification approval
+                            {t("creator.phase1.finalApproval")}
                           </span>
                         </div>
                       </div>
@@ -267,11 +275,11 @@ export default function CreatorPhase1Client() {
 
               {/* Locked Phases 2-6 */}
               {[
-                { num: 2, title: "Phase 2: Project Identity & Branding" },
-                { num: 3, title: "Phase 3: Project Intelligence & AI Tools" },
-                { num: 4, title: "Phase 4: Offer & Resource Setup" },
-                { num: 5, title: "Phase 5: The Crossroads" },
-                { num: 6, title: "Phase 6: Verified Entrepreneur Level Up" }
+                { num: 2, title: t("creator.phase1.lockedPhases.p2") },
+                { num: 3, title: t("creator.phase1.lockedPhases.p3") },
+                { num: 4, title: t("creator.phase1.lockedPhases.p4") },
+                { num: 5, title: t("creator.phase1.lockedPhases.p5") },
+                { num: 6, title: t("creator.phase1.lockedPhases.p6") }
               ].map((p) => (
                 <div
                   key={p.num}
@@ -286,7 +294,7 @@ export default function CreatorPhase1Client() {
                         {p.title}
                       </span>
                       <span className="block text-caption text-muted-foreground/80 font-medium mt-0.5">
-                        Complete Phase {p.num - 1} to unlock this phase.
+                        {t("creator.phase1.lockedPhases.unlockHint", { num: p.num - 1 })}
                       </span>
                     </div>
                   </div>
@@ -301,7 +309,7 @@ export default function CreatorPhase1Client() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border/60 pt-6">
             <div className="flex items-center gap-2 text-muted-foreground text-xs">
               <ShieldCheck className="w-4 h-4 text-primary shrink-0" />
-              <span>Identity Verification regulated under EU AML/KYC guidelines.</span>
+              <span>{t("creator.phase1.regulatoryNotice")}</span>
             </div>
             
             <Button
@@ -310,7 +318,7 @@ export default function CreatorPhase1Client() {
               className="w-full sm:w-auto bg-primary hover:bg-primary/95 text-white font-bold rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 group transition-all duration-200"
             >
               <Link href={nextRequired?.href ?? "/onboarding"}>
-                {nextRequired ? "Start verification" : "All required steps done"}
+                {nextRequired ? t("creator.phase1.startVerification") : t("creator.phase1.allStepsDone")}
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
             </Button>

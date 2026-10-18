@@ -1,3 +1,4 @@
+import { useTranslation } from "@/hooks/useTranslation";
 import React from "react";
 import { BrandLogo } from "@/types/creator/brand-kit";
 import { resolveMediaUrl } from "@/lib/brand-kit-media";
@@ -10,6 +11,7 @@ interface LogoResultCardProps {
 }
 
 export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResultCardProps) {
+  const { t } = useTranslation("creator");
   if (!logo?.approvedAt && !logo?.selectedConceptKey) return null;
 
   const concept =
@@ -36,10 +38,10 @@ export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResult
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-badge font-semibold text-primary uppercase tracking-wider">
-                STEP 4
+                {t("cards.logoStep4")}
               </span>
               <span className="text-badge text-muted-foreground">•</span>
-              <span className="text-caption text-muted-foreground font-medium">Brand Logo & Variations</span>
+              <span className="text-caption text-muted-foreground font-medium">{t("cards.logoTitle")}</span>
             </div>
             <h3 className="text-card-title font-bold text-foreground tracking-tight">
               {concept?.descriptorLine || "Approved Vector Mark"}
@@ -72,7 +74,7 @@ export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResult
               className="max-h-full max-w-full object-contain"
             />
           ) : (
-            <span className="text-caption text-muted-foreground">Logo Asset</span>
+            <span className="text-caption text-muted-foreground">{t("cards.logoAsset")}</span>
           )}
         </div>
 
@@ -84,7 +86,7 @@ export function LogoResultCard({ logo, brandName = "Brand", onEdit }: LogoResult
             </span>
             {isApproved && (
               <span className="text-caption text-emerald-600 font-medium">
-                • Production Approved
+                {t("cards.logoApproved")}
               </span>
             )}
           </div>

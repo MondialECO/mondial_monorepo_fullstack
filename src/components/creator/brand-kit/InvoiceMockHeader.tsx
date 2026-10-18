@@ -1,4 +1,5 @@
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React from "react";
 import { resolveMediaUrl } from "@/lib/brand-kit-media";
@@ -8,10 +9,9 @@ interface InvoiceMockHeaderProps {
   conceptName: string;
 }
 
-export function InvoiceMockHeader({
-  lockupUri,
-  conceptName,
-}: InvoiceMockHeaderProps) {
+export function InvoiceMockHeader({ lockupUri,
+  conceptName, }: InvoiceMockHeaderProps) {
+  const { t } = useTranslation("creator");
   return (
     <div className="w-full flex flex-col rounded-xl bg-card border border-border/80 p-3 shadow-2xs text-caption overflow-hidden">
       {/* Mock Invoice Topbar / Header */}
@@ -28,10 +28,10 @@ export function InvoiceMockHeader({
         </div>
         <div className="text-right">
           <div className="font-semibold text-foreground tracking-tight text-badge uppercase">
-            Invoice
+            {t("modals.invoiceTitle")}
           </div>
           <div className="font-mono text-badge text-muted-foreground tabular-nums">
-            #INV-2026-0042
+            {t("modals.invoiceNumber")}
           </div>
         </div>
       </div>
@@ -40,13 +40,13 @@ export function InvoiceMockHeader({
       <div className="grid grid-cols-2 gap-2 text-caption text-muted-foreground">
         <div>
           <span className="text-badge uppercase tracking-wider block text-muted-foreground/80">
-            Billed To
+            {t("modals.invoiceBilledTo")}
           </span>
-          <span className="font-medium text-foreground">Acme Corp Global</span>
+          <span className="font-medium text-foreground">{t("modals.invoiceAcme")}</span>
         </div>
         <div className="text-right">
           <span className="text-badge uppercase tracking-wider block text-muted-foreground/80">
-            Amount Due
+            {t("modals.invoiceAmountDue")}
           </span>
           <span className="font-mono font-semibold text-foreground tabular-nums text-caption">
             $12,450.00

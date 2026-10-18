@@ -1,6 +1,7 @@
 "use client";
 
 import React, { memo } from "react";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Check, RefreshCw, AlertCircle, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandLogoConcept, formatConceptTitle } from "@/types/creator/brand-kit";
@@ -41,6 +42,7 @@ export const ConceptTile = memo(function ConceptTile({
   onInspect,
   disabled = false,
 }: ConceptTileProps) {
+  const { t } = useTranslation();
   const maxRegens = 3;
   const used = concept.regenerateCount ?? 0;
   const remaining = Math.max(0, maxRegens - used);
@@ -97,7 +99,7 @@ export const ConceptTile = memo(function ConceptTile({
           <div className="absolute inset-0 bg-background/85 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-20">
             <RefreshCw className="size-6 text-primary animate-spin" />
             <span className="text-badge font-medium text-foreground font-sans">
-              Redrawing concept...
+              {t("modals.conceptRedrawing")}
             </span>
           </div>
         )}
@@ -146,7 +148,7 @@ export const ConceptTile = memo(function ConceptTile({
           <div className="flex-1">
             <span>{error.message}</span>
             {error.type === "credits" && (
-              <span className="ml-1 opacity-80 text-badge">(Credit top-ups are currently unavailable)</span>
+              <span className="ml-1 opacity-80 text-badge">{t("modals.conceptCreditsUnavailable")}</span>
             )}
           </div>
         </div>
@@ -163,14 +165,14 @@ export const ConceptTile = memo(function ConceptTile({
             {isExhausted && (
               <span
                 className="font-mono text-badge font-semibold px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
-                title="Redraw limit reached for this concept"
+                title={t("modals.conceptLimitReached")}
               >
-                0/3 LEFT
+                {t("modals.conceptLimitCount")}
               </span>
             )}
           </div>
           <span className="text-caption font-sans text-foreground/90 font-medium truncate mt-0.5" title={descriptor}>
-            {isExhausted ? "Redraw limit reached for this concept" : descriptor}
+            {isExhausted ? t("modals.conceptLimitReached") : descriptor}
           </span>
         </div>
 
@@ -178,7 +180,7 @@ export const ConceptTile = memo(function ConceptTile({
         <div className="flex items-center gap-1.5 shrink-0">
           {isSelected && !isCompareMode && (
             <span className="font-sans text-badge font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wider">
-              SELECTED
+              {t("modals.conceptSelected")}
             </span>
           )}
 
@@ -193,7 +195,7 @@ export const ConceptTile = memo(function ConceptTile({
                     onInspect();
                   }}
                   className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition-colors cursor-pointer"
-                  title="Inspect logo mark"
+                  title={t("modals.conceptInspectMark")}
                 >
                   <Maximize2 className="size-3.5" />
                 </button>

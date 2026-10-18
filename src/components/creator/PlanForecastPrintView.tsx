@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import type { BusinessPlanOutput, ForecastOutput, LegalRegulatoryFramework } from "@/types/creator/ai";
 import { formatMoney } from "@/lib/format-money";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export interface PrintProps {
   open: boolean;
@@ -131,6 +132,7 @@ function Section({ children, id }: { children: React.ReactNode; id?: string }) {
 }
 
 function Heading({ chapter, children }: { chapter: string; children: React.ReactNode }) {
+  const { t } = useTranslation();
   return (
     <div className="mb-4 flex items-center justify-between border-b-2 border-neutral-200 pb-2">
       <div className="flex items-center gap-2.5">
@@ -142,7 +144,7 @@ function Heading({ chapter, children }: { chapter: string; children: React.React
         </h2>
       </div>
       <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
-        Chapter {chapter}
+        {t("creator.phase3.planForecastPrint.chapter", "Chapter")} {chapter}
       </span>
     </div>
   );
@@ -191,6 +193,7 @@ function ConsolidatedForecastTable({
   rows: ForecastTableRow[];
   money: (value?: number | null) => string;
 }) {
+  const { t } = useTranslation();
   const total = (values: Array<number | null>) =>
     values.some((value) => value != null)
       ? values.reduce<number>((sum, value) => sum + (value ?? 0), 0)
@@ -198,29 +201,29 @@ function ConsolidatedForecastTable({
 
   return (
     <div className="mt-4">
-      <Sub>Consolidated monthly forecast</Sub>
+      <Sub>{t("creator.phase3.planForecastPrint.monthlyForecastTitle", "Consolidated monthly forecast")}</Sub>
       {yearChunks(rows).map((y) => (
         <div key={y.year} className="print-year mb-4 rounded-lg border border-neutral-200 p-3 bg-neutral-50/30">
           <div className="mb-2 text-xs font-bold uppercase tracking-wider text-neutral-600">
-            Year {y.year} (Months {y.months[0].month}–{y.months[y.months.length - 1].month})
+            {t("creator.phase3.planForecastPrint.yearMonths", "Year {{year}} (Months {{start}}–{{end}})", { year: y.year, start: y.months[0].month, end: y.months[y.months.length - 1].month })}
           </div>
           <table className="print-table w-full table-fixed border-collapse text-xs">
             <thead>
               <tr className="border-b border-neutral-200 text-left text-neutral-500">
-                <th className="w-[8%] py-1.5 pr-1 font-semibold">Month</th>
-                <th className="w-[13%] py-1.5 pr-1 text-right font-semibold">Revenue</th>
-                <th className="w-[11%] py-1.5 pr-1 text-right font-semibold">Fixed</th>
-                <th className="w-[11%] py-1.5 pr-1 text-right font-semibold">Variable</th>
-                <th className="w-[13%] py-1.5 pr-1 text-right font-semibold">Total cost</th>
-                <th className="w-[14%] py-1.5 pr-1 text-right font-semibold">Net cash flow</th>
-                <th className="w-[14%] py-1.5 pr-1 text-right font-semibold">Ending balance</th>
-                <th className="w-[16%] py-1.5 font-semibold">Notes</th>
+                <th className="w-[8%] py-1.5 pr-1 font-semibold">{t("creator.phase3.planForecastPrint.thMonth", "Month")}</th>
+                <th className="w-[13%] py-1.5 pr-1 text-right font-semibold">{t("creator.phase3.planForecastPrint.thRevenue", "Revenue")}</th>
+                <th className="w-[11%] py-1.5 pr-1 text-right font-semibold">{t("creator.phase3.planForecastPrint.thFixed", "Fixed")}</th>
+                <th className="w-[11%] py-1.5 pr-1 text-right font-semibold">{t("creator.phase3.planForecastPrint.thVariable", "Variable")}</th>
+                <th className="w-[13%] py-1.5 pr-1 text-right font-semibold">{t("creator.phase3.planForecastPrint.thTotalCost", "Total cost")}</th>
+                <th className="w-[14%] py-1.5 pr-1 text-right font-semibold">{t("creator.phase3.planForecastPrint.thNetCashFlow", "Net cash flow")}</th>
+                <th className="w-[14%] py-1.5 pr-1 text-right font-semibold">{t("creator.phase3.planForecastPrint.thEndingBalance", "Ending balance")}</th>
+                <th className="w-[16%] py-1.5 font-semibold">{t("creator.phase3.planForecastPrint.thNotes", "Notes")}</th>
               </tr>
             </thead>
             <tbody>
               {y.months.map((row) => (
                 <tr key={row.month} className="print-row border-b border-neutral-100 align-top">
-                  <td className="py-1 pr-1 font-semibold text-neutral-800">M{row.month}</td>
+                  <td className="py-1 pr-1 font-semibold text-neutral-800">{`M${row.month}`}</td>
                   <td className="whitespace-nowrap py-1 pr-1 text-right font-mono text-neutral-800">{money(row.revenue)}</td>
                   <td className="whitespace-nowrap py-1 pr-1 text-right font-mono text-neutral-600">{money(row.fixedCosts)}</td>
                   <td className="whitespace-nowrap py-1 pr-1 text-right font-mono text-neutral-600">{money(row.variableCosts)}</td>
@@ -233,7 +236,7 @@ function ConsolidatedForecastTable({
                 </tr>
               ))}
               <tr className="border-t-2 border-neutral-300 font-bold bg-neutral-100/50">
-                <td className="py-1.5 pr-1 text-neutral-900">Total</td>
+                <td className="py-1.5 pr-1 text-neutral-900">{t("creator.phase3.planForecastPrint.total", "Total")}</td>
                 <td className="whitespace-nowrap py-1.5 pr-1 text-right font-mono text-neutral-900">{money(total(y.months.map((row) => row.revenue)))}</td>
                 <td className="whitespace-nowrap py-1.5 pr-1 text-right font-mono text-neutral-700">{money(total(y.months.map((row) => row.fixedCosts)))}</td>
                 <td className="whitespace-nowrap py-1.5 pr-1 text-right font-mono text-neutral-700">{money(total(y.months.map((row) => row.variableCosts)))}</td>
@@ -263,6 +266,7 @@ export default function PlanForecastPrintView({
   cross,
   legalFramework,
 }: PrintProps) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!open) return;
     document.body.classList.add("printing-active");
@@ -334,24 +338,24 @@ export default function PlanForecastPrintView({
             onClick={onClose}
             className="gap-1.5 text-neutral-700 hover:bg-neutral-100 rounded-lg"
           >
-            <X className="h-4 w-4" /> Close
+            <X className="h-4 w-4" /> {t("creator.phase3.planForecastPrint.close", "Close")}
           </Button>
           <div className="h-4 w-px bg-neutral-300" />
           <span className="text-xs font-medium text-neutral-600">
-            Previewing: <strong className="text-neutral-900">{effectiveProjectName}</strong> · 12-Chapter Business Plan
+            {t("creator.phase3.planForecastPrint.previewing", "Previewing:")} <strong className="text-neutral-900">{effectiveProjectName}</strong> {t("creator.phase3.planForecastPrint.twelveChapterPlan", "· 12-Chapter Business Plan")}
           </span>
         </div>
 
         <div className="flex items-center gap-3">
           <span className="hidden sm:inline text-xs text-neutral-500">
-            Tip: In the print dialog, select &ldquo;Save as PDF&rdquo; &amp; enable &ldquo;Background graphics&rdquo;.
+            {t("creator.phase3.planForecastPrint.printTip", "Tip: In the print dialog, select “Save as PDF” & enable “Background graphics”.")}
           </span>
           <Button
             size="sm"
             onClick={() => window.print()}
             className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg shadow-sm font-semibold"
           >
-            <Printer className="h-4 w-4" /> Print / Save as PDF
+            <Printer className="h-4 w-4" /> {t("creator.phase3.planForecastPrint.printPdf", "Print / Save as PDF")}
           </Button>
         </div>
       </div>
@@ -364,14 +368,14 @@ export default function PlanForecastPrintView({
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <span className="rounded bg-neutral-900 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-white">
-                MONDIAL ECOSYSTEM
+                {t("creator.phase3.planForecastPrint.mondialEcosystem", "MONDIAL ECOSYSTEM")}
               </span>
               <span className="text-xs font-semibold tracking-wider uppercase text-neutral-500">
-                EXECUTIVE BUSINESS PLAN
+                {t("creator.phase3.planForecastPrint.executiveBusinessPlan", "EXECUTIVE BUSINESS PLAN")}
               </span>
             </div>
             <div className="rounded-full border border-neutral-300 bg-neutral-50 px-3 py-0.5 text-[11px] font-bold tracking-wider uppercase text-neutral-700">
-              FINAL DRAFT · V1.0
+              {t("creator.phase3.planForecastPrint.finalDraft", "FINAL DRAFT · V1.0")}
             </div>
           </div>
 
@@ -380,41 +384,41 @@ export default function PlanForecastPrintView({
           </h1>
 
           <p className="mt-2 text-base text-neutral-600">
-            Comprehensive 12-Chapter Venture Strategy, 3-Year Financial Model &amp; Statutory Compliance Framework
+            {t("creator.phase3.planForecastPrint.docSubtitle", "Comprehensive 12-Chapter Venture Strategy, 3-Year Financial Model & Statutory Compliance Framework")}
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-neutral-600">
             <span className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-semibold text-neutral-800">
-              Sector: {effectiveCategory}
+              {t("creator.phase3.planForecastPrint.sector", "Sector:")} {effectiveCategory}
             </span>
             <span className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-semibold text-neutral-800">
-              Jurisdiction: {effectiveCountry}
+              {t("creator.phase3.planForecastPrint.jurisdiction", "Jurisdiction:")} {effectiveCountry}
             </span>
             <span className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-semibold text-neutral-800">
-              Base Currency: {fcCurrency}
+              {t("creator.phase3.planForecastPrint.baseCurrency", "Base Currency:")} {fcCurrency}
             </span>
             <span className="text-neutral-400">·</span>
-            <span className="text-neutral-500">Generated: {today}</span>
+            <span className="text-neutral-500">{t("creator.phase3.planForecastPrint.generated", "Generated:")} {today}</span>
           </div>
 
           {/* Quick 12-Chapter Index Table */}
           <div className="mt-6 rounded-xl border border-neutral-200 bg-neutral-50/50 p-4">
             <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-neutral-500">
-              Table of Contents · 12 Verified Chapters
+              {t("creator.phase3.planForecastPrint.tocTitle", "Table of Contents · 12 Verified Chapters")}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-xs">
-              <div><span className="font-bold text-neutral-900">01</span> Executive Summary</div>
-              <div><span className="font-bold text-neutral-900">02</span> Problem &amp; Solution</div>
-              <div><span className="font-bold text-neutral-900">03</span> Market &amp; Customers</div>
-              <div><span className="font-bold text-neutral-900">04</span> Business Model</div>
-              <div><span className="font-bold text-neutral-900">05</span> Competition &amp; Positioning</div>
-              <div><span className="font-bold text-neutral-900">06</span> Go-to-Market</div>
-              <div><span className="font-bold text-neutral-900">07</span> Financial Projections</div>
-              <div><span className="font-bold text-neutral-900">08</span> Company &amp; Team</div>
-              <div><span className="font-bold text-neutral-900">09</span> Funding Requirements</div>
-              <div><span className="font-bold text-neutral-900">10</span> Operations &amp; Milestones</div>
-              <div><span className="font-bold text-neutral-900">11</span> Risks &amp; Next Steps</div>
-              <div><span className="font-bold text-neutral-900">12</span> Legal &amp; Compliance</div>
+              <div><span className="font-bold text-neutral-900">01</span> {t("creator.phase3.businessPlan.flow.chapters.executive", "Executive Summary")}</div>
+              <div><span className="font-bold text-neutral-900">02</span> {t("creator.phase3.businessPlan.flow.chapters.problemSolution", "Problem & Solution")}</div>
+              <div><span className="font-bold text-neutral-900">03</span> {t("creator.phase3.businessPlan.flow.chapters.targetMarket", "Market & Customers")}</div>
+              <div><span className="font-bold text-neutral-900">04</span> {t("creator.phase3.businessPlan.flow.chapters.businessModel", "Business Model")}</div>
+              <div><span className="font-bold text-neutral-900">05</span> {t("creator.phase3.businessPlan.flow.chapters.competitive", "Competition & Positioning")}</div>
+              <div><span className="font-bold text-neutral-900">06</span> {t("creator.phase3.businessPlan.flow.chapters.gtm", "Go-to-Market")}</div>
+              <div><span className="font-bold text-neutral-900">07</span> {t("creator.phase3.businessPlan.flow.chapters.financials", "Financial Projections")}</div>
+              <div><span className="font-bold text-neutral-900">08</span> {t("creator.phase3.businessPlan.flow.chapters.team", "Company & Team")}</div>
+              <div><span className="font-bold text-neutral-900">09</span> {t("creator.phase3.businessPlan.flow.chapters.funding", "Funding Requirements")}</div>
+              <div><span className="font-bold text-neutral-900">10</span> {t("creator.phase3.businessPlan.flow.chapters.operations", "Operations & Milestones")}</div>
+              <div><span className="font-bold text-neutral-900">11</span> {t("creator.phase3.businessPlan.flow.chapters.risks", "Risks & Next Steps")}</div>
+              <div><span className="font-bold text-neutral-900">12</span> {t("creator.phase3.businessPlan.flow.chapters.legalFramework", "Legal & Compliance")}</div>
             </div>
           </div>
         </header>
@@ -424,19 +428,19 @@ export default function PlanForecastPrintView({
         {/* ========================================================================= */}
         {(has(es?.overview) || has(es?.valueProposition) || arr(es?.highlights)) && (
           <Section id="chapter-01">
-            <Heading chapter="01">1. Executive Summary</Heading>
+            <Heading chapter="01">{t("creator.phase3.planForecastPrint.ch1Title", "1. Executive Summary")}</Heading>
             {has(es?.overview) && <Body>{es.overview}</Body>}
 
             {has(es?.valueProposition) && (
               <div className="my-3 rounded-lg border-l-4 border-primary bg-primary/5 p-3.5 text-sm text-neutral-800">
-                <div className="font-bold text-neutral-900 mb-1">Core Value Proposition</div>
+                <div className="font-bold text-neutral-900 mb-1">{t("creator.phase3.planForecastPrint.coreValueProp", "Core Value Proposition")}</div>
                 <p className="leading-relaxed">{es.valueProposition}</p>
               </div>
             )}
 
             {arr(es?.highlights) && (
               <div className="mt-3">
-                <Sub>Strategic Highlights</Sub>
+                <Sub>{t("creator.phase3.planForecastPrint.strategicHighlights", "Strategic Highlights")}</Sub>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                   {es.highlights.map((h, i) => (
                     <div key={i} className="flex items-start gap-2 rounded-md border border-neutral-200 bg-neutral-50/50 p-2.5 text-xs text-neutral-700">
@@ -455,12 +459,12 @@ export default function PlanForecastPrintView({
         {/* ========================================================================= */}
         {(has(project.problem) || has(project.solution)) && (
           <Section id="chapter-02">
-            <Heading chapter="02">2. Problem &amp; Solution</Heading>
+            <Heading chapter="02">{t("creator.phase3.planForecastPrint.ch2Title", "2. Problem & Solution")}</Heading>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {has(project.problem) && (
                 <div className="rounded-lg border border-neutral-200 bg-neutral-50/40 p-4">
                   <div className="text-xs font-bold uppercase tracking-wider text-rose-700 mb-1">
-                    The Problem &amp; Market Inefficiency
+                    {t("creator.phase3.planForecastPrint.theProblemInefficiency", "The Problem & Market Inefficiency")}
                   </div>
                   <p className="text-sm leading-relaxed text-neutral-800">{project.problem}</p>
                 </div>
@@ -469,7 +473,7 @@ export default function PlanForecastPrintView({
               {has(project.solution) && (
                 <div className="rounded-lg border border-neutral-200 bg-neutral-50/40 p-4">
                   <div className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-1">
-                    The Proposed Solution &amp; Innovation
+                    {t("creator.phase3.planForecastPrint.theProposedSolution", "The Proposed Solution & Innovation")}
                   </div>
                   <p className="text-sm leading-relaxed text-neutral-800">{project.solution}</p>
                 </div>
@@ -478,7 +482,7 @@ export default function PlanForecastPrintView({
 
             {has(project.targetUser) && (
               <div className="mt-3 rounded-md border border-neutral-200 p-3 text-xs text-neutral-600 bg-white">
-                <span className="font-bold text-neutral-900">Target Persona Affected: </span>
+                <span className="font-bold text-neutral-900">{t("creator.phase3.planForecastPrint.targetPersonaAffected", "Target Persona Affected:")} </span>
                 {project.targetUser}
               </div>
             )}
@@ -490,16 +494,16 @@ export default function PlanForecastPrintView({
         {/* ========================================================================= */}
         {(has(project.targetUser) || has(ma?.overview) || arr(ma?.targetSegments) || has(ma?.marketSizeQualitative) || arr(ma?.trends)) && (
           <Section id="chapter-03">
-            <Heading chapter="03">3. Market &amp; Customers</Heading>
+            <Heading chapter="03">{t("creator.phase3.planForecastPrint.ch3Title", "3. Market & Customers")}</Heading>
             {has(ma?.overview) && <Body>{ma.overview}</Body>}
 
             {arr(ma?.targetSegments) && (
               <div className="my-3">
-                <Sub>Target Customer Segments</Sub>
+                <Sub>{t("creator.phase3.planForecastPrint.targetCustomerSegments", "Target Customer Segments")}</Sub>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                   {ma.targetSegments.map((seg, i) => (
                     <div key={i} className="rounded-md border border-neutral-200 p-2.5 text-xs text-neutral-700 bg-neutral-50/30">
-                      <span className="font-bold text-neutral-900">Segment {i + 1}: </span>{seg}
+                      <span className="font-bold text-neutral-900">{t("creator.phase3.planForecastPrint.thSegment", "Segment")} {i + 1}: </span>{seg}
                     </div>
                   ))}
                 </div>
@@ -508,14 +512,14 @@ export default function PlanForecastPrintView({
 
             {has(ma?.marketSizeQualitative) && (
               <div className="my-3 rounded-md border border-neutral-200 p-3 bg-neutral-50/40">
-                <div className="text-xs font-bold uppercase tracking-wider text-neutral-600 mb-1">Market Sizing &amp; Opportunity</div>
+                <div className="text-xs font-bold uppercase tracking-wider text-neutral-600 mb-1">{t("creator.phase3.planForecastPrint.marketSizingOpportunity", "Market Sizing & Opportunity")}</div>
                 <p className="text-sm text-neutral-800 leading-relaxed">{ma.marketSizeQualitative}</p>
               </div>
             )}
 
             {arr(ma?.trends) && (
               <div className="mt-3">
-                <Sub>Macro Drivers &amp; Industry Trends</Sub>
+                <Sub>{t("creator.phase3.planForecastPrint.macroDriversTrends", "Macro Drivers & Industry Trends")}</Sub>
                 <Bullets items={ma.trends} />
               </div>
             )}
@@ -527,12 +531,12 @@ export default function PlanForecastPrintView({
         {/* ========================================================================= */}
         {(has(rm?.summary) || arr(rm?.revenueStreams) || has(rm?.pricingStrategy) || arr(rm?.keyMetrics)) && (
           <Section id="chapter-04">
-            <Heading chapter="04">4. Business Model</Heading>
+            <Heading chapter="04">{t("creator.phase3.planForecastPrint.ch4Title", "4. Business Model")}</Heading>
             {has(rm?.summary) && <Body>{rm.summary}</Body>}
 
             {arr(rm?.revenueStreams) && (
               <div className="my-3">
-                <Sub>Core Revenue Streams</Sub>
+                <Sub>{t("creator.phase3.planForecastPrint.coreRevenueStreams", "Core Revenue Streams")}</Sub>
                 <div className="space-y-2 mt-1">
                   {rm.revenueStreams.map((s, i) => (
                     <div key={i} className="rounded-md border border-neutral-200 p-3 text-xs bg-neutral-50/30">
@@ -549,14 +553,14 @@ export default function PlanForecastPrintView({
 
             {has(rm?.pricingStrategy) && (
               <div className="my-3 rounded-md border border-neutral-200 p-3 bg-neutral-50/40">
-                <div className="text-xs font-bold uppercase tracking-wider text-neutral-600 mb-1">Pricing Strategy</div>
+                <div className="text-xs font-bold uppercase tracking-wider text-neutral-600 mb-1">{t("creator.phase3.planForecastPrint.pricingStrategy", "Pricing Strategy")}</div>
                 <p className="text-sm text-neutral-800 leading-relaxed">{rm.pricingStrategy}</p>
               </div>
             )}
 
             {arr(rm?.keyMetrics) && (
               <div className="mt-3">
-                <Sub>Key Business Metrics</Sub>
+                <Sub>{t("creator.phase3.planForecastPrint.keyBusinessMetrics", "Key Business Metrics")}</Sub>
                 <Bullets items={rm.keyMetrics} />
               </div>
             )}
@@ -568,21 +572,21 @@ export default function PlanForecastPrintView({
         {/* ========================================================================= */}
         {(has(ca?.overview) || arr(ca?.competitors)) && (
           <Section id="chapter-05">
-            <Heading chapter="05">5. Competition &amp; Positioning</Heading>
+            <Heading chapter="05">{t("creator.phase3.planForecastPrint.ch5Title", "5. Competition & Positioning")}</Heading>
             {has(ca?.overview) && <Body>{ca.overview}</Body>}
 
             {arr(ca?.competitors) && (
               <div className="mt-3">
-                <Sub>Competitor Comparison Matrix</Sub>
+                <Sub>{t("creator.phase3.planForecastPrint.competitorMatrix", "Competitor Comparison Matrix")}</Sub>
                 <div className="overflow-x-auto rounded-lg border border-neutral-200">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-neutral-100 border-b border-neutral-200 text-neutral-600">
                       <tr>
-                        <th className="p-2.5 font-bold">Competitor</th>
-                        <th className="p-2.5 font-bold">Positioning</th>
-                        <th className="p-2.5 font-bold">Strengths</th>
-                        <th className="p-2.5 font-bold">Weaknesses</th>
-                        <th className="p-2.5 font-bold text-primary">Our Advantage</th>
+                        <th className="p-2.5 font-bold">{t("creator.phase3.planForecastPrint.thCompetitor", "Competitor")}</th>
+                        <th className="p-2.5 font-bold">{t("creator.phase3.planForecastPrint.thPositioning", "Positioning")}</th>
+                        <th className="p-2.5 font-bold">{t("creator.phase3.planForecastPrint.thStrengths", "Strengths")}</th>
+                        <th className="p-2.5 font-bold">{t("creator.phase3.planForecastPrint.thWeaknesses", "Weaknesses")}</th>
+                        <th className="p-2.5 font-bold text-primary">{t("creator.phase3.planForecastPrint.thOurAdvantage", "Our Advantage")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200">
@@ -608,16 +612,16 @@ export default function PlanForecastPrintView({
         {/* ========================================================================= */}
         {(has(gtm?.strategy) || arr(gtm?.channels) || arr(gtm?.phases)) && (
           <Section id="chapter-06">
-            <Heading chapter="06">6. Go-to-Market</Heading>
+            <Heading chapter="06">{t("creator.phase3.planForecastPrint.ch6Title", "6. Go-to-Market")}</Heading>
             {has(gtm?.strategy) && <Body>{gtm.strategy}</Body>}
 
             {arr(gtm?.channels) && (
               <div className="my-3">
-                <Sub>Customer Acquisition Channels</Sub>
+                <Sub>{t("creator.phase3.planForecastPrint.customerAcquisitionChannels", "Customer Acquisition Channels")}</Sub>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                   {gtm.channels.map((ch, i) => (
                     <div key={i} className="rounded-md border border-neutral-200 p-2.5 text-xs text-neutral-700 bg-neutral-50/40">
-                      <span className="font-bold text-neutral-900">Channel {i + 1}: </span>{ch}
+                      <span className="font-bold text-neutral-900">{t("creator.phase3.planForecastPrint.thChannel", "Channel")} {i + 1}: </span>{ch}
                     </div>
                   ))}
                 </div>
@@ -626,7 +630,7 @@ export default function PlanForecastPrintView({
 
             {arr(gtm?.phases) && (
               <div className="mt-3">
-                <Sub>Rollout Phases</Sub>
+                <Sub>{t("creator.phase3.planForecastPrint.rolloutPhases", "Rollout Phases")}</Sub>
                 <div className="space-y-2 mt-1">
                   {gtm.phases.map((p, i) => (
                     <div key={i} className="rounded-md border border-neutral-200 p-3 text-xs bg-white">
@@ -644,51 +648,51 @@ export default function PlanForecastPrintView({
         {/* CHAPTER 07: FINANCIAL PROJECTIONS */}
         {/* ========================================================================= */}
         <Section id="chapter-07">
-          <Heading chapter="07">7. Financial Projections</Heading>
+          <Heading chapter="07">{t("creator.phase3.planForecastPrint.ch7Title", "7. Financial Projections")}</Heading>
           {!forecast ? (
-            <Body>Forecast not generated yet. Complete Phase 3.3 to populate this section.</Body>
+            <Body>{t("creator.phase3.planForecastPrint.forecastNotGenerated", "Forecast not generated yet. Complete Phase 3.3 to populate this section.")}</Body>
           ) : (
             <>
               {has(forecast.revenueForecast?.summary) && (
-                <><Sub>Revenue outlook</Sub><Body>{forecast.revenueForecast.summary}</Body></>
+                <><Sub>{t("creator.phase3.planForecastPrint.revenueOutlook", "Revenue outlook")}</Sub><Body>{forecast.revenueForecast.summary}</Body></>
               )}
               {has(forecast.costForecast?.summary) && (
-                <><Sub>Cost outlook</Sub><Body>{forecast.costForecast.summary}</Body></>
+                <><Sub>{t("creator.phase3.planForecastPrint.costOutlook", "Cost outlook")}</Sub><Body>{forecast.costForecast.summary}</Body></>
               )}
               {has(forecast.cashFlowProjection?.summary) && (
-                <><Sub>Cash-flow outlook</Sub><Body>{forecast.cashFlowProjection.summary}</Body></>
+                <><Sub>{t("creator.phase3.planForecastPrint.cashFlowOutlook", "Cash-flow outlook")}</Sub><Body>{forecast.cashFlowProjection.summary}</Body></>
               )}
 
               {/* 3-Year Summary Table (Year 1, 2, 3) */}
               {(y1 || y2 || y3) && (
                 <div className="my-4 rounded-xl border border-neutral-200 bg-neutral-50/50 p-4">
                   <div className="text-xs font-bold uppercase tracking-wider text-neutral-700 mb-2">
-                    3-Year P&amp;L Financial Summary ({fcCurrency})
+                    {t("creator.phase3.planForecastPrint.plSummary", "3-Year P&L Financial Summary ({{currency}})", { currency: fcCurrency })}
                   </div>
                   <table className="w-full text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-neutral-200 text-neutral-500 text-left">
-                        <th className="py-1.5 font-semibold">Metric</th>
-                        <th className="py-1.5 text-right font-semibold">Year 1</th>
-                        <th className="py-1.5 text-right font-semibold">Year 2</th>
-                        <th className="py-1.5 text-right font-semibold">Year 3</th>
+                        <th className="py-1.5 font-semibold">{t("creator.phase3.planForecastPrint.thMetric", "Metric")}</th>
+                        <th className="py-1.5 text-right font-semibold">{t("creator.phase3.planForecastPrint.thYear1", "Year 1")}</th>
+                        <th className="py-1.5 text-right font-semibold">{t("creator.phase3.planForecastPrint.thYear2", "Year 2")}</th>
+                        <th className="py-1.5 text-right font-semibold">{t("creator.phase3.planForecastPrint.thYear3", "Year 3")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-200/60 font-mono">
                       <tr>
-                        <td className="py-1.5 font-sans font-medium text-neutral-800">Gross Revenue</td>
+                        <td className="py-1.5 font-sans font-medium text-neutral-800">{t("creator.phase3.planForecastPrint.grossRevenue", "Gross Revenue")}</td>
                         <td className="py-1.5 text-right text-neutral-900">{money(y1?.revenue)}</td>
                         <td className="py-1.5 text-right text-neutral-900">{money(y2?.revenue)}</td>
                         <td className="py-1.5 text-right text-neutral-900">{money(y3?.revenue)}</td>
                       </tr>
                       <tr>
-                        <td className="py-1.5 font-sans font-medium text-neutral-800">Operating Expenses</td>
+                        <td className="py-1.5 font-sans font-medium text-neutral-800">{t("creator.phase3.planForecastPrint.operatingExpenses", "Operating Expenses")}</td>
                         <td className="py-1.5 text-right text-neutral-700">{money(y1?.opex)}</td>
                         <td className="py-1.5 text-right text-neutral-700">{money(y2?.opex)}</td>
                         <td className="py-1.5 text-right text-neutral-700">{money(y3?.opex)}</td>
                       </tr>
                       <tr className="font-bold bg-neutral-100/60">
-                        <td className="py-1.5 font-sans text-neutral-900">Net Profit / Cash Flow</td>
+                        <td className="py-1.5 font-sans text-neutral-900">{t("creator.phase3.planForecastPrint.netProfitCashFlow", "Net Profit / Cash Flow")}</td>
                         <td className={`py-1.5 text-right ${(y1?.netIncome ?? 0) >= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
                           {money(y1?.netIncome)}
                         </td>
@@ -708,36 +712,36 @@ export default function PlanForecastPrintView({
               {be && (
                 <div className="my-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-3">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Break-Even Point</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">{t("creator.phase3.planForecastPrint.breakEvenPoint", "Break-Even Point")}</div>
                     <div className="mt-1 text-lg font-bold font-mono text-neutral-900">
-                      {breakEvenMonth ? `Month ${breakEvenMonth}` : "Not reached"}
+                      {breakEvenMonth ? t("creator.phase3.planForecastPrint.breakEvenMonth", "Month {{month}}", { month: breakEvenMonth }) : "Not reached"}
                     </div>
                     <div className="text-[11px] text-neutral-500">{fcTotal > 0 ? `${fcTotal}-month horizon` : "Projection range"}</div>
                   </div>
 
                   <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-3">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Revenue at Break-Even</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">{t("creator.phase3.planForecastPrint.revenueAtBreakEven", "Revenue at Break-Even")}</div>
                     <div className="mt-1 text-lg font-bold font-mono text-neutral-900">{money(analysisRow?.revenue)}</div>
-                    <div className="text-[11px] text-neutral-500">Monthly gross volume</div>
+                    <div className="text-[11px] text-neutral-500">{t("creator.phase3.planForecastPrint.monthlyGrossVolume", "Monthly gross volume")}</div>
                   </div>
 
                   <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-3">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Total Monthly Cost</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">{t("creator.phase3.planForecastPrint.totalMonthlyCost", "Total Monthly Cost")}</div>
                     <div className="mt-1 text-lg font-bold font-mono text-neutral-900">{money(analysisRow?.totalCost)}</div>
-                    <div className="text-[11px] text-neutral-500">Fixed + variable OPEX</div>
+                    <div className="text-[11px] text-neutral-500">{t("creator.phase3.planForecastPrint.fixedPlusVarOpex", "Fixed + variable OPEX")}</div>
                   </div>
                 </div>
               )}
 
               {forecastInputs && (
                 <div className="my-3 rounded-lg border border-neutral-200 p-3 bg-white">
-                  <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-neutral-500">Key Model Drivers</div>
+                  <div className="mb-1 text-[11px] font-bold uppercase tracking-wider text-neutral-500">{t("creator.phase3.planForecastPrint.keyModelDrivers", "Key Model Drivers")}</div>
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs text-neutral-800">
-                    <div><span className="text-neutral-500">ARPU:</span> <span className="font-mono font-semibold">{money(forecastInputs.arpu)}</span>/mo</div>
-                    <div><span className="text-neutral-500">OPEX:</span> <span className="font-mono font-semibold">{money(forecastInputs.opex)}</span>/mo</div>
-                    <div><span className="text-neutral-500">Growth:</span> <span className="font-mono font-semibold">{forecastInputs.monthlyGrowthPct ?? "-"}%</span>/mo</div>
-                    <div><span className="text-neutral-500">TAM:</span> <span className="font-mono font-semibold">{money(forecastInputs.tam)}</span></div>
-                    <div><span className="text-neutral-500">Churn:</span> <span className="font-mono font-semibold">{forecastInputs.monthlyChurnPct ?? "-"}%</span>/mo</div>
+                    <div><span className="text-neutral-500">{t("creator.phase3.planForecastPrint.arpuPrefix", "ARPU:")}</span> <span className="font-mono font-semibold">{money(forecastInputs.arpu)}</span>{t("creator.phase3.planForecastPrint.perMo", "/mo")}</div>
+                    <div><span className="text-neutral-500">{t("creator.phase3.planForecastPrint.opexPrefix", "OPEX:")}</span> <span className="font-mono font-semibold">{money(forecastInputs.opex)}</span>{t("creator.phase3.planForecastPrint.perMo", "/mo")}</div>
+                    <div><span className="text-neutral-500">{t("creator.phase3.planForecastPrint.growthPrefix", "Growth:")}</span> <span className="font-mono font-semibold">{forecastInputs.monthlyGrowthPct ?? "-"}%</span>{t("creator.phase3.planForecastPrint.perMo", "/mo")}</div>
+                    <div><span className="text-neutral-500">{t("creator.phase3.planForecastPrint.tamPrefix", "TAM:")}</span> <span className="font-mono font-semibold">{money(forecastInputs.tam)}</span></div>
+                    <div><span className="text-neutral-500">{t("creator.phase3.planForecastPrint.churnPrefix", "Churn:")}</span> <span className="font-mono font-semibold">{forecastInputs.monthlyChurnPct ?? "-"}%</span>{t("creator.phase3.planForecastPrint.perMo", "/mo")}</div>
                   </div>
                 </div>
               )}
@@ -745,7 +749,7 @@ export default function PlanForecastPrintView({
               {/* Area Chart */}
               {rows.length > 0 && (
                 <div className="my-4 rounded-lg border border-neutral-200 p-3 bg-white">
-                  <div className="mb-2 text-xs font-bold text-neutral-700">Financial Trajectory (Revenue vs OPEX vs Net Cashflow)</div>
+                  <div className="mb-2 text-xs font-bold text-neutral-700">{t("creator.phase3.planForecastPrint.financialTrajectory", "Financial Trajectory (Revenue vs OPEX vs Net Cashflow)")}</div>
                   <AreaChart width={680} height={220} data={rows} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
                     <defs>
                       <linearGradient id="pRev" x1="0" y1="0" x2="0" y2="1">
@@ -770,7 +774,7 @@ export default function PlanForecastPrintView({
               {/* Assumptions */}
               {arr(forecast.assumptions) && (
                 <div className="mt-4">
-                  <Sub>Model Assumptions</Sub>
+                  <Sub>{t("creator.phase3.planForecastPrint.modelAssumptions", "Model Assumptions")}</Sub>
                   <Bullets items={forecast.assumptions} />
                 </div>
               )}
@@ -778,7 +782,7 @@ export default function PlanForecastPrintView({
               {/* Advisory Notice */}
               {has(forecast.advisoryNotice) && (
                 <div className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 p-3 text-xs leading-relaxed text-neutral-600">
-                  <span className="font-bold text-neutral-800">Advisory notice: </span>
+                  <span className="font-bold text-neutral-800">{t("creator.phase3.planForecastPrint.advisoryNotice", "Advisory notice:")} </span>
                   {forecast.advisoryNotice}
                 </div>
               )}
@@ -790,47 +794,47 @@ export default function PlanForecastPrintView({
         {/* CHAPTER 08: COMPANY & TEAM */}
         {/* ========================================================================= */}
         <Section id="chapter-08">
-          <Heading chapter="08">8. Company &amp; Team</Heading>
+          <Heading chapter="08">{t("creator.phase3.planForecastPrint.ch8Title", "8. Company & Team")}</Heading>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
             <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Entity Form</div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">{t("creator.phase3.planForecastPrint.entityForm", "Entity Form")}</div>
               <div className="mt-1 text-base font-bold text-neutral-900">{formation?.selectedType || "SASU / SAS"}</div>
-              <div className="text-[11px] text-neutral-500">Jurisdiction: {effectiveCountry}</div>
+              <div className="text-[11px] text-neutral-500">{t("creator.phase3.planForecastPrint.jurisdiction", "Jurisdiction:")} {effectiveCountry}</div>
             </div>
 
             <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Founder Equity</div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">{t("creator.phase3.planForecastPrint.founderEquity", "Founder Equity")}</div>
               <div className="mt-1 text-base font-bold font-mono text-neutral-900">
                 {formation?.founderEquity != null ? `${formation.founderEquity}%` : "100%"}
               </div>
-              <div className="text-[11px] text-neutral-500">Primary Founder Ownership</div>
+              <div className="text-[11px] text-neutral-500">{t("creator.phase3.planForecastPrint.primaryFounderOwnership", "Primary Founder Ownership")}</div>
             </div>
 
             <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Leadership Role</div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">{t("creator.phase3.planForecastPrint.leadershipRole", "Leadership Role")}</div>
               <div className="mt-1 text-base font-bold text-neutral-900">{formation?.plannedRole || "Founder & CEO"}</div>
-              <div className="text-[11px] text-neutral-500">Operational Direction</div>
+              <div className="text-[11px] text-neutral-500">{t("creator.phase3.planForecastPrint.operationalDirection", "Operational Direction")}</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
             <div className="rounded-lg border border-neutral-200 p-3 bg-white">
-              <Sub>Core Competencies &amp; Founder Capabilities</Sub>
+              <Sub>{t("creator.phase3.planForecastPrint.coreCompetencies", "Core Competencies & Founder Capabilities")}</Sub>
               {arr(formation?.skills?.youHave) ? (
                 <Bullets items={formation.skills.youHave} />
               ) : (
-                <p className="text-xs text-neutral-500">Domain leadership, product architecture, and strategy execution.</p>
+                <p className="text-xs text-neutral-500">{t("creator.phase3.planForecastPrint.defaultCompetencies", "Domain leadership, product architecture, and strategy execution.")}</p>
               )}
             </div>
 
             <div className="rounded-lg border border-neutral-200 p-3 bg-white">
-              <Sub>Key Specialist Needs &amp; Target Hires</Sub>
+              <Sub>{t("creator.phase3.planForecastPrint.keySpecialistNeeds", "Key Specialist Needs & Target Hires")}</Sub>
               {arr(cross?.youNeed) ? (
                 <Bullets items={cross.youNeed} />
               ) : arr(formation?.skills?.youNeed) ? (
                 <Bullets items={formation.skills.youNeed} />
               ) : (
-                <p className="text-xs text-neutral-500">To be prioritized according to technical rollout milestones.</p>
+                <p className="text-xs text-neutral-500">{t("creator.phase3.planForecastPrint.defaultSpecialistNeeds", "To be prioritized according to technical rollout milestones.")}</p>
               )}
             </div>
           </div>
@@ -840,34 +844,34 @@ export default function PlanForecastPrintView({
         {/* CHAPTER 09: FUNDING REQUIREMENTS */}
         {/* ========================================================================= */}
         <Section id="chapter-09">
-          <Heading chapter="09">9. Funding Requirements</Heading>
+          <Heading chapter="09">{t("creator.phase3.planForecastPrint.ch9Title", "9. Funding Requirements")}</Heading>
           <div className="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-neutral-500">Target Raise &amp; Seed Capital</div>
+                <div className="text-xs font-bold uppercase tracking-wider text-neutral-500">{t("creator.phase3.planForecastPrint.targetRaise", "Target Raise & Seed Capital")}</div>
                 <div className="mt-1 text-2xl font-extrabold font-mono text-neutral-900">
                   {cross?.seedAsk != null ? formatMoney(cross.seedAsk, fcCurrency) : `${fcCurrency === 'USD' ? '$' : '€'}250,000`}
                 </div>
               </div>
               <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-                18–24 Month Runway Target
+                {t("creator.phase3.planForecastPrint.runwayTarget", "18–24 Month Runway Target")}
               </span>
             </div>
 
             <div className="mt-4 pt-3 border-t border-neutral-200/80">
-              <Sub>Planned Capital Deployment</Sub>
+              <Sub>{t("creator.phase3.planForecastPrint.plannedDeployment", "Planned Capital Deployment")}</Sub>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
                 <div className="rounded-md border border-neutral-200 bg-white p-2.5 text-xs">
-                  <div className="font-bold text-neutral-900">50% Product &amp; Eng</div>
-                  <p className="text-neutral-500 mt-0.5">Core platform build &amp; MVP deployment</p>
+                  <div className="font-bold text-neutral-900">{t("creator.phase3.planForecastPrint.productEng", "50% Product & Eng")}</div>
+                  <p className="text-neutral-500 mt-0.5">{t("creator.phase3.planForecastPrint.productEngDesc", "Core platform build & MVP deployment")}</p>
                 </div>
                 <div className="rounded-md border border-neutral-200 bg-white p-2.5 text-xs">
-                  <div className="font-bold text-neutral-900">35% Go-to-Market</div>
-                  <p className="text-neutral-500 mt-0.5">Acquisition channels &amp; initial pilot pipeline</p>
+                  <div className="font-bold text-neutral-900">{t("creator.phase3.planForecastPrint.gtm", "35% Go-to-Market")}</div>
+                  <p className="text-neutral-500 mt-0.5">{t("creator.phase3.planForecastPrint.gtmDesc", "Acquisition channels & initial pilot pipeline")}</p>
                 </div>
                 <div className="rounded-md border border-neutral-200 bg-white p-2.5 text-xs">
-                  <div className="font-bold text-neutral-900">15% Legal &amp; Ops</div>
-                  <p className="text-neutral-500 mt-0.5">Statutory compliance &amp; corporate setup</p>
+                  <div className="font-bold text-neutral-900">{t("creator.phase3.planForecastPrint.legalOps", "15% Legal & Ops")}</div>
+                  <p className="text-neutral-500 mt-0.5">{t("creator.phase3.planForecastPrint.legalOpsDesc", "Statutory compliance & corporate setup")}</p>
                 </div>
               </div>
             </div>
@@ -879,26 +883,26 @@ export default function PlanForecastPrintView({
         {/* ========================================================================= */}
         {(has(ops?.overview) || arr(ops?.keyActivities) || arr(ops?.resources) || arr(ops?.milestones)) && (
           <Section id="chapter-10">
-            <Heading chapter="10">10. Operations &amp; Milestones</Heading>
+            <Heading chapter="10">{t("creator.phase3.planForecastPrint.ch10Title", "10. Operations & Milestones")}</Heading>
             {has(ops?.overview) && <Body>{ops.overview}</Body>}
 
             {arr(ops?.keyActivities) && (
               <div className="my-3">
-                <Sub>Key Operational Activities</Sub>
+                <Sub>{t("creator.phase3.planForecastPrint.keyActivities", "Key Operational Activities")}</Sub>
                 <Bullets items={ops.keyActivities} />
               </div>
             )}
 
             {arr(ops?.resources) && (
               <div className="my-3">
-                <Sub>Required Strategic Resources</Sub>
+                <Sub>{t("creator.phase3.planForecastPrint.strategicResources", "Required Strategic Resources")}</Sub>
                 <Bullets items={ops.resources} />
               </div>
             )}
 
             {arr(ops?.milestones) && (
               <div className="mt-3">
-                <Sub>Phased Roadmap &amp; Milestones</Sub>
+                <Sub>{t("creator.phase3.planForecastPrint.phasedMilestones", "Phased Roadmap & Milestones")}</Sub>
                 <div className="space-y-2 mt-1">
                   {ops.milestones.map((m, i) => (
                     <div key={i} className="rounded-md border border-neutral-200 p-3 text-xs bg-white">
@@ -923,16 +927,16 @@ export default function PlanForecastPrintView({
         {/* CHAPTER 11: RISKS & NEXT STEPS */}
         {/* ========================================================================= */}
         <Section id="chapter-11">
-          <Heading chapter="11">11. Risks &amp; Next Steps</Heading>
+          <Heading chapter="11">{t("creator.phase3.planForecastPrint.ch11Title", "11. Risks & Next Steps")}</Heading>
           
-          <Sub>Structured Risk Register</Sub>
+          <Sub>{t("creator.phase3.planForecastPrint.structuredRiskRegister", "Structured Risk Register")}</Sub>
           <div className="overflow-x-auto rounded-lg border border-neutral-200 mb-4">
             <table className="w-full text-xs text-left">
               <thead className="bg-neutral-100 border-b border-neutral-200 text-neutral-600">
                 <tr>
-                  <th className="p-2.5 font-bold w-[25%]">Risk Category</th>
-                  <th className="p-2.5 font-bold w-[45%]">Description</th>
-                  <th className="p-2.5 font-bold w-[30%]">Mitigation Strategy</th>
+                  <th className="p-2.5 font-bold w-[25%]">{t("creator.phase3.planForecastPrint.thRiskCategory", "Risk Category")}</th>
+                  <th className="p-2.5 font-bold w-[45%]">{t("creator.phase3.planForecastPrint.thDescription", "Description")}</th>
+                  <th className="p-2.5 font-bold w-[30%]">{t("creator.phase3.planForecastPrint.thMitigation", "Mitigation Strategy")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200">
@@ -954,25 +958,25 @@ export default function PlanForecastPrintView({
                   ))}
                 {!arr(planRisks) && !arr(forecast?.risks) && (
                   <tr>
-                    <td className="p-2.5 font-bold text-neutral-900">Execution &amp; Market Adoption</td>
-                    <td className="p-2.5 text-neutral-700">Initial client acquisition slower than forecast trajectory.</td>
-                    <td className="p-2.5 text-neutral-600 font-medium">Phased pilot rollouts with rapid customer feedback cycles.</td>
+                    <td className="p-2.5 font-bold text-neutral-900">{t("creator.phase3.planForecastPrint.defaultRiskCat", "Execution & Market Adoption")}</td>
+                    <td className="p-2.5 text-neutral-700">{t("creator.phase3.planForecastPrint.defaultRiskDesc", "Initial client acquisition slower than forecast trajectory.")}</td>
+                    <td className="p-2.5 text-neutral-600 font-medium">{t("creator.phase3.planForecastPrint.defaultRiskMit", "Phased pilot rollouts with rapid customer feedback cycles.")}</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
 
-          <Sub>Immediate Next Execution Steps</Sub>
+          <Sub>{t("creator.phase3.planForecastPrint.immediateNextSteps", "Immediate Next Execution Steps")}</Sub>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
             <div className="rounded-md border border-neutral-200 p-2.5 text-xs bg-neutral-50/40">
-              <span className="font-bold text-neutral-900">1. Customer Discovery:</span> Validate value proposition with initial ICP cohort.
+              <span className="font-bold text-neutral-900">{t("creator.phase3.planForecastPrint.step1Title", "1. Customer Discovery:")}</span> {t("creator.phase3.planForecastPrint.step1Desc", "Validate value proposition with initial ICP cohort.")}
             </div>
             <div className="rounded-md border border-neutral-200 p-2.5 text-xs bg-neutral-50/40">
-              <span className="font-bold text-neutral-900">2. Prototype Build:</span> Deliver working MVP against core user friction points.
+              <span className="font-bold text-neutral-900">{t("creator.phase3.planForecastPrint.step2Title", "2. Prototype Build:")}</span> {t("creator.phase3.planForecastPrint.step2Desc", "Deliver working MVP against core user friction points.")}
             </div>
             <div className="rounded-md border border-neutral-200 p-2.5 text-xs bg-neutral-50/40">
-              <span className="font-bold text-neutral-900">3. Corporate Filing:</span> Finalize entity incorporation and registry documentation.
+              <span className="font-bold text-neutral-900">{t("creator.phase3.planForecastPrint.step3Title", "3. Corporate Filing:")}</span> {t("creator.phase3.planForecastPrint.step3Desc", "Finalize entity incorporation and registry documentation.")}
             </div>
           </div>
         </Section>
@@ -981,7 +985,7 @@ export default function PlanForecastPrintView({
         {/* CHAPTER 12: LEGAL & COMPLIANCE */}
         {/* ========================================================================= */}
         <Section id="chapter-12">
-          <Heading chapter="12">12. Legal &amp; Compliance</Heading>
+          <Heading chapter="12">{t("creator.phase3.planForecastPrint.ch12Title", "12. Legal & Compliance")}</Heading>
           {(() => {
             const jur = lf?.jurisdiction || effectiveCountry;
             const str = lf?.proposedLegalStructure || formation?.selectedType || "SASU / SAS";
@@ -994,17 +998,17 @@ export default function PlanForecastPrintView({
                 <div className="rounded-xl border border-neutral-200 bg-neutral-50/50 p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Jurisdiction</div>
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">{t("creator.phase3.planForecastPrint.thJurisdiction", "Jurisdiction")}</div>
                       <div className="mt-0.5 text-base font-bold text-neutral-900">{jur}</div>
                     </div>
                     <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Legal Entity</div>
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">{t("creator.phase3.planForecastPrint.legalEntity", "Legal Entity")}</div>
                       <div className="mt-0.5 text-base font-bold text-neutral-900">{str}</div>
                     </div>
                     <div>
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">Readiness Score</div>
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-neutral-500">{t("creator.phase3.planForecastPrint.readinessScore", "Readiness Score")}</div>
                       <div className="mt-0.5 text-base font-bold font-mono text-emerald-700">
-                        {score}% ({addressed} of {totalReq} met)
+                        {score}% ({addressed} {t("creator.phase3.planForecastPrint.of", "of")} {totalReq} {t("creator.phase3.planForecastPrint.met", "met)")}
                       </div>
                     </div>
                   </div>
@@ -1014,7 +1018,7 @@ export default function PlanForecastPrintView({
 
                 {arr(lf?.subsections) && (
                   <div>
-                    <Sub>Applicable Statutory Areas</Sub>
+                    <Sub>{t("creator.phase3.planForecastPrint.applicableStatutoryAreas", "Applicable Statutory Areas")}</Sub>
                     <div className="space-y-2 mt-1">
                       {lf.subsections.map((sub, i) => (
                         <div key={i} className="rounded-md border border-neutral-200 p-3 text-xs bg-white">
@@ -1040,7 +1044,7 @@ export default function PlanForecastPrintView({
 
                 {arr(lf?.priorityOpenItems) && (
                   <div>
-                    <Sub>Priority Open Compliance Items</Sub>
+                    <Sub>{t("creator.phase3.planForecastPrint.priorityComplianceItems", "Priority Open Compliance Items")}</Sub>
                     <div className="space-y-1.5 mt-1">
                       {lf.priorityOpenItems.map((item: any, i: number) => (
                         <div key={i} className="rounded border border-neutral-200 p-2 text-xs bg-neutral-50/50">
@@ -1054,7 +1058,7 @@ export default function PlanForecastPrintView({
 
                 {has(lf?.disclaimerNotice) && (
                   <div className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 p-3 text-[11px] italic text-neutral-500 leading-relaxed">
-                    <span className="font-bold not-italic text-neutral-700">Statutory Disclaimer: </span>
+                    <span className="font-bold not-italic text-neutral-700">{t("creator.phase3.planForecastPrint.statutoryDisclaimer", "Statutory Disclaimer:")} </span>
                     {lf.disclaimerNotice}
                   </div>
                 )}
@@ -1065,8 +1069,8 @@ export default function PlanForecastPrintView({
 
         {/* FOOTER */}
         <footer className="mt-12 pt-6 border-t border-neutral-200 flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-400">
-          <div>© {new Date().getFullYear()} {effectiveProjectName}. All rights reserved.</div>
-          <div className="mt-1 sm:mt-0">Synthesized via Mondial Ecosystem Platform</div>
+          <div>{`\u00A9 ${new Date().getFullYear()} ${effectiveProjectName}`}{t("creator.phase3.planForecastPrint.allRightsReserved", ". All rights reserved.")}</div>
+          <div className="mt-1 sm:mt-0">{t("creator.phase3.planForecastPrint.synthesizedVia", "Synthesized via Mondial Ecosystem Platform")}</div>
         </footer>
       </div>
     </div>,

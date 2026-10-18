@@ -10,6 +10,7 @@ import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorJourneyApi, type Designer as ApiDesigner } from "@/lib/api-creator-journey";
 import { toAiError } from "@/lib/ai-errors";
 import { withIdeaContext } from "@/lib/creator-routes";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface Designer {
   id: string;
@@ -42,13 +43,14 @@ const mapDesigner = (d: ApiDesigner): Designer => ({
   rating: d.rating,
   projects: d.projectCount,
   location: d.location,
-  tags: d.sectors?.length ? d.sectors : ["All sectors"],
+  tags: d.sectors || [],
   priceRange: d.estimatedPriceRange,
   delivery: d.estimatedDays,
 });
 
 export default function HireDesignerPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const { state, setState } = useCreatorProgress();
   const effectiveIdeaId = searchParams.get("ideaId") || state.activeIdeaId;
@@ -126,11 +128,11 @@ export default function HireDesignerPage() {
           className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Options
+          {t("creator.phase2.hireDesigner.backToOptions")}
         </Button>
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
           <Sparkles className="h-3 w-3" />
-          Phase 2 of 6 — Verified Designers
+          {t("creator.phase2.hireDesigner.phaseBadge")}
         </div>
       </header>
 
@@ -139,16 +141,16 @@ export default function HireDesignerPage() {
         <div className="h-full bg-primary" style={{ width: "86%" }} />
       </div>
 
-      <section aria-label="Matched Designers" className="flex-1 max-w-[1140px] mx-auto w-full py-6 space-y-8">
+      <section aria-label={t("creator.phase2.hireDesigner.matchedDesignersAria", "Matched Designers")} className="flex-1 max-w-[1140px] mx-auto w-full py-6 space-y-8">
 
         {/* Title Block */}
         <div className="space-y-2">
-          <div className="text-xs font-bold text-primary uppercase tracking-wider">M50 Service Provider · Branding</div>
+          <div className="text-xs font-bold text-primary uppercase tracking-wider">{t("creator.phase2.hireDesigner.serviceCategory")}</div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Matched Designers for Your Project
+            {t("creator.phase2.hireDesigner.title")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            AI-matched verified M50 designers specialized in branding for your venture sector. Work directly inside the platform.
+            {t("creator.phase2.hireDesigner.subtitle")}
           </p>
         </div>
 
@@ -160,20 +162,20 @@ export default function HireDesignerPage() {
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <h3 className="font-bold text-green-700 dark:text-green-400 text-lg">
-                Service Workroom opened!
+                {t("creator.phase2.hireDesigner.workroomOpened")}
               </h3>
             </div>
             <p className="text-sm text-green-800 dark:text-green-300">
-              A private channel with <span className="font-extrabold">{bookedDesigner.name}</span> has been created in your Messenger.
+              {t("creator.phase2.hireDesigner.channelCreated", { name: bookedDesigner.name })}
             </p>
             <div className="bg-card border border-border rounded-xl p-4 text-xs space-y-1">
-              <span className="text-badge font-bold text-muted-foreground uppercase tracking-wider block">Auto-sent to designer</span>
+              <span className="text-badge font-bold text-muted-foreground uppercase tracking-wider block">{t("creator.phase2.hireDesigner.autoSentLabel")}</span>
               <p className="text-foreground font-medium italic">
-                &quot;Hi {bookedDesigner.name}, I would like to book you for the branding design of my concept: {state.project.name || "my project"}. Let&apos;s discuss requirements.&quot;
+                {`"${t("creator.phase2.hireDesigner.autoSentMessage", { name: bookedDesigner.name, project: state.project.name || t("creator.phase2.hireDesigner.defaultProject", "my project") })}"`}
               </p>
             </div>
             <Button onClick={handleContinue} className="w-full bg-primary text-primary-foreground font-bold rounded-xl py-5">
-              Continue — I&apos;ll review designs when ready
+              {t("creator.phase2.hireDesigner.continueReview")}
               <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
           </div>
@@ -185,7 +187,7 @@ export default function HireDesignerPage() {
             {loading ? (
               <div className="flex items-center justify-center gap-2 py-16 text-body text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Finding matched designers…
+                {t("creator.phase2.hireDesigner.findingDesigners")}
               </div>
             ) : loadError ? (
               <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-body text-destructive">
@@ -194,14 +196,14 @@ export default function HireDesignerPage() {
             ) : designers.length === 0 ? (
               <div className="rounded-2xl border border-border bg-card p-8 text-center space-y-3">
                 <p className="text-body text-muted-foreground">
-                  No verified designers matched your sector yet. You can use the AI logo tool or skip branding for now.
+                  {t("creator.phase2.hireDesigner.noDesignersMatched")}
                 </p>
                 <Button
                   variant="outline"
                   onClick={() => router.push("/dashboard/creator/phase-2/branding")}
                   className="rounded-xl text-button font-bold"
                 >
-                  Back to Branding Options
+                  {t("creator.phase2.hireDesigner.backToBranding")}
                 </Button>
               </div>
             ) : (
@@ -227,7 +229,7 @@ export default function HireDesignerPage() {
                             <span className="text-badge text-muted-foreground font-medium block mt-0.5">{designer.role}</span>
                           </div>
                           <Badge className="bg-green-500/10 text-green-600 border-0 text-badge font-bold py-0.5 px-2.5 shrink-0">
-                            Tier {designer.tier} ✓
+                            {t("creator.phase2.hireDesigner.tierBadge", { tier: designer.tier })}
                           </Badge>
                         </div>
 
@@ -237,7 +239,7 @@ export default function HireDesignerPage() {
                             <Star className="w-3.5 h-3.5 fill-current text-amber-500" /> {designer.rating}
                           </span>
                           <span>·</span>
-                          <span>{designer.projects} projects completed</span>
+                          <span>{t("creator.phase2.hireDesigner.projectsCompleted", { count: designer.projects })}</span>
                           <span>·</span>
                           <span className="flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5" /> {designer.location}
@@ -246,7 +248,7 @@ export default function HireDesignerPage() {
 
                         {/* Tags row */}
                         <div className="flex flex-wrap gap-1.5 pt-1">
-                          {designer.tags.map((tag) => (
+                          {(designer.tags.length > 0 ? designer.tags : [t("creator.phase2.hireDesigner.allSectors")]).map((tag) => (
                             <span key={tag} className="rounded-full bg-muted px-2.5 py-0.5 text-badge font-bold uppercase tracking-wider text-muted-foreground">
                               {tag}
                             </span>
@@ -256,7 +258,7 @@ export default function HireDesignerPage() {
                         {/* Bottom CTA Row */}
                         <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-border">
                           <span className="text-sm font-bold text-amber-600 dark:text-amber-500">
-                            {designer.priceRange} est. · {designer.delivery} delivery
+                            {t("creator.phase2.hireDesigner.priceDelivery", { price: designer.priceRange, delivery: designer.delivery })}
                           </span>
                           <Button
                             onClick={() => handleBook(designer)}
@@ -266,11 +268,11 @@ export default function HireDesignerPage() {
                           >
                             {bookingId === designer.id ? (
                               <>
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Opening…
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t("creator.phase2.hireDesigner.openingWorkroom")}
                               </>
                             ) : (
                               <>
-                                <MessageSquare className="w-3.5 h-3.5" /> Book · Open Workroom
+                                <MessageSquare className="w-3.5 h-3.5" /> {t("creator.phase2.hireDesigner.bookWorkroom")}
                               </>
                             )}
                           </Button>

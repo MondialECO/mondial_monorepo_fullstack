@@ -63,20 +63,30 @@ import {
   type BusinessModelOutput,
 } from '@/types/creator/ai';
 import { withIdeaContext } from '@/lib/creator-routes';
+import { useTranslation } from '@/hooks/useTranslation';
 
-function inputWarnings(growth: number, churn: number) {
+function inputWarnings(growth: number, churn: number, t?: (k: string, d: string) => string) {
   const w: string[] = [];
   if (growth > 30) {
-    w.push('Aggressive growth: >30% MoM is difficult to sustain indefinitely — sanity-check market capacity.');
+    w.push(
+      t
+        ? t('creator.phase3.forecast.page.warningGrowth', 'Aggressive growth: >30% MoM is difficult to sustain indefinitely — sanity-check market capacity.')
+        : 'Aggressive growth: >30% MoM is difficult to sustain indefinitely — sanity-check market capacity.'
+    );
   }
   if (churn > 11) {
-    w.push('High churn (>11%/mo) pushes LTV/CAC below the healthy 3× threshold and weakens investor readiness.');
+    w.push(
+      t
+        ? t('creator.phase3.forecast.page.warningChurn', 'High churn (>11%/mo) pushes LTV/CAC below the healthy 3× threshold and weakens investor readiness.')
+        : 'High churn (>11%/mo) pushes LTV/CAC below the healthy 3× threshold and weakens investor readiness.'
+    );
   }
   return w;
 }
 
 export default function ForecastPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const ideaId = searchParams.get('ideaId');
   const { completeStep } = useCreatorProgress();
@@ -558,7 +568,7 @@ export default function ForecastPage() {
   const paybackMonths = bmPayback ? Number(bmPayback).toFixed(1) : (contributionPerSub > 0 ? (cac / contributionPerSub).toFixed(1) : '—');
   const month1NetLoss = projectionData.rows[0]?.netCashFlow ?? (inputs.launchSubs * inputs.arpu - (inputs.opex + inputs.launchSubs * inputs.varCost));
 
-  const warnings = inputWarnings(inputs.growth, inputs.churn);
+  const warnings = inputWarnings(inputs.growth, inputs.churn, t);
 
   const effectiveBusinessModelType =
     sessionInputs?.businessModelType ??
@@ -905,13 +915,13 @@ export default function ForecastPage() {
 
       <Phase3SetupShell
         fullWidth
-        stepEyebrow="STEP 3.3 · FINANCIAL FORECAST"
-        title={hasValidCompletedForecast ? "Financial Projections & Simulations" : "Adjust Forecast Assumptions"}
-        description={hasValidCompletedForecast ? "Unified 36-month financial model. Adjust key assumptions and re-simulate, or explore detailed projections and break-even trajectories." : "Review the assumptions prepared from your Market Study and Business Model before generating your forecast."}
+        stepEyebrow={t('creator.phase3.forecast.eyebrow')}
+        title={hasValidCompletedForecast ? (project.name ? t('creator.phase3.forecast.projectTitle', { name: project.name }) : t('creator.phase3.forecast.defaultTitle')) : t('creator.phase3.forecast.adjustAssumptions')}
+        description={hasValidCompletedForecast ? t('creator.phase3.forecast.defaultDesc') : t('creator.phase3.forecast.emptyDesc')}
       >
         {(loadingJourney || !ideaId) && (
           <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center font-sans">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading financial workspace…
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> {t('creator.phase3.forecast.loadingWorkspace', 'Loading financial workspace…')}
           </div>
         )}
 
@@ -929,10 +939,10 @@ export default function ForecastPage() {
                   </div>
                   <div className="space-y-2">
                     <h3 className="text-lg font-semibold text-foreground font-sans">
-                      Generating Your Financial Forecast…
+                      {t('creator.phase3.forecast.generatingTitle', 'Generating Your Financial Forecast…')}
                     </h3>
                     <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto font-sans leading-relaxed">
-                      Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes.
+                      {t('creator.phase3.forecast.generatingDesc', 'Building your 36-month projections from the assumptions you confirmed. This may take up to two minutes.')}
                     </p>
                   </div>
                   <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">
@@ -947,10 +957,10 @@ export default function ForecastPage() {
               <Card className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6 space-y-4 max-w-xl mx-auto font-sans my-8" role="alert">
                 <div className="flex items-center gap-2 text-destructive font-bold text-body">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>We couldn’t generate your forecast.</span>
+                  <span>{t('creator.phase3.forecast.generationErrorTitle', 'We couldn’t generate your forecast.')}</span>
                 </div>
                 <p className="text-caption text-muted-foreground leading-relaxed">
-                  Your assumptions are still saved. You can review them and try again.
+                  {t('creator.phase3.forecast.generationErrorDesc', 'Your assumptions are still saved. You can review them and try again.')}
                 </p>
                 <div className="flex items-center gap-3 pt-2">
                   <Button
@@ -959,7 +969,7 @@ export default function ForecastPage() {
                     disabled={startForecast.isPending || isSubmittingAssumptions}
                     className="gap-1.5 text-button font-semibold rounded-xl"
                   >
-                    <RotateCw className="h-3.5 w-3.5" /> Try Again
+                    <RotateCw className="h-3.5 w-3.5" /> {t('creator.phase3.forecast.tryAgain', 'Try Again')}
                   </Button>
                   <Button
                     variant="outline"
@@ -968,7 +978,7 @@ export default function ForecastPage() {
                     disabled={startForecast.isPending || isSubmittingAssumptions}
                     className="gap-1.5 text-button font-medium rounded-xl"
                   >
-                    <Sliders className="h-3.5 w-3.5" /> Adjust Assumptions
+                    <Sliders className="h-3.5 w-3.5" /> {t('creator.phase3.forecast.adjustAssumptions', 'Adjust Assumptions')}
                   </Button>
                 </div>
               </Card>
@@ -1014,10 +1024,10 @@ export default function ForecastPage() {
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-lg font-semibold text-foreground font-sans">
-                    Regenerating Financial Forecast…
+                    {t('creator.phase3.forecast.regeneratingTitle', 'Regenerating Financial Forecast…')}
                   </h3>
                   <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto font-sans leading-relaxed">
-                    Recalculating projections with your updated assumptions. This may take up to two minutes.
+                    {t('creator.phase3.forecast.regeneratingDesc', 'Recalculating projections with your updated assumptions. This may take up to two minutes.')}
                   </p>
                 </div>
                 <div className="w-48 h-1.5 bg-muted rounded-full mx-auto overflow-hidden">
@@ -1034,13 +1044,13 @@ export default function ForecastPage() {
                 <div className="space-y-1.5">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-badge font-sans font-semibold tracking-wider uppercase">
                     <span className="h-1.5 w-1.5 rounded-full bg-primary inline-block" />
-                    STEP 3.3 · FINANCIAL FORECAST
+                    {t('creator.phase3.forecast.eyebrow')}
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-foreground">
-                    Your 3-year financial forecast
+                    {t('creator.phase3.forecast.mainTitle', 'Your 3-year financial forecast')}
                   </h1>
                   <p className="text-caption text-muted-foreground font-sans">
-                    36 months · Months 1–12 modelled, 13–36 projected · EUR
+                    {t('creator.phase3.forecast.timeframeSubtitle', '36 months · Months 1–12 modelled, 13–36 projected · EUR')}
                   </p>
                 </div>
 
@@ -1052,7 +1062,7 @@ export default function ForecastPage() {
                       onClick={() => setShowExport(true)}
                       className="gap-2 text-button font-medium rounded-xl h-9 border-border bg-card hover:bg-muted"
                     >
-                      <FileDown className="h-4 w-4" /> Download report
+                      <FileDown className="h-4 w-4" /> {t('creator.phase3.forecast.exportPdf', 'Export PDF')}
                     </Button>
 
                     <Button
@@ -1067,11 +1077,14 @@ export default function ForecastPage() {
                       ) : (
                         <Sliders className="h-4 w-4 text-primary" />
                       )}
-                      <span>Adjust Assumptions</span>
+                      <span>{t('creator.phase3.forecast.adjustAssumptions', 'Adjust Assumptions')}</span>
                     </Button>
                   </div>
                   <span className="text-badge text-muted-foreground font-sans pr-1">
-                    Uses {forecastCost} credits · balance {credits.data?.balance != null ? credits.data.balance : (isCostLoading ? '…' : 0)}
+                    {t('creator.phase3.forecast.page.usesCredits', 'Uses {{cost}} credits · balance {{balance}}', {
+                      cost: forecastCost,
+                      balance: credits.data?.balance != null ? credits.data.balance : (isCostLoading ? '…' : 0)
+                    })}
                   </span>
                 </div>
               </div>
@@ -1085,10 +1098,12 @@ export default function ForecastPage() {
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2 font-semibold text-sm">
                     <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
-                    <span>We couldn’t regenerate your forecast.</span>
+                    <span>{t('creator.phase3.forecast.page.regenFailedTitle', 'We couldn’t regenerate your forecast.')}</span>
                   </div>
                   <p className="text-caption text-muted-foreground pl-6">
-                    Your previous forecast {latestValidVersion ? `(Version ${latestValidVersion})` : ''} is still available.
+                    {t('creator.phase3.forecast.page.regenFailedDesc', 'Your previous forecast {{version}} is still available.', {
+                      version: latestValidVersion ? t('creator.phase3.forecast.page.versionTag', '(Version {{version}})', { version: latestValidVersion }) : ''
+                    })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 pl-6 sm:pl-0">
@@ -1099,7 +1114,7 @@ export default function ForecastPage() {
                     disabled={isGenerating || isSubmittingAssumptions}
                     className="h-8 text-xs font-semibold border-destructive/30 hover:bg-destructive/10 text-destructive rounded-lg gap-1.5"
                   >
-                    <RotateCw className="h-3.5 w-3.5" /> Try Again
+                    <RotateCw className="h-3.5 w-3.5" /> {t('creator.phase3.forecast.page.tryAgain', 'Try Again')}
                   </Button>
                   <Button
                     variant="outline"
@@ -1108,7 +1123,7 @@ export default function ForecastPage() {
                     disabled={isGenerating || isSubmittingAssumptions}
                     className="h-8 text-xs font-medium border-border hover:bg-muted text-foreground rounded-lg"
                   >
-                    Adjust Assumptions
+                    {t('creator.phase3.forecast.page.adjustAssumptions', 'Adjust Assumptions')}
                   </Button>
                 </div>
               </div>
@@ -1119,7 +1134,7 @@ export default function ForecastPage() {
                 <div className="flex items-center gap-2.5 text-caption font-sans">
                   <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <span>
-                    Assumptions changed since last run — results may be out of date. Click Regenerate to update forecast projections.
+                    {t('creator.phase3.forecast.page.assumptionsChangedAlert', 'Assumptions changed since last run — results may be out of date. Click Regenerate to update forecast projections.')}
                   </span>
                 </div>
                 <Button
@@ -1129,7 +1144,7 @@ export default function ForecastPage() {
                   disabled={startForecast.isPending || regenerateForecast.isPending}
                   className="shrink-0 h-7 text-caption font-medium border-amber-500/40 hover:bg-amber-500/20"
                 >
-                  Regenerate now
+                  {t('creator.phase3.forecast.page.regenerateNow', 'Regenerate now')}
                 </Button>
               </div>
             )}
@@ -1143,34 +1158,34 @@ export default function ForecastPage() {
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="space-y-1.5 max-w-3xl">
                     <h2 className="text-xl sm:text-2xl font-heading font-normal text-foreground tracking-tight leading-snug">
-                      You break even in{' '}
+                      {t('creator.phase3.forecast.page.breakEvenTitle', 'You break even in')}{' '}
                       <span className="font-heading font-bold text-foreground font-mono">
-                        month {projectionData.breakEvenMonth}
+                        {t('creator.phase3.forecast.page.monthWord', 'month')} {projectionData.breakEvenMonth}
                       </span>
                       {projectionData.lossRecoveryMonth ? (
                         <>
-                          , and all losses are recovered by{' '}
+                          {t('creator.phase3.forecast.page.lossesRecoveredBy', ', and all losses are recovered by')}{' '}
                           <span className="font-heading font-bold text-foreground font-mono">
-                            month {projectionData.lossRecoveryMonth}
+                            {t('creator.phase3.forecast.page.monthWord', 'month')} {projectionData.lossRecoveryMonth}
                           </span>
                           .
                         </>
                       ) : (
-                        ', and cumulative operating profit continues to compound.'
+                        t('creator.phase3.forecast.page.profitCompounding', ', and cumulative operating profit continues to compound.')
                       )}
                     </h2>
                     <p className="text-body text-foreground/80 font-sans">
                       {projectionData.budgetRunsOutMonth && projectionData.fundingGap > 0 ? (
-                        <>
-                          Your €{inputs.budget.toLocaleString()} starting budget runs out in month{' '}
-                          {projectionData.budgetRunsOutMonth} — you&apos;ll need about €
-                          {projectionData.fundingGap.toLocaleString()} more to get through month{' '}
-                          {projectionData.lowestCashMonth}.
-                        </>
+                        t('creator.phase3.forecast.page.budgetRunsOutDesc', "Your €{{budget}} starting budget runs out in month {{runsOutMonth}} — you'll need about €{{gap}} more to get through month {{lowestMonth}}.", {
+                          budget: inputs.budget.toLocaleString(),
+                          runsOutMonth: projectionData.budgetRunsOutMonth,
+                          gap: projectionData.fundingGap.toLocaleString(),
+                          lowestMonth: projectionData.lowestCashMonth
+                        })
                       ) : (
-                        <>
-                          Your €{inputs.budget.toLocaleString()} starting budget sustains operations without a funding deficit throughout the 36-month horizon.
-                        </>
+                        t('creator.phase3.forecast.page.budgetSustainsDesc', "Your €{{budget}} starting budget sustains operations without a funding deficit throughout the 36-month horizon.", {
+                          budget: inputs.budget.toLocaleString()
+                        })
                       )}
                     </p>
                   </div>
@@ -1178,18 +1193,18 @@ export default function ForecastPage() {
                   <div className="shrink-0">
                     {projectionData.fundingGap > 0 ? (
                       <Badge variant="outline" className="bg-amber-600 text-white border-transparent px-3 py-1 text-badge font-sans font-medium rounded-full">
-                        Funding gap
+                        {t('creator.phase3.forecast.page.fundingGapBadge', 'Funding gap')}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="bg-emerald-600 text-white border-transparent px-3 py-1 text-badge font-sans font-medium rounded-full">
-                        Fully funded
+                        {t('creator.phase3.forecast.page.fullyFundedBadge', 'Fully funded')}
                       </Badge>
                     )}
                   </div>
                 </div>
 
                 <div className="text-caption text-muted-foreground font-sans">
-                  A projection based on your assumptions, not a prediction.
+                  {t('creator.phase3.forecast.page.projectionNotice', 'A projection based on your assumptions, not a prediction.')}
                 </div>
               </div>
             </Card>
@@ -1203,10 +1218,10 @@ export default function ForecastPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[14px] font-sans text-muted-foreground uppercase tracking-wide font-normal">
-                      REVENUE
+                      {t('creator.phase3.forecast.page.revenueCardTitle', 'REVENUE')}
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full text-[11px] font-sans bg-[#EAEDFF] text-[#465281] dark:bg-indigo-950/60 dark:text-indigo-300 font-medium">
-                      {inputs.growth - inputs.churn}% net growth / mo
+                      {t('creator.phase3.forecast.page.netGrowthPerMonth', '{{net}}% net growth / mo', { net: inputs.growth - inputs.churn })}
                     </span>
                   </div>
 
@@ -1214,25 +1229,33 @@ export default function ForecastPage() {
                     <div className="text-[32px] font-heading font-bold text-foreground tracking-tight leading-tight">
                       €{Math.round(projectionData.year3Revenue).toLocaleString()}
                     </div>
-                    <div className="text-[14px] text-muted-foreground font-sans mt-0.5">Year 3 revenue</div>
+                    <div className="text-[14px] text-muted-foreground font-sans mt-0.5">
+                      {t('creator.phase3.forecast.page.year3Revenue', 'Year 3 revenue')}
+                    </div>
                   </div>
 
                   {/* 3-column submetrics box (Figma Exact #F9F9FA) */}
                   <div className="grid grid-cols-3 gap-2 px-3 py-2 rounded bg-[#F9F9FA] dark:bg-muted/40 border border-border/40 text-center">
                     <div>
-                      <div className="text-[10px] text-muted-foreground uppercase font-sans">YEAR 1</div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-sans">
+                        {t('creator.phase3.forecast.page.year1Label', 'YEAR 1')}
+                      </div>
                       <div className="text-[12px] font-heading font-bold text-foreground">
                         €{Math.round(projectionData.year1Revenue).toLocaleString()}
                       </div>
                     </div>
                     <div className="border-x border-border/40 px-1">
-                      <div className="text-[10px] text-muted-foreground uppercase font-sans">YEAR 2</div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-sans">
+                        {t('creator.phase3.forecast.page.year2Label', 'YEAR 2')}
+                      </div>
                       <div className="text-[12px] font-heading font-bold text-foreground">
                         €{Math.round(projectionData.year2Revenue).toLocaleString()}
                       </div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-muted-foreground uppercase font-sans">YEAR 3</div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-sans">
+                        {t('creator.phase3.forecast.page.year3Label', 'YEAR 3')}
+                      </div>
                       <div className="text-[12px] font-heading font-bold text-foreground">
                         €{Math.round(projectionData.year3Revenue).toLocaleString()}
                       </div>
@@ -1246,7 +1269,7 @@ export default function ForecastPage() {
                 </div>
 
                 <div className="text-[12px] text-muted-foreground font-sans pt-3 border-t border-border/40">
-                  Growth slows to projection after month 12.
+                  {t('creator.phase3.forecast.page.revenueCardFooter', 'Growth slows to projection after month 12.')}
                 </div>
               </div>
 
@@ -1255,24 +1278,24 @@ export default function ForecastPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[14px] font-sans text-muted-foreground uppercase tracking-wide font-normal">
-                      COST VS REVENUE
+                      {t('creator.phase3.forecast.page.costVsRevenueCardTitle', 'COST VS REVENUE')}
                     </span>
                     <div className="flex items-center gap-3 text-[11px] font-sans text-muted-foreground">
                       <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-[2px] bg-[#0D9488] inline-block" /> Revenue
+                        <span className="w-2 h-2 rounded-[2px] bg-[#0D9488] inline-block" /> {t('creator.phase3.forecast.page.legendRevenue', 'Revenue')}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-[2px] bg-[#505C8C] inline-block" /> Total cost
+                        <span className="w-2 h-2 rounded-[2px] bg-[#505C8C] inline-block" /> {t('creator.phase3.forecast.page.legendTotalCost', 'Total cost')}
                       </span>
                     </div>
                   </div>
 
                   <div>
                     <div className="text-[32px] font-heading font-bold text-foreground tracking-tight leading-tight">
-                      Month {projectionData.breakEvenMonth}
+                      {t('creator.phase3.forecast.page.monthPrefix', 'Month')} {projectionData.breakEvenMonth}
                     </div>
                     <div className="text-[14px] text-muted-foreground font-sans mt-0.5">
-                      Inflection point to operating profit
+                      {t('creator.phase3.forecast.page.inflectionPoint', 'Inflection point to operating profit')}
                     </div>
                   </div>
 
@@ -1288,7 +1311,7 @@ export default function ForecastPage() {
                 </div>
 
                 <div className="text-[12px] text-muted-foreground font-sans pt-3 border-t border-border/40">
-                  Revenue first covers all costs at {projectionData.breakEvenSubs} subscribers.
+                  {t('creator.phase3.forecast.page.coversCostSubscribers', 'Revenue first covers all costs at {{subs}} subscribers.', { subs: projectionData.breakEvenSubs })}
                 </div>
               </div>
 
@@ -1297,15 +1320,18 @@ export default function ForecastPage() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[14px] font-sans text-muted-foreground uppercase tracking-wide font-normal">
-                      CASH POSITION
+                      {t('creator.phase3.forecast.page.cashPositionCardTitle', 'CASH POSITION')}
                     </span>
                     {projectionData.budgetRunsOutMonth && projectionData.fundingGap > 0 ? (
                       <span className="px-2.5 py-0.5 rounded-full text-[13px] font-sans bg-[#965F11]/10 text-[#965F11] dark:bg-amber-500/10 dark:text-amber-400 font-normal">
-                        Deficit in M{projectionData.budgetRunsOutMonth}–M{projectionData.cashPositiveMonth ? projectionData.cashPositiveMonth - 1 : 36}
+                        {t('creator.phase3.forecast.page.deficitRange', 'Deficit in M{{start}}–M{{end}}', {
+                          start: projectionData.budgetRunsOutMonth,
+                          end: projectionData.cashPositiveMonth ? projectionData.cashPositiveMonth - 1 : 36
+                        })}
                       </span>
                     ) : (
                       <span className="px-2.5 py-0.5 rounded-full text-[13px] font-sans bg-[#0D9488]/10 text-[#0D9488] dark:bg-teal-500/10 dark:text-teal-400 font-normal">
-                        No cash deficit
+                        {t('creator.phase3.forecast.page.noCashDeficit', 'No cash deficit')}
                       </span>
                     )}
                   </div>
@@ -1315,7 +1341,7 @@ export default function ForecastPage() {
                       {projectionData.lowestCashStat < 0 ? '−' : ''}€{Math.abs(Math.round(projectionData.lowestCashStat)).toLocaleString()}
                     </div>
                     <div className="text-[14px] text-muted-foreground font-sans mt-0.5">
-                      Lowest cash point (Month {projectionData.lowestCashMonth})
+                      {t('creator.phase3.forecast.page.lowestCashPoint', 'Lowest cash point (Month {{month}})', { month: projectionData.lowestCashMonth })}
                     </div>
                   </div>
 
@@ -1333,8 +1359,13 @@ export default function ForecastPage() {
 
                 <div className="text-[12px] text-muted-foreground font-sans pt-3 border-t border-border/40">
                   {projectionData.fundingGap > 0 && projectionData.cashPositiveMonth
-                    ? `Lowest point in month ${projectionData.lowestCashMonth}. Cash stays positive from month ${projectionData.cashPositiveMonth}.`
-                    : `Lowest point in month ${projectionData.lowestCashMonth}. Cash stays positive throughout.`}
+                    ? t('creator.phase3.forecast.page.cashCardFooterGap', 'Lowest point in month {{lowestMonth}}. Cash stays positive from month {{positiveMonth}}.', {
+                        lowestMonth: projectionData.lowestCashMonth,
+                        positiveMonth: projectionData.cashPositiveMonth
+                      })
+                    : t('creator.phase3.forecast.page.cashCardFooterNoGap', 'Lowest point in month {{lowestMonth}}. Cash stays positive throughout.', {
+                        lowestMonth: projectionData.lowestCashMonth
+                      })}
                 </div>
               </div>
             </div>
@@ -1345,7 +1376,7 @@ export default function ForecastPage() {
             <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
               <div className="space-y-1 border-b border-border pb-3">
                 <h3 className="text-caption font-bold uppercase tracking-wider text-muted-foreground font-sans">
-                  ASSUMPTIONS CONFIGURE KEY OPERATIONAL DRIVERS FOR THIS BUSINESS MODEL.
+                  {t('creator.phase3.forecast.page.assumptionsConfigTitle', 'ASSUMPTIONS CONFIGURE KEY OPERATIONAL DRIVERS FOR THIS BUSINESS MODEL.')}
                 </h3>
               </div>
 
@@ -1354,18 +1385,18 @@ export default function ForecastPage() {
                 {/* 1. Starting budget */}
                 <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
                   <div className="flex items-center justify-between">
-                    <span className="text-caption text-foreground font-sans font-medium">Starting budget</span>
+                    <span className="text-caption text-foreground font-sans font-medium">{t('creator.phase3.forecast.page.driverStartingBudget', 'Starting budget')}</span>
                     {cross.seedAsk && inputs.budget === cross.seedAsk ? (
                       <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20 px-1.5 py-0">
-                        LINKED
+                        {t('creator.phase3.forecast.page.badgeLinked', 'LINKED')}
                       </Badge>
                     ) : inputs.budget !== savedBaselineInputs?.budget ? (
                       <Badge variant="outline" className="text-badge font-mono bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 px-1.5 py-0">
-                        EDITED
+                        {t('creator.phase3.forecast.page.badgeEdited', 'EDITED')}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground px-1.5 py-0">
-                        YOUR INPUT
+                        {t('creator.phase3.forecast.page.badgeYourInput', 'YOUR INPUT')}
                       </Badge>
                     )}
                   </div>
@@ -1389,7 +1420,7 @@ export default function ForecastPage() {
                     />
                   </div>
                   <div className="text-badge text-muted-foreground font-sans flex items-center justify-between">
-                    <span>Money available before revenue</span>
+                    <span>{t('creator.phase3.forecast.page.driverStartingBudgetSub', 'Money available before revenue')}</span>
                     {cross.seedAsk && inputs.budget !== cross.seedAsk && (
                       <button
                         type="button"
@@ -1403,7 +1434,7 @@ export default function ForecastPage() {
                         }}
                         className="text-primary hover:underline font-semibold"
                       >
-                        Reset
+                        {t('creator.phase3.forecast.page.reset', 'Reset')}
                       </button>
                     )}
                   </div>
@@ -1411,7 +1442,7 @@ export default function ForecastPage() {
 
                 {/* 2. Subscribers at launch */}
                 <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
-                  <div className="text-caption text-foreground font-sans font-medium">Subscribers at launch</div>
+                  <div className="text-caption text-foreground font-sans font-medium">{t('creator.phase3.forecast.page.driverLaunchSubs', 'Subscribers at launch')}</div>
                   <div className="flex items-baseline my-1">
                     <input
                       type="number"
@@ -1422,13 +1453,13 @@ export default function ForecastPage() {
                     />
                   </div>
                   <div className="text-badge text-muted-foreground font-sans">
-                    Paying subscribers in month one
+                    {t('creator.phase3.forecast.page.driverLaunchSubsSub', 'Paying subscribers in month one')}
                   </div>
                 </div>
 
                 {/* 3. New subscribers */}
                 <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
-                  <div className="text-caption text-foreground font-sans font-medium">New subscribers</div>
+                  <div className="text-caption text-foreground font-sans font-medium">{t('creator.phase3.forecast.page.driverNewSubs', 'New subscribers')}</div>
                   <div className="flex items-baseline gap-1 my-1">
                     <input
                       type="number"
@@ -1438,16 +1469,16 @@ export default function ForecastPage() {
                       onChange={(e) => setInputs((s) => ({ ...s, growth: Number(e.target.value) || 0 }))}
                       className="w-14 bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
-                    <span className="text-caption font-sans text-foreground font-medium">% / mo</span>
+                    <span className="text-caption font-sans text-foreground font-medium">{t('creator.phase3.forecast.page.driverPerMonthUnit', '% / mo')}</span>
                   </div>
                   <div className="text-badge text-muted-foreground font-sans">
-                    Of your current base, each month
+                    {t('creator.phase3.forecast.page.driverNewSubsSub', 'Of your current base, each month')}
                   </div>
                 </div>
 
                 {/* 4. Monthly churn */}
                 <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
-                  <div className="text-caption text-foreground font-sans font-medium">Monthly churn</div>
+                  <div className="text-caption text-foreground font-sans font-medium">{t('creator.phase3.forecast.page.driverMonthlyChurn', 'Monthly churn')}</div>
                   <div className="flex items-baseline gap-1 my-1">
                     <input
                       type="number"
@@ -1457,19 +1488,19 @@ export default function ForecastPage() {
                       onChange={(e) => setInputs((s) => ({ ...s, churn: Number(e.target.value) || 0 }))}
                       className="w-14 bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
-                    <span className="text-caption font-sans text-foreground font-medium">% / mo</span>
+                    <span className="text-caption font-sans text-foreground font-medium">{t('creator.phase3.forecast.page.driverPerMonthUnit', '% / mo')}</span>
                   </div>
                   <div className="text-badge text-muted-foreground font-sans">
-                    Subscribers who cancel each month
+                    {t('creator.phase3.forecast.page.driverMonthlyChurnSub', 'Subscribers who cancel each month')}
                   </div>
                 </div>
 
                 {/* 5. Price per subscriber */}
                 <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
                   <div className="flex items-center justify-between">
-                    <span className="text-caption text-foreground font-sans font-medium">Price per subscriber</span>
+                    <span className="text-caption text-foreground font-sans font-medium">{t('creator.phase3.forecast.page.driverPricePerSub', 'Price per subscriber')}</span>
                     <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20 px-1.5 py-0">
-                      LINKED
+                      {t('creator.phase3.forecast.page.badgeLinked', 'LINKED')}
                     </Badge>
                   </div>
                   <div className="flex items-baseline gap-1 my-1">
@@ -1481,16 +1512,16 @@ export default function ForecastPage() {
                       onChange={(e) => setInputs((s) => ({ ...s, arpu: Number(e.target.value) || 0 }))}
                       className="w-12 bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
-                    <span className="text-caption font-sans text-foreground font-medium">/ mo</span>
+                    <span className="text-caption font-sans text-foreground font-medium">{t('creator.phase3.forecast.page.driverPerMonthSlash', '/ mo')}</span>
                   </div>
                   <div className="text-badge text-muted-foreground font-sans">
-                    From your pricing, step 3.2
+                    {t('creator.phase3.forecast.page.driverPricePerSubSub', 'From your pricing, step 3.2')}
                   </div>
                 </div>
 
                 {/* 6. Variable cost */}
                 <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
-                  <div className="text-caption text-foreground font-sans font-medium">Variable cost</div>
+                  <div className="text-caption text-foreground font-sans font-medium">{t('creator.phase3.forecast.page.driverVarCost', 'Variable cost')}</div>
                   <div className="flex items-baseline gap-1 my-1">
                     <span className="text-base font-mono font-bold text-foreground">€</span>
                     <input
@@ -1500,17 +1531,17 @@ export default function ForecastPage() {
                       onChange={(e) => setInputs((s) => ({ ...s, varCost: Number(e.target.value) || 0 }))}
                       className="w-12 bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
-                    <span className="text-caption font-sans text-foreground font-medium">/ sub</span>
+                    <span className="text-caption font-sans text-foreground font-medium">{t('creator.phase3.forecast.page.driverPerSubSlash', '/ sub')}</span>
                   </div>
                   <div className="text-badge text-muted-foreground font-sans">
-                    Delivery and logistics per subscriber
+                    {t('creator.phase3.forecast.page.driverVarCostSub', 'Delivery and logistics per subscriber')}
                   </div>
                 </div>
 
                 {/* 7. Fixed costs */}
                 <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
                   <div className="flex items-center justify-between">
-                    <span className="text-caption text-foreground font-sans font-medium">Fixed costs</span>
+                    <span className="text-caption text-foreground font-sans font-medium">{t('creator.phase3.forecast.page.driverFixedCosts', 'Fixed costs')}</span>
                     <Sliders className="h-3.5 w-3.5 text-muted-foreground/70" />
                   </div>
                   <div className="flex items-baseline gap-1 my-1">
@@ -1523,10 +1554,10 @@ export default function ForecastPage() {
                       onChange={(e) => setInputs((s) => ({ ...s, opex: Number(e.target.value) || 0 }))}
                       className="w-20 bg-transparent text-base font-mono font-bold text-foreground outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
-                    <span className="text-caption font-sans text-foreground font-medium">/ mo</span>
+                    <span className="text-caption font-sans text-foreground font-medium">{t('creator.phase3.forecast.page.driverPerMonthSlash', '/ mo')}</span>
                   </div>
                   <div className="text-badge text-muted-foreground font-sans">
-                    Platform, marketing, team, operations
+                    {t('creator.phase3.forecast.page.driverFixedCostsSub', 'Platform, marketing, team, operations')}
                   </div>
                 </div>
 
@@ -1535,9 +1566,9 @@ export default function ForecastPage() {
                   <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-600" />
                   <div className="pl-1.5 space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-caption text-foreground font-sans font-medium">Market size</span>
+                      <span className="text-caption text-foreground font-sans font-medium">{t('creator.phase3.forecast.page.driverMarketSize', 'Market size')}</span>
                       <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20 px-1.5 py-0">
-                        LINKED
+                        {t('creator.phase3.forecast.page.badgeLinked', 'LINKED')}
                       </Badge>
                     </div>
                     <div className="text-base font-mono font-bold text-foreground my-1">
@@ -1546,14 +1577,19 @@ export default function ForecastPage() {
                         : `${(inputs.tam / 1_000_000).toFixed(0)}M`}
                     </div>
                     <div className="text-badge text-muted-foreground font-sans flex flex-col gap-0.5">
-                      <span>Market study: €{marketStudyTamFormatted} · This forecast: €{inputs.tam >= 1_000_000_000 ? `${(inputs.tam / 1_000_000_000).toFixed(1)}B` : `${(inputs.tam / 1_000_000).toFixed(0)}M`}</span>
+                      <span>
+                        {t('creator.phase3.forecast.page.marketStudyComparison', 'Market study: €{{study}} · This forecast: €{{forecast}}', {
+                          study: marketStudyTamFormatted,
+                          forecast: inputs.tam >= 1_000_000_000 ? `${(inputs.tam / 1_000_000_000).toFixed(1)}B` : `${(inputs.tam / 1_000_000).toFixed(0)}M`
+                        })}
+                      </span>
                       {marketStudyTam && inputs.tam !== marketStudyTam && (
                         <button
                           type="button"
                           onClick={() => setInputs((s) => ({ ...s, tam: marketStudyTam }))}
                           className="text-primary hover:underline font-semibold text-left"
                         >
-                          Reset to market study value
+                          {t('creator.phase3.forecast.page.resetToMarketStudy', 'Reset to market study value')}
                         </button>
                       )}
                     </div>
@@ -1580,13 +1616,13 @@ export default function ForecastPage() {
             <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden space-y-0">
               <div className="p-6 border-b border-border space-y-1.5">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-badge font-sans font-semibold tracking-wider uppercase">
-                  STEP 3.3 · FORECAST RESULTS
+                  {t('creator.phase3.forecast.page.stepBadge', 'STEP 3.3 · FORECAST RESULTS')}
                 </div>
                 <h3 className="text-xl font-heading font-bold text-foreground tracking-tight">
-                  Financial Forecast — 36-Month Projection
+                  {t('creator.phase3.forecast.page.tableTitle', 'Financial Forecast — 36-Month Projection')}
                 </h3>
                 <p className="text-caption text-muted-foreground font-sans">
-                  Month-by-month subscribers, revenue, costs and cash across three years.
+                  {t('creator.phase3.forecast.page.tableDesc', 'Month-by-month subscribers, revenue, costs and cash across three years.')}
                 </p>
               </div>
 
@@ -1594,16 +1630,16 @@ export default function ForecastPage() {
                 <table className="w-full text-caption font-sans border-collapse">
                   <thead>
                     <tr className="border-b border-border bg-muted/40 font-semibold text-muted-foreground text-badge uppercase tracking-wider">
-                      <th className="px-4 py-3 text-left font-mono">MONTH</th>
-                      <th className="px-3 py-3 text-right">SUBSCRIBERS</th>
-                      <th className="px-3 py-3 text-right">REVENUE</th>
-                      <th className="px-3 py-3 text-right">FIXED COST</th>
-                      <th className="px-3 py-3 text-right">VARIABLE COST</th>
-                      <th className="px-3 py-3 text-right font-bold text-foreground">TOTAL COST</th>
-                      <th className="px-3 py-3 text-right">NET CASH FLOW</th>
-                      <th className="px-3 py-3 text-right">CUMULATIVE</th>
-                      <th className="px-3 py-3 text-right font-bold text-foreground">CASH ON HAND</th>
-                      <th className="px-4 py-3 text-left">NOTES</th>
+                      <th className="px-4 py-3 text-left font-mono">{t('creator.phase3.forecast.page.thMonth', 'MONTH')}</th>
+                      <th className="px-3 py-3 text-right">{t('creator.phase3.forecast.page.thSubscribers', 'SUBSCRIBERS')}</th>
+                      <th className="px-3 py-3 text-right">{t('creator.phase3.forecast.page.thRevenue', 'REVENUE')}</th>
+                      <th className="px-3 py-3 text-right">{t('creator.phase3.forecast.page.thFixedCost', 'FIXED COST')}</th>
+                      <th className="px-3 py-3 text-right">{t('creator.phase3.forecast.page.thVariableCost', 'VARIABLE COST')}</th>
+                      <th className="px-3 py-3 text-right font-bold text-foreground">{t('creator.phase3.forecast.page.thTotalCost', 'TOTAL COST')}</th>
+                      <th className="px-3 py-3 text-right">{t('creator.phase3.forecast.page.thNetCashFlow', 'NET CASH FLOW')}</th>
+                      <th className="px-3 py-3 text-right">{t('creator.phase3.forecast.page.thCumulative', 'CUMULATIVE')}</th>
+                      <th className="px-3 py-3 text-right font-bold text-foreground">{t('creator.phase3.forecast.page.thCashOnHand', 'CASH ON HAND')}</th>
+                      <th className="px-4 py-3 text-left">{t('creator.phase3.forecast.page.thNotes', 'NOTES')}</th>
                     </tr>
                   </thead>
 
@@ -1611,7 +1647,7 @@ export default function ForecastPage() {
                     {/* --- YEAR 1 HEADER --- */}
                     <tr className="bg-muted/50 border-y border-border">
                       <td colSpan={10} className="px-4 py-2 font-heading font-bold text-badge text-foreground tracking-wider uppercase font-sans">
-                        YEAR 1 · MODELLED
+                        {t('creator.phase3.forecast.page.year1Header', 'YEAR 1 · MODELLED')}
                       </td>
                     </tr>
                     {projectionData.y1Rows.map((row) => (
@@ -1651,7 +1687,7 @@ export default function ForecastPage() {
                     ))}
                     {/* --- YEAR 1 SUBTOTAL --- */}
                     <tr className="bg-muted/40 font-bold border-t border-border">
-                      <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">Y1 SUBTOTAL</td>
+                      <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">{t('creator.phase3.forecast.page.y1Subtotal', 'Y1 SUBTOTAL')}</td>
                       <td className="px-3 py-2.5 text-right">—</td>
                       <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">
                         €{Math.round(projectionData.y1Total.revenue).toLocaleString()}
@@ -1669,14 +1705,14 @@ export default function ForecastPage() {
                         {projectionData.y1Total.cashOnHand < 0 ? '−' : ''}€{Math.abs(Math.round(projectionData.y1Total.cashOnHand)).toLocaleString()}
                       </td>
                       <td className="px-4 py-2.5 text-left font-sans text-caption text-muted-foreground italic">
-                        End of detailed modelled period
+                        {t('creator.phase3.forecast.page.endModelledPeriod', 'End of detailed modelled period')}
                       </td>
                     </tr>
 
                     {/* --- YEAR 2 HEADER --- */}
                     <tr className="bg-muted/50 border-y border-border">
                       <td colSpan={10} className="px-4 py-2 font-heading font-bold text-badge text-foreground tracking-wider uppercase font-sans">
-                        YEAR 2 · PROJECTED
+                        {t('creator.phase3.forecast.page.year2Header', 'YEAR 2 · PROJECTED')}
                       </td>
                     </tr>
                     {projectionData.y2Rows.map((row) => (
@@ -1716,7 +1752,7 @@ export default function ForecastPage() {
                     ))}
                     {/* --- YEAR 2 SUBTOTAL --- */}
                     <tr className="bg-muted/40 font-bold border-t border-border">
-                      <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">Y2 SUBTOTAL</td>
+                      <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">{t('creator.phase3.forecast.page.y2Subtotal', 'Y2 SUBTOTAL')}</td>
                       <td className="px-3 py-2.5 text-right">—</td>
                       <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">
                         €{Math.round(projectionData.y2Total.revenue).toLocaleString()}
@@ -1734,14 +1770,14 @@ export default function ForecastPage() {
                         {projectionData.y2Total.cashOnHand < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y2Total.cashOnHand)).toLocaleString()}
                       </td>
                       <td className="px-4 py-2.5 text-left font-sans text-caption text-muted-foreground italic">
-                        Operational profit reached
+                        {t('creator.phase3.forecast.page.operationalProfitReached', 'Operational profit reached')}
                       </td>
                     </tr>
 
                     {/* --- YEAR 3 HEADER --- */}
                     <tr className="bg-muted/50 border-y border-border">
                       <td colSpan={10} className="px-4 py-2 font-heading font-bold text-badge text-foreground tracking-wider uppercase font-sans">
-                        YEAR 3 · PROJECTED
+                        {t('creator.phase3.forecast.page.year3Header', 'YEAR 3 · PROJECTED')}
                       </td>
                     </tr>
                     {projectionData.y3Rows.map((row) => (
@@ -1781,7 +1817,7 @@ export default function ForecastPage() {
                     ))}
                     {/* --- YEAR 3 SUBTOTAL --- */}
                     <tr className="bg-muted/40 font-bold border-t border-border">
-                      <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">Y3 SUBTOTAL</td>
+                      <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">{t('creator.phase3.forecast.page.y3Subtotal', 'Y3 SUBTOTAL')}</td>
                       <td className="px-3 py-2.5 text-right">—</td>
                       <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">
                         €{Math.round(projectionData.y3Total.revenue).toLocaleString()}
@@ -1799,7 +1835,7 @@ export default function ForecastPage() {
                         {projectionData.y3Total.cashOnHand < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y3Total.cashOnHand)).toLocaleString()}
                       </td>
                       <td className="px-4 py-2.5 text-left font-sans text-caption text-muted-foreground italic">
-                        Full 3-year projection complete
+                        {t('creator.phase3.forecast.page.full3YearComplete', 'Full 3-year projection complete')}
                       </td>
                     </tr>
                   </tbody>
@@ -1815,57 +1851,66 @@ export default function ForecastPage() {
               <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-heading font-bold text-foreground">Break-even analysis</h3>
+                    <h3 className="text-base font-heading font-bold text-foreground">{t('creator.phase3.forecast.page.breakEvenTitle', 'Break-even analysis')}</h3>
                     <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20">
-                      Break-even: Month {projectionData.breakEvenMonth}
+                      {t('creator.phase3.forecast.page.breakEvenBadge', 'Break-even: Month {{month}}', { month: projectionData.breakEvenMonth })}
                     </Badge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <span className="text-caption text-muted-foreground font-sans block">Monthly fixed costs</span>
+                      <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.monthlyFixedCosts', 'Monthly fixed costs')}</span>
                       <div className="text-xl font-heading font-bold font-mono text-foreground">
                         €{inputs.opex.toLocaleString()}
                       </div>
-                      <span className="text-badge text-muted-foreground font-sans block">Base operating cost</span>
+                      <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.baseOperatingCost', 'Base operating cost')}</span>
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-caption text-muted-foreground font-sans block">Price per subscriber</span>
+                      <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.pricePerSubscriber', 'Price per subscriber')}</span>
                       <div className="text-xl font-heading font-bold font-mono text-foreground">
                         €{inputs.arpu}
                       </div>
-                      <span className="text-badge text-muted-foreground font-sans block">Average monthly revenue</span>
+                      <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.averageMonthlyRevenue', 'Average monthly revenue')}</span>
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-caption text-muted-foreground font-sans block">Contribution per subscriber</span>
+                      <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.contributionPerSubscriber', 'Contribution per subscriber')}</span>
                       <div className="text-xl font-heading font-bold font-mono text-foreground">
                         €{contributionPerSub}
                       </div>
                       <span className="text-badge text-muted-foreground font-sans block">
-                        €{inputs.arpu} price − €{inputs.varCost} variable cost
+                        {t('creator.phase3.forecast.page.priceMinusVarCost', '€{{price}} price − €{{varCost}} variable cost', { price: inputs.arpu, varCost: inputs.varCost })}
                       </span>
                     </div>
 
                     <div className="space-y-1">
-                      <span className="text-caption text-muted-foreground font-sans block">Subscribers needed</span>
+                      <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.subscribersNeeded', 'Subscribers needed')}</span>
                       <div className="text-xl font-heading font-bold font-mono text-foreground">
                         {subsNeeded}
                       </div>
-                      <span className="text-badge text-muted-foreground font-sans block">To cover fixed costs</span>
+                      <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.toCoverFixedCosts', 'To cover fixed costs')}</span>
                     </div>
                   </div>
 
                   <p className="text-body text-muted-foreground font-sans leading-relaxed">
-                    Each subscriber leaves €{contributionPerSub} after delivery costs. You need {subsNeeded} of them
-                    to cover €{inputs.opex.toLocaleString()} of fixed costs. You pass that point in month{' '}
-                    {projectionData.breakEvenMonth} with {projectionData.breakEvenSubs} subscribers.
+                    {t('creator.phase3.forecast.page.breakEvenParagraph', 'Each subscriber leaves €{{contribution}} after delivery costs. You need {{needed}} of them to cover €{{fixed}} of fixed costs. You pass that point in month {{month}} with {{subs}} subscribers.', {
+                      contribution: contributionPerSub,
+                      needed: subsNeeded,
+                      fixed: inputs.opex.toLocaleString(),
+                      month: projectionData.breakEvenMonth,
+                      subs: projectionData.breakEvenSubs
+                    })}
                   </p>
                 </div>
 
                 <div className="p-3 rounded-xl bg-muted/40 font-mono text-caption text-muted-foreground border border-border/70 text-center">
-                  €{inputs.opex.toLocaleString()} ÷ €{contributionPerSub} = {(inputs.opex / contributionPerSub).toFixed(1)} → {subsNeeded} subscribers
+                  {t('creator.phase3.forecast.page.breakEvenFormula', '€{{fixed}} ÷ €{{contribution}} = {{ratio}} → {{needed}} subscribers', {
+                    fixed: inputs.opex.toLocaleString(),
+                    contribution: contributionPerSub,
+                    ratio: (inputs.opex / contributionPerSub).toFixed(1),
+                    needed: subsNeeded
+                  })}
                 </div>
               </Card>
 
@@ -1873,7 +1918,7 @@ export default function ForecastPage() {
               <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-heading font-bold text-foreground">Unit economics</h3>
+                    <h3 className="text-base font-heading font-bold text-foreground">{t('creator.phase3.forecast.page.unitEconomicsTitle', 'Unit economics')}</h3>
                     <Badge
                       variant="outline"
                       className={`text-badge font-mono ${
@@ -1882,68 +1927,68 @@ export default function ForecastPage() {
                           : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                       }`}
                     >
-                      {Number(ltvCacRatio) >= 3.0 ? 'Healthy Model' : 'Margin Attention'}
+                      {Number(ltvCacRatio) >= 3.0 ? t('creator.phase3.forecast.page.badgeHealthy', 'Healthy Model') : t('creator.phase3.forecast.page.badgeAttention', 'Margin Attention')}
                     </Badge>
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-0.5">
-                      <span className="text-caption text-muted-foreground font-sans block">CAC</span>
+                      <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.cacLabel', 'CAC')}</span>
                       <div className="text-lg font-heading font-bold font-mono text-foreground">€{cac}</div>
-                      <span className="text-badge text-muted-foreground font-sans block">Marketing ÷ new subs, Y1</span>
+                      <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.cacSub', 'Marketing ÷ new subs, Y1')}</span>
                     </div>
 
                     <div className="space-y-0.5">
-                      <span className="text-caption text-muted-foreground font-sans block">LTV</span>
+                      <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.ltvLabel', 'LTV')}</span>
                       <div className="text-lg font-heading font-bold font-mono text-foreground">€{ltv}</div>
                       <span className="text-badge text-muted-foreground font-sans block">
-                        €{contributionPerSub} ÷ {inputs.churn}% churn
+                        {t('creator.phase3.forecast.page.ltvSub', '€{{contribution}} ÷ {{churn}}% churn', { contribution: contributionPerSub, churn: inputs.churn })}
                       </span>
                     </div>
 
                     <div className="space-y-0.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-caption text-muted-foreground font-sans">LTV / CAC</span>
+                        <span className="text-caption text-muted-foreground font-sans">{t('creator.phase3.forecast.page.ltvCacRatio', 'LTV / CAC')}</span>
                         <span className={`text-badge font-mono ${Number(ltvCacRatio) >= 3.0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'} font-bold`}>
-                          {Number(ltvCacRatio) >= 3.0 ? 'Healthy' : 'Caution'}
+                          {Number(ltvCacRatio) >= 3.0 ? t('creator.phase3.forecast.page.statusHealthy', 'Healthy') : t('creator.phase3.forecast.page.statusCaution', 'Caution')}
                         </span>
                       </div>
                       <div className={`text-lg font-heading font-bold font-mono ${Number(ltvCacRatio) >= 3.0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                        {ltvCacRatio}x
+                        {`${ltvCacRatio}x`}
                       </div>
-                      <span className="text-badge text-muted-foreground font-sans block">Target: &gt; 3.0x</span>
+                      <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.targetRatio', 'Target: > 3.0x')}</span>
                     </div>
 
                     <div className="space-y-0.5 pt-2">
-                      <span className="text-caption text-muted-foreground font-sans block">Payback</span>
-                      <div className="text-lg font-heading font-bold font-mono text-foreground">{paybackMonths} mo</div>
-                      <span className="text-badge text-muted-foreground font-sans block">Time to earn back CAC</span>
+                      <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.paybackLabel', 'Payback')}</span>
+                      <div className="text-lg font-heading font-bold font-mono text-foreground">{t('creator.phase3.forecast.page.paybackMonthsUnit', '{{months}} mo', { months: paybackMonths })}</div>
+                      <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.paybackSub', 'Time to earn back CAC')}</span>
                     </div>
 
                     <div className="space-y-0.5 pt-2">
-                      <span className="text-caption text-muted-foreground font-sans block">Gross margin</span>
+                      <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.grossMarginLabel', 'Gross margin')}</span>
                       <div className="text-lg font-heading font-bold font-mono text-foreground">{grossMarginPct}%</div>
-                      <span className="text-badge text-muted-foreground font-sans block">After variable costs</span>
+                      <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.afterVarCosts', 'After variable costs')}</span>
                     </div>
 
                     <div className="space-y-0.5 pt-2">
-                      <span className="text-caption text-muted-foreground font-sans block">Burn at launch</span>
+                      <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.burnAtLaunch', 'Burn at launch')}</span>
                       <div className="text-lg font-heading font-bold font-mono text-destructive">
                         €{Math.abs(month1NetLoss).toLocaleString()}
                       </div>
-                      <span className="text-badge text-muted-foreground font-sans block">Month one net loss</span>
+                      <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.monthOneNetLoss', 'Month one net loss')}</span>
                     </div>
                   </div>
 
                   <p className="text-body text-muted-foreground font-sans leading-relaxed">
-                    Your unit economics are exceptionally resilient, driven by a high gross margin ({grossMarginPct}%) and manageable customer acquisition cost.
+                    {t('creator.phase3.forecast.page.unitEconomicsResilient', 'Your unit economics are exceptionally resilient, driven by a high gross margin ({{margin}}%) and manageable customer acquisition cost.', { margin: grossMarginPct })}
                   </p>
                 </div>
 
                 <div className="p-3 rounded-xl bg-muted/40 font-sans text-caption text-muted-foreground border border-border/70">
                   {Number(ltvCacRatio) >= 3.0
-                    ? `Target threshold of 3.0x LTV/CAC achieved with sustainable payback within ${paybackMonths} months.`
-                    : `LTV/CAC ratio is currently ${ltvCacRatio}x (target > 3.0x) with payback within ${paybackMonths} months.`}
+                    ? t('creator.phase3.forecast.page.unitEconomicsTargetMet', 'Target threshold of 3.0x LTV/CAC achieved with sustainable payback within {{payback}} months.', { payback: paybackMonths })
+                    : t('creator.phase3.forecast.page.unitEconomicsTargetCaution', 'LTV/CAC ratio is currently {{ratio}}x (target > 3.0x) with payback within {{payback}} months.', { ratio: ltvCacRatio, payback: paybackMonths })}
                 </div>
               </Card>
             </div>
@@ -1954,67 +1999,83 @@ export default function ForecastPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left: Key model assumptions */}
               <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
-                <h3 className="text-base font-heading font-bold text-foreground">Key model assumptions</h3>
+                <h3 className="text-base font-heading font-bold text-foreground">{t('creator.phase3.forecast.page.keyAssumptionsTitle', 'Key model assumptions')}</h3>
                 <div className="space-y-3 font-sans">
                   {output?.assumptions && output.assumptions.length > 0 ? (
                     output.assumptions.map((item, idx) => (
                       <div key={idx} className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
                         <span className="text-body text-foreground">{item}</span>
                         <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20 shrink-0">
-                          AI SYNTHESIS
+                          {t('creator.phase3.forecast.page.badgeAiSynthesis', 'AI SYNTHESIS')}
                         </Badge>
                       </div>
                     ))
                   ) : (
                     <>
                       <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
-                        <span className="text-body text-foreground">{inputs.launchSubs} subscribers at launch</span>
+                        <span className="text-body text-foreground">
+                          {t('creator.phase3.forecast.page.launchSubsFallback', '{{subs}} subscribers at launch', { subs: inputs.launchSubs })}
+                        </span>
                         <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
-                          YOUR INPUT
+                          {t('creator.phase3.forecast.page.badgeYourInput', 'YOUR INPUT')}
                         </Badge>
                       </div>
 
                       <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
                         <span className="text-body text-foreground">
-                          {inputs.growth}% new subscribers and {inputs.churn}% churn each month — {inputs.growth - inputs.churn}% net growth
+                          {t('creator.phase3.forecast.page.growthChurnFallback', '{{growth}}% new subscribers and {{churn}}% churn each month — {{net}}% net growth', {
+                            growth: inputs.growth,
+                            churn: inputs.churn,
+                            net: inputs.growth - inputs.churn
+                          })}
                         </span>
                         <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
-                          YOUR INPUT
+                          {t('creator.phase3.forecast.page.badgeYourInput', 'YOUR INPUT')}
                         </Badge>
                       </div>
 
                       <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
-                        <span className="text-body text-foreground">€{inputs.arpu} average price per subscriber</span>
+                        <span className="text-body text-foreground">
+                          {t('creator.phase3.forecast.page.pricePerSubFallback', '€{{price}} average price per subscriber', { price: inputs.arpu })}
+                        </span>
                         <Badge variant="outline" className="text-badge font-mono bg-primary/10 text-primary border-primary/20">
-                          FROM 3.2
+                          {t('creator.phase3.forecast.page.badgeFrom32', 'FROM 3.2')}
                         </Badge>
                       </div>
 
                       <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
-                        <span className="text-body text-foreground">€{inputs.varCost} delivery and logistics cost per subscriber</span>
+                        <span className="text-body text-foreground">
+                          {t('creator.phase3.forecast.page.varCostFallback', '€{{cost}} delivery and logistics cost per subscriber', { cost: inputs.varCost })}
+                        </span>
                         <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
-                          YOUR INPUT
+                          {t('creator.phase3.forecast.page.badgeYourInput', 'YOUR INPUT')}
                         </Badge>
                       </div>
 
                       <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
-                        <span className="text-body text-foreground">€{inputs.opex.toLocaleString()} fixed costs, flat for 36 months</span>
+                        <span className="text-body text-foreground">
+                          {t('creator.phase3.forecast.page.fixedCostFallback', '€{{cost}} fixed costs, flat for 36 months', { cost: inputs.opex.toLocaleString() })}
+                        </span>
                         <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
-                          YOUR INPUT
+                          {t('creator.phase3.forecast.page.badgeYourInput', 'YOUR INPUT')}
                         </Badge>
                       </div>
 
                       <div className="flex items-center justify-between gap-3 pb-2.5 border-b border-border/60">
-                        <span className="text-body text-foreground">Months 13–36 extend the first-year trend</span>
+                        <span className="text-body text-foreground">
+                          {t('creator.phase3.forecast.page.extendTrendFallback', 'Months 13–36 extend the first-year trend')}
+                        </span>
                         <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
-                          MODEL
+                          {t('creator.phase3.forecast.page.badgeModel', 'MODEL')}
                         </Badge>
                       </div>
 
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-body text-foreground">Excludes future funding rounds and large one-off purchases</span>
+                        <span className="text-body text-foreground">
+                          {t('creator.phase3.forecast.page.excludeFundingFallback', 'Excludes future funding rounds and large one-off purchases')}
+                        </span>
                         <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground">
-                          MODEL
+                          {t('creator.phase3.forecast.page.badgeModel', 'MODEL')}
                         </Badge>
                       </div>
                     </>
@@ -2024,14 +2085,14 @@ export default function ForecastPage() {
 
               {/* Right: Risk assessment */}
               <Card className="rounded-2xl border border-border bg-card p-6 space-y-4 shadow-sm">
-                <h3 className="text-base font-heading font-bold text-foreground">Risk assessment</h3>
+                <h3 className="text-base font-heading font-bold text-foreground">{t('creator.phase3.forecast.page.riskAssessmentTitle', 'Risk assessment')}</h3>
                 <div className="space-y-3 font-sans">
                   {output?.risks && output.risks.length > 0 ? (
                     output.risks.map((risk, idx) => (
                       <div key={idx} className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="text-caption font-semibold text-foreground">
-                            {idx + 1}. {risk.category || 'Identified Risk'}
+                            {idx + 1}. {risk.category || t('creator.phase3.forecast.page.identifiedRiskFallback', 'Identified Risk')}
                           </span>
                           <Badge
                             variant="outline"
@@ -2041,7 +2102,7 @@ export default function ForecastPage() {
                                 : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
                             }`}
                           >
-                            {risk.impact || risk.likelihood || 'Medium'}
+                            {risk.impact || risk.likelihood || t('creator.phase3.forecast.page.riskMedium', 'Medium')}
                           </Badge>
                         </div>
                         <p className="text-body text-muted-foreground leading-relaxed">
@@ -2049,7 +2110,7 @@ export default function ForecastPage() {
                         </p>
                         {risk.mitigation && (
                           <p className="text-caption text-primary/90 font-medium pt-1">
-                            <span className="font-semibold text-foreground">Mitigation: </span>
+                            <span className="font-semibold text-foreground">{t('creator.phase3.forecast.page.mitigationLabel', 'Mitigation:')} </span>
                             {risk.mitigation}
                           </p>
                         )}
@@ -2060,7 +2121,7 @@ export default function ForecastPage() {
                       {/* Risk 1 */}
                       <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-caption font-semibold text-foreground">1. Funding risk</span>
+                          <span className="text-caption font-semibold text-foreground">{t('creator.phase3.forecast.page.risk1Title', '1. Funding risk')}</span>
                           <Badge
                             variant="outline"
                             className={`text-badge font-mono ${
@@ -2069,52 +2130,70 @@ export default function ForecastPage() {
                                 : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                             }`}
                           >
-                            {projectionData.fundingGap > 0 ? 'High' : 'Low'}
+                            {projectionData.fundingGap > 0 ? t('creator.phase3.forecast.page.riskHigh', 'High') : t('creator.phase3.forecast.page.riskLow', 'Low')}
                           </Badge>
                         </div>
                         <p className="text-body text-muted-foreground leading-relaxed">
                           {projectionData.fundingGap > 0 && projectionData.budgetRunsOutMonth
-                            ? `Your budget runs out in month ${projectionData.budgetRunsOutMonth} and cash stays negative until month ${projectionData.cashPositiveMonth || 36}. You'll need about €${projectionData.fundingGap.toLocaleString()} more.`
-                            : `Your €${inputs.budget.toLocaleString()} starting budget provides sufficient runway with no projected cash deficit.`}
+                            ? t('creator.phase3.forecast.page.risk1FundingDeficit', "Your budget runs out in month {{runsOutMonth}} and cash stays negative until month {{positiveMonth}}. You'll need about €{{gap}} more.", {
+                                runsOutMonth: projectionData.budgetRunsOutMonth,
+                                positiveMonth: projectionData.cashPositiveMonth || 36,
+                                gap: projectionData.fundingGap.toLocaleString()
+                              })
+                            : t('creator.phase3.forecast.page.risk1FundingSufficient', "Your €{{budget}} starting budget provides sufficient runway with no projected cash deficit.", {
+                                budget: inputs.budget.toLocaleString()
+                              })}
                         </p>
                       </div>
 
                       {/* Risk 2 */}
                       <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-caption font-semibold text-foreground">2. Growth shortfall</span>
+                          <span className="text-caption font-semibold text-foreground">{t('creator.phase3.forecast.page.risk2Title', '2. Growth shortfall')}</span>
                           <Badge variant="outline" className="text-badge font-mono bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
-                            Medium
+                            {t('creator.phase3.forecast.page.riskMedium', 'Medium')}
                           </Badge>
                         </div>
                         <p className="text-body text-muted-foreground leading-relaxed">
-                          If net growth falls from {inputs.growth - inputs.churn}% to {Math.max(1, inputs.growth - inputs.churn - 2)}%, break-even moves 3 months later, to month {projectionData.breakEvenMonth + 3}.
+                          {t('creator.phase3.forecast.page.risk2Desc', 'If net growth falls from {{from}}% to {{to}}%, break-even moves 3 months later, to month {{month}}.', {
+                            from: inputs.growth - inputs.churn,
+                            to: Math.max(1, inputs.growth - inputs.churn - 2),
+                            month: projectionData.breakEvenMonth + 3
+                          })}
                         </p>
                       </div>
 
                       {/* Risk 3 */}
                       <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-caption font-semibold text-foreground">3. Subscriber retention</span>
+                          <span className="text-caption font-semibold text-foreground">{t('creator.phase3.forecast.page.risk3Title', '3. Subscriber retention')}</span>
                           <Badge variant="outline" className="text-badge font-mono bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30">
-                            Medium
+                            {t('creator.phase3.forecast.page.riskMedium', 'Medium')}
                           </Badge>
                         </div>
                         <p className="text-body text-muted-foreground leading-relaxed">
-                          If churn rises from {inputs.churn}% to {inputs.churn + 3}%, break-even moves 6 months later, to month {projectionData.breakEvenMonth + 6}.
+                          {t('creator.phase3.forecast.page.risk3Desc', 'If churn rises from {{from}}% to {{to}}%, break-even moves 6 months later, to month {{month}}.', {
+                            from: inputs.churn,
+                            to: inputs.churn + 3,
+                            month: projectionData.breakEvenMonth + 6
+                          })}
                         </p>
                       </div>
 
                       {/* Risk 4 */}
                       <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-caption font-semibold text-foreground">4. Delivery cost</span>
+                          <span className="text-caption font-semibold text-foreground">{t('creator.phase3.forecast.page.risk4Title', '4. Delivery cost')}</span>
                           <Badge variant="outline" className="text-badge font-mono bg-muted text-muted-foreground border-border">
-                            Low
+                            {t('creator.phase3.forecast.page.riskLow', 'Low')}
                           </Badge>
                         </div>
                         <p className="text-body text-muted-foreground leading-relaxed">
-                          €{inputs.varCost} per subscriber is a conservative estimate. At €{Math.max(1, inputs.varCost - 1)}, break-even comes one month earlier, in month {projectionData.breakEvenMonth - 1}.
+                          {t('creator.phase3.forecast.page.risk4Desc', '€{{cost}} per subscriber is a conservative estimate. At €{{altCost}}, break-even comes one month earlier, in month {{month}}.', {
+                            cost: inputs.varCost,
+                            altCost: Math.max(1, inputs.varCost - 1),
+                            month: projectionData.breakEvenMonth - 1
+                          })}
                         </p>
                       </div>
                     </>
@@ -2129,25 +2208,25 @@ export default function ForecastPage() {
             <Card className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-badge font-sans font-bold uppercase tracking-wider text-muted-foreground">
-                  MILESTONES COMPLETE
+                  {t('creator.phase3.forecast.milestonesTitle')}
                 </span>
                 <span className="text-badge font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                  Step complete (6/6)
+                  {t('creator.phase3.forecast.stepComplete')}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 pt-1">
                 {[
-                  'Revenue saved',
-                  'Cost saved',
-                  '36-mo forecast',
-                  'Cash flow',
-                  'Break-even',
-                  'Scenario saved',
+                  { key: 'revenueSaved', fallback: 'Revenue saved' },
+                  { key: 'costSaved', fallback: 'Cost saved' },
+                  { key: 'forecast36', fallback: '36-mo forecast' },
+                  { key: 'cashFlow', fallback: 'Cash flow' },
+                  { key: 'breakEven', fallback: 'Break-even' },
+                  { key: 'scenarioSaved', fallback: 'Scenario saved' },
                 ].map((item) => (
-                  <div key={item} className="flex items-center gap-2 text-caption text-foreground font-sans">
+                  <div key={item.key} className="flex items-center gap-2 text-caption text-foreground font-sans">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>{item}</span>
+                    <span>{t(`creator.phase3.forecast.milestones.${item.key}`, item.fallback)}</span>
                   </div>
                 ))}
               </div>
@@ -2160,14 +2239,14 @@ export default function ForecastPage() {
                 onClick={() => router.push(withIdeaContext('/dashboard/creator/phase-3/business-model', ideaId))}
                 className="gap-2 text-button font-medium font-sans text-muted-foreground hover:text-foreground rounded-xl"
               >
-                <ArrowLeft className="w-4 h-4" /> Business Model
+                <ArrowLeft className="w-4 h-4" /> {t('creator.phase3.forecast.backToBusinessModel', 'Back to Business Model')}
               </Button>
 
               <Button
                 onClick={handleNext}
                 className="gap-2 text-button font-medium font-sans rounded-xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-11 px-6"
               >
-                <span>Continue to Legal &amp; Compliance</span>
+                <span>{t('creator.phase3.forecast.continueToCompliance')}</span>
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

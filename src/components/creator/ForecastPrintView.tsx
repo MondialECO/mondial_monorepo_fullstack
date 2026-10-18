@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Printer, X, Check, AlertTriangle, ShieldCheck } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
 import type { ForecastOutput } from "@/types/creator/ai";
 import {
   RevenueAreaSvg,
@@ -108,6 +109,7 @@ export default function ForecastPrintView({
   version = 1,
   updatedAt,
 }: ForecastPrintProps) {
+  const { t } = useTranslation();
   const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
@@ -347,11 +349,11 @@ export default function ForecastPrintView({
           onClick={onClose}
           className="gap-2 text-sm text-muted-foreground hover:text-foreground cursor-pointer"
         >
-          <X className="h-4 w-4" /> Close
+          <X className="h-4 w-4" /> {t("creator.phase3.forecast.printView.close", "Close")}
         </Button>
 
         <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground font-mono">
-          <span>Use &ldquo;Save as PDF&rdquo; in the print dialog.</span>
+          <span>{t("creator.phase3.forecast.printView.pdfTip", "Use “Save as PDF” in the print dialog.")}</span>
         </div>
 
         <Button
@@ -359,7 +361,7 @@ export default function ForecastPrintView({
           onClick={() => window.print()}
           className="gap-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm cursor-pointer"
         >
-          <Printer className="h-4 w-4" /> Print / Save as PDF
+          <Printer className="h-4 w-4" /> {t("creator.phase3.forecast.printView.printSavePdf", "Print / Save as PDF")}
         </Button>
       </div>
 
@@ -372,10 +374,10 @@ export default function ForecastPrintView({
         <header className="print-section mb-6 pb-4 border-b border-neutral-200">
           <div className="flex items-center justify-between gap-4 mb-3">
             <span className="text-xs font-mono font-semibold uppercase tracking-wider text-neutral-500">
-              STEP 3.3 · FINANCIAL FORECAST
+              {t("creator.phase3.forecast.printView.stepBadge", "STEP 3.3 · FINANCIAL FORECAST")}
             </span>
             <span className="text-xs font-mono text-neutral-500 uppercase">
-              Phase 3.3 Output · Version {version ?? 1} · Generated {displayDate}
+              {t("creator.phase3.forecast.printView.phaseOutput", "Phase 3.3 Output · Version {{version}} · Generated {{date}}", { version: version ?? 1, date: displayDate })}
             </span>
           </div>
 
@@ -402,10 +404,10 @@ export default function ForecastPrintView({
               )}
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-neutral-900 leading-tight font-heading">
-                  Your 3-year financial forecast : {displayProjectName}
+                  {t("creator.phase3.forecast.printView.forecastTitle", "Your 3-year financial forecast : {{project}}", { project: displayProjectName })}
                 </h1>
                 <p className="mt-1 text-xs text-neutral-500 font-sans">
-                  36 months · Months 1–12 modelled, 13–36 projected · EUR · {displaySector}
+                  {t("creator.phase3.forecast.printView.forecastSubtitle", "36 months · Months 1–12 modelled, 13–36 projected · EUR · {{sector}}", { sector: displaySector })}
                 </p>
               </div>
             </div>
@@ -425,35 +427,28 @@ export default function ForecastPrintView({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-heading font-semibold text-neutral-900 leading-snug">
-                  You break even in{" "}
-                  <span className="font-bold font-mono">month {data.breakEvenMonth}</span>
+                  {t("creator.phase3.forecast.printView.breakEvenIn", "You break even in")}{" "}
+                  <span className="font-bold font-mono">{t("creator.phase3.forecast.printView.monthPrefix", "month")} {data.breakEvenMonth}</span>
                   {data.lossRecoveryMonth ? (
                     <>
-                      , and all losses are recovered by{" "}
-                      <span className="font-bold font-mono">month {data.lossRecoveryMonth}</span>.
+                      {t("creator.phase3.forecast.printView.lossesRecovered", ", and all losses are recovered by")}{" "}
+                      <span className="font-bold font-mono">{t("creator.phase3.forecast.printView.monthPrefix", "month")} {data.lossRecoveryMonth}</span>.
                     </>
                   ) : (
                     "."
                   )}
                 </h2>
                 <p className="text-xs text-neutral-600 mt-1 font-sans">
-                  {data.fundingGap > 0 ? (
-                    <>
-                      Your {formatMoney(resolvedInputs.budget)} starting budget runs out in month{" "}
-                      <span className="font-mono font-medium">{data.budgetRunsOutMonth ?? 1}</span>
-                      — you&apos;ll need about{" "}
-                      <span className="font-bold font-mono text-neutral-900">
-                        {formatMoney(data.fundingGap)}
-                      </span>{" "}
-                      more to get through month{" "}
-                      <span className="font-mono font-medium">{data.maxFundingNeededMonth}</span>.
-                    </>
-                  ) : (
-                    <>
-                      Your {formatMoney(resolvedInputs.budget)} starting budget sustains operations
-                      without a funding deficit throughout the 36-month horizon.
-                    </>
-                  )}
+                  {data.fundingGap > 0
+                    ? t("creator.phase3.forecast.printView.budgetRunsOut", "Your {{budget}} starting budget runs out in month {{month}} — you'll need about {{gap}} more to get through month {{maxMonth}}.", {
+                        budget: formatMoney(resolvedInputs.budget),
+                        month: data.budgetRunsOutMonth ?? 1,
+                        gap: formatMoney(data.fundingGap),
+                        maxMonth: data.maxFundingNeededMonth ?? 1
+                      })
+                    : t("creator.phase3.forecast.printView.budgetSustains", "Your {{budget}} starting budget sustains operations without a funding deficit throughout the 36-month horizon.", {
+                        budget: formatMoney(resolvedInputs.budget)
+                      })}
                 </p>
               </div>
 
@@ -464,7 +459,7 @@ export default function ForecastPrintView({
                     : "bg-emerald-100 text-emerald-800 border border-emerald-300"
                 }`}
               >
-                {data.fundingGap > 0 ? "Funding gap" : "Fully funded"}
+                {data.fundingGap > 0 ? t("creator.phase3.forecast.printView.fundingGapBadge", "Funding gap") : t("creator.phase3.forecast.printView.fullyFundedBadge", "Fully funded")}
               </div>
             </div>
           </div>
@@ -480,29 +475,29 @@ export default function ForecastPrintView({
             <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-500">
-                  REVENUE
+                  {t("creator.phase3.forecast.printView.revenueTitle", "REVENUE")}
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 text-[10px] font-mono font-semibold">
-                  +{netGrowthPercent}% Y1→Y3
+                  {t("creator.phase3.forecast.printView.y1toy3", "+{{growth}}% Y1→Y3", { growth: netGrowthPercent })}
                 </span>
               </div>
               <div>
                 <div className="text-xl font-bold font-mono tracking-tight text-neutral-900">
-                  {formatMoney(arrY3)} ARR (Y3)
+                  {formatMoney(arrY3)} {t("creator.phase3.forecast.printView.arrY3", "ARR (Y3)")}
                 </div>
                 <div className="text-[11px] text-neutral-500 font-sans">
-                  Cumulative 3-year projection
+                  {t("creator.phase3.forecast.printView.cumulative3Y", "Cumulative 3-year projection")}
                 </div>
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-mono">
                 <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600">
-                  Y1: {formatMoney(data.subtotals.y1.revenue)}
+                  {t("creator.phase3.forecast.printView.y1Prefix", "Y1:")} {formatMoney(data.subtotals.y1.revenue)}
                 </span>
                 <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600">
-                  Y2: {formatMoney(data.subtotals.y2.revenue)}
+                  {t("creator.phase3.forecast.printView.y2Prefix", "Y2:")} {formatMoney(data.subtotals.y2.revenue)}
                 </span>
                 <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600">
-                  Y3: {formatMoney(data.subtotals.y3.revenue)}
+                  {t("creator.phase3.forecast.printView.y3Prefix", "Y3:")} {formatMoney(data.subtotals.y3.revenue)}
                 </span>
               </div>
               <div className="pt-1">
@@ -518,27 +513,27 @@ export default function ForecastPrintView({
             <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-500">
-                  COST VS REVENUE
+                  {t("creator.phase3.forecast.printView.costVsRevenue", "COST VS REVENUE")}
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-mono font-semibold">
-                  Inflection point
+                  {t("creator.phase3.forecast.printView.inflectionPoint", "Inflection point")}
                 </span>
               </div>
               <div>
                 <div className="text-xl font-bold font-mono tracking-tight text-neutral-900">
-                  Month {data.breakEvenMonth}
+                  {t("creator.phase3.forecast.printView.monthLabel", "Month {{month}}", { month: data.breakEvenMonth })}
                 </div>
                 <div className="text-[11px] text-neutral-500 font-sans">
-                  Revenue crosses total costs ({formatMoney(data.breakEvenRevenue)}/mo)
+                  {t("creator.phase3.forecast.printView.crossesCosts", "Revenue crosses total costs ({{amount}}/mo)", { amount: formatMoney(data.breakEvenRevenue) })}
                 </div>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-mono">
                 <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-700 font-medium">
-                  {data.breakEvenSubs} subs needed
+                  {t("creator.phase3.forecast.printView.subsNeeded", "{{count}} subs needed", { count: data.breakEvenSubs })}
                 </span>
                 <span className="text-neutral-400">·</span>
-                <span className="text-teal-700 font-semibold">● Rev</span>
-                <span className="text-slate-600 font-semibold">● Cost</span>
+                <span className="text-teal-700 font-semibold">{t("creator.phase3.forecast.printView.revDot", "● Rev")}</span>
+                <span className="text-slate-600 font-semibold">{t("creator.phase3.forecast.printView.costDot", "● Cost")}</span>
               </div>
               <div className="pt-1">
                 <CostVsRevenueCrossingSvg
@@ -555,7 +550,7 @@ export default function ForecastPrintView({
             <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-500">
-                  CASH POSITION
+                  {t("creator.phase3.forecast.printView.cashPosition", "CASH POSITION")}
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
@@ -571,18 +566,18 @@ export default function ForecastPrintView({
               </div>
               <div>
                 <div className="text-xl font-bold font-mono tracking-tight text-neutral-900">
-                  {minCumulativeDeficit > 0 ? `−${formatMoney(minCumulativeDeficit)}` : "Cash positive"}
+                  {minCumulativeDeficit > 0 ? `−${formatMoney(minCumulativeDeficit)}` : t("creator.phase3.forecast.printView.cashPositive", "Cash positive")}
                 </div>
                 <div className="text-[11px] text-neutral-500 font-sans">
-                  Lowest cash point · Month {data.lowestCashMonth}
+                  {t("creator.phase3.forecast.printView.lowestCashPoint", "Lowest cash point · Month {{month}}", { month: data.lowestCashMonth })}
                 </div>
               </div>
               <div className="flex items-center gap-1.5 text-[10px] font-mono">
                 <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600">
-                  Start: {formatMoney(resolvedInputs.budget)}
+                  {t("creator.phase3.forecast.printView.startPrefix", "Start: {{amount}}", { amount: formatMoney(resolvedInputs.budget) })}
                 </span>
                 <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600">
-                  End Y3: {formatMoney(data.rows[35]?.cashOnHand ?? 0)}
+                  {t("creator.phase3.forecast.printView.endY3Prefix", "End Y3: {{amount}}", { amount: formatMoney(data.rows[35]?.cashOnHand ?? 0) })}
                 </span>
               </div>
               <div className="pt-1">
@@ -606,65 +601,65 @@ export default function ForecastPrintView({
         <section className="print-section mb-6">
           <div className="mb-2">
             <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-500">
-              OPERATIONAL DRIVERS &amp; KEY INPUT PARAMETERS
+              {t("creator.phase3.forecast.printView.operationalDriversTitle", "OPERATIONAL DRIVERS & KEY INPUT PARAMETERS")}
             </h3>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
-              <div className="text-[10px] font-mono text-neutral-500 uppercase">Starting Budget</div>
+              <div className="text-[10px] font-mono text-neutral-500 uppercase">{t("creator.phase3.forecast.printView.startingBudget", "Starting Budget")}</div>
               <div className="text-sm font-bold font-mono text-neutral-900 mt-0.5">
                 {formatMoney(resolvedInputs.budget)}
               </div>
-              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">Seed runway ask</div>
+              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">{t("creator.phase3.forecast.printView.seedRunwayAsk", "Seed runway ask")}</div>
             </div>
             <div className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
-              <div className="text-[10px] font-mono text-neutral-500 uppercase">Launch Subscribers</div>
+              <div className="text-[10px] font-mono text-neutral-500 uppercase">{t("creator.phase3.forecast.printView.launchSubs", "Launch Subscribers")}</div>
               <div className="text-sm font-bold font-mono text-neutral-900 mt-0.5">
                 {resolvedInputs.launchSubs}
               </div>
-              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">Month 1 baseline</div>
+              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">{t("creator.phase3.forecast.printView.month1Baseline", "Month 1 baseline")}</div>
             </div>
             <div className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
-              <div className="text-[10px] font-mono text-neutral-500 uppercase">Monthly Growth</div>
+              <div className="text-[10px] font-mono text-neutral-500 uppercase">{t("creator.phase3.forecast.printView.monthlyGrowth", "Monthly Growth")}</div>
               <div className="text-sm font-bold font-mono text-neutral-900 mt-0.5">
-                {resolvedInputs.growth}% MoM
+                {t("creator.phase3.forecast.printView.growthMom", "{{growth}}% MoM", { growth: resolvedInputs.growth })}
               </div>
-              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">Compound customer gain</div>
+              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">{t("creator.phase3.forecast.printView.compoundGain", "Compound customer gain")}</div>
             </div>
             <div className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
-              <div className="text-[10px] font-mono text-neutral-500 uppercase">Monthly Churn</div>
+              <div className="text-[10px] font-mono text-neutral-500 uppercase">{t("creator.phase3.forecast.printView.monthlyChurn", "Monthly Churn")}</div>
               <div className="text-sm font-bold font-mono text-neutral-900 mt-0.5">
                 {resolvedInputs.churn}%
               </div>
-              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">Attrition rate</div>
+              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">{t("creator.phase3.forecast.printView.attritionRate", "Attrition rate")}</div>
             </div>
             <div className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
-              <div className="text-[10px] font-mono text-neutral-500 uppercase">Price per Sub (ARPU)</div>
+              <div className="text-[10px] font-mono text-neutral-500 uppercase">{t("creator.phase3.forecast.printView.pricePerSubArpu", "Price per Sub (ARPU)")}</div>
               <div className="text-sm font-bold font-mono text-neutral-900 mt-0.5">
-                {formatMoney(resolvedInputs.arpu)}/mo
+                {t("creator.phase3.forecast.printView.perMo", "{{amount}}/mo", { amount: formatMoney(resolvedInputs.arpu) })}
               </div>
-              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">From Step 3.2 Canvas</div>
+              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">{t("creator.phase3.forecast.printView.fromStep32Canvas", "From Step 3.2 Canvas")}</div>
             </div>
             <div className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
-              <div className="text-[10px] font-mono text-neutral-500 uppercase">Variable Cost/Sub</div>
+              <div className="text-[10px] font-mono text-neutral-500 uppercase">{t("creator.phase3.forecast.printView.variableCostSub", "Variable Cost/Sub")}</div>
               <div className="text-sm font-bold font-mono text-neutral-900 mt-0.5">
-                {formatMoney(resolvedInputs.varCost)}/mo
+                {t("creator.phase3.forecast.printView.perMo", "{{amount}}/mo", { amount: formatMoney(resolvedInputs.varCost) })}
               </div>
-              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">COGS per customer</div>
+              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">{t("creator.phase3.forecast.printView.cogsPerCustomer", "COGS per customer")}</div>
             </div>
             <div className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
-              <div className="text-[10px] font-mono text-neutral-500 uppercase">Fixed Costs / Mo</div>
+              <div className="text-[10px] font-mono text-neutral-500 uppercase">{t("creator.phase3.forecast.printView.fixedCostsMo", "Fixed Costs / Mo")}</div>
               <div className="text-sm font-bold font-mono text-neutral-900 mt-0.5">
-                {formatMoney(resolvedInputs.opex)}/mo
+                {t("creator.phase3.forecast.printView.perMo", "{{amount}}/mo", { amount: formatMoney(resolvedInputs.opex) })}
               </div>
-              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">OPEX baseline</div>
+              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">{t("creator.phase3.forecast.printView.opexBaseline", "OPEX baseline")}</div>
             </div>
             <div className="p-3 rounded-lg border border-neutral-200 bg-neutral-50">
-              <div className="text-[10px] font-mono text-neutral-500 uppercase">Market Size (TAM)</div>
+              <div className="text-[10px] font-mono text-neutral-500 uppercase">{t("creator.phase3.forecast.printView.marketSizeTam", "Market Size (TAM)")}</div>
               <div className="text-sm font-bold font-mono text-neutral-900 mt-0.5">
                 {formatMoney(resolvedInputs.tam)}
               </div>
-              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">From Step 3.1 Market Study</div>
+              <div className="text-[9px] text-neutral-400 font-sans mt-0.5">{t("creator.phase3.forecast.printView.fromStep31Study", "From Step 3.1 Market Study")}</div>
             </div>
           </div>
         </section>
@@ -675,10 +670,10 @@ export default function ForecastPrintView({
         <section className="print-section mb-6">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-500">
-              36-MONTH CONSOLIDATED FINANCIAL PROJECTIONS (EUR)
+              {t("creator.phase3.forecast.printView.tableTitle", "36-MONTH CONSOLIDATED FINANCIAL PROJECTIONS (EUR)")}
             </h3>
             <span className="text-[10px] font-mono text-neutral-400">
-              Months 1–12 Modelled · Months 13–36 Projected
+              {t("creator.phase3.forecast.printView.tableSubtitle", "Months 1–12 Modelled · Months 13–36 Projected")}
             </span>
           </div>
 
@@ -686,23 +681,23 @@ export default function ForecastPrintView({
             <table className="w-full text-left text-xs border-collapse font-mono">
               <thead>
                 <tr className="border-b border-neutral-300 bg-neutral-100 text-[10px] text-neutral-600 uppercase font-semibold">
-                  <th className="py-2 px-2.5">Month</th>
-                  <th className="py-2 px-2 text-right">Subs</th>
-                  <th className="py-2 px-2 text-right">Revenue</th>
-                  <th className="py-2 px-2 text-right">Fixed Cost</th>
-                  <th className="py-2 px-2 text-right">Var Cost</th>
-                  <th className="py-2 px-2 text-right">Total Cost</th>
-                  <th className="py-2 px-2 text-right">Net Cashflow</th>
-                  <th className="py-2 px-2 text-right">Cumulative</th>
-                  <th className="py-2 px-2 text-right">Cash on Hand</th>
-                  <th className="py-2 px-2.5">Milestone / Notes</th>
+                  <th className="py-2 px-2.5">{t("creator.phase3.forecast.printView.thMonth", "Month")}</th>
+                  <th className="py-2 px-2 text-right">{t("creator.phase3.forecast.printView.thSubs", "Subs")}</th>
+                  <th className="py-2 px-2 text-right">{t("creator.phase3.forecast.printView.thRevenue", "Revenue")}</th>
+                  <th className="py-2 px-2 text-right">{t("creator.phase3.forecast.printView.thFixedCost", "Fixed Cost")}</th>
+                  <th className="py-2 px-2 text-right">{t("creator.phase3.forecast.printView.thVarCost", "Var Cost")}</th>
+                  <th className="py-2 px-2 text-right">{t("creator.phase3.forecast.printView.thTotalCost", "Total Cost")}</th>
+                  <th className="py-2 px-2 text-right">{t("creator.phase3.forecast.printView.thNetCashflow", "Net Cashflow")}</th>
+                  <th className="py-2 px-2 text-right">{t("creator.phase3.forecast.printView.thCumulative", "Cumulative")}</th>
+                  <th className="py-2 px-2 text-right">{t("creator.phase3.forecast.printView.thCashOnHand", "Cash on Hand")}</th>
+                  <th className="py-2 px-2.5">{t("creator.phase3.forecast.printView.thMilestones", "Milestone / Notes")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 text-[11px]">
                 {/* YEAR 1 */}
                 <tr className="bg-neutral-100/90 font-bold text-neutral-700 text-[10px] uppercase tracking-wider">
                   <td colSpan={10} className="py-1 px-2.5">
-                    Year 1 · Modelled
+                    {t("creator.phase3.forecast.printView.year1Modelled", "Year 1 · Modelled")}
                   </td>
                 </tr>
                 {data.rows.slice(0, 12).map((r) => (
@@ -741,17 +736,17 @@ export default function ForecastPrintView({
                     <td className="py-1.5 px-2.5 text-[10px] text-neutral-500 truncate max-w-[140px]">
                       {r.month === data.breakEvenMonth && (
                         <span className="px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 font-semibold mr-1">
-                          Break-even
+                          {t("creator.phase3.forecast.printView.breakEvenBadge", "Break-even")}
                         </span>
                       )}
                       {r.month === data.budgetRunsOutMonth && data.fundingGap > 0 && (
                         <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold mr-1">
-                          Budget runs out
+                          {t("creator.phase3.forecast.printView.budgetRunsOutBadge", "Budget runs out")}
                         </span>
                       )}
                       {r.month === data.lowestCashMonth && minCumulativeDeficit > 0 && (
                         <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold mr-1">
-                          Lowest cash
+                          {t("creator.phase3.forecast.printView.lowestCashBadge", "Lowest cash")}
                         </span>
                       )}
                       {r.notes}
@@ -760,7 +755,7 @@ export default function ForecastPrintView({
                 ))}
                 {/* Y1 SUBTOTAL */}
                 <tr className="bg-neutral-100 font-bold border-t border-b border-neutral-300 text-[10px]">
-                  <td className="py-1.5 px-2.5">Y1 SUBTOTAL</td>
+                  <td className="py-1.5 px-2.5">{t("creator.phase3.forecast.printView.y1Subtotal", "Y1 SUBTOTAL")}</td>
                   <td className="py-1.5 px-2 text-right">{data.subtotals.y1.endSubscribers}</td>
                   <td className="py-1.5 px-2 text-right text-teal-700">{formatMoney(data.subtotals.y1.revenue)}</td>
                   <td colSpan={2}></td>
@@ -774,7 +769,7 @@ export default function ForecastPrintView({
                 {/* YEAR 2 */}
                 <tr className="bg-neutral-100/90 font-bold text-neutral-700 text-[10px] uppercase tracking-wider">
                   <td colSpan={10} className="py-1 px-2.5">
-                    Year 2 · Projected
+                    {t("creator.phase3.forecast.printView.year2Projected", "Year 2 · Projected")}
                   </td>
                 </tr>
                 {data.rows.slice(12, 24).map((r) => (
@@ -813,17 +808,17 @@ export default function ForecastPrintView({
                     <td className="py-1.5 px-2.5 text-[10px] text-neutral-500 truncate max-w-[140px]">
                       {r.month === data.breakEvenMonth && (
                         <span className="px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 font-semibold mr-1">
-                          Break-even
+                          {t("creator.phase3.forecast.printView.breakEvenBadge", "Break-even")}
                         </span>
                       )}
                       {r.month === data.cashPositiveMonth && (
                         <span className="px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 font-semibold mr-1">
-                          Cash positive
+                          {t("creator.phase3.forecast.printView.cashPositiveBadge", "Cash positive")}
                         </span>
                       )}
                       {r.month === data.lossRecoveryMonth && (
                         <span className="px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 font-semibold mr-1">
-                          Losses recovered
+                          {t("creator.phase3.forecast.printView.lossesRecoveredBadge", "Losses recovered")}
                         </span>
                       )}
                       {r.notes}
@@ -832,7 +827,7 @@ export default function ForecastPrintView({
                 ))}
                 {/* Y2 SUBTOTAL */}
                 <tr className="bg-neutral-100 font-bold border-t border-b border-neutral-300 text-[10px]">
-                  <td className="py-1.5 px-2.5">Y2 SUBTOTAL</td>
+                  <td className="py-1.5 px-2.5">{t("creator.phase3.forecast.printView.y2Subtotal", "Y2 SUBTOTAL")}</td>
                   <td className="py-1.5 px-2 text-right">{data.subtotals.y2.endSubscribers}</td>
                   <td className="py-1.5 px-2 text-right text-teal-700">{formatMoney(data.subtotals.y2.revenue)}</td>
                   <td colSpan={2}></td>
@@ -846,7 +841,7 @@ export default function ForecastPrintView({
                 {/* YEAR 3 */}
                 <tr className="bg-neutral-100/90 font-bold text-neutral-700 text-[10px] uppercase tracking-wider">
                   <td colSpan={10} className="py-1 px-2.5">
-                    Year 3 · Projected
+                    {t("creator.phase3.forecast.printView.year3Projected", "Year 3 · Projected")}
                   </td>
                 </tr>
                 {data.rows.slice(24, 36).map((r) => (
@@ -885,7 +880,7 @@ export default function ForecastPrintView({
                     <td className="py-1.5 px-2.5 text-[10px] text-neutral-500 truncate max-w-[140px]">
                       {r.month === 36 && (
                         <span className="px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 font-semibold mr-1">
-                          Horizon End
+                          {t("creator.phase3.forecast.printView.horizonEndBadge", "Horizon End")}
                         </span>
                       )}
                       {r.notes}
@@ -894,7 +889,7 @@ export default function ForecastPrintView({
                 ))}
                 {/* Y3 SUBTOTAL */}
                 <tr className="bg-neutral-100 font-bold border-t border-b border-neutral-300 text-[10px]">
-                  <td className="py-1.5 px-2.5">Y3 SUBTOTAL</td>
+                  <td className="py-1.5 px-2.5">{t("creator.phase3.forecast.printView.y3Subtotal", "Y3 SUBTOTAL")}</td>
                   <td className="py-1.5 px-2 text-right">{data.subtotals.y3.endSubscribers}</td>
                   <td className="py-1.5 px-2 text-right text-teal-700">{formatMoney(data.subtotals.y3.revenue)}</td>
                   <td colSpan={2}></td>
@@ -919,40 +914,40 @@ export default function ForecastPrintView({
             <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-600">
-                  BREAK-EVEN ANALYSIS
+                  {t("creator.phase3.forecast.printView.breakEvenAnalysisTitle", "BREAK-EVEN ANALYSIS")}
                 </h4>
                 <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 text-[10px] font-mono font-semibold">
-                  Month {data.breakEvenMonth}
+                  {t("creator.phase3.forecast.printView.monthLabel", "Month {{month}}", { month: data.breakEvenMonth })}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                 <div className="p-2.5 rounded bg-neutral-50 border border-neutral-200">
-                  <div className="text-[10px] text-neutral-500">Break-Even Revenue</div>
+                  <div className="text-[10px] text-neutral-500">{t("creator.phase3.forecast.printView.breakEvenRevenue", "Break-Even Revenue")}</div>
                   <div className="text-sm font-bold text-neutral-900 mt-0.5">
-                    {formatMoney(data.breakEvenRevenue)}/mo
+                    {t("creator.phase3.forecast.printView.perMo", "{{amount}}/mo", { amount: formatMoney(data.breakEvenRevenue) })}
                   </div>
                 </div>
                 <div className="p-2.5 rounded bg-neutral-50 border border-neutral-200">
-                  <div className="text-[10px] text-neutral-500">Subscribers Needed</div>
+                  <div className="text-[10px] text-neutral-500">{t("creator.phase3.forecast.printView.subscribersNeeded", "Subscribers Needed")}</div>
                   <div className="text-sm font-bold text-neutral-900 mt-0.5">
                     {data.breakEvenSubs}
                   </div>
                 </div>
                 <div className="p-2.5 rounded bg-neutral-50 border border-neutral-200">
-                  <div className="text-[10px] text-neutral-500">Contribution Margin</div>
+                  <div className="text-[10px] text-neutral-500">{t("creator.phase3.forecast.printView.contributionMargin", "Contribution Margin")}</div>
                   <div className="text-sm font-bold text-neutral-900 mt-0.5">
                     {data.contributionMarginPct}%
                   </div>
                 </div>
                 <div className="p-2.5 rounded bg-neutral-50 border border-neutral-200">
-                  <div className="text-[10px] text-neutral-500">Margin / Subscriber</div>
+                  <div className="text-[10px] text-neutral-500">{t("creator.phase3.forecast.printView.marginPerSubscriber", "Margin / Subscriber")}</div>
                   <div className="text-sm font-bold text-neutral-900 mt-0.5">
                     {formatMoney(data.contributionMarginPerSub)}
                   </div>
                 </div>
               </div>
               <p className="text-[11px] text-neutral-600 font-sans leading-relaxed">
-                Break-even is achieved when monthly recurring contribution margin equals fixed operating costs ({formatMoney(resolvedInputs.opex)}/mo).
+                {t("creator.phase3.forecast.printView.breakEvenExplanation", "Break-even is achieved when monthly recurring contribution margin equals fixed operating costs ({{opex}}/mo).", { opex: formatMoney(resolvedInputs.opex) })}
               </p>
             </div>
 
@@ -960,7 +955,7 @@ export default function ForecastPrintView({
             <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-600">
-                  UNIT ECONOMICS
+                  {t("creator.phase3.forecast.printView.unitEconomicsTitle", "UNIT ECONOMICS")}
                 </h4>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
@@ -969,49 +964,49 @@ export default function ForecastPrintView({
                       : "bg-amber-50 text-amber-800"
                   }`}
                 >
-                  {data.unitEconomics.ltvCacRatio >= 3.0 ? "Healthy Model" : "Margin Attention"}
+                  {data.unitEconomics.ltvCacRatio >= 3.0 ? t("creator.phase3.forecast.printView.healthyModel", "Healthy Model") : t("creator.phase3.forecast.printView.marginAttention", "Margin Attention")}
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-xs font-mono">
                 <div className="p-2 rounded bg-neutral-50 border border-neutral-200">
-                  <div className="text-[10px] text-neutral-500">CAC</div>
+                  <div className="text-[10px] text-neutral-500">{t("creator.phase3.forecast.printView.cacLabel", "CAC")}</div>
                   <div className="text-sm font-bold text-neutral-900 mt-0.5">
                     {formatMoney(data.unitEconomics.cac)}
                   </div>
                 </div>
                 <div className="p-2 rounded bg-neutral-50 border border-neutral-200">
-                  <div className="text-[10px] text-neutral-500">LTV</div>
+                  <div className="text-[10px] text-neutral-500">{t("creator.phase3.forecast.printView.ltvLabel", "LTV")}</div>
                   <div className="text-sm font-bold text-neutral-900 mt-0.5">
                     {formatMoney(data.unitEconomics.ltv)}
                   </div>
                 </div>
                 <div className="p-2 rounded bg-neutral-50 border border-neutral-200">
-                  <div className="text-[10px] text-neutral-500">LTV / CAC</div>
+                  <div className="text-[10px] text-neutral-500">{t("creator.phase3.forecast.printView.ltvCacRatioLabel", "LTV / CAC")}</div>
                   <div className="text-sm font-bold text-neutral-900 mt-0.5">
-                    {data.unitEconomics.ltvCacRatio}×
+                    {`${data.unitEconomics.ltvCacRatio}×`}
                   </div>
                 </div>
                 <div className="p-2 rounded bg-neutral-50 border border-neutral-200">
-                  <div className="text-[10px] text-neutral-500">Payback</div>
+                  <div className="text-[10px] text-neutral-500">{t("creator.phase3.forecast.printView.paybackLabel", "Payback")}</div>
                   <div className="text-sm font-bold text-neutral-900 mt-0.5">
-                    {data.unitEconomics.paybackMonths} mo
+                    {t("creator.phase3.forecast.printView.paybackMo", "{{months}} mo", { months: data.unitEconomics.paybackMonths })}
                   </div>
                 </div>
                 <div className="p-2 rounded bg-neutral-50 border border-neutral-200">
-                  <div className="text-[10px] text-neutral-500">Gross Margin</div>
+                  <div className="text-[10px] text-neutral-500">{t("creator.phase3.forecast.printView.grossMarginLabel", "Gross Margin")}</div>
                   <div className="text-sm font-bold text-neutral-900 mt-0.5">
                     {data.unitEconomics.grossMarginPct}%
                   </div>
                 </div>
                 <div className="p-2 rounded bg-neutral-50 border border-neutral-200">
-                  <div className="text-[10px] text-neutral-500">M1 Burn</div>
+                  <div className="text-[10px] text-neutral-500">{t("creator.phase3.forecast.printView.m1BurnLabel", "M1 Burn")}</div>
                   <div className="text-sm font-bold text-neutral-900 mt-0.5">
                     {formatMoney(data.unitEconomics.month1Burn)}
                   </div>
                 </div>
               </div>
               <p className="text-[11px] text-neutral-600 font-sans leading-relaxed">
-                Calibrated against B2B benchmarks. LTV/CAC ratio of {data.unitEconomics.ltvCacRatio}× supports sustainable paid acquisition.
+                {t("creator.phase3.forecast.printView.unitEconomicsExplanation", "Calibrated against B2B benchmarks. LTV/CAC ratio of {{ratio}}× supports sustainable paid acquisition.", { ratio: data.unitEconomics.ltvCacRatio })}
               </p>
             </div>
 
@@ -1027,28 +1022,28 @@ export default function ForecastPrintView({
             {/* Key Assumptions */}
             <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-2">
               <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-600 mb-2">
-                MODEL ASSUMPTIONS &amp; PROVENANCE
+                {t("creator.phase3.forecast.printView.modelAssumptionsTitle", "MODEL ASSUMPTIONS & PROVENANCE")}
               </h4>
               <div className="space-y-1.5 text-xs font-sans">
                 <div className="flex items-center justify-between py-1 border-b border-neutral-100">
-                  <span className="text-neutral-600">Starting Budget</span>
-                  <span className="font-mono font-medium">{formatMoney(resolvedInputs.budget)} (YOUR INPUT)</span>
+                  <span className="text-neutral-600">{t("creator.phase3.forecast.printView.startingBudget", "Starting Budget")}</span>
+                  <span className="font-mono font-medium">{formatMoney(resolvedInputs.budget)} {t("creator.phase3.forecast.printView.yourInput", "(YOUR INPUT)")}</span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-neutral-100">
-                  <span className="text-neutral-600">Monthly ARPU</span>
-                  <span className="font-mono font-medium">{formatMoney(resolvedInputs.arpu)} (FROM 3.2)</span>
+                  <span className="text-neutral-600">{t("creator.phase3.forecast.printView.pricePerSubArpu", "Monthly ARPU")}</span>
+                  <span className="font-mono font-medium">{formatMoney(resolvedInputs.arpu)} {t("creator.phase3.forecast.printView.from32", "(FROM 3.2)")}</span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-neutral-100">
-                  <span className="text-neutral-600">COGS per Subscriber</span>
-                  <span className="font-mono font-medium">{formatMoney(resolvedInputs.varCost)} (FROM 3.2)</span>
+                  <span className="text-neutral-600">{t("creator.phase3.forecast.printView.variableCostSub", "COGS per Subscriber")}</span>
+                  <span className="font-mono font-medium">{formatMoney(resolvedInputs.varCost)} {t("creator.phase3.forecast.printView.from32", "(FROM 3.2)")}</span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-neutral-100">
-                  <span className="text-neutral-600">Market Size (TAM)</span>
-                  <span className="font-mono font-medium">{formatMoney(resolvedInputs.tam)} (FROM 3.1)</span>
+                  <span className="text-neutral-600">{t("creator.phase3.forecast.printView.marketSizeTam", "Market Size (TAM)")}</span>
+                  <span className="font-mono font-medium">{formatMoney(resolvedInputs.tam)} {t("creator.phase3.forecast.printView.from31", "(FROM 3.1)")}</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
-                  <span className="text-neutral-600">Customer Attrition Rate</span>
-                  <span className="font-mono font-medium">{resolvedInputs.churn}% / mo (MODEL)</span>
+                  <span className="text-neutral-600">{t("creator.phase3.forecast.printView.customerAttritionRate", "Customer Attrition Rate")}</span>
+                  <span className="font-mono font-medium">{t("creator.phase3.forecast.printView.churnPerMoModel", "{{churn}}% / mo (MODEL)", { churn: resolvedInputs.churn })}</span>
                 </div>
               </div>
             </div>
@@ -1056,12 +1051,12 @@ export default function ForecastPrintView({
             {/* Risk Assessment */}
             <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-2">
               <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-600 mb-2">
-                FINANCIAL RISK ASSESSMENT
+                {t("creator.phase3.forecast.printView.financialRiskAssessmentTitle", "FINANCIAL RISK ASSESSMENT")}
               </h4>
               <div className="space-y-2 text-xs font-sans">
                 <div className="p-2 rounded bg-neutral-50 border border-neutral-200">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-neutral-800">1. Funding Risk</span>
+                    <span className="font-semibold text-neutral-800">{t("creator.phase3.forecast.printView.fundingRiskTitle", "1. Funding Risk")}</span>
                     <span
                       className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ${
                         data.fundingGap > 0
@@ -1069,7 +1064,7 @@ export default function ForecastPrintView({
                           : "bg-emerald-100 text-emerald-800"
                       }`}
                     >
-                      {data.fundingGap > 0 ? "High" : "Low"}
+                      {data.fundingGap > 0 ? t("creator.phase3.forecast.printView.highRisk", "High") : t("creator.phase3.forecast.printView.lowRisk", "Low")}
                     </span>
                   </div>
                   <p className="text-[11px] text-neutral-600 mt-1">
@@ -1080,13 +1075,13 @@ export default function ForecastPrintView({
                 </div>
                 <div className="p-2 rounded bg-neutral-50 border border-neutral-200">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-neutral-800">2. Growth Sensitivity</span>
+                    <span className="font-semibold text-neutral-800">{t("creator.phase3.forecast.printView.growthSensitivityTitle", "2. Growth Sensitivity")}</span>
                     <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-mono font-semibold">
-                      Medium
+                      {t("creator.phase3.forecast.printView.mediumRisk", "Medium")}
                     </span>
                   </div>
                   <p className="text-[11px] text-neutral-600 mt-1">
-                    If MoM growth drops from {resolvedInputs.growth}% to 10%, break-even is delayed by 4 months.
+                    {t("creator.phase3.forecast.printView.growthSensitivityText", "If MoM growth drops from {{growth}}% to 10%, break-even is delayed by 4 months.", { growth: resolvedInputs.growth })}
                   </p>
                 </div>
               </div>
@@ -1101,10 +1096,10 @@ export default function ForecastPrintView({
         <footer className="print-section pt-4 mt-6 border-t border-neutral-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-neutral-500 font-sans">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            <span>Mondial ECO · Financial Forecast Model · Step 3.3 Certified</span>
+            <span>{t("creator.phase3.forecast.printView.certifiedFooter", "Mondial ECO · Financial Forecast Model · Step 3.3 Certified")}</span>
           </div>
           <div className="font-mono text-[11px] text-neutral-400">
-            Document ID: M33-{resolvedInputs.budget}-{data.breakEvenMonth} · {displayDate}
+            {t("creator.phase3.forecast.printView.docIdPrefix", "Document ID: M33-")}{resolvedInputs.budget}-{data.breakEvenMonth} · {displayDate}
           </div>
         </footer>
 
