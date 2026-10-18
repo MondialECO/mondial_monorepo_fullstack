@@ -29,7 +29,7 @@ export default function BillingHistoryPage() {
                 {isError && (
                     <div className="px-5 sm:px-6 md:px-8 py-8 flex flex-col gap-3 justify-center items-center text-center">
                         <div className="text-destructive">
-                            {t('creator.billing.error', "Couldn't load billing history.")} {error instanceof Error ? error.message : 'Please try again.'}
+                            {t('creator.billing.error', "Couldn't load billing history.")} {error instanceof Error ? error.message : t('creator.billing.pleaseTryAgain', 'Please try again.')}
                         </div>
                         <Button variant="outline" size="sm" onClick={() => refetch()}>{t('creator.billing.retry', 'Retry')}</Button>
                     </div>
