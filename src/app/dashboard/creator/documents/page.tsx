@@ -9,9 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { creatorDocumentsApi, type CreatorIdeaDocument } from '@/lib/api-creator-documents';
 
-const formatDate = (value: string) => new Intl.DateTimeFormat('en-US', {
-  month: 'short', day: 'numeric', year: 'numeric',
-}).format(new Date(value));
+
 
 const formatBytes = (sizeBytes: number | null) => {
   if (sizeBytes == null || !Number.isFinite(sizeBytes)) return null;
@@ -20,15 +18,24 @@ const formatBytes = (sizeBytes: number | null) => {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const documentTypeLabel = (documentType: CreatorIdeaDocument['documentType']) =>
-  documentType === 'business_plan' ? 'Business Plan' : 'Financial Forecast';
 
-const errorMessage = (error: unknown) =>
+
+const errorMessage = (error: unknown, fallback?: string) =>
   (error as { response?: { data?: { message?: string } } })?.response?.data?.message
-  ?? (error instanceof Error ? error.message : "Couldn't load documents.");
+  ?? (error instanceof Error ? error.message : (fallback ?? "Couldn't load documents."));
 
 export default function CreatorDocumentsPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const formatDate = (value: string) => new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  }).format(new Date(value));
+
+  const documentTypeLabel = (documentType: CreatorIdeaDocument['documentType']) =>
+    documentType === 'business_plan'
+      ? t('creator.documents.businessPlan', 'Business Plan')
+      : t('creator.documents.financialForecast', 'Financial Forecast');
+
+  const errorFallback = t('creator.documents.errorLoading', "Couldn't load documents.");
   const router = useRouter();
   const { state: { activeIdeaId } } = useCreatorProgress();
   const [documents, setDocuments] = useState<CreatorIdeaDocument[]>([]);
@@ -56,7 +63,7 @@ export default function CreatorDocumentsPage() {
         if (!cancelled) setDocuments(result);
       })
       .catch((caught) => {
-        if (!cancelled) setError(errorMessage(caught));
+        if (!cancelled) setError(errorMessage(caught, errorFallback));
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -79,7 +86,7 @@ export default function CreatorDocumentsPage() {
       anchor.remove();
       URL.revokeObjectURL(url);
     } catch (caught) {
-      setError(errorMessage(caught));
+      setError(errorMessage(caught, errorFallback));
     } finally {
       setDownloadingId(null);
     }
@@ -135,7 +142,7 @@ export default function CreatorDocumentsPage() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    aria-label={`Download ${document.fileName}`}
+                    aria-label={t('creator.documents.downloadFile', { fileName: document.fileName }, `Download ${document.fileName}`)}
                     disabled={downloadingId === document.id}
                     onClick={() => download(document)}
                     className="rounded-lg h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"

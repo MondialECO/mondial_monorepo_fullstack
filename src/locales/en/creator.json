@@ -3557,7 +3557,11 @@
     "loading": "Loading documents",
     "emptyTitle": "No documents yet",
     "emptySubtitle": "Documents generated for this idea will appear here.",
-    "createBusinessPlan": "Create Business Plan"
+    "createBusinessPlan": "Create Business Plan",
+    "businessPlan": "Business Plan",
+    "financialForecast": "Financial Forecast",
+    "errorLoading": "Couldn't load documents.",
+    "downloadFile": "Download {{fileName}}"
   },
   "crossroads": {
     "clarity": "Clarity",

@@ -3557,7 +3557,11 @@
     "loading": "Chargement des documents",
     "emptyTitle": "Aucun document pour l'instant",
     "emptySubtitle": "Les documents générés pour cette idée apparaîtront ici.",
-    "createBusinessPlan": "Créer un plan d'affaires"
+    "createBusinessPlan": "Créer un plan d'affaires",
+    "businessPlan": "Plan d'affaires",
+    "financialForecast": "Prévisions financières",
+    "errorLoading": "Impossible de charger les documents.",
+    "downloadFile": "Télécharger {{fileName}}"
   },
   "crossroads": {
     "clarity": "Clarté",
