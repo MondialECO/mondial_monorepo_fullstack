@@ -1,5 +1,5 @@
-import { useTranslation } from "@/hooks/useTranslation";
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React, { useState } from "react";
 import { BrandKit, BrandColorRole } from "@/types/creator/brand-kit";

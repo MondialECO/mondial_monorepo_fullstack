@@ -1,5 +1,5 @@
-import { useTranslation } from "@/hooks/useTranslation";
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React from "react";
 import { BrandKit } from "@/types/creator/brand-kit";

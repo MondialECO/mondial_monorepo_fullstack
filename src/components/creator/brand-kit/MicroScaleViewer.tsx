@@ -1,5 +1,5 @@
-import { useTranslation } from "@/hooks/useTranslation";
 "use client";
+import { useTranslation } from "@/hooks/useTranslation";
 
 import React from "react";
 import { resolveMediaUrl } from "@/lib/brand-kit-media";
