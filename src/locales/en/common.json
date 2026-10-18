@@ -37,7 +37,9 @@
     "loading": "Loading...",
     "search": "Search...",
     "filter": "Filter",
-    "all": "All"
+    "all": "All",
+    "showMore": "Show more",
+    "showLess": "Show less"
   },
   "auth": {
     "login": {

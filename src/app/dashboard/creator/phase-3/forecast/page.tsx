@@ -1228,8 +1228,7 @@ export default function ForecastPage() {
                   </div>
 
                   <div>
-                    <div className="text-[32px] font-heading font-bold text-foreground tracking-tight leading-tight">
-                      €{Math.round(projectionData.year3Revenue).toLocaleString()}
+                    <div className="text-[32px] font-heading font-bold text-foreground tracking-tight leading-tight">{'€'}{Math.round(projectionData.year3Revenue).toLocaleString()}
                     </div>
                     <div className="text-[14px] text-muted-foreground font-sans mt-0.5">
                       {t('creator.phase3.forecast.page.year3Revenue', 'Year 3 revenue')}
@@ -1242,24 +1241,21 @@ export default function ForecastPage() {
                       <div className="text-[10px] text-muted-foreground uppercase font-sans">
                         {t('creator.phase3.forecast.page.year1Label', 'YEAR 1')}
                       </div>
-                      <div className="text-[12px] font-heading font-bold text-foreground">
-                        €{Math.round(projectionData.year1Revenue).toLocaleString()}
+                      <div className="text-[12px] font-heading font-bold text-foreground">{'€'}{Math.round(projectionData.year1Revenue).toLocaleString()}
                       </div>
                     </div>
                     <div className="border-x border-border/40 px-1">
                       <div className="text-[10px] text-muted-foreground uppercase font-sans">
                         {t('creator.phase3.forecast.page.year2Label', 'YEAR 2')}
                       </div>
-                      <div className="text-[12px] font-heading font-bold text-foreground">
-                        €{Math.round(projectionData.year2Revenue).toLocaleString()}
+                      <div className="text-[12px] font-heading font-bold text-foreground">{'€'}{Math.round(projectionData.year2Revenue).toLocaleString()}
                       </div>
                     </div>
                     <div>
                       <div className="text-[10px] text-muted-foreground uppercase font-sans">
                         {t('creator.phase3.forecast.page.year3Label', 'YEAR 3')}
                       </div>
-                      <div className="text-[12px] font-heading font-bold text-foreground">
-                        €{Math.round(projectionData.year3Revenue).toLocaleString()}
+                      <div className="text-[12px] font-heading font-bold text-foreground">{'€'}{Math.round(projectionData.year3Revenue).toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -1340,7 +1336,7 @@ export default function ForecastPage() {
 
                   <div>
                     <div className={`text-[32px] font-heading font-bold tracking-tight leading-tight ${projectionData.lowestCashStat < 0 ? 'text-[#965F11] dark:text-amber-400' : 'text-[#0D9488] dark:text-teal-400'}`}>
-                      {projectionData.lowestCashStat < 0 ? '−' : ''}€{Math.abs(Math.round(projectionData.lowestCashStat)).toLocaleString()}
+                      {projectionData.lowestCashStat < 0 ? '−' : ''}{'€'}{Math.abs(Math.round(projectionData.lowestCashStat)).toLocaleString()}
                     </div>
                     <div className="text-[14px] text-muted-foreground font-sans mt-0.5">
                       {t('creator.phase3.forecast.page.lowestCashPoint', 'Lowest cash point (Month {{month}})', { month: projectionData.lowestCashMonth })}
@@ -1403,7 +1399,7 @@ export default function ForecastPage() {
                     )}
                   </div>
                   <div className="flex items-baseline gap-1 my-1">
-                    <span className="text-base font-mono font-bold text-foreground">€</span>
+                    <span className="text-base font-mono font-bold text-foreground">{'€'}</span>
                     <input
                       type="number"
                       min={0}
@@ -1506,7 +1502,7 @@ export default function ForecastPage() {
                     </Badge>
                   </div>
                   <div className="flex items-baseline gap-1 my-1">
-                    <span className="text-base font-mono font-bold text-foreground">€</span>
+                    <span className="text-base font-mono font-bold text-foreground">{'€'}</span>
                     <input
                       type="number"
                       min={1}
@@ -1525,7 +1521,7 @@ export default function ForecastPage() {
                 <div className="p-4 rounded-lg border border-border/60 bg-muted/30 flex flex-col justify-between min-h-[112px]">
                   <div className="text-caption text-foreground font-sans font-medium">{t('creator.phase3.forecast.page.driverVarCost', 'Variable cost')}</div>
                   <div className="flex items-baseline gap-1 my-1">
-                    <span className="text-base font-mono font-bold text-foreground">€</span>
+                    <span className="text-base font-mono font-bold text-foreground">{'€'}</span>
                     <input
                       type="number"
                       min={0}
@@ -1547,7 +1543,7 @@ export default function ForecastPage() {
                     <Sliders className="h-3.5 w-3.5 text-muted-foreground/70" />
                   </div>
                   <div className="flex items-baseline gap-1 my-1">
-                    <span className="text-base font-mono font-bold text-foreground">€</span>
+                    <span className="text-base font-mono font-bold text-foreground">{'€'}</span>
                     <input
                       type="number"
                       min={100}
@@ -1573,8 +1569,7 @@ export default function ForecastPage() {
                         {t('creator.phase3.forecast.page.badgeLinked', 'LINKED')}
                       </Badge>
                     </div>
-                    <div className="text-base font-mono font-bold text-foreground my-1">
-                      €{inputs.tam >= 1_000_000_000
+                    <div className="text-base font-mono font-bold text-foreground my-1">{'€'}{inputs.tam >= 1_000_000_000
                         ? `${(inputs.tam / 1_000_000_000).toFixed(1)}B`
                         : `${(inputs.tam / 1_000_000).toFixed(0)}M`}
                     </div>
@@ -1661,20 +1656,19 @@ export default function ForecastPage() {
                       >
                         <td className="px-4 py-2.5 font-bold text-foreground">{row.name}</td>
                         <td className="px-3 py-2.5 text-right text-foreground">{row.subscribers.toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-medium">
-                          €{Math.round(row.revenue).toLocaleString()}
+                        <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-medium">{'€'}{Math.round(row.revenue).toLocaleString()}
                         </td>
-                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.fixedCost).toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.variableCost).toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-right font-semibold text-foreground">€{Math.round(row.totalCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">{'€'}{Math.round(row.fixedCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">{'€'}{Math.round(row.variableCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-foreground">{'€'}{Math.round(row.totalCost).toLocaleString()}</td>
                         <td className={`px-3 py-2.5 text-right font-medium ${row.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                          {row.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(row.netCashFlow)).toLocaleString()}
+                          {row.netCashFlow < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(row.netCashFlow)).toLocaleString()}
                         </td>
                         <td className={`px-3 py-2.5 text-right ${row.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                          {row.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(row.cumulative)).toLocaleString()}
+                          {row.cumulative < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(row.cumulative)).toLocaleString()}
                         </td>
                         <td className={`px-3 py-2.5 text-right font-bold ${row.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
-                          {row.cashOnHand < 0 ? '−' : ''}€{Math.abs(Math.round(row.cashOnHand)).toLocaleString()}
+                          {row.cashOnHand < 0 ? '−' : ''}{'€'}{Math.abs(Math.round(row.cashOnHand)).toLocaleString()}
                         </td>
                         <td className="px-4 py-2.5 text-left font-sans text-caption">
                           {row.milestoneTag ? (
@@ -1690,21 +1684,20 @@ export default function ForecastPage() {
                     {/* --- YEAR 1 SUBTOTAL --- */}
                     <tr className="bg-muted/40 font-bold border-t border-border">
                       <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">{t('creator.phase3.forecast.page.y1Subtotal', 'Y1 SUBTOTAL')}</td>
-                      <td className="px-3 py-2.5 text-right">—</td>
-                      <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">
-                        €{Math.round(projectionData.y1Total.revenue).toLocaleString()}
+                      <td className="px-3 py-2.5 text-right">{'—'}</td>
+                      <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">{'€'}{Math.round(projectionData.y1Total.revenue).toLocaleString()}
                       </td>
-                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y1Total.fixedCost).toLocaleString()}</td>
-                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y1Total.variableCost).toLocaleString()}</td>
-                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y1Total.totalCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">{'€'}{Math.round(projectionData.y1Total.fixedCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">{'€'}{Math.round(projectionData.y1Total.variableCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">{'€'}{Math.round(projectionData.y1Total.totalCost).toLocaleString()}</td>
                       <td className={`px-3 py-2.5 text-right ${projectionData.y1Total.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                        {projectionData.y1Total.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y1Total.netCashFlow)).toLocaleString()}
+                        {projectionData.y1Total.netCashFlow < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(projectionData.y1Total.netCashFlow)).toLocaleString()}
                       </td>
                       <td className={`px-3 py-2.5 text-right ${projectionData.y1Total.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                        {projectionData.y1Total.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y1Total.cumulative)).toLocaleString()}
+                        {projectionData.y1Total.cumulative < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(projectionData.y1Total.cumulative)).toLocaleString()}
                       </td>
                       <td className={`px-3 py-2.5 text-right ${projectionData.y1Total.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
-                        {projectionData.y1Total.cashOnHand < 0 ? '−' : ''}€{Math.abs(Math.round(projectionData.y1Total.cashOnHand)).toLocaleString()}
+                        {projectionData.y1Total.cashOnHand < 0 ? '−' : ''}{'€'}{Math.abs(Math.round(projectionData.y1Total.cashOnHand)).toLocaleString()}
                       </td>
                       <td className="px-4 py-2.5 text-left font-sans text-caption text-muted-foreground italic">
                         {t('creator.phase3.forecast.page.endModelledPeriod', 'End of detailed modelled period')}
@@ -1726,20 +1719,19 @@ export default function ForecastPage() {
                       >
                         <td className="px-4 py-2.5 font-bold text-foreground">{row.name}</td>
                         <td className="px-3 py-2.5 text-right text-foreground">{row.subscribers.toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-medium">
-                          €{Math.round(row.revenue).toLocaleString()}
+                        <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-medium">{'€'}{Math.round(row.revenue).toLocaleString()}
                         </td>
-                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.fixedCost).toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.variableCost).toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-right font-semibold text-foreground">€{Math.round(row.totalCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">{'€'}{Math.round(row.fixedCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">{'€'}{Math.round(row.variableCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-foreground">{'€'}{Math.round(row.totalCost).toLocaleString()}</td>
                         <td className={`px-3 py-2.5 text-right font-medium ${row.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                          {row.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(row.netCashFlow)).toLocaleString()}
+                          {row.netCashFlow < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(row.netCashFlow)).toLocaleString()}
                         </td>
                         <td className={`px-3 py-2.5 text-right ${row.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                          {row.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(row.cumulative)).toLocaleString()}
+                          {row.cumulative < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(row.cumulative)).toLocaleString()}
                         </td>
                         <td className={`px-3 py-2.5 text-right font-bold ${row.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
-                          {row.cashOnHand < 0 ? '−' : '+'}€{Math.abs(Math.round(row.cashOnHand)).toLocaleString()}
+                          {row.cashOnHand < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(row.cashOnHand)).toLocaleString()}
                         </td>
                         <td className="px-4 py-2.5 text-left font-sans text-caption">
                           {row.milestoneTag ? (
@@ -1755,21 +1747,20 @@ export default function ForecastPage() {
                     {/* --- YEAR 2 SUBTOTAL --- */}
                     <tr className="bg-muted/40 font-bold border-t border-border">
                       <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">{t('creator.phase3.forecast.page.y2Subtotal', 'Y2 SUBTOTAL')}</td>
-                      <td className="px-3 py-2.5 text-right">—</td>
-                      <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">
-                        €{Math.round(projectionData.y2Total.revenue).toLocaleString()}
+                      <td className="px-3 py-2.5 text-right">{'—'}</td>
+                      <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">{'€'}{Math.round(projectionData.y2Total.revenue).toLocaleString()}
                       </td>
-                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y2Total.fixedCost).toLocaleString()}</td>
-                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y2Total.variableCost).toLocaleString()}</td>
-                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y2Total.totalCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">{'€'}{Math.round(projectionData.y2Total.fixedCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">{'€'}{Math.round(projectionData.y2Total.variableCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">{'€'}{Math.round(projectionData.y2Total.totalCost).toLocaleString()}</td>
                       <td className={`px-3 py-2.5 text-right ${projectionData.y2Total.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                        {projectionData.y2Total.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y2Total.netCashFlow)).toLocaleString()}
+                        {projectionData.y2Total.netCashFlow < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(projectionData.y2Total.netCashFlow)).toLocaleString()}
                       </td>
                       <td className={`px-3 py-2.5 text-right ${projectionData.y2Total.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                        {projectionData.y2Total.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y2Total.cumulative)).toLocaleString()}
+                        {projectionData.y2Total.cumulative < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(projectionData.y2Total.cumulative)).toLocaleString()}
                       </td>
                       <td className={`px-3 py-2.5 text-right ${projectionData.y2Total.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
-                        {projectionData.y2Total.cashOnHand < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y2Total.cashOnHand)).toLocaleString()}
+                        {projectionData.y2Total.cashOnHand < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(projectionData.y2Total.cashOnHand)).toLocaleString()}
                       </td>
                       <td className="px-4 py-2.5 text-left font-sans text-caption text-muted-foreground italic">
                         {t('creator.phase3.forecast.page.operationalProfitReached', 'Operational profit reached')}
@@ -1791,20 +1782,19 @@ export default function ForecastPage() {
                       >
                         <td className="px-4 py-2.5 font-bold text-foreground">{row.name}</td>
                         <td className="px-3 py-2.5 text-right text-foreground">{row.subscribers.toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-medium">
-                          €{Math.round(row.revenue).toLocaleString()}
+                        <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-medium">{'€'}{Math.round(row.revenue).toLocaleString()}
                         </td>
-                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.fixedCost).toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-right text-muted-foreground">€{Math.round(row.variableCost).toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-right font-semibold text-foreground">€{Math.round(row.totalCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">{'€'}{Math.round(row.fixedCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right text-muted-foreground">{'€'}{Math.round(row.variableCost).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-foreground">{'€'}{Math.round(row.totalCost).toLocaleString()}</td>
                         <td className={`px-3 py-2.5 text-right font-medium ${row.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                          {row.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(row.netCashFlow)).toLocaleString()}
+                          {row.netCashFlow < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(row.netCashFlow)).toLocaleString()}
                         </td>
                         <td className={`px-3 py-2.5 text-right ${row.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                          {row.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(row.cumulative)).toLocaleString()}
+                          {row.cumulative < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(row.cumulative)).toLocaleString()}
                         </td>
                         <td className={`px-3 py-2.5 text-right font-bold ${row.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
-                          {row.cashOnHand < 0 ? '−' : '+'}€{Math.abs(Math.round(row.cashOnHand)).toLocaleString()}
+                          {row.cashOnHand < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(row.cashOnHand)).toLocaleString()}
                         </td>
                         <td className="px-4 py-2.5 text-left font-sans text-caption">
                           {row.milestoneTag ? (
@@ -1820,21 +1810,20 @@ export default function ForecastPage() {
                     {/* --- YEAR 3 SUBTOTAL --- */}
                     <tr className="bg-muted/40 font-bold border-t border-border">
                       <td className="px-4 py-2.5 font-heading text-badge uppercase tracking-wider font-sans">{t('creator.phase3.forecast.page.y3Subtotal', 'Y3 SUBTOTAL')}</td>
-                      <td className="px-3 py-2.5 text-right">—</td>
-                      <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">
-                        €{Math.round(projectionData.y3Total.revenue).toLocaleString()}
+                      <td className="px-3 py-2.5 text-right">{'—'}</td>
+                      <td className="px-3 py-2.5 text-right text-emerald-600 dark:text-emerald-400">{'€'}{Math.round(projectionData.y3Total.revenue).toLocaleString()}
                       </td>
-                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y3Total.fixedCost).toLocaleString()}</td>
-                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y3Total.variableCost).toLocaleString()}</td>
-                      <td className="px-3 py-2.5 text-right">€{Math.round(projectionData.y3Total.totalCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">{'€'}{Math.round(projectionData.y3Total.fixedCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">{'€'}{Math.round(projectionData.y3Total.variableCost).toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-right">{'€'}{Math.round(projectionData.y3Total.totalCost).toLocaleString()}</td>
                       <td className={`px-3 py-2.5 text-right ${projectionData.y3Total.netCashFlow < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                        {projectionData.y3Total.netCashFlow < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y3Total.netCashFlow)).toLocaleString()}
+                        {projectionData.y3Total.netCashFlow < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(projectionData.y3Total.netCashFlow)).toLocaleString()}
                       </td>
                       <td className={`px-3 py-2.5 text-right ${projectionData.y3Total.cumulative < 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                        {projectionData.y3Total.cumulative < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y3Total.cumulative)).toLocaleString()}
+                        {projectionData.y3Total.cumulative < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(projectionData.y3Total.cumulative)).toLocaleString()}
                       </td>
                       <td className={`px-3 py-2.5 text-right ${projectionData.y3Total.cashOnHand < 0 ? 'text-destructive' : 'text-foreground'}`}>
-                        {projectionData.y3Total.cashOnHand < 0 ? '−' : '+'}€{Math.abs(Math.round(projectionData.y3Total.cashOnHand)).toLocaleString()}
+                        {projectionData.y3Total.cashOnHand < 0 ? '−' : '+'}{'€'}{Math.abs(Math.round(projectionData.y3Total.cashOnHand)).toLocaleString()}
                       </td>
                       <td className="px-4 py-2.5 text-left font-sans text-caption text-muted-foreground italic">
                         {t('creator.phase3.forecast.page.full3YearComplete', 'Full 3-year projection complete')}
@@ -1862,24 +1851,21 @@ export default function ForecastPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.monthlyFixedCosts', 'Monthly fixed costs')}</span>
-                      <div className="text-xl font-heading font-bold font-mono text-foreground">
-                        €{inputs.opex.toLocaleString()}
+                      <div className="text-xl font-heading font-bold font-mono text-foreground">{'€'}{inputs.opex.toLocaleString()}
                       </div>
                       <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.baseOperatingCost', 'Base operating cost')}</span>
                     </div>
 
                     <div className="space-y-1">
                       <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.pricePerSubscriber', 'Price per subscriber')}</span>
-                      <div className="text-xl font-heading font-bold font-mono text-foreground">
-                        €{inputs.arpu}
+                      <div className="text-xl font-heading font-bold font-mono text-foreground">{'€'}{inputs.arpu}
                       </div>
                       <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.averageMonthlyRevenue', 'Average monthly revenue')}</span>
                     </div>
 
                     <div className="space-y-1">
                       <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.contributionPerSubscriber', 'Contribution per subscriber')}</span>
-                      <div className="text-xl font-heading font-bold font-mono text-foreground">
-                        €{contributionPerSub}
+                      <div className="text-xl font-heading font-bold font-mono text-foreground">{'€'}{contributionPerSub}
                       </div>
                       <span className="text-badge text-muted-foreground font-sans block">
                         {t('creator.phase3.forecast.page.priceMinusVarCost', '€{{price}} price − €{{varCost}} variable cost', { price: inputs.arpu, varCost: inputs.varCost })}
@@ -1936,13 +1922,13 @@ export default function ForecastPage() {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-0.5">
                       <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.cacLabel', 'CAC')}</span>
-                      <div className="text-lg font-heading font-bold font-mono text-foreground">€{cac}</div>
+                      <div className="text-lg font-heading font-bold font-mono text-foreground">{'€'}{cac}</div>
                       <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.cacSub', 'Marketing ÷ new subs, Y1')}</span>
                     </div>
 
                     <div className="space-y-0.5">
                       <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.ltvLabel', 'LTV')}</span>
-                      <div className="text-lg font-heading font-bold font-mono text-foreground">€{ltv}</div>
+                      <div className="text-lg font-heading font-bold font-mono text-foreground">{'€'}{ltv}</div>
                       <span className="text-badge text-muted-foreground font-sans block">
                         {t('creator.phase3.forecast.page.ltvSub', '€{{contribution}} ÷ {{churn}}% churn', { contribution: contributionPerSub, churn: inputs.churn })}
                       </span>
@@ -1975,8 +1961,7 @@ export default function ForecastPage() {
 
                     <div className="space-y-0.5 pt-2">
                       <span className="text-caption text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.burnAtLaunch', 'Burn at launch')}</span>
-                      <div className="text-lg font-heading font-bold font-mono text-destructive">
-                        €{Math.abs(month1NetLoss).toLocaleString()}
+                      <div className="text-lg font-heading font-bold font-mono text-destructive">{'€'}{Math.abs(month1NetLoss).toLocaleString()}
                       </div>
                       <span className="text-badge text-muted-foreground font-sans block">{t('creator.phase3.forecast.page.monthOneNetLoss', 'Month one net loss')}</span>
                     </div>

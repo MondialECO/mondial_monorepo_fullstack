@@ -21,8 +21,10 @@ import type { ChatMessage, Conversation } from "@/types/chat";
 import MessagesHeader from "./MessagesHeader";
 import ConversationList from "./ConversationList";
 import ConversationThread from "./ConversationThread";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 export default function MessagingWorkspace() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
@@ -157,7 +159,10 @@ export default function MessagingWorkspace() {
           ) : (
             <div className="flex h-full items-center justify-center p-8 text-center">
               <p className="text-sm text-muted-foreground">
-                Select a conversation to start messaging.
+                {t(
+                  "creator.messages.workspace.emptySelection",
+                  "Select a conversation to start messaging."
+                )}
               </p>
             </div>
           )}

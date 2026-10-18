@@ -21,6 +21,7 @@ import {
   Star,
 } from "lucide-react";
 import { useAuth } from "@/app/_providers/AuthProvider";
+import { useLanguage } from "@/providers/LanguageProvider";
 import { Button } from "@/components/ui/button";
 import {
   SpCard,
@@ -60,11 +61,11 @@ export interface ProfileViewProps {
 /** Single source for the cover ratio — shared with the uploader's crop target. */
 const COVER_RULE = PROVIDER_IMAGE_RULES.cover;
 
-function formatMonth(dateStr?: string | null) {
+function formatMonth(dateStr?: string | null, locale?: string) {
   if (!dateStr) return null;
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  return d.toLocaleDateString(locale === "fr" ? "fr-FR" : "en-US", { month: "short", year: "numeric" });
 }
 
 function readable(str?: string | null) {
@@ -72,12 +73,24 @@ function readable(str?: string | null) {
   return str.replace(/([A-Z])/g, " $1").trim();
 }
 
-function EditAction({ href, label }: { href: string; label: string }) {
+const SECTION_FR_LABELS: Record<string, string> = {
+  about: "À propos",
+  experience: "l'expérience",
+  education: "la formation",
+  services: "les services",
+  skills: "les compétences",
+  languages: "les langues",
+  "social links": "les liens sociaux",
+  credentials: "les certifications",
+};
+
+function EditAction({ href, label, locale = "en" }: { href: string; label: string; locale?: string }) {
+  const displayLabel = locale === "fr" ? `Modifier ${SECTION_FR_LABELS[label] || label}` : `Edit ${label}`;
   return (
     <Button asChild variant="ghost" size="sm" className="min-h-8 px-2 text-[#4B5563] hover:text-[#171717]">
       <Link href={href}>
         <Pencil className="size-3.5" aria-hidden="true" />
-        <span>Edit {label}</span>
+        <span>{displayLabel}</span>
       </Link>
     </Button>
   );
@@ -87,6 +100,7 @@ export function ProfileView({ mode = "owner", profile: profileProp, identifier }
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { t, locale } = useLanguage();
   const isOwner = mode === "owner";
 
   const ownerQuery = useProfile({ enabled: (isOwner || !identifier) && !profileProp });
@@ -132,7 +146,7 @@ export function ProfileView({ mode = "owner", profile: profileProp, identifier }
     return (
       <SpPage className="pb-4">
         <div className="space-y-4" role="status" aria-live="polite">
-          <span className="sr-only">Loading profile</span>
+          <span className="sr-only">{t("creator.profile.loading", "Loading profile")}</span>
           <div className="h-48 animate-pulse rounded-2xl bg-[#EDEFF3]" />
           <div className="h-64 animate-pulse rounded-2xl bg-[#EDEFF3]" />
         </div>
@@ -145,20 +159,24 @@ export function ProfileView({ mode = "owner", profile: profileProp, identifier }
       <SpPage className="pb-4">
         <SpCard>
           <SpEmptyState
-            title={isOwner ? "Profile unavailable" : "Profile not found"}
+            title={
+              isOwner
+                ? t("creator.profile.unavailableTitle", "Profile unavailable")
+                : t("creator.profile.notFoundTitle", "Profile not found")
+            }
             description={
               isOwner
-                ? "We could not load this profile. Check your connection and try again."
-                : "The profile you are looking for does not exist or is currently unavailable."
+                ? t("creator.profile.unavailableDesc", "We could not load this profile. Check your connection and try again.")
+                : t("creator.profile.notFoundDesc", "The profile you are looking for does not exist or is currently unavailable.")
             }
             action={
               isOwner ? (
                 <Button type="button" variant="outline" className="min-h-11" onClick={() => ownerQuery.refetch()}>
-                  Retry
+                  {t("creator.profile.retry", "Retry")}
                 </Button>
               ) : (
                 <Button asChild variant="outline" className="min-h-11">
-                  <Link href="/">Back to Home</Link>
+                  <Link href="/">{t("creator.profile.backHome", "Back to Home")}</Link>
                 </Button>
               )
             }
@@ -178,7 +196,7 @@ export function ProfileView({ mode = "owner", profile: profileProp, identifier }
   const profileImageUrl =
     resolveProviderMediaUrl(profile.profileImage?.publicUrl ?? profile.profileImage?.url) ??
     (isOwner ? resolveProviderMediaUrl(provider?.imagePath) : undefined);
-  const name = profile.name || provider?.name || user?.name || "Mondial Member";
+  const name = profile.name || provider?.name || user?.name || t("creator.profile.defaultMemberName", "Mondial Member");
 
   const spExtension = profile.serviceProviderExtension ?? (profile as any).serviceProvider;
 
@@ -225,14 +243,14 @@ export function ProfileView({ mode = "owner", profile: profileProp, identifier }
   const showingTrust = isOwner && isServiceProvider && legacyView === "trust";
   const tabs = isOwner && isServiceProvider
     ? [
-        { label: "Overview", href: PROFILE_VIEW_ROUTE, active: !showingTrust },
-        { label: "Trust & Skills", href: `${PROFILE_VIEW_ROUTE}?view=trust`, active: showingTrust },
+        { label: t("creator.profile.tabs.overview", "Overview"), href: PROFILE_VIEW_ROUTE, active: !showingTrust },
+        { label: t("creator.profile.tabs.trustAndSkills", "Trust & Skills"), href: `${PROFILE_VIEW_ROUTE}?view=trust`, active: showingTrust },
       ]
     : [];
 
   return (
     <div className="mx-auto w-full max-w-[1440px] space-y-6 pb-4">
-      {isOwner && isServiceProvider && tabs.length > 0 && <SpTabBar label="Profile sections" items={tabs} />}
+      {isOwner && isServiceProvider && tabs.length > 0 && <SpTabBar label={t("creator.profile.tabs.sections", "Profile sections")} items={tabs} />}
       {showingTrust ? (
         <TrustAndSkillsSection profile={spProfile ?? profile} verificationStatus={verificationStatus} />
       ) : (
@@ -314,6 +332,7 @@ function ProfileSections({
   entrepreneurExtension?: { foundedCompanies?: Array<{ id?: string; name: string; industry?: string; foundedYear?: number; status?: string }> } | null;
   investorExtension?: { investmentThesis?: string; targetStages?: string[]; targetIndustries?: string[]; targetGeography?: string[] } | null;
 }) {
+  const { t, locale } = useLanguage();
   const [copied, setCopied] = useState(false);
 
   const handleShare = () => {
@@ -359,12 +378,12 @@ function ProfileSections({
                       {copied ? (
                         <>
                           <Check className="size-4 text-[#157A55]" aria-hidden="true" />
-                          <span>Copied!</span>
+                          <span>{t("creator.profile.actions.copied", "Copied!")}</span>
                         </>
                       ) : (
                         <>
                           <Share2 className="size-4" aria-hidden="true" />
-                          <span>Share Profile</span>
+                          <span>{t("creator.profile.actions.shareProfile", "Share Profile")}</span>
                         </>
                       )}
                     </Button>
@@ -376,7 +395,7 @@ function ProfileSections({
                     >
                       <Link href={`/profile/${slug}`}>
                         <ExternalLink className="size-4" aria-hidden="true" />
-                        <span>View Public Profile</span>
+                        <span>{t("creator.profile.actions.viewPublicProfile", "View Public Profile")}</span>
                       </Link>
                     </Button>
                   </>
@@ -385,7 +404,7 @@ function ProfileSections({
                 <Button asChild className="min-h-11">
                   <Link href={SECTION_EDIT_HREF.profile()}>
                     <Pencil className="size-4" aria-hidden="true" />
-                    <span>Edit Profile</span>
+                    <span>{t("creator.profile.actions.editProfile", "Edit Profile")}</span>
                   </Link>
                 </Button>
               </div>
@@ -401,7 +420,7 @@ function ProfileSections({
               ) : (
                 <div className="flex size-full items-center justify-center text-[#9CA3AF]">
                   <Camera className="size-6" aria-hidden="true" />
-                  <span className="sr-only">No profile image set</span>
+                  <span className="sr-only">{t("creator.profile.header.noImageSet", "No profile image set")}</span>
                 </div>
               )}
             </div>
@@ -421,21 +440,27 @@ function ProfileSections({
               {verified && (
                 <SpStatusBadge tone="positive">
                   <ShieldCheck className="mr-1 inline size-3.5" aria-hidden="true" />
-                  Verified
+                  {t("creator.profile.header.verified", "Verified")}
                 </SpStatusBadge>
               )}
               {isServiceProvider && tierLevel ? (
-                <SpStatusBadge tone="neutral">{`Tier ${tierLevel}`}</SpStatusBadge>
+                <SpStatusBadge tone="neutral">
+                  {t("creator.profile.header.tier", { level: tierLevel }, `Tier ${tierLevel}`)}
+                </SpStatusBadge>
               ) : null}
-              {isServiceProvider && availableNow && <SpStatusBadge tone="positive">Available now</SpStatusBadge>}
+              {isServiceProvider && availableNow && (
+                <SpStatusBadge tone="positive">
+                  {t("creator.profile.header.availableNow", "Available now")}
+                </SpStatusBadge>
+              )}
             </div>
 
             <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#4B5563]">
               {profile.createdAt && (
                 <div className="flex gap-1">
-                  <dt className="text-[#6B7280]">Member since:</dt>
+                  <dt className="text-[#6B7280]">{t("creator.profile.header.memberSince", "Member since:")}</dt>
                   <dd>
-                    {new Date(profile.createdAt).toLocaleDateString(undefined, {
+                    {new Date(profile.createdAt).toLocaleDateString(locale === "fr" ? "fr-FR" : "en-US", {
                       month: "short",
                       year: "numeric",
                     })}
@@ -444,14 +469,20 @@ function ProfileSections({
               )}
               {isServiceProvider && (
                 <div className="flex gap-1">
-                  <dt className="text-[#6B7280]">Avg response time:</dt>
-                  <dd>{responseMinutes ? `${responseMinutes} mins` : "Not tracked"}</dd>
+                  <dt className="text-[#6B7280]">{t("creator.profile.header.avgResponseTime", "Avg response time:")}</dt>
+                  <dd>
+                    {responseMinutes
+                      ? t("creator.profile.header.responseMins", { minutes: responseMinutes }, `${responseMinutes} mins`)
+                      : t("creator.profile.header.notTracked", "Not tracked")}
+                  </dd>
                 </div>
               )}
             </dl>
 
             {isServiceProvider && (
-              <p className="mt-3 text-xs text-[#6B7280]">Affects match priority, not pricing.</p>
+              <p className="mt-3 text-xs text-[#6B7280]">
+                {t("creator.profile.header.matchPriorityNotice", "Affects match priority, not pricing.")}
+              </p>
             )}
           </div>
         </SpCard>
@@ -462,8 +493,8 @@ function ProfileSections({
           {/* ---- About ---- */}
           <SpCard>
             <SpSectionHeader
-              title="About"
-              action={isOwner ? <EditAction href={SECTION_EDIT_HREF.about()} label="about" /> : undefined}
+              title={t("creator.profile.sections.about", "About")}
+              action={isOwner ? <EditAction href={SECTION_EDIT_HREF.about()} label="about" locale={locale} /> : undefined}
             />
             <div className="mt-4 space-y-4">
               {profile.bio ? (
@@ -472,8 +503,12 @@ function ProfileSections({
               <ProfessionalOverviewView content={profile.professionalOverview} />
               {!profile.bio && !profile.professionalOverview?.plainText && (
                 <SpEmptyState
-                  title="No overview yet"
-                  description={isOwner ? "Add a short bio and a Professional Overview." : "This member has not added an overview."}
+                  title={t("creator.profile.sections.noOverviewTitle", "No overview yet")}
+                  description={
+                    isOwner
+                      ? t("creator.profile.sections.noOverviewOwner", "Add a short bio and a Professional Overview.")
+                      : t("creator.profile.sections.noOverviewPublic", "This member has not added an overview.")
+                  }
                 />
               )}
             </div>
@@ -483,13 +518,23 @@ function ProfileSections({
           {creatorExtension && (
             <SpCard>
               <SpSectionHeader
-                title="Creator Projects & Focus"
-                description={`${creatorExtension.publishedProjectsCount ?? 0} published project${(creatorExtension.publishedProjectsCount ?? 0) === 1 ? "" : "s"}`}
+                title={t("creator.profile.sections.creatorProjects", "Creator Projects & Focus")}
+                description={
+                  (creatorExtension.publishedProjectsCount ?? 0) === 1
+                    ? t("creator.profile.sections.publishedProjects", { count: 1 }, "1 published project")
+                    : t(
+                        "creator.profile.sections.publishedProjectsPlural",
+                        { count: creatorExtension.publishedProjectsCount ?? 0 },
+                        `${creatorExtension.publishedProjectsCount ?? 0} published projects`
+                      )
+                }
               />
               <div className="mt-4 space-y-3">
                 {(creatorExtension.focusCategories ?? []).length > 0 && (
                   <div>
-                    <h4 className="text-xs font-medium uppercase tracking-wider text-[#6B7280]">Focus Categories</h4>
+                    <h4 className="text-xs font-medium uppercase tracking-wider text-[#6B7280]">
+                      {t("creator.profile.sections.focusCategories", "Focus Categories")}
+                    </h4>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {creatorExtension.focusCategories?.map((cat) => (
                         <span key={cat} className="rounded-full bg-[#F3F4F6] px-3 py-1 text-xs font-medium text-[#374151]">
@@ -507,12 +552,22 @@ function ProfileSections({
           {entrepreneurExtension && (
             <SpCard>
               <SpSectionHeader
-                title="Founded Companies & Ventures"
-                description={`${entrepreneurExtension.foundedCompanies?.length ?? 0} venture${(entrepreneurExtension.foundedCompanies?.length ?? 0) === 1 ? "" : "s"}`}
+                title={t("creator.profile.sections.foundedCompanies", "Founded Companies & Ventures")}
+                description={
+                  (entrepreneurExtension.foundedCompanies?.length ?? 0) === 1
+                    ? t("creator.profile.sections.venturesCount", { count: 1 }, "1 venture")
+                    : t(
+                        "creator.profile.sections.venturesCountPlural",
+                        { count: entrepreneurExtension.foundedCompanies?.length ?? 0 },
+                        `${entrepreneurExtension.foundedCompanies?.length ?? 0} ventures`
+                      )
+                }
               />
               <div className="mt-4 space-y-3">
                 {(!entrepreneurExtension.foundedCompanies || entrepreneurExtension.foundedCompanies.length === 0) ? (
-                  <p className="text-sm text-[#6B7280]">No ventures listed yet.</p>
+                  <p className="text-sm text-[#6B7280]">
+                    {t("creator.profile.sections.noVentures", "No ventures listed yet.")}
+                  </p>
                 ) : (
                   entrepreneurExtension.foundedCompanies.map((company, i) => (
                     <article key={company.id || i} className="rounded-xl border border-[#E5E7EB] p-3.5">
@@ -522,7 +577,9 @@ function ProfileSections({
                           {company.industry && <p className="text-xs text-[#6B7280]">{company.industry}</p>}
                         </div>
                         {company.foundedYear && (
-                          <span className="text-xs text-[#6B7280]">Founded {company.foundedYear}</span>
+                          <span className="text-xs text-[#6B7280]">
+                            {t("creator.profile.sections.foundedYear", { year: company.foundedYear }, `Founded ${company.foundedYear}`)}
+                          </span>
                         )}
                       </div>
                     </article>
@@ -535,17 +592,21 @@ function ProfileSections({
           {/* ---- Investor Extension ---- */}
           {investorExtension && (
             <SpCard>
-              <SpSectionHeader title="Investment Profile" />
+              <SpSectionHeader title={t("creator.profile.sections.investmentProfile", "Investment Profile")} />
               <div className="mt-4 space-y-4 text-sm text-[#374151]">
                 {investorExtension.investmentThesis && (
                   <div>
-                    <h4 className="text-xs font-medium uppercase tracking-wider text-[#6B7280]">Thesis</h4>
+                    <h4 className="text-xs font-medium uppercase tracking-wider text-[#6B7280]">
+                      {t("creator.profile.sections.thesis", "Thesis")}
+                    </h4>
                     <p className="mt-1 leading-relaxed text-[#4B5563]">{investorExtension.investmentThesis}</p>
                   </div>
                 )}
                 {(investorExtension.targetStages ?? []).length > 0 && (
                   <div>
-                    <h4 className="text-xs font-medium uppercase tracking-wider text-[#6B7280]">Target Stages</h4>
+                    <h4 className="text-xs font-medium uppercase tracking-wider text-[#6B7280]">
+                      {t("creator.profile.sections.targetStages", "Target Stages")}
+                    </h4>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {investorExtension.targetStages?.map((stage) => (
                         <span key={stage} className="rounded-md bg-[#EEF2FF] px-2.5 py-0.5 text-xs font-medium text-[#3C61DD]">
@@ -557,7 +618,9 @@ function ProfileSections({
                 )}
                 {(investorExtension.targetIndustries ?? []).length > 0 && (
                   <div>
-                    <h4 className="text-xs font-medium uppercase tracking-wider text-[#6B7280]">Target Industries</h4>
+                    <h4 className="text-xs font-medium uppercase tracking-wider text-[#6B7280]">
+                      {t("creator.profile.sections.targetIndustries", "Target Industries")}
+                    </h4>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {investorExtension.targetIndustries?.map((ind) => (
                         <span key={ind} className="rounded-md bg-[#F3F4F6] px-2.5 py-0.5 text-xs text-[#374151]">
@@ -569,7 +632,9 @@ function ProfileSections({
                 )}
                 {(investorExtension.targetGeography ?? []).length > 0 && (
                   <div>
-                    <h4 className="text-xs font-medium uppercase tracking-wider text-[#6B7280]">Target Geography</h4>
+                    <h4 className="text-xs font-medium uppercase tracking-wider text-[#6B7280]">
+                      {t("creator.profile.sections.targetGeography", "Target Geography")}
+                    </h4>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {investorExtension.targetGeography?.map((geo) => (
                         <span key={geo} className="rounded-md border border-[#E5E7EB] px-2.5 py-0.5 text-xs text-[#4B5563]">
@@ -586,15 +651,19 @@ function ProfileSections({
           {/* ---- Experience ---- */}
           <SpCard>
             <SpSectionHeader
-              title="Experience"
-              action={isOwner ? <EditAction href={SECTION_EDIT_HREF.experience()} label="experience" /> : undefined}
+              title={t("creator.profile.sections.experience", "Experience")}
+              action={isOwner ? <EditAction href={SECTION_EDIT_HREF.experience()} label="experience" locale={locale} /> : undefined}
             />
             <div className="mt-4 space-y-4">
               {((profile.experiences ?? []) as any[]).length === 0 ? (
                 <SpEmptyState
                   icon={Briefcase}
-                  title="No experience added"
-                  description={isOwner ? "Add roles to show clients where you have worked." : "No experience listed."}
+                  title={t("creator.profile.sections.noExperienceTitle", "No experience added")}
+                  description={
+                    isOwner
+                      ? t("creator.profile.sections.noExperienceOwner", "Add roles to show clients where you have worked.")
+                      : t("creator.profile.sections.noExperiencePublic", "No experience listed.")
+                  }
                 />
               ) : (
                 ((profile.experiences ?? []) as any[]).map((item) => (
@@ -602,8 +671,8 @@ function ProfileSections({
                     <h3 className="text-sm font-semibold text-[#171717]">{item.jobTitle}</h3>
                     <p className="text-sm text-[#4B5563]">{item.companyName}</p>
                     <p className="mt-0.5 text-xs text-[#6B7280]">
-                      {formatMonth(item.startDate)} —{" "}
-                      {item.isCurrent ? "Present" : formatMonth(item.endDate) ?? "—"}
+                      {formatMonth(item.startDate, locale)} —{" "}
+                      {item.isCurrent ? t("creator.profile.sections.present", "Present") : formatMonth(item.endDate, locale) ?? "—"}
                     </p>
                     {item.description && (
                       <p className="mt-2 text-sm leading-6 text-[#4B5563]">{item.description}</p>
@@ -617,15 +686,19 @@ function ProfileSections({
           {/* ---- Education ---- */}
           <SpCard>
             <SpSectionHeader
-              title="Education"
-              action={isOwner ? <EditAction href={SECTION_EDIT_HREF.education()} label="education" /> : undefined}
+              title={t("creator.profile.sections.education", "Education")}
+              action={isOwner ? <EditAction href={SECTION_EDIT_HREF.education()} label="education" locale={locale} /> : undefined}
             />
             <div className="mt-4 space-y-4">
               {((profile.education ?? []) as any[]).length === 0 ? (
                 <SpEmptyState
                   icon={GraduationCap}
-                  title="No education added"
-                  description={isOwner ? "Add your qualifications." : "No education listed."}
+                  title={t("creator.profile.sections.noEducationTitle", "No education added")}
+                  description={
+                    isOwner
+                      ? t("creator.profile.sections.noEducationOwner", "Add your qualifications.")
+                      : t("creator.profile.sections.noEducationPublic", "No education listed.")
+                  }
                 />
               ) : (
                 ((profile.education ?? []) as any[]).map((item) => (
@@ -636,7 +709,7 @@ function ProfileSections({
                       {item.fieldOfStudy ? ` · ${item.fieldOfStudy}` : ""}
                     </p>
                     <p className="mt-0.5 text-xs text-[#6B7280]">
-                      {item.startYear} — {item.endYear ?? "Present"}
+                      {item.startYear} — {item.endYear ?? t("creator.profile.sections.present", "Present")}
                     </p>
                     {item.description && (
                       <p className="mt-2 text-sm leading-6 text-[#4B5563]">{item.description}</p>
@@ -654,15 +727,23 @@ function ProfileSections({
           {isServiceProvider && (
             <SpCard>
               <SpSectionHeader
-                title="Services"
-                description={`${listings.length} listing${listings.length === 1 ? "" : "s"}`}
-                action={isOwner ? <EditAction href={SECTION_EDIT_HREF.services()} label="services" /> : undefined}
+                title={t("creator.profile.sections.services", "Services")}
+                description={
+                  listings.length === 1
+                    ? t("creator.profile.sections.servicesCount", { count: 1 }, "1 listing")
+                    : t("creator.profile.sections.servicesCountPlural", { count: listings.length }, `${listings.length} listings`)
+                }
+                action={isOwner ? <EditAction href={SECTION_EDIT_HREF.services()} label="services" locale={locale} /> : undefined}
               />
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {listings.length === 0 ? (
                   <SpEmptyState
-                    title="No published services"
-                    description={isOwner ? "Create a service listing to start receiving briefs." : "No services published."}
+                    title={t("creator.profile.sections.noServicesTitle", "No published services")}
+                    description={
+                      isOwner
+                        ? t("creator.profile.sections.noServicesOwner", "Create a service listing to start receiving briefs.")
+                        : t("creator.profile.sections.noServicesPublic", "No services published.")
+                    }
                     className="sm:col-span-2"
                   />
                 ) : (
@@ -672,7 +753,15 @@ function ProfileSections({
                       <p className="mt-1 text-xs text-[#6B7280]">{readable(listing.category)}</p>
                       {listing.startingPrice !== undefined && listing.startingPrice > 0 && (
                         <p className="mt-2 text-xs font-medium text-[#157A55]">
-                          From {listing.currency === "USD" ? "$" : listing.currency === "GBP" ? "£" : "€"}{listing.startingPrice} · {listing.pricingModel || "Fixed"}
+                          {t(
+                            "creator.profile.sections.fromPrice",
+                            {
+                              symbol: listing.currency === "USD" ? "$" : listing.currency === "GBP" ? "£" : "€",
+                              price: listing.startingPrice,
+                              model: listing.pricingModel || "Fixed",
+                            },
+                            `From ${listing.currency === "USD" ? "$" : listing.currency === "GBP" ? "£" : "€"}${listing.startingPrice} · ${listing.pricingModel || "Fixed"}`
+                          )}
                         </p>
                       )}
                       {isOwner && listing.status && (
@@ -692,7 +781,7 @@ function ProfileSections({
         <div className="space-y-6">
           {isServiceProvider && (
             <SpCard>
-              <SpSectionHeader title="Mondial Score" />
+              <SpSectionHeader title={t("creator.profile.sections.mondialScore", "Mondial Score")} />
               <div className="mt-4">
                 {hasEnoughTrustData ? (
                   <p className="font-heading text-3xl font-semibold text-[#171717]">
@@ -700,10 +789,10 @@ function ProfileSections({
                     <span className="ml-1 text-base font-normal text-[#6B7280]">/ 100</span>
                   </p>
                 ) : (
-                  <p className="text-sm text-[#6B7280]">Not enough data</p>
+                  <p className="text-sm text-[#6B7280]">{t("creator.profile.sections.notEnoughData", "Not enough data")}</p>
                 )}
                 <p className="mt-2 text-xs text-[#6B7280]">
-                  Reflects delivery and client signals. Affects match priority, not pricing.
+                  {t("creator.profile.sections.scoreNotice", "Reflects delivery and client signals. Affects match priority, not pricing.")}
                 </p>
               </div>
             </SpCard>
@@ -711,13 +800,19 @@ function ProfileSections({
 
           <SpCard>
             <SpSectionHeader
-              title="Skills"
-              description={`${(profile.skills ?? []).length} listed`}
-              action={isOwner ? <EditAction href={SECTION_EDIT_HREF.skills()} label="skills" /> : undefined}
+              title={t("creator.profile.sections.skills", "Skills")}
+              description={t(
+                "creator.profile.sections.skillsListed",
+                { count: (profile.skills ?? []).length },
+                `${(profile.skills ?? []).length} listed`
+              )}
+              action={isOwner ? <EditAction href={SECTION_EDIT_HREF.skills()} label="skills" locale={locale} /> : undefined}
             />
             <div className="mt-4 flex flex-wrap gap-2">
               {(profile.skills ?? []).length === 0 ? (
-                <p className="text-sm text-[#6B7280]">No skills added.</p>
+                <p className="text-sm text-[#6B7280]">
+                  {t("creator.profile.sections.noSkills", "No skills added.")}
+                </p>
               ) : (
                 (profile.skills ?? []).map((skill: any) => {
                   const name = typeof skill === "string" ? skill : (skill?.name ?? "");
@@ -735,7 +830,9 @@ function ProfileSections({
 
             {(profile.industries ?? []).length > 0 && (
               <div className="mt-5">
-                <h3 className="text-xs uppercase tracking-wide text-[#6B7280]">Expertise Domains</h3>
+                <h3 className="text-xs uppercase tracking-wide text-[#6B7280]">
+                  {t("creator.profile.sections.expertiseDomains", "Expertise Domains")}
+                </h3>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {profile.industries.map((industry: string) => (
                     <span
@@ -752,19 +849,24 @@ function ProfileSections({
 
           <SpCard>
             <SpSectionHeader
-              title="Languages"
-              action={isOwner ? <EditAction href={SECTION_EDIT_HREF.languages()} label="languages" /> : undefined}
+              title={t("creator.profile.sections.languages", "Languages")}
+              action={isOwner ? <EditAction href={SECTION_EDIT_HREF.languages()} label="languages" locale={locale} /> : undefined}
             />
             <div className="mt-4 space-y-2">
               {languages.length === 0 ? (
-                <p className="text-sm text-[#6B7280]">No languages added.</p>
+                <p className="text-sm text-[#6B7280]">
+                  {t("creator.profile.sections.noLanguages", "No languages added.")}
+                </p>
               ) : (
                 languages.map((entry) => (
                   <div key={entry.id} className="flex items-center justify-between gap-3 text-sm">
                     <span className="text-[#374151]">{entry.language}</span>
                     {entry.proficiency && (
                       <span className="text-[#6B7280]">
-                        {LANGUAGE_PROFICIENCY_LABELS[entry.proficiency]}
+                        {t(
+                          `creator.profile.proficiencies.${entry.proficiency}`,
+                          LANGUAGE_PROFICIENCY_LABELS[entry.proficiency] ?? entry.proficiency
+                        )}
                       </span>
                     )}
                   </div>
@@ -776,8 +878,8 @@ function ProfileSections({
           {(profile.socialLinks ?? []).length > 0 && (
             <SpCard>
               <SpSectionHeader
-                title="Social & Web links"
-                action={isOwner ? <EditAction href={SECTION_EDIT_HREF.skills()} label="social links" /> : undefined}
+                title={t("creator.profile.sections.socialLinks", "Social & Web links")}
+                action={isOwner ? <EditAction href={SECTION_EDIT_HREF.skills()} label="social links" locale={locale} /> : undefined}
               />
               <div className="mt-4 space-y-2">
                 {(profile.socialLinks ?? []).map((link: any) => (
@@ -799,15 +901,19 @@ function ProfileSections({
           {isServiceProvider && (
             <SpCard>
               <SpSectionHeader
-                title="Credentials"
-                action={isOwner ? <EditAction href={SECTION_EDIT_HREF.credentials()} label="credentials" /> : undefined}
+                title={t("creator.profile.sections.credentials", "Credentials")}
+                action={isOwner ? <EditAction href={SECTION_EDIT_HREF.credentials()} label="credentials" locale={locale} /> : undefined}
               />
               <div className="mt-4 space-y-3">
                 {credentials.length === 0 ? (
                   <SpEmptyState
                     icon={Award}
-                    title="No credentials added"
-                    description={isOwner ? "Add a certification, license or degree." : "No verified credentials."}
+                    title={t("creator.profile.sections.noCredentialsTitle", "No credentials added")}
+                    description={
+                      isOwner
+                        ? t("creator.profile.sections.noCredentialsOwner", "Add a certification, license or degree.")
+                        : t("creator.profile.sections.noCredentialsPublic", "No verified credentials.")
+                    }
                   />
                 ) : (
                   credentials.map((credential) => (
@@ -829,10 +935,15 @@ function ProfileSections({
                                   : "warning"
                             }
                           >
-                            {CREDENTIAL_STATUS_LABELS[credential.status as keyof typeof CREDENTIAL_STATUS_LABELS] ?? credential.status}
+                            {t(
+                              `creator.profile.credentialStatus.${credential.status}`,
+                              CREDENTIAL_STATUS_LABELS[credential.status as keyof typeof CREDENTIAL_STATUS_LABELS] ?? credential.status
+                            )}
                           </SpStatusBadge>
                         ) : (
-                          <SpStatusBadge tone="positive">Verified</SpStatusBadge>
+                          <SpStatusBadge tone="positive">
+                            {t("creator.profile.header.verified", "Verified")}
+                          </SpStatusBadge>
                         )}
                       </div>
                       {isOwner && credential.reviewNote && (
@@ -852,7 +963,7 @@ function ProfileSections({
 
           {isServiceProvider && (
             <SpCard>
-              <SpSectionHeader title="Ratings" />
+              <SpSectionHeader title={t("creator.profile.sections.ratings", "Ratings")} />
               <div className="mt-4">
                 {ratingSummary && ratingSummary.totalReviews > 0 ? (
                   <div>
@@ -860,7 +971,9 @@ function ProfileSections({
                       <Star className="size-5 text-[#157A55] fill-[#157A55]" aria-hidden="true" />
                       {ratingSummary.averageRating.toFixed(1)}
                       <span className="text-sm font-normal text-[#6B7280]">
-                        ({ratingSummary.totalReviews} review{ratingSummary.totalReviews === 1 ? "" : "s"})
+                        {ratingSummary.totalReviews === 1
+                          ? t("creator.profile.sections.reviewCount", { count: 1 }, "(1 review)")
+                          : t("creator.profile.sections.reviewCountPlural", { count: ratingSummary.totalReviews }, `(${ratingSummary.totalReviews} reviews)`)}
                       </span>
                     </p>
                   </div>
@@ -870,7 +983,7 @@ function ProfileSections({
                     {(trustScore / 20).toFixed(1)}
                   </p>
                 ) : (
-                  <p className="text-sm text-[#6B7280]">No reviews yet</p>
+                  <p className="text-sm text-[#6B7280]">{t("creator.profile.sections.noReviews", "No reviews yet")}</p>
                 )}
               </div>
             </SpCard>

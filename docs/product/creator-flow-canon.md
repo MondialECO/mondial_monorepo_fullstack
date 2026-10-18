@@ -2196,9 +2196,54 @@ RC1 Freeze
   - Regression Zero: All existing dashboard assertions preserved.
   - Production deployment was not performed.
 
+**2026-10-18 — Phase 2, Phase 3, and Phase 4: Complete Bilingual Localization (EN / FR).**
+- **Components:** `src/app/dashboard/creator/phase-2/*` (12 route pages, 1 shared layout footer, 26 Brand Kit components), `src/app/dashboard/creator/phase-3/*` (8 route pages, 12 masterplan components), `src/app/dashboard/creator/phase-4/*` (9 route pages, 10 construction views and gate guards).
+- **Specification:**
+  - 100% bilingual localization across all 39 Phase 2 files (Clarifier, Idea Summary, Concept Name & SIREN Search, Branding Gateway, Brand Studio, Brand Kit, Completion).
+  - 100% bilingual localization across all 20 Phase 3 files (Market Study, Business Model, Financial Forecast P&L, Legal & Compliance Roadmap, Company Formation, 12-Chapter Business Plan, Investor Readiness).
+  - 100% bilingual localization across all 20 Phase 4 files (Construction Snapshot, Operational Roadmap, Needs Analysis, Skills & Training Plan, Aids & Grants, Pricing Strategy, GTM Strategy, One-Page Launch Assets, Construction Readiness Gate).
+  - Dedicated micro-client suspense fallback components across all route wrappers eliminating raw loading strings.
+- **Verification Evidence:**
+  - Microscopic AST scanning verified 0 raw text nodes across all 79 Phase 2–4 files.
+  - Tested via `src/__tests__/creator/` (17/17 test suites, 201/201 tests PASS).
+
+**2026-10-19 — Creator Messaging Workspace: Complete Bilingual Localization (EN / FR) & Real-time Chat UX.**
+- **Components:** `src/app/dashboard/creator/messages/page.tsx`, `src/components/messaging/MessagingWorkspace.tsx`, `src/components/messaging/MessagesHeader.tsx`, `src/components/messaging/ConversationList.tsx`, `src/components/messaging/ConversationListItem.tsx`, `src/components/messaging/ConversationThread.tsx`, `src/components/messaging/MessageBubble.tsx`, `src/components/messaging/MessageComposer.tsx`, `src/components/messaging/MessageFounderButton.tsx`, `src/lib/messaging-utils.ts`.
+- **Specification:**
+  - Route wrapper SEO metadata and Suspense boundary.
+  - Multi-pane workspace with responsive split view, unselected thread state, and query-param deep link support (`creator.messages.workspace.*`).
+  - Real-time SignalR connection status badges (`Live` / `En direct`, `Offline` / `Hors ligne`, `Connecting…` / `Connexion…`, `Reconnecting…` / `Reconnexion…`), title, and subtitle (`creator.messages.header.*`, `creator.messages.status.*`).
+  - Conversation list error and empty state messaging, unread message count badges, and relative time formatting with French units (`à l'instant`, `min`, `h`, `j`) (`creator.messages.list.*`, `creator.messages.item.*`).
+  - Conversation thread with back button navigation, localized subtitle (`Direct conversation` / `Conversation directe`), error/empty states, load older history pagination, and clock time formatting (`creator.messages.thread.*`).
+  - Message composer input with Enter-to-send, shift-enter newline, localized placeholder, and aria labels (`creator.messages.composer.*`).
+  - Contextual founder outreach action button with loading state (`creator.messages.founderButton.*`).
+  - Full dictionary symmetry at 3,627 total keys in both `en/creator.json` and `fr/creator.json` (0 missing keys, 100% symmetry).
+- **Verification Evidence:**
+  - Dedicated unit test suite `src/__tests__/creator/creator-messages-i18n.test.tsx` (13/13 PASS).
+  - TypeScript compilation check (`npx tsc --noEmit`) verified 0 errors platform-wide.
+  - HTTP 200 OK verified on `http://localhost:3000/dashboard/creator/messages`.
+
+**2026-10-19 — Creator Notifications Workspace & Topbar Bell: Complete Bilingual Localization (EN / FR).**
+- **Components:** `src/app/dashboard/creator/notifications/page.tsx`, `src/components/notifications/SharedNotificationsPage.tsx`, `src/components/notifications/NotificationBell.tsx`, `src/providers/LanguageProvider.tsx`.
+- **Specification:**
+  - Route wrapper SEO metadata (`Notifications | Mondial Creator`) and Suspense boundary.
+  - Page header title, descriptive subtitle, and dynamic "Mark all as read" / "Tout marquer comme lu" bulk action CTA.
+  - Filter tabs ("All" / "Toutes", "Unread" / "Non lues") with live notification count badges.
+  - Notification cards with localized type badges (`Message`, `Investment` / `Investissement`, `Security` / `Sécurité`, `System` / `Système`), "New" / "Nouveau" status badge, "View details" / "Voir les détails" navigation links, and locale-aware relative time formatting (`date-fns/locale/fr`).
+  - Loading skeleton state, localized error retry state ("Could not load notifications." / "Impossible de charger les notifications.", "Try Again" / "Réessayer"), and filter-aware empty states ("No unread notifications" / "Aucune notification non lue", "No notifications yet" / "Aucune notification pour l'instant").
+  - Pagination "Load More Notifications" / "Charger plus de notifications" CTA.
+  - Global `NotificationBell` topbar component localized in both English and French with unread counter, badge, dropdown header, error state, empty state, and "See More" / "Voir plus" deep link to role notifications page.
+  - Full dictionary symmetry at exactly 3,654 total keys in both `en/creator.json` and `fr/creator.json` (0 missing keys, 100% symmetry).
+- **Verification Evidence:**
+  - Dedicated unit and integration test suite `src/__tests__/creator/creator-notifications-i18n.test.tsx` (6/6 PASS).
+  - Existing suite `src/__tests__/notifications/notification-bell.test.tsx` (9/9 PASS).
+  - TypeScript compilation check (`npx tsc --noEmit`) verified 0 errors platform-wide.
+  - HTTP 200 OK verified on `http://localhost:3000/dashboard/creator/notifications`.
+
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
+
 
 
 

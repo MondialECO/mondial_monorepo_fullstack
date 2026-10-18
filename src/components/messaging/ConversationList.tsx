@@ -3,6 +3,7 @@
 import { MessagesSquare } from "lucide-react";
 import EmptyState from "@/components/ui/empty-state";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useLanguage } from "@/providers/LanguageProvider";
 import ConversationListItem from "./ConversationListItem";
 import { ConversationListSkeleton } from "./Skeletons";
 import type { Conversation } from "@/types/chat";
@@ -27,6 +28,8 @@ export default function ConversationList({
   activeId,
   onSelect,
 }: ConversationListProps) {
+  const { t } = useLanguage();
+
   if (isLoading) return <ConversationListSkeleton />;
 
   if (isError) {
@@ -34,8 +37,11 @@ export default function ConversationList({
       <div className="p-4">
         <EmptyState
           icon={MessagesSquare}
-          title="Couldn't load conversations"
-          description="Please try again in a moment."
+          title={t("creator.messages.list.errorTitle", "Couldn't load conversations")}
+          description={t(
+            "creator.messages.list.errorDescription",
+            "Please try again in a moment."
+          )}
         />
       </div>
     );
@@ -46,8 +52,11 @@ export default function ConversationList({
       <div className="p-4">
         <EmptyState
           icon={MessagesSquare}
-          title="No conversations yet"
-          description="Start a new message to reach an investor or entrepreneur."
+          title={t("creator.messages.list.emptyTitle", "No conversations yet")}
+          description={t(
+            "creator.messages.list.emptyDescription",
+            "Start a new message to reach an investor or entrepreneur."
+          )}
         />
       </div>
     );

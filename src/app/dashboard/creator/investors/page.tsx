@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from '@/providers/LanguageProvider';
 import { Star, MessageSquare, Loader2, Rocket, Users, Info, CheckCircle2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
+  const { t } = useLanguage();
   const router = useRouter();
   const createConversation = useCreateConversation();
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
       ) : (
         <MessageSquare className="h-3.5 w-3.5" />
       )}
-      Message
+      {t('creator.investors.message', 'Message')}
     </Button>
   );
 
@@ -58,7 +60,7 @@ function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
             <span className="font-semibold text-base">{m.name}</span>
             {featured && (
               <Badge className="bg-primary text-primary-foreground gap-1 text-badge font-semibold">
-                <Star className="h-3 w-3" /> Featured Match
+                <Star className="h-3 w-3" /> {t('creator.investors.featuredMatch', 'Featured Match')}
               </Badge>
             )}
             <Badge variant="outline" className="text-xs">{m.type}</Badge>
@@ -67,15 +69,15 @@ function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
         </div>
         <div className="text-right">
           <div className="text-sm font-bold text-primary">{m.checkSize}</div>
-          <div className="text-caption text-muted-foreground">Typical check</div>
+          <div className="text-caption text-muted-foreground">{t('creator.investors.typicalCheck', 'Typical check')}</div>
         </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>Match score: <strong className="text-foreground">{m.matchScore}%</strong></span>
-          <span>•</span>
-          <span>Stage: <strong className="text-foreground">{m.stage}</strong></span>
+          <span>{t('creator.investors.matchScore', 'Match score:')} <strong className="text-foreground">{m.matchScore}%</strong></span>
+          <span>{'•'}</span>
+          <span>{t('creator.investors.stage', 'Stage:')} <strong className="text-foreground">{m.stage}</strong></span>
         </div>
 
         {reachable ? (
@@ -85,7 +87,7 @@ function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
             <TooltipTrigger asChild>
               <span tabIndex={0} className="inline-block">{startButton}</span>
             </TooltipTrigger>
-            <TooltipContent>This catalog investor isn't on the chat network yet.</TooltipContent>
+            <TooltipContent>{t('creator.investors.chatUnavailable', "This catalog investor isn't on the chat network yet.")}</TooltipContent>
           </Tooltip>
         )}
       </div>
@@ -95,6 +97,7 @@ function MatchCard({ m, featured }: { m: SmartMatch; featured?: boolean }) {
 }
 
 export default function InvestorsPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { state: { activeIdeaId } } = useCreatorProgress();
   const [data, setData] = useState<{ featured?: SmartMatch | null; qualified: SmartMatch[]; isEmpty: boolean; matchingTip?: string } | null>(null);
@@ -118,9 +121,9 @@ export default function InvestorsPage() {
   return (
     <div className="w-full min-h-full bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4">
-        <h1 className="text-sm font-bold">Growth, readiness & matching</h1>
+        <h1 className="text-sm font-bold">{t('creator.investors.growthTitle', 'Growth, readiness & matching')}</h1>
         <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          <Users className="h-3 w-3" /> Investor matching
+          <Users className="h-3 w-3" /> {t('creator.investors.investorMatching', 'Investor matching')}
         </div>
       </header>
 
@@ -129,16 +132,16 @@ export default function InvestorsPage() {
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 text-sm text-muted-foreground"><Info className="h-4 w-4 text-primary" /> {data.matchingTip}</div>
         )}
 
-        {loading && <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> Finding your investor matches…</div>}
+        {loading && <div className="flex items-center gap-2 text-muted-foreground py-12 justify-center"><Loader2 className="h-5 w-5 animate-spin" /> {t('creator.investors.findingMatches', 'Finding your investor matches…')}</div>}
 
         {error && !loading && (
-          <div className="flex flex-col items-center gap-3 py-12"><p className="text-destructive text-sm">{error}</p><Button variant="outline" size="sm" onClick={load}>Retry</Button></div>
+          <div className="flex flex-col items-center gap-3 py-12"><p className="text-destructive text-sm">{error}</p><Button variant="outline" size="sm" onClick={load}>{t('creator.investors.retry', 'Retry')}</Button></div>
         )}
 
         {!loading && !error && data?.isEmpty && (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
             <Users className="h-10 w-10 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No matches yet — check back as investors join the network.</p>
+            <p className="text-sm text-muted-foreground">{t('creator.investors.noMatches', 'No matches yet — check back as investors join the network.')}</p>
           </div>
         )}
 
@@ -157,10 +160,10 @@ export default function InvestorsPage() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <Badge className="bg-primary text-primary-foreground font-bold gap-1 shadow-sm">
-                      <Building2 className="h-3 w-3" /> CO-FOUNDED
+                      <Building2 className="h-3 w-3" /> {t('creator.investors.coFounded', 'CO-FOUNDED')}
                     </Badge>
                     <Badge variant="outline" className="border-success-strong/40 text-success-strong bg-success-light font-medium">
-                      Partnership Active ✓
+                      {t('creator.investors.partnershipActive', 'Partnership Active ✓')}
                     </Badge>
                   </div>
                   <h2 className="text-xl font-extrabold tracking-tight">{readiness.companyName || "Operating Company"}</h2>
@@ -168,7 +171,7 @@ export default function InvestorsPage() {
 
                 <div className="flex items-center gap-4 text-right">
                   <div className="rounded-xl border border-border bg-muted/30 px-4 py-2 text-center">
-                    <div className="text-label font-semibold text-muted-foreground uppercase tracking-wider">Your Equity</div>
+                    <div className="text-label font-semibold text-muted-foreground uppercase tracking-wider">{t('creator.investors.yourEquity', 'Your Equity')}</div>
                     <div className="text-lg font-black text-primary">{readiness.creatorEquityPercent ?? 0}%</div>
                   </div>
                 </div>
@@ -176,15 +179,15 @@ export default function InvestorsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-border text-sm">
                 <div>
-                  <span className="text-muted-foreground text-xs block">Your Role</span>
+                  <span className="text-muted-foreground text-xs block">{t('creator.investors.yourRole', 'Your Role')}</span>
                   <span className="font-semibold">{readiness.creatorRole || "Co-founder"}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground text-xs block">Co-founder Partner</span>
+                  <span className="text-muted-foreground text-xs block">{t('creator.investors.coFounderPartner', 'Co-founder Partner')}</span>
                   <span className="font-semibold">{readiness.partnerName || "Partner"}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground text-xs block">Readiness Status</span>
+                  <span className="text-muted-foreground text-xs block">{t('creator.investors.readinessStatus', 'Readiness Status')}</span>
                   <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                     {readiness.levelUpEligible ? "100% Ready to Level Up" : `${readiness.overallProgress}% Complete`}
                   </span>
@@ -195,8 +198,8 @@ export default function InvestorsPage() {
             {/* Checklist */}
             <Card className="rounded-2xl border border-border bg-card p-6 space-y-4">
               <div>
-                <h3 className="font-bold text-base">Co-founded Readiness Verification</h3>
-                <p className="text-xs text-muted-foreground">Canonical verification against corporate records, cap table, and signed agreements.</p>
+                <h3 className="font-bold text-base">{t('creator.investors.readinessVerificationTitle', 'Co-founded Readiness Verification')}</h3>
+                <p className="text-xs text-muted-foreground">{t('creator.investors.readinessVerificationDesc', 'Canonical verification against corporate records, cap table, and signed agreements.')}</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -215,7 +218,7 @@ export default function InvestorsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold flex items-center justify-between">
                         <span className="truncate">{req.label}</span>
-                        {req.complete && <span className="text-badge text-emerald-600 dark:text-emerald-400 font-bold ml-2 shrink-0">✓ Verified</span>}
+                        {req.complete && <span className="text-badge text-emerald-600 dark:text-emerald-400 font-bold ml-2 shrink-0">{t('creator.investors.verified', '✓ Verified')}</span>}
                       </div>
                       {req.details && <p className="text-caption text-muted-foreground mt-0.5 line-clamp-1">{req.details}</p>}
                     </div>
@@ -229,20 +232,20 @@ export default function InvestorsPage() {
               <Card className="rounded-2xl border border-primary/40 bg-gradient-to-r from-primary/10 via-primary/5 to-card p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
                 <div className="space-y-1">
                   <div className="font-extrabold text-base flex items-center gap-2 text-primary">
-                    <Rocket className="h-5 w-5" /> Ready to Level Up
+                    <Rocket className="h-5 w-5" /> {t('creator.investors.readyToLevelUp', 'Ready to Level Up')}
                   </div>
-                  <p className="text-sm font-medium">You have successfully co-founded {readiness.companyName}! You are eligible to level up and access your Entrepreneur workspace.</p>
+                  <p className="text-sm font-medium">{t('creator.investors.coFoundedEligible', { projectName: readiness.companyName || '' })}</p>
                   <p className="text-xs text-muted-foreground">
-                    You will keep access to your Creator projects and gain Entrepreneur access for your active company. Resulting roles: Creator and Entrepreneur.
+                    {t('creator.investors.rolesRetainedNotice', 'You will keep access to your Creator projects and gain Entrepreneur access for your active company. Resulting roles: Creator and Entrepreneur.')}
                   </p>
                 </div>
                 <Button onClick={() => setLeveling(true)} size="lg" className="gap-2 font-bold px-6 shrink-0 shadow-md">
-                  <Rocket className="h-4 w-4" /> Level Up to Entrepreneur
+                  <Rocket className="h-4 w-4" /> {t('creator.investors.levelUpToEntrepreneur', 'Level Up to Entrepreneur')}
                 </Button>
               </Card>
             ) : (
               <Card className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-amber-700 dark:text-amber-300">
-                Some requirements are still pending. Complete all checklist items above to qualify for Level Up.
+                {t('creator.investors.pendingRequirementsNotice', 'Some requirements are still pending. Complete all checklist items above to qualify for Level Up.')}
               </Card>
             )}
           </div>
@@ -258,12 +261,12 @@ export default function InvestorsPage() {
                     <p className="text-sm text-muted-foreground">{readiness.nextBestAction?.label ?? "Your required preparation is complete."}</p>
                   </div>
                   {readiness.nextBestAction && !readiness.levelUpEligible && (
-                    <Button variant="outline" onClick={() => router.push(readiness.nextBestAction!.route)}>Continue</Button>
+                    <Button variant="outline" onClick={() => router.push(readiness.nextBestAction!.route)}>{t('creator.investors.continue', 'Continue')}</Button>
                   )}
                 </div>
                 {readiness.missingRequired.length > 0 && (
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Still needed: {readiness.requirements.filter((item) => readiness.missingRequired.includes(item.key)).map((item) => item.label).join(", ")}
+                    {t('creator.investors.stillNeeded', 'Still needed:')}{' '}{readiness.requirements.filter((item) => readiness.missingRequired.includes(item.key)).map((item) => item.label).join(", ")}
                   </p>
                 )}
               </Card>
@@ -273,11 +276,11 @@ export default function InvestorsPage() {
             {readiness?.levelUpEligible && (
               <Card className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-center justify-between">
                 <div>
-                  <div className="font-bold flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /> Ready to go all in?</div>
-                  <p className="text-sm text-muted-foreground">Move your prepared project into the existing Entrepreneur workspace.</p>
-                  <p className="text-xs text-muted-foreground mt-1">You will keep access to your Creator projects and gain Entrepreneur access. Resulting roles: Creator and Entrepreneur.</p>
+                  <div className="font-bold flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /> {t('creator.investors.readyToGoAllIn', 'Ready to go all in?')}</div>
+                  <p className="text-sm text-muted-foreground">{t('creator.investors.moveProjectNotice', 'Move your prepared project into the existing Entrepreneur workspace.')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('creator.investors.gainEntrepreneurNotice', 'You will keep access to your Creator projects and gain Entrepreneur access. Resulting roles: Creator and Entrepreneur.')}</p>
                 </div>
-                <Button onClick={() => setLeveling(true)} className="gap-2"><Rocket className="h-4 w-4" /> Level Up to Entrepreneur</Button>
+                <Button onClick={() => setLeveling(true)} className="gap-2"><Rocket className="h-4 w-4" /> {t('creator.investors.levelUpToEntrepreneur', 'Level Up to Entrepreneur')}</Button>
               </Card>
             )}
           </>

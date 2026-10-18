@@ -588,12 +588,42 @@ The internationalization system provides native bilingual support for **English 
   - `phase-4/assets/page.tsx` & `LaunchAssetsView.tsx`: Step 4.8 One-Page Website & Launch Assets Engine with live iframe previews, versioning, source HTML export, copy-to-clipboard sharing, and localized fallback (`creator.phase4.launchAssetsView.*`, `creator.phase4.assetsPage.*`).
   - `phase-4/readiness/page.tsx` & `ConstructionReadinessView.tsx`: Step 4.9 Construction Readiness Review & Personalization Gate with 3 core principles, personal commitment sign-off, version locking, and localized fallback (`creator.phase4.readinessView.*`, `creator.phase4.readinessPage.*`).
   - **Route Wrapper Suspense Architecture**: Dedicated micro-client fallback components utilizing `useTranslation()` across all 9 route wrappers, eliminating raw unlocalized loading strings.
+- **HumainX System & Profile Gate (`src/app/dashboard/creator/humainx/*` & `src/app/dashboard/creator/profile/*`)**:
+  - `humainx/page.tsx`: Step-by-step diagnostic questionnaire, situation, skills taxonomy, progress preferences, availability, and builder completion gate (`creator.humainx.*`).
+  - `creator/profile/page.tsx`: 10-step HumainX Profile Builder wizard covering personal info, career trajectory, core strengths, languages, work style, portfolio credentials, and builder profile summary (`creator.profileBuilder.*`).
+- **Asset Library (`src/app/dashboard/creator/asset-library/*`)**:
+  - `asset-library/page.tsx`: Complete venture asset repository cataloging all 8 canonical artifacts (Brand Kit, Executive Business Plan, 3-Year Financial Forecast, Market Study, Business Model Canvas, Statutory Compliance Roadmap, Company Formation & Cap Table, Investor Readiness Report).
+  - Print preview modal integration for Business Model, Market Study, Financial Forecast, and Business Plan with live dual-language SVG charts and print styling (`creator.assetLibrary.*`).
+- **Billing History (`src/app/dashboard/creator/billinghistory/*` & `src/components/billing/*`)**:
+  - `billinghistory/page.tsx`: Creator subscription and AI credit transaction ledger.
+  - Components: `BillingHeader.tsx`, `BillingTable.tsx`, `BillingRow.tsx`, `Pagination.tsx` with localized status pills (`Paid` / `Payé`, `Pending` / `En attente`, `Failed` / `Échoué`, `Refunded` / `Remboursé`) and currency formatting (`creator.billing.*`).
+- **Universal Profile System (`src/app/dashboard/profile/*` & `src/components/serviceprovider/profile/*`)**:
+  - Universal public and owner profile view (`ProfileView.tsx`, `ProfessionalOverviewView.tsx`) shared across Creator, Entrepreneur, Investor, and Service Provider roles.
+  - Localized unified header, avatar, role badges, verified status, member since date, response time metrics, and share/edit actions (`creator.profile.actions.*`, `creator.profile.header.*`).
+  - Localized section cards: About, Creator Projects & Focus, Founded Companies & Ventures, Investment Profile, Experience, Education, Skills & Domains, Languages (with CEFR/proficiency tiers), Social Links, Credentials (with status badges), and Reviews (`creator.profile.sections.*`, `creator.profile.proficiencies.*`, `creator.profile.credentialStatus.*`).
+- **Document Vault (`src/app/dashboard/creator/documents/*`)**:
+  - `documents/page.tsx`: Real-file document storage vault for venture business plans and financial forecasts with localized document types, file sizes, download triggers, and error recovery (`creator.documents.*`).
+- **Creator Messaging Workspace (`src/app/dashboard/creator/messages/*` & `src/components/messaging/*`)**:
+  - `creator/messages/page.tsx`: Route entry point with SEO metadata and React Suspense wrapper around `MessagingWorkspace`.
+  - `MessagingWorkspace.tsx`: Multi-pane chat layout with dynamic thread selection, unselected thread placeholder, and deep-link query param routing (`?c=<id>`, `?to=<userId>`).
+  - `MessagesHeader.tsx`: Real-time SignalR status badges (`Live` / `En direct`, `Offline` / `Hors ligne`, `Connecting…` / `Connexion…`, `Reconnecting…` / `Reconnexion…`), title, and subtitle (`creator.messages.header.*`, `creator.messages.status.*`).
+  - `ConversationList.tsx` & `ConversationListItem.tsx`: Error states, empty states, unread badge pills, fallback preview strings, and locale-aware relative timestamp formatting (`now` / `à l'instant`, `5m` / `5 min`, `2h` / `2 h`, `3d` / `3 j`).
+  - `ConversationThread.tsx` & `MessageBubble.tsx`: Direct conversation header, back button aria-label, pagination for older messages, empty thread prompts, and locale-aware 24h/12h clock time formatting (`creator.messages.thread.*`).
+  - `MessageComposer.tsx` & `MessageFounderButton.tsx`: Localized input placeholder, send/message aria-labels, and contextual founder action with pending state (`creator.messages.composer.*`, `creator.messages.founderButton.*`).
+  - `src/lib/messaging-utils.ts`: Counterparty role fallbacks (`Investor` / `Investisseur`, `Entrepreneur`, `Participant`), relative time, and clock time formatting.
+- **Creator Notifications Workspace & Topbar Bell (`src/app/dashboard/creator/notifications/*` & `src/components/notifications/*`)**:
+  - `creator/notifications/page.tsx`: Role-specific notifications route entry point with SEO title (`Notifications | Mondial Creator`) and Suspense boundary embedding `<SharedNotificationsPage role="Creator" />`.
+  - `SharedNotificationsPage.tsx`: Full-surface notification manager with localized title, subtitle, "Mark all as read" / "Tout marquer comme lu" bulk action CTA, tab filters ("All" / "Toutes", "Unread" / "Non lues") with live counter badges, categorized notification items (`Message`, `Investment` / `Investissement`, `Security` / `Sécurité`, `System` / `Système`), "New" / "Nouveau" badge, "View details" / "Voir les détails" navigation links, locale-aware relative timestamp formatting (`date-fns/locale/fr`), and pagination "Load More Notifications" / "Charger plus de notifications" CTA (`creator.notifications.*`).
+  - `NotificationBell.tsx`: Global interactive topbar notification dropdown button with unread count indicator badge, localized panel header, "Mark all read" CTA, notification items with read state mutation, empty state, and "See More" / "Voir plus" deep-link routing.
+  - `LanguageProvider.tsx`: Added optional `defaultLocale` prop to facilitate seamless locale initialization and deterministic bilingual unit testing.
 - **Creator Sidebar Navigation (`src/lib/menu.ts`)**: **Deliberately Deferred**. Per user explicit instruction, Creator sidebar menus remain in English during the initial phase and will be localized in a subsequent dedicated pass.
 - **Landing Page & Marketing Surfaces**: Queued for execution following the Creator dashboard audit.
 - **Testing & Translation Integrity**:
-  - Full dictionary symmetry between `src/locales/en/creator.json` and `src/locales/fr/creator.json` (1,878 total keys in EN, 1,878 total keys in FR, 1,030 Phase 4 keys in EN and FR, 0 missing keys in either direction).
-  - Microscopic AST scanning verified 0 raw text nodes and 0 raw localized attributes across all 20 Phase 4 route wrapper pages and view components.
-  - Tested via `src/__tests__/creator/` (17/17 test suites, 201/201 tests PASS) including dedicated i18n switcher suite `src/__tests__/creator/creator-i18n.test.tsx` verifying live bilingual toggling across Phases 1–4.
+  - Full dictionary symmetry between `src/locales/en/creator.json` and `src/locales/fr/creator.json` (3,654 total keys in EN, 3,654 total keys in FR, 0 missing keys in either direction).
+  - Full dictionary symmetry in shared catalogs (`src/locales/en/common.json` and `src/locales/fr/common.json`: 210 total keys in EN and FR, 0 missing).
+  - Verified across all unit test suites (`creator-notifications-i18n.test.tsx` 6/6 PASS, `notification-bell.test.tsx` 9/9 PASS, `creator-messages-i18n.test.tsx` 13/13 PASS, `universal-profile.test.tsx`, `profile-view-and-wizard.test.tsx`, `creator-dashboard.test.tsx`, `creator-i18n.test.tsx`, `analytics-profile.test.tsx`) with 100% pass rate.
+
+
 
 
 

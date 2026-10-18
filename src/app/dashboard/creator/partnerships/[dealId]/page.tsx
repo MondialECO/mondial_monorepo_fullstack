@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useLanguage } from '@/providers/LanguageProvider';
 import { useParams, useRouter } from 'next/navigation';
 import PartnershipActiveScreen from '@/components/marketplace/PartnershipActiveScreen';
 import { ArrowLeft } from 'lucide-react';
@@ -8,6 +9,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export default function CreatorPartnershipDetailPage() {
+  const { t } = useLanguage();
   const params = useParams();
   const dealId = params?.dealId as string;
 
@@ -19,7 +21,7 @@ export default function CreatorPartnershipDetailPage() {
         <Button asChild variant="ghost" size="sm" className="gap-2 text-xs text-muted-foreground hover:text-foreground">
           <Link href="/dashboard/creator/partnerships">
             <ArrowLeft className="w-4 h-4" />
-            Back to My Partnerships
+            {t('creator.partnerships.backToPartnerships', 'Back to My Partnerships')}
           </Link>
         </Button>
       </div>

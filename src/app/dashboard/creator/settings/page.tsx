@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useLanguage } from '@/providers/LanguageProvider';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ interface AccountDetails {
 }
 
 export default function SettingsPage() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const [accountDetails, setAccountDetails] = useState<AccountDetails | null>(null);
   const [isLoadingAccount, setIsLoadingAccount] = useState(false);
@@ -112,14 +114,14 @@ export default function SettingsPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <h1 className="text-foreground text-xl md:text-3xl font-extrabold tracking-tight">
-                Account & Security Settings
+                {t('creator.settings.title', 'Account & Security Settings')}
               </h1>
               <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border">
                 {displayRole}
               </Badge>
             </div>
             <p className="text-muted-foreground text-xs md:text-sm font-normal">
-              Manage your verified credentials, security, and profile access.
+              {t('creator.settings.subtitle', 'Manage your verified credentials, security, and profile access.')}
             </p>
           </div>
 
@@ -128,16 +130,16 @@ export default function SettingsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/70">
               <div>
                 <h2 className="text-foreground text-base md:text-lg font-bold">
-                  Profile & Identity
+                  {t('creator.settings.profileTitle', 'Profile & Identity')}
                 </h2>
                 <p className="text-muted-foreground text-xs md:text-sm font-normal">
-                  Your public bio, experiences, skills, and credentials are governed by the Universal Profile system.
+                  {t('creator.settings.profileSubtitle', 'Your public bio, experiences, skills, and credentials are governed by the Universal Profile system.')}
                 </p>
               </div>
               <Button asChild variant="outline" size="sm" className="rounded-xl flex items-center gap-1.5 self-start sm:self-center border-border">
                 <Link href="/dashboard/profile/edit">
                   <User className="h-4 w-4" />
-                  Edit Universal Profile
+                  {t('creator.settings.editProfile', 'Edit Universal Profile')}
                   <ExternalLink className="h-3 w-3 ml-0.5 opacity-60" />
                 </Link>
               </Button>
@@ -147,7 +149,7 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
               <div className="bg-muted/30 border border-border/60 rounded-xl p-4 space-y-1">
                 <Label className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-                  Full Name
+                  {t('creator.settings.fullName', 'Full Name')}
                 </Label>
                 <p className="text-sm font-semibold text-foreground">
                   {displayName}
@@ -156,24 +158,24 @@ export default function SettingsPage() {
 
               <div className="bg-muted/30 border border-border/60 rounded-xl p-4 space-y-1">
                 <Label className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-                  Account Email
+                  {t('creator.settings.accountEmail', 'Account Email')}
                 </Label>
                 <div className="flex items-center gap-2">
                   <Mail className="h-4 w-4 text-muted-foreground" />
                   <p className="text-sm font-semibold text-foreground truncate">
-                    {displayEmail || "Verified Account Email"}
+                    {displayEmail || t('creator.settings.verifiedEmailFallback', 'Verified Account Email')}
                   </p>
                 </div>
               </div>
 
               <div className="bg-muted/30 border border-border/60 rounded-xl p-4 space-y-1">
                 <Label className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-                  System Role
+                  {t('creator.settings.systemRole', 'System Role')}
                 </Label>
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-primary" />
                   <p className="text-sm font-semibold text-foreground">
-                    {displayRole} Account
+                    {displayRole} {t('creator.settings.accountSuffix', 'Account')}
                   </p>
                 </div>
               </div>
@@ -181,7 +183,7 @@ export default function SettingsPage() {
               {memberSince && (
                 <div className="bg-muted/30 border border-border/60 rounded-xl p-4 space-y-1">
                   <Label className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
-                    Member Since
+                    {t('creator.settings.memberSince', 'Member Since')}
                   </Label>
                   <p className="text-sm font-semibold text-foreground">
                     {memberSince}
@@ -196,10 +198,10 @@ export default function SettingsPage() {
             <div>
               <h2 className="text-foreground text-base md:text-lg font-bold flex items-center gap-2">
                 <Lock className="h-4 w-4 text-primary" />
-                Change Password
+                {t('creator.settings.changePasswordTitle', 'Change Password')}
               </h2>
               <p className="text-muted-foreground text-xs md:text-sm font-normal">
-                Update your account password securely.
+                {t('creator.settings.changePasswordSubtitle', 'Update your account password securely.')}
               </p>
             </div>
 
@@ -223,14 +225,14 @@ export default function SettingsPage() {
             <form onSubmit={handlePasswordChange} className="space-y-4 max-w-xl">
               <div className="space-y-1.5">
                 <Label htmlFor="current-password" className="text-xs font-semibold text-foreground">
-                  Current Password
+                  {t('creator.settings.currentPassword', 'Current Password')}
                 </Label>
                 <Input
                   id="current-password"
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
+                  placeholder={t('creator.settings.currentPasswordPlaceholder', 'Enter current password')}
                   className="h-10 bg-muted/40 border-border/70 text-sm focus:border-primary"
                   autoComplete="current-password"
                 />
@@ -239,14 +241,14 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="new-password" className="text-xs font-semibold text-foreground">
-                    New Password
+                    {t('creator.settings.newPassword', 'New Password')}
                   </Label>
                   <Input
                     id="new-password"
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="At least 6 characters"
+                    placeholder={t('creator.settings.newPasswordPlaceholder', 'At least 6 characters')}
                     className="h-10 bg-muted/40 border-border/70 text-sm focus:border-primary"
                     autoComplete="new-password"
                   />
@@ -254,14 +256,14 @@ export default function SettingsPage() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="confirm-password" className="text-xs font-semibold text-foreground">
-                    Confirm New Password
+                    {t('creator.settings.confirmNewPassword', 'Confirm New Password')}
                   </Label>
                   <Input
                     id="confirm-password"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repeat new password"
+                    placeholder={t('creator.settings.confirmNewPasswordPlaceholder', 'Repeat new password')}
                     className="h-10 bg-muted/40 border-border/70 text-sm focus:border-primary"
                     autoComplete="new-password"
                   />
@@ -273,7 +275,7 @@ export default function SettingsPage() {
                 disabled={isUpdatingPassword}
                 className="bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-xl px-6 h-10 text-sm"
               >
-                {isUpdatingPassword ? "Updating Password..." : "Update Password"}
+                {isUpdatingPassword ? t('creator.settings.updatingPassword', 'Updating Password...') : t('creator.settings.updatePassword', 'Update Password')}
               </Button>
             </form>
           </div>

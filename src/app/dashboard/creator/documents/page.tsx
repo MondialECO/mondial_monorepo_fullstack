@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useLanguage } from '@/providers/LanguageProvider';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, Download, FileText, Loader2, RefreshCw, Sparkles } from 'lucide-react';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
@@ -8,9 +9,7 @@ import { Button } from '@/components/ui/button';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { creatorDocumentsApi, type CreatorIdeaDocument } from '@/lib/api-creator-documents';
 
-const formatDate = (value: string) => new Intl.DateTimeFormat('en-US', {
-  month: 'short', day: 'numeric', year: 'numeric',
-}).format(new Date(value));
+
 
 const formatBytes = (sizeBytes: number | null) => {
   if (sizeBytes == null || !Number.isFinite(sizeBytes)) return null;
@@ -19,14 +18,24 @@ const formatBytes = (sizeBytes: number | null) => {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const documentTypeLabel = (documentType: CreatorIdeaDocument['documentType']) =>
-  documentType === 'business_plan' ? 'Business Plan' : 'Financial Forecast';
 
-const errorMessage = (error: unknown) =>
+
+const errorMessage = (error: unknown, fallback?: string) =>
   (error as { response?: { data?: { message?: string } } })?.response?.data?.message
-  ?? (error instanceof Error ? error.message : "Couldn't load documents.");
+  ?? (error instanceof Error ? error.message : (fallback ?? "Couldn't load documents."));
 
 export default function CreatorDocumentsPage() {
+  const { t, locale } = useLanguage();
+  const formatDate = (value: string) => new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  }).format(new Date(value));
+
+  const documentTypeLabel = (documentType: CreatorIdeaDocument['documentType']) =>
+    documentType === 'business_plan'
+      ? t('creator.documents.businessPlan', 'Business Plan')
+      : t('creator.documents.financialForecast', 'Financial Forecast');
+
+  const errorFallback = t('creator.documents.errorLoading', "Couldn't load documents.");
   const router = useRouter();
   const { state: { activeIdeaId } } = useCreatorProgress();
   const [documents, setDocuments] = useState<CreatorIdeaDocument[]>([]);
@@ -54,7 +63,7 @@ export default function CreatorDocumentsPage() {
         if (!cancelled) setDocuments(result);
       })
       .catch((caught) => {
-        if (!cancelled) setError(errorMessage(caught));
+        if (!cancelled) setError(errorMessage(caught, errorFallback));
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -77,7 +86,7 @@ export default function CreatorDocumentsPage() {
       anchor.remove();
       URL.revokeObjectURL(url);
     } catch (caught) {
-      setError(errorMessage(caught));
+      setError(errorMessage(caught, errorFallback));
     } finally {
       setDownloadingId(null);
     }
@@ -87,9 +96,9 @@ export default function CreatorDocumentsPage() {
     <div className="w-full max-w-[1136px] mx-auto space-y-6 pb-8 font-sans">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
         <div className="space-y-1">
-          <h1 className="text-page-heading font-bold leading-tight text-foreground">Document Vault</h1>
+          <h1 className="text-page-heading font-bold leading-tight text-foreground">{t('creator.documents.title', 'Document Vault')}</h1>
           <p className="text-sm font-normal text-muted-foreground">
-            Real files generated or stored for this idea appear here.
+            {t('creator.documents.subtitle', 'Real files generated or stored for this idea appear here.')}
           </p>
         </div>
       </div>
@@ -101,13 +110,13 @@ export default function CreatorDocumentsPage() {
             <span>{error}</span>
           </div>
           <Button variant="outline" size="sm" onClick={retry} className="shrink-0 gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" /> Retry
+            <RefreshCw className="h-3.5 w-3.5" /> {t('creator.documents.retry', 'Retry')}
           </Button>
         </Card>
       )}
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label="Loading documents">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-label={t('creator.documents.loading', 'Loading documents')}>
           {[0, 1].map((item) => <Card key={item} className="h-[74px] animate-pulse rounded-xl border-border bg-muted/40" />)}
         </div>
       ) : documents.length > 0 ? (
@@ -133,7 +142,7 @@ export default function CreatorDocumentsPage() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    aria-label={`Download ${document.fileName}`}
+                    aria-label={t('creator.documents.downloadFile', { fileName: document.fileName }, `Download ${document.fileName}`)}
                     disabled={downloadingId === document.id}
                     onClick={() => download(document)}
                     className="rounded-lg h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
@@ -149,11 +158,11 @@ export default function CreatorDocumentsPage() {
         <Card className="rounded-2xl border-border bg-card p-10 text-center flex flex-col items-center justify-center max-w-xl mx-auto mt-12 space-y-6">
           <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center"><FileText className="w-8 h-8" /></div>
           <div className="space-y-2">
-            <CardTitle className="text-xl font-bold">No documents yet</CardTitle>
-            <CardDescription className="text-sm max-w-sm">Documents generated for this idea will appear here.</CardDescription>
+            <CardTitle className="text-xl font-bold">{t('creator.documents.emptyTitle', 'No documents yet')}</CardTitle>
+            <CardDescription className="text-sm max-w-sm">{t('creator.documents.emptySubtitle', 'Documents generated for this idea will appear here.')}</CardDescription>
           </div>
           <Button onClick={() => router.push('/dashboard/creator/phase-3/business-plan')} className="bg-primary hover:bg-primary/95 text-primary-foreground font-bold rounded-xl px-6">
-            <Sparkles className="w-4 h-4 mr-1.5" /> Create Business Plan
+            <Sparkles className="w-4 h-4 mr-1.5" /> {t('creator.documents.createBusinessPlan', 'Create Business Plan')}
           </Button>
         </Card>
       ) : null}

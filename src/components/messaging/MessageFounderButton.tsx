@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/app/_providers/AuthProvider";
 import { ROLE_DASHBOARD_ROUTES } from "@/lib/roles";
 import { useCreateConversationByCompany } from "@/hooks/queries/chat";
+import { useLanguage } from "@/providers/LanguageProvider";
 
 interface MessageFounderButtonProps {
   companyId: string;
@@ -20,14 +21,17 @@ interface MessageFounderButtonProps {
 // server-side, then opens the thread — no manual user-id entry.
 export default function MessageFounderButton({
   companyId,
-  label = "Message Founder",
+  label,
   variant = "outline",
   size = "sm",
   className,
 }: MessageFounderButtonProps) {
+  const { t } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const createByCompany = useCreateConversationByCompany();
+
+  const buttonLabel = label ?? t("creator.messages.founderButton.label", "Message Founder");
 
   const open = async () => {
     if (createByCompany.isPending) return;
@@ -50,7 +54,7 @@ export default function MessageFounderButton({
       disabled={createByCompany.isPending}
     >
       <MessageSquare className="h-4 w-4" aria-hidden />
-      {createByCompany.isPending ? "Opening…" : label}
+      {createByCompany.isPending ? t("creator.messages.founderButton.opening", "Opening…") : buttonLabel}
     </Button>
   );
 }
