@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useLanguage } from '@/providers/LanguageProvider';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { withIdeaContext } from '@/lib/creator-routes';
 import {
@@ -61,6 +62,7 @@ interface ArtifactItem {
 }
 
 export default function CreatorAssetLibraryPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryIdeaId = searchParams.get('ideaId');
@@ -449,7 +451,7 @@ export default function CreatorAssetLibraryPage() {
       fullWidth
       headerAlign="left"
       stepEyebrow="Assets & IP"
-      title="Creator Asset Library"
+      title={t('creator.assetLibrary.title', 'Creator Asset Library')}
       description="All documents and exports are generated on demand from your project's current data."
     >
       <div className="w-full space-y-10 pb-16">
@@ -458,7 +460,7 @@ export default function CreatorAssetLibraryPage() {
           <Card className="rounded-xl border border-border/70 bg-card p-12 text-center max-w-xl mx-auto space-y-4 shadow-none">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mx-auto" />
             <p className="text-xs text-muted-foreground font-sans">
-              Loading your venture asset catalog...
+              {t('creator.assetLibrary.loading', 'Loading your venture asset catalog...')}
             </p>
           </Card>
         )}
@@ -469,7 +471,7 @@ export default function CreatorAssetLibraryPage() {
             <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
             <div className="space-y-1">
               <h4 className="text-sm font-semibold text-destructive font-sans">
-                Failed to load Asset Library
+                {t('creator.assetLibrary.failedToLoad', 'Failed to load Asset Library')}
               </h4>
               <p className="text-xs text-foreground/80 font-sans">{error}</p>
             </div>
@@ -483,7 +485,7 @@ export default function CreatorAssetLibraryPage() {
               <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <h4 className="text-sm font-semibold text-destructive font-sans">
-                  Export Notice
+                  {t('creator.assetLibrary.exportNotice', 'Export Notice')}
                 </h4>
                 <p className="text-xs text-foreground/90 font-sans leading-relaxed">
                   {actionError}
@@ -495,7 +497,7 @@ export default function CreatorAssetLibraryPage() {
               size="sm"
               onClick={() => setActionError(null)}
               className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
-              aria-label="Dismiss export error"
+              aria-label={t('creator.assetLibrary.dismissError', 'Dismiss export error')}
             >
               <X className="w-4 h-4" />
             </Button>
@@ -507,46 +509,46 @@ export default function CreatorAssetLibraryPage() {
           <Card className="rounded-xl border border-border/70 bg-card p-8 sm:p-10 space-y-6 shadow-none max-w-3xl mx-auto text-left">
             <div className="space-y-1.5 border-b border-border/60 pb-4">
               <span className="text-label text-muted-foreground uppercase tracking-wider">
-                Catalog Status · 0 of 8 Produced
+                {t('creator.assetLibrary.catalogStatus', 'Catalog Status · 0 of 8 Produced')}
               </span>
               <h3 className="text-base sm:text-lg font-semibold text-foreground font-sans">
-                No project artifacts produced yet
+                {t('creator.assetLibrary.noArtifactsYet', 'No project artifacts produced yet')}
               </h3>
               <p className="text-xs text-muted-foreground font-sans leading-relaxed">
-                Documents appear here automatically as you complete milestones across each phase of your venture. Each document is compiled on demand from your project&apos;s current data.
+                {t('creator.assetLibrary.noArtifactsDesc', "Documents appear here automatically as you complete milestones across each phase of your venture. Each document is compiled on demand from your project's current data.")}
               </p>
             </div>
 
             <div className="space-y-3 text-xs text-muted-foreground font-sans">
               <div className="text-label font-semibold uppercase text-foreground">
-                Document Generation Milestones:
+                {t('creator.assetLibrary.milestonesTitle', 'Document Generation Milestones:')}
               </div>
               <ul className="space-y-2 divide-y divide-border/40">
                 <li className="pt-2 flex items-start gap-2">
-                  <span className="font-semibold text-foreground shrink-0">Phase 2:</span>
-                  <span><strong>Brand Identity Kit (.ZIP)</strong> — Unlocked upon confirming your 6-step visual identity in Brand Studio.</span>
+                  <span className="font-semibold text-foreground shrink-0">{t('creator.assetLibrary.phase2Title', 'Phase 2:')}</span>
+                  <span><strong>{t('creator.assetLibrary.phase2Item', 'Brand Identity Kit (.ZIP)')}</strong> {t('creator.assetLibrary.phase2Desc', '— Unlocked upon confirming your 6-step visual identity in Brand Studio.')}</span>
                 </li>
                 <li className="pt-2 flex items-start gap-2">
-                  <span className="font-semibold text-foreground shrink-0">Phase 3:</span>
-                  <span><strong>Market Study, Business Plan, &amp; Financial Forecast (.PDF)</strong> — Compiled as you generate sizing funnels, operational models, and 36-month projections.</span>
+                  <span className="font-semibold text-foreground shrink-0">{t('creator.assetLibrary.phase3Title', 'Phase 3:')}</span>
+                  <span><strong>{t('creator.assetLibrary.phase3Item', 'Market Study, Business Plan, & Financial Forecast (.PDF)')}</strong> {t('creator.assetLibrary.phase3Desc', '— Compiled as you generate sizing funnels, operational models, and 36-month projections.')}</span>
                 </li>
                 <li className="pt-2 flex items-start gap-2">
-                  <span className="font-semibold text-foreground shrink-0">Phase 4:</span>
-                  <span><strong>Investor Readiness Summary</strong> — Generated upon finalizing your commercial offer packaging and pricing architecture.</span>
+                  <span className="font-semibold text-foreground shrink-0">{t('creator.assetLibrary.phase4Title', 'Phase 4:')}</span>
+                  <span><strong>{t('creator.assetLibrary.phase4Item', 'Investor Readiness Summary')}</strong> {t('creator.assetLibrary.phase4Desc', '— Generated upon finalizing your commercial offer packaging and pricing architecture.')}</span>
                 </li>
               </ul>
             </div>
 
             <div className="pt-2 border-t border-border/60 flex items-center justify-between">
               <span className="text-caption text-muted-foreground">
-                Active workspace: <strong className="text-foreground">{projectName}</strong>
+                {t('creator.assetLibrary.activeWorkspace', 'Active workspace:')} <strong className="text-foreground">{projectName}</strong>
               </span>
               <Button
                 size="sm"
                 onClick={() => router.push('/dashboard/creator')}
                 className="gap-1.5 text-xs font-semibold rounded-lg"
               >
-                Go to Active Phase <ArrowRight className="w-3.5 h-3.5" />
+                {t('creator.assetLibrary.goToActivePhase', 'Go to Active Phase')} <ArrowRight className="w-3.5 h-3.5" />
               </Button>
             </div>
           </Card>
@@ -560,11 +562,11 @@ export default function CreatorAssetLibraryPage() {
               <div className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 <span>
-                  <strong>On-Demand Generation:</strong> Exports always reflect your latest project edits.
+                  <strong>{t('creator.assetLibrary.onDemandTitle', 'On-Demand Generation:')}</strong> {t('creator.assetLibrary.onDemandDesc', 'Exports always reflect your latest project edits.')}
                 </span>
               </div>
               <span className="text-caption text-muted-foreground/80">
-                {readyCount} of 8 documents active
+                {readyCount} {t('creator.assetLibrary.of8Active', 'of 8 documents active')}
               </span>
             </div>
 
@@ -600,11 +602,11 @@ export default function CreatorAssetLibraryPage() {
 
                             {item.isReady ? (
                               <span className="inline-flex items-center gap-1 text-badge uppercase text-emerald-600 dark:text-emerald-400 font-semibold">
-                                <CheckCircle2 className="w-3 h-3" /> Ready
+                                <CheckCircle2 className="w-3 h-3" /> {t('creator.assetLibrary.ready', 'Ready')}
                               </span>
                             ) : (
                               <span className="text-badge uppercase text-muted-foreground/70">
-                                Not Produced
+                                {t('creator.assetLibrary.notProduced', 'Not Produced')}
                               </span>
                             )}
                           </div>
@@ -630,7 +632,7 @@ export default function CreatorAssetLibraryPage() {
                                 : 'Not yet generated'}
                             </span>
                             {item.versionNumber && (
-                              <span className="text-muted-foreground/80">v{item.versionNumber}</span>
+                              <span className="text-muted-foreground/80">{'v'}{item.versionNumber}</span>
                             )}
                           </div>
 
@@ -646,7 +648,7 @@ export default function CreatorAssetLibraryPage() {
                                 >
                                   {isBusy ? (
                                     <>
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Preparing...
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('creator.assetLibrary.preparing', 'Preparing...')}
                                     </>
                                   ) : item.fileFormat === 'ZIP' ? (
                                     <>
@@ -662,7 +664,7 @@ export default function CreatorAssetLibraryPage() {
                                   href={item.stepUrl}
                                   className="text-caption text-muted-foreground hover:text-foreground font-sans inline-flex items-center gap-1 shrink-0"
                                 >
-                                  View Screen <ExternalLink className="w-3 h-3" />
+                                  {t('creator.assetLibrary.viewScreen', 'View Screen')} <ExternalLink className="w-3 h-3" />
                                 </Link>
                               </div>
                             ) : (
@@ -674,7 +676,7 @@ export default function CreatorAssetLibraryPage() {
                                   href={item.stepUrl}
                                   className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline font-sans"
                                 >
-                                  Open in {item.stepNumber} <ArrowRight className="w-3.5 h-3.5" />
+                                  {t('creator.assetLibrary.openIn', 'Open in')} {item.stepNumber} <ArrowRight className="w-3.5 h-3.5" />
                                 </Link>
                               </div>
                             )
@@ -683,7 +685,7 @@ export default function CreatorAssetLibraryPage() {
                               href={item.stepUrl}
                               className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground font-sans"
                             >
-                              Generate in {item.stepNumber} <ChevronRight className="w-3.5 h-3.5" />
+                              {t('creator.assetLibrary.generateIn', 'Generate in')} {item.stepNumber} <ChevronRight className="w-3.5 h-3.5" />
                             </Link>
                           )}
                         </div>

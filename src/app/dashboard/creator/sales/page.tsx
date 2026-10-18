@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/providers/LanguageProvider";
 import {
   DollarSign,
   Package,
@@ -77,6 +78,7 @@ function getBuyoutStageBadge(stage?: string): {
 }
 
 export default function MySalesPage() {
+  const { t } = useLanguage();
   const [sales, setSales] = useState<BuyoutSaleRecord[] | null>(null);
   const [activeDeals, setActiveDeals] = useState<EquityDeal[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -133,10 +135,10 @@ export default function MySalesPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground font-heading">
-                My Sales &amp; Buyouts
+                {t('creator.sales.title', 'My Sales & Buyouts')}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Track your active Full Buyout deals and review completed sale records.
+                {t('creator.sales.subtitle', 'Track your active Full Buyout deals and review completed sale records.')}
               </p>
             </div>
           </div>
@@ -150,7 +152,7 @@ export default function MySalesPage() {
           className="gap-2 self-start md:self-auto text-xs bg-background border-border text-foreground hover:bg-muted"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          {t('creator.sales.refresh', 'Refresh')}
         </Button>
       </div>
 
@@ -159,7 +161,7 @@ export default function MySalesPage() {
         <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-sm flex items-center justify-between">
           <span>{error}</span>
           <Button variant="ghost" size="sm" onClick={loadData} className="text-xs">
-            Retry
+            {t('creator.sales.retry', 'Retry')}
           </Button>
         </div>
       )}
@@ -168,7 +170,7 @@ export default function MySalesPage() {
       {loading && (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
           <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm font-medium">Loading sales and buyout deals...</p>
+          <p className="text-sm font-medium">{t('creator.sales.loading', 'Loading sales and buyout deals...')}</p>
         </div>
       )}
 
@@ -179,14 +181,14 @@ export default function MySalesPage() {
             <Package className="h-6 w-6" />
           </div>
           <div className="max-w-md mx-auto space-y-1">
-            <h3 className="text-base font-bold text-foreground font-heading">No Buyout Deals Yet</h3>
+            <h3 className="text-base font-bold text-foreground font-heading">{t('creator.sales.noDealsYet', 'No Buyout Deals Yet')}</h3>
             <p className="text-xs text-muted-foreground">
-              When an entrepreneur enters a Full Buyout deal for one of your marketplace ventures, it will appear here.
+              {t('creator.sales.noDealsDesc', 'When an entrepreneur enters a Full Buyout deal for one of your marketplace ventures, it will appear here.')}
             </p>
           </div>
           <div className="pt-2">
             <Button asChild variant="default" size="sm" className="text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Link href="/dashboard/creator/myideas">View My Ideas</Link>
+              <Link href="/dashboard/creator/myideas">{t('creator.sales.viewMyIdeas', 'View My Ideas')}</Link>
             </Button>
           </div>
         </Card>
@@ -203,21 +205,21 @@ export default function MySalesPage() {
                 <Handshake className="h-4 w-4" />
               </div>
               <h2 className="text-lg font-bold font-heading text-foreground">
-                Active Buyouts {hasActive ? `(${activeDeals!.length})` : "(0)"}
+                {t('creator.sales.activeBuyouts', 'Active Buyouts')} {hasActive ? `(${activeDeals!.length})` : '(0)'}
               </h2>
             </div>
             {hasActive && (
               <span className="text-xs text-muted-foreground font-medium">
-                In-progress transaction workspaces
+                {t('creator.sales.activeBuyoutsSubtitle', 'In-progress transaction workspaces')}
               </span>
             )}
           </div>
 
           {!hasActive ? (
             <Card className="rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center space-y-2">
-              <p className="text-sm font-semibold text-foreground">No Active Buyouts</p>
+              <p className="text-sm font-semibold text-foreground">{t('creator.sales.noActiveBuyouts', 'No Active Buyouts')}</p>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                You currently have no active buyout negotiations or in-progress transactions.
+                {t('creator.sales.noActiveBuyoutsDesc', 'You currently have no active buyout negotiations or in-progress transactions.')}
               </p>
             </Card>
           ) : (
@@ -245,11 +247,11 @@ export default function MySalesPage() {
                           <div className="flex items-center gap-2 mt-1">
                             <span className="inline-flex items-center gap-1 text-caption font-semibold text-primary">
                               <Layers className="h-3 w-3" />
-                              Full Buyout
+                              {t('creator.sales.fullBuyout', 'Full Buyout')}
                             </span>
-                            <span className="text-muted-foreground/60 text-xs">•</span>
+                            <span className="text-muted-foreground/60 text-xs">{'•'}</span>
                             <span className="text-caption text-muted-foreground">
-                              Rev #{deal.currentRevisionNumber || 1}
+                              {t('creator.sales.revNumber', 'Rev #')}{deal.currentRevisionNumber || 1}
                             </span>
                           </div>
                         </div>
@@ -265,7 +267,7 @@ export default function MySalesPage() {
                       <div className="grid grid-cols-2 gap-3 pt-2">
                         <div className="p-3 bg-background border border-border rounded-xl">
                           <span className="text-label text-muted-foreground uppercase font-semibold tracking-wider block">
-                            Purchase Price
+                            {t('creator.sales.purchasePrice', 'Purchase Price')}
                           </span>
                           <span className="text-base font-extrabold text-foreground mt-0.5 block">
                             {price !== undefined && price !== null
@@ -276,7 +278,7 @@ export default function MySalesPage() {
 
                         <div className="p-3 bg-background border border-border rounded-xl">
                           <span className="text-label text-muted-foreground uppercase font-semibold tracking-wider block">
-                            Last Updated
+                            {t('creator.sales.lastUpdated', 'Last Updated')}
                           </span>
                           <span className="text-xs font-bold text-foreground mt-1 block truncate">
                             {new Date(deal.updatedAt || deal.createdAt).toLocaleDateString(undefined, {
@@ -291,7 +293,7 @@ export default function MySalesPage() {
                         <div className="flex items-center gap-2">
                           <User className="h-3.5 w-3.5 text-primary shrink-0" />
                           <span>
-                            Buyer: <strong className="text-foreground">{deal.entrepreneurName || "Entrepreneur"}</strong>
+                            {t('creator.sales.buyer', 'Buyer:')} <strong className="text-foreground">{deal.entrepreneurName || "Entrepreneur"}</strong>
                           </span>
                         </div>
                       </div>
@@ -306,7 +308,7 @@ export default function MySalesPage() {
                         className="w-full sm:w-auto text-xs font-bold shadow-sm gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground"
                       >
                         <Link href={`/dashboard/creator/sales/${deal.id}`}>
-                          <span>Open Deal</span>
+                          <span>{t('creator.sales.openDeal', 'Open Deal')}</span>
                           <ChevronRight className="h-3.5 w-3.5" />
                         </Link>
                       </Button>
@@ -330,21 +332,21 @@ export default function MySalesPage() {
                 <FileCheck className="h-4 w-4" />
               </div>
               <h2 className="text-lg font-bold font-heading text-foreground">
-                Completed Sales {hasCompleted ? `(${sales!.length})` : "(0)"}
+                {t('creator.sales.completedSales', 'Completed Sales')} {hasCompleted ? `(${sales!.length})` : '(0)'}
               </h2>
             </div>
             {hasCompleted && (
               <span className="text-xs text-muted-foreground font-medium">
-                Canonical finalized transaction ledger
+                {t('creator.sales.completedSalesSubtitle', 'Canonical finalized transaction ledger')}
               </span>
             )}
           </div>
 
           {!hasCompleted ? (
             <Card className="rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center space-y-2">
-              <p className="text-sm font-semibold text-foreground">No Completed Sales Yet</p>
+              <p className="text-sm font-semibold text-foreground">{t('creator.sales.noCompletedSales', 'No Completed Sales Yet')}</p>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Completed buyout transactions and final asset transfer records will appear here.
+                {t('creator.sales.noCompletedSalesDesc', 'Completed buyout transactions and final asset transfer records will appear here.')}
               </p>
             </Card>
           ) : (
@@ -362,7 +364,7 @@ export default function MySalesPage() {
                           {sale.projectName}
                         </h3>
                         <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                          Ref: {sale.auditReference || sale.dealId.slice(0, 8)}
+                          {t('creator.sales.ref', 'Ref:')} {sale.auditReference || sale.dealId.slice(0, 8)}
                         </p>
                       </div>
                       <Badge className="bg-success-light text-success-strong border-success-strong/30 text-badge font-black uppercase tracking-wider shrink-0 px-2.5 py-0.5 rounded-full border">
@@ -374,16 +376,16 @@ export default function MySalesPage() {
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div className="p-3 bg-background border border-border rounded-xl">
                         <span className="text-label text-muted-foreground uppercase font-semibold tracking-wider block">
-                          Sale Price
+                          {t('creator.sales.salePrice', 'Sale Price')}
                         </span>
                         <span className="text-base font-extrabold text-foreground mt-0.5 block">
-                          €{sale.purchasePrice.toLocaleString()} {sale.currency}
+                          {'€'}{sale.purchasePrice.toLocaleString()} {sale.currency}
                         </span>
                       </div>
 
                       <div className="p-3 bg-background border border-border rounded-xl">
                         <span className="text-label text-muted-foreground uppercase font-semibold tracking-wider block">
-                          Sold Date
+                          {t('creator.sales.soldDate', 'Sold Date')}
                         </span>
                         <span className="text-xs font-bold text-foreground mt-1 block truncate">
                           {new Date(sale.soldAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
@@ -396,15 +398,15 @@ export default function MySalesPage() {
                       <div className="flex items-center gap-2">
                         <User className="h-3.5 w-3.5 text-primary shrink-0" />
                         <span>
-                          Buyer: <strong className="text-foreground">{sale.buyerName || "Entrepreneur"}</strong>
+                          {t('creator.sales.buyer', 'Buyer:')} <strong className="text-foreground">{sale.buyerName || "Entrepreneur"}</strong>
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Package className="h-3.5 w-3.5 text-primary shrink-0" />
                         <span>
-                          Transferred:{" "}
+                          {t('creator.sales.transferred', 'Transferred:')}{' '}
                           <strong className="text-foreground">
-                            {sale.transferredAssets?.length || 0} Assets Delivered
+                            {sale.transferredAssets?.length || 0} {t('creator.sales.assetsDelivered', 'Assets Delivered')}
                           </strong>
                         </span>
                       </div>
@@ -421,7 +423,7 @@ export default function MySalesPage() {
                     >
                       <Link href={`/dashboard/creator/sales/${sale.dealId}`}>
                         <FileCheck className="h-3.5 w-3.5" />
-                        View Sale Record
+                        {t('creator.sales.viewSaleRecord', 'View Sale Record')}
                       </Link>
                     </Button>
                   </div>
