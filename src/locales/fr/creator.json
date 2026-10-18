@@ -3949,5 +3949,52 @@
       "hourShort": "{{count}} h",
       "dayShort": "{{count}} j"
     }
+  },
+  "notifications": {
+    "page": {
+      "title": "Notifications",
+      "subtitle": "Restez informé de vos projets, accords, messages et de l'activité de la plateforme."
+    },
+    "actions": {
+      "markAllRead": "Tout marquer comme lu",
+      "tryAgain": "Réessayer"
+    },
+    "filters": {
+      "all": "Toutes",
+      "unread": "Non lues"
+    },
+    "errors": {
+      "couldNotLoad": "Impossible de charger les notifications."
+    },
+    "empty": {
+      "noUnreadTitle": "Aucune notification non lue",
+      "noNotificationsTitle": "Aucune notification pour l'instant",
+      "description": "Les mises à jour concernant vos projets, accords, messages et activités apparaîtront ici."
+    },
+    "item": {
+      "new": "Nouveau",
+      "viewDetails": "Voir les détails"
+    },
+    "types": {
+      "message": "Message",
+      "investment": "Investissement",
+      "security": "Sécurité",
+      "system": "Système"
+    },
+    "pagination": {
+      "loadMore": "Charger plus de notifications"
+    },
+    "bell": {
+      "ariaLabel": "Notifications",
+      "title": "Notifications",
+      "newBadge": "{{count}} nouveaux",
+      "subtitle": "Restez informé de votre activité.",
+      "markAllRead": "Tout marquer comme lu",
+      "emptyTitle": "Aucune notification pour l'instant",
+      "emptyDescription": "Les nouvelles activités et mises à jour apparaîtront ici.",
+      "error": "Impossible de charger les notifications",
+      "tryAgain": "Réessayer",
+      "seeMore": "Voir plus"
+    }
   }
 }

@@ -68,8 +68,14 @@ function interpolate(template: string, variables?: Record<string, string | numbe
   });
 }
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('en');
+export function LanguageProvider({
+  children,
+  defaultLocale = 'en',
+}: {
+  children: React.ReactNode;
+  defaultLocale?: Locale;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
 
   // Hydrate locale from localStorage or cookie safely after mount
   useEffect(() => {

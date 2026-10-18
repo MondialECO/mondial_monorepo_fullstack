@@ -13,12 +13,14 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { formatDistanceToNowStrict } from "date-fns";
+import { fr } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/app/_providers/AuthProvider";
+import { useLanguage } from "@/providers/LanguageProvider";
 import { getNotificationRouteForRole } from "@/lib/roles";
 import type { AppNotification, NotificationType } from "@/types/notifications";
 import {
@@ -28,9 +30,12 @@ import {
   useNotifications,
 } from "@/hooks/queries/notifications";
 
-function formatTime(iso: string): string {
+function formatTime(iso: string, locale?: string): string {
   try {
-    return formatDistanceToNowStrict(new Date(iso), { addSuffix: true });
+    return formatDistanceToNowStrict(new Date(iso), {
+      addSuffix: true,
+      locale: locale === "fr" ? fr : undefined,
+    });
   } catch {
     return "";
   }
@@ -69,6 +74,7 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
   const router = useRouter();
   const pathname = usePathname();
   const { user, token } = useAuth();
+  const { t, locale } = useLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -124,7 +130,7 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
         variant="ghost"
         size="icon"
         className={cn("relative", triggerClassName)}
-        aria-label="Notifications"
+        aria-label={t("creator.notifications.bell.ariaLabel", "Notifications")}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
@@ -143,15 +149,17 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
           <div className="shrink-0 flex items-center justify-between border-b border-border px-4 py-3.5 bg-card/60">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-bold font-heading text-foreground">Notifications</p>
+                <p className="text-sm font-bold font-heading text-foreground">
+                  {t("creator.notifications.bell.title", "Notifications")}
+                </p>
                 {unreadCount > 0 && (
                   <Badge variant="secondary" className="text-[10px] font-semibold bg-primary/10 text-primary border-primary/20 px-1.5 py-0 h-4">
-                    {unreadCount} new
+                    {t("creator.notifications.bell.newBadge", { count: unreadCount }, `${unreadCount} new`)}
                   </Badge>
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground font-sans">
-                Stay up to date with your activity.
+                {t("creator.notifications.bell.subtitle", "Stay up to date with your activity.")}
               </p>
             </div>
 
@@ -163,7 +171,7 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
                 className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 shrink-0 ml-2"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                <span>Mark all read</span>
+                <span>{t("creator.notifications.bell.markAllRead", "Mark all read")}</span>
               </button>
             )}
           </div>
@@ -188,7 +196,7 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
             ) : isError ? (
               <div className="p-6 text-center space-y-2">
                 <p className="text-xs text-destructive font-medium">
-                  Unable to load notifications
+                  {t("creator.notifications.bell.error", "Unable to load notifications")}
                 </p>
                 <Button
                   variant="outline"
@@ -196,7 +204,7 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
                   onClick={() => refetch()}
                   className="text-xs font-semibold gap-1.5 h-7"
                 >
-                  <RefreshCw className="h-3 w-3" /> Try again
+                  <RefreshCw className="h-3 w-3" /> {t("creator.notifications.bell.tryAgain", "Try again")}
                 </Button>
               </div>
             ) : latestTen.length === 0 ? (
@@ -204,8 +212,8 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
                 <EmptyState
                   size="default"
                   icon={Bell}
-                  title="No notifications yet"
-                  description="New activity and updates will appear here."
+                  title={t("creator.notifications.bell.emptyTitle", "No notifications yet")}
+                  description={t("creator.notifications.bell.emptyDescription", "New activity and updates will appear here.")}
                 />
               </div>
             ) : (
@@ -244,7 +252,7 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
                             {n.title}
                           </span>
                           <span className="shrink-0 text-[10px] text-muted-foreground mt-0.5">
-                            {formatTime(n.createdAt)}
+                            {formatTime(n.createdAt, locale)}
                           </span>
                         </div>
                         <p className="line-clamp-2 text-xs text-muted-foreground leading-relaxed">
@@ -276,7 +284,7 @@ export default function NotificationBell({ triggerClassName }: { triggerClassNam
               onClick={() => setOpen(false)}
             >
               <Link href={notificationsRoute}>
-                See More
+                {t("creator.notifications.bell.seeMore", "See More")}
               </Link>
             </Button>
           </div>

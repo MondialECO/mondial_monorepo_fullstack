@@ -3949,5 +3949,52 @@
       "hourShort": "{{count}}h",
       "dayShort": "{{count}}d"
     }
+  },
+  "notifications": {
+    "page": {
+      "title": "Notifications",
+      "subtitle": "Stay updated on your projects, deals, messages, and platform activity."
+    },
+    "actions": {
+      "markAllRead": "Mark all as read",
+      "tryAgain": "Try Again"
+    },
+    "filters": {
+      "all": "All",
+      "unread": "Unread"
+    },
+    "errors": {
+      "couldNotLoad": "Could not load notifications."
+    },
+    "empty": {
+      "noUnreadTitle": "No unread notifications",
+      "noNotificationsTitle": "No notifications yet",
+      "description": "Updates about your projects, deals, messages, and activity will appear here."
+    },
+    "item": {
+      "new": "New",
+      "viewDetails": "View details"
+    },
+    "types": {
+      "message": "Message",
+      "investment": "Investment",
+      "security": "Security",
+      "system": "System"
+    },
+    "pagination": {
+      "loadMore": "Load More Notifications"
+    },
+    "bell": {
+      "ariaLabel": "Notifications",
+      "title": "Notifications",
+      "newBadge": "{{count}} new",
+      "subtitle": "Stay up to date with your activity.",
+      "markAllRead": "Mark all read",
+      "emptyTitle": "No notifications yet",
+      "emptyDescription": "New activity and updates will appear here.",
+      "error": "Unable to load notifications",
+      "tryAgain": "Try again",
+      "seeMore": "See More"
+    }
   }
 }

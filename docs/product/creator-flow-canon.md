@@ -2223,6 +2223,23 @@ RC1 Freeze
   - TypeScript compilation check (`npx tsc --noEmit`) verified 0 errors platform-wide.
   - HTTP 200 OK verified on `http://localhost:3000/dashboard/creator/messages`.
 
+**2026-10-19 — Creator Notifications Workspace & Topbar Bell: Complete Bilingual Localization (EN / FR).**
+- **Components:** `src/app/dashboard/creator/notifications/page.tsx`, `src/components/notifications/SharedNotificationsPage.tsx`, `src/components/notifications/NotificationBell.tsx`, `src/providers/LanguageProvider.tsx`.
+- **Specification:**
+  - Route wrapper SEO metadata (`Notifications | Mondial Creator`) and Suspense boundary.
+  - Page header title, descriptive subtitle, and dynamic "Mark all as read" / "Tout marquer comme lu" bulk action CTA.
+  - Filter tabs ("All" / "Toutes", "Unread" / "Non lues") with live notification count badges.
+  - Notification cards with localized type badges (`Message`, `Investment` / `Investissement`, `Security` / `Sécurité`, `System` / `Système`), "New" / "Nouveau" status badge, "View details" / "Voir les détails" navigation links, and locale-aware relative time formatting (`date-fns/locale/fr`).
+  - Loading skeleton state, localized error retry state ("Could not load notifications." / "Impossible de charger les notifications.", "Try Again" / "Réessayer"), and filter-aware empty states ("No unread notifications" / "Aucune notification non lue", "No notifications yet" / "Aucune notification pour l'instant").
+  - Pagination "Load More Notifications" / "Charger plus de notifications" CTA.
+  - Global `NotificationBell` topbar component localized in both English and French with unread counter, badge, dropdown header, error state, empty state, and "See More" / "Voir plus" deep link to role notifications page.
+  - Full dictionary symmetry at exactly 3,654 total keys in both `en/creator.json` and `fr/creator.json` (0 missing keys, 100% symmetry).
+- **Verification Evidence:**
+  - Dedicated unit and integration test suite `src/__tests__/creator/creator-notifications-i18n.test.tsx` (6/6 PASS).
+  - Existing suite `src/__tests__/notifications/notification-bell.test.tsx` (9/9 PASS).
+  - TypeScript compilation check (`npx tsc --noEmit`) verified 0 errors platform-wide.
+  - HTTP 200 OK verified on `http://localhost:3000/dashboard/creator/notifications`.
+
 ---
 
 *End of Creator canon. Update this doc first, then do not write the code — never the reverse.*
