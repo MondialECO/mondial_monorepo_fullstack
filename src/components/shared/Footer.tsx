@@ -1,8 +1,14 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useLanguage } from '@/providers/LanguageProvider';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 
 export default function Footer() {
+  const { t } = useLanguage();
+
   return (
     <footer
       className="relative w-full overflow-hidden bg-[#F7F9FC] dark:bg-[#070b14] text-[#101828] dark:text-foreground font-sans border-t border-[#e3e8f2] dark:border-border/80 transition-colors"
@@ -66,12 +72,12 @@ export default function Footer() {
             <Link
               href="/"
               className="flex flex-col gap-2 group focus:outline-none focus:ring-2 focus:ring-[#3c61dd]/40 rounded-lg self-start"
-              aria-label="Mondial Business Creation Home"
+              aria-label={t('footer.brandAria', 'Mondial Business Creation Home')}
             >
               <div className="w-[95px] h-[46px] rounded-[10px] p-1 overflow-hidden flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                 <Image
                   src="/images/mbc-logo.png"
-                  alt="MBC Logo"
+                  alt={t('footer.logoAlt', 'MBC Logo')}
                   width={95}
                   height={46}
                   className="w-full h-full object-contain"
@@ -91,16 +97,16 @@ export default function Footer() {
             {/* Supporting Copy */}
             <div className="space-y-1 pt-1">
               <div className="font-semibold text-[14px] text-[#101828] dark:text-foreground font-sans">
-                Build your digital business from idea to launch.
+                {t('footer.tagline', 'Build your digital business from idea to launch.')}
               </div>
               <div className="font-medium text-[14px] text-[#3c61dd] dark:text-[#60a5fa] font-sans">
-                Start building for €0.
+                {t('footer.pricingHighlight', 'Start building for €0.')}
               </div>
             </div>
 
             {/* Paragraph */}
             <p className="text-[13px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans max-w-[340px]">
-              A simpler way for the next generation of founders to turn an idea into a real business project.
+              {t('footer.description', 'A simpler way for the next generation of founders to turn an idea into a real business project.')}
             </p>
 
             {/* Clean Minimalist Social Icons (Figma 57381:10908) */}
@@ -110,7 +116,7 @@ export default function Footer() {
                 href="https://linkedin.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="MBC on LinkedIn"
+                aria-label={t('footer.social.linkedinAria', 'MBC on LinkedIn')}
                 className="w-9 h-9 rounded-[8px] border border-[#e3e8f2] dark:border-border/80 bg-white dark:bg-card flex items-center justify-center text-[#667085] hover:text-[#3c61dd] hover:border-[#3c61dd]/40 transition-colors shadow-2xs"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -123,7 +129,7 @@ export default function Footer() {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="MBC on Instagram"
+                aria-label={t('footer.social.instagramAria', 'MBC on Instagram')}
                 className="w-9 h-9 rounded-[8px] border border-[#e3e8f2] dark:border-border/80 bg-white dark:bg-card flex items-center justify-center text-[#667085] hover:text-[#3c61dd] hover:border-[#3c61dd]/40 transition-colors shadow-2xs"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -138,7 +144,7 @@ export default function Footer() {
                 href="https://x.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="MBC on X"
+                aria-label={t('footer.social.xAria', 'MBC on X')}
                 className="w-9 h-9 rounded-[8px] border border-[#e3e8f2] dark:border-border/80 bg-white dark:bg-card flex items-center justify-center text-[#667085] hover:text-[#3c61dd] hover:border-[#3c61dd]/40 transition-colors shadow-2xs"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -151,7 +157,7 @@ export default function Footer() {
           {/* COLUMN 2: PRODUCT (Col-span 2) (Figma 57381:10920) */}
           <div className="md:col-span-2 space-y-4">
             <h3 className="text-[12px] font-semibold text-[#101828] dark:text-foreground uppercase tracking-wider font-mono">
-              PRODUCT
+              {t('footer.product.title', 'PRODUCT')}
             </h3>
             <ul className="space-y-2.5 text-[14px] font-sans">
               <li>
@@ -159,7 +165,7 @@ export default function Footer() {
                   href="/for-creators"
                   className="inline-flex items-center gap-1.5 font-medium text-[#101828] dark:text-foreground hover:text-[#3c61dd] dark:hover:text-[#60a5fa] transition-colors"
                 >
-                  <span>Creator</span>
+                  <span>{t('footer.product.creator', 'Creator')}</span>
                   <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd]" />
                 </Link>
               </li>
@@ -168,7 +174,7 @@ export default function Footer() {
                   href="/#outputs"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
-                  Creator Tools
+                  {t('footer.product.creatorTools', 'Creator Tools')}
                 </Link>
               </li>
               <li>
@@ -176,7 +182,7 @@ export default function Footer() {
                   href="/#how-it-works"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
-                  How it works
+                  {t('footer.product.howItWorks', 'How it works')}
                 </Link>
               </li>
               <li>
@@ -184,7 +190,7 @@ export default function Footer() {
                   href="/#outputs"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
-                  What you get
+                  {t('footer.product.whatYouGet', 'What you get')}
                 </Link>
               </li>
               <li>
@@ -192,7 +198,7 @@ export default function Footer() {
                   href="/pricing"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
-                  Pricing
+                  {t('footer.product.pricing', 'Pricing')}
                 </Link>
               </li>
             </ul>
@@ -201,7 +207,7 @@ export default function Footer() {
           {/* COLUMN 3: RESOURCES (Col-span 2) (Figma 57381:10934) */}
           <div className="md:col-span-2 space-y-4">
             <h3 className="text-[12px] font-semibold text-[#101828] dark:text-foreground uppercase tracking-wider font-mono">
-              RESOURCES
+              {t('footer.resources.title', 'RESOURCES')}
             </h3>
             <ul className="space-y-2.5 text-[14px] font-sans">
               <li>
@@ -209,7 +215,7 @@ export default function Footer() {
                   href="/#faq"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
-                  FAQ
+                  {t('footer.resources.faq', 'FAQ')}
                 </Link>
               </li>
               <li>
@@ -217,7 +223,7 @@ export default function Footer() {
                   href="/guides"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
-                  Guides
+                  {t('footer.resources.guides', 'Guides')}
                 </Link>
               </li>
               <li>
@@ -225,7 +231,7 @@ export default function Footer() {
                   href="/contact"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
-                  Contact
+                  {t('footer.resources.contact', 'Contact')}
                 </Link>
               </li>
             </ul>
@@ -234,30 +240,30 @@ export default function Footer() {
           {/* COLUMN 4: MBC NETWORK (Col-span 2) (Figma 57381:10944) */}
           <div className="md:col-span-2 space-y-4">
             <h3 className="text-[12px] font-semibold text-[#101828] dark:text-foreground uppercase tracking-wider font-mono">
-              MBC NETWORK
+              {t('footer.network.title', 'MBC NETWORK')}
             </h3>
             <ul className="space-y-3 text-[14px] font-sans">
               <li>
                 <div className="inline-flex items-center gap-2 text-[#667085]/70 dark:text-muted-foreground/70">
-                  <span>Entrepreneur</span>
+                  <span>{t('footer.network.entrepreneur', 'Entrepreneur')}</span>
                   <span className="px-1.5 py-0.5 rounded-[4px] bg-[#e3e8f2]/60 dark:bg-muted text-[10px] font-medium text-[#667085] dark:text-muted-foreground font-sans">
-                    Coming soon
+                    {t('footer.network.comingSoon', 'Coming soon')}
                   </span>
                 </div>
               </li>
               <li>
                 <div className="inline-flex items-center gap-2 text-[#667085]/70 dark:text-muted-foreground/70">
-                  <span>Investor</span>
+                  <span>{t('footer.network.investor', 'Investor')}</span>
                   <span className="px-1.5 py-0.5 rounded-[4px] bg-[#e3e8f2]/60 dark:bg-muted text-[10px] font-medium text-[#667085] dark:text-muted-foreground font-sans">
-                    Coming soon
+                    {t('footer.network.comingSoon', 'Coming soon')}
                   </span>
                 </div>
               </li>
               <li>
                 <div className="inline-flex items-center gap-2 text-[#667085]/70 dark:text-muted-foreground/70">
-                  <span className="leading-tight">Service Provider</span>
+                  <span className="leading-tight">{t('footer.network.serviceProvider', 'Service Provider')}</span>
                   <span className="px-1.5 py-0.5 rounded-[4px] bg-[#e3e8f2]/60 dark:bg-muted text-[10px] font-medium text-[#667085] dark:text-muted-foreground font-sans">
-                    Coming soon
+                    {t('footer.network.comingSoon', 'Coming soon')}
                   </span>
                 </div>
               </li>
@@ -267,7 +273,7 @@ export default function Footer() {
           {/* COLUMN 5: LEGAL (Col-span 2) (Figma 57381:10964) */}
           <div className="md:col-span-2 space-y-4">
             <h3 className="text-[12px] font-semibold text-[#101828] dark:text-foreground uppercase tracking-wider font-mono">
-              LEGAL
+              {t('footer.legal.title', 'LEGAL')}
             </h3>
             <ul className="space-y-2.5 text-[14px] font-sans">
               <li>
@@ -275,7 +281,7 @@ export default function Footer() {
                   href="/terms"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
-                  Terms of Use
+                  {t('footer.legal.termsOfUse', 'Terms of Use')}
                 </Link>
               </li>
               <li>
@@ -283,7 +289,7 @@ export default function Footer() {
                   href="/privacy"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
-                  Privacy Policy
+                  {t('footer.legal.privacyPolicy', 'Privacy Policy')}
                 </Link>
               </li>
               <li>
@@ -291,7 +297,7 @@ export default function Footer() {
                   href="/privacy#cookies"
                   className="text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-foreground transition-colors"
                 >
-                  Cookie Policy
+                  {t('footer.legal.cookiePolicy', 'Cookie Policy')}
                 </Link>
               </li>
             </ul>
@@ -305,17 +311,19 @@ export default function Footer() {
         <div className="border-t border-[#e3e8f2] dark:border-border/80 pt-8 mt-14 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-sans text-[#667085] dark:text-muted-foreground">
           {/* Copyright */}
           <div>
-            © 2026 Mondial Business Création. All rights reserved.
+            {t('footer.bottom.copyright', { year: 2026 }, '© 2026 Mondial Business Création. All rights reserved.')}
           </div>
 
-          {/* Tagline & Location */}
+          {/* Tagline & Location & Language Switcher */}
           <div className="flex items-center gap-3 flex-wrap justify-center">
             <span className="flex items-center gap-1.5 font-medium text-[#101828]/80 dark:text-foreground">
               <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-              Made for the next generation of founders.
+              {t('footer.bottom.foundersTagline', 'Made for the next generation of founders.')}
             </span>
             <span className="text-[#e3e8f2] dark:text-slate-700">|</span>
-            <span>Paris, France</span>
+            <span>{t('footer.bottom.location', 'Paris, France')}</span>
+            <span className="text-[#e3e8f2] dark:text-slate-700">|</span>
+            <LanguageSwitcher variant="topbar" className="scale-90" />
           </div>
         </div>
 

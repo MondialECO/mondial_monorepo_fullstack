@@ -278,5 +278,49 @@
       "encryptionDesc": "protégeant vos données personnelles et vos documents d'identité.",
       "goToDashboard": "Aller au tableau de bord"
     }
+  },
+  "footer": {
+    "brandAria": "Accueil Mondial Business Creation",
+    "logoAlt": "Logo MBC",
+    "tagline": "Créez votre entreprise numérique, de l'idée au lancement.",
+    "pricingHighlight": "Commencez à créer pour 0 €.",
+    "description": "Une méthode plus simple pour permettre à la nouvelle génération de fondateurs de transformer une idée en un véritable projet d'entreprise.",
+    "social": {
+      "linkedinAria": "MBC sur LinkedIn",
+      "instagramAria": "MBC sur Instagram",
+      "xAria": "MBC sur X"
+    },
+    "product": {
+      "title": "PRODUIT",
+      "creator": "Créateur",
+      "creatorTools": "Outils Créateur",
+      "howItWorks": "Comment ça fonctionne",
+      "whatYouGet": "Ce que vous obtenez",
+      "pricing": "Tarifs"
+    },
+    "resources": {
+      "title": "RESSOURCES",
+      "faq": "FAQ",
+      "guides": "Guides",
+      "contact": "Contact"
+    },
+    "network": {
+      "title": "RÉSEAU MBC",
+      "entrepreneur": "Entrepreneur",
+      "investor": "Investisseur",
+      "serviceProvider": "Prestataire de services",
+      "comingSoon": "Bientôt disponible"
+    },
+    "legal": {
+      "title": "JURIDIQUE",
+      "termsOfUse": "Conditions d'utilisation",
+      "privacyPolicy": "Politique de confidentialité",
+      "cookiePolicy": "Politique relative aux cookies"
+    },
+    "bottom": {
+      "copyright": "© {{year}} Mondial Business Création. Tous droits réservés.",
+      "foundersTagline": "Conçu pour la prochaine génération de fondateurs.",
+      "location": "Paris, France"
+    }
   }
 }

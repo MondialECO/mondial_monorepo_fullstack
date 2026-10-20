@@ -278,5 +278,49 @@
       "encryptionDesc": "protecting your personal data and identity documents.",
       "goToDashboard": "Go to Dashboard"
     }
+  },
+  "footer": {
+    "brandAria": "Mondial Business Creation Home",
+    "logoAlt": "MBC Logo",
+    "tagline": "Build your digital business from idea to launch.",
+    "pricingHighlight": "Start building for €0.",
+    "description": "A simpler way for the next generation of founders to turn an idea into a real business project.",
+    "social": {
+      "linkedinAria": "MBC on LinkedIn",
+      "instagramAria": "MBC on Instagram",
+      "xAria": "MBC on X"
+    },
+    "product": {
+      "title": "PRODUCT",
+      "creator": "Creator",
+      "creatorTools": "Creator Tools",
+      "howItWorks": "How it works",
+      "whatYouGet": "What you get",
+      "pricing": "Pricing"
+    },
+    "resources": {
+      "title": "RESOURCES",
+      "faq": "FAQ",
+      "guides": "Guides",
+      "contact": "Contact"
+    },
+    "network": {
+      "title": "MBC NETWORK",
+      "entrepreneur": "Entrepreneur",
+      "investor": "Investor",
+      "serviceProvider": "Service Provider",
+      "comingSoon": "Coming soon"
+    },
+    "legal": {
+      "title": "LEGAL",
+      "termsOfUse": "Terms of Use",
+      "privacyPolicy": "Privacy Policy",
+      "cookiePolicy": "Cookie Policy"
+    },
+    "bottom": {
+      "copyright": "© {{year}} Mondial Business Création. All rights reserved.",
+      "foundersTagline": "Made for the next generation of founders.",
+      "location": "Paris, France"
+    }
   }
 }

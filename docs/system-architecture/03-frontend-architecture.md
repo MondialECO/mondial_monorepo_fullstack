@@ -616,12 +616,15 @@ The internationalization system provides native bilingual support for **English 
   - `SharedNotificationsPage.tsx`: Full-surface notification manager with localized title, subtitle, "Mark all as read" / "Tout marquer comme lu" bulk action CTA, tab filters ("All" / "Toutes", "Unread" / "Non lues") with live counter badges, categorized notification items (`Message`, `Investment` / `Investissement`, `Security` / `Sécurité`, `System` / `Système`), "New" / "Nouveau" badge, "View details" / "Voir les détails" navigation links, locale-aware relative timestamp formatting (`date-fns/locale/fr`), and pagination "Load More Notifications" / "Charger plus de notifications" CTA (`creator.notifications.*`).
   - `NotificationBell.tsx`: Global interactive topbar notification dropdown button with unread count indicator badge, localized panel header, "Mark all read" CTA, notification items with read state mutation, empty state, and "See More" / "Voir plus" deep-link routing.
   - `LanguageProvider.tsx`: Added optional `defaultLocale` prop to facilitate seamless locale initialization and deterministic bilingual unit testing.
+- **Global Public Footer (`src/components/shared/Footer.tsx`)**:
+  - Full Figma-compliant 5-column public footer shared across marketing and public routes.
+  - Localized brand lockup copy, product navigation, resources links, MBC network tiers with "Coming soon" pills, and legal links.
+  - Localized bottom bar copyright notice, mission tagline, and integrated language switcher (`LanguageSwitcher`) providing seamless locale toggle (`common.footer.*`).
 - **Creator Sidebar Navigation (`src/lib/menu.ts`)**: **Deliberately Deferred**. Per user explicit instruction, Creator sidebar menus remain in English during the initial phase and will be localized in a subsequent dedicated pass.
-- **Landing Page & Marketing Surfaces**: Queued for execution following the Creator dashboard audit.
 - **Testing & Translation Integrity**:
-  - Full dictionary symmetry between `src/locales/en/creator.json` and `src/locales/fr/creator.json` (3,654 total keys in EN, 3,654 total keys in FR, 0 missing keys in either direction).
-  - Full dictionary symmetry in shared catalogs (`src/locales/en/common.json` and `src/locales/fr/common.json`: 210 total keys in EN and FR, 0 missing).
-  - Verified across all unit test suites (`creator-notifications-i18n.test.tsx` 6/6 PASS, `notification-bell.test.tsx` 9/9 PASS, `creator-messages-i18n.test.tsx` 13/13 PASS, `universal-profile.test.tsx`, `profile-view-and-wizard.test.tsx`, `creator-dashboard.test.tsx`, `creator-i18n.test.tsx`, `analytics-profile.test.tsx`) with 100% pass rate.
+  - Full dictionary symmetry between `src/locales/en/creator.json` and `src/locales/fr/creator.json` (**3,658** total keys in EN, **3,658** total keys in FR, 0 missing keys in either direction).
+  - Full dictionary symmetry in shared catalogs (`src/locales/en/common.json` and `src/locales/fr/common.json`: **240** total keys in EN and FR, 0 missing).
+  - Verified across all unit test suites (`creator-notifications-i18n.test.tsx` 6/6 PASS, `notification-bell.test.tsx` 9/9 PASS, `creator-messages-i18n.test.tsx` 13/13 PASS, `universal-profile.test.tsx`, `profile-view-and-wizard.test.tsx`, `creator-dashboard.test.tsx`, `creator-i18n.test.tsx`, `analytics-profile.test.tsx`, `homepage-figma-57349-8209.test.tsx` 5/5 PASS) with 100% pass rate.
 
 
 
