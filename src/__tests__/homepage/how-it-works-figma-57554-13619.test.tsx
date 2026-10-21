@@ -18,11 +18,10 @@ describe('FigmaHowItWorks Section (Figma Node 57554:13619)', () => {
 
     const section = document.getElementById('how-it-works');
     expect(section).toBeInTheDocument();
-    expect(section).toHaveClass('md:py-[72px]');
+    expect(section).toHaveClass('lg:px-[45px]');
 
-    const container = section?.querySelector('.lg\\:px-\\[45px\\]');
+    const container = section?.querySelector('.max-w-\\[1350px\\]');
     expect(container).toBeInTheDocument();
-    expect(container).toHaveClass('max-w-[1350px]');
 
     // Eyebrow
     expect(screen.getByText(/HOW IT WORKS/i)).toBeInTheDocument();

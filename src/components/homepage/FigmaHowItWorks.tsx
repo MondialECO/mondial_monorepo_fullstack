@@ -121,7 +121,7 @@ export default function FigmaHowItWorks() {
   return (
     <section 
       id="how-it-works" 
-      className="relative w-full py-14 md:py-[72px] bg-gradient-to-b from-[#ffffff] to-[#fbfcff] dark:from-background dark:to-background border-b border-[#e8ecf2] dark:border-border overflow-hidden"
+      className="relative w-full py-16 sm:py-20 lg:py-[100px] px-4 sm:px-6 md:px-8 lg:px-[45px] bg-gradient-to-b from-[#ffffff] to-[#fbfcff] dark:from-background dark:to-background border-b border-[#e8ecf2] dark:border-border overflow-hidden"
       style={{
         backgroundImage: `
           radial-gradient(circle at 88% 12%, rgba(111, 139, 255, 0.14) 0%, rgba(111, 139, 255, 0) 65%),
@@ -129,7 +129,7 @@ export default function FigmaHowItWorks() {
         `,
       }}
     >
-      <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto px-4 sm:px-6 md:px-8 lg:px-[45px]">
+      <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto">
         
         {/* Intro Header (Figma 57554:13620 - Max-Width 720px) */}
         <div className="flex flex-col items-center text-center max-w-[720px] mx-auto mb-12 md:mb-[68px] space-y-4">
@@ -154,15 +154,15 @@ export default function FigmaHowItWorks() {
         </div>
 
         {/* Continuous 6-Phase Timeline Layout (Figma 57554:13632) */}
-        <div className="relative max-w-[1350px] mx-auto space-y-8">
+        <div className="w-full space-y-8">
           
           {/* ===================================================================== */}
           {/* STEP 01: PHASE 01 · YOU (Figma 57554:13633) */}
           {/* ===================================================================== */}
-          <div id="phase-01" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
+          <div id="phase-01" className="relative flex flex-col md:flex-row gap-6 items-stretch">
             <SpineNode step={1} activeStep={activeStep} isFirst onSelect={scrollToStep} />
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className={`rounded-[24px] border ${activeStep === 1 ? 'border-[#c9d5ff] ring-2 ring-[#3c61dd]/20' : 'border-[#e3e8f2]'} dark:border-border bg-white dark:bg-card p-6 sm:p-8 shadow-sm transition-all duration-300`}>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                   {/* Left Text (5 cols) */}
@@ -249,10 +249,10 @@ export default function FigmaHowItWorks() {
           {/* ===================================================================== */}
           {/* STEP 02: PHASE 02 · PROJECT & BRAND (Figma 57554:13693) */}
           {/* ===================================================================== */}
-          <div id="phase-02" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
+          <div id="phase-02" className="relative flex flex-col md:flex-row gap-6 items-stretch">
             <SpineNode step={2} activeStep={activeStep} onSelect={scrollToStep} />
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className={`rounded-[24px] border ${activeStep === 2 ? 'border-[#3c61dd] ring-2 ring-[#3c61dd]/20' : 'border-[#c9d5ff]'} dark:border-border bg-white dark:bg-card p-6 sm:p-8 shadow-sm transition-all duration-300`}>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                   {/* Left Text (5 cols) */}
@@ -337,10 +337,10 @@ export default function FigmaHowItWorks() {
           {/* ===================================================================== */}
           {/* STEP 03: PHASE 03 · BUSINESS PLAN (CORE PHASE CENTERPIECE - Figma 57554:13752) */}
           {/* ===================================================================== */}
-          <div id="phase-03" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
+          <div id="phase-03" className="relative flex flex-col md:flex-row gap-6 items-stretch">
             <SpineNode step={3} activeStep={activeStep} onSelect={scrollToStep} />
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className={`rounded-[24px] border-2 border-[#3c61dd] bg-white dark:bg-card p-6 sm:p-10 ${activeStep === 3 ? 'shadow-xl ring-2 ring-[#3c61dd]/30' : 'shadow-lg'} relative overflow-hidden transition-all duration-300`}>
                 {/* Card Top Row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-[#e3e8f2] gap-4">
@@ -548,10 +548,10 @@ export default function FigmaHowItWorks() {
           {/* ===================================================================== */}
           {/* STEP 04: PHASE 04 · BUILD & LAUNCH PREP (Figma 57554:13900) */}
           {/* ===================================================================== */}
-          <div id="phase-04" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
+          <div id="phase-04" className="relative flex flex-col md:flex-row gap-6 items-stretch">
             <SpineNode step={4} activeStep={activeStep} onSelect={scrollToStep} />
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className={`rounded-[24px] border ${activeStep === 4 ? 'border-[#3c61dd] ring-2 ring-[#3c61dd]/20' : 'border-[#e3e8f2]'} dark:border-border bg-white dark:bg-card p-6 sm:p-8 shadow-sm transition-all duration-300`}>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                   {/* Left Text */}
@@ -698,10 +698,10 @@ export default function FigmaHowItWorks() {
           {/* ===================================================================== */}
           {/* STEP 05: PHASE 05 · COMPANY (Figma 57554:14017) */}
           {/* ===================================================================== */}
-          <div id="phase-05" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
+          <div id="phase-05" className="relative flex flex-col md:flex-row gap-6 items-stretch">
             <SpineNode step={5} activeStep={activeStep} onSelect={scrollToStep} />
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className={`rounded-[24px] border ${activeStep === 5 ? 'border-[#3c61dd] ring-2 ring-[#3c61dd]/20' : 'border-[#e3e8f2]'} dark:border-border bg-white dark:bg-card p-6 sm:p-8 shadow-sm transition-all duration-300`}>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                   {/* Left Text */}
@@ -783,10 +783,10 @@ export default function FigmaHowItWorks() {
           {/* ===================================================================== */}
           {/* STEP 06: PHASE 06 · NEXT CHAPTER (Figma 57554:14078) */}
           {/* ===================================================================== */}
-          <div id="phase-06" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
+          <div id="phase-06" className="relative flex flex-col md:flex-row gap-6 items-stretch">
             <SpineNode step={6} activeStep={activeStep} isLast onSelect={scrollToStep} />
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className={`rounded-[24px] border ${activeStep === 6 ? 'border-[#3c61dd] ring-2 ring-[#3c61dd]/20' : 'border-[#e3e8f2]'} dark:border-border bg-white dark:bg-card p-6 sm:p-8 shadow-sm relative overflow-hidden transition-all duration-300`}>
                 {/* 2px green accent line along top edge (Figma 57554:14175) */}
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#00c896]/60" />
