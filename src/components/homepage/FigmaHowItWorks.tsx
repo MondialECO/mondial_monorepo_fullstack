@@ -1,16 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
 import { 
-  Check, 
   ArrowRight,
-  ExternalLink,
-  Download,
-  Eye,
   Globe,
   LayoutGrid
 } from 'lucide-react';
+import { useLanguage } from '@/providers/LanguageProvider';
 
 interface SpineNodeProps {
   step: number;
@@ -75,6 +71,7 @@ function SpineNode({ step, activeStep, isFirst = false, isLast = false, onSelect
 }
 
 export default function FigmaHowItWorks() {
+  const { t } = useLanguage();
   const [activeStep, setActiveStep] = useState<number>(1);
 
   const scrollToStep = useCallback((stepNumber: number) => {
@@ -122,17 +119,19 @@ export default function FigmaHowItWorks() {
           {/* Eyebrow Badge (Figma 57381:10473 - 138x30px) */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e8eeff] text-[#1f3faf] text-xs font-semibold uppercase font-mono shadow-2xs">
             <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd] shrink-0" />
-            <span>HOW IT WORKS</span>
+            <span>{t('homepage.howItWorks.eyebrow')}</span>
           </div>
 
           {/* Heading 1 (Figma 57377:9714 - Inter 600 54px lh:60) */}
           <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-semibold text-[#101828] dark:text-foreground tracking-tight leading-[1.1] font-heading">
-            From idea to<br className="hidden sm:inline" /> company in 6 steps.
+            {t('homepage.howItWorks.headline').split('\n').map((line, i, arr) => (
+              <span key={i}>{line}{i < arr.length - 1 && <br className="hidden sm:inline" />}</span>
+            ))}
           </h2>
 
           {/* Subline (Figma 57377:9716 - DM Sans 400 20px) */}
           <p className="text-lg sm:text-xl lg:text-[20px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal">
-            Go one step at a time. Everything you make is saved and feeds the next step.
+            {t('homepage.howItWorks.subline')}
           </p>
         </div>
 
@@ -152,28 +151,28 @@ export default function FigmaHowItWorks() {
                   <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
                     <div className="space-y-3">
                       <div className="text-xs font-semibold text-[#667085] tracking-wider uppercase font-mono">
-                        PHASE 01 · YOU
+                        {t('homepage.howItWorks.phase01.eyebrow')}
                       </div>
                       <h3 className="text-2xl sm:text-[28px] font-semibold text-[#101828] dark:text-foreground font-heading">
-                        Start with you
+                        {t('homepage.howItWorks.phase01.title')}
                       </h3>
                       <p className="text-base sm:text-[17px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal">
-                        Tell us what you&apos;ve done, what you&apos;re good at and how much time you have. School projects count.
+                        {t('homepage.howItWorks.phase01.description')}
                       </p>
                     </div>
 
                     <div className="pt-4 border-t border-[#e3e8f2] flex items-center gap-2 text-sm">
-                      <span className="text-[#667085]">You get:</span>
-                      <span className="font-semibold text-[#101828] dark:text-foreground">Your builder profile</span>
+                      <span className="text-[#667085]">{t('homepage.howItWorks.phase01.youGet')}</span>
+                      <span className="font-semibold text-[#101828] dark:text-foreground">{t('homepage.howItWorks.phase01.output')}</span>
                     </div>
                   </div>
 
                   {/* Right Preview (7 cols) */}
                   <div className="lg:col-span-7 p-5 rounded-[16px] bg-[#f7f8fc] dark:bg-muted/30 border border-[#e3e8f2] space-y-3">
                     <div className="flex items-center justify-between pb-2 border-b border-[#e3e8f2] text-xs">
-                      <span className="text-[#667085]">Your builder profile</span>
+                      <span className="text-[#667085]">{t('homepage.howItWorks.phase01.output')}</span>
                       <span className="px-2.5 py-0.5 rounded-[6px] bg-[#ecfdf5] text-[#008764] font-semibold text-[11px]">
-                        Completed
+                        {t('homepage.howItWorks.phase01.status')}
                       </span>
                     </div>
 
@@ -234,28 +233,28 @@ export default function FigmaHowItWorks() {
                   <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
                     <div className="space-y-3">
                       <div className="text-xs font-semibold text-[#667085] tracking-wider uppercase font-mono">
-                        PHASE 02 · PROJECT & BRAND
+                        {t('homepage.howItWorks.phase02.eyebrow')}
                       </div>
                       <h3 className="text-2xl sm:text-[28px] font-semibold text-[#101828] dark:text-foreground font-heading">
-                        Shape your idea and brand
+                        {t('homepage.howItWorks.phase02.title')}
                       </h3>
                       <p className="text-base sm:text-[17px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal">
-                        Answer a few questions to sharpen your idea, pick a name, then build your logo, colors and fonts.
+                        {t('homepage.howItWorks.phase02.description')}
                       </p>
                     </div>
 
                     <div className="pt-4 border-t border-[#e3e8f2] flex items-center gap-2 text-sm">
-                      <span className="text-[#667085]">You get:</span>
-                      <span className="font-semibold text-[#101828] dark:text-foreground">Your project and Brand Kit</span>
+                      <span className="text-[#667085]">{t('homepage.howItWorks.phase02.youGet')}</span>
+                      <span className="font-semibold text-[#101828] dark:text-foreground">{t('homepage.howItWorks.phase02.output')}</span>
                     </div>
                   </div>
 
                   {/* Right Preview Bento (7 cols) */}
                   <div className="lg:col-span-7 p-5 rounded-[16px] bg-[#f7f8fc] dark:bg-muted/30 border border-[#c9d5ff] space-y-3">
                     <div className="flex items-center justify-between pb-2 border-b border-[#e3e8f2] text-xs">
-                      <span className="text-[#667085]">Brand Kit</span>
+                      <span className="text-[#667085]">{t('homepage.howItWorks.phase02.output')}</span>
                       <span className="px-2.5 py-0.5 rounded-[6px] bg-[#ecfdf5] text-[#008764] font-semibold text-[11px]">
-                        Completed
+                        {t('homepage.howItWorks.phase02.status')}
                       </span>
                     </div>
 
@@ -319,27 +318,27 @@ export default function FigmaHowItWorks() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-[#e3e8f2] gap-4">
                   <div className="space-y-2">
                     <div className="text-xs font-semibold text-[#667085] tracking-wider uppercase font-mono">
-                      PHASE 03 · BUSINESS PLAN
-                    </div>
-                    <h3 className="text-2xl sm:text-[32px] font-semibold text-[#101828] dark:text-foreground font-heading">
-                      Build the business behind your idea
-                    </h3>
-                    <p className="text-base sm:text-[17px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal max-w-2xl">
-                      Seven guided steps: your market, model, numbers, legal basics and a full business plan.
-                    </p>
+                        {t('homepage.howItWorks.phase03.eyebrow')}
+                      </div>
+                      <h3 className="text-2xl sm:text-[32px] font-semibold text-[#101828] dark:text-foreground font-heading">
+                        {t('homepage.howItWorks.phase03.title')}
+                      </h3>
+                      <p className="text-base sm:text-[17px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal max-w-2xl">
+                        {t('homepage.howItWorks.phase03.description')}
+                      </p>
                   </div>
 
-                  {/* Core Phase Badge (Figma 57377:9892) */}
-                  <div className="shrink-0">
+                   {/* Core Phase Badge (Figma 57377:9892) */}
+                   <div className="shrink-0">
                     <span className="px-3 py-1 rounded-full bg-[#3c61dd] text-white text-xs font-bold uppercase tracking-wider font-mono">
-                      CORE PHASE
+                      {t('homepage.howItWorks.phase03.badge')}
                     </span>
                   </div>
                 </div>
 
                 <div className="py-4 flex items-center gap-2 text-sm">
-                  <span className="text-[#667085]">You get:</span>
-                  <span className="font-semibold text-[#101828] dark:text-foreground">A complete, structured business plan</span>
+                  <span className="text-[#667085]">{t('homepage.howItWorks.phase03.youGet')}</span>
+                  <span className="font-semibold text-[#101828] dark:text-foreground">{t('homepage.howItWorks.phase03.output')}</span>
                 </div>
 
                 {/* Centerpiece Full-Width Panel (Figma 57377:9898) */}
@@ -505,19 +504,19 @@ export default function FigmaHowItWorks() {
                   <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
                     <div className="space-y-3">
                       <div className="text-xs font-semibold text-[#667085] tracking-wider uppercase font-mono">
-                        PHASE 04 · BUILD & LAUNCH PREP
+                        {t('homepage.howItWorks.phase04.eyebrow')}
                       </div>
                       <h3 className="text-2xl sm:text-[28px] font-semibold text-[#101828] dark:text-foreground font-heading">
-                        Get ready to build and launch
+                        {t('homepage.howItWorks.phase04.title')}
                       </h3>
                       <p className="text-base sm:text-[17px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal">
-                        A plan made for your skills and your time: what to do now, what to learn, what to hand off.
+                        {t('homepage.howItWorks.phase04.description')}
                       </p>
                     </div>
 
                     <div className="pt-4 border-t border-[#e3e8f2] flex items-center gap-2 text-sm">
-                      <span className="text-[#667085]">You get:</span>
-                      <span className="font-semibold text-[#101828] dark:text-foreground">Your 90-day plan and launch website</span>
+                      <span className="text-[#667085]">{t('homepage.howItWorks.phase04.youGet')}</span>
+                      <span className="font-semibold text-[#101828] dark:text-foreground">{t('homepage.howItWorks.phase04.output')}</span>
                     </div>
                   </div>
 
@@ -627,19 +626,19 @@ export default function FigmaHowItWorks() {
                   <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
                     <div className="space-y-3">
                       <div className="text-xs font-semibold text-[#667085] tracking-wider uppercase font-mono">
-                        PHASE 05 · COMPANY
+                        {t('homepage.howItWorks.phase05.eyebrow')}
                       </div>
                       <h3 className="text-2xl sm:text-[28px] font-semibold text-[#101828] dark:text-foreground font-heading">
-                        Create your company
+                        {t('homepage.howItWorks.phase05.title')}
                       </h3>
                       <p className="text-base sm:text-[17px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal">
-                        Step-by-step help to register your company in France: legal form, capital, documents.
+                        {t('homepage.howItWorks.phase05.description')}
                       </p>
                     </div>
 
                     <div className="pt-4 border-t border-[#e3e8f2] flex items-center gap-2 text-sm">
-                      <span className="text-[#667085]">You get:</span>
-                      <span className="font-semibold text-[#101828] dark:text-foreground">A registration guide and progress tracker</span>
+                      <span className="text-[#667085]">{t('homepage.howItWorks.phase05.youGet')}</span>
+                      <span className="font-semibold text-[#101828] dark:text-foreground">{t('homepage.howItWorks.phase05.output')}</span>
                     </div>
                   </div>
 
@@ -716,19 +715,19 @@ export default function FigmaHowItWorks() {
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-xs font-semibold text-[#667085] tracking-wider uppercase font-mono">
                         <LayoutGrid className="w-4 h-4 text-[#667085]" />
-                        <span>PHASE 06 · NEXT CHAPTER</span>
+                        <span>{t('homepage.howItWorks.phase06.eyebrow')}</span>
                       </div>
                       <h3 className="text-2xl sm:text-[28px] font-semibold text-[#101828] dark:text-foreground font-heading leading-tight">
-                        See what you built, and<br className="hidden sm:inline" /> keep going
+                        {t('homepage.howItWorks.phase06.title')}
                       </h3>
                       <p className="text-base sm:text-[17px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal">
-                        All your results in one place, with your next real step.
+                        {t('homepage.howItWorks.phase06.description')}
                       </p>
                     </div>
 
                     <div className="pt-4 border-t border-[#e3e8f2] flex items-center gap-2 text-sm font-sans">
-                      <span className="text-[#667085]">You get:</span>
-                      <span className="font-medium text-[#101828] dark:text-foreground">Your next chapter</span>
+                      <span className="text-[#667085]">{t('homepage.howItWorks.phase06.youGet')}</span>
+                      <span className="font-medium text-[#101828] dark:text-foreground">{t('homepage.howItWorks.phase06.output')}</span>
                     </div>
                   </div>
 
@@ -907,7 +906,7 @@ export default function FigmaHowItWorks() {
           </div>
 
           <p className="text-sm text-[#667085] font-sans">
-            One project. Everything you build stays connected.
+            {t('homepage.howItWorks.connectedLabels')}
           </p>
         </div>
 

@@ -1,8 +1,10 @@
 'use client';
 
 import React from 'react';
+import { useLanguage } from '@/providers/LanguageProvider';
 
 export default function FigmaTrustSources() {
+  const { t } = useLanguage();
   return (
     <section
       id="trust-sources"
@@ -24,18 +26,18 @@ export default function FigmaTrustSources() {
             {/* 1. Eyebrow Badge (Figma 57429:699) */}
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#e8eeff] dark:bg-blue-950/70 text-[#1f3faf] dark:text-blue-300 text-[12px] font-bold font-mono tracking-[1.2px] uppercase shadow-2xs self-start">
               <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd] shrink-0" />
-              <span>WHERE THE FACTS COME FROM</span>
+              <span>{t('homepage.trustSources.eyebrow')}</span>
             </div>
 
             {/* 2. Headline (Figma 57424:519 - Inter 700 54px lh:60px ls:-1.92px) */}
             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-bold text-[#101828] dark:text-foreground tracking-[-0.035em] leading-[1.08] font-heading">
-              We don&apos;t guess.<br />
-              <span className="text-[#3c61dd]">We check.</span>
+              {t('homepage.trustSources.headline').split('\n')[0]}<br />
+              <span className="text-[#3c61dd]">{t('homepage.trustSources.headline').split('\n')[1]}</span>
             </h2>
 
             {/* 3. Subline (Figma 57424:522 - DM Sans 400 18px lh:26px #667085) */}
             <p className="text-base sm:text-lg md:text-[18px] text-[#667085] dark:text-muted-foreground leading-[1.55] font-sans font-normal max-w-[440px]">
-              AI helps explain things in plain words. But the rules, the grants and the paperwork? Those come straight from official French sources.
+              {t('homepage.trustSources.subline')}
             </p>
 
             {/* 4. Proof Card Wrapper with Interactive Callout (Figma 57424:524) */}
@@ -46,17 +48,17 @@ export default function FigmaTrustSources() {
 
                 {/* Overline */}
                 <span className="text-[11px] font-bold uppercase tracking-[0.66px] text-[#98a2b3] font-mono block">
-                  YOUR LEGAL CHECKLIST
+                  {t('homepage.trustSources.proofCard.overline')}
                 </span>
 
                 {/* Checklist Title (Inter 600 17px lh:23px) */}
                 <h3 className="text-[17px] font-semibold text-[#101828] dark:text-foreground font-heading">
-                  Declare who owns your company
+                  {t('homepage.trustSources.proofCard.title')}
                 </h3>
 
                 {/* Checklist Description */}
                 <p className="text-[14px] text-[#667085] dark:text-muted-foreground leading-[1.6]">
-                  You&apos;ll do this when you register. It&apos;s required for SAS and SAS-U.
+                  {t('homepage.trustSources.proofCard.description')}
                 </p>
 
                 {/* Bottom Source Bar */}
@@ -67,10 +69,10 @@ export default function FigmaTrustSources() {
                       <path d="M6.29365 8.14058C6.84104 8.83377 7.6625 9.25504 8.54485 9.29505C9.4272 9.33506 10.2834 8.98987 10.8913 8.34907L12.6694 6.47538C13.7914 5.25112 13.7252 3.35354 12.5206 2.21044C11.316 1.06734 9.41756 1.10054 8.2537 2.28507L7.23412 3.35324" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                       <path d="M8.69599 6.85933C8.14861 6.16614 7.32714 5.74488 6.44479 5.70486C5.56245 5.66485 4.70622 6.01004 4.09835 6.65084L2.32028 8.52453C1.19829 9.74879 1.26448 11.6464 2.46906 12.7895C3.67363 13.9326 5.57208 13.8994 6.73594 12.7148L7.74944 11.6468" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    Source: service-public.fr
+                    {t('homepage.trustSources.proofCard.source')}
                   </span>
                   <span className="text-[11px] font-normal text-[#98a2b3]">
-                    Standard template
+                    {t('homepage.trustSources.proofCard.template')}
                   </span>
                 </div>
               </div>
@@ -84,7 +86,7 @@ export default function FigmaTrustSources() {
                 </svg>
                 {/* Callout Pill (57424:547) */}
                 <div className="bg-white/95 dark:bg-card/95 backdrop-blur-xs border border-[#e8eeff] dark:border-blue-950/60 rounded-full px-3.5 py-1 text-[13.5px] italic font-medium text-[#1f3faf] dark:text-blue-300 shadow-[0_1px_3px_rgba(0,0,0,0.06)] pointer-events-auto">
-                  See? It tells you where it got that.
+                  {t('homepage.trustSources.proofCard.annotation')}
                 </div>
               </div>
 
@@ -114,11 +116,11 @@ export default function FigmaTrustSources() {
                     </svg>
                   </div>
                   <h4 className="text-[19px] sm:text-[20px] font-semibold text-[#101828] dark:text-foreground font-heading leading-tight">
-                    Setting up your company
+                    {t('homepage.trustSources.panels.legal.title')}
                   </h4>
                 </div>
                 <span className="text-[12px] font-normal text-[#98a2b3]">
-                  Helps with your legal steps
+                  {t('homepage.trustSources.panels.legal.subtitle')}
                 </span>
               </div>
 
@@ -129,15 +131,15 @@ export default function FigmaTrustSources() {
                 <div className="flex items-center justify-between gap-4 py-1">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 flex-wrap">
                     <span className="text-[15px] font-bold text-[#101828] dark:text-foreground">
-                      Service Public Entreprendre
+                      {t('homepage.trustSources.panels.legal.source1Name')}
                     </span>
                     <span className="text-[14px] text-[#667085] dark:text-muted-foreground">
-                      The government&apos;s own guide to the legal stuff.
+                      {t('homepage.trustSources.panels.legal.source1Desc')}
                     </span>
                   </div>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-[#e8eeff] dark:bg-blue-950/80 text-[#1f3faf] dark:text-blue-300 text-[11px] font-bold font-mono uppercase tracking-[0.66px] shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd]" />
-                    OFFICIAL
+                    {t('homepage.trustSources.panels.legal.source1Tag')}
                   </span>
                 </div>
 
@@ -145,15 +147,15 @@ export default function FigmaTrustSources() {
                 <div className="pt-3.5 border-t border-[#f2f4f7] dark:border-border/60 flex items-center justify-between gap-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 flex-wrap">
                     <span className="text-[15px] font-bold text-[#101828] dark:text-foreground">
-                      INPI Guichet unique
+                      {t('homepage.trustSources.panels.legal.source2Name')}
                     </span>
                     <span className="text-[14px] text-[#667085] dark:text-muted-foreground">
-                      Where you actually register your company.
+                      {t('homepage.trustSources.panels.legal.source2Desc')}
                     </span>
                   </div>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-[#e8eeff] dark:bg-blue-950/80 text-[#1f3faf] dark:text-blue-300 text-[11px] font-bold font-mono uppercase tracking-[0.66px] shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd]" />
-                    OFFICIAL
+                    {t('homepage.trustSources.panels.legal.source2Tag')}
                   </span>
                 </div>
 
@@ -176,11 +178,11 @@ export default function FigmaTrustSources() {
                     </svg>
                   </div>
                   <h4 className="text-[19px] sm:text-[20px] font-semibold text-[#101828] dark:text-foreground font-heading leading-tight">
-                    Money and help you can apply for
+                    {t('homepage.trustSources.panels.grants.title')}
                   </h4>
                 </div>
                 <span className="text-[12px] font-normal text-[#98a2b3]">
-                  Helps with grants
+                  {t('homepage.trustSources.panels.grants.subtitle')}
                 </span>
               </div>
 
@@ -192,7 +194,7 @@ export default function FigmaTrustSources() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 flex-wrap">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[15px] font-bold text-[#101828] dark:text-foreground">
-                        Aides-entreprises / data.gouv.fr
+                        {t('homepage.trustSources.panels.grants.source1Name')}
                       </span>
                       {/* Exact External Link SVG (57424:604) */}
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 text-[#3c61dd]">
@@ -202,12 +204,12 @@ export default function FigmaTrustSources() {
                       </svg>
                     </div>
                     <span className="text-[14px] text-[#667085] dark:text-muted-foreground">
-                      Public grants and support, all in one list.
+                      {t('homepage.trustSources.panels.grants.source1Desc')}
                     </span>
                   </div>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-[#eef0f4] dark:bg-zinc-800 text-[#101828] dark:text-zinc-200 text-[11px] font-bold font-mono uppercase tracking-[0.66px] shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#667085]" />
-                    OPEN DATA
+                    {t('homepage.trustSources.panels.grants.source1Tag')}
                   </span>
                 </div>
 
@@ -215,15 +217,15 @@ export default function FigmaTrustSources() {
                 <div className="pt-3.5 border-t border-[#f2f4f7] dark:border-border/60 flex items-center justify-between gap-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 flex-wrap">
                     <span className="text-[15px] font-bold text-[#101828] dark:text-foreground">
-                      Bpifrance Création
+                      {t('homepage.trustSources.panels.grants.source2Name')}
                     </span>
                     <span className="text-[14px] text-[#667085] dark:text-muted-foreground">
-                      Practical guides for starting out.
+                      {t('homepage.trustSources.panels.grants.source2Desc')}
                     </span>
                   </div>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-[#e8eeff] dark:bg-blue-950/80 text-[#1f3faf] dark:text-blue-300 text-[11px] font-bold font-mono uppercase tracking-[0.66px] shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd]" />
-                    OFFICIAL
+                    {t('homepage.trustSources.panels.grants.source2Tag')}
                   </span>
                 </div>
 
@@ -231,15 +233,15 @@ export default function FigmaTrustSources() {
                 <div className="pt-3.5 border-t border-[#f2f4f7] dark:border-border/60 flex items-center justify-between gap-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 flex-wrap">
                     <span className="text-[15px] font-bold text-[#101828] dark:text-foreground">
-                      France Travail
+                      {t('homepage.trustSources.panels.grants.source3Name')}
                     </span>
                     <span className="text-[14px] text-[#667085] dark:text-muted-foreground">
-                      ARCE and ACRE, if you qualify.
+                      {t('homepage.trustSources.panels.grants.source3Desc')}
                     </span>
                   </div>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-[#e8eeff] dark:bg-blue-950/80 text-[#1f3faf] dark:text-blue-300 text-[11px] font-bold font-mono uppercase tracking-[0.66px] shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd]" />
-                    OFFICIAL
+                    {t('homepage.trustSources.panels.grants.source3Tag')}
                   </span>
                 </div>
 
@@ -269,11 +271,11 @@ export default function FigmaTrustSources() {
                     </svg>
                   </div>
                   <h4 className="text-[19px] sm:text-[20px] font-semibold text-[#101828] dark:text-foreground font-heading leading-tight">
-                    Checking other companies
+                    {t('homepage.trustSources.panels.companies.title')}
                   </h4>
                 </div>
                 <span className="text-[12px] font-normal text-[#98a2b3]">
-                  Coming later
+                  {t('homepage.trustSources.panels.companies.subtitle')}
                 </span>
               </div>
 
@@ -284,15 +286,15 @@ export default function FigmaTrustSources() {
                 <div className="flex items-center justify-between gap-4 py-1">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 flex-wrap">
                     <span className="text-[15px] font-bold text-[#101828] dark:text-foreground">
-                      API Recherche d&apos;entreprises
+                      {t('homepage.trustSources.panels.companies.source1Name')}
                     </span>
                     <span className="text-[14px] text-[#667085] dark:text-muted-foreground">
-                      Look up any French company in seconds.
+                      {t('homepage.trustSources.panels.companies.source1Desc')}
                     </span>
                   </div>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] bg-[#eef0f4] dark:bg-zinc-800 text-[#101828] dark:text-zinc-200 text-[11px] font-bold font-mono uppercase tracking-[0.66px] shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#667085]" />
-                    OPEN DATA
+                    {t('homepage.trustSources.panels.companies.source1Tag')}
                   </span>
                 </div>
 
@@ -300,14 +302,14 @@ export default function FigmaTrustSources() {
                 <div className="pt-3.5 border-t border-[#f2f4f7] dark:border-border/60 flex items-center justify-between gap-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 flex-wrap">
                     <span className="text-[15px] font-bold text-[#101828] dark:text-foreground">
-                      SIRENE
+                      {t('homepage.trustSources.panels.companies.source2Name')}
                     </span>
                     <span className="text-[14px] text-[#667085] dark:text-muted-foreground">
-                      Show your company is officially registered.
+                      {t('homepage.trustSources.panels.companies.source2Desc')}
                     </span>
                   </div>
                   <span className="inline-flex items-center px-2.5 py-1 rounded-[6px] bg-white dark:bg-zinc-900 border border-[#e3e8f2] dark:border-border text-[#98a2b3] text-[11px] font-bold font-mono uppercase tracking-[0.66px] shrink-0">
-                    COMING SOON
+                    {t('homepage.trustSources.panels.companies.source2Tag')}
                   </span>
                 </div>
 
@@ -333,7 +335,7 @@ export default function FigmaTrustSources() {
                 </svg>
               </div>
               <span className="text-[15px] font-normal text-[#101828] dark:text-foreground leading-snug font-sans">
-                You can always see where info came from.
+                {t('homepage.trustSources.trustStrip.item1')}
               </span>
             </div>
 
@@ -345,7 +347,7 @@ export default function FigmaTrustSources() {
                 </svg>
               </div>
               <span className="text-[15px] font-normal text-[#101828] dark:text-foreground leading-snug font-sans">
-                Grants say &apos;you can apply&apos;, never &apos;you&apos;ll get it&apos;.
+                {t('homepage.trustSources.trustStrip.item2')}
               </span>
             </div>
 
@@ -357,7 +359,7 @@ export default function FigmaTrustSources() {
                 </svg>
               </div>
               <span className="text-[15px] font-normal text-[#101828] dark:text-foreground leading-snug font-sans">
-                Your changes stay yours. Nothing gets overwritten.
+                {t('homepage.trustSources.trustStrip.item3')}
               </span>
             </div>
 

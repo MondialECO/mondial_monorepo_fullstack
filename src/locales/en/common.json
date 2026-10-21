@@ -278,5 +278,358 @@
       "encryptionDesc": "protecting your personal data and identity documents.",
       "goToDashboard": "Go to Dashboard"
     }
+  },
+  "header": {
+    "brandAria": "Mondial Business Creation - Creator Home",
+    "logoAlt": "MBC Logo",
+    "badge": "CREATOR",
+    "brandSubtitle": "MONDIAL BUSINESS CREATION",
+    "navAria": "Main Navigation",
+    "howItWorks": "How it works",
+    "creatorTools": "Creator Tools",
+    "whatYouGet": "What you get",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "signIn": "Sign in",
+    "startFree": "Start for €0",
+    "toggleMenuAria": "Toggle navigation menu",
+    "language": "Language"
+  },
+  "homepage": {
+    "wireframe": {
+      "hero": {
+        "eyebrow": "MBC Creator · France",
+        "headline": "Move from “I have an idea” to\nreal business-ready outputs.",
+        "description": "MBC Creator helps you create the documents and structure you need to understand your project, explain it clearly, and know what to do next.",
+        "cta": "Start for €0 →"
+      },
+      "brandKit": {
+        "eyebrow": "Brand kit",
+        "headline": "Build your brand identity",
+        "pill": "Simple, fast, pro",
+        "body": "Answer a few questions and get your logo, colours and fonts. They're added to your business plan and landing page automatically. Download the full kit in one click.",
+        "logoCardTitle": "Logo",
+        "coloursCardTitle": "Colours",
+        "typographyCardTitle": "Typography",
+        "brandKitCardTitle": "Brand kit",
+        "kitReady": "Kit ready"
+      },
+      "businessPlan": {
+        "eyebrow": "Business plan",
+        "headline": "Turn your idea into a real plan",
+        "pill": "Ready for investors",
+        "body": "Your answers become a clear business plan: summary, market, business model and more. Read it, edit it, and download it as a PDF in one click.",
+        "videoBadge": "Interactive Plan Video"
+      },
+      "financialForecast": {
+        "eyebrow": "Financial forecast",
+        "headline": "Plan your next 3 years",
+        "pill": "Clear and honest",
+        "body": "Set your price, costs and budget. Get a 36-month forecast with your break-even month, cash position and unit economics, explained in plain words. No spreadsheet skills needed.",
+        "revenueCardTitle": "Revenue",
+        "breakEvenCardTitle": "Break-even",
+        "breakEvenMonth": "Month 7",
+        "breakEvenSub": "163 subscribers cover all your costs.",
+        "lossesBack": "Losses back by M12",
+        "cashCardTitle": "Cash",
+        "cashAmount": "€34,680",
+        "cashSub": "Lowest point, month 6",
+        "unitEconomicsCardTitle": "Unit economics",
+        "fullyFunded": "Fully funded"
+      },
+      "marketResearch": {
+        "eyebrow": "Market research",
+        "headline": "Know your market first",
+        "pill": "Real numbers, not guesses",
+        "body": "See how big your market really is, who to sell to first and who you're up against. We work out your TAM, SAM and SOM, then point out the gaps your idea can fill.",
+        "marketSizeCardTitle": "Market size",
+        "marketSizeAmount": "€1.2B",
+        "marketSizeSub": "addressable market",
+        "marketSizeDetail": "SAM €180M · SOM €4.5M",
+        "targetUsersCardTitle": "Target users",
+        "competitorsCardTitle": "Competitors",
+        "demandCardTitle": "Demand",
+        "demandPercent": "68%",
+        "demandSub": "of independent retailers in France still track stock by hand.",
+        "gapFound": "Gap found"
+      },
+      "actionRoadmap": {
+        "eyebrow": "Action roadmap",
+        "headline": "Know what to do this week",
+        "pill": "One step at a time",
+        "body": "Your plan becomes a simple roadmap: what to do now, in the next 30 days and over the next 3 months. Every step is clear, so you always know what comes next.",
+        "videoBadge": "Roadmap Walkthrough Video"
+      },
+      "businessSetup": {
+        "eyebrow": "Business setup",
+        "headline": "Set up your company",
+        "pill": "No legal jargon",
+        "body": "Pick the right company type, see which documents to prepare and register step by step. We guide you until your company is official in France.",
+        "videoBadge": "Company Registration Video"
+      }
+    },
+    "hero": {
+      "eyebrow": "MBC Creator · France",
+      "headline": "MBC",
+      "subheadline": "The Intelligent Toolbox",
+      "valueProposition": "Start your digital business for €0.",
+      "description": "One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch.",
+      "ctaPrimary": "Start for €0 →",
+      "ctaSecondary": "See how it works"
+    },
+    "outputs": {
+      "eyebrow": "MBC Creator · France",
+      "sectionTitle": "6 Business-Ready Outputs",
+      "headline": "Move from “I have an idea” to\nreal business-ready outputs.",
+      "subtitle": "MBC Creator helps you create the documents and structure you need to understand your project, explain it clearly, and know what to do next.",
+      "cta": "Start for €0 →",
+      "output01": {
+        "tag": "OUTPUT 01",
+        "overline": "Your Brand Identity",
+        "title": "Brand Kit",
+        "description": "Your logo, colors and fonts, ready to use."
+      },
+      "output02": {
+        "tag": "OUTPUT 02",
+        "overline": "Your Business Strategy",
+        "title": "Business Plan",
+        "description": "12 chapters, market research, revenue model and projections."
+      },
+      "output03": {
+        "tag": "OUTPUT 03",
+        "overline": "Your Numbers",
+        "title": "Financial Forecast",
+        "description": "Revenue, costs and breakeven — simple and clear."
+      },
+      "output04": {
+        "tag": "OUTPUT 04",
+        "overline": "Your Market Analysis",
+        "title": "Market Research",
+        "description": "Competitors, customers and opportunity areas."
+      },
+      "output05": {
+        "tag": "OUTPUT 05",
+        "overline": "Your 90-Day Plan",
+        "title": "Action Roadmap",
+        "description": "Now, Next 30 Days, 30–60 Days, 60–90 Days."
+      },
+      "output06": {
+        "tag": "OUTPUT 06",
+        "overline": "Step-by-Step Blueprint",
+        "title": "Business Setup Guide",
+        "description": "Understand what to do, where to do it and why."
+      }
+    },
+    "howItWorks": {
+      "eyebrow": "HOW IT WORKS",
+      "headline": "From idea to\ncompany in 6 steps.",
+      "subline": "Go one step at a time. Everything you make is saved and feeds the next step.",
+      "connectedLabels": "One project. Everything you build stays connected.",
+      "phase01": {
+        "eyebrow": "PHASE 01 · YOU",
+        "title": "Start with you",
+        "description": "Tell us what you've done, what you're good at and how much time you have. School projects count.",
+        "youGet": "You get:",
+        "output": "Your builder profile",
+        "status": "Completed"
+      },
+      "phase02": {
+        "eyebrow": "PHASE 02 · PROJECT & BRAND",
+        "title": "Shape your idea and brand",
+        "description": "Answer a few questions to sharpen your idea, pick a name, then build your logo, colors and fonts.",
+        "youGet": "You get:",
+        "output": "Your project and Brand Kit",
+        "status": "Completed"
+      },
+      "phase03": {
+        "eyebrow": "PHASE 03 · BUSINESS PLAN",
+        "title": "Build the business behind your idea",
+        "description": "Seven guided steps: your market, model, numbers, legal basics and a full business plan.",
+        "youGet": "You get:",
+        "output": "A complete, structured business plan",
+        "badge": "CORE PHASE",
+        "status": "Completed"
+      },
+      "phase04": {
+        "eyebrow": "PHASE 04 · BUILD & LAUNCH PREP",
+        "title": "Get ready to build and launch",
+        "description": "A plan made for your skills and your time: what to do now, what to learn, what to hand off.",
+        "youGet": "You get:",
+        "output": "Your 90-day plan and launch website",
+        "status": "In progress"
+      },
+      "phase05": {
+        "eyebrow": "PHASE 05 · COMPANY",
+        "title": "Create your company",
+        "description": "Step-by-step help to register your company in France: legal form, capital, documents.",
+        "youGet": "You get:",
+        "output": "A registration guide and progress tracker",
+        "status": "In progress"
+      },
+      "phase06": {
+        "eyebrow": "PHASE 06 · NEXT CHAPTER",
+        "title": "See what you built, and keep going",
+        "description": "All your results in one place, with your next real step.",
+        "youGet": "You get:",
+        "output": "Your next chapter"
+      }
+    },
+    "trustSources": {
+      "eyebrow": "WHERE THE FACTS COME FROM",
+      "headline": "We don't guess.\nWe check.",
+      "subline": "AI helps explain things in plain words. But the rules, the grants and the paperwork? Those come straight from official French sources.",
+      "proofCard": {
+        "overline": "YOUR LEGAL CHECKLIST",
+        "title": "Declare who owns your company",
+        "description": "You'll do this when you register. It's required for SAS and SAS-U.",
+        "source": "Source: service-public.fr",
+        "template": "Standard template",
+        "annotation": "See? It tells you where it got that."
+      },
+      "panels": {
+        "legal": {
+          "title": "Setting up your company",
+          "subtitle": "Helps with your legal steps",
+          "source1Name": "Service Public Entreprendre",
+          "source1Desc": "The government's own guide to the legal stuff.",
+          "source1Tag": "OFFICIAL",
+          "source2Name": "INPI Guichet unique",
+          "source2Desc": "Where you actually register your company.",
+          "source2Tag": "OFFICIAL"
+        },
+        "grants": {
+          "title": "Money and help you can apply for",
+          "subtitle": "Helps with grants",
+          "source1Name": "data.gouv.fr",
+          "source1Desc": "Public grants and support, all in one list.",
+          "source1Tag": "OPEN DATA",
+          "source2Name": "Bpifrance Création",
+          "source2Desc": "Practical guides for starting out.",
+          "source2Tag": "OFFICIAL",
+          "source3Name": "France Travail",
+          "source3Desc": "ARCE and ACRE, if you qualify.",
+          "source3Tag": "OFFICIAL"
+        },
+        "companies": {
+          "title": "Checking other companies",
+          "subtitle": "Coming later",
+          "source1Name": "API Recherche d'entreprises",
+          "source1Desc": "Look up any French company in seconds.",
+          "source1Tag": "OPEN DATA",
+          "source2Name": "SIRENE",
+          "source2Desc": "Show your company is officially registered.",
+          "source2Tag": "COMING SOON"
+        }
+      },
+      "trustStrip": {
+        "item1": "You can always see where info came from.",
+        "item2": "Grants say 'you can apply', never 'you'll get it'.",
+        "item3": "Your changes stay yours. Nothing gets overwritten."
+      }
+    },
+    "whatsNext": {
+      "eyebrow": "WHAT'S NEXT",
+      "headline": "Creator is just the beginning.",
+      "subline": "Build your project today. Soon, MBC connects you to the people who help it grow.",
+      "soon": "SOON",
+      "entrepreneur": {
+        "title": "Entrepreneur",
+        "description": "Run your company once it's registered."
+      },
+      "investor": {
+        "title": "Investor",
+        "description": "Show your project to people who fund."
+      },
+      "serviceProvider": {
+        "title": "Service Provider",
+        "description": "Hire experts when you need help."
+      },
+      "marketplace": {
+        "title": "Marketplace",
+        "description": "Projects, people and services in one place."
+      },
+      "hub": {
+        "badge": "CREATOR",
+        "available": "Available now",
+        "title": "Your project starts here",
+        "projectName": "CampusFlow",
+        "projectDesc": "Student teams app",
+        "phase": "Phase 3 of 6",
+        "progress": "50%",
+        "free": "Free to start"
+      },
+      "cta": {
+        "button": "Start free",
+        "helper": "No card needed. New profiles roll out one by one."
+      }
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "headline": "What \"start for €0\" really means.",
+      "subline": "Keep the promise simple, but be clear about what is free inside MBC and what may cost money outside the platform.",
+      "q1": "Can I really start with MBC for €0?",
+      "a1": "Yes. The Creator profile is free to start. You can access the guided Creator experience without a subscription. AI usage limits can apply.",
+      "q2": "Does €0 mean every external business cost is free?",
+      "a2": "Starting on MBC is €0. However, third-party administrative or government costs (such as official commercial court registry filing fees with INPI / Guichet Unique in France, or legal notice publication fees) and optional third-party professional services are set by their respective institutions.",
+      "q3": "What happens when I reach my AI usage limit?",
+      "a3": "You can continue browsing, editing, and downloading all of your existing project files without any restriction. If you need to generate additional high-volume AI iterations or market deep-dives, you can purchase modular credit top-ups or upgrade your plan at any time.",
+      "q4": "Can I download what I create?",
+      "a4": "Yes. All generated assets—including your Brand Kit SVG icons, CSS token files, 12-chapter Executive Business Plan (PDF/HTML), Financial Forecast worksheets, and one-page website code—can be exported directly to your local device.",
+      "q5": "Will MBC register my company for me?",
+      "a5": "MBC automates the full preparation of your formation dossier (statutes, share capital deposit certificate instructions, declaration of non-conviction, NAF/APE activity selection). You can submit the dossier yourself via the official Guichet Unique portal or connect with a partner professional in our network to file on your behalf.",
+      "q6": "What happens to my project information?",
+      "a6": "Your ideas, venture information, and intellectual property belong 100% to you. We strictly encrypt all stored project data and will never share, sell, or train public models on your proprietary business details.",
+      "q7": "What is the future MBC network?",
+      "a7": "Beyond the Creator onboarding phase, MBC will connect your structured venture directly to Verified Entrepreneurs, Angel & Venture Capital Investors, and vetted Service Providers to help fund, operate, and scale your company."
+    },
+    "finalCta": {
+      "headline": "Your business starts with a first step.",
+      "description": "Create your free MBC Creator profile and start turning your idea into a structured digital business.",
+      "button": "Start for €0 →"
+    }
+  },
+  "footer": {
+    "brandAria": "Mondial Business Creation Home",
+    "logoAlt": "MBC Logo",
+    "tagline": "Build your digital business from idea to launch.",
+    "pricingHighlight": "Start building for €0.",
+    "description": "A simpler way for the next generation of founders to turn an idea into a real business project.",
+    "social": {
+      "linkedinAria": "MBC on LinkedIn",
+      "instagramAria": "MBC on Instagram",
+      "xAria": "MBC on X"
+    },
+    "product": {
+      "title": "PRODUCT",
+      "creator": "Creator",
+      "creatorTools": "Creator Tools",
+      "howItWorks": "How it works",
+      "whatYouGet": "What you get",
+      "pricing": "Pricing"
+    },
+    "resources": {
+      "title": "RESOURCES",
+      "faq": "FAQ",
+      "guides": "Guides",
+      "contact": "Contact"
+    },
+    "network": {
+      "title": "MBC NETWORK",
+      "entrepreneur": "Entrepreneur",
+      "investor": "Investor",
+      "serviceProvider": "Service Provider",
+      "comingSoon": "Coming soon"
+    },
+    "legal": {
+      "title": "LEGAL",
+      "termsOfUse": "Terms of Use",
+      "privacyPolicy": "Privacy Policy",
+      "cookiePolicy": "Cookie Policy"
+    },
+    "bottom": {
+      "copyright": "© {{year}} Mondial Business Création. All rights reserved.",
+      "foundersTagline": "Made for the next generation of founders.",
+      "location": "Paris, France"
+    }
   }
 }

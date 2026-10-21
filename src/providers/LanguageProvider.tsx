@@ -32,6 +32,9 @@ const dictionaries: Record<Locale, Record<string, unknown>> = {
     priority: commonEn.priority,
     auth: (commonEn as Record<string, unknown>).auth,
     onboarding: (commonEn as Record<string, unknown>).onboarding,
+    header: (commonEn as Record<string, unknown>).header,
+    footer: (commonEn as Record<string, unknown>).footer,
+    homepage: (commonEn as Record<string, unknown>).homepage,
     creator: creatorEn,
   },
   fr: {
@@ -41,6 +44,9 @@ const dictionaries: Record<Locale, Record<string, unknown>> = {
     priority: commonFr.priority,
     auth: (commonFr as Record<string, unknown>).auth,
     onboarding: (commonFr as Record<string, unknown>).onboarding,
+    header: (commonFr as Record<string, unknown>).header,
+    footer: (commonFr as Record<string, unknown>).footer,
+    homepage: (commonFr as Record<string, unknown>).homepage,
     creator: creatorFr,
   },
 };
@@ -131,6 +137,9 @@ export function LanguageProvider({
       // Check standard sub-namespaces (e.g. creator, brandKit)
       if (val === undefined) {
         const candidatePrefixes = [
+          'homepage.',
+          'header.',
+          'footer.',
           'onboarding.',
           'auth.',
           'creator.humainx.',
@@ -247,6 +256,7 @@ export function useTranslation(_namespace?: string) {
         let val = getNestedValue(dictionaries.en, key);
         if (val === undefined) {
           const candidatePrefixes = [
+            'footer.',
             'onboarding.',
             'auth.',
             'creator.humainx.',

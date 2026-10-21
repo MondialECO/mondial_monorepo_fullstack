@@ -278,5 +278,358 @@
       "encryptionDesc": "protégeant vos données personnelles et vos documents d'identité.",
       "goToDashboard": "Aller au tableau de bord"
     }
+  },
+  "header": {
+    "brandAria": "Accueil Mondial Business Creation - Créateur",
+    "logoAlt": "Logo MBC",
+    "badge": "CRÉATEUR",
+    "brandSubtitle": "MONDIAL BUSINESS CREATION",
+    "navAria": "Navigation principale",
+    "howItWorks": "Comment ça fonctionne",
+    "creatorTools": "Outils Créateur",
+    "whatYouGet": "Ce que vous obtenez",
+    "pricing": "Tarifs",
+    "faq": "FAQ",
+    "signIn": "Se connecter",
+    "startFree": "Commencer pour 0 €",
+    "toggleMenuAria": "Basculer le menu de navigation",
+    "language": "Langue"
+  },
+  "homepage": {
+    "wireframe": {
+      "hero": {
+        "eyebrow": "MBC Créateur · France",
+        "headline": "Passez de « J'ai une idée » à\nde véritables livrables d'entreprise.",
+        "description": "MBC Créateur vous aide à concevoir les documents et la structure nécessaires pour maîtriser votre projet, l'expliquer clairement et savoir quoi faire ensuite.",
+        "cta": "Démarrer pour 0 € →"
+      },
+      "brandKit": {
+        "eyebrow": "Kit de marque",
+        "headline": "Bâtissez votre identité de marque",
+        "pill": "Simple, rapide, pro",
+        "body": "Répondez à quelques questions et obtenez votre logo, vos couleurs et vos typographies. Ils sont automatiquement intégrés à votre plan d'affaires et page de destination. Téléchargez le kit complet en un clic.",
+        "logoCardTitle": "Logo",
+        "coloursCardTitle": "Couleurs",
+        "typographyCardTitle": "Typographie",
+        "brandKitCardTitle": "Kit de marque",
+        "kitReady": "Kit prêt"
+      },
+      "businessPlan": {
+        "eyebrow": "Plan d'affaires",
+        "headline": "Transformez votre idée en un vrai plan",
+        "pill": "Prêt pour les investisseurs",
+        "body": "Vos réponses deviennent un plan d'affaires clair : résumé, marché, modèle économique et plus encore. Lisez-le, modifiez-le et téléchargez-le en PDF en un clic.",
+        "videoBadge": "Vidéo interactive du plan"
+      },
+      "financialForecast": {
+        "eyebrow": "Prévisionnel financier",
+        "headline": "Planifiez vos 3 prochaines années",
+        "pill": "Clair et transparent",
+        "body": "Définissez vos prix, coûts et budget. Obtenez un prévisionnel sur 36 mois avec votre point mort, votre trésorerie et la rentabilité unitaire, expliqués simplement. Aucune compétence en tableur requise.",
+        "revenueCardTitle": "Revenus",
+        "breakEvenCardTitle": "Point mort",
+        "breakEvenMonth": "Mois 7",
+        "breakEvenSub": "163 abonnés couvrent l'intégralité de vos charges.",
+        "lossesBack": "Pertes résorbées au M12",
+        "cashCardTitle": "Trésorerie",
+        "cashAmount": "34 680 €",
+        "cashSub": "Point bas, mois 6",
+        "unitEconomicsCardTitle": "Rentabilité unitaire",
+        "fullyFunded": "Totalement financé"
+      },
+      "marketResearch": {
+        "eyebrow": "Étude de marché",
+        "headline": "Maîtrisez votre marché en premier",
+        "pill": "Des chiffres réels, pas des suppositions",
+        "body": "Découvrez la taille réelle de votre marché, vos premiers clients cibles et vos concurrents. Nous calculons votre TAM, SAM et SOM, puis mettons en évidence les opportunités que votre idée peut saisir.",
+        "marketSizeCardTitle": "Taille du marché",
+        "marketSizeAmount": "1,2 Md€",
+        "marketSizeSub": "marché adressable",
+        "marketSizeDetail": "SAM 180 M€ · SOM 4,5 M€",
+        "targetUsersCardTitle": "Utilisateurs cibles",
+        "competitorsCardTitle": "Concurrents",
+        "demandCardTitle": "Demande",
+        "demandPercent": "68%",
+        "demandSub": "des commerçants indépendants en France gèrent encore leurs stocks à la main.",
+        "gapFound": "Opportunité détectée"
+      },
+      "actionRoadmap": {
+        "eyebrow": "Feuille de route",
+        "headline": "Sachez exactement quoi faire cette semaine",
+        "pill": "Une étape à la fois",
+        "body": "Votre plan devient une feuille de route simple : quoi faire maintenant, dans les 30 jours et sur les 3 prochains mois. Chaque étape est claire pour toujours savoir quelle est la suite.",
+        "videoBadge": "Vidéo de la feuille de route"
+      },
+      "businessSetup": {
+        "eyebrow": "Création d'entreprise",
+        "headline": "Créez votre société",
+        "pill": "Sans jargon juridique",
+        "body": "Choisissez le statut juridique idéal, découvrez les documents à préparer et immatriculez votre société pas à pas. Nous vous guidons jusqu'à ce que votre entreprise soit officielle en France.",
+        "videoBadge": "Vidéo d'immatriculation d'entreprise"
+      }
+    },
+    "hero": {
+      "eyebrow": "MBC Créateur · France",
+      "headline": "MBC",
+      "subheadline": "La Boîte à Outils Intelligente",
+      "valueProposition": "Lancez votre entreprise numérique pour 0 €.",
+      "description": "Une idée suffit. MBC vous aide à structurer votre projet, générer vos documents et préparer votre lancement.",
+      "ctaPrimary": "Démarrer pour 0 € →",
+      "ctaSecondary": "Voir comment ça marche"
+    },
+    "outputs": {
+      "eyebrow": "MBC Créateur · France",
+      "sectionTitle": "6 Livrables Prêts à l'Emploi",
+      "headline": "Passez de « J'ai une idée » à\nde véritables livrables d'entreprise.",
+      "subtitle": "MBC Créateur vous aide à concevoir les documents et la structure nécessaires pour maîtriser votre projet, l'expliquer clairement et savoir quoi faire ensuite.",
+      "cta": "Démarrer pour 0 € →",
+      "output01": {
+        "tag": "LIVRABLE 01",
+        "overline": "Votre Identité de Marque",
+        "title": "Kit de Marque",
+        "description": "Votre logo, couleurs et polices, prêts à utiliser."
+      },
+      "output02": {
+        "tag": "LIVRABLE 02",
+        "overline": "Votre Stratégie Business",
+        "title": "Plan d'Affaires",
+        "description": "12 chapitres, étude de marché, modèle de revenus et projections."
+      },
+      "output03": {
+        "tag": "LIVRABLE 03",
+        "overline": "Vos Chiffres",
+        "title": "Prévisionnel Financier",
+        "description": "Revenus, charges et seuil de rentabilité — simple et clair."
+      },
+      "output04": {
+        "tag": "LIVRABLE 04",
+        "overline": "Votre Analyse de Marché",
+        "title": "Recherche de Marché",
+        "description": "Concurrents, clients et opportunités de marché."
+      },
+      "output05": {
+        "tag": "LIVRABLE 05",
+        "overline": "Votre Plan 90 Jours",
+        "title": "Feuille de Route",
+        "description": "Maintenant, 30 jours, 30–60 jours, 60–90 jours."
+      },
+      "output06": {
+        "tag": "LIVRABLE 06",
+        "overline": "Guide Étape par Étape",
+        "title": "Guide de Création d'Entreprise",
+        "description": "Comprenez quoi faire, où le faire et pourquoi."
+      }
+    },
+    "howItWorks": {
+      "eyebrow": "COMMENT ÇA MARCHE",
+      "headline": "De l'idée à l'entreprise\nen 6 étapes.",
+      "subline": "Avancez étape par étape. Tout ce que vous créez est sauvegardé et alimente l'étape suivante.",
+      "connectedLabels": "Un seul projet. Tout ce que vous créez reste connecté.",
+      "phase01": {
+        "eyebrow": "PHASE 01 · VOUS",
+        "title": "Commencez par vous",
+        "description": "Dites-nous ce que vous avez fait, vos compétences et le temps disponible. Les projets étudiants comptent.",
+        "youGet": "Vous obtenez :",
+        "output": "Votre profil de créateur",
+        "status": "Complété"
+      },
+      "phase02": {
+        "eyebrow": "PHASE 02 · PROJET & MARQUE",
+        "title": "Affinez votre idée et votre marque",
+        "description": "Répondez à quelques questions pour préciser votre idée, choisissez un nom, puis créez votre logo, couleurs et polices.",
+        "youGet": "Vous obtenez :",
+        "output": "Votre projet et Kit de Marque",
+        "status": "Complété"
+      },
+      "phase03": {
+        "eyebrow": "PHASE 03 · PLAN D'AFFAIRES",
+        "title": "Construisez le business derrière votre idée",
+        "description": "Sept étapes guidées : votre marché, modèle, chiffres, bases juridiques et un plan d'affaires complet.",
+        "youGet": "Vous obtenez :",
+        "output": "Un plan d'affaires complet et structuré",
+        "badge": "PHASE CLÉ",
+        "status": "Complété"
+      },
+      "phase04": {
+        "eyebrow": "PHASE 04 · CONSTRUCTION & LANCEMENT",
+        "title": "Préparez-vous à construire et lancer",
+        "description": "Un plan adapté à vos compétences et à votre temps : quoi faire maintenant, quoi apprendre, quoi déléguer.",
+        "youGet": "Vous obtenez :",
+        "output": "Votre plan 90 jours et site de lancement",
+        "status": "En cours"
+      },
+      "phase05": {
+        "eyebrow": "PHASE 05 · ENTREPRISE",
+        "title": "Créez votre entreprise",
+        "description": "Aide étape par étape pour immatriculer votre société en France : forme juridique, capital, documents.",
+        "youGet": "Vous obtenez :",
+        "output": "Un guide d'immatriculation et suivi d'avancement",
+        "status": "En cours"
+      },
+      "phase06": {
+        "eyebrow": "PHASE 06 · PROCHAINE ÉTAPE",
+        "title": "Voyez ce que vous avez construit, et continuez",
+        "description": "Tous vos résultats en un seul endroit, avec votre prochaine étape concrète.",
+        "youGet": "Vous obtenez :",
+        "output": "Votre prochaine étape"
+      }
+    },
+    "trustSources": {
+      "eyebrow": "D'OÙ VIENNENT LES INFORMATIONS",
+      "headline": "Nous ne devinons pas.\nNous vérifions.",
+      "subline": "L'IA aide à expliquer les choses simplement. Mais les règles, les aides et les démarches ? Elles viennent directement de sources officielles françaises.",
+      "proofCard": {
+        "overline": "VOTRE CHECKLIST JURIDIQUE",
+        "title": "Déclarez qui possède votre société",
+        "description": "Vous le ferez lors de l'immatriculation. C'est obligatoire pour SAS et SAS-U.",
+        "source": "Source : service-public.fr",
+        "template": "Modèle standard",
+        "annotation": "Vous voyez ? Ça vous dit d'où vient l'information."
+      },
+      "panels": {
+        "legal": {
+          "title": "Créer votre société",
+          "subtitle": "Aide pour vos démarches juridiques",
+          "source1Name": "Service Public Entreprendre",
+          "source1Desc": "Le guide officiel du gouvernement pour les démarches juridiques.",
+          "source1Tag": "OFFICIEL",
+          "source2Name": "INPI Guichet unique",
+          "source2Desc": "Là où vous immatriculez vraiment votre société.",
+          "source2Tag": "OFFICIEL"
+        },
+        "grants": {
+          "title": "Aides et financements accessibles",
+          "subtitle": "Aide pour les subventions",
+          "source1Name": "data.gouv.fr",
+          "source1Desc": "Aides publiques et soutiens, tous répertoriés.",
+          "source1Tag": "DONNÉES OUVERTES",
+          "source2Name": "Bpifrance Création",
+          "source2Desc": "Guides pratiques pour bien démarrer.",
+          "source2Tag": "OFFICIEL",
+          "source3Name": "France Travail",
+          "source3Desc": "ARCE et ACRE, si vous y avez droit.",
+          "source3Tag": "OFFICIEL"
+        },
+        "companies": {
+          "title": "Vérifier d'autres sociétés",
+          "subtitle": "Disponible plus tard",
+          "source1Name": "API Recherche d'entreprises",
+          "source1Desc": "Retrouvez n'importe quelle société française en quelques secondes.",
+          "source1Tag": "DONNÉES OUVERTES",
+          "source2Name": "SIRENE",
+          "source2Desc": "Prouvez que votre société est officiellement immatriculée.",
+          "source2Tag": "BIENTÔT"
+        }
+      },
+      "trustStrip": {
+        "item1": "Vous pouvez toujours voir d'où vient l'information.",
+        "item2": "Les aides indiquent 'vous pouvez postuler', jamais 'vous l'obtiendrez'.",
+        "item3": "Vos modifications vous appartiennent. Rien n'est écrasé."
+      }
+    },
+    "whatsNext": {
+      "eyebrow": "ET ENSUITE",
+      "headline": "Créateur, c'est juste le début.",
+      "subline": "Construisez votre projet aujourd'hui. Bientôt, MBC vous connecte aux personnes qui vous aident à grandir.",
+      "soon": "BIENTÔT",
+      "entrepreneur": {
+        "title": "Entrepreneur",
+        "description": "Gérez votre société une fois immatriculée."
+      },
+      "investor": {
+        "title": "Investisseur",
+        "description": "Présentez votre projet à des personnes qui financent."
+      },
+      "serviceProvider": {
+        "title": "Prestataire",
+        "description": "Faites appel à des experts quand vous en avez besoin."
+      },
+      "marketplace": {
+        "title": "Marketplace",
+        "description": "Projets, personnes et services au même endroit."
+      },
+      "hub": {
+        "badge": "CRÉATEUR",
+        "available": "Disponible maintenant",
+        "title": "Votre projet commence ici",
+        "projectName": "CampusFlow",
+        "projectDesc": "App pour équipes étudiantes",
+        "phase": "Phase 3 sur 6",
+        "progress": "50 %",
+        "free": "Gratuit pour commencer"
+      },
+      "cta": {
+        "button": "Démarrer gratuitement",
+        "helper": "Sans carte requise. Les nouveaux profils sont ouverts progressivement."
+      }
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "headline": "Ce que \"démarrer pour 0 €\" signifie vraiment.",
+      "subline": "Soyons clairs : ce qui est gratuit dans MBC, et ce qui peut coûter de l'argent en dehors de la plateforme.",
+      "q1": "Puis-je vraiment commencer avec MBC pour 0 € ?",
+      "a1": "Oui. Le profil Créateur est gratuit. Vous pouvez accéder à l'expérience Créateur guidée sans abonnement. Des limites d'utilisation de l'IA peuvent s'appliquer.",
+      "q2": "0 € signifie-t-il que tous les frais externes sont gratuits ?",
+      "a2": "Démarrer sur MBC est gratuit. Cependant, les frais administratifs ou gouvernementaux (frais d'immatriculation INPI / Guichet Unique, publications légales) et les services tiers optionnels sont fixés par leurs institutions respectives.",
+      "q3": "Que se passe-t-il quand j'atteins ma limite d'utilisation de l'IA ?",
+      "a3": "Vous pouvez continuer à naviguer, éditer et télécharger tous vos fichiers existants sans restriction. Pour générer des itérations IA supplémentaires, vous pouvez acheter des crédits modulaires ou upgrader votre plan.",
+      "q4": "Puis-je télécharger ce que je crée ?",
+      "a4": "Oui. Tous les actifs générés — icons SVG de votre Kit de Marque, fichiers de tokens CSS, Plan d'Affaires 12 chapitres (PDF/HTML), tableaux de prévision financière et code du site web — peuvent être exportés directement sur votre appareil.",
+      "q5": "MBC va-t-il immatriculer mon entreprise pour moi ?",
+      "a5": "MBC automatise la préparation complète de votre dossier de constitution (statuts, instructions de dépôt du capital, déclaration de non-condamnation, sélection du code NAF/APE). Vous pouvez soumettre le dossier vous-même via le Guichet Unique ou faire appel à un professionnel partenaire.",
+      "q6": "Que se passe-t-il avec les informations de mon projet ?",
+      "a6": "Vos idées, informations et propriété intellectuelle vous appartiennent à 100 %. Nous chiffrons strictement toutes les données projet et ne partageons, vendons ou utilisons jamais vos informations pour entraîner des modèles publics.",
+      "q7": "Qu'est-ce que le futur réseau MBC ?",
+      "a7": "Au-delà de la phase Créateur, MBC connectera votre projet structuré directement à des Entrepreneurs vérifiés, des Investisseurs Business Angels et des Prestataires pour financer, opérer et faire évoluer votre société."
+    },
+    "finalCta": {
+      "headline": "Votre entreprise commence par un premier pas.",
+      "description": "Créez votre profil MBC Créateur gratuitement et commencez à transformer votre idée en une vraie entreprise numérique structurée.",
+      "button": "Démarrer pour 0 € →"
+    }
+  },
+  "footer": {
+    "brandAria": "Accueil Mondial Business Creation",
+    "logoAlt": "Logo MBC",
+    "tagline": "Créez votre entreprise numérique, de l'idée au lancement.",
+    "pricingHighlight": "Commencez à créer pour 0 €.",
+    "description": "Une méthode plus simple pour permettre à la nouvelle génération de fondateurs de transformer une idée en un véritable projet d'entreprise.",
+    "social": {
+      "linkedinAria": "MBC sur LinkedIn",
+      "instagramAria": "MBC sur Instagram",
+      "xAria": "MBC sur X"
+    },
+    "product": {
+      "title": "PRODUIT",
+      "creator": "Créateur",
+      "creatorTools": "Outils Créateur",
+      "howItWorks": "Comment ça fonctionne",
+      "whatYouGet": "Ce que vous obtenez",
+      "pricing": "Tarifs"
+    },
+    "resources": {
+      "title": "RESSOURCES",
+      "faq": "FAQ",
+      "guides": "Guides",
+      "contact": "Contact"
+    },
+    "network": {
+      "title": "RÉSEAU MBC",
+      "entrepreneur": "Entrepreneur",
+      "investor": "Investisseur",
+      "serviceProvider": "Prestataire de services",
+      "comingSoon": "Bientôt disponible"
+    },
+    "legal": {
+      "title": "JURIDIQUE",
+      "termsOfUse": "Conditions d'utilisation",
+      "privacyPolicy": "Politique de confidentialité",
+      "cookiePolicy": "Politique relative aux cookies"
+    },
+    "bottom": {
+      "copyright": "© {{year}} Mondial Business Création. Tous droits réservés.",
+      "foundersTagline": "Conçu pour la prochaine génération de fondateurs.",
+      "location": "Paris, France"
+    }
   }
 }

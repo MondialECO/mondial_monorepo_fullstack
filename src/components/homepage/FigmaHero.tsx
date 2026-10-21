@@ -3,8 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useLanguage } from '@/providers/LanguageProvider';
 
 export default function FigmaHero() {
+  const { t } = useLanguage();
+
   const scrollToHowItWorks = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const target = document.getElementById('how-it-works');
@@ -22,26 +25,25 @@ export default function FigmaHero() {
         {/* Eyebrow Badge (Figma 57449:113 - 194x33px) */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e8eeff] text-[#1f3faf] text-[12px] font-medium font-sans shadow-2xs mb-5">
           <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd] shrink-0" />
-          <span className="uppercase tracking-[1.04px]">MBC Creator · France</span>
+          <span className="uppercase tracking-[1.04px]">{t('homepage.hero.eyebrow')}</span>
         </div>
 
         {/* Title & Value Proposition Hierarchy (Figma 57449:119) */}
         <div className="flex flex-col items-center text-center gap-3.5 max-w-[628px] mb-8 sm:mb-10">
           {/* Main Headline (Figma 57449:120 - Inter 600/700 54px lh:61) */}
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-semibold text-foreground tracking-tight leading-[1.13] font-heading">
-            <span className="block font-bold text-primary">MBC</span>
-            <span className="block">The Intelligent</span>
-            <span className="block">Toolbox</span>
+            <span className="block font-bold text-primary">{t('homepage.hero.headline')}</span>
+            <span className="block">{t('homepage.hero.subheadline')}</span>
           </h1>
 
           {/* Subheading / Value Proposition (Figma 57449:1584 - Inter 600 24px lh:31) */}
           <h2 className="text-xl sm:text-2xl md:text-[24px] font-semibold text-foreground tracking-tight leading-[1.29] font-heading">
-            Start your digital business for €0.
+            {t('homepage.hero.valueProposition')}
           </h2>
 
           {/* Subtitle Description (Figma 57449:121 - DM Sans 400 16px lh:18) */}
           <p className="max-w-[628px] text-sm sm:text-base md:text-[16px] text-foreground/80 dark:text-muted-foreground leading-relaxed font-sans font-normal px-2">
-            One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch.
+            {t('homepage.hero.description')}
           </p>
         </div>
 
@@ -52,7 +54,7 @@ export default function FigmaHero() {
             href="/signup"
             className="w-full sm:w-[153px] h-[48px] rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-extrabold text-[16px] flex items-center justify-center shadow-md transition-all active:scale-[0.98] font-heading"
           >
-            Start for €0 →
+            {t('homepage.hero.ctaPrimary')}
           </Link>
 
           {/* See how it works Button (Figma 57354:15967 - 176x48px r:13 bg:#ffffff border:#e6eaf2) */}
@@ -61,7 +63,7 @@ export default function FigmaHero() {
             onClick={scrollToHowItWorks}
             className="w-full sm:w-[176px] h-[48px] rounded-[13px] bg-white dark:bg-card border border-[#e6eaf2] dark:border-border text-[#121826] dark:text-foreground hover:bg-accent font-extrabold text-[16px] flex items-center justify-center shadow-2xs transition-all active:scale-[0.98] font-heading"
           >
-            See how it works
+            {t('homepage.hero.ctaSecondary')}
           </a>
         </div>
 
@@ -96,4 +98,3 @@ export default function FigmaHero() {
     </section>
   );
 }
-

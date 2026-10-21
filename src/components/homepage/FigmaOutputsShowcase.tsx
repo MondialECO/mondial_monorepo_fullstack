@@ -3,8 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { FileText, Check } from 'lucide-react';
+import { useLanguage } from '@/providers/LanguageProvider';
 
 export default function FigmaOutputsShowcase() {
+  const { t } = useLanguage();
+
   return (
     <section id="outputs" className="relative z-10 w-full overflow-hidden pt-16 sm:pt-20 md:pt-24 pb-16 md:pb-24 bg-[#f7f9fc] dark:bg-background border-b border-[#e8ecf2] dark:border-border">
       <div className="w-full max-w-[1440px] xl:max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16">
@@ -15,17 +18,22 @@ export default function FigmaOutputsShowcase() {
           {/* Eyebrow Badge (Figma 57381:10458 - 194x33px) */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e8eeff] text-[#1f3faf] text-[12px] font-medium font-sans shadow-2xs">
             <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd] shrink-0" />
-            <span>MBC Creator · France</span>
+            <span>{t('homepage.outputs.eyebrow')}</span>
           </div>
 
           {/* Headline (Figma 57363:80916 - Inter 600 54px lh:65) */}
           <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-semibold text-[#000000] dark:text-foreground tracking-tight leading-[1.12] font-heading">
-            Move from “I have an idea” to<br className="hidden sm:inline" /> real business-ready outputs.
+            {t('homepage.outputs.headline').split('\n').map((line, i) => (
+              <React.Fragment key={i}>
+                {line}
+                {i === 0 && <br className="hidden sm:inline" />}
+              </React.Fragment>
+            ))}
           </h2>
 
           {/* Subtitle (Figma 57363:80917 - DM Sans 400 18px) */}
           <p className="max-w-[780px] text-base sm:text-lg md:text-[18px] text-[#000000]/80 dark:text-muted-foreground leading-relaxed font-sans font-normal">
-            MBC Creator helps you create the documents and structure you need to understand your project, explain it clearly, and know what to do next.
+            {t('homepage.outputs.subtitle')}
           </p>
 
           {/* Action CTA Button (Figma 57363:80919 - 153x48px r:13 bg:#3c61dd) */}
@@ -34,7 +42,7 @@ export default function FigmaOutputsShowcase() {
               href="/signup"
               className="inline-flex items-center justify-center px-6 h-[48px] rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-extrabold text-[16px] shadow-md transition-all active:scale-[0.98] font-heading"
             >
-              Start for €0 →
+              {t('homepage.outputs.cta')}
             </Link>
           </div>
         </div>
@@ -51,17 +59,17 @@ export default function FigmaOutputsShowcase() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold tracking-wider px-2.5 py-1 rounded-[6px] bg-[#eef2ff] text-[#3c61dd] font-mono">
-                    OUTPUT 01
+                    {t('homepage.outputs.output01.tag')}
                   </span>
                   <span className="text-xs font-medium text-[#94a3b8] font-heading">
-                    Design System & Kit
+                    {t('homepage.outputs.output01.overline')}
                   </span>
                 </div>
                 <h3 className="text-2xl font-bold text-[#070707] dark:text-foreground font-heading">
-                  Brand Identity
+                  {t('homepage.outputs.output01.title')}
                 </h3>
                 <p className="text-base text-[#64748b] dark:text-muted-foreground font-sans">
-                  Build the visual foundation of your project.
+                  {t('homepage.outputs.output01.description')}
                 </p>
               </div>
 
@@ -174,17 +182,17 @@ export default function FigmaOutputsShowcase() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold tracking-wider px-2.5 py-1 rounded-[6px] bg-[#ecfdf5] text-[#047857] font-mono">
-                    OUTPUT 02
+                    {t('homepage.outputs.output02.tag')}
                   </span>
                   <span className="text-xs font-semibold text-[#047857] bg-[#ecfdf5] border border-[#a7f3d0] px-2.5 py-0.5 rounded-full">
-                    Ready to Review
+                    {t('homepage.outputs.output02.overline')}
                   </span>
                 </div>
                 <h3 className="text-2xl font-bold text-[#070707] dark:text-foreground font-heading">
-                  Business Plan
+                  {t('homepage.outputs.output02.title')}
                 </h3>
                 <p className="text-base text-[#64748b] dark:text-muted-foreground font-sans">
-                  Turn your project into a structured business document.
+                  {t('homepage.outputs.output02.description')}
                 </p>
               </div>
 
@@ -259,17 +267,17 @@ export default function FigmaOutputsShowcase() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold tracking-wider px-2.5 py-1 rounded-[6px] bg-[#eff6ff] text-[#2563eb] font-mono">
-                    OUTPUT 03
+                    {t('homepage.outputs.output03.tag')}
                   </span>
                   <span className="text-xs font-medium text-[#94a3b8] font-heading">
-                    12-Month Projection
+                    {t('homepage.outputs.output03.overline')}
                   </span>
                 </div>
                 <h3 className="text-xl font-bold text-[#070707] dark:text-foreground font-heading">
-                  Financial Forecast
+                  {t('homepage.outputs.output03.title')}
                 </h3>
                 <p className="text-base text-[#64748b] dark:text-muted-foreground font-sans">
-                  Understand revenue, costs and possible scenarios.
+                  {t('homepage.outputs.output03.description')}
                 </p>
               </div>
 
@@ -373,17 +381,17 @@ export default function FigmaOutputsShowcase() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold tracking-wider px-2.5 py-1 rounded-[6px] bg-[#faf5ff] text-[#9333ea] font-mono">
-                    OUTPUT 04
+                    {t('homepage.outputs.output04.tag')}
                   </span>
                   <span className="text-xs font-medium text-[#94a3b8] font-heading">
-                    Validation Dossier
+                    {t('homepage.outputs.output04.overline')}
                   </span>
                 </div>
                 <h3 className="text-xl font-bold text-[#070707] dark:text-foreground font-heading">
-                  Market Research
+                  {t('homepage.outputs.output04.title')}
                 </h3>
                 <p className="text-base text-[#64748b] dark:text-muted-foreground font-sans">
-                  Organize the market, competitors and evidence around your idea.
+                  {t('homepage.outputs.output04.description')}
                 </p>
               </div>
 
@@ -456,17 +464,17 @@ export default function FigmaOutputsShowcase() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold tracking-wider px-2.5 py-1 rounded-[6px] bg-[#fff8ea] dark:bg-amber-950/40 text-[#b45309] dark:text-amber-400 font-mono">
-                    OUTPUT 05
+                    {t('homepage.outputs.output05.tag')}
                   </span>
                   <span className="text-xs font-medium text-[#94a3b8] font-heading">
-                    Execution Schedule
+                    {t('homepage.outputs.output05.overline')}
                   </span>
                 </div>
                 <h3 className="text-2xl font-bold text-[#070707] dark:text-foreground font-heading">
-                  Action Roadmap
+                  {t('homepage.outputs.output05.title')}
                 </h3>
                 <p className="text-base text-[#64748b] dark:text-muted-foreground font-sans">
-                  Know what to do now, next and later.
+                  {t('homepage.outputs.output05.description')}
                 </p>
               </div>
 
@@ -567,17 +575,17 @@ export default function FigmaOutputsShowcase() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold tracking-wider px-2.5 py-1 rounded-[6px] bg-[#f0fdfa] text-[#0f766e] font-mono">
-                    OUTPUT 06
+                    {t('homepage.outputs.output06.tag')}
                   </span>
                   <span className="text-xs font-medium text-[#94a3b8] font-heading">
-                    Step-by-Step Blueprint
+                    {t('homepage.outputs.output06.overline')}
                   </span>
                 </div>
                 <h3 className="text-xl font-bold text-[#070707] dark:text-foreground font-heading">
-                  Business Setup Guide
+                  {t('homepage.outputs.output06.title')}
                 </h3>
                 <p className="text-base text-[#64748b] dark:text-muted-foreground font-sans">
-                  Understand what to do, where to do it and why.
+                  {t('homepage.outputs.output06.description')}
                 </p>
               </div>
 
