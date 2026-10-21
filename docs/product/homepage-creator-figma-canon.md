@@ -161,7 +161,7 @@ For high-conversion visual storytelling, the platform incorporates the canonical
 - **03 · Financial Forecast (`FinancialForecastVisual.tsx` — Figma 57500:373):** Vector dashboard screen with 4 metric satellite cards (`Revenue -8deg`, `Break-even +9deg`, `Cash -7deg`, `Unit economics +7deg`).
 - **04 · Market Research (`MarketResearchVisual.tsx` — Figma 57500:912):** Vector analysis screen with 4 insight cards (`Market size -8deg`, `Target users +9deg`, `Competitors -7deg`, `Demand +7deg`).
 - **05 · Action Roadmap (`WireframeDeliverables.tsx` — Figma 57501:1033):** Video Player 2 (`1263px`) overflowing to the left edge with `2xl:-ml-[116px]`, copy on right.
-- **06 · Business Setup (`WireframeDeliverables.tsx` — Figma 57503:9257):** Video Player 3 (`1281px`) overflowing to the right edge, blueprint poster, copy on left. Container width: `max-w-[1980px]`.
+- **06 · Business Setup (`WireframeDeliverables.tsx` — Figma 57503:9257):** Video Player 3 (`1281px`, video `/videos/launch-plan-scroll.mp4`) overflowing to the right edge, blueprint poster, copy on left. Container width: `max-w-[1980px]`.
 
 ---
 

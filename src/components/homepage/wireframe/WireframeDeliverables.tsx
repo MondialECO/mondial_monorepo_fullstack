@@ -308,7 +308,7 @@ export default function WireframeDeliverables() {
                 title="INPI_Guichet_Unique_Formation_Blueprint.pdf"
                 badge={t('homepage.wireframe.businessSetup.videoBadge', 'Company Registration Video')}
                 posterSrc="/wireframe_figma/570c38a580d90a822d0db7412d2d930101307030.png"
-                videoSrc="/videos/business_plan_walkthrough.mp4"
+                videoSrc="/videos/launch-plan-scroll.mp4"
               />
             </div>
           </div>
