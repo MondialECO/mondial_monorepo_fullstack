@@ -1,13 +1,17 @@
-# MBC Creator Homepage & Brand Identity Canon (Figma 57510:9718 & 57349:8209)
+# MBC Creator Homepage & Brand Identity Canon (Figma 57554:12800, 57510:9718 & 57349:8209)
 
 ## 1. Overview & Authority
-This document defines the canonical specification and implementation architecture for the **Mondial Business Creation (MBC) Creator Marketing Homepage** (Figma Frame `57510:9718` — *Creator Landing page Upgrade V.2*, `57349:8209` — *Creator Marketing Landing Page*, and Wireframe Deliverables Frame `57480:109`) and the global **MBC Logo Standard** across the entire fullstack monorepo.
+This document defines the canonical specification and implementation architecture for the **Mondial Business Creation (MBC) Creator Marketing Homepage** (Figma Frame `57554:12800` — *Creator Landing page Upgrade V.3 Final*, `57510:9718` — *Creator Landing page Upgrade V.2*, and Wireframe Deliverables Frame `57480:109`) and the global **MBC Logo Standard** across the entire fullstack monorepo.
 
 - **Figma File:** `yLDPLB9hIAIqfYY9uHuJom` (Mondial-Dashboard-EDU)
-- **Primary Design Node (V.2 Canonical Canvas):** `57510:9718` (`1980x14264px` — *Creator Landing page Upgrade V.2*)
-- **Wireframe Deliverables Node:** `57480:109` / `57510:9276` (`1980x6187px` — *Wireframe - 2*)
+- **Primary Design Node (V.3 Final Canonical Canvas):** `57554:12800` (`1440x13376px` — *Creator Landing page Upgrade V.3 Final*)
+- **V.2 Canonical Canvas:** `57510:9718` (`1980x14264px` — *Creator Landing page Upgrade V.2*)
+- **Wireframe Deliverables Node:** `57480:109` / `57559:14378` / `57510:9276` (`1440x5260px` — *Wireframe - 1*)
 - **Header Navigation Design Node:** `57381:10846` (Public Header with 5-link Nav & Dual CTAs)
-- **Trust Sources Design Node:** `57424:508` / `57510:11817` (Official French Sources Trust Section)
+- **Trust Sources Design Node:** `57554:13262` / `57424:508` (Official French Sources Trust Section)
+- **What's Next Design Node:** `57554:13448` / `57381:10444` (Future Network Map & Hub)
+- **FAQ Design Node:** `57554:13570` / `57354:15800` (What €0 really means)
+- **Final CTA Design Node:** `57554:13612` / `57354:15832` (Start for €0 banner)
 - **Footer Design Node:** `57381:10882` (5-Column Site Footer with Ambient Watermark, 1980px Container)
 - **Primary Route:** `src/app/page.tsx`
 - **Component Root:** `src/components/homepage/` & `src/components/shared/`
