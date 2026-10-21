@@ -14,23 +14,23 @@ export default function WireframeDeliverables() {
     <div className="w-full flex flex-col" data-testid="wireframe-deliverables">
       {/* ========================================================================= */}
       {/* SECTION 1: 01 · Brand kit (Figma 57500:123) */}
-      {/* Visual on LEFT (1135px), Copy on RIGHT (464px) — Background #FFFFFF */}
+      {/* Visual on LEFT (862px), Copy on RIGHT (464px), Gap 20px, Padding 100px 45px — Background #FFFFFF */}
       {/* ========================================================================= */}
       <section
-        className="w-full bg-white dark:bg-background py-16 lg:py-[100px] px-6 sm:px-10 lg:px-16 xl:px-[100px] 2xl:px-[190px] overflow-hidden"
+        className="w-full bg-white dark:bg-background py-16 lg:py-[100px] px-6 sm:px-10 lg:px-[45px] overflow-hidden"
         data-testid="deliverable-brand-kit"
       >
-        <div className="w-full max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 items-center gap-10 lg:gap-12 xl:gap-16">
-          {/* Visual: Left (7 cols / 1135px in Figma) */}
-          <div className="lg:col-span-7 xl:col-span-7 2xl:col-span-8 w-full flex items-center justify-center order-2 lg:order-1">
+        <div className="w-full max-w-[1350px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[20px]">
+          {/* Visual: Left (862px in Figma) */}
+          <div className="w-full flex-1 min-w-0 max-w-[862px] flex items-center justify-center order-2 xl:order-1">
             <BrandKitVisual />
           </div>
 
-          {/* Copy: Right (5 cols / max-w 464px in Figma, gap 20px) */}
-          <div className="lg:col-span-5 xl:col-span-5 2xl:col-span-4 w-full max-w-[464px] space-y-5 order-1 lg:order-2">
+          {/* Copy: Right (max-w 464px in Figma, gap 20px) */}
+          <div className="w-full max-w-[464px] space-y-5 order-1 xl:order-2 shrink-0">
             {/* Eyebrow (Figma 57500:243) */}
             <div className="inline-flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#157a55]" aria-hidden="true" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#157a55]" aria-hidden="true" />
               <span className="text-xs sm:text-[12px] font-medium uppercase tracking-[0.08em] text-[#6b7280] dark:text-muted-foreground font-sans">
                 {t('homepage.wireframe.brandKit.eyebrow', 'Brand kit')}
               </span>
@@ -41,9 +41,9 @@ export default function WireframeDeliverables() {
               {t('homepage.wireframe.brandKit.headline', 'Build your brand identity')}
             </h2>
 
-            {/* Pill: Simple, fast, pro (Figma 57500:247) */}
+            {/* Pill: Simple, fast, pro (Figma 57500:247: 160x37, r 999, pad 8/18) */}
             <div>
-              <span className="inline-flex items-center px-4 py-1.5 rounded-full bg-[#eef2fd] dark:bg-blue-950/60 text-[#3c61dd] dark:text-blue-300 text-sm sm:text-[16px] font-semibold font-sans">
+              <span className="inline-flex items-center px-[18px] py-[8px] rounded-full bg-[#eef2fd] dark:bg-blue-950/60 text-[#3c61dd] dark:text-blue-300 text-sm sm:text-[16px] leading-[21px] font-semibold font-sans">
                 {t('homepage.wireframe.brandKit.pill', 'Simple, fast, pro')}
               </span>
             </div>
