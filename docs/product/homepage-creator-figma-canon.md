@@ -153,22 +153,39 @@ The Creator homepage consists of 7 structured sections organized linearly:
 
 ---
 
+## 4.1 Wireframe Deliverables & Video Bleed Showcase (Figma Node `57480:109`)
+For high-conversion visual storytelling, the platform incorporates the canonical Wireframe Showcase architecture (`src/components/homepage/wireframe/`):
+- **Hero Canvas (`WireframeHero.tsx` — Figma 57480:110):** `min-h-[560px] lg:h-[740px]`, background `#F7F9FC`, Inter 600 headline with `32px/44px/54px`, and primary CTA `Start for €0 →`.
+- **01 · Brand Kit (`BrandKitVisual.tsx` — Figma 57500:123):** Tablet canvas with 4 rotated satellite cards (`Logo -6deg`, `Colours +4.5deg`, `Typography -3.5deg`, `Brand kit +3deg`), official SVG curved dashed connectors, and sparkles.
+- **02 · Business Plan (`WireframeDeliverables.tsx` — Figma 57500:254):** Video Player 1 (`1263px`) overflowing to the right edge with `w-[1263px]`, clipped by `overflow-hidden`.
+- **03 · Financial Forecast (`FinancialForecastVisual.tsx` — Figma 57500:373):** Vector dashboard screen with 4 metric satellite cards (`Revenue -8deg`, `Break-even +9deg`, `Cash -7deg`, `Unit economics +7deg`).
+- **04 · Market Research (`MarketResearchVisual.tsx` — Figma 57500:912):** Vector analysis screen with 4 insight cards (`Market size -8deg`, `Target users +9deg`, `Competitors -7deg`, `Demand +7deg`).
+- **05 · Action Roadmap (`WireframeDeliverables.tsx` — Figma 57501:1033):** Video Player 2 (`1263px`) overflowing to the left edge with `2xl:-ml-[116px]`, copy on right.
+- **06 · Business Setup (`WireframeDeliverables.tsx` — Figma 57503:9257):** Video Player 3 (`1281px`) overflowing to the right edge, blueprint poster, copy on left. Container width: `max-w-[1980px]`.
+
+---
+
 ## 5. Global Site Footer (`src/components/shared/Footer.tsx` — Figma Node `57381:10882`)
-- **Background & Theme:** `bg-[#F7F9FC] dark:bg-[#070b14] border-t border-[#e3e8f2] dark:border-border/80`.
-- **Ambient Watermark Graphic:** Native Figma Progress / Network motif (SVG `57381:10884`) positioned subtly on the right side.
-- **5-Column Top Grid:**
-  - **Column 1 (Brand & Socials):** MBC Logo (`95x46px`), `MBC` title, `MONDIAL BUSINESS CREATION` overline, supporting copy ("*Build your digital business from idea to launch. Start building for €0.*"), paragraph, and outline social icon boxes (LinkedIn, Instagram, X).
-  - **Column 2 (PRODUCT):** `Creator •` (active sapphire dot indicator), `Creator Tools`, `How it works`, `What you get`.
-  - **Column 3 (RESOURCES):** `FAQ`, `Guides`, `Contact`.
-  - **Column 4 (MBC NETWORK):** `Entrepreneur`, `Investor`, `Service Provider` (each styled with a `Coming soon` badge).
-  - **Column 5 (LEGAL):** `Terms of Use`, `Privacy Policy`, `Cookie Policy`.
+- **Container Architecture:** Aligned to the 1980px wireframe layout standard:
+  ```tsx
+  <div className="relative z-10 w-full max-w-[1980px] mx-auto px-6 sm:px-10 lg:px-16 xl:px-[100px] 2xl:px-[190px] pt-16 lg:pt-20 pb-12">
+  ```
+- **Background & Theme:** `bg-[#F7F9FC] dark:bg-[#070b14] border-t border-[#e3e8f2] dark:border-border/80 transition-colors`.
+- **Ambient Watermark Graphic:** Native Figma Progress / Network motif (SVG `57381:10884`) positioned subtly on the top-right side.
+- **Responsive 5-Column Grid (`grid-cols-2 md:grid-cols-12 gap-8 lg:gap-8 xl:gap-12`):**
+  - **Column 1 (Brand & Socials — `col-span-2 md:col-span-12 lg:col-span-4`):** MBC Logo (`95x46px`), `MBC` title, `MONDIAL BUSINESS CREATION` overline, supporting copy ("*Build your digital business from idea to launch. Start building for €0.*"), paragraph, and outline social icon boxes (LinkedIn, Instagram, X).
+  - **Column 2 (PRODUCT — `col-span-1 md:col-span-3 lg:col-span-2`):** `Creator •` (active sapphire dot indicator), `Creator Tools`, `How it works`, `What you get`, `Pricing`.
+  - **Column 3 (RESOURCES — `col-span-1 md:col-span-3 lg:col-span-2`):** `FAQ`, `Guides`, `Contact`.
+  - **Column 4 (MBC NETWORK — `col-span-1 md:col-span-3 lg:col-span-2`):** `Entrepreneur`, `Investor`, `Service Provider` (each styled with a `Coming soon` badge with `shrink-0 whitespace-nowrap`).
+  - **Column 5 (LEGAL — `col-span-1 md:col-span-3 lg:col-span-2`):** `Terms of Use`, `Privacy Policy`, `Cookie Policy`.
 - **Bottom Bar:**
   - Copyright: `© 2026 Mondial Business Création. All rights reserved.`
-  - Tagline & Origin: Emerald green indicator dot + `Made for the next generation of founders. | Paris, France`.
+  - Tagline & Origin: Emerald green indicator dot + `Made for the next generation of founders. | Paris, France | LanguageSwitcher`.
 
 ---
 
 ## 6. Verification & Testing
-- **Test Suite:** `src/__tests__/app/homepage-figma-57349-8209.test.tsx`
-- **Layout Suite:** `src/__tests__/layout/`
-- **Coverage:** All 7 homepage sections, navigation menus, dual CTAs, output cards, trust source panels, footer columns, logo alt-attributes, responsive viewports, and navigation anchors are covered by automated unit tests.
+- **Test Suite:** `src/__tests__/app/homepage-figma-57349-8209.test.tsx` (Homepage wireframe, hero, deliverables validation)
+- **Footer Suite:** `src/__tests__/shared/footer-i18n.test.tsx` (Footer bilingual rendering, accessibility, and link verification)
+- **Header Suite:** `src/__tests__/shared/header-i18n.test.tsx` (Public header navigation, dropdowns, and i18n testing)
+- **Coverage:** 100% passing tests across unit, integration, and production builds (`npm run build`).

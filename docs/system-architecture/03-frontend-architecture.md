@@ -616,15 +616,28 @@ The internationalization system provides native bilingual support for **English 
   - `SharedNotificationsPage.tsx`: Full-surface notification manager with localized title, subtitle, "Mark all as read" / "Tout marquer comme lu" bulk action CTA, tab filters ("All" / "Toutes", "Unread" / "Non lues") with live counter badges, categorized notification items (`Message`, `Investment` / `Investissement`, `Security` / `Sécurité`, `System` / `Système`), "New" / "Nouveau" badge, "View details" / "Voir les détails" navigation links, locale-aware relative timestamp formatting (`date-fns/locale/fr`), and pagination "Load More Notifications" / "Charger plus de notifications" CTA (`creator.notifications.*`).
   - `NotificationBell.tsx`: Global interactive topbar notification dropdown button with unread count indicator badge, localized panel header, "Mark all read" CTA, notification items with read state mutation, empty state, and "See More" / "Voir plus" deep-link routing.
   - `LanguageProvider.tsx`: Added optional `defaultLocale` prop to facilitate seamless locale initialization and deterministic bilingual unit testing.
+- **Global Public Header (`src/components/shared/PublicHeader.tsx`, `src/components/shared/Navbar.tsx`)**:
+  - Figma-compliant public header shared across marketing and public routes.
+  - Fully bilingual navigation links ("How it works" / "Comment ça fonctionne", "Creator Tools" / "Outils Créateur", "What you get" / "Ce que vous obtenez", "Pricing" / "Tarifs", "FAQ"), brand lockup labels, accessibility labels, and action CTAs ("Sign in" / "Se connecter", "Start for €0" / "Commencer pour 0 €").
+  - Seamless inline language switcher (`LanguageSwitcher variant="header"`) integrated into the right-hand action cluster on desktop and inside the mobile drawer + mobile top-bar.
 - **Global Public Footer (`src/components/shared/Footer.tsx`)**:
   - Full Figma-compliant 5-column public footer shared across marketing and public routes.
-  - Localized brand lockup copy, product navigation, resources links, MBC network tiers with "Coming soon" pills, and legal links.
+  - Aligned to the 1980px wireframe layout standard: `w-full max-w-[1980px] mx-auto px-6 sm:px-10 lg:px-16 xl:px-[100px] 2xl:px-[190px] pt-16 lg:pt-20 pb-12`.
+  - Responsive 12-column grid (`grid-cols-2 md:grid-cols-12 gap-8 lg:gap-8 xl:gap-12`) with full mobile/tablet optimization (Col 1 takes top row on mobile/tablet, Cols 2–5 form clean 2x2 grid on mobile and 4-column layout on tablet).
+  - Localized brand lockup copy, product navigation, resources links, MBC network tiers with "Coming soon" pills (`shrink-0 whitespace-nowrap`), and legal links.
   - Localized bottom bar copyright notice, mission tagline, and integrated language switcher (`LanguageSwitcher`) providing seamless locale toggle (`common.footer.*`).
+- **Creator Homepage Wireframe Deliverables (`src/components/homepage/wireframe/*` — Figma Node `57480:109`)**:
+  - Structured 6-phase business-ready outputs showcase featuring 3 interactive video player bleeds.
+  - `WireframeHero`: 740px hero section with `#F7F9FC` canvas, Inter 600 headline, and €0 CTA.
+  - `BrandKitVisual`: 4 rotated satellite cards with official SVG curved dashed connectors, sparkles, and tablet canvas.
+  - `FinancialForecastVisual` & `MarketResearchVisual`: Specialized vector dashboard visuals with 4 satellite metric/insight cards.
+  - `WireframeVideoPlayer`: Video walkthrough players with right/left bleeding integration for Business Plan, Action Roadmap, and Business Setup.
 - **Creator Sidebar Navigation (`src/lib/menu.ts`)**: **Deliberately Deferred**. Per user explicit instruction, Creator sidebar menus remain in English during the initial phase and will be localized in a subsequent dedicated pass.
 - **Testing & Translation Integrity**:
   - Full dictionary symmetry between `src/locales/en/creator.json` and `src/locales/fr/creator.json` (**3,658** total keys in EN, **3,658** total keys in FR, 0 missing keys in either direction).
   - Full dictionary symmetry in shared catalogs (`src/locales/en/common.json` and `src/locales/fr/common.json`: **240** total keys in EN and FR, 0 missing).
-  - Verified across all unit test suites (`creator-notifications-i18n.test.tsx` 6/6 PASS, `notification-bell.test.tsx` 9/9 PASS, `creator-messages-i18n.test.tsx` 13/13 PASS, `universal-profile.test.tsx`, `profile-view-and-wizard.test.tsx`, `creator-dashboard.test.tsx`, `creator-i18n.test.tsx`, `analytics-profile.test.tsx`, `homepage-figma-57349-8209.test.tsx` 5/5 PASS) with 100% pass rate.
+  - Verified across all unit test suites (`footer-i18n.test.tsx` 4/4 PASS, `header-i18n.test.tsx` 4/4 PASS, `homepage-figma-57349-8209.test.tsx` 3/3 PASS, `creator-notifications-i18n.test.tsx` 6/6 PASS, `notification-bell.test.tsx` 9/9 PASS, `creator-messages-i18n.test.tsx` 13/13 PASS) with 100% pass rate.
+  - Production build (`npm run build`) fully passing with 0 errors across all static and dynamic routes.
 
 
 

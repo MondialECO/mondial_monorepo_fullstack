@@ -1,13 +1,8 @@
 import type { Metadata } from 'next';
 import Navbar from "@/components/shared/Navbar";
 import Footer from "@/components/shared/Footer";
-import FigmaHero from "@/components/homepage/FigmaHero";
-import FigmaOutputsShowcase from "@/components/homepage/FigmaOutputsShowcase";
-import FigmaHowItWorks from "@/components/homepage/FigmaHowItWorks";
-import FigmaTrustSources from "@/components/homepage/FigmaTrustSources";
-import FigmaWhatsNext from "@/components/homepage/FigmaWhatsNext";
-import FigmaFaq from "@/components/homepage/FigmaFaq";
-import FigmaFinalCta from "@/components/homepage/FigmaFinalCta";
+import WireframeHero from "@/components/homepage/wireframe/WireframeHero";
+import WireframeDeliverables from "@/components/homepage/wireframe/WireframeDeliverables";
 
 export const metadata: Metadata = {
   title: "MBC — Start your digital business for €0 | Mondial.eco",
@@ -30,26 +25,11 @@ export default function Home() {
       <Navbar />
 
       <main className="w-full flex-1 flex flex-col">
-        {/* Section 1: Hero — MBC The Intelligent Toolbox (Figma 57449:112) */}
-        <FigmaHero />
+        {/* Hero: Move from "I have an idea" to real business-ready outputs (Figma 57480:110) */}
+        <WireframeHero />
 
-        {/* Section 2: Real Deliverables Showcase — 6 Business-Ready Outputs (Figma 57360:15973) */}
-        <FigmaOutputsShowcase />
-
-        {/* Section 3: How It Works — From Idea to Company in 6 Steps (Figma 57377:9704) */}
-        <FigmaHowItWorks />
-
-        {/* Section 4: Where The Facts Come From — Official French Sources (Figma 57424:508) */}
-        <FigmaTrustSources />
-
-        {/* Section 5: What's Next — Creator is Just the Beginning (Figma 57381:10328) */}
-        <FigmaWhatsNext />
-
-        {/* Section 5: FAQ — What "Start for €0" Really Means (Figma 57354:15783) */}
-        <FigmaFaq />
-
-        {/* Section 6: Final Call to Action Banner (Figma 57354:15831) */}
-        <FigmaFinalCta />
+        {/* 6 Business-Ready Deliverables Showcase with 3 Videos (Figma 57480:109) */}
+        <WireframeDeliverables />
       </main>
 
       {/* Global Public Footer */}

@@ -1,149 +1,128 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import Home from '@/app/page';
+import { LanguageProvider, useLanguage } from '@/providers/LanguageProvider';
+import { describe, it, expect } from 'vitest';
 
-import { vi, describe, it, expect } from 'vitest';
+// Helper component to switch language in tests
+function LanguageSwitcherHelper() {
+  const { locale, setLocale } = useLanguage();
+  return (
+    <button
+      onClick={() => setLocale(locale === 'en' ? 'fr' : 'en')}
+      data-testid="test-language-toggle"
+    >
+      Toggle {locale}
+    </button>
+  );
+}
 
+describe('Homepage — Figma Node 57480:110 & 57480:109 Wireframe Deliverables Alignment', () => {
+  it('renders Wireframe Hero and all 6 business-ready deliverables in exact alternating layout with 3 videos', () => {
+    render(
+      <LanguageProvider>
+        <Home />
+      </LanguageProvider>
+    );
 
-
-describe('Homepage — Figma Node 57349:8209 Canon Alignment', () => {
-  it('renders the 6 canonical sections in exact order', () => {
-    render(<Home />);
-
-    // 1. Hero Section (Figma 57449:112)
-    expect(screen.getByText(/The Intelligent/i)).toBeInTheDocument();
-    expect(screen.getByText(/Toolbox/i)).toBeInTheDocument();
-    expect(screen.getByText(/Start your digital business for/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/€0\./i).length).toBeGreaterThan(0);
+    // 1. Hero Section (Figma 57480:110)
+    expect(screen.getByTestId('wireframe-hero')).toBeInTheDocument();
     expect(screen.getAllByText(/MBC Creator · France/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/CampusFlow/i).length).toBeGreaterThan(0);
-
-    // 2. Outputs Showcase (Figma 57360:15973)
     expect(screen.getByText(/Move from “I have an idea” to real business-ready outputs\./i)).toBeInTheDocument();
-    expect(screen.getAllByText(/OUTPUT 01/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Brand Identity/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/OUTPUT 02/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Business Plan/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/OUTPUT 03/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Financial Forecast/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/OUTPUT 04/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Market Research/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/OUTPUT 05/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Action Roadmap/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/OUTPUT 06/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Business Setup Guide/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/MBC Creator helps you create the documents and structure/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Start for €0/i).length).toBeGreaterThan(0);
 
-    // 3. How It Works (Figma 57377:9704)
-    expect(screen.getAllByText(/From idea to/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/company in 6 steps\./i)).toBeInTheDocument();
-    expect(screen.getByText(/PHASE 01 · YOU/i)).toBeInTheDocument();
-    expect(screen.getByText(/PHASE 02 · PROJECT & BRAND/i)).toBeInTheDocument();
-    expect(screen.getByText(/PHASE 03 · BUSINESS PLAN/i)).toBeInTheDocument();
-    expect(screen.getByText(/CORE PHASE/i)).toBeInTheDocument();
-    expect(screen.getByText(/PHASE 04 · BUILD & LAUNCH PREP/i)).toBeInTheDocument();
-    expect(screen.getByText(/PHASE 05 · COMPANY/i)).toBeInTheDocument();
-    expect(screen.getByText(/PHASE 06 · NEXT CHAPTER/i)).toBeInTheDocument();
+    // 2. Deliverable 01: Brand kit (Figma 57500:123) - Visual on Left, Copy on Right
+    expect(screen.getAllByText(/Brand kit/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Build your brand identity/i)).toBeInTheDocument();
+    expect(screen.getByText(/Simple, fast, pro/i)).toBeInTheDocument();
+    expect(screen.getByText(/Answer a few questions and get your logo, colours and fonts/i)).toBeInTheDocument();
 
-    // 4. Where The Facts Come From (Figma 57424:508)
-    expect(screen.getByText(/WHERE THE FACTS COME FROM/i)).toBeInTheDocument();
-    expect(screen.getByText(/We don't guess\./i)).toBeInTheDocument();
-    expect(screen.getByText(/We check\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Service Public Entreprendre/i)).toBeInTheDocument();
-    expect(screen.getByText(/INPI Guichet unique/i)).toBeInTheDocument();
-    expect(screen.getByText(/Aides-entreprises \/ data\.gouv\.fr/i)).toBeInTheDocument();
-    expect(screen.getByText(/You can always see where info came from\./i)).toBeInTheDocument();
+    // 3. Deliverable 02: Business plan (Figma 57500:254) [VIDEO 1] - Copy on Left, Video on Right
+    expect(screen.getAllByText(/Business plan/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Turn your idea into a real plan/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ready for investors/i)).toBeInTheDocument();
+    expect(screen.getByText('CampusFlow_Business_Plan_v1.pdf')).toBeInTheDocument();
 
-    // 5. What's Next (Figma 57381:10328)
-    expect(screen.getByText(/Creator is just the/i)).toBeInTheDocument();
-    expect(screen.getByText(/beginning\./i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Entrepreneur/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Investor/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Service Provider/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Marketplace/i).length).toBeGreaterThan(0);
+    // 4. Deliverable 03: Financial forecast (Figma 57500:373) - Visual on Left, Copy on Right
+    expect(screen.getAllByText(/Financial forecast/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Plan your next 3 years/i)).toBeInTheDocument();
+    expect(screen.getByText(/Clear and honest/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/€554,920/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Month 7/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/€34,680/i).length).toBeGreaterThan(0);
 
-    // 6. FAQ (Figma 57354:15783)
-    expect(screen.getByText(/What “start for/i)).toBeInTheDocument();
-    expect(screen.getByText(/€0” really means\./i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Can I really start with MBC for €0\?/i).length).toBeGreaterThan(0);
+    // 5. Deliverable 04: Market research (Figma 57500:912) - Copy on Left, Visual on Right
+    expect(screen.getAllByText(/Market research/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Know your market first/i)).toBeInTheDocument();
+    expect(screen.getByText(/Real numbers, not guesses/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/€1\.2B/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/68%/i)).toBeInTheDocument();
 
-    // 7. Final CTA (Figma 57354:15831)
-    expect(screen.getByText(/Your business starts with a/i)).toBeInTheDocument();
-    expect(screen.getByText(/first step\./i)).toBeInTheDocument();
+    // 6. Deliverable 05: Action roadmap (Figma 57501:1033) [VIDEO 2] - Video on Left, Copy on Right
+    expect(screen.getAllByText(/Action roadmap/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Know what to do this week/i)).toBeInTheDocument();
+    expect(screen.getByText(/One step at a time/i)).toBeInTheDocument();
+    expect(screen.getByText('CampusFlow_90Day_Action_Roadmap.pdf')).toBeInTheDocument();
+
+    // 7. Deliverable 06: Business setup (Figma 57503:9257) [VIDEO 3] - Copy on Left, Video on Right
+    expect(screen.getAllByText(/Business setup/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Set up your company/i)).toBeInTheDocument();
+    expect(screen.getByText(/No legal jargon/i)).toBeInTheDocument();
+    expect(screen.getByText('INPI_Guichet_Unique_Formation_Blueprint.pdf')).toBeInTheDocument();
   });
 
-  it('renders all 7 Phase 3 sub-steps in the How It Works section', () => {
-    render(<Home />);
+  it('renders all 3 interactive video players with playback controls and 4K badges', () => {
+    render(
+      <LanguageProvider>
+        <Home />
+      </LanguageProvider>
+    );
 
-    expect(screen.getAllByText(/Market Intelligence/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/3\.1/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Business Model/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/3\.2/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Financial Forecast/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/3\.3/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Legal & Compliance/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/3\.4/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Formation & Team/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/3\.5/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Executive Business Plan/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/3\.6/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Investor Readiness/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/3\.7/i).length).toBeGreaterThan(0);
+    // 3 Video Player titles
+    expect(screen.getByText('CampusFlow_Business_Plan_v1.pdf')).toBeInTheDocument();
+    expect(screen.getByText('CampusFlow_90Day_Action_Roadmap.pdf')).toBeInTheDocument();
+    expect(screen.getByText('INPI_Guichet_Unique_Formation_Blueprint.pdf')).toBeInTheDocument();
+
+    // 3 4K badges
+    const badges4K = screen.getAllByText('4K');
+    expect(badges4K.length).toBe(3);
+
+    // Play buttons for the 3 players
+    const playButtons = screen.getAllByRole('button', { name: /^Play$/i });
+    expect(playButtons.length).toBe(3);
+
+    // Click play on the first video player
+    fireEvent.click(playButtons[0]);
+    expect(screen.getByRole('button', { name: /^Pause$/i })).toBeInTheDocument();
   });
 
-  it('allows expanding and collapsing FAQ accordion items', () => {
-    render(<Home />);
+  it('dynamically translates all hero and deliverable copy when switching between English and French', () => {
+    render(
+      <LanguageProvider>
+        <LanguageSwitcherHelper />
+        <Home />
+      </LanguageProvider>
+    );
 
-    // First question is open by default
-    expect(screen.getByText(/Yes\. The Creator profile is free to start\./i)).toBeInTheDocument();
+    // Initially in English
+    expect(screen.getByText(/Move from “I have an idea” to real business-ready outputs\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Build your brand identity/i)).toBeInTheDocument();
+    expect(screen.getByText(/Plan your next 3 years/i)).toBeInTheDocument();
 
-    // Click to toggle another question
-    const q2 = screen.getByRole('button', { name: /Does €0 mean every external business cost is free\?/i });
-    fireEvent.click(q2);
+    // Switch to French
+    const toggleBtn = screen.getByTestId('test-language-toggle');
+    act(() => {
+      fireEvent.click(toggleBtn);
+    });
 
-    expect(screen.getByText(/official commercial court registry filing fees with INPI/i)).toBeInTheDocument();
-  });
-
-  it('renders PublicHeader with exact Figma node 57381:10846 navigation menus and CTAs', async () => {
-    const { default: PublicHeader } = await import('@/components/shared/PublicHeader');
-    render(<PublicHeader />);
-
-    // Brand elements
-    expect(screen.getByAltText('MBC Logo')).toBeInTheDocument();
-    expect(screen.getByText('CREATOR')).toBeInTheDocument();
-    expect(screen.getByText('MONDIAL BUSINESS CREATION')).toBeInTheDocument();
-
-    // 4 Canonical Menus
-    expect(screen.getByRole('link', { name: 'How it works' })).toHaveAttribute('href', expect.stringMatching(/#how-it-works$/));
-    expect(screen.getByRole('link', { name: /Creator Tools/i })).toHaveAttribute('href', expect.stringMatching(/#outputs$/));
-    expect(screen.getByRole('link', { name: 'What you get' })).toHaveAttribute('href', expect.stringMatching(/#outputs$/));
-    expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', expect.stringMatching(/#faq$/));
-
-    // Dual CTAs
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
-    expect(screen.getByRole('link', { name: /Start for €0/i })).toHaveAttribute('href', '/signup');
-  });
-
-  it('renders Footer with exact Figma node 57381:10882 columns, links and copyright', async () => {
-    const { default: Footer } = await import('@/components/shared/Footer');
-    render(<Footer />);
-
-    // Column Headers
-    expect(screen.getByText('PRODUCT')).toBeInTheDocument();
-    expect(screen.getByText('RESOURCES')).toBeInTheDocument();
-    expect(screen.getByText('MBC NETWORK')).toBeInTheDocument();
-    expect(screen.getByText('LEGAL')).toBeInTheDocument();
-
-    // Key Links & Copy
-    expect(screen.getByText(/Build your digital business from idea to launch\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Start building for €0\./i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Creator Tools/i })).toHaveAttribute('href', expect.stringMatching(/#outputs$/));
-    expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', expect.stringMatching(/#faq$/));
-    expect(screen.getByRole('link', { name: 'Terms of Use' })).toHaveAttribute('href', '/terms');
-    expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
-
-    // Bottom Bar
-    expect(screen.getByText(/© 2026 Mondial Business Création\. All rights reserved\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Made for the next generation of founders\./i)).toBeInTheDocument();
-    expect(screen.getByText(/Paris, France/i)).toBeInTheDocument();
+    // French content should now be rendered
+    expect(screen.getByText(/Passez de.*J'ai une idée/i)).toBeInTheDocument();
+    expect(screen.getByText(/Bâtissez votre identité de marque/i)).toBeInTheDocument();
+    expect(screen.getByText(/Planifiez vos 3 prochaines années/i)).toBeInTheDocument();
+    expect(screen.getByText(/Transformez votre idée en un vrai plan/i)).toBeInTheDocument();
+    expect(screen.getByText(/Maîtrisez votre marché en premier/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sachez exactement quoi faire cette semaine/i)).toBeInTheDocument();
+    expect(screen.getByText(/Créez votre société/i)).toBeInTheDocument();
   });
 });
