@@ -890,7 +890,7 @@ export default function FigmaHowItWorks() {
                   type="button"
                   onClick={() => scrollToStep(b.num)}
                   aria-label={`Jump to Phase 0${b.num}: ${b.label}`}
-                  className={`px-3 py-1.5 rounded-full border transition-all cursor-pointer font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3c61dd] ${
+                  className={`px-3 py-1.5 rounded-full border transition-all cursor-pointer font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3c61dd] whitespace-nowrap shrink-0 ${
                     activeStep === b.num
                       ? 'bg-[#e8eeff] text-[#1f3faf] border-[#3c61dd] shadow-xs ring-1 ring-[#3c61dd]/30'
                       : activeStep > b.num

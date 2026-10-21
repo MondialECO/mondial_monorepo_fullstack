@@ -25,11 +25,11 @@ export default function FigmaFinalCta() {
             </p>
           </div>
 
-          {/* Right Action Button (175x48px r:13 bg:#ffffff text:#1f3faf) */}
+          {/* Right Action Button (min-w 175px, h:48px, r:13 bg:#ffffff text:#1f3faf) */}
           <div className="shrink-0 w-full sm:w-auto">
             <Link
               href="/signup"
-              className="w-full sm:w-[175px] h-[48px] rounded-[13px] bg-white hover:bg-white/95 text-[#1f3faf] font-bold text-base flex items-center justify-center shadow-lg transition-all active:scale-[0.98] font-heading"
+              className="w-full sm:w-auto min-w-[175px] px-6 h-[48px] rounded-[13px] bg-white hover:bg-white/95 text-[#1f3faf] font-bold text-base inline-flex items-center justify-center text-center whitespace-nowrap shadow-lg transition-all active:scale-[0.98] font-heading"
             >
               {t('homepage.finalCta.button')}
             </Link>

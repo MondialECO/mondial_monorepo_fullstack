@@ -187,8 +187,28 @@ For high-conversion visual storytelling, the platform incorporates the canonical
 
 ---
 
-## 6. Verification & Testing
+## 6. Button Responsive & i18n Wrap-Prevention Standards
+To prevent buttons from breaking into double lines when translated into longer languages (such as French, Spanish, or Bengali):
+- **Dynamic Sizing Policy:**
+  - Avoid rigid fixed pixel widths (e.g. `w-[153px]`, `sm:w-[176px]`).
+  - Use responsive min-width and horizontal padding: `w-full sm:w-auto min-w-[153px] px-6 h-[48px]`.
+- **Wrap Prevention (`whitespace-nowrap`):**
+  - All button links (`<Link>`, `<a>`, `<button>`) must include `whitespace-nowrap` to enforce single-line rendering.
+  - Apply `inline-flex items-center justify-center text-center` to ensure vertical and horizontal text balance.
+  - Buttons in horizontal flexbars include `shrink-0` to avoid being compressed by adjacent elements.
+- **Components Standardized:**
+  1. `FigmaHero.tsx`: Primary CTA (`min-w-[153px] px-6`) & Secondary CTA (`min-w-[176px] px-6`).
+  2. `WireframeHero.tsx`: Section 2 CTA (`min-w-[153px] px-6`).
+  3. `FigmaFinalCta.tsx`: Final banner CTA (`min-w-[175px] px-6`).
+  4. `FigmaWhatsNext.tsx`: Hub CTA (`min-w-[200px] px-8`).
+  5. `PublicHeader.tsx`: Desktop and mobile navigation CTAs (`whitespace-nowrap shrink-0`).
+  6. `FigmaHowItWorks.tsx`: Phase jump buttons (`whitespace-nowrap shrink-0`).
+
+---
+
+## 7. Verification & Testing
 - **Test Suite:** `src/__tests__/app/homepage-figma-57349-8209.test.tsx` (Homepage wireframe, hero, deliverables validation)
+- **Buttons i18n Suite:** `src/__tests__/homepage/buttons-responsive-i18n.test.tsx` (Button responsive classes and multi-lingual wrap prevention)
 - **Footer Suite:** `src/__tests__/shared/footer-i18n.test.tsx` (Footer bilingual rendering, accessibility, and link verification)
 - **Header Suite:** `src/__tests__/shared/header-i18n.test.tsx` (Public header navigation, dropdowns, and i18n testing)
 - **Coverage:** 100% passing tests across unit, integration, and production builds (`npm run build`).

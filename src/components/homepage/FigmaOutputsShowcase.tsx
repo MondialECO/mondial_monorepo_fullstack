@@ -40,7 +40,7 @@ export default function FigmaOutputsShowcase() {
           <div className="pt-2">
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center px-6 h-[48px] rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-extrabold text-[16px] shadow-md transition-all active:scale-[0.98] font-heading"
+              className="inline-flex items-center justify-center min-w-[153px] px-6 h-[48px] rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-extrabold text-[16px] shadow-md transition-all active:scale-[0.98] font-heading whitespace-nowrap text-center"
             >
               {t('homepage.outputs.cta')}
             </Link>

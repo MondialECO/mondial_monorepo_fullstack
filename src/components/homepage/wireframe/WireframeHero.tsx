@@ -38,11 +38,11 @@ export default function WireframeHero() {
           )}
         </p>
 
-        {/* CTA Action (Figma 57480:122 & 57480:123: 153x48, r 13, bg #3c61dd, Inter 800, 16px, shadow) */}
-        <div className="flex items-center justify-center">
+        {/* CTA Action (Figma 57480:122 & 57480:123: min 153x48, r 13, bg #3c61dd, Inter 800, 16px, shadow) */}
+        <div className="flex items-center justify-center w-full px-4">
           <Link
             href="/signup"
-            className="w-[153px] h-[48px] rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-heading font-extrabold text-[16px] leading-[25px] inline-flex items-center justify-center shadow-[0_10px_24px_rgba(60,97,221,0.20)] transition-all duration-150 active:scale-[0.98] select-none"
+            className="w-full sm:w-auto min-w-[153px] px-6 h-[48px] rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-heading font-extrabold text-[16px] leading-[25px] inline-flex items-center justify-center text-center whitespace-nowrap shadow-[0_10px_24px_rgba(60,97,221,0.20)] transition-all duration-150 active:scale-[0.98] select-none"
           >
             {t('homepage.wireframe.hero.cta', 'Start for €0 →')}
           </Link>

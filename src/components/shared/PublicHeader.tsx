@@ -108,11 +108,11 @@ export default function PublicHeader() {
         {/* ========================================================================= */}
         {/* RIGHT: Dual CTAs + Language Switcher (Figma 57381:10873) */}
         {/* ========================================================================= */}
-        <div className="hidden md:flex items-center gap-3 lg:gap-4">
+        <div className="hidden md:flex items-center gap-3 lg:gap-4 shrink-0">
           {/* Secondary: Sign In (Figma 57381:10874) */}
           <Link
             href="/login"
-            className="text-[14px] font-medium text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-white px-3 py-2 transition-colors font-sans"
+            className="text-[14px] font-medium text-[#667085] dark:text-muted-foreground hover:text-[#101828] dark:hover:text-white px-3 py-2 transition-colors font-sans whitespace-nowrap shrink-0"
           >
             {t('header.signIn', 'Sign in')}
           </Link>
@@ -120,10 +120,10 @@ export default function PublicHeader() {
           {/* Primary Conversion CTA: Start for €0 (Figma 57381:10876) */}
           <Link
             href="/signup"
-            className="h-[42px] px-5 bg-[#3c61dd] hover:bg-[#3252be] text-white font-medium text-[14px] rounded-[12px] transition-all shadow-sm inline-flex items-center justify-center gap-2 font-sans group active:scale-[0.98]"
+            className="h-[42px] px-5 bg-[#3c61dd] hover:bg-[#3252be] text-white font-medium text-[14px] rounded-[12px] transition-all shadow-sm inline-flex items-center justify-center gap-2 font-sans group active:scale-[0.98] whitespace-nowrap shrink-0"
           >
-            <span>{t('header.startFree', 'Start for €0')}</span>
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            <span className="whitespace-nowrap">{t('header.startFree', 'Start for €0')}</span>
+            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 shrink-0" />
           </Link>
 
           {/* Language Switcher */}
@@ -196,7 +196,7 @@ export default function PublicHeader() {
             <Link
               href="/login"
               onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center py-2.5 rounded-[8px] border border-[#e8ecf2] dark:border-border text-[14px] font-medium text-[#101828] dark:text-foreground hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors font-sans"
+              className="w-full text-center py-2.5 px-4 rounded-[8px] border border-[#e8ecf2] dark:border-border text-[14px] font-medium text-[#101828] dark:text-foreground hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors font-sans whitespace-nowrap inline-flex items-center justify-center"
             >
               {t('header.signIn', 'Sign in')}
             </Link>
@@ -204,10 +204,10 @@ export default function PublicHeader() {
             <Link
               href="/signup"
               onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center py-2.5 rounded-[8px] bg-[#3c61dd] hover:bg-[#3252be] text-white text-[14px] font-medium shadow-sm inline-flex items-center justify-center gap-2 font-sans transition-colors"
+              className="w-full text-center py-2.5 px-4 rounded-[8px] bg-[#3c61dd] hover:bg-[#3252be] text-white text-[14px] font-medium shadow-sm inline-flex items-center justify-center gap-2 font-sans transition-colors whitespace-nowrap"
             >
-              <span>{t('header.startFree', 'Start for €0')}</span>
-              <ArrowRight className="w-4 h-4" />
+              <span className="whitespace-nowrap">{t('header.startFree', 'Start for €0')}</span>
+              <ArrowRight className="w-4 h-4 shrink-0" />
             </Link>
           </div>
         </div>

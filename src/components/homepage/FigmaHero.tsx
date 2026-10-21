@@ -48,20 +48,20 @@ export default function FigmaHero() {
         </div>
 
         {/* Hero Actions (Figma 57354:15964 - 628px container) */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto mb-10 px-4">
-          {/* Start for €0 → Button (Figma 57354:15965 - 153x48px r:13 bg:#3c61dd) */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 w-full sm:w-auto mb-10 px-4">
+          {/* Start for €0 → Button (Figma 57354:15965 - min-w 153px, responsive px-6) */}
           <Link
             href="/signup"
-            className="w-full sm:w-[153px] h-[48px] rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-extrabold text-[16px] flex items-center justify-center shadow-md transition-all active:scale-[0.98] font-heading"
+            className="w-full sm:w-auto min-w-[153px] px-6 h-[48px] rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-extrabold text-[16px] inline-flex items-center justify-center text-center whitespace-nowrap shadow-md transition-all active:scale-[0.98] font-heading"
           >
             {t('homepage.hero.ctaPrimary')}
           </Link>
 
-          {/* See how it works Button (Figma 57354:15967 - 176x48px r:13 bg:#ffffff border:#e6eaf2) */}
+          {/* See how it works Button (Figma 57354:15967 - min-w 176px, responsive px-6) */}
           <a
             href="#how-it-works"
             onClick={scrollToHowItWorks}
-            className="w-full sm:w-[176px] h-[48px] rounded-[13px] bg-white dark:bg-card border border-[#e6eaf2] dark:border-border text-[#121826] dark:text-foreground hover:bg-accent font-extrabold text-[16px] flex items-center justify-center shadow-2xs transition-all active:scale-[0.98] font-heading"
+            className="w-full sm:w-auto min-w-[176px] px-6 h-[48px] rounded-[13px] bg-white dark:bg-card border border-[#e6eaf2] dark:border-border text-[#121826] dark:text-foreground hover:bg-accent font-extrabold text-[16px] inline-flex items-center justify-center text-center whitespace-nowrap shadow-2xs transition-all active:scale-[0.98] font-heading"
           >
             {t('homepage.hero.ctaSecondary')}
           </a>

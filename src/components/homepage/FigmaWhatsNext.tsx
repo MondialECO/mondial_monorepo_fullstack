@@ -227,10 +227,10 @@ export default function FigmaWhatsNext() {
         </div>
 
         {/* Bottom CTA Block (Figma 57381:10444) */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-center">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-center px-4">
           <Link
             href="/signup"
-            className="px-8 py-3.5 rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-bold text-base shadow-md transition-all active:scale-[0.98] font-heading"
+            className="w-full sm:w-auto min-w-[200px] px-8 py-3.5 rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-bold text-base shadow-md transition-all active:scale-[0.98] font-heading whitespace-nowrap inline-flex items-center justify-center text-center"
           >
             {t('homepage.whatsNext.cta.button')}
           </Link>
