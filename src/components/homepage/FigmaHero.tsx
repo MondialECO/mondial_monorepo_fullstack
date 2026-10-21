@@ -67,22 +67,22 @@ export default function FigmaHero() {
           </a>
         </div>
 
-        {/* Hero Visual Mockup Deck (Figma 57554:12818 3D 0€ Graphic + 57554:12819 Henry Dashboard) */}
-        <div className="relative w-full max-w-[1440px] mx-auto mt-2 sm:mt-4 flex flex-col items-center px-2">
-          {/* 3D 0€ Atmospheric Background Graphic (1439x427px) */}
-          <div className="relative w-full max-w-[1439px] h-auto pointer-events-none -mb-16 sm:-mb-24 md:-mb-32 z-0 flex items-center justify-center">
+        {/* Hero Visual Mockup Deck (Figma 57358:15972 3D 0€ Graphic + 57351:15342 Henry Dashboard) */}
+        <div className="relative w-full max-w-[996px] mx-auto mt-2 sm:mt-4 flex flex-col items-center px-2">
+          {/* 3D 0€ Atmospheric Background Graphic (996x339px) */}
+          <div className="relative w-full max-w-[996px] h-auto pointer-events-none -mb-12 sm:-mb-22 md:-mb-32 z-0 flex items-center justify-center">
             <Image
               src="/homepage_figma/0_euro_transparent_background.png"
               alt="Mondial 0€ 3D Graphic"
-              width={1439}
-              height={427}
-              className="w-full max-w-[1439px] h-auto object-contain"
+              width={996}
+              height={339}
+              className="w-full max-w-[996px] h-auto object-contain"
               priority
             />
           </div>
 
           {/* Product Dashboard Screenshot (724x507px r:14) with Shadow & ~15% Bottom Overflow */}
-          <div className="relative z-10 w-full max-w-[724px] rounded-[14px] overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3),0_12px_24px_-8px_rgba(0,0,0,0.15)] border border-[#e2e8f0] dark:border-border bg-white dark:bg-card -mb-16 sm:-mb-20 md:-mb-24">
+          <div className="relative z-0 w-full max-w-[724px] rounded-[14px] overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3),0_12px_24px_-8px_rgba(0,0,0,0.15)] border border-[#e2e8f0] dark:border-border bg-white dark:bg-card -mb-16 sm:-mb-20 md:-mb-24">
             <Image
               src="/homepage_figma/screenshot_2026-10-02_at_3_00_34_am_1_fde9301e.png"
               alt="Good morning, Henry - MBC Creator Platform"

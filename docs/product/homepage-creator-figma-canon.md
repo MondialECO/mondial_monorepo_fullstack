@@ -57,41 +57,42 @@ The platform utilizes the official MBC (Mondial Business Creation) squircle mono
 
 ---
 
-## 4. Homepage Section Architecture (Figma 57510:9718)
+## 4. Homepage Section Architecture (Figma 57554:12800 & 57510:9718)
 
-The Creator homepage consists of 7 structured sections organized linearly, fully aligned with Figma Canvas **`57510:9718` ("Creator Landing page Upgrade V.2")**:
+The Creator homepage consists of 7 structured sections organized linearly, fully aligned with Figma Canvas **`57554:12800` ("Creator Landing page Upgrade V.3 Final")** and **`57510:9718` ("Creator Landing page Upgrade V.2")**:
 
-### Section 1: Hero Deck (`src/components/homepage/FigmaHero.tsx` — Figma Node `57449:112`)
-- **Eyebrow Badge (Figma 57449:113):** `MBC CREATOR · FRANCE` (uppercase, letter-spacing 1.04px) with sapphire indicator dot (`#3c61dd`).
-- **Hero Headline (Figma 57449:120):**
+### Section 1: Hero Deck (`src/components/homepage/FigmaHero.tsx` — Figma Node `57554:12801`)
+- **Eyebrow Badge (Figma 57554:12803):** `MBC CREATOR · FRANCE` (uppercase, letter-spacing 1.04px) with sapphire indicator dot (`#3c61dd`).
+- **Hero Headline (Figma 57554:12808):**
   - Line 1: `MBC` (Inter 700 / Bold, Mondial Royal Blue `#3c61dd`)
   - Line 2: `The Intelligent` (Inter 600 / SemiBold)
   - Line 3: `Toolbox` (Inter 600 / SemiBold)
   - Metric: 54px, lh: 61px, center-aligned.
-- **Subheading / Value Proposition (Figma 57449:1584):** `Start your digital business for €0.` (Inter 600, 24px, lh: 31px, center-aligned).
-- **Subtitle (Figma 57449:121):** `One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch.` (DM Sans 400, 16px, relaxed, center-aligned).
-- **Dual CTA (Figma 57449:122):**
-  - `Start for €0 →` (`bg-[#3c61dd]`, 153x48px, r: 13px).
-  - `See how it works` (white card, border `#e6eaf2`, smooth-scrolls to `#how-it-works`).
-- **Visual Mockup Deck:**
-  - 3D 0€ Atmospheric Background Graphic (`996x339px`, elevated position behind CTA buttons).
-  - Product Dashboard Screenshot (`724x507px`, rounded 14px, elevated shadow `0 25px 60px -15px rgba(0,0,0,0.3)`).
+- **Subheading / Value Proposition (Figma 57554:12809):** `Start your digital business for €0.` (Inter 600, 24px, lh: 31px, center-aligned).
+- **Subtitle (Figma 57554:12810):** `One idea is enough. MBC helps you build your project, generate your documents and prepare for your launch.` (DM Sans 400, 16px, relaxed, center-aligned).
+- **Dual Responsive CTAs (Figma 57554:12812):**
+  - `Start for €0 →` (Primary CTA: `w-full sm:w-auto min-w-[153px] px-6 h-[48px] whitespace-nowrap bg-[#3c61dd]`).
+  - `See how it works` (Secondary CTA: `w-full sm:w-auto min-w-[176px] px-6 h-[48px] whitespace-nowrap`, smooth-scrolls to `#how-it-works`).
+- **Visual Mockup Deck (User-Configured Spec):**
+  - 3D 0€ Atmospheric Background Graphic: `/homepage_figma/0_euro_transparent_background.png` (`996x339px`, transparent backdrop, elevated position behind CTA buttons).
+  - Product Dashboard Screenshot: `/homepage_figma/screenshot_2026-10-02_at_3_00_34_am_1_fde9301e.png` (`724x507px`, rounded 14px, elevated shadow `0 25px 60px -15px rgba(0,0,0,0.3)`).
   - Bottom 15% overflow (`-mb-16 sm:-mb-20 md:-mb-24`) protruding underneath Section 2.
+  - *Note: This section's visual mockup layout is user-finalized and preserved without further manual modification.*
 
-### Section 2: Wireframe Deliverables & Video Bleed Showcase (`WireframeHero.tsx` + `WireframeDeliverables.tsx` — Figma Node `57480:109`)
-- **Note:** Supersedes legacy static `FigmaOutputsShowcase.tsx` with full-fidelity interactive wireframe visualizer and video walkthrough players.
+### Section 2: Wireframe Deliverables & Video Bleed Showcase (`WireframeHero.tsx` + `WireframeDeliverables.tsx` — Figma Node `57480:109` / `57554:12800`)
+- **Anchor Navigation:** Targetable via `id="outputs"` with `scroll-mt-20` for smooth scrolling from Header / Footer links.
 - **Hero Intro (`WireframeHero.tsx` — Figma 57480:110):**
   - Eyebrow: `MBC CREATOR · FRANCE`
   - Headline: `Move from “I have an idea” to real business-ready outputs.`
   - Subtitle: `MBC Creator helps you create the documents and structure you need to understand your project, explain it clearly, and know what to do next.`
-  - Action CTA: `Start for €0 →` (`bg-[#3c61dd]`, 153x48px).
+  - Action CTA: `Start for €0 →` (`w-full sm:w-auto min-w-[153px] px-6 h-[48px] whitespace-nowrap bg-[#3c61dd]`).
 - **6 Structured Deliverable Cards with Bleed Videos (`WireframeDeliverables.tsx`):**
   1. `01 · Brand kit` (`BrandKitVisual.tsx` — Figma 57500:123): Visual tablet canvas with 4 rotated satellite cards, curved dashed SVG arrows, and sparkles.
   2. `02 · Business plan` (Figma 57500:254): Video Player 1 (`1263px`, video `/videos/business_plan_walkthrough.mp4`) bleeding into the right edge, copy on left.
   3. `03 · Financial forecast` (`FinancialForecastVisual.tsx` — Figma 57500:373): Vector screen with 4 financial satellite cards (`Revenue -8deg`, `Break-even +9deg`, `Cash -7deg`, `Unit economics +7deg`).
   4. `04 · Market research` (`MarketResearchVisual.tsx` — Figma 57500:912): Vector screen with 4 market cards (`Market size -8deg`, `Target users +9deg`, `Competitors -7deg`, `Demand +7deg`).
   5. `05 · Action roadmap` (Figma 57501:1033): Video Player 2 (`1263px`, video `/videos/business_plan_walkthrough.mp4`) bleeding into the left edge, copy on right.
-  6. `06 · Business setup` (Figma 57503:9257): Video Player 3 (`1281px`, video `/videos/launch-plan-scroll.mp4`) bleeding into the right edge, copy on left. Container width: `max-w-[1980px]`.
+  6. `06 · Business setup` (Figma 57503:9257 / `57559:14378`): Video Player 3 (`1281px`, video `/videos/launch-plan-scroll.mp4`) bleeding into the right edge, copy on left. Container width: `max-w-[1980px]`.
 - **Legacy Fallback (`FigmaOutputsShowcase.tsx`):** Preserved in codebase as a modular reference and commented out in `src/app/page.tsx`.
 
 ### Section 3: How It Works (`src/components/homepage/FigmaHowItWorks.tsx` — Figma Node `57377:9704`)
