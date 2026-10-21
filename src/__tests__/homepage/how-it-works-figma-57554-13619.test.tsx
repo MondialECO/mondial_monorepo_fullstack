@@ -18,7 +18,7 @@ describe('FigmaHowItWorks Section (Figma Node 57554:13619)', () => {
 
     const section = document.getElementById('how-it-works');
     expect(section).toBeInTheDocument();
-    expect(section).toHaveClass('lg:py-[80px]');
+    expect(section).toHaveClass('md:py-[72px]');
 
     const container = section?.querySelector('.lg\\:px-\\[45px\\]');
     expect(container).toBeInTheDocument();

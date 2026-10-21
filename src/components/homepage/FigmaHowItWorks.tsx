@@ -22,7 +22,7 @@ function SpineNode({ step, activeStep, isFirst = false, isLast = false, onSelect
   const formattedStep = step < 10 ? `0${step}` : `${step}`;
 
   return (
-    <div className="hidden md:flex flex-col items-center w-16 shrink-0 relative self-stretch pt-7 select-none">
+    <div className="hidden md:flex flex-col items-center w-20 lg:w-24 shrink-0 relative self-stretch pt-7 select-none">
       {/* Top connector (coming from previous step) */}
       {!isFirst && (
         <div className="absolute top-0 h-7 w-[2px] bg-[#e3e8f2] z-0">
@@ -121,7 +121,7 @@ export default function FigmaHowItWorks() {
   return (
     <section 
       id="how-it-works" 
-      className="relative w-full py-16 md:py-[72px] lg:py-[80px] bg-gradient-to-b from-[#ffffff] to-[#fbfcff] dark:from-background dark:to-background border-b border-[#e8ecf2] dark:border-border overflow-hidden"
+      className="relative w-full py-14 md:py-[72px] bg-gradient-to-b from-[#ffffff] to-[#fbfcff] dark:from-background dark:to-background border-b border-[#e8ecf2] dark:border-border overflow-hidden"
       style={{
         backgroundImage: `
           radial-gradient(circle at 88% 12%, rgba(111, 139, 255, 0.14) 0%, rgba(111, 139, 255, 0) 65%),
@@ -132,7 +132,7 @@ export default function FigmaHowItWorks() {
       <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto px-4 sm:px-6 md:px-8 lg:px-[45px]">
         
         {/* Intro Header (Figma 57554:13620 - Max-Width 720px) */}
-        <div className="flex flex-col items-center text-center max-w-[720px] mx-auto mb-16 md:mb-20 space-y-4">
+        <div className="flex flex-col items-center text-center max-w-[720px] mx-auto mb-12 md:mb-[68px] space-y-4">
           
           {/* Eyebrow Badge (Figma 57381:10473 - 138x30px) */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e8eeff] text-[#1f3faf] text-xs font-semibold uppercase font-mono shadow-2xs">
@@ -957,7 +957,7 @@ export default function FigmaHowItWorks() {
         </div>
 
         {/* Bottom Breadcrumb Sequence (Figma 57554:14214) */}
-        <div className="mt-16 pt-8 flex flex-col items-center justify-center space-y-4 text-center">
+        <div className="mt-12 md:mt-[68px] flex flex-col items-center justify-center space-y-4 text-center">
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm font-semibold text-[#101828]">
             {breadcrumbs.map((b, idx, arr) => (
               <React.Fragment key={b.num}>
