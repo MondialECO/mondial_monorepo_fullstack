@@ -87,12 +87,12 @@ The Creator homepage consists of 7 structured sections organized linearly, fully
   - Subtitle: `MBC Creator helps you create the documents and structure you need to understand your project, explain it clearly, and know what to do next.`
   - Action CTA: `Start for €0 →` (`w-full sm:w-auto min-w-[153px] px-6 h-[48px] whitespace-nowrap bg-[#3c61dd]`).
 - **6 Structured Deliverable Cards with Bleed Videos (`WireframeDeliverables.tsx`):**
-  1. `01 · Brand kit` (`BrandKitVisual.tsx` — Figma 57500:123): Visual tablet canvas with 4 rotated satellite cards, curved dashed SVG arrows, and sparkles.
-  2. `02 · Business plan` (Figma 57500:254): Video Player 1 (`1263px`, video `/videos/business_plan_walkthrough.mp4`) bleeding into the right edge, copy on left.
-  3. `03 · Financial forecast` (`FinancialForecastVisual.tsx` — Figma 57500:373): Vector screen with 4 financial satellite cards (`Revenue -8deg`, `Break-even +9deg`, `Cash -7deg`, `Unit economics +7deg`).
-  4. `04 · Market research` (`MarketResearchVisual.tsx` — Figma 57500:912): Vector screen with 4 market cards (`Market size -8deg`, `Target users +9deg`, `Competitors -7deg`, `Demand +7deg`).
-  5. `05 · Action roadmap` (Figma 57501:1033): Video Player 2 (`1263px`, video `/videos/business_plan_walkthrough.mp4`) bleeding into the left edge, copy on right.
-  6. `06 · Business setup` (Figma 57503:9257 / `57559:14378`): Video Player 3 (`1281px`, video `/videos/launch-plan-scroll.mp4`) bleeding into the right edge, copy on left. Container width: `max-w-[1980px]`.
+  1. `01 · Brand kit` (`BrandKitVisual.tsx` — Figma `57500:123`): Visual tablet canvas with 4 rotated satellite cards, curved dashed SVG arrows, and sparkles. Typography: Syne 800 54px.
+  2. `02 · Business plan` (Figma `57500:254`): Video Player 1 (`1263px`, poster `/wireframe_figma/deliverable_02_business_plan.png`, video `/videos/business_plan_walkthrough.mp4`) bleeding into the right edge, copy on left. Typography: Syne 800 54px.
+  3. `03 · Financial forecast` (`FinancialForecastVisual.tsx` — Figma `57500:373`): Vector screen with 4 financial satellite cards (`Revenue -8deg`, `Break-even +9deg`, `Cash -7deg`, `Unit economics +7deg`). Typography: Syne 800 54px.
+  4. `04 · Market research` (`MarketResearchVisual.tsx` — Figma `57500:912`): Vector screen with 4 market cards (`Market size -8deg`, `Target users +9deg`, `Competitors -7deg`, `Demand +7deg`). Typography: Syne 800 54px.
+  5. `05 · Action roadmap` (Figma `57559:14241`): Video Player 2 (`1263px`, poster `/wireframe_figma/deliverable_05_action_roadmap.png`, video `/videos/business_plan_walkthrough.mp4`) bleeding into the left edge, copy on right. Typography: Syne 800 54px.
+  6. `06 · Business setup` (Figma `57559:14378`): Video Player 3 (`1281px`, poster `/wireframe_figma/deliverable_06_business_setup.png`, video `/videos/launch-plan-scroll.mp4`) bleeding into the right edge, copy on left. Container width: `max-w-[1980px]`. Typography: Syne 800 54px.
 - **Legacy Fallback (`FigmaOutputsShowcase.tsx`):** Preserved in codebase as a modular reference and commented out in `src/app/page.tsx`.
 
 ### Section 3: How It Works (`src/components/homepage/FigmaHowItWorks.tsx` — Figma Node `57377:9704`)

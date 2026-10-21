@@ -36,8 +36,8 @@ export default function WireframeDeliverables() {
               </span>
             </div>
 
-            {/* Headline (Figma 57500:246: Inter 600, 54px, lh 56.7px, tracking-tight) */}
-            <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-semibold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[56.7px] tracking-tight">
+            {/* Headline (Figma 57500:123: Syne 800, 54px, lh 56.7px, tracking-tight) */}
+            <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[57px] tracking-[-0.025em]">
               {t('homepage.wireframe.brandKit.headline', 'Build your brand identity')}
             </h2>
 
@@ -79,8 +79,8 @@ export default function WireframeDeliverables() {
                 </span>
               </div>
 
-              {/* Headline (Figma 57500:365: Inter 600, 54px, lh 60px, tracking-tight) */}
-              <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-semibold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-tight">
+              {/* Headline (Figma 57500:254: Syne 800, 54px, lh 60px, tracking-tight) */}
+              <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-[-0.025em]">
                 {t('homepage.wireframe.businessPlan.headline', 'Turn your idea into a real plan')}
               </h2>
 
@@ -105,7 +105,7 @@ export default function WireframeDeliverables() {
               <WireframeVideoPlayer
                 title="CampusFlow_Business_Plan_v1.pdf"
                 badge={t('homepage.wireframe.businessPlan.videoBadge', 'Interactive Plan Video')}
-                posterSrc="/wireframe_figma/business_plan_poster.png"
+                posterSrc="/wireframe_figma/deliverable_02_business_plan.png"
                 videoSrc="/videos/business_plan_walkthrough.mp4"
               />
             </div>
@@ -137,8 +137,8 @@ export default function WireframeDeliverables() {
               </span>
             </div>
 
-            {/* Headline */}
-            <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-semibold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-tight">
+            {/* Headline (Figma 57500:373: Syne 800, 54px, lh 60px, tracking-tight) */}
+            <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-[-0.025em]">
               {t('homepage.wireframe.financialForecast.headline', 'Plan your next 3 years')}
             </h2>
 
@@ -179,8 +179,8 @@ export default function WireframeDeliverables() {
               </span>
             </div>
 
-            {/* Headline */}
-            <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-semibold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-tight">
+            {/* Headline (Figma 57500:912: Syne 800, 54px, lh 60px, tracking-tight) */}
+            <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-[-0.025em]">
               {t('homepage.wireframe.marketResearch.headline', 'Know your market first')}
             </h2>
 
@@ -208,7 +208,7 @@ export default function WireframeDeliverables() {
       </section>
 
       {/* ========================================================================= */}
-      {/* SECTION 5: 05 · Action roadmap (Figma 57501:1033) [VIDEO 2] */}
+      {/* SECTION 5: 05 · Action roadmap (Figma 57559:14241) [VIDEO 2] */}
       {/* Video Player 2 on LEFT (1276px, bleeding left), Copy on RIGHT (597px / max 480px) — Background #FFFFFF */}
       {/* ========================================================================= */}
       <section
@@ -217,17 +217,17 @@ export default function WireframeDeliverables() {
       >
         <div className="w-full max-w-[1980px] mx-auto px-6 sm:px-10 lg:pl-0 lg:pr-16 xl:pr-[100px] 2xl:pr-[190px]">
           <div className="flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-[70px]">
-            {/* Video Player 2: Left (Figma 57501:1073: 1276x718, flush/bleeding left) */}
+            {/* Video Player 2: Left (Figma 57559:14250: 1276x718, flush/bleeding left) */}
             <div className="w-full lg:w-[950px] xl:w-[1150px] 2xl:w-[1263px] shrink-0 max-w-none order-2 lg:order-1 lg:-ml-[60px] xl:-ml-[100px] 2xl:-ml-[116px]">
               <WireframeVideoPlayer
                 title="CampusFlow_90Day_Action_Roadmap.pdf"
                 badge={t('homepage.wireframe.actionRoadmap.videoBadge', 'Roadmap Walkthrough Video')}
-                posterSrc="/wireframe_figma/business_plan_poster.png"
+                posterSrc="/wireframe_figma/deliverable_05_action_roadmap.png"
                 videoSrc="/videos/business_plan_walkthrough.mp4"
               />
             </div>
 
-            {/* Copy: Right (Figma 57501:1034: width 597px, max-w 480px, gap 20px) */}
+            {/* Copy: Right (Figma 57559:14242: width 597px, max-w 480px, gap 20px) */}
             <div className="w-full max-w-[480px] lg:w-[480px] xl:w-[574px] shrink-0 space-y-5 order-1 lg:order-2">
               {/* Eyebrow */}
               <div className="inline-flex items-center gap-2">
@@ -237,8 +237,8 @@ export default function WireframeDeliverables() {
                 </span>
               </div>
 
-              {/* Headline */}
-              <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-semibold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-tight">
+              {/* Headline (Figma 57559:14241: Syne 800, 54px, lh 60px, tracking-tight) */}
+              <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-[-0.025em]">
                 {t('homepage.wireframe.actionRoadmap.headline', 'Know what to do this week')}
               </h2>
 
@@ -262,7 +262,7 @@ export default function WireframeDeliverables() {
       </section>
 
       {/* ========================================================================= */}
-      {/* SECTION 6: 06 · Business setup (Figma 57503:9257) [VIDEO 3] */}
+      {/* SECTION 6: 06 · Business setup (Figma 57559:14378) [VIDEO 3] */}
       {/* Copy on LEFT (574px / max 480px), Video Player 3 on RIGHT (1281px, bleeding right) — Background #F7F9FC */}
       {/* ========================================================================= */}
       <section
@@ -271,7 +271,7 @@ export default function WireframeDeliverables() {
       >
         <div className="w-full max-w-[1980px] mx-auto px-6 sm:px-10 lg:pl-16 xl:pl-[100px] 2xl:pl-[190px] lg:pr-0">
           <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-[51px]">
-            {/* Copy: Left (Figma 57503:9258: width 574px, max-w 480px, gap 20px) */}
+            {/* Copy: Left (Figma 57559:14379: width 574px, max-w 480px, gap 20px) */}
             <div className="w-full max-w-[480px] lg:w-[480px] xl:w-[574px] shrink-0 space-y-5">
               {/* Eyebrow */}
               <div className="inline-flex items-center gap-2">
@@ -281,8 +281,8 @@ export default function WireframeDeliverables() {
                 </span>
               </div>
 
-              {/* Headline */}
-              <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-semibold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-tight">
+              {/* Headline (Figma 57559:14378: Syne 800, 54px, lh 60px, tracking-tight) */}
+              <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-[-0.025em]">
                 {t('homepage.wireframe.businessSetup.headline', 'Set up your company')}
               </h2>
 
@@ -302,12 +302,12 @@ export default function WireframeDeliverables() {
               </p>
             </div>
 
-            {/* Video Player 3: Right (Figma 57503:9270: 1281x720, r: 24, drop shadow - overflows right) */}
+            {/* Video Player 3: Right (Figma 57559:14387: 1281x720, r: 24, drop shadow - overflows right) */}
             <div className="w-full lg:w-[950px] xl:w-[1150px] 2xl:w-[1281px] shrink-0 max-w-none">
               <WireframeVideoPlayer
                 title="INPI_Guichet_Unique_Formation_Blueprint.pdf"
                 badge={t('homepage.wireframe.businessSetup.videoBadge', 'Company Registration Video')}
-                posterSrc="/wireframe_figma/570c38a580d90a822d0db7412d2d930101307030.png"
+                posterSrc="/wireframe_figma/deliverable_06_business_setup.png"
                 videoSrc="/videos/launch-plan-scroll.mp4"
               />
             </div>
