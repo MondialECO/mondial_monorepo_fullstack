@@ -23,7 +23,7 @@ export default function FigmaFaq() {
 
   return (
     <section id="faq" className="w-full py-20 md:py-28 bg-white dark:bg-background border-b border-[#e8ecf2] dark:border-border">
-      <div className="w-full max-w-[1440px] xl:max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16">
+      <div className="w-full max-w-[1440px] 2xl:max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-[45px]">
         
         {/* 2-Column Split Layout (Figma 57354:15784 - 1180px wide) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">

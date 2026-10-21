@@ -59,7 +59,7 @@ export default function Footer() {
         </svg>
       </div>
 
-      <div className="relative z-10 w-full max-w-[1980px] mx-auto px-6 sm:px-10 lg:px-16 xl:px-[100px] 2xl:px-[190px] pt-16 lg:pt-20 pb-12">
+      <div className="relative z-10 w-full max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-[45px] pt-16 lg:pt-20 pb-12">
 
         {/* ========================================================================= */}
         {/* TOP SECTION: 5-COLUMN FOOTER GRID (Figma 57381:10891) */}

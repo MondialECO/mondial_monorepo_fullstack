@@ -14,20 +14,20 @@ export default function WireframeDeliverables() {
     <div className="w-full flex flex-col" data-testid="wireframe-deliverables">
       {/* ========================================================================= */}
       {/* SECTION 1: 01 · Brand kit (Figma 57500:123) */}
-      {/* Visual on LEFT (862px), Copy on RIGHT (464px), Gap 20px, Padding 100px 45px — Background #FFFFFF */}
+      {/* Visual on LEFT, Copy on RIGHT — Background #FFFFFF */}
       {/* ========================================================================= */}
       <section
-        className="w-full bg-white dark:bg-background py-16 lg:py-[100px] px-6 sm:px-10 lg:px-[45px] overflow-hidden"
+        className="w-full bg-white dark:bg-background py-16 sm:py-20 lg:py-[100px] px-4 sm:px-6 md:px-8 lg:px-[45px] overflow-hidden"
         data-testid="deliverable-brand-kit"
       >
-        <div className="w-full max-w-[1350px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[20px]">
-          {/* Visual: Left (862px in Figma) */}
-          <div className="w-full flex-1 min-w-0 max-w-[862px] flex items-center justify-center order-2 xl:order-1">
+        <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[26px]">
+          {/* Visual: Left */}
+          <div className="w-full flex-1 min-w-0 max-w-[824px] 2xl:max-w-[862px] flex items-center justify-center order-2 xl:order-1">
             <BrandKitVisual />
           </div>
 
-          {/* Copy: Right (max-w 464px in Figma, gap 20px) */}
-          <div className="w-full max-w-[464px] space-y-5 order-1 xl:order-2 shrink-0">
+          {/* Copy: Right (max-w 480px/500px) */}
+          <div className="w-full max-w-[480px] xl:max-w-[500px] space-y-5 order-1 xl:order-2 shrink-0">
             {/* Eyebrow (Figma 57500:243) */}
             <div className="inline-flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#157a55]" aria-hidden="true" />
@@ -61,15 +61,15 @@ export default function WireframeDeliverables() {
 
       {/* ========================================================================= */}
       {/* SECTION 2: 02 · Business plan (Figma 57500:254) [VIDEO 1] */}
-      {/* Copy on LEFT (526px), Video Player 1 on RIGHT (824px) — Background #F7F9FC */}
+      {/* Copy on LEFT, Video Player 1 on RIGHT — Background #F7F9FC */}
       {/* ========================================================================= */}
       <section
-        className="w-full bg-[#f7f9fc] dark:bg-muted/15 py-16 lg:py-[100px] px-6 sm:px-10 lg:px-[45px] overflow-hidden"
+        className="w-full bg-[#f7f9fc] dark:bg-muted/15 py-16 sm:py-20 lg:py-[100px] px-4 sm:px-6 md:px-8 lg:px-[45px] overflow-hidden"
         data-testid="deliverable-business-plan"
       >
-        <div className="w-full max-w-[1350px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[20px]">
-          {/* Copy: Left (Figma 57500:361: width 526px, gap 20px) */}
-          <div className="w-full max-w-[480px] xl:max-w-[526px] shrink-0 space-y-5">
+        <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[26px]">
+          {/* Copy: Left */}
+          <div className="w-full max-w-[480px] xl:max-w-[500px] shrink-0 space-y-5">
             {/* Eyebrow (Figma 57500:362) */}
             <div className="inline-flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#157a55]" aria-hidden="true" />
@@ -99,8 +99,8 @@ export default function WireframeDeliverables() {
             </p>
           </div>
 
-          {/* Video Player 1: Right (Figma 57500:907: 824x464 in 1350px canvas) */}
-          <div className="w-full flex-1 min-w-0 max-w-[824px]">
+          {/* Video Player 1: Right */}
+          <div className="w-full flex-1 min-w-0 max-w-[824px] 2xl:max-w-[862px]">
             <WireframeVideoPlayer
               title="CampusFlow_Business_Plan_v1.pdf"
               badge={t('homepage.wireframe.businessPlan.videoBadge', 'Interactive Plan Video')}
@@ -113,20 +113,20 @@ export default function WireframeDeliverables() {
 
       {/* ========================================================================= */}
       {/* SECTION 3: 03 · Financial forecast (Figma 57500:373) */}
-      {/* Visual on LEFT (862px), Copy on RIGHT (480px) — Background #FFFFFF */}
+      {/* Visual on LEFT, Copy on RIGHT — Background #FFFFFF */}
       {/* ========================================================================= */}
       <section
-        className="w-full bg-white dark:bg-background py-16 lg:py-[100px] px-6 sm:px-10 lg:px-[45px] overflow-hidden"
+        className="w-full bg-white dark:bg-background py-16 sm:py-20 lg:py-[100px] px-4 sm:px-6 md:px-8 lg:px-[45px] overflow-hidden"
         data-testid="deliverable-financial-forecast"
       >
-        <div className="w-full max-w-[1350px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[20px]">
+        <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[26px]">
           {/* Visual: Left */}
-          <div className="w-full flex-1 min-w-0 max-w-[862px] flex items-center justify-center order-2 xl:order-1">
+          <div className="w-full flex-1 min-w-0 max-w-[824px] 2xl:max-w-[862px] flex items-center justify-center order-2 xl:order-1">
             <FinancialForecastVisual />
           </div>
 
-          {/* Copy: Right (max 480px, gap 20px) */}
-          <div className="w-full max-w-[480px] space-y-5 order-1 xl:order-2 shrink-0">
+          {/* Copy: Right */}
+          <div className="w-full max-w-[480px] xl:max-w-[500px] space-y-5 order-1 xl:order-2 shrink-0">
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#157a55]" aria-hidden="true" />
@@ -160,15 +160,15 @@ export default function WireframeDeliverables() {
 
       {/* ========================================================================= */}
       {/* SECTION 4: 04 · Market research (Figma 57500:912) */}
-      {/* Copy on LEFT (529px), Visual on RIGHT (774px) — Background #F7F9FC */}
+      {/* Copy on LEFT, Visual on RIGHT — Background #F7F9FC */}
       {/* ========================================================================= */}
       <section
-        className="w-full bg-[#f7f9fc] dark:bg-muted/15 py-16 lg:py-[100px] px-6 sm:px-10 lg:px-[45px] overflow-hidden"
+        className="w-full bg-[#f7f9fc] dark:bg-muted/15 py-16 sm:py-20 lg:py-[100px] px-4 sm:px-6 md:px-8 lg:px-[45px] overflow-hidden"
         data-testid="deliverable-market-research"
       >
-        <div className="w-full max-w-[1350px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[20px]">
+        <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[26px]">
           {/* Copy: Left */}
-          <div className="w-full max-w-[480px] xl:max-w-[529px] space-y-5 shrink-0">
+          <div className="w-full max-w-[480px] xl:max-w-[500px] space-y-5 shrink-0">
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#157a55]" aria-hidden="true" />
@@ -198,8 +198,8 @@ export default function WireframeDeliverables() {
             </p>
           </div>
 
-          {/* Visual: Right (774px in Figma) */}
-          <div className="w-full flex-1 min-w-0 max-w-[774px] flex items-center justify-center">
+          {/* Visual: Right */}
+          <div className="w-full flex-1 min-w-0 max-w-[824px] 2xl:max-w-[862px] flex items-center justify-center">
             <MarketResearchVisual />
           </div>
         </div>
@@ -207,15 +207,15 @@ export default function WireframeDeliverables() {
 
       {/* ========================================================================= */}
       {/* SECTION 5: 05 · Action roadmap (Figma 57559:14241) [VIDEO 2] */}
-      {/* Video Player 2 on LEFT (824px), Copy on RIGHT (526px) — Background #FFFFFF */}
+      {/* Video Player 2 on LEFT, Copy on RIGHT — Background #FFFFFF */}
       {/* ========================================================================= */}
       <section
-        className="w-full bg-white dark:bg-background py-16 lg:py-[100px] px-6 sm:px-10 lg:px-[45px] overflow-hidden"
+        className="w-full bg-white dark:bg-background py-16 sm:py-20 lg:py-[100px] px-4 sm:px-6 md:px-8 lg:px-[45px] overflow-hidden"
         data-testid="deliverable-action-roadmap"
       >
-        <div className="w-full max-w-[1350px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[20px]">
-          {/* Video Player 2: Left (824px in Figma) */}
-          <div className="w-full flex-1 min-w-0 max-w-[824px] order-2 xl:order-1">
+        <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[26px]">
+          {/* Video Player 2: Left */}
+          <div className="w-full flex-1 min-w-0 max-w-[824px] 2xl:max-w-[862px] order-2 xl:order-1">
             <WireframeVideoPlayer
               title="CampusFlow_90Day_Action_Roadmap.pdf"
               badge={t('homepage.wireframe.actionRoadmap.videoBadge', 'Roadmap Walkthrough Video')}
@@ -224,8 +224,8 @@ export default function WireframeDeliverables() {
             />
           </div>
 
-          {/* Copy: Right (Figma 57559:14242: width 526px, gap 20px) */}
-          <div className="w-full max-w-[480px] xl:max-w-[526px] shrink-0 space-y-5 order-1 xl:order-2">
+          {/* Copy: Right */}
+          <div className="w-full max-w-[480px] xl:max-w-[500px] shrink-0 space-y-5 order-1 xl:order-2">
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#157a55]" aria-hidden="true" />
@@ -259,15 +259,15 @@ export default function WireframeDeliverables() {
 
       {/* ========================================================================= */}
       {/* SECTION 6: 06 · Business setup (Figma 57559:14378) [VIDEO 3] */}
-      {/* Copy on LEFT (526px), Video Player 3 on RIGHT (824px) — Background #F7F9FC */}
+      {/* Copy on LEFT, Video Player 3 on RIGHT — Background #F7F9FC */}
       {/* ========================================================================= */}
       <section
-        className="w-full bg-[#f7f9fc] dark:bg-muted/15 py-16 lg:py-[100px] px-6 sm:px-10 lg:px-[45px] overflow-hidden"
+        className="w-full bg-[#f7f9fc] dark:bg-muted/15 py-16 sm:py-20 lg:py-[100px] px-4 sm:px-6 md:px-8 lg:px-[45px] overflow-hidden"
         data-testid="deliverable-business-setup"
       >
-        <div className="w-full max-w-[1350px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[20px]">
-          {/* Copy: Left (Figma 57559:14379: width 526px, gap 20px) */}
-          <div className="w-full max-w-[480px] xl:max-w-[526px] shrink-0 space-y-5">
+        <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[26px]">
+          {/* Copy: Left */}
+          <div className="w-full max-w-[480px] xl:max-w-[500px] shrink-0 space-y-5">
             {/* Eyebrow */}
             <div className="inline-flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#157a55]" aria-hidden="true" />
@@ -297,8 +297,8 @@ export default function WireframeDeliverables() {
             </p>
           </div>
 
-          {/* Video Player 3: Right (824px in Figma) */}
-          <div className="w-full flex-1 min-w-0 max-w-[824px]">
+          {/* Video Player 3: Right */}
+          <div className="w-full flex-1 min-w-0 max-w-[824px] 2xl:max-w-[862px]">
             <WireframeVideoPlayer
               title="INPI_Guichet_Unique_Formation_Blueprint.pdf"
               badge={t('homepage.wireframe.businessSetup.videoBadge', 'Company Registration Video')}

@@ -10,13 +10,13 @@ export default function MarketResearchVisual() {
 
   return (
     <div
-      className="w-full flex items-center justify-center py-4 lg:py-8 overflow-visible select-none"
+      className="w-full flex items-center justify-center overflow-visible select-none h-[340px] xs:h-[400px] sm:h-[480px] md:h-[540px] lg:h-[600px] xl:h-[640px] my-0"
       data-testid="market-research-visual"
     >
       {/* ========================================================================= */}
       {/* 780x640 Fixed Coordinate Canvas — Pixel-Perfect Figma 57500:913 Mapping */}
       {/* ========================================================================= */}
-      <div className="relative w-[780px] h-[640px] shrink-0 scale-[0.48] xs:scale-[0.58] sm:scale-[0.72] md:scale-[0.85] lg:scale-[0.92] xl:scale-100 origin-center my-[-155px] xs:my-[-125px] sm:my-[-80px] md:my-[-40px] lg:my-0 pointer-events-auto">
+      <div className="relative w-[780px] h-[640px] shrink-0 scale-[0.44] xs:scale-[0.52] sm:scale-[0.66] md:scale-[0.76] lg:scale-[0.88] xl:scale-100 origin-center pointer-events-auto">
         
         {/* ======================================================================= */}
         {/* 1. Official Figma Sparkles (Figma 57500:914) */}

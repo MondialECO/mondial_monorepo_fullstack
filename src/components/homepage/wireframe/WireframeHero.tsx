@@ -10,7 +10,7 @@ export default function WireframeHero() {
   return (
     <section
       id="outputs"
-      className="w-full bg-[#f7f9fc] dark:bg-[#08090a] py-16 sm:py-20 lg:py-[100px] min-h-[534px] flex items-center justify-center px-4 sm:px-6 relative overflow-hidden scroll-mt-20 border-b border-[#e8ecf2] dark:border-border/60"
+      className="w-full bg-[#f7f9fc] dark:bg-[#08090a] py-16 sm:py-20 lg:py-[100px] min-h-[534px] flex items-center justify-center px-4 sm:px-6 md:px-8 lg:px-[45px] relative overflow-hidden scroll-mt-20 border-b border-[#e8ecf2] dark:border-border/60"
       data-testid="wireframe-hero"
     >
       <div className="w-full max-w-[954px] mx-auto flex flex-col items-center text-center">

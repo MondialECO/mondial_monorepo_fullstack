@@ -111,7 +111,7 @@ export default function FigmaHowItWorks() {
 
   return (
     <section id="how-it-works" className="w-full py-20 md:py-28 bg-gradient-to-b from-[#ffffff] via-[#f7f9fc] to-[#ffffff] border-b border-[#e8ecf2]">
-      <div className="w-full max-w-[1440px] xl:max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16">
+      <div className="w-full max-w-[1440px] 2xl:max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-[45px]">
         
         {/* Intro Header (Figma 57377:9706 - Max-Width 720px) */}
         <div className="flex flex-col items-center text-center max-w-[720px] mx-auto mb-20 space-y-4">

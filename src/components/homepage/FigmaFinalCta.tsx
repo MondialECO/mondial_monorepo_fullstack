@@ -9,7 +9,7 @@ export default function FigmaFinalCta() {
 
   return (
     <section className="w-full py-16 md:py-24 bg-white dark:bg-background">
-      <div className="w-full max-w-[1440px] xl:max-w-[1600px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-16">
+      <div className="w-full max-w-[1440px] 2xl:max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-[45px]">
         
         {/* Banner Container (Figma 57354:15832 - r:36 bg:gradient-blue) */}
         <div className="w-full max-w-[1360px] mx-auto rounded-[24px] sm:rounded-[36px] bg-gradient-to-r from-[#1f3faf] via-[#2a4ec4] to-[#3c61dd] text-white p-6 sm:p-10 md:p-14 lg:p-16 flex flex-col lg:flex-row items-start lg:items-end justify-between gap-8 shadow-2xl relative overflow-hidden">

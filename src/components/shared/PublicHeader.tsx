@@ -28,7 +28,7 @@ export default function PublicHeader() {
       }`}
       data-testid="public-header-bar"
     >
-      <div className="w-full px-4 sm:px-8 lg:px-12 xl:px-16 h-20 flex items-center justify-between">
+      <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-[45px] h-20 flex items-center justify-between">
 
         {/* ========================================================================= */}
         {/* LEFT: Brand Logo & Titles (Figma 57381:10848) */}
