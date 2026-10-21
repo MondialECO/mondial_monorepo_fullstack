@@ -5,6 +5,7 @@ import { useLanguage } from '@/providers/LanguageProvider';
 import BrandKitVisual from './BrandKitVisual';
 import FinancialForecastVisual from './FinancialForecastVisual';
 import MarketResearchVisual from './MarketResearchVisual';
+import ActionRoadmapVisual from './ActionRoadmapVisual';
 import WireframeVideoPlayer from './WireframeVideoPlayer';
 
 export default function WireframeDeliverables() {
@@ -218,22 +219,17 @@ export default function WireframeDeliverables() {
       </section>
 
       {/* ========================================================================= */}
-      {/* SECTION 5: 05 · Action roadmap (Figma 57559:14241) [VIDEO 2] */}
-      {/* Video Player 2 on LEFT, Copy on RIGHT — Background #FFFFFF */}
+      {/* SECTION 5: 05 · Action roadmap (Figma 57559:14241) */}
+      {/* Visual on LEFT, Copy on RIGHT — Background #FFFFFF */}
       {/* ========================================================================= */}
       <section
         className="w-full bg-white dark:bg-background py-16 sm:py-20 lg:py-[100px] px-4 sm:px-6 md:px-8 lg:px-[45px] overflow-hidden"
         data-testid="deliverable-action-roadmap"
       >
         <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[26px]">
-          {/* Video Player 2: Left */}
-          <div className="w-full flex-1 min-w-0 max-w-[824px] 2xl:max-w-[862px] order-2 xl:order-1">
-            <WireframeVideoPlayer
-              title="CampusFlow_90Day_Action_Roadmap.pdf"
-              badge={t('homepage.wireframe.actionRoadmap.videoBadge', 'Roadmap Walkthrough Video')}
-              posterSrc="/wireframe_figma/deliverable_05_action_roadmap.png"
-              videoSrc="/videos/business_plan_walkthrough.mp4"
-            />
+          {/* Visual: Left */}
+          <div className="w-full flex-1 min-w-0 max-w-[824px] 2xl:max-w-[862px] flex items-center justify-center order-2 xl:order-1">
+            <ActionRoadmapVisual />
           </div>
 
           {/* Copy: Right */}
