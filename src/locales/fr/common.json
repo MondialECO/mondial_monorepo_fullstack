@@ -629,7 +629,7 @@
         "grants": {
           "title": "Aides et financements accessibles",
           "subtitle": "Aide pour les subventions",
-          "source1Name": "data.gouv.fr",
+          "source1Name": "Aides-entreprises / data.gouv.fr",
           "source1Desc": "Aides publiques et soutiens, tous répertoriés.",
           "source1Tag": "DONNÉES OUVERTES",
           "source2Name": "Bpifrance Création",
