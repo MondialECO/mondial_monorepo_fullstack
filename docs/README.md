@@ -24,7 +24,7 @@ docs/
 │
 ├── product/                       # Product Strategy & Domain Canons
 │   ├── creator-flow-canon.md      # Creator journey canon (P1–P6, multi-idea, Level Up)
-│   ├── homepage-creator-figma-canon.md # Creator Homepage & MBC Logo Canon (Figma 57349:8209)
+│   ├── homepage-creator-figma-canon.md # Creator Homepage Canon (Figma V.3 57554:12800, 45px Margin Rule, Sections 1-7 & Footer)
 │   ├── service-provider-flow-canon.md # Service Provider canon (flat dashboard, 4 tiers)
 │   ├── buyer-journey-reference.md # Investor & Buyer discovery & deal journey
 │   └── blueprints/                # Target Enterprise v2.0 product specifications (.docx & .txt)
@@ -66,6 +66,7 @@ The [system-architecture/](system-architecture/) directory contains the complete
 
 The [product/](product/) directory contains the functional specifications and domain rules:
 
+- **[Creator Homepage Canon](product/homepage-creator-figma-canon.md):** Definitive visual, structural, and responsiveness specification for the Creator Homepage based on Figma V.3 (`57554:12800`). Governs all 7 sections (Hero, Deliverables Bleed, How It Works, Where The Facts Come From, What's Next, FAQ, Final CTA) and Global Footer, enforcing the Universal 45px Margin Alignment standard and bilingual (EN/FR) wrap prevention.
 - **[Creator Flow Canon](product/creator-flow-canon.md):** Definitive guide to Creator Phases P1–P6, HumainX Quick Start gate, multi-idea architecture, AI Clarifier/Discovery, business plan generation, Phase 4 Construction Engine (4.1–4.7), Marketplace listings (Full Buyout and Co-Founder / Equity), and the Level Up transition to Entrepreneur. See also the master [Creator Current Canonical State](file:///d:/mondial.eco/9-12-2026/mondial_monorepo_fullstack/analysis/mbc/creator/CREATOR_CURRENT_CANONICAL_STATE.md).
 - **[Service Provider Flow Canon](product/service-provider-flow-canon.md):** Complete specification of the Service Provider flat dashboard (no sequential wizard), 4 provider tiers, flat 12% platform commission, and split profile data architecture (`ProfessionalProfiles`, `UserCredentials`, `ServiceProviderProfiles`).
 - **[Buyer Journey Reference](product/buyer-journey-reference.md):** Operational reference for buyers and investors discovering projects and transacting on the marketplace.

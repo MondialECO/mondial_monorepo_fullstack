@@ -11,6 +11,7 @@ interface WireframeVideoPlayerProps {
   videoSrc?: string;
   className?: string;
   durationSec?: number;
+  autoPlay?: boolean;
 }
 
 export default function WireframeVideoPlayer({
@@ -19,13 +20,55 @@ export default function WireframeVideoPlayer({
   posterSrc,
   videoSrc,
   className = '',
-  durationSec = 90
+  durationSec = 90,
+  autoPlay = true,
 }: WireframeVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
-  const [progress, setProgress] = useState(15);
+  const [progress, setProgress] = useState(0);
+
+  const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hasUserManuallyPausedRef = useRef<boolean>(false);
+
+  // Autoplay when the user scrolls into this section (IntersectionObserver)
+  useEffect(() => {
+    if (!autoPlay) return;
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
+
+    const target = containerRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          // User scrolled into this section
+          if (!hasUserManuallyPausedRef.current) {
+            setIsPlaying(true);
+            if (videoRef.current) {
+              videoRef.current.play().catch(() => {
+                // If browser autoplay policy requires user gesture, keep state graceful
+              });
+            }
+          }
+        } else {
+          // User scrolled away from this section: pause video to save CPU/GPU
+          setIsPlaying(false);
+          if (videoRef.current) {
+            videoRef.current.pause();
+          }
+        }
+      },
+      {
+        threshold: 0.25, // Trigger when 25% of the video player is in view
+      }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [autoPlay]);
 
   // Auto-scroll simulation when playing without actual video source
   useEffect(() => {
@@ -34,7 +77,10 @@ export default function WireframeVideoPlayer({
       interval = setInterval(() => {
         setProgress((prev) => {
           if (prev >= 100) {
-            setIsPlaying(false);
+            // Loop back smoothly in simulation
+            if (scrollContainerRef.current) {
+              scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+            }
             return 0;
           }
           return prev + 1;
@@ -56,6 +102,7 @@ export default function WireframeVideoPlayer({
   const togglePlay = () => {
     const nextState = !isPlaying;
     setIsPlaying(nextState);
+    hasUserManuallyPausedRef.current = !nextState;
 
     if (videoRef.current) {
       if (nextState) {
@@ -70,6 +117,7 @@ export default function WireframeVideoPlayer({
     e.stopPropagation();
     setProgress(0);
     setIsPlaying(true);
+    hasUserManuallyPausedRef.current = false;
 
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
@@ -100,7 +148,9 @@ export default function WireframeVideoPlayer({
 
   return (
     <div
-      className={`relative w-full rounded-[24px] overflow-hidden bg-white dark:bg-card border border-[#e2e8f0] dark:border-border/80 shadow-[0_4px_70px_12px_rgba(0,0,0,0.18)] dark:shadow-[0_4px_70px_12px_rgba(0,0,0,0.40)] group ${className}`}
+      ref={containerRef}
+      className={`relative w-full rounded-[24px] overflow-hidden bg-white dark:bg-card border border-[#e2e8f0] dark:border-border/80 shadow-[0_4px_70px_12px_rgba(0,0,0,0.25)] group ${className}`}
+      data-testid="wireframe-video-player"
     >
       {/* Top Browser / Document Header Bar (Figma style) */}
       <div className="h-11 px-4.5 bg-[#f8fafc] dark:bg-muted/40 border-b border-[#e2e8f0] dark:border-border/70 flex items-center justify-between select-none">
@@ -138,6 +188,8 @@ export default function WireframeVideoPlayer({
             poster={posterSrc}
             playsInline
             muted={isMuted}
+            loop
+            preload="metadata"
             onTimeUpdate={() => {
               if (videoRef.current) {
                 const current = videoRef.current.currentTime;
@@ -147,7 +199,8 @@ export default function WireframeVideoPlayer({
                 }
               }
             }}
-            onEnded={() => setIsPlaying(false)}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
             className="w-full h-full object-cover select-none pointer-events-none"
           />
         ) : (
@@ -166,7 +219,7 @@ export default function WireframeVideoPlayer({
         {/* Ambient Dark Gradient Vignette for Video Look */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10 pointer-events-none" />
 
-        {/* Floating Centered Play/Pause Button Overlay (Hidden on hover when playing) */}
+        {/* Floating Centered Play/Pause Button Overlay (Hidden when playing, visible on hover) */}
         <div
           className={`absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity duration-300 ${
             isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'

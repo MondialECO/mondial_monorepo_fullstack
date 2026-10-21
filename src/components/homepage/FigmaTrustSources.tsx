@@ -8,10 +8,10 @@ export default function FigmaTrustSources() {
   return (
     <section
       id="trust-sources"
-      className="relative w-full overflow-hidden py-20 sm:py-24 md:py-28 bg-[#F7F9FC] dark:bg-background border-b border-[#e8ecf2] dark:border-border"
+      className="relative w-full overflow-hidden py-16 sm:py-20 lg:py-[100px] px-4 sm:px-6 md:px-8 lg:px-[45px] bg-[#F7F9FC] dark:bg-background border-b border-[#e8ecf2] dark:border-border"
       data-testid="figma-trust-sources"
     >
-      <div className="w-full max-w-[1280px] xl:max-w-[1360px] mx-auto px-4 sm:px-8 lg:px-12 xl:px-14">
+      <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto">
 
         {/* ========================================================================= */}
         {/* TOP GRID: 12 Columns (5 Left, 7 Right, 24px/32px gap) */}
