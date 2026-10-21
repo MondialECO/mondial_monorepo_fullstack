@@ -9,7 +9,8 @@ export default function WireframeHero() {
 
   return (
     <section
-      className="w-full bg-[#f7f9fc] dark:bg-[#08090a] min-h-[560px] lg:h-[740px] flex items-center justify-center px-4 sm:px-6 relative overflow-hidden"
+      id="outputs"
+      className="w-full bg-[#f7f9fc] dark:bg-[#08090a] min-h-[560px] lg:h-[740px] flex items-center justify-center px-4 sm:px-6 relative overflow-hidden scroll-mt-20"
       data-testid="wireframe-hero"
     >
       <div className="w-full max-w-[954px] mx-auto flex flex-col items-center text-center">
@@ -40,7 +41,7 @@ export default function WireframeHero() {
         {/* CTA Action (Figma 57480:122 & 57480:123: 153x48, r 13, bg #3c61dd, Inter 800, 16px, shadow) */}
         <div className="flex items-center justify-center">
           <Link
-            href="/auth/register"
+            href="/signup"
             className="w-[153px] h-[48px] rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-heading font-extrabold text-[16px] leading-[25px] inline-flex items-center justify-center shadow-[0_10px_24px_rgba(60,97,221,0.20)] transition-all duration-150 active:scale-[0.98] select-none"
           >
             {t('homepage.wireframe.hero.cta', 'Start for €0 →')}

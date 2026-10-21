@@ -1,14 +1,14 @@
-# MBC Creator Homepage & Brand Identity Canon (Figma 57349:8209)
+# MBC Creator Homepage & Brand Identity Canon (Figma 57510:9718 & 57349:8209)
 
 ## 1. Overview & Authority
-This document defines the canonical specification and implementation architecture for the **Mondial Business Creation (MBC) Creator Marketing Homepage** (Figma Frame `57349:8209` / Nodes `57375:8951`, `57424:508`, `57381:10846`, `57381:10882`) and the global **MBC Logo Standard** across the entire fullstack monorepo.
+This document defines the canonical specification and implementation architecture for the **Mondial Business Creation (MBC) Creator Marketing Homepage** (Figma Frame `57510:9718` — *Creator Landing page Upgrade V.2*, `57349:8209` — *Creator Marketing Landing Page*, and Wireframe Deliverables Frame `57480:109`) and the global **MBC Logo Standard** across the entire fullstack monorepo.
 
 - **Figma File:** `yLDPLB9hIAIqfYY9uHuJom` (Mondial-Dashboard-EDU)
-- **Primary Design Node:** `57349:8209` (Creator Marketing Landing Page)
+- **Primary Design Node (V.2 Canonical Canvas):** `57510:9718` (`1980x14264px` — *Creator Landing page Upgrade V.2*)
+- **Wireframe Deliverables Node:** `57480:109` / `57510:9276` (`1980x6187px` — *Wireframe - 2*)
 - **Header Navigation Design Node:** `57381:10846` (Public Header with 5-link Nav & Dual CTAs)
-- **Action Roadmap Design Node:** `57375:8951` (Output 05 Schedule Breakdown)
-- **Trust Sources Design Node:** `57424:508` (Official French Sources Trust Section)
-- **Footer Design Node:** `57381:10882` (5-Column Site Footer with Ambient Watermark)
+- **Trust Sources Design Node:** `57424:508` / `57510:11817` (Official French Sources Trust Section)
+- **Footer Design Node:** `57381:10882` (5-Column Site Footer with Ambient Watermark, 1980px Container)
 - **Primary Route:** `src/app/page.tsx`
 - **Component Root:** `src/components/homepage/` & `src/components/shared/`
 
@@ -53,9 +53,9 @@ The platform utilizes the official MBC (Mondial Business Creation) squircle mono
 
 ---
 
-## 4. Homepage Section Architecture
+## 4. Homepage Section Architecture (Figma 57510:9718)
 
-The Creator homepage consists of 7 structured sections organized linearly:
+The Creator homepage consists of 7 structured sections organized linearly, fully aligned with Figma Canvas **`57510:9718` ("Creator Landing page Upgrade V.2")**:
 
 ### Section 1: Hero Deck (`src/components/homepage/FigmaHero.tsx` — Figma Node `57449:112`)
 - **Eyebrow Badge (Figma 57449:113):** `MBC CREATOR · FRANCE` (uppercase, letter-spacing 1.04px) with sapphire indicator dot (`#3c61dd`).
