@@ -19,7 +19,10 @@ describe('Brand Kit Deliverable Section (Figma 57500:123)', () => {
 
     // Section 1 Copy texts
     expect(screen.getAllByText('Brand kit')).toHaveLength(2);
-    expect(screen.getByText('Build your brand identity')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Build your brand identity/i })).toBeInTheDocument();
+    const brandHighlight = screen.getByText('brand identity');
+    expect(brandHighlight).toBeInTheDocument();
+    expect(brandHighlight).toHaveClass('text-[#3c61dd]');
     expect(screen.getByText('Simple, fast, pro')).toBeInTheDocument();
     expect(
       screen.getByText(/Answer a few questions and get your logo, colours and fonts/)

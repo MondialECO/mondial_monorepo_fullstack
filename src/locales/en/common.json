@@ -306,6 +306,8 @@
       "brandKit": {
         "eyebrow": "Brand kit",
         "headline": "Build your brand identity",
+        "headlinePrefix": "Build your",
+        "headlineHighlight": "brand identity",
         "pill": "Simple, fast, pro",
         "body": "Answer a few questions and get your logo, colours and fonts. They're added to your business plan and landing page automatically. Download the full kit in one click.",
         "logoCardTitle": "Logo",
@@ -317,6 +319,8 @@
       "businessPlan": {
         "eyebrow": "Business plan",
         "headline": "Turn your idea into a real plan",
+        "headlinePrefix": "Turn your idea",
+        "headlineHighlight": "into a real plan",
         "pill": "Ready for investors",
         "body": "Your answers become a clear business plan: summary, market, business model and more. Read it, edit it, and download it as a PDF in one click.",
         "videoBadge": "Interactive Plan Video"
@@ -324,6 +328,8 @@
       "financialForecast": {
         "eyebrow": "Financial forecast",
         "headline": "Plan your next 3 years",
+        "headlinePrefix": "Plan your",
+        "headlineHighlight": "next 3 years",
         "pill": "Clear and honest",
         "body": "Set your price, costs and budget. Get a 36-month forecast with your break-even month, cash position and unit economics, explained in plain words. No spreadsheet skills needed.",
         "revenueCardTitle": "Revenue",
@@ -340,6 +346,8 @@
       "marketResearch": {
         "eyebrow": "Market research",
         "headline": "Know your market first",
+        "headlinePrefix": "Know your",
+        "headlineHighlight": "market first",
         "pill": "Real numbers, not guesses",
         "body": "See how big your market really is, who to sell to first and who you're up against. We work out your TAM, SAM and SOM, then point out the gaps your idea can fill.",
         "marketSizeCardTitle": "Market size",
@@ -356,6 +364,8 @@
       "actionRoadmap": {
         "eyebrow": "Action roadmap",
         "headline": "Know what to do this week",
+        "headlinePrefix": "Know what to",
+        "headlineHighlight": "do this week",
         "pill": "One step at a time",
         "body": "Your plan becomes a simple roadmap: what to do now, in the next 30 days and over the next 3 months. Every step is clear, so you always know what comes next.",
         "videoBadge": "Roadmap Walkthrough Video"
@@ -363,6 +373,8 @@
       "businessSetup": {
         "eyebrow": "Business setup",
         "headline": "Set up your company",
+        "headlinePrefix": "Set up your",
+        "headlineHighlight": "company",
         "pill": "No legal jargon",
         "body": "Pick the right company type, see which documents to prepare and register step by step. We guide you until your company is official in France.",
         "videoBadge": "Company Registration Video"

@@ -20,7 +20,10 @@ describe('Business Plan Deliverable Section (Figma 57500:254)', () => {
 
     // Copy texts
     expect(screen.getByText('Business plan')).toBeInTheDocument();
-    expect(screen.getByText('Turn your idea into a real plan')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Turn your idea into a real plan/i })).toBeInTheDocument();
+    const planHighlight = screen.getByText('into a real plan');
+    expect(planHighlight).toBeInTheDocument();
+    expect(planHighlight).toHaveClass('text-[#3c61dd]');
     expect(screen.getByText('Ready for investors')).toBeInTheDocument();
     expect(
       screen.getByText(

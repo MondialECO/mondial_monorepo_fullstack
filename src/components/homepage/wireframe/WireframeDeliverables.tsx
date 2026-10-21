@@ -36,9 +36,12 @@ export default function WireframeDeliverables() {
               </span>
             </div>
 
-            {/* Headline (Figma 57500:123: Syne 800, 54px, lh 56.7px, tracking-tight) */}
+            {/* Headline (Figma 57500:246: Syne 800, 54px, lh 57px, Build your #111827 + brand identity #3c61dd) */}
             <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[57px] tracking-[-0.025em]">
-              {t('homepage.wireframe.brandKit.headline', 'Build your brand identity')}
+              <span>{t('homepage.wireframe.brandKit.headlinePrefix', 'Build your')}</span>{' '}
+              <span className="text-[#3c61dd] block sm:inline lg:block">
+                {t('homepage.wireframe.brandKit.headlineHighlight', 'brand identity')}
+              </span>
             </h2>
 
             {/* Pill: Simple, fast, pro (Figma 57500:247: 160x37, r 999, pad 8/18) */}
@@ -78,9 +81,12 @@ export default function WireframeDeliverables() {
               </span>
             </div>
 
-            {/* Headline (Figma 57500:254: Syne 800, 54px, lh 60px, tracking-tight) */}
+            {/* Headline (Figma 57500:365: Syne 800, 54px, lh 60px, Turn your idea #111827 + into a real plan #3c61dd) */}
             <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-[-0.025em]">
-              {t('homepage.wireframe.businessPlan.headline', 'Turn your idea into a real plan')}
+              <span>{t('homepage.wireframe.businessPlan.headlinePrefix', 'Turn your idea')}</span>{' '}
+              <span className="text-[#3c61dd] block sm:inline lg:block">
+                {t('homepage.wireframe.businessPlan.headlineHighlight', 'into a real plan')}
+              </span>
             </h2>
 
             {/* Pill: Ready for investors (Figma 57500:366) */}
@@ -135,9 +141,12 @@ export default function WireframeDeliverables() {
               </span>
             </div>
 
-            {/* Headline (Figma 57500:373: Syne 800, 54px, lh 60px, tracking-tight) */}
+            {/* Headline (Figma 57500:514: Syne 800, 54px, lh 60px, Plan your #111827 + next 3 years #3c61dd) */}
             <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-[-0.025em]">
-              {t('homepage.wireframe.financialForecast.headline', 'Plan your next 3 years')}
+              <span>{t('homepage.wireframe.financialForecast.headlinePrefix', 'Plan your')}</span>{' '}
+              <span className="text-[#3c61dd] block sm:inline lg:block">
+                {t('homepage.wireframe.financialForecast.headlineHighlight', 'next 3 years')}
+              </span>
             </h2>
 
             {/* Pill: Clear and honest */}
@@ -177,9 +186,12 @@ export default function WireframeDeliverables() {
               </span>
             </div>
 
-            {/* Headline (Figma 57500:912: Syne 800, 54px, lh 60px, tracking-tight) */}
+            {/* Headline (Figma 57500:1023: Syne 800, 54px, lh 60px, Know your #111827 + market first #3c61dd) */}
             <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-[-0.025em]">
-              {t('homepage.wireframe.marketResearch.headline', 'Know your market first')}
+              <span>{t('homepage.wireframe.marketResearch.headlinePrefix', 'Know your')}</span>{' '}
+              <span className="text-[#3c61dd] block sm:inline lg:block">
+                {t('homepage.wireframe.marketResearch.headlineHighlight', 'market first')}
+              </span>
             </h2>
 
             {/* Pill: Real numbers, not guesses */}
@@ -234,9 +246,12 @@ export default function WireframeDeliverables() {
               </span>
             </div>
 
-            {/* Headline (Figma 57559:14241: Syne 800, 54px, lh 60px, tracking-tight) */}
+            {/* Headline (Figma 57559:14246: Syne 800, 54px, lh 60px, Know what to #111827 + do this week #3c61dd) */}
             <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-[-0.025em]">
-              {t('homepage.wireframe.actionRoadmap.headline', 'Know what to do this week')}
+              <span>{t('homepage.wireframe.actionRoadmap.headlinePrefix', 'Know what to')}</span>{' '}
+              <span className="text-[#3c61dd] block sm:inline lg:block">
+                {t('homepage.wireframe.actionRoadmap.headlineHighlight', 'do this week')}
+              </span>
             </h2>
 
             {/* Pill: One step at a time */}
@@ -276,9 +291,12 @@ export default function WireframeDeliverables() {
               </span>
             </div>
 
-            {/* Headline (Figma 57559:14378: Syne 800, 54px, lh 60px, tracking-tight) */}
+            {/* Headline (Figma 57559:14383: Syne 800, 54px, lh 60px, Set up your #111827 + company #3c61dd) */}
             <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-extrabold text-[#111827] dark:text-white font-heading leading-tight lg:leading-[60px] tracking-[-0.025em]">
-              {t('homepage.wireframe.businessSetup.headline', 'Set up your company')}
+              <span>{t('homepage.wireframe.businessSetup.headlinePrefix', 'Set up your')}</span>{' '}
+              <span className="text-[#3c61dd] block sm:inline lg:block">
+                {t('homepage.wireframe.businessSetup.headlineHighlight', 'company')}
+              </span>
             </h2>
 
             {/* Pill: No legal jargon */}

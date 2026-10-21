@@ -20,7 +20,10 @@ describe('Financial Forecast Deliverable Section (Figma 57500:373)', () => {
 
     // Copy Content
     expect(screen.getByText('Financial forecast')).toBeInTheDocument();
-    expect(screen.getByText('Plan your next 3 years')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Plan your next 3 years/i })).toBeInTheDocument();
+    const highlightSpan = screen.getByText('next 3 years');
+    expect(highlightSpan).toBeInTheDocument();
+    expect(highlightSpan).toHaveClass('text-[#3c61dd]');
     expect(screen.getByText('Clear and honest')).toBeInTheDocument();
     expect(
       screen.getByText(

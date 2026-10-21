@@ -306,6 +306,8 @@
       "brandKit": {
         "eyebrow": "Kit de marque",
         "headline": "Bâtissez votre identité de marque",
+        "headlinePrefix": "Bâtissez votre",
+        "headlineHighlight": "identité de marque",
         "pill": "Simple, rapide, pro",
         "body": "Répondez à quelques questions et obtenez votre logo, vos couleurs et vos typographies. Ils sont automatiquement intégrés à votre plan d'affaires et page de destination. Téléchargez le kit complet en un clic.",
         "logoCardTitle": "Logo",
@@ -317,6 +319,8 @@
       "businessPlan": {
         "eyebrow": "Plan d'affaires",
         "headline": "Transformez votre idée en un vrai plan",
+        "headlinePrefix": "Transformez votre idée",
+        "headlineHighlight": "en un vrai plan",
         "pill": "Prêt pour les investisseurs",
         "body": "Vos réponses deviennent un plan d'affaires clair : résumé, marché, modèle économique et plus encore. Lisez-le, modifiez-le et téléchargez-le en PDF en un clic.",
         "videoBadge": "Vidéo interactive du plan"
@@ -324,6 +328,8 @@
       "financialForecast": {
         "eyebrow": "Prévisionnel financier",
         "headline": "Planifiez vos 3 prochaines années",
+        "headlinePrefix": "Planifiez vos",
+        "headlineHighlight": "3 prochaines années",
         "pill": "Clair et transparent",
         "body": "Définissez vos prix, coûts et budget. Obtenez un prévisionnel sur 36 mois avec votre point mort, votre trésorerie et la rentabilité unitaire, expliqués simplement. Aucune compétence en tableur requise.",
         "revenueCardTitle": "Revenus",
@@ -340,6 +346,8 @@
       "marketResearch": {
         "eyebrow": "Étude de marché",
         "headline": "Maîtrisez votre marché en premier",
+        "headlinePrefix": "Maîtrisez votre",
+        "headlineHighlight": "marché en premier",
         "pill": "Des chiffres réels, pas des suppositions",
         "body": "Découvrez la taille réelle de votre marché, vos premiers clients cibles et vos concurrents. Nous calculons votre TAM, SAM et SOM, puis mettons en évidence les opportunités que votre idée peut saisir.",
         "marketSizeCardTitle": "Taille du marché",
@@ -356,6 +364,8 @@
       "actionRoadmap": {
         "eyebrow": "Feuille de route",
         "headline": "Sachez exactement quoi faire cette semaine",
+        "headlinePrefix": "Sachez exactement quoi",
+        "headlineHighlight": "faire cette semaine",
         "pill": "Une étape à la fois",
         "body": "Votre plan devient une feuille de route simple : quoi faire maintenant, dans les 30 jours et sur les 3 prochains mois. Chaque étape est claire pour toujours savoir quelle est la suite.",
         "videoBadge": "Vidéo de la feuille de route"
@@ -363,6 +373,8 @@
       "businessSetup": {
         "eyebrow": "Création d'entreprise",
         "headline": "Créez votre société",
+        "headlinePrefix": "Créez",
+        "headlineHighlight": "votre société",
         "pill": "Sans jargon juridique",
         "body": "Choisissez le statut juridique idéal, découvrez les documents à préparer et immatriculez votre société pas à pas. Nous vous guidons jusqu'à ce que votre entreprise soit officielle en France.",
         "videoBadge": "Vidéo d'immatriculation d'entreprise"
