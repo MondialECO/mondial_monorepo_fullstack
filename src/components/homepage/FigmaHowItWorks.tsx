@@ -109,12 +109,30 @@ export default function FigmaHowItWorks() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const breadcrumbs = [
+    { num: 1, label: t('homepage.howItWorks.breadcrumbs.you', 'You') },
+    { num: 2, label: t('homepage.howItWorks.breadcrumbs.brand', 'Brand') },
+    { num: 3, label: t('homepage.howItWorks.breadcrumbs.businessPlan', 'Business plan') },
+    { num: 4, label: t('homepage.howItWorks.breadcrumbs.launchPlan', 'Launch plan') },
+    { num: 5, label: t('homepage.howItWorks.breadcrumbs.company', 'Company') },
+    { num: 6, label: t('homepage.howItWorks.breadcrumbs.nextChapter', 'Next chapter') },
+  ];
+
   return (
-    <section id="how-it-works" className="w-full py-20 md:py-28 bg-gradient-to-b from-[#ffffff] via-[#f7f9fc] to-[#ffffff] border-b border-[#e8ecf2]">
-      <div className="w-full max-w-[1440px] 2xl:max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-[45px]">
+    <section 
+      id="how-it-works" 
+      className="relative w-full py-16 md:py-[72px] lg:py-[80px] bg-gradient-to-b from-[#ffffff] to-[#fbfcff] dark:from-background dark:to-background border-b border-[#e8ecf2] dark:border-border overflow-hidden"
+      style={{
+        backgroundImage: `
+          radial-gradient(circle at 88% 12%, rgba(111, 139, 255, 0.14) 0%, rgba(111, 139, 255, 0) 65%),
+          linear-gradient(180deg, #FFFFFF 0%, #FBFCFF 100%)
+        `,
+      }}
+    >
+      <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto px-4 sm:px-6 md:px-8 lg:px-[45px]">
         
-        {/* Intro Header (Figma 57377:9706 - Max-Width 720px) */}
-        <div className="flex flex-col items-center text-center max-w-[720px] mx-auto mb-20 space-y-4">
+        {/* Intro Header (Figma 57554:13620 - Max-Width 720px) */}
+        <div className="flex flex-col items-center text-center max-w-[720px] mx-auto mb-16 md:mb-20 space-y-4">
           
           {/* Eyebrow Badge (Figma 57381:10473 - 138x30px) */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e8eeff] text-[#1f3faf] text-xs font-semibold uppercase font-mono shadow-2xs">
@@ -122,24 +140,24 @@ export default function FigmaHowItWorks() {
             <span>{t('homepage.howItWorks.eyebrow')}</span>
           </div>
 
-          {/* Heading 1 (Figma 57377:9714 - Inter 600 54px lh:60) */}
+          {/* Heading 1 (Figma 57554:13623 - Inter 600 54px lh:60) */}
           <h2 className="text-3xl sm:text-4xl lg:text-[54px] font-semibold text-[#101828] dark:text-foreground tracking-tight leading-[1.1] font-heading">
             {t('homepage.howItWorks.headline').split('\n').map((line, i, arr) => (
               <span key={i}>{line}{i < arr.length - 1 && <br className="hidden sm:inline" />}</span>
             ))}
           </h2>
 
-          {/* Subline (Figma 57377:9716 - DM Sans 400 20px) */}
-          <p className="text-lg sm:text-xl lg:text-[20px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal">
+          {/* Subline (Figma 57554:13624 - DM Sans 400 19px) */}
+          <p className="text-lg sm:text-xl lg:text-[19px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal max-w-[620px]">
             {t('homepage.howItWorks.subline')}
           </p>
         </div>
 
-        {/* Continuous 6-Phase Timeline Layout (Figma 57377:9717) */}
-        <div className="relative max-w-[1360px] mx-auto space-y-8">
+        {/* Continuous 6-Phase Timeline Layout (Figma 57554:13632) */}
+        <div className="relative max-w-[1350px] mx-auto space-y-8">
           
           {/* ===================================================================== */}
-          {/* STEP 01: PHASE 01 · YOU (Figma 57377:9742) */}
+          {/* STEP 01: PHASE 01 · YOU (Figma 57554:13633) */}
           {/* ===================================================================== */}
           <div id="phase-01" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
             <SpineNode step={1} activeStep={activeStep} isFirst onSelect={scrollToStep} />
@@ -172,7 +190,7 @@ export default function FigmaHowItWorks() {
                     <div className="flex items-center justify-between pb-2 border-b border-[#e3e8f2] text-xs">
                       <span className="text-[#667085]">{t('homepage.howItWorks.phase01.output')}</span>
                       <span className="px-2.5 py-0.5 rounded-[6px] bg-[#ecfdf5] text-[#008764] font-semibold text-[11px]">
-                        {t('homepage.howItWorks.phase01.status')}
+                        {t('homepage.howItWorks.common.completed', 'Completed')}
                       </span>
                     </div>
 
@@ -184,35 +202,43 @@ export default function FigmaHowItWorks() {
                         </div>
                         <div>
                           <div className="text-sm font-bold text-[#101828] dark:text-foreground">Yanis</div>
-                          <div className="text-xs text-[#667085]">Student · Lyon</div>
+                          <div className="text-xs text-[#667085]">{t('homepage.howItWorks.phase01.preview.role', 'Student · Lyon')}</div>
                         </div>
                       </div>
 
                       <div className="space-y-2 text-xs">
                         <div className="flex items-center justify-between py-1 border-b border-[#f1f5f9]">
-                          <span className="text-[#667085]">Strengths</span>
+                          <span className="text-[#667085]">{t('homepage.howItWorks.phase01.preview.strengths', 'Strengths')}</span>
                           <div className="flex items-center gap-1.5">
-                            <span className="px-2 py-0.5 rounded bg-[#f5f5f5] text-[#101828] font-medium text-[11px]">Design</span>
-                            <span className="px-2 py-0.5 rounded bg-[#f5f5f5] text-[#101828] font-medium text-[11px]">Social media</span>
+                            <span className="px-2 py-0.5 rounded bg-[#f5f5f5] text-[#101828] font-medium text-[11px]">
+                              {t('homepage.howItWorks.phase01.preview.design', 'Design')}
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-[#f5f5f5] text-[#101828] font-medium text-[11px]">
+                              {t('homepage.howItWorks.phase01.preview.socialMedia', 'Social media')}
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center justify-between py-1 border-b border-[#f1f5f9]">
-                          <span className="text-[#667085]">Experience</span>
-                          <span className="font-semibold text-[#101828] dark:text-foreground">2 school projects · 1 internship</span>
+                          <span className="text-[#667085]">{t('homepage.howItWorks.phase01.preview.experience', 'Experience')}</span>
+                          <span className="font-semibold text-[#101828] dark:text-foreground">
+                            {t('homepage.howItWorks.phase01.preview.experienceValue', '2 school projects · 1 internship')}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between py-1 border-b border-[#f1f5f9]">
-                          <span className="text-[#667085]">Weekly time</span>
+                          <span className="text-[#667085]">{t('homepage.howItWorks.phase01.preview.weeklyTime', 'Weekly time')}</span>
                           <span className="font-bold text-[#101828] dark:text-foreground">10–20 h</span>
                         </div>
                         <div className="flex items-center justify-between py-1">
-                          <span className="text-[#667085]">How you like to grow</span>
-                          <span className="font-semibold text-[#101828] dark:text-foreground">Learn by doing</span>
+                          <span className="text-[#667085]">{t('homepage.howItWorks.phase01.preview.howYouLikeToGrow', 'How you like to grow')}</span>
+                          <span className="font-semibold text-[#101828] dark:text-foreground">
+                            {t('homepage.howItWorks.phase01.preview.learnByDoing', 'Learn by doing')}
+                          </span>
                         </div>
                       </div>
                     </div>
 
                     <div className="text-center text-[11px] text-[#667085]">
-                      Your plan will be built around this.
+                      {t('homepage.howItWorks.phase01.preview.bottomNote', 'Your plan will be built around this.')}
                     </div>
                   </div>
                 </div>
@@ -221,7 +247,7 @@ export default function FigmaHowItWorks() {
           </div>
 
           {/* ===================================================================== */}
-          {/* STEP 02: PHASE 02 · PROJECT & BRAND (Figma 57377:9803) */}
+          {/* STEP 02: PHASE 02 · PROJECT & BRAND (Figma 57554:13693) */}
           {/* ===================================================================== */}
           <div id="phase-02" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
             <SpineNode step={2} activeStep={activeStep} onSelect={scrollToStep} />
@@ -252,9 +278,9 @@ export default function FigmaHowItWorks() {
                   {/* Right Preview Bento (7 cols) */}
                   <div className="lg:col-span-7 p-5 rounded-[16px] bg-[#f7f8fc] dark:bg-muted/30 border border-[#c9d5ff] space-y-3">
                     <div className="flex items-center justify-between pb-2 border-b border-[#e3e8f2] text-xs">
-                      <span className="text-[#667085]">{t('homepage.howItWorks.phase02.output')}</span>
+                      <span className="text-[#667085]">{t('homepage.howItWorks.phase02.preview.brandKit', 'Brand Kit')}</span>
                       <span className="px-2.5 py-0.5 rounded-[6px] bg-[#ecfdf5] text-[#008764] font-semibold text-[11px]">
-                        {t('homepage.howItWorks.phase02.status')}
+                        {t('homepage.howItWorks.common.completed', 'Completed')}
                       </span>
                     </div>
 
@@ -264,10 +290,12 @@ export default function FigmaHowItWorks() {
                       <div className="p-3.5 rounded-[12px] bg-white dark:bg-card border border-[#e3e8f2] flex items-center justify-between">
                         <div>
                           <div className="text-base font-bold text-[#101828] dark:text-foreground">CampusFlow</div>
-                          <div className="text-xs text-[#667085]">Simple project management for student teams.</div>
+                          <div className="text-xs text-[#667085]">
+                            {t('homepage.howItWorks.phase02.preview.tagline', 'Simple project management for student teams.')}
+                          </div>
                         </div>
                         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] bg-[#fafafa] border border-[#e3e8f2] text-xs">
-                          <span className="text-[#667085]">Idea clarity</span>
+                          <span className="text-[#667085]">{t('homepage.howItWorks.phase02.preview.ideaClarity', 'Idea clarity')}</span>
                           <span className="font-bold text-[#101828]">82</span>
                         </div>
                       </div>
@@ -279,12 +307,12 @@ export default function FigmaHowItWorks() {
                           <div className="w-8 h-8 rounded-[8px] bg-[#e8eeff] border border-[#e3e8f2] flex items-center justify-center font-bold text-xs text-[#3c61dd] font-heading">
                             CF
                           </div>
-                          <div className="text-[10px] text-[#667085]">Monogram</div>
+                          <div className="text-[10px] text-[#667085]">{t('homepage.howItWorks.phase02.preview.monogram', 'Monogram')}</div>
                         </div>
 
                         {/* Palette */}
                         <div className="p-3 rounded-[12px] bg-white dark:bg-card border border-[#e3e8f2] flex flex-col justify-between space-y-1.5">
-                          <div className="text-[10px] font-bold text-[#667085] font-mono">PALETTE</div>
+                          <div className="text-[10px] font-bold text-[#667085] font-mono">{t('homepage.howItWorks.phase02.preview.palette', 'PALETTE')}</div>
                           <div className="flex items-center justify-center gap-1">
                             <span className="w-3 h-5 rounded-[2px] bg-[#3c61dd]" />
                             <span className="w-3 h-5 rounded-[2px] bg-[#1f3faf]" />
@@ -296,7 +324,7 @@ export default function FigmaHowItWorks() {
                         {/* Typography */}
                         <div className="p-3 rounded-[12px] bg-white dark:bg-card border border-[#e3e8f2] flex flex-col items-center justify-center space-y-1">
                           <div className="text-xl font-bold text-[#101828] dark:text-foreground font-heading">Aa</div>
-                          <div className="text-[10px] text-[#667085]">Heading · Body</div>
+                          <div className="text-[10px] text-[#667085]">{t('homepage.howItWorks.phase02.preview.typography', 'Heading · Body')}</div>
                         </div>
                       </div>
                     </div>
@@ -307,7 +335,7 @@ export default function FigmaHowItWorks() {
           </div>
 
           {/* ===================================================================== */}
-          {/* STEP 03: PHASE 03 · BUSINESS PLAN (CORE PHASE CENTERPIECE - Figma 57377:9876) */}
+          {/* STEP 03: PHASE 03 · BUSINESS PLAN (CORE PHASE CENTERPIECE - Figma 57554:13752) */}
           {/* ===================================================================== */}
           <div id="phase-03" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
             <SpineNode step={3} activeStep={activeStep} onSelect={scrollToStep} />
@@ -318,18 +346,18 @@ export default function FigmaHowItWorks() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-[#e3e8f2] gap-4">
                   <div className="space-y-2">
                     <div className="text-xs font-semibold text-[#667085] tracking-wider uppercase font-mono">
-                        {t('homepage.howItWorks.phase03.eyebrow')}
-                      </div>
-                      <h3 className="text-2xl sm:text-[32px] font-semibold text-[#101828] dark:text-foreground font-heading">
-                        {t('homepage.howItWorks.phase03.title')}
-                      </h3>
-                      <p className="text-base sm:text-[17px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal max-w-2xl">
-                        {t('homepage.howItWorks.phase03.description')}
-                      </p>
+                      {t('homepage.howItWorks.phase03.eyebrow')}
+                    </div>
+                    <h3 className="text-2xl sm:text-[32px] font-semibold text-[#101828] dark:text-foreground font-heading">
+                      {t('homepage.howItWorks.phase03.title')}
+                    </h3>
+                    <p className="text-base sm:text-[17px] text-[#667085] dark:text-muted-foreground leading-relaxed font-sans font-normal max-w-2xl">
+                      {t('homepage.howItWorks.phase03.description')}
+                    </p>
                   </div>
 
-                   {/* Core Phase Badge (Figma 57377:9892) */}
-                   <div className="shrink-0">
+                  {/* Core Phase Badge (Figma 57554:13768) */}
+                  <div className="shrink-0">
                     <span className="px-3 py-1 rounded-full bg-[#3c61dd] text-white text-xs font-bold uppercase tracking-wider font-mono">
                       {t('homepage.howItWorks.phase03.badge')}
                     </span>
@@ -341,15 +369,15 @@ export default function FigmaHowItWorks() {
                   <span className="font-semibold text-[#101828] dark:text-foreground">{t('homepage.howItWorks.phase03.output')}</span>
                 </div>
 
-                {/* Centerpiece Full-Width Panel (Figma 57377:9898) */}
+                {/* Centerpiece Full-Width Panel (Figma 57554:13774) */}
                 <div className="mt-4 p-5 sm:p-7 rounded-[18px] bg-[#f7f8fc] dark:bg-muted/30 border border-[#c9d5ff] space-y-6">
                   {/* Panel Top Row */}
                   <div className="flex items-center justify-between pb-3 border-b border-[#e3e8f2] text-xs">
                     <div className="flex items-center gap-2 font-bold text-[#101828] dark:text-foreground">
-                      <span>Business Plan Intelligence</span>
+                      <span>{t('homepage.howItWorks.phase03.preview.headerIntelligence', 'Business Plan Intelligence')}</span>
                       <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd]" />
                     </div>
-                    <div className="text-[#667085] font-mono">Step 6 of 7</div>
+                    <div className="text-[#667085] font-mono">{t('homepage.howItWorks.phase03.preview.stepOf', 'Step 6 of 7')}</div>
                   </div>
 
                   {/* Two-Column Content Inside Dashboard */}
@@ -360,11 +388,15 @@ export default function FigmaHowItWorks() {
                       <div className="p-3 rounded-[10px] bg-white dark:bg-card border border-[#e3e8f2] flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2.5">
                           <span className="w-2.5 h-2.5 rounded-full border-2 border-[#3c61dd]" />
-                          <span className="font-semibold text-[#101828] dark:text-foreground">3.1 Market Intelligence</span>
-                          <span className="text-[#667085]">· Market size &amp; 6 competitors mapped</span>
+                          <span className="font-semibold text-[#101828] dark:text-foreground">
+                            {t('homepage.howItWorks.phase03.preview.step1Title', '3.1 Market Intelligence')}
+                          </span>
+                          <span className="text-[#667085]">
+                            · {t('homepage.howItWorks.phase03.preview.step1Desc', 'Market size & 6 competitors mapped')}
+                          </span>
                         </div>
                         <span className="px-2 py-0.5 rounded-[4px] bg-[#ecfdf5] text-[#008764] font-semibold text-[10px]">
-                          Completed
+                          {t('homepage.howItWorks.common.completed', 'Completed')}
                         </span>
                       </div>
 
@@ -372,11 +404,15 @@ export default function FigmaHowItWorks() {
                       <div className="p-3 rounded-[10px] bg-white dark:bg-card border border-[#e3e8f2] flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2.5">
                           <span className="w-2.5 h-2.5 rounded-full border-2 border-[#3c61dd]" />
-                          <span className="font-semibold text-[#101828] dark:text-foreground">3.2 Business Model</span>
-                          <span className="text-[#667085]">· Model canvas ready</span>
+                          <span className="font-semibold text-[#101828] dark:text-foreground">
+                            {t('homepage.howItWorks.phase03.preview.step2Title', '3.2 Business Model')}
+                          </span>
+                          <span className="text-[#667085]">
+                            · {t('homepage.howItWorks.phase03.preview.step2Desc', 'Model canvas ready')}
+                          </span>
                         </div>
                         <span className="px-2 py-0.5 rounded-[4px] bg-[#ecfdf5] text-[#008764] font-semibold text-[10px]">
-                          Completed
+                          {t('homepage.howItWorks.common.completed', 'Completed')}
                         </span>
                       </div>
 
@@ -384,11 +420,15 @@ export default function FigmaHowItWorks() {
                       <div className="p-3 rounded-[10px] bg-white dark:bg-card border border-[#e3e8f2] flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2.5">
                           <span className="w-2.5 h-2.5 rounded-full border-2 border-[#3c61dd]" />
-                          <span className="font-semibold text-[#101828] dark:text-foreground">3.3 Financial Forecast</span>
-                          <span className="text-[#667085]">· 36-month forecast</span>
+                          <span className="font-semibold text-[#101828] dark:text-foreground">
+                            {t('homepage.howItWorks.phase03.preview.step3Title', '3.3 Financial Forecast')}
+                          </span>
+                          <span className="text-[#667085]">
+                            · {t('homepage.howItWorks.phase03.preview.step3Desc', '36-month forecast')}
+                          </span>
                         </div>
                         <span className="px-2 py-0.5 rounded-[4px] bg-[#ecfdf5] text-[#008764] font-semibold text-[10px]">
-                          Completed
+                          {t('homepage.howItWorks.common.completed', 'Completed')}
                         </span>
                       </div>
 
@@ -396,11 +436,15 @@ export default function FigmaHowItWorks() {
                       <div className="p-3 rounded-[10px] bg-white dark:bg-card border border-[#e3e8f2] flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2.5">
                           <span className="w-2.5 h-2.5 rounded-full border-2 border-[#3c61dd]" />
-                          <span className="font-semibold text-[#101828] dark:text-foreground">3.4 Legal &amp; Compliance</span>
-                          <span className="text-[#667085]">· French rules checked</span>
+                          <span className="font-semibold text-[#101828] dark:text-foreground">
+                            {t('homepage.howItWorks.phase03.preview.step4Title', '3.4 Legal & Compliance')}
+                          </span>
+                          <span className="text-[#667085]">
+                            · {t('homepage.howItWorks.phase03.preview.step4Desc', 'French rules checked')}
+                          </span>
                         </div>
                         <span className="px-2 py-0.5 rounded-[4px] bg-[#ecfdf5] text-[#008764] font-semibold text-[10px]">
-                          Completed
+                          {t('homepage.howItWorks.common.completed', 'Completed')}
                         </span>
                       </div>
 
@@ -408,11 +452,15 @@ export default function FigmaHowItWorks() {
                       <div className="p-3 rounded-[10px] bg-white dark:bg-card border border-[#e3e8f2] flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2.5">
                           <span className="w-2.5 h-2.5 rounded-full border-2 border-[#3c61dd]" />
-                          <span className="font-semibold text-[#101828] dark:text-foreground">3.5 Formation &amp; Team</span>
-                          <span className="text-[#667085]">· Suggested form: SAS-U</span>
+                          <span className="font-semibold text-[#101828] dark:text-foreground">
+                            {t('homepage.howItWorks.phase03.preview.step5Title', '3.5 Formation & Team')}
+                          </span>
+                          <span className="text-[#667085]">
+                            · {t('homepage.howItWorks.phase03.preview.step5Desc', 'Suggested form: SAS-U')}
+                          </span>
                         </div>
                         <span className="px-2 py-0.5 rounded-[4px] bg-[#ecfdf5] text-[#008764] font-semibold text-[10px]">
-                          Completed
+                          {t('homepage.howItWorks.common.completed', 'Completed')}
                         </span>
                       </div>
 
@@ -420,11 +468,13 @@ export default function FigmaHowItWorks() {
                       <div className="p-3 rounded-[10px] bg-[#e8eeff] border border-[#3c61dd] flex items-center justify-between text-xs font-semibold shadow-2xs">
                         <div className="flex items-center gap-2.5 text-[#1f3faf]">
                           <span className="w-2.5 h-2.5 rounded-full bg-[#3c61dd]" />
-                          <span>3.6 Executive Business Plan</span>
-                          <span className="font-normal text-[#1f3faf]/80">· 12 sections</span>
+                          <span>{t('homepage.howItWorks.phase03.preview.step6Title', '3.6 Executive Business Plan')}</span>
+                          <span className="font-normal text-[#1f3faf]/80">
+                            · {t('homepage.howItWorks.phase03.preview.step6Desc', '12 sections')}
+                          </span>
                         </div>
                         <span className="px-2 py-0.5 rounded-[4px] bg-[#3c61dd] text-white text-[10px] font-bold">
-                          In progress
+                          {t('homepage.howItWorks.common.inProgress', 'In progress')}
                         </span>
                       </div>
 
@@ -432,10 +482,10 @@ export default function FigmaHowItWorks() {
                       <div className="p-3 rounded-[10px] bg-white dark:bg-card border border-[#e3e8f2] flex items-center justify-between text-xs opacity-75">
                         <div className="flex items-center gap-2.5 text-[#667085]">
                           <span className="w-2.5 h-2.5 rounded-full border-2 border-[#cbd5e1]" />
-                          <span>3.7 Investor Readiness</span>
+                          <span>{t('homepage.howItWorks.phase03.preview.step7Title', '3.7 Investor Readiness')}</span>
                         </div>
                         <span className="px-2 py-0.5 rounded-[4px] bg-[#f1f5f9] text-[#667085] text-[10px]">
-                          Not started
+                          {t('homepage.howItWorks.common.notStarted', 'Not started')}
                         </span>
                       </div>
                     </div>
@@ -445,8 +495,12 @@ export default function FigmaHowItWorks() {
                       {/* Top Output: Year 1-3 Revenue Bar Chart */}
                       <div className="p-4 rounded-[12px] bg-white dark:bg-card border border-[#e3e8f2] space-y-3">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-[#101828] dark:text-foreground">Year 1–3 revenue</span>
-                          <span className="text-[11px] text-[#667085]">From your forecast</span>
+                          <span className="font-semibold text-[#101828] dark:text-foreground">
+                            {t('homepage.howItWorks.phase03.preview.revenueTitle', 'Year 1–3 revenue')}
+                          </span>
+                          <span className="text-[11px] text-[#667085]">
+                            {t('homepage.howItWorks.phase03.preview.fromForecast', 'From your forecast')}
+                          </span>
                         </div>
 
                         {/* Bar Chart Mockup */}
@@ -466,14 +520,14 @@ export default function FigmaHowItWorks() {
                         </div>
 
                         <div className="text-[11px] text-right text-[#667085]">
-                          Relative trajectory scale
+                          {t('homepage.howItWorks.phase03.preview.trajectoryScale', 'Relative trajectory scale')}
                         </div>
                       </div>
 
                       {/* Bottom Output: Investor Readiness Dial / Score */}
                       <div className="p-4 rounded-[12px] bg-white dark:bg-card border border-[#e3e8f2] space-y-2 text-center">
                         <div className="text-left text-xs font-semibold text-[#101828] dark:text-foreground">
-                          Investor readiness
+                          {t('homepage.howItWorks.phase03.preview.investorReadiness', 'Investor readiness')}
                         </div>
                         <div className="py-2 flex items-center justify-center">
                           <div className="w-16 h-16 rounded-full border-4 border-dashed border-[#cbd5e1] flex items-center justify-center text-lg font-bold text-[#667085]">
@@ -481,7 +535,7 @@ export default function FigmaHowItWorks() {
                           </div>
                         </div>
                         <div className="text-[11px] text-[#667085]">
-                          A planning self-check. Unlocks at step 3.7.
+                          {t('homepage.howItWorks.phase03.preview.investorUnlock', 'A planning self-check. Unlocks at step 3.7.')}
                         </div>
                       </div>
                     </div>
@@ -492,7 +546,7 @@ export default function FigmaHowItWorks() {
           </div>
 
           {/* ===================================================================== */}
-          {/* STEP 04: PHASE 04 · BUILD & LAUNCH PREP (Figma 57377:10024) */}
+          {/* STEP 04: PHASE 04 · BUILD & LAUNCH PREP (Figma 57554:13900) */}
           {/* ===================================================================== */}
           <div id="phase-04" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
             <SpineNode step={4} activeStep={activeStep} onSelect={scrollToStep} />
@@ -523,9 +577,9 @@ export default function FigmaHowItWorks() {
                   {/* Right Preview */}
                   <div className="lg:col-span-7 p-5 rounded-[16px] bg-[#f7f8fc] dark:bg-muted/30 border border-[#e3e8f2] space-y-4">
                     <div className="flex items-center justify-between pb-2 border-b border-[#e3e8f2] text-xs">
-                      <span className="text-[#667085]">Construction &amp; launch</span>
+                      <span className="text-[#667085]">{t('homepage.howItWorks.phase04.preview.headerTitle', 'Construction & launch')}</span>
                       <span className="px-2.5 py-0.5 rounded-[6px] bg-[#e8eeff] text-[#1f3faf] font-semibold text-[11px]">
-                        In progress
+                        {t('homepage.howItWorks.common.inProgress', 'In progress')}
                       </span>
                     </div>
 
@@ -533,77 +587,105 @@ export default function FigmaHowItWorks() {
                     <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
                       <div className="p-2 rounded-[8px] bg-white border border-[#3c61dd] text-[#101828]">
                         <div className="font-bold text-[#3c61dd] flex items-center justify-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd]" /> NOW
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#3c61dd]" /> {t('homepage.howItWorks.phase04.preview.nowTitle', 'NOW')}
                         </div>
-                        <div className="font-semibold text-[10px] text-[#101828] mt-1">Talk to 5 customers</div>
-                        <div className="text-[9px] text-[#667085]">Set your first price</div>
+                        <div className="font-semibold text-[10px] text-[#101828] mt-1">
+                          {t('homepage.howItWorks.phase04.preview.nowTask', 'Talk to 5 customers')}
+                        </div>
+                        <div className="text-[9px] text-[#667085]">
+                          {t('homepage.howItWorks.phase04.preview.nowTaskSub', 'Set your first price')}
+                        </div>
                       </div>
                       <div className="p-2 rounded-[8px] bg-white border border-[#e3e8f2] text-[#667085]">
                         <div className="font-bold text-[#667085] flex items-center justify-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#cbd5e1]" /> 30 DAYS
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#cbd5e1]" /> {t('homepage.howItWorks.phase04.preview.thirtyDays', '30 DAYS')}
                         </div>
-                        <div className="text-[9px] mt-1">Finalize prototype</div>
+                        <div className="text-[9px] mt-1">
+                          {t('homepage.howItWorks.phase04.preview.thirtyDaysTask', 'Finalize prototype')}
+                        </div>
                       </div>
                       <div className="p-2 rounded-[8px] bg-white border border-[#e3e8f2] text-[#667085]">
                         <div className="font-bold text-[#667085] flex items-center justify-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#cbd5e1]" /> 60 DAYS
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#cbd5e1]" /> {t('homepage.howItWorks.phase04.preview.sixtyDays', '60 DAYS')}
                         </div>
-                        <div className="text-[9px] mt-1">Closed pilot group</div>
+                        <div className="text-[9px] mt-1">
+                          {t('homepage.howItWorks.phase04.preview.sixtyDaysTask', 'Closed pilot group')}
+                        </div>
                       </div>
                       <div className="p-2 rounded-[8px] bg-white border border-[#e3e8f2] text-[#667085]">
                         <div className="font-bold text-[#667085] flex items-center justify-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#cbd5e1]" /> 90 DAYS
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#cbd5e1]" /> {t('homepage.howItWorks.phase04.preview.ninetyDays', '90 DAYS')}
                         </div>
-                        <div className="text-[9px] mt-1">Public opening</div>
+                        <div className="text-[9px] mt-1">
+                          {t('homepage.howItWorks.phase04.preview.ninetyDaysTask', 'Public opening')}
+                        </div>
                       </div>
                     </div>
 
                     {/* Skills + Support */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                       <div className="p-3 rounded-[8px] bg-white border border-[#e3e8f2] space-y-1.5">
-                        <div className="text-[10px] font-bold text-[#667085] font-mono">SKILLS ROADMAP</div>
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span>Sales basics</span>
-                          <span className="px-1.5 py-0.5 rounded bg-[#f5f5f5] text-[9px] font-bold">LEARN</span>
+                        <div className="text-[10px] font-bold text-[#667085] font-mono">
+                          {t('homepage.howItWorks.phase04.preview.skillsRoadmap', 'SKILLS ROADMAP')}
                         </div>
                         <div className="flex items-center justify-between text-[11px]">
-                          <span>App development</span>
-                          <span className="px-1.5 py-0.5 rounded bg-[#f5f5f5] text-[9px] font-bold">DELEGATE</span>
+                          <span>{t('homepage.howItWorks.phase04.preview.salesBasics', 'Sales basics')}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-[#f5f5f5] text-[9px] font-bold">
+                            {t('homepage.howItWorks.phase04.preview.learnBadge', 'LEARN')}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between text-[11px]">
-                          <span>Data protection (GDPR)</span>
-                          <span className="px-1.5 py-0.5 rounded bg-[#f5f5f5] text-[9px] font-bold">VERIFY</span>
+                          <span>{t('homepage.howItWorks.phase04.preview.appDev', 'App development')}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-[#f5f5f5] text-[9px] font-bold">
+                            {t('homepage.howItWorks.phase04.preview.delegateBadge', 'DELEGATE')}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span>{t('homepage.howItWorks.phase04.preview.gdpr', 'Data protection (GDPR)')}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-[#f5f5f5] text-[9px] font-bold">
+                            {t('homepage.howItWorks.phase04.preview.verifyBadge', 'VERIFY')}
+                          </span>
                         </div>
                       </div>
 
                       <div className="p-3 rounded-[8px] bg-white border border-[#e3e8f2] space-y-1.5">
-                        <div className="text-[10px] font-bold text-[#667085] font-mono">SUPPORT PROGRAMS</div>
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span>JEI status</span>
-                          <span className="text-[#667085] text-[10px]">Needs review</span>
+                        <div className="text-[10px] font-bold text-[#667085] font-mono">
+                          {t('homepage.howItWorks.phase04.preview.supportPrograms', 'SUPPORT PROGRAMS')}
                         </div>
                         <div className="flex items-center justify-between text-[11px]">
-                          <span>Bpifrance support</span>
-                          <span className="text-[#667085] text-[10px]">Needs review</span>
+                          <span>{t('homepage.howItWorks.phase04.preview.jeiStatus', 'JEI status')}</span>
+                          <span className="text-[#667085] text-[10px]">
+                            {t('homepage.howItWorks.phase04.preview.needsReview', 'Needs review')}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span>{t('homepage.howItWorks.phase04.preview.bpifrance', 'Bpifrance support')}</span>
+                          <span className="text-[#667085] text-[10px]">
+                            {t('homepage.howItWorks.phase04.preview.needsReview', 'Needs review')}
+                          </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Launch Website Row (Figma 57377:10129) */}
+                    {/* Launch Website Row (Figma 57554:14005) */}
                     <div className="p-3 rounded-[8px] bg-white border border-[#e3e8f2] flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded bg-[#eff6ff] flex items-center justify-center text-[#3c61dd]">
                           <Globe className="w-3.5 h-3.5" />
                         </div>
-                        <span className="font-semibold text-[#101828]">Launch website</span>
-                        <span className="text-[#667085]">· One page</span>
+                        <span className="font-semibold text-[#101828]">
+                          {t('homepage.howItWorks.phase04.preview.launchWebsite', 'Launch website')}
+                        </span>
+                        <span className="text-[#667085]">
+                          · {t('homepage.howItWorks.phase04.preview.onePage', 'One page')}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button className="px-2.5 py-1 rounded-[6px] border border-[#e3e8f2] text-xs font-semibold text-[#101828] hover:bg-[#f8fafc]">
-                          View
+                        <button className="px-2.5 py-1 rounded-[6px] border border-[#e3e8f2] text-xs font-semibold text-[#101828] hover:bg-[#f8fafc] cursor-pointer">
+                          {t('homepage.howItWorks.phase04.preview.viewBtn', 'View')}
                         </button>
-                        <button className="px-2.5 py-1 rounded-[6px] border border-[#e3e8f2] text-xs font-semibold text-[#101828] hover:bg-[#f8fafc]">
-                          Download code
+                        <button className="px-2.5 py-1 rounded-[6px] border border-[#e3e8f2] text-xs font-semibold text-[#101828] hover:bg-[#f8fafc] cursor-pointer">
+                          {t('homepage.howItWorks.phase04.preview.downloadCodeBtn', 'Download code')}
                         </button>
                       </div>
                     </div>
@@ -614,7 +696,7 @@ export default function FigmaHowItWorks() {
           </div>
 
           {/* ===================================================================== */}
-          {/* STEP 05: PHASE 05 · COMPANY (Figma 57377:10141) */}
+          {/* STEP 05: PHASE 05 · COMPANY (Figma 57554:14017) */}
           {/* ===================================================================== */}
           <div id="phase-05" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
             <SpineNode step={5} activeStep={activeStep} onSelect={scrollToStep} />
@@ -645,25 +727,25 @@ export default function FigmaHowItWorks() {
                   {/* Right Preview */}
                   <div className="lg:col-span-7 p-5 rounded-[16px] bg-[#f7f8fc] dark:bg-muted/30 border border-[#e3e8f2] space-y-4">
                     <div className="flex items-center justify-between pb-2 border-b border-[#e3e8f2] text-xs">
-                      <span className="text-[#667085]">Your registration guide</span>
+                      <span className="text-[#667085]">{t('homepage.howItWorks.phase05.preview.headerTitle', 'Your registration guide')}</span>
                       <span className="px-2.5 py-0.5 rounded-[6px] bg-[#e8eeff] text-[#1f3faf] font-semibold text-[11px]">
-                        In progress
+                        {t('homepage.howItWorks.common.inProgress', 'In progress')}
                       </span>
                     </div>
 
                     {/* 3 Metrics */}
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div className="p-3 rounded-[8px] bg-white border border-[#e3e8f2]">
-                        <div className="text-[10px] text-[#667085]">Legal form</div>
-                        <div className="text-sm font-bold text-[#101828] mt-0.5">SAS-U</div>
+                        <div className="text-[10px] text-[#667085]">{t('homepage.howItWorks.phase05.preview.legalForm', 'Legal form')}</div>
+                        <div className="text-sm font-bold text-[#101828] mt-0.5">{t('homepage.howItWorks.phase05.preview.legalFormVal', 'SAS-U')}</div>
                       </div>
                       <div className="p-3 rounded-[8px] bg-white border border-[#e3e8f2]">
-                        <div className="text-[10px] text-[#667085]">Share capital</div>
-                        <div className="text-sm font-bold text-[#101828] mt-0.5">€1</div>
+                        <div className="text-[10px] text-[#667085]">{t('homepage.howItWorks.phase05.preview.shareCapital', 'Share capital')}</div>
+                        <div className="text-sm font-bold text-[#101828] mt-0.5">{t('homepage.howItWorks.phase05.preview.shareCapitalVal', '€1')}</div>
                       </div>
                       <div className="p-3 rounded-[8px] bg-white border border-[#e3e8f2]">
-                        <div className="text-[10px] text-[#667085]">Documents</div>
-                        <div className="text-sm font-bold text-[#101828] mt-0.5">3 of 5 ready</div>
+                        <div className="text-[10px] text-[#667085]">{t('homepage.howItWorks.phase05.preview.documents', 'Documents')}</div>
+                        <div className="text-sm font-bold text-[#101828] mt-0.5">{t('homepage.howItWorks.phase05.preview.documentsVal', '3 of 5 ready')}</div>
                       </div>
                     </div>
 
@@ -671,26 +753,26 @@ export default function FigmaHowItWorks() {
                     <div className="p-3 rounded-[8px] bg-white border border-[#e3e8f2] space-y-2 text-xs">
                       <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
                         <div className="p-1.5 rounded bg-[#f8fafc]">
-                          <div className="text-[#667085]">Company details</div>
-                          <div className="text-[#008764] font-semibold mt-0.5">Completed</div>
+                          <div className="text-[#667085]">{t('homepage.howItWorks.phase05.preview.companyDetails', 'Company details')}</div>
+                          <div className="text-[#008764] font-semibold mt-0.5">{t('homepage.howItWorks.common.completed', 'Completed')}</div>
                         </div>
                         <div className="p-1.5 rounded bg-[#f8fafc]">
-                          <div className="text-[#667085]">Capital</div>
-                          <div className="text-[#008764] font-semibold mt-0.5">Completed</div>
+                          <div className="text-[#667085]">{t('homepage.howItWorks.phase05.preview.capital', 'Capital')}</div>
+                          <div className="text-[#008764] font-semibold mt-0.5">{t('homepage.howItWorks.common.completed', 'Completed')}</div>
                         </div>
                         <div className="p-1.5 rounded bg-[#f8fafc]">
-                          <div className="text-[#667085]">Documents</div>
-                          <div className="text-[#1f3faf] font-semibold mt-0.5">In progress</div>
+                          <div className="text-[#667085]">{t('homepage.howItWorks.phase05.preview.documents', 'Documents')}</div>
+                          <div className="text-[#1f3faf] font-semibold mt-0.5">{t('homepage.howItWorks.common.inProgress', 'In progress')}</div>
                         </div>
                         <div className="p-1.5 rounded bg-[#f8fafc]">
-                          <div className="text-[#667085]">Registration</div>
-                          <div className="text-[#667085] font-semibold mt-0.5">Not started</div>
+                          <div className="text-[#667085]">{t('homepage.howItWorks.phase05.preview.registration', 'Registration')}</div>
+                          <div className="text-[#667085] font-semibold mt-0.5">{t('homepage.howItWorks.common.notStarted', 'Not started')}</div>
                         </div>
                       </div>
                     </div>
 
                     <div className="text-center text-[10px] text-[#667085]">
-                      Only SAS, SAS-U and SARL for now.
+                      {t('homepage.howItWorks.phase05.preview.footerNote', 'Only SAS, SAS-U and SARL for now.')}
                     </div>
                   </div>
                 </div>
@@ -699,14 +781,14 @@ export default function FigmaHowItWorks() {
           </div>
 
           {/* ===================================================================== */}
-          {/* STEP 06: PHASE 06 · NEXT CHAPTER (Figma 57377:10202) */}
+          {/* STEP 06: PHASE 06 · NEXT CHAPTER (Figma 57554:14078) */}
           {/* ===================================================================== */}
           <div id="phase-06" className="relative flex flex-col md:flex-row gap-6 lg:gap-10 items-stretch">
             <SpineNode step={6} activeStep={activeStep} isLast onSelect={scrollToStep} />
 
             <div className="flex-1">
               <div className={`rounded-[24px] border ${activeStep === 6 ? 'border-[#3c61dd] ring-2 ring-[#3c61dd]/20' : 'border-[#e3e8f2]'} dark:border-border bg-white dark:bg-card p-6 sm:p-8 shadow-sm relative overflow-hidden transition-all duration-300`}>
-                {/* 2px green accent line along top edge (Figma 57377:10299) */}
+                {/* 2px green accent line along top edge (Figma 57554:14175) */}
                 <div className="absolute top-0 left-0 right-0 h-[2px] bg-[#00c896]/60" />
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
@@ -731,85 +813,85 @@ export default function FigmaHowItWorks() {
                     </div>
                   </div>
 
-                  {/* Right Product Preview (Figma 57377:10220) */}
+                  {/* Right Product Preview (Figma 57554:14096) */}
                   <div className="lg:col-span-7 p-5 sm:p-6 rounded-[16px] bg-[#f7f8fc] dark:bg-muted/30 border border-[#e3e8f2] dark:border-border/70 space-y-4">
                     {/* Top Header Row */}
                     <div className="flex items-center justify-between text-xs font-sans text-[#667085] dark:text-muted-foreground">
-                      <span>Your next chapter</span>
-                      <span>Calm overview</span>
+                      <span>{t('homepage.howItWorks.phase06.preview.headerTitle', 'Your next chapter')}</span>
+                      <span>{t('homepage.howItWorks.phase06.preview.calmOverview', 'Calm overview')}</span>
                     </div>
 
-                    {/* 2 Equal Columns (6 cols / 6 cols in Figma 57377:10227) */}
+                    {/* 2 Equal Columns (6 cols / 6 cols in Figma 57554:14103) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-start">
-                      {/* Part 1: Left column - Milestones & Your Results (Figma 57377:10228) */}
+                      {/* Part 1: Left column - Milestones & Your Results (Figma 57554:14104) */}
                       <div className="bg-white dark:bg-card rounded-[12px] border border-[#e3e8f2] dark:border-border/60 p-3.5 sm:p-4 space-y-3 shadow-2xs">
                         {/* Milestones header */}
                         <div className="space-y-1">
                           <div className="font-bold text-[13px] text-[#101828] dark:text-foreground font-sans leading-snug">
-                            You&apos;ve built your project plan
+                            {t('homepage.howItWorks.phase06.preview.milestone1', "You've built your project plan")}
                           </div>
                           <div className="text-[12px] text-[#667085] dark:text-muted-foreground font-sans">
-                            Company registration: in progress
+                            {t('homepage.howItWorks.phase06.preview.milestone2', 'Company registration: in progress')}
                           </div>
                         </div>
 
                         {/* Divider */}
                         <div className="border-t border-[#e3e8f2] dark:border-border/60 pt-2.5 space-y-2">
                           <div className="text-[11px] font-semibold text-[#667085] font-mono tracking-wider uppercase">
-                            YOUR RESULTS
+                            {t('homepage.howItWorks.phase06.preview.yourResults', 'YOUR RESULTS')}
                           </div>
 
                           {/* 4 Deliverable Result Rows */}
                           <div className="space-y-2 text-xs font-sans">
                             <div className="flex items-center justify-between">
                               <span className="text-[#101828] dark:text-foreground text-[12px]">
-                                Project &amp; brand <span className="text-[#667085] text-[11px]">(4)</span>
+                                {t('homepage.howItWorks.phase06.preview.projectBrand', 'Project & brand')} <span className="text-[#667085] text-[11px]">(4)</span>
                               </span>
                               <span className="px-2 py-0.5 rounded-[4px] bg-[#00c896]/15 text-[#008764] dark:text-emerald-400 text-[10px] font-medium">
-                                Available
+                                {t('homepage.howItWorks.common.available', 'Available')}
                               </span>
                             </div>
 
                             <div className="flex items-center justify-between">
                               <span className="text-[#101828] dark:text-foreground text-[12px]">
-                                Business planning <span className="text-[#667085] text-[11px]">(4)</span>
+                                {t('homepage.howItWorks.phase06.preview.businessPlanning', 'Business planning')} <span className="text-[#667085] text-[11px]">(4)</span>
                               </span>
                               <span className="px-2 py-0.5 rounded-[4px] bg-[#00c896]/15 text-[#008764] dark:text-emerald-400 text-[10px] font-medium">
-                                Available
+                                {t('homepage.howItWorks.common.available', 'Available')}
                               </span>
                             </div>
 
                             <div className="flex items-center justify-between">
                               <span className="text-[#101828] dark:text-foreground text-[12px]">
-                                Build &amp; launch <span className="text-[#667085] text-[11px]">(6)</span>
+                                {t('homepage.howItWorks.phase06.preview.buildLaunch', 'Build & launch')} <span className="text-[#667085] text-[11px]">(6)</span>
                               </span>
                               <span className="px-2 py-0.5 rounded-[4px] bg-[#eef0f4] dark:bg-muted text-[#101828] dark:text-foreground text-[10px] font-medium">
-                                Draft
+                                {t('homepage.howItWorks.common.draft', 'Draft')}
                               </span>
                             </div>
 
                             <div className="flex items-center justify-between">
                               <span className="text-[#101828] dark:text-foreground text-[12px]">
-                                Company preparation <span className="text-[#667085] text-[11px]">(2)</span>
+                                {t('homepage.howItWorks.phase06.preview.companyPrep', 'Company preparation')} <span className="text-[#667085] text-[11px]">(2)</span>
                               </span>
                               <span className="px-2 py-0.5 rounded-[4px] bg-[#e8eeff] dark:bg-blue-950/60 text-[#1f3faf] dark:text-blue-300 text-[10px] font-medium">
-                                In progress
+                                {t('homepage.howItWorks.common.inProgress', 'In progress')}
                               </span>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Part 2: Right column - Your next move (Figma 57377:10262) */}
+                      {/* Part 2: Right column - Your next move (Figma 57554:14138) */}
                       <div className="space-y-2">
                         <div className="text-[11px] font-semibold text-[#667085] font-mono tracking-wider uppercase mb-1">
-                          YOUR NEXT MOVE
+                          {t('homepage.howItWorks.phase06.preview.yourNextMove', 'YOUR NEXT MOVE')}
                         </div>
 
                         {/* Action 1: Primary Action (Blue highlight) */}
                         <button className="w-full h-12 px-3 rounded-[12px] bg-[#e8eeff] dark:bg-blue-950/40 border border-[#c9d5ff] dark:border-blue-800/60 flex items-center justify-between text-left transition-colors hover:bg-[#dce6ff] group cursor-pointer">
                           <span className="text-[12px] font-semibold text-[#1f3faf] dark:text-blue-300 font-sans">
-                            Continue company preparation
+                            {t('homepage.howItWorks.phase06.preview.continuePrep', 'Continue company preparation')}
                           </span>
                           <ArrowRight className="w-4 h-4 text-[#1f3faf] dark:text-blue-300 shrink-0 transition-transform group-hover:translate-x-0.5" />
                         </button>
@@ -817,7 +899,7 @@ export default function FigmaHowItWorks() {
                         {/* Action 2 */}
                         <button className="w-full h-12 px-3 rounded-[12px] bg-white dark:bg-card border border-[#e3e8f2] dark:border-border/60 flex items-center justify-between text-left transition-colors hover:bg-[#f8fafc] group cursor-pointer">
                           <span className="text-[12px] font-medium text-[#101828] dark:text-foreground font-sans">
-                            Work on your next launch task
+                            {t('homepage.howItWorks.phase06.preview.workLaunch', 'Work on your next launch task')}
                           </span>
                           <ArrowRight className="w-4 h-4 text-[#667085] dark:text-muted-foreground shrink-0 transition-transform group-hover:translate-x-0.5" />
                         </button>
@@ -825,43 +907,43 @@ export default function FigmaHowItWorks() {
                         {/* Action 3 */}
                         <button className="w-full h-12 px-3 rounded-[12px] bg-white dark:bg-card border border-[#e3e8f2] dark:border-border/60 flex items-center justify-between text-left transition-colors hover:bg-[#f8fafc] group cursor-pointer">
                           <span className="text-[12px] font-medium text-[#101828] dark:text-foreground font-sans">
-                            Review your pricing
+                            {t('homepage.howItWorks.phase06.preview.reviewPricing', 'Review your pricing')}
                           </span>
                           <ArrowRight className="w-4 h-4 text-[#667085] dark:text-muted-foreground shrink-0 transition-transform group-hover:translate-x-0.5" />
                         </button>
                       </div>
                     </div>
 
-                    {/* Part 3: Strip across bottom - Coming to MBC (Full width 12 cols, Figma 57377:10280) */}
+                    {/* Part 3: Strip across bottom - Coming to MBC (Full width 12 cols, Figma 57554:14156) */}
                     <div className="pt-3 border-t border-[#e3e8f2] dark:border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                       <div className="text-[11px] font-semibold text-[#667085] font-mono tracking-wider uppercase shrink-0">
-                        COMING TO MBC
+                        {t('homepage.howItWorks.phase06.preview.comingToMbc', 'COMING TO MBC')}
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="px-3 py-1.5 rounded-[10px] bg-white dark:bg-card border border-[#e3e8f2] dark:border-border/60 flex items-center gap-2 shadow-2xs">
                           <span className="text-[11px] text-[#101828] dark:text-foreground font-sans font-normal">
-                            Entrepreneur
+                            {t('homepage.howItWorks.phase06.preview.entrepreneur', 'Entrepreneur')}
                           </span>
                           <span className="px-1.5 py-0.5 rounded-[4px] bg-[#eef0f4] dark:bg-muted text-[10px] text-[#667085] dark:text-muted-foreground font-sans">
-                            Coming soon
+                            {t('homepage.howItWorks.common.comingSoon', 'Coming soon')}
                           </span>
                         </div>
 
                         <div className="px-3 py-1.5 rounded-[10px] bg-white dark:bg-card border border-[#e3e8f2] dark:border-border/60 flex items-center gap-2 shadow-2xs">
                           <span className="text-[11px] text-[#101828] dark:text-foreground font-sans font-normal">
-                            Investor
+                            {t('homepage.howItWorks.phase06.preview.investor', 'Investor')}
                           </span>
                           <span className="px-1.5 py-0.5 rounded-[4px] bg-[#eef0f4] dark:bg-muted text-[10px] text-[#667085] dark:text-muted-foreground font-sans">
-                            Coming soon
+                            {t('homepage.howItWorks.common.comingSoon', 'Coming soon')}
                           </span>
                         </div>
 
                         <div className="px-3 py-1.5 rounded-[10px] bg-white dark:bg-card border border-[#e3e8f2] dark:border-border/60 flex items-center gap-2 shadow-2xs">
                           <span className="text-[11px] text-[#101828] dark:text-foreground font-sans font-normal">
-                            Service Provider
+                            {t('homepage.howItWorks.phase06.preview.serviceProvider', 'Service Provider')}
                           </span>
                           <span className="px-1.5 py-0.5 rounded-[4px] bg-[#eef0f4] dark:bg-muted text-[10px] text-[#667085] dark:text-muted-foreground font-sans">
-                            Coming soon
+                            {t('homepage.howItWorks.common.comingSoon', 'Coming soon')}
                           </span>
                         </div>
                       </div>
@@ -874,17 +956,10 @@ export default function FigmaHowItWorks() {
 
         </div>
 
-        {/* Bottom Breadcrumb Sequence (Figma 57377:10300) */}
+        {/* Bottom Breadcrumb Sequence (Figma 57554:14214) */}
         <div className="mt-16 pt-8 flex flex-col items-center justify-center space-y-4 text-center">
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm font-semibold text-[#101828]">
-            {[
-              { num: 1, label: 'You' },
-              { num: 2, label: 'Brand' },
-              { num: 3, label: 'Business plan' },
-              { num: 4, label: 'Launch plan' },
-              { num: 5, label: 'Company' },
-              { num: 6, label: 'Next chapter' },
-            ].map((b, idx, arr) => (
+            {breadcrumbs.map((b, idx, arr) => (
               <React.Fragment key={b.num}>
                 <button
                   type="button"

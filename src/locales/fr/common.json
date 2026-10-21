@@ -437,53 +437,170 @@
       "headline": "De l'idée à l'entreprise\nen 6 étapes.",
       "subline": "Avancez étape par étape. Tout ce que vous créez est sauvegardé et alimente l'étape suivante.",
       "connectedLabels": "Un seul projet. Tout ce que vous créez reste connecté.",
+      "breadcrumbs": {
+        "you": "Vous",
+        "brand": "Marque",
+        "businessPlan": "Business plan",
+        "launchPlan": "Plan de lancement",
+        "company": "Société",
+        "nextChapter": "Prochain chapitre"
+      },
+      "common": {
+        "completed": "Complété",
+        "inProgress": "En cours",
+        "notStarted": "Non commencé",
+        "draft": "Brouillon",
+        "available": "Disponible",
+        "comingSoon": "Bientôt disponible"
+      },
       "phase01": {
         "eyebrow": "PHASE 01 · VOUS",
         "title": "Commencez par vous",
         "description": "Dites-nous ce que vous avez fait, vos compétences et le temps disponible. Les projets étudiants comptent.",
-        "youGet": "Vous obtenez :",
+        "youGet": "Vous obtenez :",
         "output": "Votre profil de créateur",
-        "status": "Complété"
+        "status": "Complété",
+        "preview": {
+          "role": "Étudiant · Lyon",
+          "strengths": "Forces",
+          "design": "Design",
+          "socialMedia": "Réseaux sociaux",
+          "experience": "Expérience",
+          "experienceValue": "2 projets d'école · 1 stage",
+          "weeklyTime": "Temps par semaine",
+          "howYouLikeToGrow": "Mode d'apprentissage",
+          "learnByDoing": "Apprendre par la pratique",
+          "bottomNote": "Votre plan sera construit autour de cela."
+        }
       },
       "phase02": {
         "eyebrow": "PHASE 02 · PROJET & MARQUE",
         "title": "Affinez votre idée et votre marque",
         "description": "Répondez à quelques questions pour préciser votre idée, choisissez un nom, puis créez votre logo, couleurs et polices.",
-        "youGet": "Vous obtenez :",
+        "youGet": "Vous obtenez :",
         "output": "Votre projet et Kit de Marque",
-        "status": "Complété"
+        "status": "Complété",
+        "preview": {
+          "brandKit": "Kit de Marque",
+          "tagline": "Gestion de projet simple pour équipes étudiantes.",
+          "ideaClarity": "Clarté de l'idée",
+          "monogram": "Monogramme",
+          "palette": "PALETTE",
+          "typography": "Titre · Corps"
+        }
       },
       "phase03": {
         "eyebrow": "PHASE 03 · PLAN D'AFFAIRES",
         "title": "Construisez le business derrière votre idée",
         "description": "Sept étapes guidées : votre marché, modèle, chiffres, bases juridiques et un plan d'affaires complet.",
-        "youGet": "Vous obtenez :",
+        "youGet": "Vous obtenez :",
         "output": "Un plan d'affaires complet et structuré",
         "badge": "PHASE CLÉ",
-        "status": "Complété"
+        "status": "Complété",
+        "preview": {
+          "headerIntelligence": "Intelligence Business Plan",
+          "stepOf": "Étape 6 sur 7",
+          "step1Title": "3.1 Veille de marché",
+          "step1Desc": "Taille de marché & 6 concurrents analysés",
+          "step2Title": "3.2 Modèle économique",
+          "step2Desc": "Modèle économique validé",
+          "step3Title": "3.3 Prévisions financières",
+          "step3Desc": "Prévisionnel sur 36 mois",
+          "step4Title": "3.4 Légal & Conformité",
+          "step4Desc": "Conformité France vérifiée",
+          "step5Title": "3.5 Création & Équipe",
+          "step5Desc": "Forme suggérée : SAS-U",
+          "step6Title": "3.6 Business Plan Exécutif",
+          "step6Desc": "12 chapitres",
+          "step7Title": "3.7 Préparation investisseurs",
+          "revenueTitle": "Chiffre d'affaires Années 1 à 3",
+          "fromForecast": "Issu de vos prévisions",
+          "trajectoryScale": "Échelle de trajectoire relative",
+          "investorReadiness": "Préparation investisseurs",
+          "investorUnlock": "Auto-évaluation du plan. Débloqué à l'étape 3.7."
+        }
       },
       "phase04": {
         "eyebrow": "PHASE 04 · CONSTRUCTION & LANCEMENT",
         "title": "Préparez-vous à construire et lancer",
-        "description": "Un plan adapté à vos compétences et à votre temps : quoi faire maintenant, quoi apprendre, quoi déléguer.",
-        "youGet": "Vous obtenez :",
+        "description": "Un plan adapté à vos compétences et à votre temps : quoi faire maintenant, quoi apprendre, quoi déléguer.",
+        "youGet": "Vous obtenez :",
         "output": "Votre plan 90 jours et site de lancement",
-        "status": "En cours"
+        "status": "En cours",
+        "preview": {
+          "headerTitle": "Construction & lancement",
+          "nowTitle": "MAINTENANT",
+          "nowTask": "Échanger avec 5 clients",
+          "nowTaskSub": "Fixer votre 1er tarif",
+          "thirtyDays": "30 JOURS",
+          "thirtyDaysTask": "Finaliser le prototype",
+          "sixtyDays": "60 JOURS",
+          "sixtyDaysTask": "Groupe pilote fermé",
+          "ninetyDays": "90 DAYS",
+          "ninetyDaysTask": "Lancement public",
+          "skillsRoadmap": "COMPÉTENCES CLÉS",
+          "salesBasics": "Bases commerciales",
+          "learnBadge": "APPRENDRE",
+          "appDev": "Dév. application",
+          "delegateBadge": "DÉLÉGUER",
+          "gdpr": "Protection données (RGPD)",
+          "verifyBadge": "VÉRIFIER",
+          "supportPrograms": "DISPOSITIFS D'AIDE",
+          "jeiStatus": "Statut JEI",
+          "needsReview": "À vérifier",
+          "bpifrance": "Accompagnement Bpifrance",
+          "launchWebsite": "Site de lancement",
+          "onePage": "Page unique",
+          "viewBtn": "Voir",
+          "downloadCodeBtn": "Télécharger le code"
+        }
       },
       "phase05": {
         "eyebrow": "PHASE 05 · ENTREPRISE",
         "title": "Créez votre entreprise",
-        "description": "Aide étape par étape pour immatriculer votre société en France : forme juridique, capital, documents.",
-        "youGet": "Vous obtenez :",
+        "description": "Aide étape par étape pour immatriculer votre société en France : forme juridique, capital, documents.",
+        "youGet": "Vous obtenez :",
         "output": "Un guide d'immatriculation et suivi d'avancement",
-        "status": "En cours"
+        "status": "En cours",
+        "preview": {
+          "headerTitle": "Votre guide d'immatriculation",
+          "legalForm": "Forme juridique",
+          "legalFormVal": "SAS-U",
+          "shareCapital": "Capital social",
+          "shareCapitalVal": "1 €",
+          "documents": "Documents",
+          "documentsVal": "3 sur 5 prêts",
+          "companyDetails": "Infos société",
+          "capital": "Capital",
+          "registration": "Immatriculation",
+          "footerNote": "Uniquement SAS, SAS-U et SARL pour le moment."
+        }
       },
       "phase06": {
         "eyebrow": "PHASE 06 · PROCHAINE ÉTAPE",
         "title": "Voyez ce que vous avez construit, et continuez",
         "description": "Tous vos résultats en un seul endroit, avec votre prochaine étape concrète.",
-        "youGet": "Vous obtenez :",
-        "output": "Votre prochaine étape"
+        "youGet": "Vous obtenez :",
+        "output": "Votre prochaine étape",
+        "preview": {
+          "headerTitle": "Votre prochain chapitre",
+          "calmOverview": "Vue d'ensemble",
+          "milestone1": "Votre plan de projet est prêt",
+          "milestone2": "Immatriculation : en cours",
+          "yourResults": "VOS RÉSULTATS",
+          "projectBrand": "Projet & marque",
+          "businessPlanning": "Plan d'affaires",
+          "buildLaunch": "Création & lancement",
+          "companyPrep": "Préparation société",
+          "yourNextMove": "VOTRE PROCHAINE ACTION",
+          "continuePrep": "Continuer la préparation de la société",
+          "workLaunch": "Avancer sur votre tâche de lancement",
+          "reviewPricing": "Revoir votre grille tarifaire",
+          "comingToMbc": "PROCHAINEMENT SUR MBC",
+          "entrepreneur": "Entrepreneur",
+          "investor": "Investisseur",
+          "serviceProvider": "Prestataire"
+        }
       }
     },
     "trustSources": {

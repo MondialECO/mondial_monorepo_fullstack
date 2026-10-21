@@ -437,13 +437,41 @@
       "headline": "From idea to\ncompany in 6 steps.",
       "subline": "Go one step at a time. Everything you make is saved and feeds the next step.",
       "connectedLabels": "One project. Everything you build stays connected.",
+      "breadcrumbs": {
+        "you": "You",
+        "brand": "Brand",
+        "businessPlan": "Business plan",
+        "launchPlan": "Launch plan",
+        "company": "Company",
+        "nextChapter": "Next chapter"
+      },
+      "common": {
+        "completed": "Completed",
+        "inProgress": "In progress",
+        "notStarted": "Not started",
+        "draft": "Draft",
+        "available": "Available",
+        "comingSoon": "Coming soon"
+      },
       "phase01": {
         "eyebrow": "PHASE 01 · YOU",
         "title": "Start with you",
         "description": "Tell us what you've done, what you're good at and how much time you have. School projects count.",
         "youGet": "You get:",
         "output": "Your builder profile",
-        "status": "Completed"
+        "status": "Completed",
+        "preview": {
+          "role": "Student · Lyon",
+          "strengths": "Strengths",
+          "design": "Design",
+          "socialMedia": "Social media",
+          "experience": "Experience",
+          "experienceValue": "2 school projects · 1 internship",
+          "weeklyTime": "Weekly time",
+          "howYouLikeToGrow": "How you like to grow",
+          "learnByDoing": "Learn by doing",
+          "bottomNote": "Your plan will be built around this."
+        }
       },
       "phase02": {
         "eyebrow": "PHASE 02 · PROJECT & BRAND",
@@ -451,7 +479,15 @@
         "description": "Answer a few questions to sharpen your idea, pick a name, then build your logo, colors and fonts.",
         "youGet": "You get:",
         "output": "Your project and Brand Kit",
-        "status": "Completed"
+        "status": "Completed",
+        "preview": {
+          "brandKit": "Brand Kit",
+          "tagline": "Simple project management for student teams.",
+          "ideaClarity": "Idea clarity",
+          "monogram": "Monogram",
+          "palette": "PALETTE",
+          "typography": "Heading · Body"
+        }
       },
       "phase03": {
         "eyebrow": "PHASE 03 · BUSINESS PLAN",
@@ -460,7 +496,29 @@
         "youGet": "You get:",
         "output": "A complete, structured business plan",
         "badge": "CORE PHASE",
-        "status": "Completed"
+        "status": "Completed",
+        "preview": {
+          "headerIntelligence": "Business Plan Intelligence",
+          "stepOf": "Step 6 of 7",
+          "step1Title": "3.1 Market Intelligence",
+          "step1Desc": "Market size & 6 competitors mapped",
+          "step2Title": "3.2 Business Model",
+          "step2Desc": "Model canvas ready",
+          "step3Title": "3.3 Financial Forecast",
+          "step3Desc": "36-month forecast",
+          "step4Title": "3.4 Legal & Compliance",
+          "step4Desc": "French rules checked",
+          "step5Title": "3.5 Formation & Team",
+          "step5Desc": "Suggested form: SAS-U",
+          "step6Title": "3.6 Executive Business Plan",
+          "step6Desc": "12 sections",
+          "step7Title": "3.7 Investor Readiness",
+          "revenueTitle": "Year 1–3 revenue",
+          "fromForecast": "From your forecast",
+          "trajectoryScale": "Relative trajectory scale",
+          "investorReadiness": "Investor readiness",
+          "investorUnlock": "A planning self-check. Unlocks at step 3.7."
+        }
       },
       "phase04": {
         "eyebrow": "PHASE 04 · BUILD & LAUNCH PREP",
@@ -468,7 +526,34 @@
         "description": "A plan made for your skills and your time: what to do now, what to learn, what to hand off.",
         "youGet": "You get:",
         "output": "Your 90-day plan and launch website",
-        "status": "In progress"
+        "status": "In progress",
+        "preview": {
+          "headerTitle": "Construction & launch",
+          "nowTitle": "NOW",
+          "nowTask": "Talk to 5 customers",
+          "nowTaskSub": "Set your first price",
+          "thirtyDays": "30 DAYS",
+          "thirtyDaysTask": "Finalize prototype",
+          "sixtyDays": "60 DAYS",
+          "sixtyDaysTask": "Closed pilot group",
+          "ninetyDays": "90 DAYS",
+          "ninetyDaysTask": "Public opening",
+          "skillsRoadmap": "SKILLS ROADMAP",
+          "salesBasics": "Sales basics",
+          "learnBadge": "LEARN",
+          "appDev": "App development",
+          "delegateBadge": "DELEGATE",
+          "gdpr": "Data protection (GDPR)",
+          "verifyBadge": "VERIFY",
+          "supportPrograms": "SUPPORT PROGRAMS",
+          "jeiStatus": "JEI status",
+          "needsReview": "Needs review",
+          "bpifrance": "Bpifrance support",
+          "launchWebsite": "Launch website",
+          "onePage": "One page",
+          "viewBtn": "View",
+          "downloadCodeBtn": "Download code"
+        }
       },
       "phase05": {
         "eyebrow": "PHASE 05 · COMPANY",
@@ -476,14 +561,46 @@
         "description": "Step-by-step help to register your company in France: legal form, capital, documents.",
         "youGet": "You get:",
         "output": "A registration guide and progress tracker",
-        "status": "In progress"
+        "status": "In progress",
+        "preview": {
+          "headerTitle": "Your registration guide",
+          "legalForm": "Legal form",
+          "legalFormVal": "SAS-U",
+          "shareCapital": "Share capital",
+          "shareCapitalVal": "€1",
+          "documents": "Documents",
+          "documentsVal": "3 of 5 ready",
+          "companyDetails": "Company details",
+          "capital": "Capital",
+          "registration": "Registration",
+          "footerNote": "Only SAS, SAS-U and SARL for now."
+        }
       },
       "phase06": {
         "eyebrow": "PHASE 06 · NEXT CHAPTER",
         "title": "See what you built, and keep going",
         "description": "All your results in one place, with your next real step.",
         "youGet": "You get:",
-        "output": "Your next chapter"
+        "output": "Your next chapter",
+        "preview": {
+          "headerTitle": "Your next chapter",
+          "calmOverview": "Calm overview",
+          "milestone1": "You've built your project plan",
+          "milestone2": "Company registration: in progress",
+          "yourResults": "YOUR RESULTS",
+          "projectBrand": "Project & brand",
+          "businessPlanning": "Business planning",
+          "buildLaunch": "Build & launch",
+          "companyPrep": "Company preparation",
+          "yourNextMove": "YOUR NEXT MOVE",
+          "continuePrep": "Continue company preparation",
+          "workLaunch": "Work on your next launch task",
+          "reviewPricing": "Review your pricing",
+          "comingToMbc": "COMING TO MBC",
+          "entrepreneur": "Entrepreneur",
+          "investor": "Investor",
+          "serviceProvider": "Service Provider"
+        }
       }
     },
     "trustSources": {
