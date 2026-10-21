@@ -142,7 +142,7 @@ export default function RootLayout({
   `;
 
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${dmSans.variable} ${syne.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${dmSans.variable} ${syne.variable} scroll-smooth`}>
       <head>
         <script
           suppressHydrationWarning
