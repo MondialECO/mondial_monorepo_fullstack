@@ -50,4 +50,27 @@ describe('Brand Kit Deliverable Section (Figma 57500:123)', () => {
     expect(screen.getByText('7 VARIATIONS · Open in Studio')).toBeInTheDocument();
     expect(screen.getByText('✓ Contrast checked')).toBeInTheDocument();
   });
+
+  it('verifies all 6 deliverable sections have exact 45px padding (lg:px-[45px])', () => {
+    render(
+      <LanguageProvider>
+        <WireframeDeliverables />
+      </LanguageProvider>
+    );
+
+    const deliverableTestIds = [
+      'deliverable-brand-kit',
+      'deliverable-business-plan',
+      'deliverable-financial-forecast',
+      'deliverable-market-research',
+      'deliverable-action-roadmap',
+      'deliverable-business-setup',
+    ];
+
+    deliverableTestIds.forEach((id) => {
+      const section = screen.getByTestId(id);
+      expect(section).toBeInTheDocument();
+      expect(section.className).toContain('lg:px-[45px]');
+    });
+  });
 });
