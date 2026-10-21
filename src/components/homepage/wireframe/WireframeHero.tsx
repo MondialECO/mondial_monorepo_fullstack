@@ -10,7 +10,7 @@ export default function WireframeHero() {
   return (
     <section
       id="outputs"
-      className="w-full bg-[#f7f9fc] dark:bg-[#08090a] min-h-[560px] lg:h-[740px] flex items-center justify-center px-4 sm:px-6 relative overflow-hidden scroll-mt-20"
+      className="w-full bg-[#f7f9fc] dark:bg-[#08090a] py-16 sm:py-20 lg:py-[100px] min-h-[534px] flex items-center justify-center px-4 sm:px-6 relative overflow-hidden scroll-mt-20 border-b border-[#e8ecf2] dark:border-border/60"
       data-testid="wireframe-hero"
     >
       <div className="w-full max-w-[954px] mx-auto flex flex-col items-center text-center">
@@ -26,12 +26,12 @@ export default function WireframeHero() {
         </div>
 
         {/* Headline (Figma 57480:120: Inter 600, 54px, lh 65px, uppercase, #000000, max-w 954px) */}
-        <h1 className="w-full max-w-[954px] text-[32px] sm:text-[44px] lg:text-[54px] font-semibold leading-[1.2] lg:leading-[65px] font-heading uppercase text-black dark:text-white tracking-normal mb-[14px]">
+        <h1 className="w-full max-w-[954px] text-[32px] sm:text-[44px] lg:text-[54px] font-semibold leading-tight lg:leading-[65px] font-heading uppercase text-black dark:text-white tracking-normal mb-[14px]">
           {t('homepage.wireframe.hero.headline', 'Move from “I have an idea” to real business-ready outputs.')}
         </h1>
 
         {/* Subtitle (Figma 57480:121: DM Sans 400, 16px, lh 18px, #000000, max-w 760px) */}
-        <p className="w-full max-w-[760px] text-[15px] sm:text-[16px] font-normal leading-[24px] sm:leading-[18px] font-sans text-black dark:text-zinc-300 mb-[24px]">
+        <p className="w-full max-w-[760px] text-[15px] sm:text-[16px] font-normal leading-relaxed sm:leading-[18px] font-sans text-black dark:text-zinc-300 mb-[24px]">
           {t(
             'homepage.wireframe.hero.description',
             'MBC Creator helps you create the documents and structure you need to understand your project, explain it clearly, and know what to do next.'
@@ -39,7 +39,7 @@ export default function WireframeHero() {
         </p>
 
         {/* CTA Action (Figma 57480:122 & 57480:123: min 153x48, r 13, bg #3c61dd, Inter 800, 16px, shadow) */}
-        <div className="flex items-center justify-center w-full px-4">
+        <div className="w-full max-w-[628px] mx-auto flex items-center justify-center pt-2 sm:pt-4 px-4">
           <Link
             href="/signup"
             className="w-full sm:w-auto min-w-[153px] px-6 h-[48px] rounded-[13px] bg-[#3c61dd] hover:bg-[#3252c0] text-white font-heading font-extrabold text-[16px] leading-[25px] inline-flex items-center justify-center text-center whitespace-nowrap shadow-[0_10px_24px_rgba(60,97,221,0.20)] transition-all duration-150 active:scale-[0.98] select-none"
