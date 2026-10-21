@@ -62,7 +62,7 @@ describe('Homepage — Figma Node 57480:110 & 57480:109 Wireframe Deliverables A
     // 6. Deliverable 05: Action roadmap (Figma 57501:1033) [VIDEO 2] - Video on Left, Copy on Right
     expect(screen.getAllByText(/Action roadmap/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Know what to do this week/i)).toBeInTheDocument();
-    expect(screen.getByText(/One step at a time/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/One step at a time/i).length).toBeGreaterThan(0);
     expect(screen.getByText('CampusFlow_90Day_Action_Roadmap.pdf')).toBeInTheDocument();
 
     // 7. Deliverable 06: Business setup (Figma 57503:9257) [VIDEO 3] - Copy on Left, Video on Right

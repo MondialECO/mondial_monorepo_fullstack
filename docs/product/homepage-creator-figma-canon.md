@@ -74,18 +74,21 @@ The Creator homepage consists of 7 structured sections organized linearly:
   - Product Dashboard Screenshot (`724x507px`, rounded 14px, elevated shadow `0 25px 60px -15px rgba(0,0,0,0.3)`).
   - Bottom 15% overflow (`-mb-16 sm:-mb-20 md:-mb-24`) protruding underneath Section 2.
 
-### Section 2: Outputs Showcase (`src/components/homepage/FigmaOutputsShowcase.tsx`)
-- **Headline:** `Move from “I have an idea” to real business-ready outputs.`
-- **Layer Stacking:** `relative z-10 bg-[#f7f9fc]` overlaying the Hero screenshot overflow.
-- **6 Structured Output Cards:**
-  1. `01 / Business Concept Sheet`: Concept validation and viability scoring.
-  2. `02 / Brand Identity & Visual Asset Pack`: Logo variations, typography, color codes.
-  3. `03 / AI Strategy & Financial Model`: 3-year projection models, unit economics.
-  4. `04 / Construction Snapshot & Offer Setup`: GTM strategy, product architecture.
-  5. `05 / Execution Schedule & Action Roadmap` (Figma Node `57375:8951`):
-     - 4 balanced columns: `NOW` (active blue card), `NEXT 30 D`, `30–60 D`, `60–90 D`.
-     - Exact status labels: `Priority 1`, `On Track`, `Scheduled`, `Future`.
-  6. `06 / Investor Deck & Deal Room`: Executive summary and investor matching.
+### Section 2: Wireframe Deliverables & Video Bleed Showcase (`WireframeHero.tsx` + `WireframeDeliverables.tsx` — Figma Node `57480:109`)
+- **Note:** Supersedes legacy static `FigmaOutputsShowcase.tsx` with full-fidelity interactive wireframe visualizer and video walkthrough players.
+- **Hero Intro (`WireframeHero.tsx` — Figma 57480:110):**
+  - Eyebrow: `MBC CREATOR · FRANCE`
+  - Headline: `Move from “I have an idea” to real business-ready outputs.`
+  - Subtitle: `MBC Creator helps you create the documents and structure you need to understand your project, explain it clearly, and know what to do next.`
+  - Action CTA: `Start for €0 →` (`bg-[#3c61dd]`, 153x48px).
+- **6 Structured Deliverable Cards with Bleed Videos (`WireframeDeliverables.tsx`):**
+  1. `01 · Brand kit` (`BrandKitVisual.tsx` — Figma 57500:123): Visual tablet canvas with 4 rotated satellite cards, curved dashed SVG arrows, and sparkles.
+  2. `02 · Business plan` (Figma 57500:254): Video Player 1 (`1263px`, video `/videos/business_plan_walkthrough.mp4`) bleeding into the right edge, copy on left.
+  3. `03 · Financial forecast` (`FinancialForecastVisual.tsx` — Figma 57500:373): Vector screen with 4 financial satellite cards (`Revenue -8deg`, `Break-even +9deg`, `Cash -7deg`, `Unit economics +7deg`).
+  4. `04 · Market research` (`MarketResearchVisual.tsx` — Figma 57500:912): Vector screen with 4 market cards (`Market size -8deg`, `Target users +9deg`, `Competitors -7deg`, `Demand +7deg`).
+  5. `05 · Action roadmap` (Figma 57501:1033): Video Player 2 (`1263px`, video `/videos/business_plan_walkthrough.mp4`) bleeding into the left edge, copy on right.
+  6. `06 · Business setup` (Figma 57503:9257): Video Player 3 (`1281px`, video `/videos/launch-plan-scroll.mp4`) bleeding into the right edge, copy on left. Container width: `max-w-[1980px]`.
+- **Legacy Fallback (`FigmaOutputsShowcase.tsx`):** Preserved in codebase as a modular reference and commented out in `src/app/page.tsx`.
 
 ### Section 3: How It Works (`src/components/homepage/FigmaHowItWorks.tsx` — Figma Node `57377:9704`)
 - **Headline:** `From idea to company in 6 steps.`

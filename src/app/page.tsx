@@ -3,6 +3,14 @@ import Navbar from "@/components/shared/Navbar";
 import Footer from "@/components/shared/Footer";
 import WireframeHero from "@/components/homepage/wireframe/WireframeHero";
 import WireframeDeliverables from "@/components/homepage/wireframe/WireframeDeliverables";
+import FigmaHero from '@/components/homepage/FigmaHero';
+
+import FigmaOutputsShowcase from "@/components/homepage/FigmaOutputsShowcase";
+import FigmaHowItWorks from "@/components/homepage/FigmaHowItWorks";
+import FigmaTrustSources from "@/components/homepage/FigmaTrustSources";
+import FigmaWhatsNext from "@/components/homepage/FigmaWhatsNext";
+import FigmaFaq from "@/components/homepage/FigmaFaq";
+import FigmaFinalCta from "@/components/homepage/FigmaFinalCta";
 
 export const metadata: Metadata = {
   title: "MBC — Start your digital business for €0 | Mondial.eco",
@@ -25,11 +33,32 @@ export default function Home() {
       <Navbar />
 
       <main className="w-full flex-1 flex flex-col">
-        {/* Hero: Move from "I have an idea" to real business-ready outputs (Figma 57480:110) */}
+
+        {/* Section 1: Hero — MBC The Intelligent Toolbox */}
+        <FigmaHero />
+
+        {/* Section 2: Hero — Move from "I have an idea" to real business-ready outputs */}
         <WireframeHero />
 
-        {/* 6 Business-Ready Deliverables Showcase with 3 Videos (Figma 57480:109) */}
+        {/* 6 Business-Ready Deliverables Showcase with 3 Videos */}
         <WireframeDeliverables />
+
+        {/* <FigmaOutputsShowcase /> */}
+
+        {/* Section 3: How It Works — From Idea to Company in 6 Steps */}
+        <FigmaHowItWorks />
+
+        {/* Section 4: Where The Facts Come From — Official French Sources */}
+        <FigmaTrustSources />
+
+        {/* Section 5: What's Next — Creator is Just the Beginning */}
+        <FigmaWhatsNext />
+
+        {/* Section 5: FAQ — What "Start for €0" Really Means */}
+        <FigmaFaq />
+
+        {/* Section 6: Final Call to Action Banner */}
+        <FigmaFinalCta />
       </main>
 
       {/* Global Public Footer */}
