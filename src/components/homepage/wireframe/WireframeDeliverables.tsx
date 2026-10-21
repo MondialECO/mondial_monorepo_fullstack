@@ -5,7 +5,6 @@ import { useLanguage } from '@/providers/LanguageProvider';
 import BrandKitVisual from './BrandKitVisual';
 import FinancialForecastVisual from './FinancialForecastVisual';
 import MarketResearchVisual from './MarketResearchVisual';
-import ActionRoadmapVisual from './ActionRoadmapVisual';
 import WireframeVideoPlayer from './WireframeVideoPlayer';
 
 export default function WireframeDeliverables() {
@@ -227,9 +226,14 @@ export default function WireframeDeliverables() {
         data-testid="deliverable-action-roadmap"
       >
         <div className="w-full max-w-[1350px] 2xl:max-w-[1520px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-[26px]">
-          {/* Visual: Left */}
-          <div className="w-full flex-1 min-w-0 max-w-[824px] 2xl:max-w-[862px] flex items-center justify-center order-2 xl:order-1">
-            <ActionRoadmapVisual />
+          {/* Video Player 2: Left */}
+          <div className="w-full flex-1 min-w-0 max-w-[824px] 2xl:max-w-[862px] order-2 xl:order-1">
+            <WireframeVideoPlayer
+              title="CampusFlow_90Day_Action_Roadmap.pdf"
+              badge={t('homepage.wireframe.actionRoadmap.videoBadge', 'Roadmap Walkthrough Video')}
+              posterSrc="/wireframe_figma/deliverable_05_action_roadmap.png"
+              videoSrc="/videos/roadmap-fullscreen.mp4"
+            />
           </div>
 
           {/* Copy: Right */}
