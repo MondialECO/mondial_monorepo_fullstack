@@ -21,30 +21,107 @@ export default function FinancialForecastVisual() {
         {/* ======================================================================= */}
         {/* 1. Official Figma Sparkles (Figma 57500:375) */}
         {/* ======================================================================= */}
-        <div className="absolute inset-0 w-[780px] h-[640px] pointer-events-none z-0">
-          <Image
-            src="/wireframe_figma/sparkles.svg"
-            alt=""
-            width={780}
-            height={640}
-            className="w-full h-full object-contain pointer-events-none"
-            priority
+        <svg
+          className="absolute inset-0 w-[780px] h-[640px] pointer-events-none z-0 overflow-visible"
+          viewBox="0 0 780 640"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M232 128C234.667 140 241.333 147.333 252 150C241.333 152.667 234.667 160 232 172C229.333 160 222.667 152.667 212 150C222.667 147.333 229.333 140 232 128Z"
+            fill="#3C61DD"
           />
-        </div>
+          <path
+            d="M258 122C259.333 127.333 262 130.667 266 132C262 133.333 259.333 136.667 258 142C256.667 136.667 254 133.333 250 132C254 130.667 256.667 127.333 258 122Z"
+            fill="#157A55"
+          />
+          <path
+            d="M70 280C72.6667 294.667 80.6667 303.333 94 306C80.6667 308.667 72.6667 317.333 70 332C67.3333 317.333 59.3333 308.667 46 306C59.3333 303.333 67.3333 294.667 70 280Z"
+            fill="#3C61DD"
+          />
+          <path
+            d="M98 322C100 330 104.667 334.667 112 336C104.667 337.333 100 342 98 350C96 342 91.3333 337.333 84 336C91.3333 334.667 96 330 98 322Z"
+            fill="#157A55"
+          />
+          <path
+            d="M716 300C718.667 313.333 726 321.333 738 324C726 326.667 718.667 334.667 716 348C713.333 334.667 706 326.667 694 324C706 321.333 713.333 313.333 716 300Z"
+            fill="#3C61DD"
+          />
+          <path
+            d="M690 268C692 277.333 697.333 283 706 285C697.333 287 692 292.667 690 302C688 292.667 682.667 287 674 285C682.667 283 688 277.333 690 268Z"
+            fill="#157A55"
+          />
+        </svg>
 
         {/* ======================================================================= */}
         {/* 2. Official Figma Dashed Arrows (Figma 57500:501) */}
         {/* ======================================================================= */}
-        <div className="absolute inset-0 w-[780px] h-[640px] pointer-events-none z-10">
-          <Image
-            src="/wireframe_figma/arrows.svg"
-            alt=""
-            width={780}
-            height={640}
-            className="w-full h-full object-contain pointer-events-none"
-            priority
+        <svg
+          className="absolute inset-0 w-[780px] h-[640px] pointer-events-none z-10 overflow-visible"
+          viewBox="0 0 780 640"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Top-Left Arrow to Tablet */}
+          <path
+            d="M176 300C174.366 300 172.764 299.968 171.195 299.903M108 226C108 227.624 108.025 229.226 108.075 230.805M108.723 240.388C109.071 243.666 109.547 246.827 110.153 249.867M112.545 259.168C113.55 262.303 114.729 265.276 116.085 268.082M120.944 276.346C122.81 278.976 124.888 281.403 127.186 283.619M134.683 289.587C137.295 291.292 140.112 292.798 143.141 294.097M152.224 297.199C155.193 297.982 158.326 298.604 161.624 299.062"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            stroke="#3C61DD"
           />
-        </div>
+          <path
+            d="M96 238L108 222L121 236"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            stroke="#3C61DD"
+          />
+
+          {/* Top-Right Arrow to Break-even */}
+          <path
+            d="M520 162C519.927 160.392 519.873 158.822 519.836 157.288M548 100C546.411 100.177 544.869 100.462 543.38 100.866M519.854 147.876C519.953 144.544 520.154 141.418 520.452 138.488M521.843 129.193C522.527 125.851 523.374 122.84 524.37 120.139M528.55 111.747C530.431 108.929 532.577 106.672 534.95 104.912"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            stroke="#157A55"
+          />
+          <path
+            d="M536 88L552 100L538 113"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            stroke="#157A55"
+          />
+
+          {/* Bottom-Left Arrow from Cash */}
+          <path
+            d="M176 396C174.564 396 173.153 396.015 171.767 396.045M110 434C110.12 432.566 110.303 431.168 110.553 429.806M112.998 421.727C114.136 419.142 115.587 416.733 117.366 414.509M123.41 408.618C125.536 406.983 127.923 405.498 130.58 404.167M138.404 400.96C140.941 400.116 143.659 399.376 146.561 398.743M154.891 397.289C157.566 396.928 160.371 396.641 163.307 396.431"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            stroke="#3C61DD"
+          />
+          <path
+            d="M98 424L110 440L123 426"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            stroke="#3C61DD"
+          />
+
+          {/* Bottom-Right Arrow to Unit Economics */}
+          <path
+            d="M604 396C605.489 396 606.953 396.021 608.392 396.063M674 456C674 454.509 673.966 453.042 673.898 451.601M617.163 396.608C620.192 396.903 623.094 397.304 625.871 397.809M634.418 399.804C637.342 400.652 640.097 401.638 642.685 402.76M650.452 406.836C652.99 408.437 655.317 410.207 657.435 412.143M663.32 418.645C665.055 420.975 666.574 423.474 667.88 426.136M671.075 434.307C671.898 437.029 672.545 439.885 673.019 442.869"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            stroke="#157A55"
+          />
+          <path
+            d="M661 446L674 462L687 448"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            stroke="#157A55"
+          />
+        </svg>
 
         {/* ======================================================================= */}
         {/* 3. Center Tablet (Figma 57500:382: pos 180, 170, size 420x290) */}
@@ -196,7 +273,7 @@ export default function FinancialForecastVisual() {
             <div className="w-3.5 h-3.5 rounded-full bg-[#157a55] flex items-center justify-center text-white">
               <Check className="w-2.5 h-2.5 stroke-[3]" />
             </div>
-            <span>Fully funded</span>
+            <span>{t('homepage.wireframe.financialForecast.fullyFunded', 'Fully funded')}</span>
           </div>
 
           {/* 2 Metric Boxes Side by Side */}
