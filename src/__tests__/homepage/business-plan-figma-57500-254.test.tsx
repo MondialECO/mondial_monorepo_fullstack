@@ -32,4 +32,30 @@ describe('Business Plan Deliverable Section (Figma 57500:254)', () => {
     expect(screen.getByText('CampusFlow_Business_Plan_v1.pdf')).toBeInTheDocument();
     expect(screen.getByText('Interactive Plan Video')).toBeInTheDocument();
   });
+
+  it('automatically plays the video when the section enters the viewport', () => {
+    let observerCallback: (entries: IntersectionObserverEntry[]) => void = () => {};
+    const observeMock = vi.fn();
+    const disconnectMock = vi.fn();
+
+    class MockIntersectionObserver {
+      constructor(callback: (entries: IntersectionObserverEntry[]) => void) {
+        observerCallback = callback;
+      }
+      observe = observeMock;
+      disconnect = disconnectMock;
+      unobserve = vi.fn();
+    }
+
+    window.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
+
+    render(
+      <LanguageProvider>
+        <WireframeDeliverables />
+      </LanguageProvider>
+    );
+
+    expect(observeMock).toHaveBeenCalled();
+  });
 });
+
