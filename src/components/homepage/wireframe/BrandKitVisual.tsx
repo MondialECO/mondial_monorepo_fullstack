@@ -254,7 +254,7 @@ export default function BrandKitVisual() {
           </span>
 
           <div className="w-full h-[132px] rounded-[14px] bg-[#eef2fd] dark:bg-blue-950/40 flex items-center justify-center">
-            <span className="text-[34px] font-black text-[#3c61dd] tracking-tight font-heading">
+            <span className="text-[40px] leading-[48px] font-extrabold text-[#3c61dd] tracking-tight font-heading">
               MBC
             </span>
           </div>
@@ -285,17 +285,17 @@ export default function BrandKitVisual() {
             {/* Swatch 1: Royal Blue */}
             <div className="flex flex-col items-center gap-2 flex-1">
               <div className="w-full h-[68px] rounded-[12px] bg-[#3c61dd]" />
-              <span className="w-3.5 h-3.5 rounded-full bg-[#3c61dd]" />
+              <span className="w-4 h-4 rounded-full bg-[#3c61dd]" />
             </div>
             {/* Swatch 2: Charcoal Black */}
             <div className="flex flex-col items-center gap-2 flex-1">
               <div className="w-full h-[68px] rounded-[12px] bg-[#111827]" />
-              <span className="w-3.5 h-3.5 rounded-full bg-[#111827]" />
+              <span className="w-4 h-4 rounded-full bg-[#111827]" />
             </div>
             {/* Swatch 3: Deep Green */}
             <div className="flex flex-col items-center gap-2 flex-1">
               <div className="w-full h-[68px] rounded-[12px] bg-[#157a55]" />
-              <span className="w-3.5 h-3.5 rounded-full bg-[#157a55]" />
+              <span className="w-4 h-4 rounded-full bg-[#157a55]" />
             </div>
           </div>
         </div>
@@ -317,16 +317,16 @@ export default function BrandKitVisual() {
           </span>
 
           <div className="grid grid-cols-2 gap-3 pt-2">
-            {/* Left Box: Bold Inter Aa */}
-            <div className="p-3 rounded-[14px] bg-[#f4f5f7] dark:bg-muted/40 text-center space-y-1.5 flex flex-col items-center justify-center">
-              <span className="text-[28px] font-bold text-[#111827] dark:text-foreground font-heading leading-none">
+            {/* Left Box: Bold Inter / Syne Aa (Figma 57500:214: Syne 800 40px) */}
+            <div className="p-3 rounded-[14px] bg-[#f4f5f7] dark:bg-muted/40 text-center space-y-1 flex flex-col items-center justify-center">
+              <span className="text-[40px] leading-[48px] font-extrabold text-[#111827] dark:text-foreground font-heading">
                 Aa
               </span>
               <div className="w-8 h-1 bg-[#3c61dd] rounded-full mx-auto" />
             </div>
-            {/* Right Box: Regular DM Sans Aa */}
-            <div className="p-3 rounded-[14px] bg-[#f4f5f7] dark:bg-muted/40 text-center space-y-1.5 flex flex-col items-center justify-center">
-              <span className="text-[28px] font-normal text-[#9ca3af] font-sans leading-none">
+            {/* Right Box: Regular DM Sans Aa (Figma 57500:217: DM Sans 400 40px) */}
+            <div className="p-3 rounded-[14px] bg-[#f4f5f7] dark:bg-muted/40 text-center space-y-1 flex flex-col items-center justify-center">
+              <span className="text-[40px] leading-[52px] font-normal text-[#9ca3af] font-sans">
                 Aa
               </span>
               <div className="w-8 h-1 bg-[#d1d5db] rounded-full mx-auto" />
@@ -353,15 +353,15 @@ export default function BrandKitVisual() {
             </span>
           </div>
 
-          {/* Kit Ready Pill (Figma 57500:228: absolute at top-right of card) */}
-          <div className="absolute -top-[16px] right-[14px] px-[12px] py-[6px] rounded-full bg-[#e8f3ee] border border-[#bfe0d1] text-[#157a55] text-[12px] font-semibold flex items-center gap-1.5 shadow-sm z-30">
+          {/* Kit Ready Pill (Figma 57500:228: 112x40, DM Sans 600 14px) */}
+          <div className="absolute -top-[16px] right-[14px] px-[12px] py-[6px] rounded-full bg-[#e8f3ee] border border-[#bfe0d1] text-[#157a55] text-[14px] leading-[18px] font-semibold flex items-center gap-1.5 shadow-sm z-30">
             <span>✓</span>
             <span>{t('homepage.wireframe.brandKit.kitReady', 'Kit ready')}</span>
           </div>
 
           {/* Inner Content Frame (Figma 57500:221) */}
           <div className="flex items-center gap-3 p-3 rounded-[14px] bg-[#f4f5f7] dark:bg-muted/40">
-            <div className="w-[42px] h-[42px] rounded-[10px] bg-[#3c61dd] text-white font-black flex items-center justify-center text-[13px] font-heading shrink-0 shadow-xs">
+            <div className="w-[42px] h-[42px] rounded-[10px] bg-[#3c61dd] text-white font-extrabold flex items-center justify-center text-[14px] leading-[17px] font-heading shrink-0 shadow-xs">
               MBC
             </div>
             <div className="space-y-1.5 flex-1">

@@ -193,9 +193,9 @@ export default function MarketResearchVisual() {
             {t('homepage.wireframe.marketResearch.demandCardTitle', 'Demand')}
           </h3>
 
-          {/* Floating Pill · Gap found (Figma 57500:1005) */}
+          {/* Floating Pill · Gap found (Figma 57500:1005: 122x40, DM Sans 600 14px) */}
           <div
-            className="absolute -top-3.5 -right-3 px-3 py-1 rounded-full bg-[#e8f3ee] dark:bg-emerald-950/60 border border-[#bfe0d1] dark:border-emerald-800 text-[#157a55] dark:text-emerald-300 text-[11px] font-bold flex items-center gap-1 shadow-sm select-none"
+            className="absolute -top-3.5 -right-3 px-3 py-1 rounded-full bg-[#e8f3ee] dark:bg-emerald-950/60 border border-[#bfe0d1] dark:border-emerald-800 text-[#157a55] dark:text-emerald-300 text-[14px] leading-[18px] font-semibold flex items-center gap-1.5 shadow-sm select-none"
             style={{ transform: 'rotate(-4deg)' }}
           >
             <div className="w-3.5 h-3.5 rounded-full bg-[#157a55] flex items-center justify-center text-white">
@@ -204,13 +204,13 @@ export default function MarketResearchVisual() {
             <span>Gap found</span>
           </div>
 
-          {/* Big Percentage Value: 68% */}
-          <div className="font-heading font-extrabold text-[36px] leading-tight text-[#157a55]">
+          {/* Big Percentage Value: 68% (Figma 57500:1003: Syne 800 32px lh 38px) */}
+          <div className="font-heading font-extrabold text-[32px] leading-[38px] text-[#157a55]">
             {t('homepage.wireframe.marketResearch.demandValue', '68%')}
           </div>
 
-          {/* Description */}
-          <p className="font-sans text-[12px] leading-snug text-[#111827] dark:text-zinc-300">
+          {/* Description (Figma 57500:1004: DM Sans 500 13px lh 18px) */}
+          <p className="font-sans font-medium text-[13px] leading-[18px] text-[#111827] dark:text-zinc-200">
             {t(
               'homepage.wireframe.marketResearch.demandDesc',
               'of independent retailers in France still track stock by hand.'
