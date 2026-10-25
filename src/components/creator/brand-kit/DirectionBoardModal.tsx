@@ -1,7 +1,7 @@
 "use client";
 import { useTranslation } from "@/hooks/useTranslation";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Sparkles,
   RefreshCw,
@@ -267,7 +267,7 @@ export function DirectionBoardModal({
   const isCapExhausted = remainingCap === 0;
 
   // Filtered / Re-sorted candidates based on SHOW ME filter chip
-  const filteredCandidates = useMemo(() => {
+  const filteredCandidates = (() => {
     if (activeFilter === "all") return candidates;
     if (activeFilter === "calmer") {
       return [...candidates].sort((a, b) => {
@@ -317,32 +317,22 @@ export function DirectionBoardModal({
       });
     }
     return candidates;
-  }, [candidates, activeFilter]);
+  })();
 
   // Selected Candidate object
-  const selectedCandidate = useMemo(() => {
-    return (
-      candidates.find((c) => c.key === selectedKey) ||
-      candidates[0] ||
-      null
-    );
-  }, [candidates, selectedKey]);
+  const selectedCandidate = candidates.find((c) => c.key === selectedKey) ||
+    candidates[0] ||
+    null;
 
   // Business Name derived directly from real strategy
-  const businessName = useMemo(() => {
-    return (
-      currentKit?.strategy?.nameDisplayForm ||
-      kit?.strategy?.nameDisplayForm ||
-      kit?.strategy?.businessName ||
-      "Brand"
-    );
-  }, [currentKit, kit]);
+  const businessName = currentKit?.strategy?.nameDisplayForm ||
+    kit?.strategy?.nameDisplayForm ||
+    kit?.strategy?.businessName ||
+    "Brand";
 
   // Derive letterform pair from real business name (e.g. "Instaly" -> "Ii", "CyberLock" -> "Cc", "AutoInvoice" -> "Aa")
-  const brandInitialPair = useMemo(() => {
-    const firstChar = businessName.trim().charAt(0).toUpperCase() || "A";
-    return `${firstChar}${firstChar.toLowerCase()}`;
-  }, [businessName]);
+  const firstChar = businessName.trim().charAt(0).toUpperCase() || "A";
+  const brandInitialPair = `${firstChar}${firstChar.toLowerCase()}`;
 
   // Generate / Regenerate Candidates (Costs 7 credits, capped at 3)
   const handleGenerate = async () => {

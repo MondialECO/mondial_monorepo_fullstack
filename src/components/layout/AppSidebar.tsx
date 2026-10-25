@@ -139,9 +139,6 @@ function StandardRoleSidebar({
                 priority
               />
             </div>
-            <span className="text-xl font-bold tracking-tight font-heading group-data-[collapsible=icon]:hidden">
-              Mondial
-            </span>
           </Link>
           <SidebarTrigger className="shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden" />
         </div>

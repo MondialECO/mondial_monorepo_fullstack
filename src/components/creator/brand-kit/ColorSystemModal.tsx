@@ -1,7 +1,7 @@
 "use client";
 import { useTranslation } from "@/hooks/useTranslation";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { BrandKit, BrandColorRole } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import { creatorAiApi } from "@/lib/api-creator-ai";
@@ -241,23 +241,15 @@ export function ColorSystemModal({
   }, []);
 
   // Background hex reference for contrast calculation
-  const backgroundHex = useMemo(() => {
-    return (
-      roles.find((r) => r.roleName === "Background")?.hex || "#FFFFFF"
-    );
-  }, [roles]);
+  const backgroundHex = roles.find((r) => r.roleName === "Background")?.hex || "#FFFFFF";
 
   // Brand Name from strategy
-  const brandName = useMemo(() => {
-    return (
-      currentKit.strategy?.nameDisplayForm ||
-      currentKit.strategy?.businessName ||
-      "Brand"
-    );
-  }, [currentKit]);
+  const brandName = currentKit.strategy?.nameDisplayForm ||
+    currentKit.strategy?.businessName ||
+    "Brand";
 
   // Logo mark from Step 4
-  const logoMarkUri = useMemo(() => {
+  const logoMarkUri = (() => {
     let rawUri: string | null = null;
     if (currentKit.logo?.selectedConceptKey) {
       const concept = currentKit.logo.concepts?.find(
@@ -269,7 +261,7 @@ export function ColorSystemModal({
       rawUri = currentKit.logo?.variations?.["primary"]?.svgUri || null;
     }
     return rawUri ? resolveMediaUrl(rawUri, currentKit.version) : null;
-  }, [currentKit.logo, currentKit.version]);
+  })();
 
   // 1. Initial State Population & Prop Synchronization
   useEffect(() => {

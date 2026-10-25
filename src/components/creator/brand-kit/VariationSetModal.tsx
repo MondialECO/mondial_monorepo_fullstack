@@ -1,7 +1,7 @@
 "use client";
 import { useTranslation } from "@/hooks/useTranslation";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { BrandKit, BrandLogoVariation, formatConceptTitle } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import { exportBrandKitZip } from "@/lib/brand-kit-export";
@@ -56,14 +56,14 @@ export function VariationSetModal({
 
   const selectedConceptKey = kit?.logo?.selectedConceptKey || "concept_4";
   const selectedConceptIndex = kit?.logo?.concepts?.findIndex((c) => c.key === selectedConceptKey) ?? -1;
-  const conceptLabel = useMemo(() => {
+  const conceptLabel = (() => {
     if (selectedConceptIndex >= 0 && kit?.logo?.concepts?.[selectedConceptIndex]) {
       return formatConceptTitle(kit.logo.concepts[selectedConceptIndex], selectedConceptIndex);
     }
     const match = selectedConceptKey.match(/\d+/);
     const num = match ? parseInt(match[0], 10) : 4;
     return `Concept ${num.toString().padStart(2, "0")}`;
-  }, [kit?.logo?.concepts, selectedConceptIndex, selectedConceptKey]);
+  })();
 
   // Synchronize local state whenever initialKit prop receives a newer version from parent
   useEffect(() => {

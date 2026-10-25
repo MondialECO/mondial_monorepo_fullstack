@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -157,7 +157,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
   const isSaas = !isEcommerce && !isService && !isMarketplace;
 
   // Active drivers determination
-  const resolvedActiveDrivers = useMemo(() => {
+  const resolvedActiveDrivers = (() => {
     const drivers: Record<string, boolean> = {
       startingBudget: true,
       launchSubscribers: true,
@@ -193,7 +193,7 @@ export const ForecastAssumptionsForm: React.FC<ForecastAssumptionsFormProps> = (
     }
 
     return drivers;
-  }, [isSaas, isEcommerce, isService, isMarketplace, activeDrivers]);
+  })();
 
   const handleChange = (field: keyof ForecastDriverValues, valStr: string) => {
     setFormError(null);

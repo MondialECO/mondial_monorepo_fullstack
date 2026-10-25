@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import {
   TrendingUp,
@@ -86,159 +86,153 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
   const teamScore = breakdown?.teamCredibility ?? 0;
 
   // Dynamic Headline and Summary from backend or score tier fallback
-  const headline = useMemo(() => {
-    if (readiness?.headline) return readiness.headline;
-    if (totalScore >= 85) return 'Fully validated venture foundation, ready for institutional capital.';
-    if (totalScore >= 70) return 'Strong institutional foundation, nearly investor-ready.';
-    if (totalScore >= 50) return 'A clear starting point, with a few gaps to work through.';
-    return 'Foundational gaps identified, requiring further validation.';
-  }, [readiness?.headline, totalScore]);
+  const headline = readiness?.headline ||
+    (totalScore >= 85 ? 'Fully validated venture foundation, ready for institutional capital.'
+    : totalScore >= 70 ? 'Strong institutional foundation, nearly investor-ready.'
+    : totalScore >= 50 ? 'A clear starting point, with a few gaps to work through.'
+    : 'Foundational gaps identified, requiring further validation.');
 
-  const summary = useMemo(() => {
-    if (readiness?.summary) return readiness.summary;
-    if (totalScore >= 85) {
-      return 'Your venture intelligence demonstrates institutional rigor across customer evidence, unit economics, statutory compliance, and founder capabilities.';
-    }
-    if (totalScore >= 70) {
-      return 'Your concept and market evidence are well articulated. Addressing key financial sensitivity points and specialist coverage will finalize readiness.';
-    }
-    return 'Your concept is taking shape. Stronger customer evidence, clearer financial assumptions, and a practical support plan will make it easier to explain your business.';
-  }, [readiness?.summary, totalScore]);
+  const summary = readiness?.summary ||
+    (totalScore >= 85
+      ? 'Your venture intelligence demonstrates institutional rigor across customer evidence, unit economics, statutory compliance, and founder capabilities.'
+      : totalScore >= 70
+      ? 'Your concept and market evidence are well articulated. Addressing key financial sensitivity points and specialist coverage will finalize readiness.'
+      : 'Your concept is taking shape. Stronger customer evidence, clearer financial assumptions, and a practical support plan will make it easier to explain your business.');
 
   // Map 5 structured improvement rows
-  const improvementRows = useMemo(() => {
+  const improvementRows = (() => {
     const deductions = readiness?.deductions ?? [];
 
     const getDed = (dimKey: string): ReadinessDeduction | undefined =>
       deductions.find((d) => d.dimension.toLowerCase() === dimKey.toLowerCase());
 
-    const conceptDed = getDed('conceptclarity');
-    const marketDed = getDed('marketevidence');
-    const financeDed = getDed('financialmodel');
-    const legalDed = getDed('legalreadiness');
-    const teamDed = getDed('teamcredibility');
+    const conceptDed = getDed(‘conceptclarity’);
+    const marketDed = getDed(‘marketevidence’);
+    const financeDed = getDed(‘financialmodel’);
+    const legalDed = getDed(‘legalreadiness’);
+    const teamDed = getDed(‘teamcredibility’);
 
     const rows = [
       {
-        key: 'concept',
-        title: 'Concept clarity',
+        key: ‘concept’,
+        title: ‘Concept clarity’,
         score: conceptScore,
         max: 20,
         lost: conceptDed?.pointsLost ?? Math.max(0, Math.round(20 - conceptScore)),
         currentState:
           conceptDed?.currentState ??
           (conceptScore >= 20
-            ? 'Optimal. Venture concept, problem statement, and solution are fully defined and validated.'
+            ? ‘Optimal. Venture concept, problem statement, and solution are fully defined and validated.’
             : project.problem && project.solution
             ? `The problem and proposed solution for ${projectName} are described.`
-            : 'Venture concept and unique value proposition require clarification.'),
+            : ‘Venture concept and unique value proposition require clarification.’),
         recommendation:
           conceptDed?.recommendation ??
           (conceptScore >= 20
-            ? 'Concept meets all institutional clarity benchmarks.'
+            ? ‘Concept meets all institutional clarity benchmarks.’
             : `Clarify why your first customers would choose ${projectName} over their current approach.`),
         subtext: undefined as string | undefined,
-        actionLabel: 'Refine your concept',
-        actionRoute: '/dashboard/creator/phase-2/clarifier',
+        actionLabel: ‘Refine your concept’,
+        actionRoute: ‘/dashboard/creator/phase-2/clarifier’,
         isPrimaryGap: false,
       },
       {
-        key: 'market',
-        title: 'Market evidence',
+        key: ‘market’,
+        title: ‘Market evidence’,
         score: marketScore,
         max: 20,
         lost: marketDed?.pointsLost ?? Math.max(0, Math.round(20 - marketScore)),
         currentState:
           marketDed?.currentState ??
           (marketScore >= 20
-            ? 'Optimal. Market sizing and customer validation evidence are completed.'
+            ? ‘Optimal. Market sizing and customer validation evidence are completed.’
             : project.targetUser
             ? `An initial customer group (${project.targetUser}) is identified.`
-            : 'An initial customer group is identified.'),
+            : ‘An initial customer group is identified.’),
         recommendation:
           marketDed?.recommendation ??
           (marketScore >= 20
-            ? 'Market evidence meets institutional addressability standards.'
-            : 'Add direct customer feedback and sources that support your market assumptions.'),
+            ? ‘Market evidence meets institutional addressability standards.’
+            : ‘Add direct customer feedback and sources that support your market assumptions.’),
         subtext: undefined as string | undefined,
-        actionLabel: 'Review your market study',
-        actionRoute: '/dashboard/creator/phase-3/market-study',
+        actionLabel: ‘Review your market study’,
+        actionRoute: ‘/dashboard/creator/phase-3/market-study’,
         isPrimaryGap: true, // "Start here" badge in Figma
       },
       {
-        key: 'finance',
-        title: 'Financial model',
+        key: ‘finance’,
+        title: ‘Financial model’,
         score: financeScore,
         max: 25,
         lost: financeDed?.pointsLost ?? Math.max(0, Math.round(25 - financeScore)),
         currentState:
           financeDed?.currentState ??
           (financeScore >= 25
-            ? 'Optimal. 36-month projections demonstrate break-even velocity and sustainable unit economics.'
-            : 'A forecast is available, with assumptions still to test.'),
+            ? ‘Optimal. 36-month projections demonstrate break-even velocity and sustainable unit economics.’
+            : ‘A forecast is available, with assumptions still to test.’),
         recommendation:
           financeDed?.recommendation ??
           (financeScore >= 25
-            ? 'Financial projections meet institutional diligence criteria.'
-            : 'Explain the main revenue and cost assumptions, and check what happens if sales start more slowly.'),
+            ? ‘Financial projections meet institutional diligence criteria.’
+            : ‘Explain the main revenue and cost assumptions, and check what happens if sales start more slowly.’),
         subtext: undefined as string | undefined,
-        actionLabel: 'Review your financial forecast',
-        actionRoute: '/dashboard/creator/phase-3/forecast',
+        actionLabel: ‘Review your financial forecast’,
+        actionRoute: ‘/dashboard/creator/phase-3/forecast’,
         isPrimaryGap: false,
       },
       {
-        key: 'legal',
-        title: 'Legal readiness',
+        key: ‘legal’,
+        title: ‘Legal readiness’,
         score: legalScore,
         max: 15,
         lost: legalDed?.pointsLost ?? Math.max(0, Math.round(15 - legalScore)),
         currentState:
           legalDed?.currentState ??
           (legalScore >= 15
-            ? 'Optimal. Legal and compliance checklist requirements are fully verified.'
-            : 'A personalised legal roadmap is available.'),
+            ? ‘Optimal. Legal and compliance checklist requirements are fully verified.’
+            : ‘A personalised legal roadmap is available.’),
         recommendation:
           legalDed?.recommendation ??
           (legalScore >= 15
-            ? 'Statutory and governance planning verified.'
-            : 'Clarify which requirements apply to your activity and when you will handle them.'),
+            ? ‘Statutory and governance planning verified.’
+            : ‘Clarify which requirements apply to your activity and when you will handle them.’),
         subtext:
           legalDed?.subtext ??
           (legalScore < 15
-            ? 'This assesses your planning, not whether your company is already registered.'
+            ? ‘This assesses your planning, not whether your company is already registered.’
             : undefined),
-        actionLabel: 'Review your legal roadmap',
-        actionRoute: '/dashboard/creator/phase-3/compliance',
+        actionLabel: ‘Review your legal roadmap’,
+        actionRoute: ‘/dashboard/creator/phase-3/compliance’,
         isPrimaryGap: false,
       },
       {
-        key: 'team',
-        title: 'Team credibility',
+        key: ‘team’,
+        title: ‘Team credibility’,
         score: teamScore,
         max: 20,
         lost: teamDed?.pointsLost ?? Math.max(0, Math.round(20 - teamScore)),
         currentState:
           teamDed?.currentState ??
           (teamScore >= 20
-            ? 'Optimal. Founder advantage and operational partner coverage are verified.'
-            : 'The founder’s responsibilities are outlined.'),
+            ? ‘Optimal. Founder advantage and operational partner coverage are verified.’
+            : ‘The founder’s responsibilities are outlined.’),
         recommendation:
           teamDed?.recommendation ??
           (teamScore >= 20
-            ? 'Team structure and specialized support requirements are met.'
-            : 'Explain how you will cover the skills your launch needs, including any outside support.'),
+            ? ‘Team structure and specialized support requirements are met.’
+            : ‘Explain how you will cover the skills your launch needs, including any outside support.’),
         subtext:
           teamDed?.subtext ??
-          (teamScore < 20 ? 'You can plan these responsibilities as a solo founder.' : undefined),
-        actionLabel: 'Review company setup & team',
-        actionRoute: '/dashboard/creator/phase-3/formation',
+          (teamScore < 20 ? ‘You can plan these responsibilities as a solo founder.’ : undefined),
+        actionLabel: ‘Review company setup & team’,
+        actionRoute: ‘/dashboard/creator/phase-3/formation’,
         isPrimaryGap: false,
       },
     ];
 
-    // Find the row with the largest points lost to set "Start here" if market isn't the highest
+    // Find the row with the largest points lost to set "Start here" if market isn’t the highest
     let maxLost = -1;
-    let maxKey = 'market';
+    let maxKey = ‘market’;
     rows.forEach((r) => {
       if (r.lost > maxLost) {
         maxLost = r.lost;
@@ -250,18 +244,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
       ...r,
       isPrimaryGap: r.key === maxKey && r.lost > 0,
     }));
-  }, [
-    readiness?.deductions,
-    conceptScore,
-    marketScore,
-    financeScore,
-    legalScore,
-    teamScore,
-    project.problem,
-    project.solution,
-    project.targetUser,
-    projectName,
-  ]);
+  })();
 
   return (
     <div className="w-full max-w-[1040px] mx-auto space-y-8 font-sans pb-16 text-foreground">

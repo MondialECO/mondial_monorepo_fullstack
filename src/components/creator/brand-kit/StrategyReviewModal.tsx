@@ -1,7 +1,7 @@
 "use client";
 import { useTranslation } from "@/hooks/useTranslation";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { BrandKit, BrandStrategy } from "@/types/creator/brand-kit";
 import {
   Check,
@@ -131,7 +131,7 @@ export function StrategyReviewModal({
   );
 
   // Name display form choices derived dynamically from real businessName
-  const casingVariants = useMemo(() => {
+  const casingVariants = (() => {
     const raw = businessName.trim();
     if (!raw) {
       return [
@@ -183,7 +183,7 @@ export function StrategyReviewModal({
     }
 
     return uniqueOptions;
-  }, [businessName]);
+  })();
 
   const [nameDisplayForm, setNameDisplayForm] = useState(
     strategy?.nameDisplayForm || (businessName.trim() ? businessName.trim() : "")
@@ -229,14 +229,14 @@ export function StrategyReviewModal({
   );
 
   // Remaining choices count calculation
-  const remainingCount = useMemo(() => {
+  const remainingCount = (() => {
     let count = 0;
     if (!nameDisplayForm) count++;
     if (traits.length < 3) count++;
     if (!toneScale) count++;
     if (!firstAppearance) count++;
     return count;
-  }, [nameDisplayForm, traits.length, toneScale, firstAppearance]);
+  })();
 
   const handleSaveAndConfirm = async () => {
     const toneMapping: Record<number, string> = {
