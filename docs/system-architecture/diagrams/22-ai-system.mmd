@@ -15,7 +15,8 @@ graph TD
         CTRL_FCST["ForecastController (/api/ai/forecast)"]
         CTRL_GEN["IdeaGeneratorController (/api/ai/idea-generator)"]
         CTRL_VAL["CreatorPhase4ConstructionController (/api/creator/phase-4)"]
-        
+        CTRL_P2["CreatorPhase2Controller<br/>chat-message / clarifier-answer"]
+
         OWNER_GUARD["Ownership & Multi-Idea Anchor Check<br/>(CurrentUserId == Idea.CreatorId)"]
         RATE_LIMIT_AI["RateLimiter Policy 'ai'<br/>(Max 20 req/min per User)"]
     end
@@ -23,6 +24,10 @@ graph TD
     subgraph ASYNC_DISPATCH["Hangfire Asynchronous Dispatch"]
         HANGFIRE_QUEUE[("Hangfire Queue: 'ai'<br/>Job Enqueued with Idempotency Key")]
         AI_RUNNER["AiJobRunner.cs<br/>Executes Task Handler in Fresh Scope"]
+    end
+
+    subgraph SYNC_AI["Synchronous AI (no job, no credits, no ledger)"]
+        CLAR_TURN["ClarifierTurnService<br/>Per-answer accept/revise + field extraction<br/>50s timeout, 40 calls/idea, fail-open"]
     end
 
     subgraph TASK_HANDLERS["AI Task Handlers (IAiTaskHandler)"]
@@ -74,6 +79,12 @@ graph TD
     OWNER_GUARD --> CTRL_PLAN
     OWNER_GUARD --> CTRL_FCST
     OWNER_GUARD --> CTRL_GEN
+    OWNER_GUARD --> CTRL_P2
+
+    %% Clarifier chat: synchronous per-answer turn, results land in CreatorIdeas.Phase2Data.ClarifierAnswers
+    CTRL_P2 --> CLAR_TURN
+    CLAR_TURN --> MODEL_ROUTER
+    CTRL_P2 --> TARGET_IDEA
 
     %% LLM Execution Pipeline
     CTRL_CLAR --> HANGFIRE_QUEUE

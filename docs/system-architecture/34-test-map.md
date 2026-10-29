@@ -21,7 +21,7 @@ Mondial ECO maintains a comprehensive multi-tier testing suite spanning C# unit 
 |---|---|---|---|---|
 | **Authentication & Session** | `AuthControllerTests.cs`, `AuthRateLimitIntegrationTests.cs`, `MultiRoleJwtAndAuthorizationTests.cs` | `universal-profile.test.tsx` | Full multi-role login & multi-tab test | **HIGH (Thoroughly Tested)** |
 | **Creator Phase 1 (Onboarding)**| `OnboardingControllerTests.cs`, `KycStorageServiceTests.cs` | Onboarding stepper tests | Identity & document upload flow | **HIGH** |
-| **Creator Phase 2 (Branding/AI)**| `CreatorPhase2ControllerTests.cs`, `ClarifierSessionTests.cs` | Logo tool tests | AI Clarifier generation & prompt test | **HIGH** |
+| **Creator Phase 2 (Branding/AI)**| `CreatorPhase2ControllerTests.cs`, `ClarifierSessionTests.cs`, `ClarifierScriptTests.cs` (turn rules, retry cap, edits, legacy derivation), `ClarifierTurnServiceTests.cs` (AI verdict parsing, fail-open, cap) | Logo tool tests | AI Clarifier generation & prompt test | **HIGH** |
 | **Creator Phase 3 (Business Plan)**| `BusinessPlanSessionTests.cs`, `ForecastSessionTests.cs` | Financial forecast form tests | Business plan & 5-year forecast flow | **HIGH** |
 | **Creator Phase 4 & 5 (Crossroads)**| `ValuationEngineTests.cs`, `MarketBenchmarkResolverTests.cs` | Crossroads path selection tests | Crossroads decision & buyout pricing | **HIGH** |
 | **Creator Phase 6 & Full Buyout**| `BuyoutE2EAcceptanceTests.cs`, `BuyoutAgreementSigningPhase4Tests.cs`, `BuyoutClosingPhase5Tests.cs` | Sales inbox tests | Full buyout negotiation, signing & handover | **VERY HIGH (Extensive Tests)** |

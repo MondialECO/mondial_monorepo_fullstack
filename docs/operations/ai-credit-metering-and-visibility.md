@@ -36,12 +36,16 @@ All capabilities route authoritatively to `google/gemini-3.8-flash` in base conf
 | **`LogoConceptRegenerate`** | — | **0 credits** | — | Single logo concept regeneration (free deterministic in-memory SVG parametric redraw) |
 | **`ColorGeneration`** | `google/gemini-3.8-flash` | **2 credits** | **4,500 tokens** | 5-role colour palette regeneration (contrast, harmony, and luminance enforcement; observed peak 3,228 tokens) |
 | **`TypographyGeneration`** | `google/gemini-3.8-flash` | **2 credits** | **2,000 tokens** | 4-role typography system regeneration (distinct pairing validation; observed peak 457 tokens) |
+| **`ClarifierTurn`** | `google/gemini-3.8-flash` (default route) | **0 credits** | **2,000 tokens** (hardcoded in `ClarifierTurnService`) | Per-answer judge in the Phase-2 clarifier chat (accept/revise, field extraction, reply in the user's language). Synchronous `IAiProvider` call, **not** a job: no `AIRequests` row, no ledger entry. Capped at 40 calls per idea; 50s timeout. Measured latency 5–25s. |
 | **`IdeaGenerator`** | `google/gemini-3.8-flash` | **0 credits** | **3,500 tokens** | Unmetered discovery generator |
 | **`Probe`** | `google/gemini-3.8-flash` | **0 credits** | **500 tokens** | Operational health self-test |
 | **Deterministic Derivations** | — | **0 credits** | — | Free initial color/typography derivations, derived variations, section patches |
 
 > [!NOTE]
 > **Dynamic Configuration & Safe Fallback Degradation**: Token ceilings are configurable via `appsettings.json` under `Ai:OutputTokenLimits` (or `AI__OUTPUTTOKENLIMITS__<JOBTYPE>` env vars). Job handlers inject `IOptions<AiSettings>` and resolve the active ceiling at runtime. If a configuration key is absent or zero, the handler degrades safely to an internal `DefaultMaxOutputTokens` constants rather than 0 or unbounded requests.
+
+> [!WARNING]
+> **`ClarifierTurn` provider cost is invisible to the ledger.** It bypasses the job pipeline, the same way `FinancialAssumptionsService` does, so neither credit nor provider-cost reporting counts it. A full clarifier run is about 6–10 calls (up to 40 per idea). Add usage logging before cost reporting relies on `AIRequests`.
 
 > [!NOTE]
 > **Free-Tier Starter Credit Eligibility & Option A Failure Handling**: All billed Brand Kit AI operations (`DirectionGeneration`, `LogoParameterSelection`, `ColorGeneration`, `TypographyGeneration`) are fully eligible for consumption against the user's standard 200 starter credit grant (`Ai:StarterCredits = 200`). Under Option A, any AI model failure or validation failure immediately propagates an honest HTTP 500 error, automatically refunds debited credits via `IAiCreditService.RefundForJobAsync`, preserves regenerate caps, and never substitutes deterministic fallbacks. Single logo concept regeneration is fully local and free (0 credits).

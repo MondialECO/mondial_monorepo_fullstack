@@ -66,6 +66,9 @@ The Mondial ECO backend exposes 579 API endpoints managed across 51 controllers.
   - `GET /api/creator/ideas/{id}`: Detailed idea entity including output snapshots.
   - `GET /api/creator/journey`: Derived-status engine returning active phase completion state.
 - **`CreatorPhase2Controller`** (`/api/creator/journey/phase2`):
+  - `POST /api/creator/journey/phase2/chat-message`: Answer the current clarifier question. An AI turn judges it (0 credits). `revise` keeps the question and returns feedback; `accept` stores extracted fields and returns the next question in the user's language. Response: `messages`, `questionIndex` (finished count), `totalQuestions`, `summaryReady`, `verdict`, `currentQuestion`, `attempts`, `maxAttempts`, `aiUsed`, `answers`. Returns 409 when all six are answered.
+  - `PATCH /api/creator/journey/phase2/clarifier-answer/{questionIndex}`: Edit a finished answer. `mode: "answer"` is re-judged by the AI; a revise or an AI failure keeps the old answer. `mode: "fields"` edits the extracted fields directly with no AI call. Never appends to the transcript.
+  - `POST /api/creator/journey/phase2/finalize-clarifier`: Map a completed C-2 session onto the project. Also returns `clarifierSessionId` and `clarifierSummarizedAt`.
   - `GET /api/creator/journey/phase2/company-search`: Search registered French companies via `API Recherche d’entreprises` (optional, rate-limited, cached, 0 credits).
   - `GET /api/creator/journey/phase2/concept-name`: Query concept name and tagline for current journey.
   - `POST /api/creator/journey/phase2/concept-name`: Persist venture name and tagline to `CreatorIdea.Project`.

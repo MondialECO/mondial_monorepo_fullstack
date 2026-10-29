@@ -73,6 +73,22 @@ src/
    - **Hub & Versioning:** Standalone calm reference view with bounded 3-snapshot version history, automatic pre-restore backups, upstream cascade warning modals, honest "not connected yet" downstream generators, and client-side ZIP packaging.
 
 
+10. **Phase 2 AI Clarifier (`/dashboard/creator/phase-2/clarifier`):**
+   - **Flow:** six fixed questions. Each answer gets one AI turn
+     (`ClarifierTurnService`): `revise` keeps the question (max 5 attempts, then
+     `accepted_weak`), `accept` stores AI-extracted fields. Feedback comes back in
+     the user's language. Per-answer AI is free; credits are spent only by C-2
+     "Generate summary".
+   - **Progress source:** `Phase2Data.ClarifierAnswers` (`ClarifierScript` on the
+     backend, `lib/clarifier-answers.ts` on the frontend). Never count user chat
+     messages: retries are in the transcript.
+   - **Failures:** a first answer is fail-open (AI down, timeout or bad JSON →
+     accept). An edit of a finished answer is NOT fail-open: without an AI verdict
+     the old answer is kept.
+   - **Credit copy:** never hardcode the price. The summary price comes from
+     `GET /ai/credits` → `costs.IdeaClarifier` (20 in dev, not 1).
+   - **Deploy:** backend and frontend must ship together.
+
 ## Perf rules (hard rules)
 
 1. **Default to Server Components.** Only add `"use client"` when you need state, effects, browser APIs, or event handlers. Push the boundary as DEEP as possible (wrap only the interactive leaf, not the whole page).

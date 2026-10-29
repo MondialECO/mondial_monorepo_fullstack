@@ -399,6 +399,24 @@ Entering `/dashboard/creator/phase-2` automatically sets `entryPath = "already_h
 
 A 6-question conversational AI-guided clarifier (core problem, target user, existing alternatives, proposed solution, unfair advantage / founder edge, riskiest assumption & timing). Answers are appended to the journey chat transcript and can be resumed at any time. Produces a live `clarityScore` and `clarifierSessionId`, which finalizes canonical project fields into `CreatorJourneyProject` (and mirrors to `CreatorIdea`). The completed clarifier satisfies the Phase-3 prerequisite chain (Phase 3 C-3 start requires a clarified project).
 
+**Per-answer AI validation (since 2026-10-29):**
+- **The AI turn:** every answer to the current question goes through `ClarifierTurnService` (one synchronous AI call, **0 credits**).
+  - **`revise`:** the answer does not answer the question, is too vague ("an app", "everyone"), is nonsense, or is a refusal. The question stays and the AI explains what is missing. After **5 attempts** the answer is accepted as `accepted_weak` and the chat moves on.
+  - **`accept`:** the AI stores structured fields for that question, acknowledges briefly, and asks the next scripted question.
+  - **Language:** feedback and the next question are written in the language the user wrote in.
+- **Source of progress:** `Phase2Data.ClarifierAnswers`, one record per question (`status`, `attempts`, `rawAnswer`, `aiExtracted`, `userEdited`, `language`, `updatedAt`). Progress, the ring, `summaryReady` and the C-2 input derive from these records, **never from counting user chat messages** (the transcript contains rejected attempts). Field map: Q1 `problem`, Q2 `targetUser`, Q3 `existingAlternatives`, Q4 `solution`, Q5 `creatorEdge` + `founderAdvantage`, Q6 `whyNow` + `riskiestAssumption`. Value precedence is user edit, then AI extraction, then raw answer.
+- **Fail-open for new answers:** if the AI is disabled, times out (50s), errors, or returns unusable JSON, or the 40-calls-per-idea cap is reached, the answer is accepted without AI. The user is never blocked by infrastructure.
+- **Editing finished answers** (`PATCH .../phase2/clarifier-answer/{n}`):
+  - `mode: "answer"`: the AI re-judges the new text. A revise **or an AI failure** keeps the previous answer, so an unchecked edit never overwrites a valid one.
+  - `mode: "fields"`: the structured fields are edited directly with no AI call. An empty value reverts to the AI's version.
+  - The transcript is not rewritten. The latest bubble for each question shows its current answer.
+- **Summary states:** finalize stamps `Phase2Data.ClarifierSummarizedAt`.
+  - No summary yet: **Generate my summary**.
+  - Summary exists and no answer changed since: **View my summary** (free).
+  - An answer changed after the summary: **Regenerate summary (N credits)**.
+  - The price comes from `GET /api/ai/credits` → `costs.IdeaClarifier` (currently 20) and is never hardcoded.
+- **Legacy ideas:** ideas created before `ClarifierAnswers` existed derive one accepted record per legacy user message (messages without `questionIndex`).
+
 Following the Clarifier:
 1. **Idea Summary (`/phase-2/idea-summary`):** Displays the structured concept summary and clarity score. The "Revisit" button routes directly back to `/phase-2/clarifier`.
 2. **Concept Name (`/dashboard/creator/phase-2/concept-name` — LIVE):**
