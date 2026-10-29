@@ -232,10 +232,13 @@ export default function AIClarifierPage() {
       const rawIdea = buildRawIdea(answers, state.project?.name, t("creator.phase2.clarifier.defaultIdeaName", "My Idea"));
 
       // Start the C-2 AI clarifier (1 credit), poll it, then map onto the project.
-      const { sessionId } = await creatorAiApi.startClarifier({
-        rawIdea,
-        businessIdeaId: effectiveIdeaId ?? undefined,
-      });
+      const { sessionId } = await creatorAiApi.startClarifier(
+        {
+          rawIdea,
+          businessIdeaId: effectiveIdeaId ?? undefined,
+        },
+        t.locale
+      );
       const session = await pollClarifier(sessionId);
       if (!session) throw new Error(t("creator.phase2.clarifier.timeoutError"));
 

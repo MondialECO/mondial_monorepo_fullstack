@@ -51,6 +51,10 @@ namespace WebApp.Services.Ai.Jobs
             string Field(string key) =>
                 input != null && input.TryGetValue(key, out var v) && v.IsString ? v.AsString.Trim() : string.Empty;
 
+            // Extract language from input (passed from Phase 2)
+            var language = Field("language");
+            if (string.IsNullOrWhiteSpace(language)) language = "en";
+
             var title = Field("title");
             var problem = Field("problemStatement");
             var audience = Field("targetAudience");
@@ -75,9 +79,18 @@ namespace WebApp.Services.Ai.Jobs
                 ? string.Join("\n", contextLines)
                 : "(no idea details were provided)";
 
-            const string task =
+            var languageInstruction = language.ToLowerInvariant() switch
+            {
+                "fr" => "Generate all output in French.",
+                "en" => "Generate all output in English.",
+                _ => $"Generate all output in the language code: {language}."
+            };
+
+            var task =
                 "Clarify the business idea above into the structured opportunity " +
-                "defined by the output contract. Return only the JSON object.";
+                "defined by the output contract. " +
+                languageInstruction + " " +
+                "Return only the JSON object.";
 
             var maxTokens = _settings.OutputTokenLimits.TryGetValue("IdeaClarifier", out var limit) && limit > 0
                 ? limit

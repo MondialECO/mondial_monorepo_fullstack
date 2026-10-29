@@ -63,10 +63,11 @@ export const creatorAiApi = {
   // ---------- C-2 Idea Clarifier ----------
   startClarifier: async (
     payload: StartClarifierRequest,
+    language: 'en' | 'fr' = 'en',
   ): Promise<StartSessionResult> => {
     const businessIdeaId = payload.businessIdeaId ?? getCreatorWorkspaceIdea();
     if (!businessIdeaId) throw new Error("An idea workspace must be selected before starting the Clarifier.");
-    const res = await api.post("/ai/idea-clarifier", { ...payload, businessIdeaId });
+    const res = await api.post("/ai/idea-clarifier", { ...payload, businessIdeaId, language });
     return unwrap<StartSessionResult>(res.data);
   },
 

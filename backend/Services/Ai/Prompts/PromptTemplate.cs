@@ -52,7 +52,9 @@ namespace WebApp.Services.Ai.Prompts
                 "thin, make the missing assumption explicit (in the assumptions list) " +
                 "rather than fabricating detail. Judge clarity strictly: a high " +
                 "clarity score means the problem, audience, and solution are already " +
-                "well defined; a low score means the idea is still vague.",
+                "well defined; a low score means the idea is still vague. " +
+                "IMPORTANT: All text output MUST be in the language specified by the task. " +
+                "Do not translate, mix languages, or deviate from this requirement.",
             OutputContract =
                 "Respond with ONE JSON object and nothing else — no markdown, no code " +
                 "fences, no commentary before or after. It MUST match this schema " +

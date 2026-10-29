@@ -8,6 +8,9 @@ namespace WebApp.Models.Dtos.Ai
         /// <summary>Optional source business idea to attach the session to.</summary>
         public string? BusinessIdeaId { get; set; }
 
+        /// <summary>ISO 639-1 language code (en, fr, etc.). Clarifier output will be generated in this language.</summary>
+        public string? Language { get; set; }
+
         /// <summary>The raw idea fields to clarify.</summary>
         [Required]
         public RawIdeaInput RawIdea { get; set; } = new();
