@@ -591,7 +591,11 @@ namespace WebApp.Controllers
             public Dictionary<string, string?>? Fields { get; set; }
         }
         public class FinalizeClarifierRequest { public string SessionId { get; set; } }
-        public class NameSuggestionsRequest { public string Concept { get; set; } public string? Language { get; set; } }
+        public class NameSuggestionsRequest
+        {
+            public string Concept { get; set; }
+            public string? Language { get; set; }
+        }
         public class BookDesignerRequest { public string SpId { get; set; } }
 
     }
