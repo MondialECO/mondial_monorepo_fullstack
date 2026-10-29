@@ -582,7 +582,7 @@ namespace WebApp.Controllers
 
         // ---- Request DTOs ----
 
-        public class ChatMessageRequest { public string Message { get; set; } }
+        public class ChatMessageRequest { public string Message { get; set; } public string? Language { get; set; } }
         public class EditClarifierAnswerRequest
         {
             /// <summary>"answer" | "fields".</summary>
