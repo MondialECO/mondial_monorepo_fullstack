@@ -211,8 +211,8 @@ export const creatorJourneyApi = {
 
   // ---- Phase 2 ----
 
-  chatMessage: async (message: string, ideaId?: string | null): Promise<ChatMessageResult> => {
-    const res = await api.post('/creator/journey/phase2/chat-message', { message }, withIdeaWrite(ideaId));
+  chatMessage: async (message: string, language: 'en' | 'fr' = 'en', ideaId?: string | null): Promise<ChatMessageResult> => {
+    const res = await api.post('/creator/journey/phase2/chat-message', { message, language }, withIdeaWrite(ideaId));
     rememberIdeaVersion(res, ideaId);
     return unwrap<ChatMessageResult>(res.data);
   },

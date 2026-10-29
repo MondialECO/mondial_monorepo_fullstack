@@ -80,6 +80,8 @@ namespace WebApp.Models.Dtos
     public class ChatMessageRequest
     {
         public string Message { get; set; }
+        /// <summary>ISO 639-1 language code (en, fr, etc.). Defaults to en if omitted.</summary>
+        public string? Language { get; set; }
     }
 
     public class FinalizeClarifierRequest

@@ -154,7 +154,7 @@ export default function AIClarifierPage() {
     setInputValue("");
     setIsTyping(true);
     try {
-      const res = await creatorJourneyApi.chatMessage(userText, effectiveIdeaId);
+      const res = await creatorJourneyApi.chatMessage(userText, t.locale, effectiveIdeaId);
       setMessages(res.messages);
       setAnswers(res.answers);
       syncPhase2({ chatMessages: res.messages, clarifierAnswers: res.answers });

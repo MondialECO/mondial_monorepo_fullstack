@@ -95,12 +95,17 @@ namespace WebApp.Controllers
 
                 await _journeys.AppendChatMessageAsync(userId, "user", text, ideaId, questionIndex: questionIndex);
 
+                // Language: prefer frontend-provided, then previous answer, default to en
+                var language = !string.IsNullOrWhiteSpace(request?.Language)
+                    ? request.Language
+                    : (answers.FirstOrDefault(a => a.Language != null)?.Language ?? "en");
+
                 var turn = await _clarifierTurns.EvaluateAsync(new ClarifierTurnInput(
                     questionIndex,
                     text,
                     ClarifierScript.PriorAnswers(answers, questionIndex),
                     answers.Sum(a => a.Attempts),
-                    answers.LastOrDefault(a => a.Language != null)?.Language), cancellationToken);
+                    language), cancellationToken);
 
                 var outcome = ClarifierScript.ApplyTurn(answers, questionIndex, text, turn, DateTime.UtcNow);
                 var journey = await _journeys.SaveClarifierTurnAsync(
