@@ -89,7 +89,9 @@ src/
      `GET /ai/credits` → `costs.IdeaClarifier` (20 in dev, not 1).
    - **Language support:** frontend passes `language` (en|fr) from `LanguageProvider` to
      `chatMessage(message, language)`. Backend stores in first answer, inherits for
-     subsequent questions. All AI responses respect user's UI language without fallback.
+     subsequent questions. All per-answer AI responses respect user's UI language. C-2
+     summary (finalizeClarifier) receives language from `StartClarifierRequest.Language`
+     and generates summary in that language; `ClarifierSession.Language` is persisted.
    - **Deploy:** backend and frontend must ship together.
 
 ## Perf rules (hard rules)
