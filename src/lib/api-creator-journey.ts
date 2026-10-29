@@ -233,8 +233,8 @@ export const creatorJourneyApi = {
     return unwrap<FinalizeClarifierResult>(res.data);
   },
 
-  nameSuggestions: async (concept: string): Promise<{ names: string[] }> => {
-    const res = await api.post('/creator/journey/phase2/name-suggestions', { concept });
+  nameSuggestions: async (concept: string, language: 'en' | 'fr' = 'en'): Promise<{ names: string[] }> => {
+    const res = await api.post('/creator/journey/phase2/name-suggestions', { concept, language });
     return unwrap<{ names: string[] }>(res.data);
   },
 

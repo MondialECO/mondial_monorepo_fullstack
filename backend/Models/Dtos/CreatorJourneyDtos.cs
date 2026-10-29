@@ -98,6 +98,8 @@ namespace WebApp.Models.Dtos
     public class NameSuggestionsRequest
     {
         public string Concept { get; set; }
+        /// <summary>ISO 639-1 language code (en, fr, etc.). Suggestions will be generated in this language.</summary>
+        public string? Language { get; set; }
     }
 
     public class BookDesignerRequest

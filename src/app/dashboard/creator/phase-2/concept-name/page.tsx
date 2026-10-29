@@ -55,7 +55,7 @@ export default function ConceptNamePage() {
     setNameError(null);
     setRegenerating(true);
     try {
-      const { names } = await creatorJourneyApi.nameSuggestions(concept);
+      const { names } = await creatorJourneyApi.nameSuggestions(concept, t.locale);
       if (names?.length) {
         setSuggestions(mapNames(names));
         setState((prev) => ({

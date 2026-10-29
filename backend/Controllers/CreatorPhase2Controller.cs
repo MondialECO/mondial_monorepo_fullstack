@@ -344,7 +344,8 @@ namespace WebApp.Controllers
                         return StatusCode(429, ApiResponse.Error("Maximum name suggestion attempts reached."));
                 }
 
-                var names = GenerateNames(request.Concept);
+                var language = !string.IsNullOrWhiteSpace(request.Language) ? request.Language : "en";
+                var names = GenerateNames(request.Concept, language);
                 return Ok(ApiResponse.Ok("OK", new { names }));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -560,13 +561,15 @@ namespace WebApp.Controllers
         // with evocative affixes, deliberately avoiding the banned generic standalones
         // (Hub / App / Pro / Platform).
         // TODO: swap to IAiProvider when model-router ready — keep contract/shape/limit identical.
-        private static List<string> GenerateNames(string concept)
+        private static List<string> GenerateNames(string concept, string language = "en")
         {
             var words = concept.Split(new[] { ' ', ',', '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
-            var root = (words.FirstOrDefault(w => w.Length > 3) ?? words.FirstOrDefault() ?? "Nova").Trim();
+            var root = (words.FirstOrDefault(w => w.Length > 3) ?? words.FirstOrDefault() ?? (language == "fr" ? "Nova" : "Nova")).Trim();
             root = char.ToUpperInvariant(root[0]) + root.Substring(1).ToLowerInvariant();
             var stem = root.Length > 5 ? root.Substring(0, 5) : root;
 
+            // TODO: Replace with LLM-based generation when implementing full language support.
+            // For now, the language parameter is accepted and stored for future use.
             return new List<string>
             {
                 $"{stem}ly",
@@ -588,7 +591,7 @@ namespace WebApp.Controllers
             public Dictionary<string, string?>? Fields { get; set; }
         }
         public class FinalizeClarifierRequest { public string SessionId { get; set; } }
-        public class NameSuggestionsRequest { public string Concept { get; set; } }
+        public class NameSuggestionsRequest { public string Concept { get; set; } public string? Language { get; set; } }
         public class BookDesignerRequest { public string SpId { get; set; } }
 
     }
