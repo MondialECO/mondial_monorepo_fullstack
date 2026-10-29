@@ -143,6 +143,82 @@ export const PROGRESS_PREFERENCE_UI_OPTIONS = [
 export { FRENCH_REGIONS };
 
 // ==========================================
+// DISPLAY TRANSLATION
+// Stored values stay English canonical strings (the backend contract); these
+// translate them for display only. Unknown values (custom skills, free-text
+// regions) are returned unchanged.
+// ==========================================
+
+type Translate = (key: string, fallback?: string) => string;
+const QS = 'creator.humainx.quickStart';
+const same = (a?: string | null, b?: string | null) =>
+  !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
+export function situationText(t: Translate, value?: string | null): string {
+  const o = CURRENT_SITUATION_UI_OPTIONS.find((x) => same(x.label, value) || same(x.canonical, value));
+  return o ? t(`${QS}.situation.${o.id}`, o.label) : value ?? '';
+}
+
+export function availabilityText(t: Translate, value?: string | null): string {
+  const o = WEEKLY_AVAILABILITY_UI_OPTIONS.find((x) => same(x.label, value) || same(x.canonical, value));
+  return o ? t(`${QS}.availability.${o.id}`, o.label) : value ?? '';
+}
+
+export function experienceOption(value?: string | null) {
+  return PREVIOUS_EXPERIENCE_UI_OPTIONS.find((x) => same(x.title, value) || same(x.canonical, value));
+}
+
+export function experienceText(t: Translate, value?: string | null): string {
+  const o = experienceOption(value);
+  return o ? t(`${QS}.experience.${o.id}.title`, o.title) : value ?? '';
+}
+
+export function experienceDescText(t: Translate, value?: string | null): string {
+  const o = experienceOption(value);
+  return o ? t(`${QS}.experience.${o.id}.desc`, o.description) : '';
+}
+
+/** Accepts a UI title, or a stored learning/delegation preference pair. */
+export function progressOption(value?: string | null, delegationPref?: string | null) {
+  const direct = PROGRESS_PREFERENCE_UI_OPTIONS.find(
+    (x) => same(x.title, value) || same(x.learningPreference, value),
+  );
+  if (direct) return direct;
+  const derived = deriveProgressPreference(value, delegationPref);
+  return PROGRESS_PREFERENCE_UI_OPTIONS.find((x) => same(x.title, derived));
+}
+
+export function progressText(t: Translate, value?: string | null, delegationPref?: string | null): string {
+  const o = progressOption(value, delegationPref);
+  return o ? t(`${QS}.progress.${o.id}.title`, o.title) : value ?? '';
+}
+
+export function progressDescText(t: Translate, value?: string | null): string {
+  const o = progressOption(value);
+  return o ? t(`${QS}.progress.${o.id}.desc`, o.description) : '';
+}
+
+export function skillKey(name: string): string {
+  return name.toLowerCase().replace(/[\s-]/g, '_');
+}
+
+export function skillText(t: Translate, name?: string | null): string {
+  if (!name) return '';
+  const known = SUGGESTED_SKILLS.find((s) => same(s, name));
+  return known ? t(`${QS}.skills.${skillKey(known)}`, name) : name;
+}
+
+export function levelText(t: Translate, level?: string | null): string {
+  const known = SKILL_LEVELS.find((l) => same(l, level));
+  return known ? t(`${QS}.levels.${known.toLowerCase()}`, known) : level ?? '';
+}
+
+export function regionText(t: Translate, region?: string | null): string {
+  // French region names are proper nouns; only the catch-all needs translating.
+  return same(region, 'International / Other') ? t(`${QS}.regionInternational`, 'International / Other') : region ?? '';
+}
+
+// ==========================================
 // VALUE RESOLVERS & MAPPERS
 // ==========================================
 

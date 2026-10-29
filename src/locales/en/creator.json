@@ -3239,6 +3239,7 @@
       "selectedRegion": "Selected region",
       "france": "France",
       "franceWithRegion": "France • {{region}}",
+      "regionInternational": "International / Other",
       "regionNote": "From your verified address — change it if this isn't right.",
       "situationTitle": "What are you doing right now?",
       "situationSubtitle": "Select the activity that occupies most of your daytime schedule.",
@@ -3327,27 +3328,31 @@
         },
         "company-before": {
           "title": "I've created a company before",
-          "desc": "I've been a founder, co-founder, or sole proprietor."
+          "desc": "I've registered and run one."
+        },
+        "run-now": {
+          "title": "I run something right now",
+          "desc": "I already have an activity going."
         }
       },
       "progressTitle": "When you hit something you can't do yet?",
       "progressPreferenceAria": "Progress preference",
       "progress": {
         "learn": {
-          "title": "I want to learn it myself",
-          "desc": "Step-by-step guidance. I'll do the work."
+          "title": "I'd rather learn it",
+          "desc": "Teach me and I'll pick it up."
         },
         "delegate": {
-          "title": "I want to delegate or hire",
-          "desc": "Find the right partner, service, or tool."
+          "title": "I'd rather hand it off",
+          "desc": "Let a specialist handle it."
         },
         "mixed": {
           "title": "A bit of both",
-          "desc": "I'll learn what matters, delegate the rest."
+          "desc": "Learn what matters, delegate the rest."
         },
         "help-me-decide": {
           "title": "Help me decide",
-          "desc": "Tell me what's fastest or most sensible."
+          "desc": "Recommend what fits each situation."
         }
       },
       "progressNote": "You can change this any time — we'll check in when it actually matters.",
@@ -3479,6 +3484,10 @@
       "regionPrefix": "Region:",
       "businessExperienceCard": "Business Experience",
       "noPreviousExperience": "No previous experience recorded",
+      "recordedExperiences": "{{count}} recorded experience(s)",
+      "noFormalExperience": "No formal experience specified",
+      "projectFallback": "Project",
+      "atOrganization": "at {{org}}",
       "howYouPreferToProgress": "How You Prefer to Progress",
       "balancedDefault": "Balanced learning and delegation",
       "editProfile": "Edit Profile",

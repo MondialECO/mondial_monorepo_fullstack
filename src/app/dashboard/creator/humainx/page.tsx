@@ -39,6 +39,14 @@ import {
   WEEKLY_AVAILABILITY_UI_OPTIONS,
   PREVIOUS_EXPERIENCE_UI_OPTIONS,
   PROGRESS_PREFERENCE_UI_OPTIONS,
+  situationText,
+  skillText,
+  levelText,
+  experienceText,
+  experienceDescText,
+  progressText,
+  progressDescText,
+  regionText,
   HumainXQuickStartSkill,
   HumainXQuickStartData,
   HumainXJourneyState,
@@ -647,7 +655,7 @@ function HumainXQuickStartInner() {
                     </span>
                     <span className="font-medium text-foreground">{t('creator.humainx.quickStart.france', 'France')}</span>
                   </div>
-                  <span className="text-muted-foreground font-normal">{region}</span>
+                  <span className="text-muted-foreground font-normal">{regionText(t, region)}</span>
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
                 </div>
 
@@ -660,7 +668,7 @@ function HumainXQuickStartInner() {
                 >
                   {FRENCH_REGIONS.map((r) => (
                     <option key={r} value={r}>
-                      {t('creator.humainx.quickStart.franceWithRegion', 'France • {{region}}', { region: r })}
+                      {t('creator.humainx.quickStart.franceWithRegion', 'France • {{region}}', { region: regionText(t, r) })}
                     </option>
                   ))}
                 </select>
@@ -727,7 +735,7 @@ function HumainXQuickStartInner() {
                           isSelected ? 'font-semibold text-primary' : 'font-medium text-foreground'
                         }`}
                       >
-                        {opt.label}
+                        {situationText(t, opt.label)}
                       </span>
                     </button>
                   );
@@ -829,7 +837,7 @@ function HumainXQuickStartInner() {
                       ) : (
                         <Plus className="w-3.5 h-3.5 text-muted-foreground" />
                       )}
-                      <span>{t(`creator.humainx.quickStart.skills.${skill.toLowerCase().replace(/[\s-]/g, '_')}`, skill)}</span>
+                      <span>{skillText(t, skill)}</span>
                     </button>
                   );
                 })}
@@ -924,7 +932,7 @@ function HumainXQuickStartInner() {
                     >
                       <div className="flex items-center gap-2">
                         <span className="font-heading font-semibold text-sm text-foreground">
-                          {skill.name}
+                          {skillText(t, skill.name)}
                         </span>
                       </div>
 
@@ -950,7 +958,7 @@ function HumainXQuickStartInner() {
                                     : 'text-muted-foreground hover:text-foreground'
                                 }`}
                               >
-                                {lvl}
+                                {levelText(t, lvl)}
                               </button>
                             );
                           })}
@@ -1022,10 +1030,10 @@ function HumainXQuickStartInner() {
                             isSelected ? 'text-primary font-semibold' : 'text-foreground'
                           }`}
                         >
-                          {opt.title}
+                          {experienceText(t, opt.title)}
                         </span>
                         <p className="font-sans text-[13px] text-muted-foreground mt-0.5">
-                          {opt.description}
+                          {experienceDescText(t, opt.title)}
                         </p>
                       </div>
                     </button>
@@ -1088,10 +1096,10 @@ function HumainXQuickStartInner() {
                             isSelected ? 'text-primary' : 'text-foreground'
                           }`}
                         >
-                          {opt.title}
+                          {progressText(t, opt.title)}
                         </span>
                         <p className="font-sans text-[13px] text-muted-foreground mt-0.5">
-                          {opt.description}
+                          {progressDescText(t, opt.title)}
                         </p>
                       </div>
                     </button>

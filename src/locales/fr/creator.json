@@ -3239,6 +3239,7 @@
       "selectedRegion": "Région sélectionnée",
       "france": "France",
       "franceWithRegion": "France • {{region}}",
+      "regionInternational": "International / Autre",
       "regionNote": "Issu de votre adresse vérifiée — modifiez-la si ce n'est pas exact.",
       "situationTitle": "Que faites-vous actuellement ?",
       "situationSubtitle": "Sélectionnez l'activité qui occupe la majeure partie de votre temps en journée.",
@@ -3275,7 +3276,7 @@
         "social_media": "Réseaux sociaux",
         "graphic_design": "Design graphique",
         "coding": "Développement / Code",
-        "web_design": "Web design",
+        "web_design": "Conception web",
         "writing": "Rédaction",
         "video_editing": "Montage vidéo",
         "photography": "Photographie",
@@ -3327,19 +3328,23 @@
         },
         "company-before": {
           "title": "J'ai déjà créé une entreprise",
-          "desc": "J'ai été fondateur, cofondateur ou micro-entrepreneur."
+          "desc": "Je l'ai immatriculée et gérée."
+        },
+        "run-now": {
+          "title": "Je gère une activité en ce moment",
+          "desc": "J'ai déjà une activité en cours."
         }
       },
       "progressTitle": "Face à une compétence manquante, que préférez-vous ?",
       "progressPreferenceAria": "Préférence de progression",
       "progress": {
         "learn": {
-          "title": "Je veux apprendre moi-même",
-          "desc": "Un accompagnement pas à pas. Je ferai le travail."
+          "title": "Je préfère l'apprendre",
+          "desc": "Expliquez-moi, je m'y mettrai."
         },
         "delegate": {
-          "title": "Je veux déléguer ou recruter",
-          "desc": "Trouver le bon partenaire, service ou outil."
+          "title": "Je préfère le confier",
+          "desc": "Qu'un spécialiste s'en occupe."
         },
         "mixed": {
           "title": "Un peu des deux",
@@ -3347,7 +3352,7 @@
         },
         "help-me-decide": {
           "title": "Aidez-moi à décider",
-          "desc": "Indiquez-moi la solution la plus rapide ou judicieuse."
+          "desc": "Recommandez ce qui convient à chaque situation."
         }
       },
       "progressNote": "Vous pouvez modifier cela à tout moment — nous ferons le point au moment opportun.",
@@ -3479,6 +3484,10 @@
       "regionPrefix": "Région :",
       "businessExperienceCard": "Expérience entrepreneuriale",
       "noPreviousExperience": "Aucune expérience préalable enregistrée",
+      "recordedExperiences": "{{count}} expérience(s) enregistrée(s)",
+      "noFormalExperience": "Aucune expérience formelle indiquée",
+      "projectFallback": "Projet",
+      "atOrganization": "chez {{org}}",
       "howYouPreferToProgress": "Votre méthode de progression préférée",
       "balancedDefault": "Équilibre entre apprentissage et délégation",
       "editProfile": "Modifier le profil",

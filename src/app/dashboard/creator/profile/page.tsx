@@ -42,6 +42,15 @@ import {
 import { creatorProfileApi } from '@/lib/api-creator-profile';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
+  availabilityText,
+  experienceText,
+  levelText,
+  progressText,
+  regionText,
+  situationText,
+  skillText,
+} from '@/lib/humainx-quick-start';
+import {
   type HumainXFormData,
   type HumainXExperience,
   type HumainXEducation,
@@ -800,12 +809,12 @@ function HumainXProfileBuilderInner() {
                     >
                       <div className="space-y-1 min-w-0 pr-3">
                         <div className="font-semibold text-sm text-foreground truncate">
-                          {skill.name}
+                          {skillText(t, skill.name)}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-[11px] font-medium text-muted-foreground">
                             {skill.level ? (
-                              <span className="text-primary font-bold">{skill.level}</span>
+                              <span className="text-primary font-bold">{levelText(t, skill.level)}</span>
                             ) : (
                               <span className="italic text-muted-foreground/70">{t('creator.humainx.profileBuilder.unleveled', 'Unleveled')}</span>
                             )}
@@ -829,7 +838,7 @@ function HumainXProfileBuilderInner() {
                           </SelectTrigger>
                           <SelectContent>
                             {SKILL_LEVELS.map((lvl) => (
-                              <SelectItem key={lvl} value={lvl}>{lvl}</SelectItem>
+                              <SelectItem key={lvl} value={lvl}>{levelText(t, lvl)}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -951,7 +960,7 @@ function HumainXProfileBuilderInner() {
                     }`}
                   >
                     <RadioGroupItem value={opt} id={`situation-${opt}`} />
-                    <span className="text-sm">{opt}</span>
+                    <span className="text-sm">{situationText(t, opt)}</span>
                   </label>
                 );
               })}
@@ -994,7 +1003,7 @@ function HumainXProfileBuilderInner() {
                     }`}
                   >
                     <RadioGroupItem value={opt} id={`avail-${opt}`} />
-                    <span className="text-sm">{opt}</span>
+                    <span className="text-sm">{availabilityText(t, opt)}</span>
                   </label>
                 );
               })}
@@ -1032,7 +1041,7 @@ function HumainXProfileBuilderInner() {
                   </SelectTrigger>
                   <SelectContent>
                     {FRENCH_REGIONS.map((r) => (
-                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                      <SelectItem key={r} value={r}>{regionText(t, r)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1091,7 +1100,7 @@ function HumainXProfileBuilderInner() {
                     }`}
                   >
                     <RadioGroupItem value={opt} id={`prev-exp-${opt}`} />
-                    <span className="text-sm">{opt}</span>
+                    <span className="text-sm">{experienceText(t, opt)}</span>
                   </label>
                 );
               })}
@@ -1139,7 +1148,7 @@ function HumainXProfileBuilderInner() {
                     }`}
                   >
                     <RadioGroupItem value={opt.label} id={`pref-${opt.label}`} />
-                    <span className="text-sm">{opt.label}</span>
+                    <span className="text-sm">{progressText(t, opt.learning, opt.delegation)}</span>
                   </label>
                 );
               })}
@@ -1175,15 +1184,15 @@ function HumainXProfileBuilderInner() {
                 </span>
                 <div className="text-sm font-semibold text-foreground">
                   {formData.experiences.length > 0
-                    ? `${formData.experiences.length} recorded experience(s)`
-                    : 'No formal experience specified'}
+                    ? t('creator.humainx.profileBuilder.recordedExperiences', '{{count}} recorded experience(s)', { count: formData.experiences.length })
+                    : t('creator.humainx.profileBuilder.noFormalExperience', 'No formal experience specified')}
                 </div>
                 {formData.experiences.length > 0 && (
                   <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
                     {formData.experiences.slice(0, 3).map((e, idx) => (
                       <li key={idx}>
-                        <span className="font-medium text-foreground">{e.roleOrProjectTitle || 'Project'}</span>
-                        {e.organizationOrProjectName ? ` at ${e.organizationOrProjectName}` : ''}
+                        <span className="font-medium text-foreground">{e.roleOrProjectTitle || t('creator.humainx.profileBuilder.projectFallback', 'Project')}</span>
+                        {e.organizationOrProjectName ? ` ${t('creator.humainx.profileBuilder.atOrganization', 'at {{org}}', { org: e.organizationOrProjectName })}` : ''}
                       </li>
                     ))}
                   </ul>
@@ -1201,7 +1210,7 @@ function HumainXProfileBuilderInner() {
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {formData.skills.map((s) => (
                     <Badge key={s.name} variant="secondary" className="text-xs font-medium">
-                      {s.name} {s.level ? `(${s.level})` : ''}
+                      {skillText(t, s.name)} {s.level ? `(${levelText(t, s.level)})` : ''}
                     </Badge>
                   ))}
                 </div>
@@ -1213,13 +1222,13 @@ function HumainXProfileBuilderInner() {
                   <Clock className="w-3.5 h-3.5 text-primary" /> {t('creator.humainx.profileBuilder.yourCurrentCapacity', 'Your Current Capacity')}
                 </span>
                 <div className="text-sm font-semibold text-foreground">
-                  {formData.ventureContext.weeklyAvailability || 'Not specified'}
+                  {availabilityText(t, formData.ventureContext.weeklyAvailability) || t('creator.humainx.profileBuilder.notSpecified', 'Not specified')}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {t('creator.humainx.profileBuilder.situationPrefix', 'Situation:')} <span className="font-medium text-foreground">{formData.ventureContext.currentSituation || t('creator.humainx.profileBuilder.notSpecified', 'Not specified')}</span>
+                  {t('creator.humainx.profileBuilder.situationPrefix', 'Situation:')} <span className="font-medium text-foreground">{situationText(t, formData.ventureContext.currentSituation) || t('creator.humainx.profileBuilder.notSpecified', 'Not specified')}</span>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {t('creator.humainx.profileBuilder.regionPrefix', 'Region:')} <span className="font-medium text-foreground">{formData.ventureContext.region || t('creator.humainx.profileBuilder.notSpecified', 'Not specified')}</span>
+                  {t('creator.humainx.profileBuilder.regionPrefix', 'Region:')} <span className="font-medium text-foreground">{regionText(t, formData.ventureContext.region) || t('creator.humainx.profileBuilder.notSpecified', 'Not specified')}</span>
                 </div>
               </div>
 
@@ -1229,7 +1238,7 @@ function HumainXProfileBuilderInner() {
                   <Award className="w-3.5 h-3.5 text-primary" /> {t('creator.humainx.profileBuilder.businessExperienceCard', 'Business Experience')}
                 </span>
                 <div className="text-sm font-semibold text-foreground">
-                  {formData.ventureContext.previousEntrepreneurialExperience || t('creator.humainx.profileBuilder.noPreviousExperience', 'No previous experience recorded')}
+                  {experienceText(t, formData.ventureContext.previousEntrepreneurialExperience) || t('creator.humainx.profileBuilder.noPreviousExperience', 'No previous experience recorded')}
                 </div>
               </div>
 
@@ -1239,7 +1248,7 @@ function HumainXProfileBuilderInner() {
                   <Compass className="w-3.5 h-3.5 text-primary" /> {t('creator.humainx.profileBuilder.howYouPreferToProgress', 'How You Prefer to Progress')}
                 </span>
                 <div className="text-sm font-semibold text-foreground">
-                  {formData.ventureContext.learningPreference || t('creator.humainx.profileBuilder.balancedDefault', 'Balanced learning and delegation')}
+                  {progressText(t, formData.ventureContext.learningPreference, formData.ventureContext.delegationPreference) || t('creator.humainx.profileBuilder.balancedDefault', 'Balanced learning and delegation')}
                 </div>
               </div>
             </div>
