@@ -1,4 +1,6 @@
-export type CreatorPhaseStatus = 
+import type { ClarifierAnswer, ClarifierChatMessage } from './journey-api';
+
+export type CreatorPhaseStatus =
   | 'locked' 
   | 'available' 
   | 'available_not_started'
@@ -39,7 +41,10 @@ export interface PhaseState {
   // Clarifier session ID (backend-authoritative; used by Phase 3 to validate completion).
   clarifierSessionId?: string | null;
   // Conversational clarifier transcript (persisted to CreatorJourneys.phase2Data).
-  chatMessages?: Array<{ id: string; sender: 'ai' | 'user'; text: string; timestamp?: string }>;
+  chatMessages?: ClarifierChatMessage[];
+  clarifierAnswers?: ClarifierAnswer[];
+  /** When the last C-2 summary was mapped onto the project (server time). */
+  clarifierSummarizedAt?: string | null;
   // Phase 3 AI session IDs (backend-authoritative).
   marketStudySessionId?: string | null;
   businessModelSessionId?: string | null;

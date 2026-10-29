@@ -218,6 +218,12 @@ function reconcile(prev: CreatorJourneyData, backend: BackendCreatorJourney, com
   if (backend.phase2Data?.clarifierSessionId) {
     js.phase2.clarifierSessionId = backend.phase2Data.clarifierSessionId;
   }
+  if (backend.phase2Data?.clarifierAnswers) {
+    js.phase2.clarifierAnswers = backend.phase2Data.clarifierAnswers;
+  }
+  if (backend.phase2Data?.clarifierSummarizedAt !== undefined) {
+    js.phase2.clarifierSummarizedAt = backend.phase2Data.clarifierSummarizedAt;
+  }
   if (backend.phase2Data?.discoveryInputs) {
     js.phase2.discoveryInputs = backend.phase2Data.discoveryInputs;
   }

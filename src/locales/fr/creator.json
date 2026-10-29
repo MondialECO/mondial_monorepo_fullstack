@@ -230,11 +230,35 @@
       "aiUnavailableError": "Le service d'IA est temporairement indisponible. Veuillez réessayer dans un instant.",
       "aiParseError": "Nous n'avons pas pu interpréter cela pour le moment. Veuillez réessayer ou reformuler votre idée.",
       "defaultIdeaName": "Mon Idée",
+      "attemptHint": "Tentative {{current}} sur {{max}} — après {{max}}, nous continuerons avec votre meilleure réponse.",
+      "editAiUnavailable": "Nous n'avons pas pu vérifier votre modification pour le moment, votre réponse précédente a été conservée. Veuillez réessayer dans un instant.",
+      "editNotAccepted":"Cette modification n'était pas assez précise, votre réponse précédente a été conservée. Réessayez ou annulez.",
+      "weakAnswerHint": "Acceptée, mais pourrait être plus solide — modifiable à tout moment.",
+      "fieldsEditHint": "Enregistré tel quel, sans vérification par l'IA. Videz un champ pour revenir à la version de l'IA.",
+      "fieldSaveError": "Impossible d'enregistrer vos modifications. Veuillez réessayer.",
+      "save": "Enregistrer",
+      "regenerateSummary": "Régénérer la synthèse",
+      "creditCost": "{{count}} crédits",
+      "regenerateDesc": "Vous avez modifié des réponses depuis votre dernière synthèse. La régénération crée une nouvelle synthèse à partir de vos réponses mises à jour.",
+      "viewSummary": "Voir ma synthèse",
+      "viewSummaryDesc": "Votre synthèse est à jour avec ces réponses. Modifiez une réponse si vous en voulez une nouvelle.",
+      "summaryOutdated": "Vos réponses ont changé depuis la dernière synthèse.",
+      "fields": {
+        "problem": "Problème",
+        "targetUser": "Utilisateur cible",
+        "existingAlternatives": "Alternatives existantes",
+        "solution": "Solution",
+        "creatorEdge": "Votre atout",
+        "founderAdvantage": "Votre avantage",
+        "whyNow": "Pourquoi maintenant",
+        "riskiestAssumption": "Hypothèse la plus risquée"
+      },
       "aria": {
         "editAnswer": "Modifier votre réponse",
         "copyAnswer": "Copier votre réponse",
         "saveEdit": "Enregistrer la modification",
-        "sendAnswer": "Envoyer la réponse"
+        "sendAnswer": "Envoyer la réponse",
+        "editFields": "Modifier {{step}}"
       },
       "sr": {
         "errorPrefix": "Erreur : ",

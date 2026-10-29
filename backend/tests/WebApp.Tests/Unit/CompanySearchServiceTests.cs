@@ -243,6 +243,7 @@ namespace WebApp.Tests.Unit
                 new MongoDbContext(Mock.Of<IMongoDatabase>()),
                 Mock.Of<IChatService>(),
                 Mock.Of<ISpMatchingService>(),
+                Mock.Of<WebApp.Services.Ai.IClarifierTurnService>(),
                 Mock.Of<IServiceProvider>(),
                 searchServiceMock.Object);
 
@@ -291,6 +292,7 @@ namespace WebApp.Tests.Unit
                 new MongoDbContext(Mock.Of<IMongoDatabase>()),
                 Mock.Of<IChatService>(),
                 Mock.Of<ISpMatchingService>(),
+                Mock.Of<WebApp.Services.Ai.IClarifierTurnService>(),
                 Mock.Of<IServiceProvider>(),
                 Mock.Of<ICompanySearchService>());
 

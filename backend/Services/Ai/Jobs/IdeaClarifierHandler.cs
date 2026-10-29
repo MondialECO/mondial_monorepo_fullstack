@@ -217,7 +217,7 @@ namespace WebApp.Services.Ai.Jobs
         }
 
         /// <summary>Removes a leading/trailing ```json … ``` (or bare ```) fence if present.</summary>
-        private static string StripFences(string text)
+        internal static string StripFences(string text)
         {
             var t = text.Trim();
             var fenceStart = t.IndexOf("```", StringComparison.Ordinal);
@@ -239,7 +239,7 @@ namespace WebApp.Services.Ai.Jobs
         }
 
         /// <summary>Extracts the first balanced top-level JSON object, ignoring braces inside strings.</summary>
-        private static string? ExtractJsonObject(string text)
+        internal static string? ExtractJsonObject(string text)
         {
             var start = text.IndexOf('{');
             if (start < 0)

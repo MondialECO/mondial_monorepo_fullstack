@@ -230,11 +230,35 @@
       "aiUnavailableError": "The AI service is temporarily unavailable. Please try again in a moment.",
       "aiParseError": "We couldn't interpret that just now. Please try again, or reword your idea and resubmit.",
       "defaultIdeaName": "My Idea",
+      "attemptHint": "Attempt {{current}} of {{max}} — after {{max}} we'll move on with your best answer.",
+      "editAiUnavailable": "We couldn't check your edit right now, so your previous answer was kept. Please try again in a moment.",
+      "editNotAccepted":"That edit wasn't specific enough, so your previous answer was kept. Try again or cancel.",
+      "weakAnswerHint": "Accepted, but could be stronger — edit it anytime.",
+      "fieldsEditHint": "Saved as-is, without an AI check. Clear a box to go back to the AI's version.",
+      "fieldSaveError": "Couldn't save your changes. Please try again.",
+      "save": "Save",
+      "regenerateSummary": "Regenerate summary",
+      "creditCost": "{{count}} credits",
+      "regenerateDesc": "You changed answers after your last summary. Regenerating builds a new summary from your updated answers.",
+      "viewSummary": "View my summary",
+      "viewSummaryDesc": "Your summary is up to date with these answers. Edit an answer if you want a new one.",
+      "summaryOutdated": "Your answers changed since the last summary.",
+      "fields": {
+        "problem": "Problem",
+        "targetUser": "Target user",
+        "existingAlternatives": "Existing alternatives",
+        "solution": "Solution",
+        "creatorEdge": "Your edge",
+        "founderAdvantage": "Your advantage",
+        "whyNow": "Why now",
+        "riskiestAssumption": "Riskiest assumption"
+      },
       "aria": {
         "editAnswer": "Edit your answer",
         "copyAnswer": "Copy your answer",
         "saveEdit": "Save edit",
-        "sendAnswer": "Send answer"
+        "sendAnswer": "Send answer",
+        "editFields": "Edit {{step}}"
       },
       "sr": {
         "errorPrefix": "Error: ",

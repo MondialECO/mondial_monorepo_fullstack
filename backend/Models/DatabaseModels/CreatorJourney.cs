@@ -135,7 +135,13 @@ namespace WebApp.Models.DatabaseModels
         /// <summary>Only "already_have_idea" is accepted. "needs_discovery" is removed.</summary>
         public string SelectedEntryPath { get; set; }
         public List<CreatorChatMessage> ChatMessages { get; set; } = new();
+
+        /// <summary>One record per clarifier question (1–6). Progress derives from these, never from counting user messages.</summary>
+        public List<ClarifierAnswer> ClarifierAnswers { get; set; } = new();
         public string ClarifierSessionId { get; set; }
+
+        /// <summary>When the last C-2 result was mapped onto the project. An answer updated after this means the summary is stale.</summary>
+        public DateTime? ClarifierSummarizedAt { get; set; }
 
         // Discovery path working state (independent, additive, additive, never touch existing fields above).
         public CreatorDiscoveryInputs DiscoveryInputs { get; set; }
@@ -149,6 +155,33 @@ namespace WebApp.Models.DatabaseModels
         public string Sender { get; set; } // "ai" | "user"
         public string Text { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+        /// <summary>"question" | "feedback" | "ack" for AI turns; null on user turns and legacy messages.</summary>
+        public string? Kind { get; set; }
+        public int? QuestionIndex { get; set; }
+    }
+
+    public static class ClarifierAnswerStatus
+    {
+        public const string Pending = "pending";
+        public const string Accepted = "accepted";
+        /// <summary>Accepted after the retry cap was hit; the answer still flows to C-2.</summary>
+        public const string AcceptedWeak = "accepted_weak";
+
+        public static bool IsDone(string? status) => status == Accepted || status == AcceptedWeak;
+    }
+
+    public class ClarifierAnswer
+    {
+        public int QuestionIndex { get; set; }
+        public string Status { get; set; } = ClarifierAnswerStatus.Pending;
+        public int Attempts { get; set; }
+        public string RawAnswer { get; set; } = string.Empty;
+        public Dictionary<string, string> AiExtracted { get; set; } = new();
+        /// <summary>Direct user edits of the extracted fields; wins over <see cref="AiExtracted"/> per key.</summary>
+        public Dictionary<string, string>? UserEdited { get; set; }
+        public string? Language { get; set; }
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
     public class CreatorDiscoveryInputs

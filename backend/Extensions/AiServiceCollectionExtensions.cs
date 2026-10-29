@@ -104,6 +104,7 @@ public static class AiServiceCollectionExtensions
         services.AddScoped<Services.Ai.IAiUsageService, Services.Ai.AiUsageService>();
         services.AddScoped<Services.Ai.IAiCreditService, Services.Ai.AiCreditService>();
         services.AddScoped<Services.Ai.IFinancialAssumptionsService, Services.Ai.FinancialAssumptionsService>();
+        services.AddScoped<Services.Ai.IClarifierTurnService, Services.Ai.ClarifierTurnService>();
 
         // ---- Simple AI Credit Purchase System (V1) ----
         services.Configure<WebApp.Configuration.StripeSettings>(configuration.GetSection(WebApp.Configuration.StripeSettings.SectionName));

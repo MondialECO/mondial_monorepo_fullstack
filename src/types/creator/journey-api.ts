@@ -59,6 +59,30 @@ export type OutputVersionEntry = {
   createdAt: string;
 };
 
+export type ClarifierAnswerStatus = 'pending' | 'accepted' | 'accepted_weak';
+
+/** One record per clarifier question (1–6). Backend-authoritative. */
+export type ClarifierAnswer = {
+  questionIndex: number;
+  status: ClarifierAnswerStatus;
+  attempts: number;
+  rawAnswer: string;
+  aiExtracted: Record<string, string>;
+  userEdited: Record<string, string> | null;
+  language: string | null;
+  updatedAt: string;
+};
+
+export type ClarifierChatMessage = {
+  id: string;
+  sender: 'ai' | 'user';
+  text: string;
+  timestamp?: string;
+  /** "question" | "feedback" | "ack" on AI turns of the validating clarifier; absent on legacy messages. */
+  kind?: 'question' | 'feedback' | 'ack' | null;
+  questionIndex?: number | null;
+};
+
 export type BackendCreatorJourney = {
   id: string;
   userId: string;
@@ -73,8 +97,10 @@ export type BackendCreatorJourney = {
   project: JourneyProject;
   phase2Data: {
     selectedEntryPath: string | null;
-    chatMessages: Array<{ id: string; sender: 'ai' | 'user'; text: string; timestamp: string }>;
+    chatMessages: ClarifierChatMessage[];
+    clarifierAnswers?: ClarifierAnswer[];
     clarifierSessionId: string | null;
+    clarifierSummarizedAt?: string | null;
     discoveryInputs?: { sectors?: string[]; observedProblem?: string; strengths?: string[] };
     generatedConcepts?: Array<{ id: string; title: string; category: string; description: string; score: number; tam: string; saturation: string; similarTo: string; concept: string; targetUser: string; coreProblem: string; solution: string; marketGap: string; founderEdge: string }>;
     selectedConceptId?: string | null;

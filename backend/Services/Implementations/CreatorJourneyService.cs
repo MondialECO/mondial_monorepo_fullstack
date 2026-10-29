@@ -745,7 +745,8 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
-        public async Task<CreatorJourney> AppendChatMessageAsync(string userId, string sender, string text, string ideaId = null)
+        public async Task<CreatorJourney> AppendChatMessageAsync(string userId, string sender, string text, string ideaId = null,
+            string? kind = null, int? questionIndex = null)
         {
             if (sender != "ai" && sender != "user")
                 throw new CreatorJourneyException(400, "sender must be \"ai\" or \"user\".");
@@ -759,6 +760,8 @@ namespace WebApp.Services.Implementations
                 Sender = sender,
                 Text = text ?? string.Empty,
                 Timestamp = DateTime.UtcNow,
+                Kind = kind,
+                QuestionIndex = questionIndex,
             };
 
             // Idea = source of truth: atomic $push (two concurrent appends both persist).
@@ -768,6 +771,44 @@ namespace WebApp.Services.Implementations
             var p2 = j.Phase2Data ??= new CreatorPhase2Data();
             p2.ChatMessages ??= new List<CreatorChatMessage>();
             p2.ChatMessages.Add(message);
+            return j;
+        }
+
+        public async Task<CreatorJourney> SaveClarifierTurnAsync(string userId, List<ClarifierAnswer> answers,
+            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+            var message = new CreatorChatMessage
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                Sender = "ai",
+                Text = aiText ?? string.Empty,
+                Timestamp = DateTime.UtcNow,
+                Kind = aiKind,
+                QuestionIndex = aiQuestionIndex,
+            };
+
+            // The whole list is replaced; WriteIdeaAsync's version check makes this a compare-and-swap.
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase2Data.ClarifierAnswers, answers)
+                .Push(x => x.Phase2Data.ChatMessages, message));
+
+            var p2 = j.Phase2Data ??= new CreatorPhase2Data();
+            p2.ClarifierAnswers = answers;
+            p2.ChatMessages ??= new List<CreatorChatMessage>();
+            p2.ChatMessages.Add(message);
+            return j;
+        }
+
+        public async Task<CreatorJourney> SaveClarifierAnswersAsync(string userId, List<ClarifierAnswer> answers, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase2Data.ClarifierAnswers, answers));
+            (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierAnswers = answers;
             return j;
         }
 
@@ -786,7 +827,9 @@ namespace WebApp.Services.Implementations
                 p, problem, targetUser, solution, clarityScore, tags, marketGap, creatorEdge,
                 existingAlternatives, whyNow, riskiestAssumption);
 
-            (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
+            var p2 = j.Phase2Data ??= new CreatorPhase2Data();
+            p2.ClarifierSessionId = clarifierSessionId;
+            p2.ClarifierSummarizedAt = DateTime.UtcNow;
             // STEP 2 anchor: the (possibly new) clarifier joins this idea; plan/forecast inherit it.
             if (!string.IsNullOrEmpty(clarifierSessionId))
                 await _clarifiers.SetBusinessIdeaIdAsync(clarifierSessionId, idea.Id);
