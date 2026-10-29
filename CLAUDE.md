@@ -87,6 +87,9 @@ src/
      the old answer is kept.
    - **Credit copy:** never hardcode the price. The summary price comes from
      `GET /ai/credits` → `costs.IdeaClarifier` (20 in dev, not 1).
+   - **Language support:** frontend passes `language` (en|fr) from `LanguageProvider` to
+     `chatMessage(message, language)`. Backend stores in first answer, inherits for
+     subsequent questions. All AI responses respect user's UI language without fallback.
    - **Deploy:** backend and frontend must ship together.
 
 ## Perf rules (hard rules)
