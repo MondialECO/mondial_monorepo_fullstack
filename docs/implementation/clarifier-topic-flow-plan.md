@@ -25,19 +25,31 @@ Source of truth: `ClarifierScript.Topics` (backend). The AI prompt is generated 
 rule and the examples below can never drift apart from what the AI sees. Each example
 satisfies its rule exactly as written.
 
-| # | Topic (key) | Clear when | Clear examples | Unclear examples | Base question (EN) |
+Each topic's examples span **three domains** so the AI is not anchored to one idea:
+(A) food / students, (B) a freelancer B2B tool, (C) a fashion brand for tall women.
+`ClarifierScriptTests` enforces ≥3 clear and ≥3 unclear examples per topic.
+
+| # | Topic (key) | Clear when | Clear examples (A · B · C) | Unclear examples (A · B · C) | Base question (EN) |
 |---|---|---|---|---|---|
-| 1 | The problem (`problem`) | A specific, concrete problem (not a general state such as being hungry or busy), and it is clear why it hurts — stated or obvious from the problem itself | "Dorm students can't find cheap healthy food." · "Small cafe owners run out of milk on busy days because they order stock by guesswork." | "Students are hungry." · "Students have problems with food." · "Food." | *(the opener)* |
-| 2 | Who has it (`who`) | A specific group, narrower than "students", "people" or "everyone" | "Dorm students." · "Independent cafe owners with one to three locations." | "Students." · "Everyone." · "Young people." | "Who has this problem the most?" |
-| 3 | What they use now (`alternatives`) | At least one real thing they do or use today AND the reason it falls short is **stated in words**. "Nothing" counts only with a reason | "They order Uber Eats, but it's too expensive on a student budget." · "Nothing — there's no affordable option on campus." | "Eat junk." · "Nothing." · "Other apps." | "What do they do about it today?" |
-| 4 | Your solution (`solution`) | What the Creator will build AND its form (app, website, service, physical product, or another concrete form) | "I want to make a meal-sharing app." · "A weekly meal-prep delivery service for dorms." | "Something to help them eat better." · "An app." | "What do you want to build?" |
-| 5 | Your edge (`edge`) | Something concrete that makes it different/better, OR a concrete advantage the Creator has | "Meals are cooked by students for students, so it's cheaper than delivery." · "I lived in a dorm for three years and know the canteen staff." | "It's better." · "Because I'm motivated." | "Why would people pick yours, and why are you the right person to build it?" |
-| 6 | Why now + biggest risk (`whyNowRisk`) | **Both** a concrete reason the timing is right AND one specific thing that could go wrong | "Food prices rose a lot this year; the biggest risk is students not trusting food cooked by strangers." | "Now is a good time." · "Prices are rising." · "People might not use it." | "Why is now a good time? And what's the one thing that could go wrong?" |
+| 1 | The problem (`problem`) | A specific, concrete problem (not a general state such as being hungry or busy), and it is clear why it hurts — stated or obvious from the problem itself | "Dorm students can't find cheap healthy food." · "Freelance designers wait 60+ days to get paid because chasing invoices by email feels awkward." · "Tall women can't find jeans long enough in regular stores, so they pay for tailoring or settle for a bad fit." | "Students are hungry." · "Freelancers have money problems." · "Clothes don't fit well." | *(the opener)* |
+| 2 | Who has it (`who`) | A specific group, narrower than "students", "people" or "everyone" | "Dorm students." · "Freelance graphic designers who bill clients monthly." · "Women over 1.78 m who buy jeans online." | "Students." · "Small businesses." · "Everyone who wears clothes." | "Who has this problem the most?" |
+| 3 | What they use now (`alternatives`) | At least one real thing they do or use today AND the reason it falls short is **stated in words**. "Nothing" counts only with a reason | "They order Uber Eats, but it's too expensive on a student budget." · "Spreadsheet reminders — they forget to follow up, and clients ignore plain emails." · "Nothing — tall-specific brands only ship from abroad and returns cost too much." | "Eat junk." · "Excel." · "Other brands." | "What do they do about it today?" |
+| 4 | Your solution (`solution`) | What the Creator will build AND its form (app, website, service, physical product, or another concrete form) | "I want to make a meal-sharing app." · "A web tool that sends polite payment reminders from the freelancer's own email." · "A direct-to-consumer jeans brand sold online, with inseams up to 40 inches." | "Something to help them eat better." · "An app." · "Something for tall women." | "What do you want to build?" |
+| 5 | Your edge (`edge`) | Something concrete that makes it different/better, OR a concrete advantage the Creator has | "Meals are cooked by students for students, so it's cheaper than delivery." · "I freelanced for eight years and already have 300 designers on my newsletter." · "I'm 1.85 m myself and worked as a pattern maker at a denim factory." | "It's better." · "We really care about freelancers." · "Our quality is great." | "Why would people pick yours, and why are you the right person to build it?" |
+| 6 | Why now + biggest risk (`whyNowRisk`) | **Both** a concrete reason the timing is right AND one specific thing that could go wrong | "Food prices rose a lot this year; the biggest risk is students not trusting food cooked by strangers." · "Freelancing grew fast since remote work became normal; the biggest risk is clients finding automatic reminders pushy." · "Most jeans are now bought online; the biggest risk is getting the fit right without try-ons." | "Now is a good time." (neither part) · "Remote work is growing." (no risk) · "Returns might be expensive." (no why-now) | "Why is now a good time? And what's the one thing that could go wrong?" |
 
 Rule calibration notes (amendment 4 — every topic checked):
 - **Problem** allows an *obvious* harm, so "can't find cheap healthy food" is clear — but a general state is not a problem, so "Students are hungry" is unclear.
-- **What they use now** requires the shortfall *stated*, so "Eat junk." is unclear (matches the plan's example).
-- **Solution** was relaxed to "what + form", so "I want to make a meal-sharing app" is clear (matches the plan's example).
+- **What they use now** requires the shortfall *stated*, so "Eat junk." / "Excel." are unclear (matches the plan's example).
+- **Solution** was relaxed to "what + form", so "I want to make a meal-sharing app" is clear (matches the plan's example); "An app." has a form but no "what".
+
+### Chips
+
+Chips come **only** from the AI, written for the Creator's own idea (the prompt forbids generic
+chips or chips copied from the examples). Only for `who` and `solution` follow-ups. If the AI
+returns none — or the AI is unavailable — **no chips are shown**; there are no fallback chips
+anywhere in the code. The plan's illustrative chips ("dorm students / part-time workers /
+international students") exist only in this doc and as fake AI output in unit tests.
 
 Fixed-text fallbacks (base questions, fallback follow-ups, closing message) exist in **EN and FR in
 the backend**, because AI replies are stored in the transcript and the backend writes them when
@@ -121,5 +133,20 @@ Turns: typically 5–9; **maximum 12** (opener + Problem follow-up + 5 base ques
 | Browser with live AI: clear / unclear / chips states | ⏳ **Blocked** — OpenRouter key out of credit (402, ≈1,189 tokens affordable). Re-run after a top-up. |
 | C-2 summary with `unconfirmedInputs` end to end | ⏳ Not run (same credit block). |
 
-Pre-existing, unrelated: `ClarifierControllerIntegrationTests` (4) fail because the tests omit the
-now-required `businessIdeaId`.
+The four previously failing `ClarifierControllerIntegrationTests` are fixed (commit `0e9ad8ba`):
+the tests now create an owned idea, as the controller has intentionally required since `c4295156`.
+
+### Closing verification (live AI, browser) — required before this doc is marked closed
+
+- [ ] Clear, unclear and chips: chips render and tapping one fills the input; chips are specific to the idea.
+- [ ] At least **2 ideas from different domains** (not only meal-sharing); for each, one thin answer written for that idea is marked **unclear**, not clear.
+- [ ] Calibration: "Students are hungry" as the Problem is **not** clear.
+- [ ] Edit a clear topic, including the two-field topics (Your edge, Why now + biggest risk); the edit persists and later AI turns do not overwrite it.
+- [ ] Weak path end to end: weak in the panel → C-2 summary with its unconfirmed marker → marker **visible on the rendered Phase 3 screens** (not only in response data).
+- [ ] One full run in French: AI follow-ups in French; fallback base questions in French.
+- [ ] Light and dark themes at 1440 and 1920 widths.
+
+**Open gap (blocks the weak-path check):** no screen renders the unconfirmed marker yet. Weak
+topics are flagged in the C-2 input/prompt and in the stored C-2 output (`unconfirmedInputs`),
+so Phase 3's AI generators see it, but the idea-summary page and the Phase 3 screens do not
+display it. Needs a UI change before the closing verification.
