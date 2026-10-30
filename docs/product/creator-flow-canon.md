@@ -46,6 +46,14 @@ Following the successful RC1 live verification pass on 2026-09-19, the Creator M
 - Flow redesigns or navigation restructuring
 - New funding or banking modules
 
+### Recorded Exceptions (owner-approved, post-RC1)
+
+| Date | Scope | Status | Spec |
+|---|---|---|---|
+| 2026-10-31 | **Phase 2 clarifier topic flow** (fixed opener + 6 AI-judged topics with empty / unclear / weak / clear states, base questions, max one follow-up per topic — replaces the 6 fixed questions and the 5-attempt revise rule); **unconfirmed marker** on `/phase-2/idea-summary` (amber tag + "Fix it" for weak topics); **Phase 3 thin-answers banner** on Market Study, Business Model and Business Plan only (display-only: no new steps, no flow or navigation change, never blocks progress). | Implemented on `dev-hafiz`; live-AI browser verification pending (OpenRouter credit). | [clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md) |
+
+This exception is deliberate and owner-approved. It does not reopen Phase 2 or Phase 3 for other features; the closure declarations below remain in force for everything outside this scope.
+
 ---
 
 ## 0. How to use this doc
@@ -384,6 +392,8 @@ The Phase-1 completion gate promotes onboarding to Phase 1 based on verified cor
 > **Recent Enhancements (2026-10-29/30, within maintenance scope):**
 > - **Language Support (LIVE):** Full EN/FR bilingual support. User selects language via Topbar. All AI-generated feedback respects user's UI language. Language persisted in `ClarifierSession.Language` and inherited through Phase 3+ chain.
 > - **Chat UI Layout (LIVE):** Proper chat interface pattern — header (fixed top, robot avatar + title), chat area (scrollable middle, min-h-[400px] sm:min-h-[500px]), input/finalize CTA (fixed bottom). Right sidebar: sticky progress ring. All states (editing, finalizing, error) use fixed footer pattern.
+>
+> **Freeze exception (2026-10-31):** the clarifier topic flow and the idea-summary unconfirmed marker are an owner-approved post-RC1 change — see *Recorded Exceptions* under the Core Freeze Policy and [clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md).
 
 Phase 2 has been intentionally simplified to a single canonical, linear journey:
 
@@ -403,6 +413,9 @@ Entering `/dashboard/creator/phase-2` automatically sets `entryPath = "already_h
 ### Canonical Journey — Idea Clarifier (LIVE)
 
 A 6-question conversational AI-guided clarifier (core problem, target user, existing alternatives, proposed solution, unfair advantage / founder edge, riskiest assumption & timing). Answers are appended to the journey chat transcript and can be resumed at any time. Produces a live `clarityScore` and `clarifierSessionId`, which finalizes canonical project fields into `CreatorJourneyProject` (and mirrors to `CreatorIdea`). The completed clarifier satisfies the Phase-3 prerequisite chain (Phase 3 C-3 start requires a clarified project).
+
+> [!NOTE]
+> **Superseded on `dev-hafiz` (2026-10-31, freeze exception):** the 6 fixed questions and the 5-attempt revise rule below are replaced by the topic flow ([clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md)). This section will be rewritten to describe the topic flow as LIVE once its live-AI verification passes; until then it records the pre-exception behaviour.
 
 **Per-answer AI validation (since 2026-10-29):**
 - **The AI turn:** every answer to the current question goes through `ClarifierTurnService` (one synchronous AI call, **0 credits**).
@@ -737,6 +750,8 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
 > **Out-of-Scope Items for Phase 3 Closure (Explicitly Tracked):**
 > 1. *Provisional Section Rewrite Cost:* Single-section AI rewrite is configured and functioning at **5 credits** (`AiJobType.BusinessPlanSectionRewrite`); price remains provisional pending the platform-wide credit cost table review.
 > 2. *Credit Checkout / Purchase Gateway:* Real-currency Stripe/credit card top-up gateway is a platform-wide commercial infrastructure milestone (Phase 4/5 cross-cutting) rather than a Phase 3 gate blocker.
+>
+> **Freeze exception (2026-10-31):** a display-only thin-answers banner on Market Study, Business Model and Business Plan (the C-2 consumers) — no new steps, no flow change. See *Recorded Exceptions* under the Core Freeze Policy and [clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md).
 
 Phase 3 establishes the comprehensive business, market, financial, and legal foundation for the venture across **seven sequential steps**:
 
