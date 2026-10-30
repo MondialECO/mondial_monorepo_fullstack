@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
@@ -30,6 +31,10 @@ namespace WebApp.Services.Clarifier
         double CalculateClarityScore(Dictionary<string, TopicStatus> status);
 
         Dictionary<string, TopicStatus> InitializeTopics();
+
+        Task<Dictionary<string, TopicStatus>> GetTopicStatusAsync(string sessionId);
+
+        Task UpdateTopicStatusAsync(string sessionId, Dictionary<string, TopicStatus> status);
     }
 
     public class ClarifierTopicService : IClarifierTopicService
@@ -158,6 +163,61 @@ namespace WebApp.Services.Clarifier
                 { "edge", new TopicStatus { Status = "pending", UpdatedAt = DateTime.UtcNow } },
                 { "risk", new TopicStatus { Status = "pending", UpdatedAt = DateTime.UtcNow } }
             };
+        }
+
+        /// <summary>
+        /// Get current topic status for a session
+        /// </summary>
+        public async Task<Dictionary<string, TopicStatus>> GetTopicStatusAsync(string sessionId)
+        {
+            var session = await _sessions.Find(s => s.Id == sessionId).FirstOrDefaultAsync();
+            if (session?.Topics == null)
+            {
+                // Return initialized topics if not set
+                return InitializeTopics();
+            }
+
+            // Convert BsonDocument to TopicStatus dictionary
+            var result = new Dictionary<string, TopicStatus>();
+            foreach (var kvp in session.Topics)
+            {
+                var doc = kvp.Value;
+                result[kvp.Key] = new TopicStatus
+                {
+                    Status = doc.GetValue("Status", "pending").AsString,
+                    BaseAnswer = doc.TryGetValue("BaseAnswer", out var ba) ? ba.AsString : null,
+                    FollowUpAttempts = doc.TryGetValue("FollowUpAttempts", out var fa) ? fa.AsInt32 : 0,
+                    FollowUpText = doc.TryGetValue("FollowUpText", out var ft) ? ft.AsString : null,
+                    UpdatedAt = doc.TryGetValue("UpdatedAt", out var ua) ? ua.AsDateTime : DateTime.UtcNow
+                };
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Update topic status in session
+        /// </summary>
+        public async Task UpdateTopicStatusAsync(string sessionId, Dictionary<string, TopicStatus> status)
+        {
+            var topicsDoc = new Dictionary<string, MongoDB.Bson.BsonDocument>();
+            foreach (var kvp in status)
+            {
+                var doc = new MongoDB.Bson.BsonDocument
+                {
+                    { "Status", kvp.Value.Status },
+                    { "BaseAnswer", kvp.Value.BaseAnswer ?? MongoDB.Bson.BsonNull.Value },
+                    { "FollowUpAttempts", kvp.Value.FollowUpAttempts },
+                    { "FollowUpText", kvp.Value.FollowUpText ?? MongoDB.Bson.BsonNull.Value },
+                    { "UpdatedAt", kvp.Value.UpdatedAt }
+                };
+                topicsDoc[kvp.Key] = doc;
+            }
+
+            var update = Builders<ClarifierSession>.Update
+                .Set(s => s.Topics, topicsDoc)
+                .Set(s => s.UpdatedAt, DateTime.UtcNow);
+
+            await _sessions.UpdateOneAsync(s => s.Id == sessionId, update);
         }
 
         // ============ Helper Methods ============
