@@ -251,11 +251,77 @@ namespace WebApp.Tests.Unit
         public void NextBaseFromAi_IgnoredWhenItIsForAnotherTopic()
         {
             var answers = new List<ClarifierAnswer>();
-            var result = Ai(new() { [1] = J("clear") }, nextBaseTopic: 5, nextBase: "wrong topic");
+            var result = Ai(new() { [1] = J("clear", new() { ["problem"] = "A real problem." }) }, nextBaseTopic: 5, nextBase: "wrong topic");
 
             var outcome = ClarifierScript.ApplyTopicsTurn(answers, 1, "x", result, "en", Now);
 
             outcome.AiText.Should().Be(ClarifierScript.BaseQuestion(2, "en"));
+        }
+
+        // ---- clear needs content ----
+
+        [Fact]
+        public void ClearWithoutExtractedContent_IsTreatedAsUnclear_AndUsesTheFollowUp()
+        {
+            var answers = new List<ClarifierAnswer>();
+            var result = Ai(new() { [1] = J("clear", followUp: "What happens to them?") });
+
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 1, "something", result, "en", Now);
+
+            State(answers, 1).Should().Be(ClarifierTopicState.Unclear);
+            outcome.AiKind.Should().Be("followup");
+        }
+
+        [Fact]
+        public void ClearWithOnlyWhitespaceContent_IsUnclear()
+        {
+            var answers = Enumerable.Range(1, 5).Select(i => Rec(i, ClarifierAnswerStatus.Accepted)).ToList();
+            var result = Ai(new() { [6] = J("clear", new() { ["whyNow"] = "  ", ["riskiestAssumption"] = "" }) });
+
+            ClarifierScript.ApplyTopicsTurn(answers, 6, "x", result, "en", Now);
+
+            State(answers, 6).Should().Be(ClarifierTopicState.Unclear);
+        }
+
+        [Fact]
+        public void WhyNowRisk_ClearNeedsBothParts()
+        {
+            ClarifierScript.HasRequiredContent(6, new Dictionary<string, string> { ["whyNow"] = "Prices rose." }).Should().BeFalse();
+            ClarifierScript.HasRequiredContent(6, new Dictionary<string, string> { ["whyNow"] = "Prices rose.", ["riskiestAssumption"] = "Trust." }).Should().BeTrue();
+
+            var answers = Enumerable.Range(1, 5).Select(i => Rec(i, ClarifierAnswerStatus.Accepted)).ToList();
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 6, "Prices rose.",
+                Ai(new() { [6] = J("clear", new() { ["whyNow"] = "Prices rose." }) }), "en", Now);
+
+            State(answers, 6).Should().Be(ClarifierTopicState.Unclear, "the risk part is missing");
+            outcome.AiTopic.Should().Be(6);
+        }
+
+        [Fact]
+        public void Edge_ClearNeedsOnlyOneOfItsFields()
+        {
+            ClarifierScript.HasRequiredContent(5, new Dictionary<string, string> { ["founderAdvantage"] = "Ex-pattern maker." }).Should().BeTrue();
+            ClarifierScript.HasRequiredContent(5, new Dictionary<string, string>()).Should().BeFalse();
+        }
+
+        [Fact]
+        public void NonAskedTopic_ClearWithoutContent_IsNotUpgradedToClear()
+        {
+            var answers = new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted), Rec(2, ClarifierAnswerStatus.AcceptedWeak) };
+            var result = Ai(new() { [2] = J("clear"), [4] = J("clear", new() { ["solution"] = "An app for X." }) });
+
+            ClarifierScript.ApplyTopicsTurn(answers, 4, "an app for X", result, "en", Now);
+
+            State(answers, 2).Should().Be(ClarifierTopicState.Weak, "a contentless clear must not upgrade a weak topic");
+        }
+
+        [Fact]
+        public void Edit_ClearWithoutContent_IsRejected()
+        {
+            var answer = Rec(2, ClarifierAnswerStatus.AcceptedWeak, raw: "everyone");
+
+            ClarifierScript.ApplyAnswerEdit(answer, "people", Ai(new() { [2] = J("clear") }), Now).Should().BeFalse();
+            answer.Status.Should().Be(ClarifierAnswerStatus.AcceptedWeak);
         }
 
         // ---- edits ----

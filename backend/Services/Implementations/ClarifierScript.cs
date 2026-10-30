@@ -239,6 +239,24 @@ namespace WebApp.Services.Implementations
 
         public static bool AllAnswered(IReadOnlyCollection<ClarifierAnswer> answers) => NextTopic(answers) == null;
 
+        /// <summary>
+        /// A "clear" verdict only counts with content: at least one non-empty extracted field, and for
+        /// a two-part topic like whyNowRisk every part. Otherwise the topic is treated as unclear.
+        /// Topic 5 (edge) needs just one of its fields — difference OR founder advantage.
+        /// </summary>
+        public static bool HasRequiredContent(int topicIndex, IReadOnlyDictionary<string, string>? extracted)
+        {
+            if (extracted == null) return false;
+            bool Filled(string key) => extracted.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v);
+            var fields = FieldsFor(topicIndex);
+            return Topic(topicIndex).Key == "whyNowRisk" ? fields.All(Filled) : fields.Any(Filled);
+        }
+
+        private static string EffectiveJudgement(int topicIndex, ClarifierTopicJudgement? judgement) =>
+            judgement?.Status == ClarifierTopicState.Clear && !HasRequiredContent(topicIndex, judgement.Extracted)
+                ? ClarifierTopicState.Unclear
+                : judgement?.Status ?? ClarifierTopicState.Empty;
+
         public static List<ClarifierTopicSnapshot> Snapshot(IReadOnlyCollection<ClarifierAnswer> answers) =>
             Topics.Select(t =>
             {
@@ -264,7 +282,7 @@ namespace WebApp.Services.Implementations
 
                 var asked = def.Index == askedTopic;
                 var judgement = result.AiUsed && result.Topics.TryGetValue(def.Index, out var j) ? j : null;
-                var judged = judgement?.Status ?? ClarifierTopicState.Empty;
+                var judged = EffectiveJudgement(def.Index, judgement);
 
                 string target;
                 if (asked)
@@ -330,7 +348,8 @@ namespace WebApp.Services.Implementations
         public static bool ApplyAnswerEdit(ClarifierAnswer answer, string text, ClarifierTopicsResult result, DateTime now)
         {
             answer.Attempts++;
-            if (!result.AiUsed || !result.Topics.TryGetValue(answer.QuestionIndex, out var j) || j.Status != ClarifierTopicState.Clear)
+            if (!result.AiUsed || !result.Topics.TryGetValue(answer.QuestionIndex, out var j)
+                || EffectiveJudgement(answer.QuestionIndex, j) != ClarifierTopicState.Clear)
                 return false;
 
             answer.UpdatedAt = now;

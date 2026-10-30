@@ -120,6 +120,10 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
+        public void SystemPrompt_RequiresExtractedContentForClear() =>
+            ClarifierTurnService.SystemPrompt.Should().Contain(ClarifierTurnService.ClearNeedsContentRule);
+
+        [Fact]
         public void SystemPrompt_ForbidsFollowUpsThatIntroduceUnmentionedOptions()
         {
             ClarifierTurnService.SystemPrompt.Should().Contain(ClarifierTurnService.FollowUpNoNewFactsRule);

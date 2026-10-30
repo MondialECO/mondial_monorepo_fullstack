@@ -141,6 +141,11 @@ namespace WebApp.Services.Ai
             "(e.g. do not ask \"Why don't Uber Eats or the canteen work?\" when they never named them); ask open questions " +
             "about what they actually said. Example options may appear ONLY as chips, and only for the topics that allow chips.";
 
+        /// <summary>Mirrors the server rule <see cref="ClarifierScript.HasRequiredContent"/>.</summary>
+        public const string ClearNeedsContentRule =
+            "A topic marked \"clear\" MUST have its extracted key(s) filled from what the founder said " +
+            "(for whyNowRisk BOTH whyNow and riskiestAssumption); a clear topic with nothing extracted is treated as unclear.";
+
         public static readonly string SystemPrompt = BuildSystemPrompt();
 
         private static string BuildSystemPrompt()
@@ -166,6 +171,7 @@ namespace WebApp.Services.Ai
             sb.AppendLine("For \"who\" and \"solution\" when unclear, also give \"chips\": 2-4 short tappable answer options (each under 6 words) written for THIS founder's idea — concrete options that fit what they described, never generic or copied from the examples above. If no good options exist, \"chips\" is []. For all other topics \"chips\" is [].");
             sb.AppendLine("The examples above only illustrate the rules across different businesses; never assume the founder's idea is in one of those domains.");
             sb.AppendLine("\"extracted\": only that topic's keys, each a clean 1-2 sentence restatement of what the founder said; never invent facts; {} when empty.");
+            sb.AppendLine(ClearNeedsContentRule);
             sb.AppendLine("\"ack\": one short warm sentence reacting to the latest message (no question).");
             sb.AppendLine($"\"nextBase\": the base question of the FIRST topic in this order that you marked \"empty\": {string.Join(", ", ClarifierScript.AskOrder.Select(i => ClarifierScript.Topic(i).Key))} — rephrased naturally in the founder's language; null if none is empty. Base questions: "
                 + string.Join(" | ", ClarifierScript.Topics.Select(t => $"{t.Key}: \"{t.BaseEn}\"")));
