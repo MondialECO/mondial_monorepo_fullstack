@@ -23,6 +23,11 @@ type Props = {
   topicLabels: string[];
   disabled: boolean;
   onSaveFields: (topicIndex: number, fields: Record<string, string>) => Promise<void>;
+  /**
+   * Weak topics are edited only through the AI-verified rewrite (same as "Fix it"): a field-only
+   * edit can't change the status, so the "thin answer" marker would stay and look like a bug.
+   */
+  onRewriteWeak: (topicIndex: number) => void;
 };
 
 /** Topic marker. Weak must never read as a plain ✓: dashed amber ring + amber check. */
@@ -54,7 +59,7 @@ function TopicMarker({ state, current, position }: { state: TopicState; current:
 }
 
 /** Topic progress in ask order; each finished topic shows the AI-structured fields, editable without an AI call. */
-export function ClarifierStepList({ answers, currentTopic, topicLabels, disabled, onSaveFields }: Props) {
+export function ClarifierStepList({ answers, currentTopic, topicLabels, disabled, onSaveFields, onRewriteWeak }: Props) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -114,7 +119,7 @@ export function ClarifierStepList({ answers, currentTopic, topicLabels, disabled
                   size="icon-sm"
                   className="size-6 text-muted-foreground hover:text-foreground"
                   disabled={disabled}
-                  onClick={() => startEdit(answer)}
+                  onClick={() => (state === "weak" ? onRewriteWeak(topic) : startEdit(answer))}
                   aria-label={t("creator.phase2.clarifier.aria.editFields", { step: label })}
                 >
                   <Pencil className="size-3.5" />

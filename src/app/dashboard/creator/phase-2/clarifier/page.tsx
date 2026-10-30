@@ -851,6 +851,7 @@ export default function AIClarifierPage() {
                 topicLabels={topicLabels}
                 disabled={isTyping || finalizing}
                 onSaveFields={handleSaveFields}
+                onRewriteWeak={handleEditStart}
               />
             </div>
 
