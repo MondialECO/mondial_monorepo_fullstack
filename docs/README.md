@@ -41,9 +41,13 @@ docs/
 │   ├── USER_GUIDE.md              # High-level platform user guide
 │   └── issues/                    # Active architectural issue analyses
 │
-└── archive/                       # Historical Reference & Pre-Consolidation Audits
-    ├── README.md                  # Historical disclaimer & archive catalog
-    └── ...                        # Preserved legacy audits and implementation logs
+├── archive/                       # Historical Reference & Pre-Consolidation Audits
+│   ├── README.md                  # Historical disclaimer & archive catalog
+│   └── ...                        # Preserved legacy audits and implementation logs
+│
+└── implementation/                # Feature Implementation Guides (Current Development)
+    ├── clarifier-phase2-guide.md  # Phase 2 AI Idea Clarifier (complete with language support & layout)
+    └── ...                        # Future phase implementations
 ```
 
 ---
@@ -85,7 +89,15 @@ The [operations/](operations/) directory provides hands-on engineering runbooks:
 
 ---
 
-## 4. Historical Archive
+## 4. Implementation Guides (Active Development)
+
+The [implementation/](implementation/) directory documents in-flight feature implementations:
+
+- **[Phase 2 Clarifier Guide](implementation/clarifier-phase2-guide.md):** Complete implementation of AI Idea Clarifier with full language support (EN/FR), proper chat UI layout pattern (sticky header/footer), and C-2 summary generation. References all modified files, API contracts, testing checklist, and next steps for Phase 3 language inheritance.
+
+---
+
+## 5. Historical Archive
 
 The [archive/](archive/) directory preserves point-in-time implementation reports, early codebase audits, and scratch files. All archived documents are clearly marked as non-normative. See [archive/README.md](archive/README.md) for the catalog.
 
@@ -94,5 +106,6 @@ The [archive/](archive/) directory preserves point-in-time implementation report
 ## Documentation Governance Rules
 
 1. **One Topic, One Authority:** Consult [DOCUMENTATION-AUTHORITY.md](DOCUMENTATION-AUTHORITY.md) before writing or updating documentation to avoid duplication.
-2. **Code is Ground Truth:** Technical documentation must strictly reflect working repository code. Future product ideas belong in `docs/product/blueprints/`.
+2. **Code is Ground Truth:** Technical documentation must strictly reflect working repository code. Future product ideas belong in `docs/product/blueprints/`. Feature implementations belong in `docs/implementation/`.
 3. **Keep Docs Clean:** Never commit temporary audit reports, raw model scratchpads, or duplicate extracts to the active documentation trees.
+4. **Implementation Guides:** New features should include a corresponding guide in `docs/implementation/` documenting the feature, affected files, API contracts, testing checklist, and dependencies (especially for multi-phase features).
