@@ -1,140 +1,125 @@
-# Clarifier Topic Flow — Redesign Plan
+# Clarifier Topic Flow
 
-**Status:** PROPOSED — not implemented. The live clarifier still asks 6 fixed questions
-(see [clarifier-phase2-guide.md](clarifier-phase2-guide.md)).
-**Date:** 2026-10-30
-**Owner:** product (plan), engineering review below.
+**Status:** APPROVED 2026-10-31 — **implemented, live-AI browser verification pending** (OpenRouter credit). Not closed. See §5.
+**Supersedes:** the 6 fixed questions described in older versions of [clarifier-phase2-guide.md](clarifier-phase2-guide.md).
 
 ---
 
 ## 1. Goal
 
-Replace the 6 fixed questions with an open conversation. The Creator describes the idea
-freely, the AI works out which topics are already covered, and only asks about what is
-missing or unclear. Target: fewer, more natural turns.
+The Creator describes the idea freely; the AI works out which topics are already covered and
+asks only about what is missing or unclear. Three kinds of AI message:
 
-The flow has three kinds of AI message:
-
-1. **One fixed opener** — the only fixed question.
+1. **One fixed opener** — the only fixed question. It also counts as the Problem topic's base question.
 2. **A base question per topic** — asked when a topic is empty; also the fallback when the AI fails.
-3. **AI follow-ups** — only when an answer is unclear, at most once per topic.
+3. **AI follow-ups** — only when a topic is unclear, **at most once per topic**.
 
-### Opener
+Opener (EN / FR, frontend i18n, rendered locally, not stored):
 
 > "Tell me your idea in your own words. However rough it is is fine."
-
-It is deliberately open so the first answer can cover several topics at once.
+> "Racontez-moi votre idée avec vos propres mots. Même si elle est encore brute, c'est parfait."
 
 ## 2. Topics
 
-| # | Topic | Clear when | Base question | Follow-up example |
-|---|---|---|---|---|
-| 1 | The problem | A specific problem, and why it hurts | "What problem are you fixing?" | "What happens to them because of this problem?" |
-| 2 | Who has it | A specific group — not "students" or "everyone" | "Who has this problem the most?" | "Which students exactly?" + chips: *dorm students / part-time workers / international students* |
-| 3 | What they use now | At least one real method or app, and why it's not enough. "Nobody does anything" is fine if a reason is given | "What do they do about it today?" | "What's bad about that option?" |
-| 4 | Your solution | What the Creator will build and how people would use it | "What do you want to build?" | "How would someone use it? An app, a website, a service?" + chips |
-| 5 | Your edge | What's different from others, or the Creator's own advantage | "Why would people pick yours, and why are you the right person to build it?" | "Have you lived this problem, or know people who have?" |
-| 6 | Why now + biggest risk | **Both** parts present | "Why is now a good time? And what's the one thing that could go wrong?" | Asks for whichever part is missing |
+Source of truth: `ClarifierScript.Topics` (backend). The AI prompt is generated from it, so the
+rule and the examples below can never drift apart from what the AI sees. Each example
+satisfies its rule exactly as written.
+
+| # | Topic (key) | Clear when | Clear examples | Unclear examples | Base question (EN) |
+|---|---|---|---|---|---|
+| 1 | The problem (`problem`) | A specific, concrete problem (not a general state such as being hungry or busy), and it is clear why it hurts — stated or obvious from the problem itself | "Dorm students can't find cheap healthy food." · "Small cafe owners run out of milk on busy days because they order stock by guesswork." | "Students are hungry." · "Students have problems with food." · "Food." | *(the opener)* |
+| 2 | Who has it (`who`) | A specific group, narrower than "students", "people" or "everyone" | "Dorm students." · "Independent cafe owners with one to three locations." | "Students." · "Everyone." · "Young people." | "Who has this problem the most?" |
+| 3 | What they use now (`alternatives`) | At least one real thing they do or use today AND the reason it falls short is **stated in words**. "Nothing" counts only with a reason | "They order Uber Eats, but it's too expensive on a student budget." · "Nothing — there's no affordable option on campus." | "Eat junk." · "Nothing." · "Other apps." | "What do they do about it today?" |
+| 4 | Your solution (`solution`) | What the Creator will build AND its form (app, website, service, physical product, or another concrete form) | "I want to make a meal-sharing app." · "A weekly meal-prep delivery service for dorms." | "Something to help them eat better." · "An app." | "What do you want to build?" |
+| 5 | Your edge (`edge`) | Something concrete that makes it different/better, OR a concrete advantage the Creator has | "Meals are cooked by students for students, so it's cheaper than delivery." · "I lived in a dorm for three years and know the canteen staff." | "It's better." · "Because I'm motivated." | "Why would people pick yours, and why are you the right person to build it?" |
+| 6 | Why now + biggest risk (`whyNowRisk`) | **Both** a concrete reason the timing is right AND one specific thing that could go wrong | "Food prices rose a lot this year; the biggest risk is students not trusting food cooked by strangers." | "Now is a good time." · "Prices are rising." · "People might not use it." | "Why is now a good time? And what's the one thing that could go wrong?" |
+
+Rule calibration notes (amendment 4 — every topic checked):
+- **Problem** allows an *obvious* harm, so "can't find cheap healthy food" is clear — but a general state is not a problem, so "Students are hungry" is unclear.
+- **What they use now** requires the shortfall *stated*, so "Eat junk." is unclear (matches the plan's example).
+- **Solution** was relaxed to "what + form", so "I want to make a meal-sharing app" is clear (matches the plan's example).
+
+Fixed-text fallbacks (base questions, fallback follow-ups, closing message) exist in **EN and FR in
+the backend**, because AI replies are stored in the transcript and the backend writes them when
+the AI fails. Language: detected language if en/fr, else the UI language.
 
 ### Ask order
 
-Among topics not yet clear: **problem → who → solution → what they use now → edge → why now/risk**.
-Later topics only make sense once earlier ones are understood.
+Among topics that are empty or unclear: **problem → who → solution → what they use now → edge → why now/risk**.
+The panel shows topics in the same order (D3).
 
-### Example
+### Example (verified against the live AI, 2026-10-31)
 
 ```
 AI:      Tell me your idea…
 Creator: Dorm students can't find cheap healthy food, I want to make a meal-sharing app.
          → Problem ✓  Who ✓  Solution ✓
-AI:      What do they do about it today?
-Creator: Eat junk.
-         → unclear → follow-up
-AI:      Why don't Uber Eats or the canteen work for them?
-…
+AI:      Eating well on a student budget in dorms is definitely a real challenge.
+         What do they currently do or use to handle meals today, and where does that fall short?
+Creator: Eat junk.                                  → unclear → follow-up
+AI:      …They turn to junk food today, but what specifically makes that fall short for them?
+Creator: Uber Eats is too expensive for them and the canteen closes at 8pm.   → ✓
+AI:      …Why would students pick your app over other options, and why are you the right person to build it?
 ```
 
-Typically 5–9 turns; **maximum 12** (opener + 5 base questions + 6 follow-ups) when the
-opener covers nothing.
-
-### Topic 6
-
-One topic in the panel, but the AI extracts the two parts separately (`whyNow`,
-`riskiestAssumption`). No ✓ unless both are present. Not split into 7 topics: the C-2
-summary already maps these two fields, so a split adds no data and changes the panel.
-
-### Language
-
-- Follow-ups and chips are written by the AI in the language the Creator writes in.
-- Opener: shown only in the UI (not stored) → frontend i18n, EN + FR.
-- Base questions: needed EN + FR in **the backend too**, because AI replies are stored in
-  the transcript and the backend writes the fallback text when the AI fails. Chosen from
-  the request `language`.
+Turns: typically 5–9; **maximum 12** (opener + Problem follow-up + 5 base questions + 5 follow-ups).
 
 ---
 
-## 3. Engineering review
+## 3. Decisions
 
-### What stays
+| # | Decision | Outcome |
+|---|---|---|
+| D1 | Still unclear after the one follow-up | **Approved:** accepted as **weak**; the flow moves on. |
+| D2 | Later messages and earlier topics | **Amended & approved:** a later message may fill topics that are **empty, unclear or weak**, and may upgrade **weak → clear**. Only a **clear** topic is locked and changes only through Edit. Weak is never downgraded. |
+| D3 | Panel order | **Approved:** same as the ask order; internal record numbers unchanged. |
+| D4 | AI fails | **Approved:** the whole message goes to the asked topic as **weak** (the opener → Problem); next comes the next empty topic's base question. A later AI turn can still upgrade it (D2). |
+| D5 | Opener half-covers a topic | **Approved, refined by amendment 6:** empty → base question; unclear → follow-up; still unclear → weak. The opener **is** Problem's base question: if it says nothing usable about the problem, Problem is unclear and gets its one follow-up — never a separate base question. |
+| D6 | Topic 6 with parts missing | **Confirmed 2026-10-31:** one follow-up asks for all missing parts; anything still missing → weak. |
+| D7 | Who writes base questions when the AI works | **Confirmed 2026-10-31:** the AI rephrases the base question in the Creator's language (`nextBase`); the EN/FR text is the fallback. Accepted risk: a Creator writing in another language gets EN/FR text when the AI fails. |
+| D8 | Calibration conflict | **Resolved by amendment 4:** Solution relaxed to "what + form"; every topic's examples checked against its rule (§2). |
 
-The 6 topics map one-to-one onto today's field groups, so the data model and everything
-downstream are reused:
+### Amendments (2026-10-31)
 
-| Topic | Existing fields (record #) |
-|---|---|
-| Problem | `problem` (1) |
-| Who | `targetUser` (2) |
-| What they use now | `existingAlternatives` (3) |
-| Solution | `solution` (4) |
-| Edge | `creatorEdge`, `founderAdvantage` (5) |
-| Why now + risk | `whyNow`, `riskiestAssumption` (6) |
+| # | Amendment | Implementation |
+|---|---|---|
+| A3 | Four panel states: empty / unclear / weak / clear; weak never a plain ✓ | `ClarifierStepList`: clear = green ✓; weak = dashed amber ring + amber ✓ + amber "Thin answer" caption; unclear = amber number + "Needs a little more detail"; empty = grey number. |
+| A5 | AI input each turn = per-topic state + full transcript | `ClarifierTopicsInput` carries all six topic states (with current fields) and every earlier message, plus the latest message. |
+| A6 | Opener counts as Problem's base question | `AskOrder` starts with Problem; the opener turn's asked topic is Problem. |
+| A7 | One `UpdateOneAsync`, targeted `$set`, version check kept | `SaveClarifierTurnAsync`: one `UpdateOne` = `$set Phase2Data.ClarifierAnswers` (status, extracted, follow-up flags) + `$push` reply, with the optimistic version filter. Never a replace. |
+| A8 | Weak stays weak through C-2 to Phase 3 | Frontend sends `rawIdea.unconfirmedFields`; the C-2 prompt labels those inputs `[THIN ANSWER — unconfirmed]`; the stored C-2 output gets `unconfirmedInputs` + `unconfirmedInputsNote`, which MarketStudy / BusinessModel / BusinessPlan already read as part of the clarifier output. |
 
-Unchanged: `ClarifierAnswer` records (keyed 1–6), C-2 summary (`buildRawIdea`),
-answer-edit API, legacy ideas, `ClarifierChatTurnRunner` and both transports (HTTP + hub).
+---
 
-### What changes
+## 4. Implementation map
 
 **Backend**
-1. **AI prompt + JSON** (`Services/Ai/ClarifierTurnService.cs`). Today the AI judges one
-   question. It must judge every topic from each message:
-   `topics: { problem: { status: clear|unclear|empty, extracted: {…} }, … }, ack, followUp, chips[]`.
-   Include 2–3 clear/unclear calibration examples per topic.
-2. **Turn rules** (`ClarifierScript.ApplyTurn`). Replaces "revise the same question up to 5
-   times" with: one message may fill several topics; one follow-up per topic; next topic
-   by the ask order; empty → base question, unclear → follow-up.
-3. **Per-topic "follow-up used" flag** on `ClarifierAnswer`.
-4. **Opener turn** — the first message is not tied to a topic.
-5. **Base questions EN/FR in the backend.**
-6. **Rewrite `ClarifierScriptTests`** (built around the fixed-question rules).
+- `Services/Implementations/ClarifierScript.cs` — topics, rules, examples, EN/FR texts, ask order, `ApplyTopicsTurn`, `NextTopic`, edits.
+- `Services/Ai/ClarifierTurnService.cs` — prompt generated from the topics; parses per-topic status, extraction, follow-up, chips, `nextBase`. Token limit configurable via `Ai:OutputTokenLimits:ClarifierTurn` (default 3000).
+- `Services/Implementations/ClarifierChatTurnRunner.cs` — one turn for HTTP and the hub; response `{ messages, doneCount, totalTopics, summaryReady, currentTopic, aiUsed, answers, aiText, chips }`.
+- `Models/DatabaseModels/CreatorJourney.cs` — `ClarifierAnswer.FollowUpUsed`, `CreatorChatMessage.Chips`.
+- `Controllers/CreatorPhase2Controller.cs` — answer edit re-judged by the same topic rules (applied only when clear).
+- `Controllers/ClarifierController.cs`, `Models/Dtos/Ai/StartClarifierRequest.cs`, `Services/Ai/Jobs/IdeaClarifierHandler.cs` — unconfirmed flags (A8).
+- Tests: `ClarifierScriptTests`, `ClarifierTurnServiceTests` (rewritten).
 
 **Frontend**
-
-7. Opener text in i18n (EN/FR), still rendered locally (`OPENER_ID`).
-8. **Chips** — new UI; clicking one fills the input.
-9. **Side panel** (`ClarifierStepList`) — topic names and state: empty / unclear / ✓ / weak.
-10. `clarifier-answers.ts` — rename question → topic; logic unchanged.
-
-Estimate: ~4–5 backend files, ~4 frontend files, plus tests.
-
-### Latency
-
-Each turn now judges all 6 topics, so the AI response is larger than today's single
-verdict (today 5–25s per turn). Total time should stay similar or drop, because turns go
-from 6–30 down to 5–12.
+- `src/lib/clarifier-answers.ts` — topic naming, `topicState`, `nextTopic`, ask order, `unconfirmedFields` in `buildRawIdea`.
+- `src/components/creator/clarifier/ClarifierStepList.tsx` — four states, ask order.
+- `src/app/dashboard/creator/phase-2/clarifier/page.tsx` — chips above the input (tap fills the input), topic progress.
+- `src/locales/{en,fr}/creator.json` — opener, topic labels, states, chips label.
 
 ---
 
-## 4. Open decisions
+## 5. Verification (2026-10-31)
 
-Each has an engineering recommendation; confirm before implementation.
+| Check | Result |
+|---|---|
+| Backend unit tests (`ClarifierScriptTests`, `ClarifierTurnServiceTests`, related) | ✅ all pass |
+| Live AI, alternating HTTP / hub | ✅ opener cleared 3 topics; "Eat junk." → follow-up; next answer → clear; correct ask order and extraction |
+| AI unavailable (fail-open), HTTP + hub | ✅ asked topic → weak; next base question; closing at the end |
+| Browser (Playwright, 1440px): hub socket, no console errors, panel order, weak styling, light + dark | ✅ |
+| Browser with live AI: clear / unclear / chips states | ⏳ **Blocked** — OpenRouter key out of credit (402, ≈1,189 tokens affordable). Re-run after a top-up. |
+| C-2 summary with `unconfirmedInputs` end to end | ⏳ Not run (same credit block). |
 
-| # | Question | Recommendation |
-|---|---|---|
-| D1 | Still unclear after the one follow-up? | Accept as **weak** and move on (today's `accepted_weak`); the Creator is never stuck. |
-| D2 | Can a later message update earlier topics? | It may fill **empty or unclear** topics; a ✓ topic changes only through Edit. |
-| D3 | Panel order | Same as the ask order. Internal record numbers stay as they are. |
-| D4 | AI fails — where does the message go? | Whole message into the topic that was asked, as weak (the opener → problem); then the next empty topic's base question. |
-| D5 | Opener half-covers a topic | Counts as **unclear** → follow-up (uses that topic's one follow-up). Rule: empty → base, unclear → follow-up, still unclear → weak. |
-| D6 | Topic 6 with both parts missing | One follow-up asks for **all** missing parts; anything still missing → weak (panel shows weak, not ✓). |
-| D7 | Who writes base questions when the AI works? | The AI, in the Creator's language. The EN/FR text is only the fallback. Accepted risk: a Creator writing in another language (e.g. Bangla) gets EN/FR fallback text when the AI fails. |
-| D8 | Calibration conflict | The example marks "meal-sharing app" as Solution ✓, but the rule requires *how people use it*. Either relax the rule ("what they'll build is enough") or mark the example unclear. The prompt examples must match the rule. |
+Pre-existing, unrelated: `ClarifierControllerIntegrationTests` (4) fail because the tests omit the
+now-required `businessIdeaId`.

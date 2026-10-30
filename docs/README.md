@@ -47,7 +47,7 @@ docs/
 │
 ├── implementation/                # Feature Implementation Guides (Current Development)
 │   ├── clarifier-phase2-guide.md  # Phase 2 AI Idea Clarifier (language, layout, SignalR transport)
-│   ├── clarifier-topic-flow-plan.md # PROPOSED: open topic-based clarifier (not implemented)
+│   ├── clarifier-topic-flow-plan.md # Clarifier topic flow — approved spec, decisions, verification
 │   └── ...                        # Future phase implementations
 │
 └── testing/                       # Feature Testing & QA Validation Plans
@@ -100,7 +100,7 @@ The [operations/](operations/) directory provides hands-on engineering runbooks:
 The [implementation/](implementation/) directory documents in-flight feature implementations:
 
 - **[Phase 2 Clarifier Guide](implementation/clarifier-phase2-guide.md):** AI Idea Clarifier — 6 AI-validated questions, language support (EN/FR), chat UI layout, C-2 summary, and the SignalR transport (`/hubs/clarifier`) that shares one turn runner with the HTTP endpoint. Includes API contracts and modified files.
-- **[Clarifier Topic Flow Plan](implementation/clarifier-topic-flow-plan.md):** *Proposed, not implemented.* Replaces the 6 fixed questions with an open opener, 6 topics, base questions and AI follow-ups. Includes the engineering impact and open decisions D1–D8.
+- **[Clarifier Topic Flow](implementation/clarifier-topic-flow-plan.md):** *Approved & implemented 2026-10-31.* Open opener, 6 AI-judged topics with four states, base questions and one follow-up per topic; topic rules with calibration examples, decisions D1–D8 and amendments, verification status.
 
 ---
 

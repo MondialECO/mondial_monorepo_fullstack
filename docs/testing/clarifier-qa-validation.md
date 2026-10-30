@@ -33,13 +33,13 @@ Mark each row **P** (pass), **F** (fail) or **B** (blocked). Put details for eve
 
 | ID | Check | Hub | HTTP | Notes |
 |---|---|---|---|---|
-| 2.1 | Good answer → accepted, moves to next question | | | |
-| 2.2 | Vague answer → revise, same question, attempts +1 | | | |
-| 2.3 | 5th vague answer → `accepted_weak`, moves on | | | |
+| 2.1 | Opener covering problem/who/solution → all three ✓, next asks "what they use now" | | | |
+| 2.2 | Vague answer → follow-up (chips for who/solution), topic shows "Needs a little more detail" | | | |
+| 2.3 | Still vague after follow-up → weak ("Thin answer", never a plain ✓), moves on | | | |
 | 2.4 | Empty message → "Message is required." | | | |
 | 2.5 | > 4000 chars → length error | | | |
-| 2.6 | Send after Q6 → "already answered" | | | |
-| 2.7 | AI off / OpenRouter down → accepted, `aiUsed: false` | | | |
+| 2.6 | Send after all topics done → "already covered" | | | |
+| 2.7 | AI off / OpenRouter down → asked topic weak, next base question | | | |
 | 2.8 | Refresh → transcript + answers identical to before | | | |
 
 ## 3. Streaming display (hub)

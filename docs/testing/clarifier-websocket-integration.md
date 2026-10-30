@@ -39,13 +39,13 @@ Run each scenario once over the hub and once with WebSocket blocked (HTTP).
 
 | # | Scenario | Expected (both transports) |
 |---|---|---|
-| 2.1 | Good answer to Q1 | `verdict: accept`, `currentQuestion: 2`, user msg + AI reply in `messages`. |
-| 2.2 | Vague answer | `verdict: revise`, `currentQuestion` unchanged, `attempts` +1. |
-| 2.3 | 5 vague answers to the same question | 5th is accepted as `accepted_weak`; flow moves on. |
+| 2.1 | Opener covering problem, who and solution | Those three topics clear; `currentTopic` = 3 (what they use now); user msg + AI reply in `messages`. |
+| 2.2 | Vague answer to the asked topic | Topic unclear, `followUpUsed` true, AI follow-up (chips for who/solution). |
+| 2.3 | Still vague after the follow-up | Topic weak; flow moves to the next topic in ask order. A later message can upgrade it to clear. |
 | 2.4 | Empty / whitespace message | Rejected with "Message is required." Nothing persisted. |
 | 2.5 | Message > 4000 chars | Rejected with the length error. |
-| 2.6 | Send after all 6 are answered | Rejected with "All clarifier questions are already answered." (409). |
-| 2.7 | AI disabled or OpenRouter down | Fail-open: answer accepted, `aiUsed: false`. |
+| 2.6 | Send after all 6 topics are done | Rejected with "All clarifier topics are already covered." (409). |
+| 2.7 | AI disabled, OpenRouter down or out of credit | Fail-open: asked topic weak, next base question (EN/FR), `aiUsed: false`. |
 | 2.8 | Refresh after any turn | Transcript and answers reload from the server, identical to what was shown. |
 
 ## 3. Streaming display
@@ -86,6 +86,18 @@ Run each scenario once over the hub and once with WebSocket blocked (HTTP).
 ---
 
 ## Verification log
+
+### 2026-10-31 — topic flow (scripted HTTP/hub client + Playwright)
+
+| ID | Result | Observed |
+|---|---|---|
+| 2.1 | ✅ | Live AI: opener cleared problem, who, solution; next asked "what they use now". HTTP. |
+| 2.2 | ✅ | Live AI: "Eat junk." → unclear + follow-up. Hub. |
+| 2.3 | ✅ (unit) | Weak after follow-up and weak → clear upgrade covered by `ClarifierScriptTests`; not yet seen live. |
+| 2.7 | ✅ | OpenRouter 402 → every asked topic weak, base questions in ask order, closing at the end; HTTP + hub. |
+| 1.1 | ✅ | Browser: `ws://localhost:5093/hubs/clarifier` connected; no console errors. |
+| — | ✅ | Browser: panel in ask order; weak = dashed amber ring + "Thin answer"; current topic highlighted; light + dark. |
+| — | ⏳ | Browser with live AI (clear / unclear / chips) and C-2 `unconfirmedInputs`: blocked by OpenRouter credit. |
 
 ### 2026-10-30 — hub end-to-end (scripted client, local backend)
 

@@ -51,16 +51,18 @@ AI model responds in selected language
 </section>
 ```
 
-### 3. Per-Answer AI Validation
-- 6 fixed questions (`ClarifierScript`), each answer gets one AI turn
-- `Services/Ai/ClarifierTurnService.EvaluateAsync()` returns a JSON verdict (accept/revise + extracted fields). Takes 5–25s; fail-open (AI down/timeout/bad JSON → accept)
-- Max 5 attempts per question, then `accepted_weak`; per-idea AI cap 40 calls
-- Feedback returns in user's UI language
+### 3. Topic Flow (AI-judged, since 2026-10-31)
+Full spec, rules, decisions and verification: **[clarifier-topic-flow-plan.md](clarifier-topic-flow-plan.md)**.
+- One fixed opener (also Problem's base question), 6 topics, a base question per topic, at most one AI follow-up per topic.
+- Each turn the AI judges **all six topics** from the per-topic state + the full transcript: clear / unclear / empty, plus extraction, follow-up, chips.
+- Topic states: empty (no record) · unclear (`pending`) · weak (`accepted_weak`) · clear (`accepted`). Clear is locked (Edit only); weak can still be upgraded.
+- Fail-open: AI down/timeout/bad JSON/credit → the asked topic becomes weak and the next base question (EN/FR) is sent. Per-idea AI cap 40 calls.
 - The whole turn lives in **`ClarifierChatTurnRunner`** — the only place this logic exists:
   ```
-  persist user message → EvaluateAsync → ClarifierScript.ApplyTurn → SaveClarifierTurnAsync
+  persist user message → EvaluateAsync (all topics) → ClarifierScript.ApplyTopicsTurn → SaveClarifierTurnAsync (one UpdateOne)
   ```
-  Answers live in `CreatorIdea.Phase2Data.ClarifierAnswers`; the transcript in `Phase2Data.ChatMessages`.
+  Topic records live in `CreatorIdea.Phase2Data.ClarifierAnswers`; the transcript in `Phase2Data.ChatMessages`.
+- Weak topics reach C-2 as `rawIdea.unconfirmedFields` and stay flagged (`unconfirmedInputs`) in the C-2 output Phase 3 reads.
 
 ### 4. C-2 Summary Generation
 - **Endpoint:** `POST /creator/journey/phase2/finalize-clarifier`
@@ -98,7 +100,7 @@ Send
 - **Not rate-limited on the hub.** The `"ai"` rate-limit policy is HTTP-only. The per-idea AI cap still applies.
 - **Verified 2026-10-30** end-to-end with a scripted client (connection, turns, persistence, stale-version rejection). Browser UI not yet checked — see the [verification log](../testing/clarifier-websocket-integration.md#verification-log).
 
-> A redesign from fixed questions to an open, topic-based flow is **proposed, not implemented**: [clarifier-topic-flow-plan.md](clarifier-topic-flow-plan.md).
+> The open, topic-based flow is **approved and implemented** (2026-10-31): [clarifier-topic-flow-plan.md](clarifier-topic-flow-plan.md).
 
 ---
 
@@ -141,8 +143,8 @@ Send
 POST /api/creator/journey/phase2/chat-message?ideaId=…&expectedVersion=…
 Body: { message: string, language: 'en' | 'fr' }
 Response (ChatMessageResult): {
-  messages, answers, questionIndex, totalQuestions, summaryReady,
-  verdict: 'accept' | 'revise', currentQuestion, attempts, maxAttempts, aiUsed, aiText
+  messages, answers, doneCount, totalTopics, summaryReady,
+  currentTopic, aiUsed, aiText, chips
 }
 Header: X-Creator-Idea-Version (new version)
 ```
