@@ -59,6 +59,35 @@ export type OutputVersionEntry = {
   createdAt: string;
 };
 
+export type ClarifierAnswerStatus = 'pending' | 'accepted' | 'accepted_weak';
+
+/** One record per clarifier topic (1–6). No record = empty; pending = unclear; accepted_weak = weak; accepted = clear. */
+export type ClarifierAnswer = {
+  questionIndex: number;
+  status: ClarifierAnswerStatus;
+  attempts: number;
+  rawAnswer: string;
+  aiExtracted: Record<string, string>;
+  userEdited: Record<string, string> | null;
+  language: string | null;
+  /** The topic's single AI follow-up has been asked. */
+  followUpUsed?: boolean;
+  updatedAt: string;
+};
+
+export type ClarifierChatMessage = {
+  id: string;
+  sender: 'ai' | 'user';
+  text: string;
+  timestamp?: string;
+  /** AI turn kind; "feedback" only on older fixed-question transcripts; absent on legacy messages. */
+  kind?: 'question' | 'followup' | 'feedback' | 'ack' | null;
+  /** Topic (1–6) the message asks about or answers. */
+  questionIndex?: number | null;
+  /** Tappable answer options offered with an AI follow-up. */
+  chips?: string[] | null;
+};
+
 export type BackendCreatorJourney = {
   id: string;
   userId: string;
@@ -73,8 +102,10 @@ export type BackendCreatorJourney = {
   project: JourneyProject;
   phase2Data: {
     selectedEntryPath: string | null;
-    chatMessages: Array<{ id: string; sender: 'ai' | 'user'; text: string; timestamp: string }>;
+    chatMessages: ClarifierChatMessage[];
+    clarifierAnswers?: ClarifierAnswer[];
     clarifierSessionId: string | null;
+    clarifierSummarizedAt?: string | null;
     discoveryInputs?: { sectors?: string[]; observedProblem?: string; strengths?: string[] };
     generatedConcepts?: Array<{ id: string; title: string; category: string; description: string; score: number; tam: string; saturation: string; similarTo: string; concept: string; targetUser: string; coreProblem: string; solution: string; marketGap: string; founderEdge: string }>;
     selectedConceptId?: string | null;

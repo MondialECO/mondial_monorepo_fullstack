@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   FileText,
@@ -142,7 +142,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
   const [activeChapter, setActiveChapter] = useState('01');
 
   // Derive reviewed state from bpOutput._sectionMeta
-  const metaReviewed = useMemo(() => {
+  const metaReviewed = (() => {
     const res: Record<string, boolean> = {};
     const meta = bpOutput?._sectionMeta;
     if (meta) {
@@ -157,7 +157,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
       });
     }
     return res;
-  }, [bpOutput?._sectionMeta]);
+  })();
 
   // Local reviewed state for all 12 chapters
   const [reviewedChapters, setReviewedChapters] = useState<Record<string, boolean>>(metaReviewed);
@@ -279,15 +279,11 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
     }
   };
 
-  const currencySymbol = useMemo(() => {
-    const c = forecastBasis?.currency?.toUpperCase() || 'EUR';
-    if (c === 'USD') return '$';
-    if (c === 'GBP') return '£';
-    return '€';
-  }, [forecastBasis?.currency]);
+  const c = forecastBasis?.currency?.toUpperCase() || 'EUR';
+  const currencySymbol = c === 'USD' ? '$' : c === 'GBP' ? '£' : '€';
 
   // Financial metrics for Year 1, 2, 3
-  const financialData = useMemo(() => {
+  const financialData = (() => {
     const years = forecastBasis?.years;
     if (years && years.length >= 3) {
       return {
@@ -313,7 +309,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
       y2: { rev: 0, opex: 0, net: 0 },
       y3: { rev: 0, opex: 0, net: 0 },
     };
-  }, [forecastBasis]);
+  })();
 
   const maxVal = Math.max(
     financialData.y1.rev,
@@ -1059,11 +1055,11 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                 </span>
                 <div className="flex items-center gap-4 text-caption font-sans">
                   <div className="flex items-center gap-1.5">
-                    <span className="h-3 w-3 rounded-xs bg-[#1a47c3] inline-block" />
+                    <span className="h-3 w-3 rounded-xs inline-block" style={{ backgroundColor: "var(--chart-revenue-dark)" }} />
                     <span className="text-muted-foreground">{t('creator.phase3.businessPlan.flow.ch7.revenue', 'Revenue')}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="h-3 w-3 rounded-xs bg-[#747685] inline-block" />
+                    <span className="h-3 w-3 rounded-xs inline-block" style={{ backgroundColor: "var(--chart-opex)" }} />
                     <span className="text-muted-foreground">{t('creator.phase3.businessPlan.flow.ch7.operatingCosts', 'Operating Costs')}</span>
                   </div>
                 </div>
@@ -1095,7 +1091,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                     width="32"
                     height={financialData.y1.rev > 0 ? Math.max(4, (financialData.y1.rev / maxFinancialRev) * 130) : 2}
                     rx="3"
-                    fill="#1a47c3"
+                    fill="var(--chart-revenue-dark)"
                   />
                   <rect
                     x="148"
@@ -1103,7 +1099,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                     width="32"
                     height={financialData.y1.opex > 0 ? Math.max(4, (financialData.y1.opex / maxFinancialRev) * 130) : 2}
                     rx="3"
-                    fill="#747685"
+                    fill="var(--chart-opex)"
                   />
                   <text x="145" y="182" textAnchor="middle" className="text-caption fill-muted-foreground font-sans">
                     {t('creator.phase3.businessPlan.flow.ch7.year1', 'Year 1')}
@@ -1116,7 +1112,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                     width="32"
                     height={financialData.y2.rev > 0 ? Math.max(4, (financialData.y2.rev / maxFinancialRev) * 130) : 2}
                     rx="3"
-                    fill="#1a47c3"
+                    fill="var(--chart-revenue-dark)"
                   />
                   <rect
                     x="308"
@@ -1124,7 +1120,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                     width="32"
                     height={financialData.y2.opex > 0 ? Math.max(4, (financialData.y2.opex / maxFinancialRev) * 130) : 2}
                     rx="3"
-                    fill="#747685"
+                    fill="var(--chart-opex)"
                   />
                   <text x="305" y="182" textAnchor="middle" className="text-caption fill-muted-foreground font-sans">
                     {t('creator.phase3.businessPlan.flow.ch7.year2', 'Year 2')}
@@ -1137,7 +1133,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                     width="32"
                     height={financialData.y3.rev > 0 ? Math.max(4, (financialData.y3.rev / maxFinancialRev) * 130) : 2}
                     rx="3"
-                    fill="#1a47c3"
+                    fill="var(--chart-revenue-dark)"
                   />
                   <rect
                     x="468"
@@ -1145,7 +1141,7 @@ export const BusinessPlanFigmaFlow: React.FC<BusinessPlanFigmaFlowProps> = ({
                     width="32"
                     height={financialData.y3.opex > 0 ? Math.max(4, (financialData.y3.opex / maxFinancialRev) * 130) : 2}
                     rx="3"
-                    fill="#747685"
+                    fill="var(--chart-opex)"
                   />
                   <text x="465" y="182" textAnchor="middle" className="text-caption fill-muted-foreground font-sans">
                     {t('creator.phase3.businessPlan.flow.ch7.year3', 'Year 3')}

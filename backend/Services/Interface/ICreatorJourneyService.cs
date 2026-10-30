@@ -59,7 +59,24 @@ namespace WebApp.Services.Interface
         Task<CreatorJourney> AppendOutputAsync(string userId, AppendOutputRequest request, string ideaId = null);
 
         /// <summary>Append a chat message to phase2Data (persisted for abandon/resume).</summary>
-        Task<CreatorJourney> AppendChatMessageAsync(string userId, string sender, string text, string ideaId = null);
+        Task<CreatorJourney> AppendChatMessageAsync(string userId, string sender, string text, string ideaId = null,
+            string? kind = null, int? questionIndex = null);
+
+        /// <summary>Persist the clarifier answer records and the AI reply for one turn in a single write.</summary>
+        Task<CreatorJourney> SaveClarifierTurnAsync(string userId, List<ClarifierAnswer> answers,
+            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null, List<string>? chips = null);
+
+        /// <summary>
+        /// Optimistic-concurrency input for callers without an HTTP request (SignalR). Subsequent
+        /// writes in this scope check against it and advance it; read the result from
+        /// <see cref="ExplicitWriteVersion"/>.
+        /// </summary>
+        void UseExplicitWriteVersion(string ideaId, long expectedVersion);
+
+        long? ExplicitWriteVersion { get; }
+
+        /// <summary>Persist the clarifier answer records only (edits; no chat message).</summary>
+        Task<CreatorJourney> SaveClarifierAnswersAsync(string userId, List<ClarifierAnswer> answers, string ideaId = null);
 
         /// <summary>
         /// Map a completed ClarifierOutput onto the project and store clarifierSessionId.

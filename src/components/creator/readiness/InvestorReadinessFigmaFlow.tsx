@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import {
   TrendingUp,
@@ -86,27 +86,21 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
   const teamScore = breakdown?.teamCredibility ?? 0;
 
   // Dynamic Headline and Summary from backend or score tier fallback
-  const headline = useMemo(() => {
-    if (readiness?.headline) return readiness.headline;
-    if (totalScore >= 85) return 'Fully validated venture foundation, ready for institutional capital.';
-    if (totalScore >= 70) return 'Strong institutional foundation, nearly investor-ready.';
-    if (totalScore >= 50) return 'A clear starting point, with a few gaps to work through.';
-    return 'Foundational gaps identified, requiring further validation.';
-  }, [readiness?.headline, totalScore]);
+  const headline = readiness?.headline ||
+    (totalScore >= 85 ? 'Fully validated venture foundation, ready for institutional capital.'
+    : totalScore >= 70 ? 'Strong institutional foundation, nearly investor-ready.'
+    : totalScore >= 50 ? 'A clear starting point, with a few gaps to work through.'
+    : 'Foundational gaps identified, requiring further validation.');
 
-  const summary = useMemo(() => {
-    if (readiness?.summary) return readiness.summary;
-    if (totalScore >= 85) {
-      return 'Your venture intelligence demonstrates institutional rigor across customer evidence, unit economics, statutory compliance, and founder capabilities.';
-    }
-    if (totalScore >= 70) {
-      return 'Your concept and market evidence are well articulated. Addressing key financial sensitivity points and specialist coverage will finalize readiness.';
-    }
-    return 'Your concept is taking shape. Stronger customer evidence, clearer financial assumptions, and a practical support plan will make it easier to explain your business.';
-  }, [readiness?.summary, totalScore]);
+  const summary = readiness?.summary ||
+    (totalScore >= 85
+      ? 'Your venture intelligence demonstrates institutional rigor across customer evidence, unit economics, statutory compliance, and founder capabilities.'
+      : totalScore >= 70
+      ? 'Your concept and market evidence are well articulated. Addressing key financial sensitivity points and specialist coverage will finalize readiness.'
+      : 'Your concept is taking shape. Stronger customer evidence, clearer financial assumptions, and a practical support plan will make it easier to explain your business.');
 
   // Map 5 structured improvement rows
-  const improvementRows = useMemo(() => {
+  const improvementRows = (() => {
     const deductions = readiness?.deductions ?? [];
 
     const getDed = (dimKey: string): ReadinessDeduction | undefined =>
@@ -236,7 +230,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
       },
     ];
 
-    // Find the row with the largest points lost to set "Start here" if market isn't the highest
+    // Find the row with the largest points lost to set "Start here" if market isn’t the highest
     let maxLost = -1;
     let maxKey = 'market';
     rows.forEach((r) => {
@@ -250,18 +244,7 @@ export const InvestorReadinessFigmaFlow: React.FC<InvestorReadinessFigmaFlowProp
       ...r,
       isPrimaryGap: r.key === maxKey && r.lost > 0,
     }));
-  }, [
-    readiness?.deductions,
-    conceptScore,
-    marketScore,
-    financeScore,
-    legalScore,
-    teamScore,
-    project.problem,
-    project.solution,
-    project.targetUser,
-    projectName,
-  ]);
+  })();
 
   return (
     <div className="w-full max-w-[1040px] mx-auto space-y-8 font-sans pb-16 text-foreground">

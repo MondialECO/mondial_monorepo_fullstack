@@ -75,12 +75,14 @@ namespace WebApp.Controllers
                 return StatusCode(503, ApiResponse.Error("The Idea Clarifier is currently disabled.", HttpContext.TraceIdentifier));
 
             var inFlightKey = $"{owner}:clarifier:{request.BusinessIdeaId}";
+            var language = !string.IsNullOrWhiteSpace(request.Language) ? request.Language : "en";
             var session = new ClarifierSession
             {
                 OwnerUserId = owner,
                 BusinessIdeaId = string.IsNullOrWhiteSpace(request.BusinessIdeaId) ? null : request.BusinessIdeaId,
+                Language = language,
                 Status = "Pending",
-                Input = BuildInput(request.RawIdea),
+                Input = BuildInput(request.RawIdea, language),
                 InFlightKey = inFlightKey,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
@@ -158,7 +160,7 @@ namespace WebApp.Controllers
             return Ok(ApiResponse.Ok("OK", sessions.Select(ToDto)));
         }
 
-        private static BsonDocument BuildInput(RawIdeaInput raw) => new()
+        private static BsonDocument BuildInput(RawIdeaInput raw, string language = "en") => new()
         {
             ["title"] = raw.Title ?? "",
             ["problemStatement"] = raw.ProblemStatement ?? "",
@@ -168,6 +170,9 @@ namespace WebApp.Controllers
             ["whyNow"] = raw.WhyNow ?? "",
             ["riskiestAssumption"] = raw.RiskiestAssumption ?? "",
             ["founderAdvantage"] = raw.FounderAdvantage ?? "",
+            ["unconfirmedFields"] = new BsonArray((raw.UnconfirmedFields ?? new List<string>())
+                .Where(IdeaClarifierHandler.RawIdeaFields.Contains).Distinct()),
+            ["language"] = language,
         };
 
         private static ClarifierSessionDto ToDto(ClarifierSession s) => new()

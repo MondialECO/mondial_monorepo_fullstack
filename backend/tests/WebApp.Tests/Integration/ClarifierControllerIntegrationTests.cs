@@ -7,9 +7,14 @@ using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using WebApp.Configuration.AiOptions;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
+using WebApp.Services.Repository;
 using WebApp.Services.Repository.Ai;
 using Xunit;
 
@@ -47,10 +52,23 @@ public class ClarifierControllerIntegrationTests : IClassFixture<AppFixture>
         return client;
     }
 
+    // Read the configured price (Ai:CreditCosts) rather than hardcoding it.
+    private int ClarifierCost => Services.GetRequiredService<IOptions<AiSettings>>().Value.CreditCosts
+        .TryGetValue("IdeaClarifier", out var cost) ? cost : 1;
+
     private async Task FundAsync(string owner, int balance) =>
         await new AiCreditLedgerRepository(Db).AddAsync(new AiCreditLedger { OwnerUserId = owner, Balance = balance });
 
-    private static object ValidBody(string? businessIdeaId = null) => new
+    // Start requires an owned CreatorIdea (multi-idea integrity: every AI session is anchored
+    // to an idea — docs/system-architecture/07-source-of-truth.md).
+    private async Task<string> IdeaAsync(string owner)
+    {
+        var idea = new CreatorIdea { Id = ObjectId.GenerateNewId().ToString(), UserId = owner };
+        await new CreatorIdeaRepository(Db).AddAsync(idea);
+        return idea.Id;
+    }
+
+    private static object ValidBody(string? businessIdeaId) => new
     {
         businessIdeaId,
         rawIdea = new
@@ -72,9 +90,9 @@ public class ClarifierControllerIntegrationTests : IClassFixture<AppFixture>
     {
         Skip.IfNot(_fx.Available, _fx.SkipReason);
         var owner = Guid.NewGuid().ToString();
-        await FundAsync(owner, 5);
+        await FundAsync(owner, ClarifierCost);
 
-        var resp = await Authed(owner).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody());
+        var resp = await Authed(owner).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody(await IdeaAsync(owner)));
 
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await resp.Content.ReadAsStringAsync();
@@ -96,9 +114,23 @@ public class ClarifierControllerIntegrationTests : IClassFixture<AppFixture>
         await FundAsync(owner, 5);
 
         var resp = await Authed(owner).PostAsJsonAsync("/api/ai/idea-clarifier",
-            new { rawIdea = new { title = "", problemStatement = "", targetAudience = "" } });
+            new { businessIdeaId = await IdeaAsync(owner), rawIdea = new { title = "", problemStatement = "", targetAudience = "" } });
 
         resp.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [SkippableFact]
+    public async Task Start_requires_an_owned_business_idea()
+    {
+        Skip.IfNot(_fx.Available, _fx.SkipReason);
+        var owner = Guid.NewGuid().ToString();
+        var other = Guid.NewGuid().ToString();
+        await FundAsync(owner, 5);
+
+        (await Authed(owner).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody(null)))
+            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Authed(owner).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody(await IdeaAsync(other))))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [SkippableFact]
@@ -106,9 +138,9 @@ public class ClarifierControllerIntegrationTests : IClassFixture<AppFixture>
     {
         Skip.IfNot(_fx.Available, _fx.SkipReason);
         var owner = Guid.NewGuid().ToString();
-        await FundAsync(owner, 0); // IdeaClarifier costs 1
+        await FundAsync(owner, ClarifierCost - 1);
 
-        var resp = await Authed(owner).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody());
+        var resp = await Authed(owner).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody(await IdeaAsync(owner)));
 
         resp.StatusCode.Should().Be((HttpStatusCode)402);
     }
@@ -119,9 +151,9 @@ public class ClarifierControllerIntegrationTests : IClassFixture<AppFixture>
         Skip.IfNot(_fx.Available, _fx.SkipReason);
         var owner = Guid.NewGuid().ToString();
         var other = Guid.NewGuid().ToString();
-        await FundAsync(owner, 5);
+        await FundAsync(owner, ClarifierCost);
 
-        var created = await Authed(owner).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody());
+        var created = await Authed(owner).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody(await IdeaAsync(owner)));
         var sessionId = await SessionIdAsync(created);
 
         (await Authed(owner).GetAsync($"/api/ai/idea-clarifier/{sessionId}")).StatusCode.Should().Be(HttpStatusCode.OK);
@@ -144,15 +176,18 @@ public class ClarifierControllerIntegrationTests : IClassFixture<AppFixture>
         Skip.IfNot(_fx.Available, _fx.SkipReason);
         var owner = Guid.NewGuid().ToString();
         var other = Guid.NewGuid().ToString();
-        await FundAsync(owner, 50);
-        await FundAsync(other, 50);
+        await FundAsync(owner, ClarifierCost * 2);
+        await FundAsync(other, ClarifierCost * 2);
 
-        var ideaA = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
-        var ideaB = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+        var ideaA = await IdeaAsync(owner);
+        var ideaB = await IdeaAsync(owner);
+        var ideaC = await IdeaAsync(other);
 
         await Authed(owner).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody(ideaA));
         await Authed(owner).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody(ideaB));
-        await Authed(other).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody(ideaA)); // foreign
+        await Authed(other).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody(ideaC)); // foreign session
+        (await Authed(other).PostAsJsonAsync("/api/ai/idea-clarifier", ValidBody(ideaA)))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound, "a session cannot be anchored to someone else's idea");
 
         // Owner's full list excludes the other user's session.
         var allResp = await Authed(owner).GetAsync("/api/ai/idea-clarifier");

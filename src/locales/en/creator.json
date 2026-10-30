@@ -180,17 +180,17 @@
     "enteringClarifier": "Entering Idea Clarifier...",
     "clarifier": {
       "mainTitle": "Let's sharpen your idea",
-      "mainSubtitle": "Answer {{count}} focused questions. Our AI will analyze your responses and build your concept canvas.",
-      "opener": "Welcome. Tell me your idea — in your own words, however rough it is. What problem are you solving?",
+      "mainSubtitle": "Describe your idea in your own words. Our AI asks only about what's missing across {{count}} topics, then builds your concept canvas.",
+      "opener": "Tell me your idea in your own words. However rough it is is fine.",
       "title": "AI Idea Clarifier",
-      "subtitle": "{{count}} focused questions to sharpen your idea",
+      "subtitle": "{{count}} topics to sharpen your idea",
       "stepLabels": {
-        "problem": "Problem",
-        "targetUsers": "Target Users",
-        "alternatives": "Alternatives",
-        "solution": "Solution",
-        "edge": "Differentiation & Edge",
-        "risk": "Timing & Key Risk"
+        "problem": "The problem",
+        "targetUsers": "Who has it",
+        "alternatives": "What they use now",
+        "solution": "Your solution",
+        "edge": "Your edge",
+        "risk": "Why now + biggest risk"
       },
       "ringBands": {
         "notStarted": "Not Started",
@@ -212,15 +212,19 @@
       "finalizingTitle": "Clarifying your idea…",
       "finalizingSlow": "Still working — this is taking longer than usual. Hang tight.",
       "finalizingNormal": "Analyzing your answers and scoring clarity. This can take a moment.",
-      "allQuestionsAnswered": "All questions answered",
+      "allQuestionsAnswered": "All topics covered",
       "finalizeDesc": "Finalizing runs the AI analysis to score your idea's clarity and build your concept canvas, then takes you to your summary. You're not done until you do this.",
       "generateSummary": "Generate my summary",
       "savingFinalAnswer": "Saving your final answer…",
       "notDoneYet": "You're not done yet — finalize to save your clarity score.",
       "finalizing": "Finalizing…",
-      "progressTitle": "Progress: Question {{current}} of {{total}}",
-      "allQuestionsAnsweredCount": "All {{count}} questions answered",
-      "unlocksAfter": "(Unlocks after Q{{num}})",
+      "progressTitle": "Progress: {{done}} of {{total}} topics covered",
+      "allQuestionsAnsweredCount": "All {{count}} topics covered",
+      "topicState": {
+        "unclear": "Needs a little more detail",
+        "weak": "Thin answer"
+      },
+      "chipsLabel": "Suggested answers",
       "ideaJournal": "Idea Journal",
       "journalDefault": "Your refined idea will be saved here automatically.",
       "copied": "Copied",
@@ -230,11 +234,34 @@
       "aiUnavailableError": "The AI service is temporarily unavailable. Please try again in a moment.",
       "aiParseError": "We couldn't interpret that just now. Please try again, or reword your idea and resubmit.",
       "defaultIdeaName": "My Idea",
+      "editAiUnavailable": "We couldn't check your edit right now, so your previous answer was kept. Please try again in a moment.",
+      "editNotAccepted":"That edit wasn't specific enough, so your previous answer was kept. Try again or cancel.",
+      "weakAnswerHint": "not confirmed yet. Add detail anytime to strengthen it.",
+      "fieldsEditHint": "Saved as-is, without an AI check. Clear a box to go back to the AI's version.",
+      "fieldSaveError": "Couldn't save your changes. Please try again.",
+      "save": "Save",
+      "regenerateSummary": "Regenerate summary",
+      "creditCost": "{{count}} credits",
+      "regenerateDesc": "You changed answers after your last summary. Regenerating builds a new summary from your updated answers.",
+      "viewSummary": "View my summary",
+      "viewSummaryDesc": "Your summary is up to date with these answers. Edit an answer if you want a new one.",
+      "summaryOutdated": "Your answers changed since the last summary.",
+      "fields": {
+        "problem": "Problem",
+        "targetUser": "Target user",
+        "existingAlternatives": "Existing alternatives",
+        "solution": "Solution",
+        "creatorEdge": "Your edge",
+        "founderAdvantage": "Your advantage",
+        "whyNow": "Why now",
+        "riskiestAssumption": "Riskiest assumption"
+      },
       "aria": {
         "editAnswer": "Edit your answer",
         "copyAnswer": "Copy your answer",
         "saveEdit": "Save edit",
-        "sendAnswer": "Send answer"
+        "sendAnswer": "Send answer",
+        "editFields": "Edit {{step}}"
       },
       "sr": {
         "errorPrefix": "Error: ",
@@ -291,6 +318,8 @@
       "emptyTitle": "No idea summary available",
       "emptySubtitle": "Complete the Idea Clarifier questions to generate your structured project summary.",
       "goToClarifier": "Go to Clarifier",
+      "unconfirmedTag": "Unconfirmed — thin answer",
+      "fixIt": "Fix it",
       "synthesisComplete": "Synthesis Complete",
       "headerTitle": "Your Idea - First draft.",
       "headerSubtitle": "Extracted from your own insights. AI provided the structure — the ownership is yours.",
@@ -900,6 +929,20 @@
     "termsOfService": "Terms of Service"
   },
   "phase3": {
+    "thinAnswersBanner": {
+      "one": "1 of your answers was thin, so this may be less accurate.",
+      "many": "{{count}} of your answers were thin, so this may be less accurate.",
+      "review": "Review them"
+    },
+    "summaryStale": {
+      "message": "Your answers changed since your summary.",
+      "action": "Update it first"
+    },
+    "staleUpstream": {
+      "message": "Built on an older version of your earlier answers.",
+      "regenerate": "Regenerate",
+      "regenerateWithCost": "Regenerate ({{cost}} credits)"
+    },
     "resuming": "Resuming Phase 3: Business Plan Intelligence...",
     "steps": {
       "marketStudy": "Market Study & Feasibility Analysis",
@@ -3215,6 +3258,7 @@
       "selectedRegion": "Selected region",
       "france": "France",
       "franceWithRegion": "France • {{region}}",
+      "regionInternational": "International / Other",
       "regionNote": "From your verified address — change it if this isn't right.",
       "situationTitle": "What are you doing right now?",
       "situationSubtitle": "Select the activity that occupies most of your daytime schedule.",
@@ -3303,27 +3347,31 @@
         },
         "company-before": {
           "title": "I've created a company before",
-          "desc": "I've been a founder, co-founder, or sole proprietor."
+          "desc": "I've registered and run one."
+        },
+        "run-now": {
+          "title": "I run something right now",
+          "desc": "I already have an activity going."
         }
       },
       "progressTitle": "When you hit something you can't do yet?",
       "progressPreferenceAria": "Progress preference",
       "progress": {
         "learn": {
-          "title": "I want to learn it myself",
-          "desc": "Step-by-step guidance. I'll do the work."
+          "title": "I'd rather learn it",
+          "desc": "Teach me and I'll pick it up."
         },
         "delegate": {
-          "title": "I want to delegate or hire",
-          "desc": "Find the right partner, service, or tool."
+          "title": "I'd rather hand it off",
+          "desc": "Let a specialist handle it."
         },
         "mixed": {
           "title": "A bit of both",
-          "desc": "I'll learn what matters, delegate the rest."
+          "desc": "Learn what matters, delegate the rest."
         },
         "help-me-decide": {
           "title": "Help me decide",
-          "desc": "Tell me what's fastest or most sensible."
+          "desc": "Recommend what fits each situation."
         }
       },
       "progressNote": "You can change this any time — we'll check in when it actually matters.",
@@ -3455,6 +3503,10 @@
       "regionPrefix": "Region:",
       "businessExperienceCard": "Business Experience",
       "noPreviousExperience": "No previous experience recorded",
+      "recordedExperiences": "{{count}} recorded experience(s)",
+      "noFormalExperience": "No formal experience specified",
+      "projectFallback": "Project",
+      "atOrganization": "at {{org}}",
       "howYouPreferToProgress": "How You Prefer to Progress",
       "balancedDefault": "Balanced learning and delegation",
       "editProfile": "Edit Profile",

@@ -25,7 +25,7 @@ are localized correctness / data-quality items.
 | CI-10 | Monospace mapping undefined — numeric sites never rendered mono | P3 | design-intent divergence |
 | CI-11 | Product never loaded any declared font (root cause, fixed 2026-07) | Record | historical root cause |
 | CI-12 | Homepage display accents pin three families that never load | P3 | design-intent divergence |
-| CI-13 | Clarifier has no revise-answer (edit) capability | P3 | missing feature |
+| CI-13 | Clarifier has no revise-answer (edit) capability — **RESOLVED 2026-10-29** | P3 | missing feature |
 | CI-14 | Clarifier "Idea Journal" duplicates the first transcript bubble | P4 | redundant UI |
 | CI-15 | Two icon patterns in Phase 2: inlined vectors vs lucide library | P4 | consistency |
 | CI-16 | Clarifier finalize mapping is client-triggered — abandonment loses it | P2 | correctness / data-loss |
@@ -423,6 +423,29 @@ rendering, not design reference* when comparing against mockups.
 ---
 
 ## CI-13 — Clarifier has no revise-answer (edit) capability (P3)
+
+> **RESOLVED 2026-10-29** (commit `bcc71fbd`, "validate each answer with AI").
+> The fix took a different route than the truncate-and-re-ask design below,
+> because that design assumed later questions are a *chain* off earlier answers.
+> They are not: the six questions are a fixed script, so editing answer *N*
+> doesn't invalidate answers *N+1…6*, and nothing is truncated.
+>
+> - Each question now has a record in `Phase2Data.ClarifierAnswers`
+>   (status, attempts, raw answer, AI-extracted fields, user edits). Progress
+>   derives from these records, never from counting user messages.
+> - `PATCH /creator/journey/phase2/clarifier-answer/{n}`:
+>   - `mode: "answer"`: the AI re-judges the new text. A revise **or an AI
+>     failure** keeps the previous answer, so an unchecked edit never replaces a
+>     valid one.
+>   - `mode: "fields"`: direct edit of the extracted fields, no AI call.
+> - The transcript stays append-only. The latest bubble for a question shows that
+>   question's current answer.
+> - The client mirror of project fields was removed. The project changes only on
+>   finalize, so there is no stale mirror left to reset.
+> - Editing after a summary marks it stale (`ClarifierSummarizedAt`), and the UI
+>   offers "Regenerate summary" at the server-configured credit cost.
+>
+> The original analysis is kept below for history.
 
 **Missing feature.** The Phase 2 clarifier design places an edit icon on every
 user message, but no edit capability exists. The chat transcript is **append-only**:

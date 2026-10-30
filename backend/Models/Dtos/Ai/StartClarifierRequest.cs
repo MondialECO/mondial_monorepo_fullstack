@@ -8,6 +8,9 @@ namespace WebApp.Models.Dtos.Ai
         /// <summary>Optional source business idea to attach the session to.</summary>
         public string? BusinessIdeaId { get; set; }
 
+        /// <summary>ISO 639-1 language code (en, fr, etc.). Clarifier output will be generated in this language.</summary>
+        public string? Language { get; set; }
+
         /// <summary>The raw idea fields to clarify.</summary>
         [Required]
         public RawIdeaInput RawIdea { get; set; } = new();
@@ -40,6 +43,12 @@ namespace WebApp.Models.Dtos.Ai
 
         /// <summary>Founder-provided relevant experience or unfair advantage.</summary>
         public string? FounderAdvantage { get; set; }
+
+        /// <summary>
+        /// Raw-idea field names (e.g. "whyNow") whose clarifier topic ended weak. C-2 and Phase 3
+        /// must treat them as unconfirmed assumptions, never as confirmed answers.
+        /// </summary>
+        public List<string> UnconfirmedFields { get; set; } = new();
 
         /// <summary>Optional supporting reference/attachment URLs.</summary>
         public List<string> Attachments { get; set; } = new();

@@ -15,7 +15,7 @@ const CATEGORIES = ["SaaS", "AI Tool", "Marketplace", "Fintech", "HealthTech", "
 
 export default function ConceptNamePage() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { state, isLoading, error, refetch, setState } = useCreatorProgress();
 
   const nextPhases = [
@@ -55,7 +55,7 @@ export default function ConceptNamePage() {
     setNameError(null);
     setRegenerating(true);
     try {
-      const { names } = await creatorJourneyApi.nameSuggestions(concept);
+      const { names } = await creatorJourneyApi.nameSuggestions(concept, locale);
       if (names?.length) {
         setSuggestions(mapNames(names));
         setState((prev) => ({

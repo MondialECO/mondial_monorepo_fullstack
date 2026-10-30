@@ -66,8 +66,8 @@ export function RevenueAreaSvg({
     >
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0D9488" stopOpacity={0.25} />
-          <stop offset="100%" stopColor="#0D9488" stopOpacity={0.0} />
+          <stop offset="0%" stopColor="var(--forecast-teal)" stopOpacity={0.25} />
+          <stop offset="100%" stopColor="var(--forecast-teal)" stopOpacity={0.0} />
         </linearGradient>
       </defs>
 
@@ -75,10 +75,10 @@ export function RevenueAreaSvg({
       <path d={areaPath} fill={`url(#${gradId})`} />
 
       {/* Modelled solid curve (Months 1–12) */}
-      <path d={solidPath} fill="none" stroke="#0D9488" strokeWidth={2.4} strokeLinecap="round" />
+      <path d={solidPath} fill="none" stroke="var(--forecast-teal)" strokeWidth={2.4} strokeLinecap="round" />
 
       {/* Projected dashed curve (Months 12–36) */}
-      <path d={dashedPath} fill="none" stroke="#0D9488" strokeWidth={2.4} strokeDasharray="4 4" strokeLinecap="round" />
+      <path d={dashedPath} fill="none" stroke="var(--forecast-teal)" strokeWidth={2.4} strokeDasharray="4 4" strokeLinecap="round" />
 
       {/* Month 12 divider vertical line */}
       <line
@@ -99,7 +99,7 @@ export function RevenueAreaSvg({
       </text>
 
       {/* Break-even point marker on curve */}
-      <circle cx={beX} cy={beY} r={4.5} fill="#FFFFFF" stroke="#0D9488" strokeWidth={2.4} />
+      <circle cx={beX} cy={beY} r={4.5} fill="var(--popover)" stroke="var(--forecast-teal)" strokeWidth={2.4} />
 
       {/* Break-even floating badge */}
       <g transform={`translate(${Math.max(45, Math.min(width - 45, beX))}, ${Math.max(14, beY - 12)})`}>
@@ -109,8 +109,8 @@ export function RevenueAreaSvg({
           width={84}
           height={16}
           rx={8}
-          fill="#FFFFFF"
-          stroke="#0D9488"
+          fill="var(--popover)"
+          stroke="var(--forecast-teal)"
           strokeWidth={1}
           className="dark:fill-slate-900 shadow-sm"
         />
@@ -166,10 +166,10 @@ export function CostVsRevenueCrossingSvg({
       aria-label={t('creator.phase3.forecast.charts.costVsRevAria', 'Cost vs revenue inflection point')}
     >
       {/* Total Cost Curve */}
-      <path d={costPath} fill="none" stroke="#505C8C" strokeWidth={2} strokeLinecap="round" />
+      <path d={costPath} fill="none" stroke="var(--forecast-slate-blue)" strokeWidth={2} strokeLinecap="round" />
 
       {/* Revenue Curve */}
-      <path d={revPath} fill="none" stroke="#0D9488" strokeWidth={2.5} strokeLinecap="round" />
+      <path d={revPath} fill="none" stroke="var(--forecast-teal)" strokeWidth={2.5} strokeLinecap="round" />
 
       {/* Drop line from intersection to baseline */}
       <line
@@ -177,15 +177,15 @@ export function CostVsRevenueCrossingSvg({
         y1={beY}
         x2={beX}
         y2={height - padBottom}
-        stroke="#0D9488"
+        stroke="var(--forecast-teal)"
         strokeWidth={1.4}
         strokeDasharray="2 2"
       />
 
       {/* Outer circle dot */}
-      <circle cx={beX} cy={beY} r={4.5} fill="#FFFFFF" stroke="#0D9488" strokeWidth={2.4} />
+      <circle cx={beX} cy={beY} r={4.5} fill="var(--popover)" stroke="var(--forecast-teal)" strokeWidth={2.4} />
       {/* Inner teal dot */}
-      <circle cx={beX} cy={beY} r={2} fill="#0D9488" />
+      <circle cx={beX} cy={beY} r={2} fill="var(--forecast-teal)" />
 
       {/* Floating pill badge */}
       <g transform={`translate(${Math.max(52, Math.min(width - 52, beX + 4))}, ${Math.max(12, beY - 14)})`}>
@@ -195,8 +195,8 @@ export function CostVsRevenueCrossingSvg({
           width={100}
           height={16}
           rx={4}
-          fill="#FFFFFF"
-          stroke="#CBD5E1"
+          fill="var(--popover)"
+          stroke="var(--forecast-slate-border)"
           strokeWidth={1}
           className="dark:fill-slate-900 dark:stroke-slate-700 shadow-sm"
         />
@@ -246,7 +246,7 @@ export function Cash36BarSvg({
         y1={baselineY}
         x2={width}
         y2={baselineY}
-        stroke="#CBD5E1"
+        stroke="var(--forecast-slate-border)"
         strokeWidth={1}
         className="dark:stroke-slate-700"
       />
@@ -260,23 +260,23 @@ export function Cash36BarSvg({
 
         let barH = 0;
         let barY = baselineY;
-        let fill = "#94A3B8";
+        let fill = "var(--forecast-slate-400)";
 
         if (!isDeficit) {
           barH = Math.max(2.5, Math.min(46, (cash / maxPos) * 46));
           barY = baselineY - barH;
           if (budgetRunsOutMonth && m < budgetRunsOutMonth) {
-            fill = "#94A3B8"; // initial budget cash
+            fill = "var(--forecast-slate-400)"; // initial budget cash
           } else {
-            fill = "#0D9488"; // profitable cash
+            fill = "var(--forecast-teal)"; // profitable cash
           }
         } else {
           barH = Math.max(3, Math.min(46, (Math.abs(cash) / maxNeg) * 46));
           barY = baselineY;
           if (m === lowestCashMonth) {
-            fill = "#D97706"; // highlight lowest cash
+            fill = "var(--forecast-amber-600)"; // highlight lowest cash
           } else {
-            fill = "#965F11"; // deficit amber
+            fill = "var(--dr-yellow)"; // deficit amber
           }
         }
 
@@ -308,7 +308,7 @@ export function Cash36BarSvg({
                   y1={baselineY}
                   x2={cx}
                   y2={baselineY + 34}
-                  stroke="#965F11"
+                  stroke="var(--dr-yellow)"
                   strokeWidth={1}
                   strokeDasharray="2 2"
                   className="dark:stroke-amber-400"
@@ -316,7 +316,8 @@ export function Cash36BarSvg({
                 <text
                   x={textX}
                   y={baselineY + 46}
-                  className="text-[9px] font-sans font-semibold fill-[#965F11] dark:fill-amber-400"
+                  style={{ fill: "var(--dr-yellow)" }}
+                  className="text-[9px] font-sans font-semibold dark:fill-amber-400"
                 >
                   {t('creator.phase3.forecast.charts.budgetRunsOut', 'Budget runs out · M{{month}}', { month: budgetRunsOutMonth })}
                 </text>
@@ -339,7 +340,7 @@ export function Cash36BarSvg({
                   y1={baselineY}
                   x2={cx}
                   y2={baselineY - 30}
-                  stroke="#0D9488"
+                  stroke="var(--forecast-teal)"
                   strokeWidth={1}
                   strokeDasharray="2 2"
                   className="dark:stroke-teal-400"
@@ -347,7 +348,8 @@ export function Cash36BarSvg({
                 <text
                   x={textX}
                   y={baselineY - 36}
-                  className="text-[9px] font-sans font-semibold fill-[#0D9488] dark:fill-teal-400"
+                  style={{ fill: "var(--forecast-teal)" }}
+                  className="text-[9px] font-sans font-semibold dark:fill-teal-400"
                 >
                   {t('creator.phase3.forecast.charts.cashPositive', 'Cash positive · M{{month}}', { month: cashPositiveMonth })}
                 </text>

@@ -135,7 +135,13 @@ namespace WebApp.Models.DatabaseModels
         /// <summary>Only "already_have_idea" is accepted. "needs_discovery" is removed.</summary>
         public string SelectedEntryPath { get; set; }
         public List<CreatorChatMessage> ChatMessages { get; set; } = new();
+
+        /// <summary>One record per clarifier question (1–6). Progress derives from these, never from counting user messages.</summary>
+        public List<ClarifierAnswer> ClarifierAnswers { get; set; } = new();
         public string ClarifierSessionId { get; set; }
+
+        /// <summary>When the last C-2 result was mapped onto the project. An answer updated after this means the summary is stale.</summary>
+        public DateTime? ClarifierSummarizedAt { get; set; }
 
         // Discovery path working state (independent, additive, additive, never touch existing fields above).
         public CreatorDiscoveryInputs DiscoveryInputs { get; set; }
@@ -149,6 +155,39 @@ namespace WebApp.Models.DatabaseModels
         public string Sender { get; set; } // "ai" | "user"
         public string Text { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+
+        /// <summary>"question" | "followup" | "ack" for AI turns ("feedback" on older ones); null on user turns and legacy messages.</summary>
+        public string? Kind { get; set; }
+        /// <summary>Clarifier topic index (1–6) the message asks about or answers.</summary>
+        public int? QuestionIndex { get; set; }
+        /// <summary>Tappable answer options offered with an AI follow-up.</summary>
+        public List<string>? Chips { get; set; }
+    }
+
+    /// <summary>Stored topic status. Topic states: no record = empty, Pending = unclear, AcceptedWeak = weak, Accepted = clear.</summary>
+    public static class ClarifierAnswerStatus
+    {
+        public const string Pending = "pending";
+        public const string Accepted = "accepted";
+        /// <summary>Thin answer accepted to move on (follow-up used up, or AI unavailable). Flows to C-2 flagged as unconfirmed.</summary>
+        public const string AcceptedWeak = "accepted_weak";
+
+        public static bool IsDone(string? status) => status == Accepted || status == AcceptedWeak;
+    }
+
+    public class ClarifierAnswer
+    {
+        public int QuestionIndex { get; set; }
+        public string Status { get; set; } = ClarifierAnswerStatus.Pending;
+        public int Attempts { get; set; }
+        public string RawAnswer { get; set; } = string.Empty;
+        public Dictionary<string, string> AiExtracted { get; set; } = new();
+        /// <summary>Direct user edits of the extracted fields; wins over <see cref="AiExtracted"/> per key.</summary>
+        public Dictionary<string, string>? UserEdited { get; set; }
+        public string? Language { get; set; }
+        /// <summary>True once this topic's single AI follow-up has been asked.</summary>
+        public bool FollowUpUsed { get; set; }
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
     public class CreatorDiscoveryInputs

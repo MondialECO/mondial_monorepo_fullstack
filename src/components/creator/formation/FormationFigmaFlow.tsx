@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -53,13 +53,13 @@ export function FormationFigmaFlow({
   // -------------------------------------------------------------
   // SECTION 3: Starting Plan Mode ('solo' | 'team' | 'undecided')
   // -------------------------------------------------------------
-  const initialMode = useMemo<'solo' | 'team' | 'undecided'>(() => {
+  const initialMode = (() => {
     if (formation.startingMode) return formation.startingMode;
     if (formation.cofounderDraft?.roleNeeded) return 'team';
     if (formation.recommendedType === 'SAS-U') return 'solo';
     if (formation.recommendedType === 'SAS') return 'team';
     return 'solo';
-  }, [formation]);
+  })() as 'solo' | 'team' | 'undecided';
 
   const [startingMode, setStartingMode] = useState<'solo' | 'team' | 'undecided'>(initialMode);
   const [isModeExplicit, setIsModeExplicit] = useState<boolean>(Boolean(formation.startingMode));
@@ -72,7 +72,7 @@ export function FormationFigmaFlow({
   const displayStructureCode = currentStructureCode === 'SAS-U' ? 'SASU' : currentStructureCode;
 
   // Dynamic recommendation factors (reasons why it fits)
-  const fitReasons = useMemo(() => {
+  const fitReasons = (() => {
     if (formation.recommendationFactors && formation.recommendationFactors.length > 0) {
       return formation.recommendationFactors.slice(0, 3).map((f) => f.implication);
     }
@@ -83,7 +83,7 @@ export function FormationFigmaFlow({
       t('creator.phase3.formation.buildingToGrowReason', 'You’re building a company designed to grow.'),
       t('creator.phase3.formation.addInvestorsReason', 'You may want to add investors or shareholders later.'),
     ];
-  }, [formation.recommendationFactors, startingMode, t]);
+  })();
 
   // -------------------------------------------------------------
   // SECTION 5: Ownership Split
@@ -106,20 +106,20 @@ export function FormationFigmaFlow({
   // -------------------------------------------------------------
   // SECTION 7: Starting Capital Plan
   // -------------------------------------------------------------
-  const initialCapitalValue = useMemo(() => {
+  const initialCapitalValue = (() => {
     const opex = formation.forecastBasis?.opex;
     if (opex && opex > 0) {
       return Math.max(1000, Math.round((opex * 2) / 1000) * 1000);
     }
     return 5000;
-  }, [formation.forecastBasis?.opex]);
+  })();
 
-  const currencySymbol = useMemo(() => {
+  const currencySymbol = (() => {
     const c = formation.forecastBasis?.currency?.toUpperCase();
     if (c === 'USD' || c === '$') return '$';
     if (c === 'GBP' || c === '£') return '£';
     return '€';
-  }, [formation.forecastBasis?.currency]);
+  })();
 
   const [isCapitalInteracted, setIsCapitalInteracted] = useState<boolean>(
     formation.capitalConfirmed != null || formation.capitalAmount != null
@@ -135,19 +135,19 @@ export function FormationFigmaFlow({
   // -------------------------------------------------------------
   // SECTION 8 & 9: Skills & Team Composition
   // -------------------------------------------------------------
-  const youCanHandleItems = useMemo(() => {
+  const youCanHandleItems = (() => {
     if (formation.youHave && formation.youHave.length > 0) {
       return formation.youHave;
     }
     return ['Product direction', 'Customer research', 'Basic marketing'];
-  }, [formation.youHave]);
+  })();
 
-  const youMayNeedHelpItems = useMemo(() => {
+  const youMayNeedHelpItems = (() => {
     if (formation.youNeed && formation.youNeed.length > 0) {
       return formation.youNeed.map((g) => g.label);
     }
     return ['Backend development', 'Accounting setup', 'Legal review'];
-  }, [formation.youNeed]);
+  })();
 
   const notNeededYetItems = [
     'Full-time sales employee',

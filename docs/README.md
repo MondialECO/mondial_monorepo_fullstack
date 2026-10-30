@@ -41,9 +41,19 @@ docs/
 │   ├── USER_GUIDE.md              # High-level platform user guide
 │   └── issues/                    # Active architectural issue analyses
 │
-└── archive/                       # Historical Reference & Pre-Consolidation Audits
-    ├── README.md                  # Historical disclaimer & archive catalog
-    └── ...                        # Preserved legacy audits and implementation logs
+├── archive/                       # Historical Reference & Pre-Consolidation Audits
+│   ├── README.md                  # Historical disclaimer & archive catalog
+│   └── ...                        # Preserved legacy audits and implementation logs
+│
+├── implementation/                # Feature Implementation Guides (Current Development)
+│   ├── clarifier-phase2-guide.md  # Phase 2 AI Idea Clarifier (language, layout, SignalR transport)
+│   ├── clarifier-topic-flow-plan.md # Clarifier topic flow — approved spec, decisions, verification
+│   └── ...                        # Future phase implementations
+│
+└── testing/                       # Feature Testing & QA Validation Plans
+    ├── clarifier-websocket-integration.md  # Clarifier hub/HTTP parity, concurrency & error scenarios
+    ├── clarifier-qa-validation.md          # Fill-in QA report for those scenarios
+    └── ...                                 # Future test specifications
 ```
 
 ---
@@ -85,7 +95,25 @@ The [operations/](operations/) directory provides hands-on engineering runbooks:
 
 ---
 
-## 4. Historical Archive
+## 4. Implementation Guides (Active Development)
+
+The [implementation/](implementation/) directory documents in-flight feature implementations:
+
+- **[Phase 2 Clarifier Guide](implementation/clarifier-phase2-guide.md):** AI Idea Clarifier — 6 AI-validated questions, language support (EN/FR; the language only reaches the AI since `c11fbcab`, not yet live-verified), chat UI layout, C-2 summary, and the SignalR transport (`/hubs/clarifier`) that shares one turn runner with the HTTP endpoint. Includes API contracts and modified files.
+- **[Clarifier Topic Flow](implementation/clarifier-topic-flow-plan.md):** *Approved & implemented 2026-10-31.* Open opener, 6 AI-judged topics with four states, base questions and one follow-up per topic; topic rules with calibration examples, decisions D1–D8 and amendments, verification status.
+
+---
+
+## 5. Testing & QA (Feature Validation)
+
+The [testing/](testing/) directory contains comprehensive test specifications and QA validation:
+
+- **[Clarifier Real-time Scenarios](testing/clarifier-websocket-integration.md):** Connection, hub-vs-HTTP turn parity, streaming display, optimistic concurrency, language and error scenarios. Scenarios only — automated tests not yet written.
+- **[Clarifier QA Validation Report](testing/clarifier-qa-validation.md):** Fill-in QA report for those scenarios, with setup steps and sign-off.
+
+---
+
+## 6. Historical Archive
 
 The [archive/](archive/) directory preserves point-in-time implementation reports, early codebase audits, and scratch files. All archived documents are clearly marked as non-normative. See [archive/README.md](archive/README.md) for the catalog.
 
@@ -94,5 +122,6 @@ The [archive/](archive/) directory preserves point-in-time implementation report
 ## Documentation Governance Rules
 
 1. **One Topic, One Authority:** Consult [DOCUMENTATION-AUTHORITY.md](DOCUMENTATION-AUTHORITY.md) before writing or updating documentation to avoid duplication.
-2. **Code is Ground Truth:** Technical documentation must strictly reflect working repository code. Future product ideas belong in `docs/product/blueprints/`.
+2. **Code is Ground Truth:** Technical documentation must strictly reflect working repository code. Future product ideas belong in `docs/product/blueprints/`. Feature implementations belong in `docs/implementation/`.
 3. **Keep Docs Clean:** Never commit temporary audit reports, raw model scratchpads, or duplicate extracts to the active documentation trees.
+4. **Implementation Guides:** New features should include a corresponding guide in `docs/implementation/` documenting the feature, affected files, API contracts, testing checklist, and dependencies (especially for multi-phase features).

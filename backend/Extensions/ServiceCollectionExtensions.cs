@@ -37,6 +37,7 @@ public static class ServiceCollectionExtensions
 
         // Creator journey (Phases 2–6 source of truth; derived-status engine)
         services.AddScoped<ICreatorJourneyService, CreatorJourneyService>();
+        services.AddScoped<IClarifierChatTurnRunner, ClarifierChatTurnRunner>();
 
         // Maintained Phase 4 resource/GTM benchmarks. A single resolver owns sector
         // normalization and fallback behavior for both reads and calculations.

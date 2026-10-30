@@ -1,7 +1,7 @@
 "use client";
 import { useTranslation } from "@/hooks/useTranslation";
 
-import React, { useState, useEffect, useMemo, useTransition } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import {
   BrandKit,
   BrandTypography,
@@ -189,26 +189,18 @@ export function TypographySystemModal({
     }
   };
 
-  const roles = useMemo(() => localTypography.roles ?? [], [localTypography]);
+  const roles = localTypography.roles ?? [];
   const regenerateCount = localTypography.regenerateCount ?? 0;
   const isCapExhausted = regenerateCount >= 3;
 
   // Brand Name & Tagline from strategy
-  const brandName = useMemo(() => {
-    return (
-      kit.strategy?.nameDisplayForm ||
-      kit.strategy?.businessName ||
-      "Mondial"
-    );
-  }, [kit]);
+  const brandName = kit.strategy?.nameDisplayForm ||
+    kit.strategy?.businessName ||
+    "Mondial";
 
-  const brandTagline = useMemo(() => {
-    return (
-      kit.strategy?.positioning?.value ||
-      kit.strategy?.concept?.value ||
-      "Get paid without the awkward email"
-    );
-  }, [kit]);
+  const brandTagline = kit.strategy?.positioning?.value ||
+    kit.strategy?.concept?.value ||
+    "Get paid without the awkward email";
 
   // Selected display and text families
   const displayFamilyName =

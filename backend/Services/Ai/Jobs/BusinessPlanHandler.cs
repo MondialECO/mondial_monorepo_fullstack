@@ -325,7 +325,10 @@ namespace WebApp.Services.Ai.Jobs
             if (sessionId != null)
             {
                 // Append-only: preserve all prior versions (locked C-3 decision #5).
-                await _sessions.AppendGeneratedVersionAsync(sessionId, contract, request.Id);
+                var builtFrom = request.InputPayload != null
+                    && request.InputPayload.TryGetValue("clarifierSessionId", out var cid) && cid.IsString && cid.AsString.Length > 0
+                    ? cid.AsString : null;
+                await _sessions.AppendGeneratedVersionAsync(sessionId, contract, request.Id, new Phase3VersionSource(builtFrom));
 
                 // Reuse AIInsights so the result surfaces in GET /ai/insights.
                 await _insights.WriteAsync(new AiInsight

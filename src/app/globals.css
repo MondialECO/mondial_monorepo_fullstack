@@ -209,6 +209,17 @@
   --p9-bullet-gray: rgba(0, 0, 0, 0.08);
   --p9-bullet-gray-dot: rgba(0, 0, 0, 0.2);
   --p9-connector-bg: rgba(0, 0, 0, 0.08);
+
+  /* Phase 3 — Forecast Charts design tokens (Figma) */
+  --forecast-teal: #0D9488;
+  --forecast-slate-blue: #505C8C;
+  --forecast-slate-400: #94A3B8;
+  --forecast-amber-600: #D97706;
+  --forecast-slate-border: #CBD5E1;
+
+  /* Phase 3 — Business Plan Chart design tokens (Figma) */
+  --chart-revenue-dark: #1a47c3;
+  --chart-opex: #747685;
 }
 
 .dark {
@@ -289,6 +300,17 @@
   --p8-green: #34d399;
   --p8-green-dark: #10b981;
   --p8-blue-dark: #60a5fa;
+
+  /* Phase 3 — Forecast Charts design tokens (dark) */
+  --forecast-teal: #14b8a6;
+  --forecast-slate-blue: #64748b;
+  --forecast-slate-400: #cbd5e1;
+  --forecast-amber-600: #f59e0b;
+  --forecast-slate-border: #475569;
+
+  /* Phase 3 — Business Plan Chart design tokens (dark) */
+  --chart-revenue-dark: #60a5fa;
+  --chart-opex: #94a3b8;
 }
 
 /* Service Provider workspace is intentionally light-only. These route-scoped

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BrandKit, BrandStrategy } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
@@ -301,42 +301,39 @@ export function BrandStudioShell({
   // 4. Modal Openers:
   // - handleEditModal: Clicked from an "Edit" button on the edit page.
   //   Opens ONLY that specific modal. When completed or closed, returns directly to the edit page.
-  const handleEditModal = useCallback((modalKey: StudioModalKey) => {
+  const handleEditModal = (modalKey: StudioModalKey) => {
     setIsSequentialFlow(false);
     setActiveModal(modalKey);
-  }, []);
+  };
 
   // - handleCreateModal: Clicked from an incomplete section or setup launcher.
   //   Activates the sequential creation workflow so modals advance one after another.
-  const handleCreateModal = useCallback((modalKey: StudioModalKey) => {
+  const handleCreateModal = (modalKey: StudioModalKey) => {
     setIsSequentialFlow(true);
     setActiveModal(modalKey);
-  }, []);
+  };
 
   const handleOpenModal = handleEditModal;
 
   // 5. Unified Modal Step Transition Handler
-  const handleStepTransition = useCallback(
-    (nextModalKey: StudioModalKey | null, updatedKit?: BrandKit) => {
-      if (updatedKit) {
-        setKit(updatedKit);
-      }
-      if (nextModalKey === null) {
-        setIsSequentialFlow(false);
-        setActiveModal(null);
-        return;
-      }
-      setActiveModal(nextModalKey);
-    },
-    []
-  );
+  const handleStepTransition = (nextModalKey: StudioModalKey | null, updatedKit?: BrandKit) => {
+    if (updatedKit) {
+      setKit(updatedKit);
+    }
+    if (nextModalKey === null) {
+      setIsSequentialFlow(false);
+      setActiveModal(null);
+      return;
+    }
+    setActiveModal(nextModalKey);
+  };
 
   // Authoritative BrandKit state synchronization callback for child modal mutations
-  const handleKitUpdated = useCallback((updatedKit: BrandKit) => {
+  const handleKitUpdated = (updatedKit: BrandKit) => {
     if (updatedKit && typeof updatedKit.version === "number") {
       setKit(updatedKit);
     }
-  }, []);
+  };
 
   const handleStrategyConfirm = async (updatedStrategy: Partial<BrandStrategy>) => {
     if (!kit) return;
@@ -422,79 +419,76 @@ export function BrandStudioShell({
 
   // Canonical 6 Lockup Variation Definitions
   const logoVariations = kit?.logo?.variations ?? {};
-  const canonicalVariations = useMemo(
-    () => [
-      {
-        key: "primary",
-        label: "HORIZONTAL",
-        subtitle: "Default lockup",
-        uri:
-          logoVariations.horizontal?.svgUri ||
-          logoVariations.primary?.svgUri ||
-          approvedConcept?.lockupAssetUri ||
-          approvedConcept?.markAssetUri,
-        isDarkBg: false,
-        isCheckerboard: false,
-      },
-      {
-        key: "stacked",
-        label: "STACKED",
-        subtitle: "Square lockup",
-        uri:
-          logoVariations.stacked?.svgUri ||
-          logoVariations.secondary?.svgUri ||
-          approvedConcept?.lockupAssetUri ||
-          approvedConcept?.markAssetUri,
-        isDarkBg: false,
-        isCheckerboard: false,
-      },
-      {
-        key: "icon_only",
-        label: "ICON-ONLY",
-        subtitle: "Favicons & Avatars",
-        uri:
-          logoVariations.icon_only?.svgUri ||
-          logoVariations.monogram?.svgUri ||
-          approvedConcept?.markAssetUri,
-        isDarkBg: false,
-        isCheckerboard: false,
-      },
-      {
-        key: "black",
-        label: "BLACK",
-        subtitle: "Single-ink dark",
-        uri:
-          logoVariations.black?.svgUri ||
-          logoVariations.inverted_dark?.svgUri ||
-          approvedConcept?.lockupAssetUri,
-        isDarkBg: false,
-        isCheckerboard: false,
-      },
-      {
-        key: "white",
-        label: "WHITE",
-        subtitle: "Reverse on dark",
-        uri:
-          logoVariations.white?.svgUri ||
-          logoVariations.inverted_light?.svgUri ||
-          approvedConcept?.lockupAssetUri,
-        isDarkBg: true,
-        isCheckerboard: false,
-      },
-      {
-        key: "transparent",
-        label: "TRANSPARENT",
-        subtitle: "Alpha channel",
-        uri:
-          logoVariations.transparent?.svgUri ||
-          logoVariations.badge_stamp?.svgUri ||
-          approvedConcept?.lockupAssetUri,
-        isDarkBg: false,
-        isCheckerboard: true,
-      },
-    ],
-    [logoVariations, approvedConcept]
-  );
+  const canonicalVariations = [
+    {
+      key: "primary",
+      label: "HORIZONTAL",
+      subtitle: "Default lockup",
+      uri:
+        logoVariations.horizontal?.svgUri ||
+        logoVariations.primary?.svgUri ||
+        approvedConcept?.lockupAssetUri ||
+        approvedConcept?.markAssetUri,
+      isDarkBg: false,
+      isCheckerboard: false,
+    },
+    {
+      key: "stacked",
+      label: "STACKED",
+      subtitle: "Square lockup",
+      uri:
+        logoVariations.stacked?.svgUri ||
+        logoVariations.secondary?.svgUri ||
+        approvedConcept?.lockupAssetUri ||
+        approvedConcept?.markAssetUri,
+      isDarkBg: false,
+      isCheckerboard: false,
+    },
+    {
+      key: "icon_only",
+      label: "ICON-ONLY",
+      subtitle: "Favicons & Avatars",
+      uri:
+        logoVariations.icon_only?.svgUri ||
+        logoVariations.monogram?.svgUri ||
+        approvedConcept?.markAssetUri,
+      isDarkBg: false,
+      isCheckerboard: false,
+    },
+    {
+      key: "black",
+      label: "BLACK",
+      subtitle: "Single-ink dark",
+      uri:
+        logoVariations.black?.svgUri ||
+        logoVariations.inverted_dark?.svgUri ||
+        approvedConcept?.lockupAssetUri,
+      isDarkBg: false,
+      isCheckerboard: false,
+    },
+    {
+      key: "white",
+      label: "WHITE",
+      subtitle: "Reverse on dark",
+      uri:
+        logoVariations.white?.svgUri ||
+        logoVariations.inverted_light?.svgUri ||
+        approvedConcept?.lockupAssetUri,
+      isDarkBg: true,
+      isCheckerboard: false,
+    },
+    {
+      key: "transparent",
+      label: "TRANSPARENT",
+      subtitle: "Alpha channel",
+      uri:
+        logoVariations.transparent?.svgUri ||
+        logoVariations.badge_stamp?.svgUri ||
+        approvedConcept?.lockupAssetUri,
+      isDarkBg: false,
+      isCheckerboard: true,
+    },
+  ];
 
   return (
     <div className="relative flex flex-col h-full min-h-0 w-full bg-[#EFEFF1] dark:bg-background overflow-hidden">

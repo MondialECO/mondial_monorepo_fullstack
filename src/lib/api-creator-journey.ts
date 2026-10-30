@@ -11,6 +11,8 @@
 import api from '@/lib/axios';
 import { notifyActiveIdeaChanged } from '@/lib/creator-tab-sync';
 import type {
+  ClarifierAnswer,
+  ClarifierChatMessage,
   JourneyResponse,
   JourneyOutputKey,
 } from '@/types/creator/journey-api';
@@ -209,10 +211,20 @@ export const creatorJourneyApi = {
 
   // ---- Phase 2 ----
 
-  chatMessage: async (message: string, ideaId?: string | null): Promise<ChatMessageResult> => {
-    const res = await api.post('/creator/journey/phase2/chat-message', { message }, withIdeaWrite(ideaId));
+  chatMessage: async (message: string, language: 'en' | 'fr' = 'en', ideaId?: string | null): Promise<ChatMessageResult> => {
+    const res = await api.post('/creator/journey/phase2/chat-message', { message, language }, withIdeaWrite(ideaId));
     rememberIdeaVersion(res, ideaId);
     return unwrap<ChatMessageResult>(res.data);
+  },
+
+  editClarifierAnswer: async (
+    questionIndex: number,
+    body: { mode: 'answer'; answer: string } | { mode: 'fields'; fields: Record<string, string> },
+    ideaId?: string | null,
+  ): Promise<EditClarifierAnswerResult> => {
+    const res = await api.patch(`/creator/journey/phase2/clarifier-answer/${questionIndex}`, body, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<EditClarifierAnswerResult>(res.data);
   },
 
   finalizeClarifier: async (sessionId: string, ideaId?: string | null): Promise<FinalizeClarifierResult> => {
@@ -221,8 +233,8 @@ export const creatorJourneyApi = {
     return unwrap<FinalizeClarifierResult>(res.data);
   },
 
-  nameSuggestions: async (concept: string): Promise<{ names: string[] }> => {
-    const res = await api.post('/creator/journey/phase2/name-suggestions', { concept });
+  nameSuggestions: async (concept: string, language: 'en' | 'fr' = 'en'): Promise<{ names: string[] }> => {
+    const res = await api.post('/creator/journey/phase2/name-suggestions', { concept, language });
     return unwrap<{ names: string[] }>(res.data);
   },
 
@@ -917,10 +929,25 @@ export interface Designer {
 }
 
 export interface ChatMessageResult {
-  messages: Array<{ id: string; sender: 'ai' | 'user'; text: string; timestamp: string }>;
-  questionIndex: number;
-  totalQuestions: number;
+  messages: ClarifierChatMessage[];
+  /** Topics that are clear or weak. */
+  doneCount: number;
+  totalTopics: number;
   summaryReady: boolean;
+  /** Topic (1–6) the AI just asked about; null when all are done. */
+  currentTopic: number | null;
+  aiUsed: boolean;
+  answers: ClarifierAnswer[];
+  aiText: string;
+  chips: string[] | null;
+}
+
+export interface EditClarifierAnswerResult {
+  verdict: 'accept' | 'revise';
+  feedback: string | null;
+  aiUsed: boolean;
+  answer: ClarifierAnswer;
+  answers: ClarifierAnswer[];
 }
 
 export interface FinalizeClarifierResult {
@@ -930,6 +957,8 @@ export interface FinalizeClarifierResult {
   aiRequestFailed?: boolean;
   clarityScore: number;
   project: Record<string, unknown>;
+  clarifierSessionId?: string | null;
+  clarifierSummarizedAt?: string | null;
 }
 
 export default creatorJourneyApi;

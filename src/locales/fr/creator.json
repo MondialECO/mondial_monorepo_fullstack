@@ -180,17 +180,17 @@
     "enteringClarifier": "Accès au clarificateur d'idées...",
     "clarifier": {
       "mainTitle": "Affinons votre idée",
-      "mainSubtitle": "Répondez à {{count}} questions ciblées. Notre IA analysera vos réponses et élaborera votre canevas de concept.",
-      "opener": "Bienvenue. Décrivez-moi votre idée — avec vos propres mots, même approximatifs. Quel problème résolvez-vous ?",
+      "mainSubtitle": "Décrivez votre idée avec vos propres mots. Notre IA ne pose des questions que sur ce qui manque parmi {{count}} thèmes, puis élabore votre canevas de concept.",
+      "opener": "Racontez-moi votre idée avec vos propres mots. Même si elle est encore brute, c'est parfait.",
       "title": "Clarificateur d'Idée IA",
-      "subtitle": "{{count}} questions ciblées pour affiner votre idée",
+      "subtitle": "{{count}} thèmes pour affiner votre idée",
       "stepLabels": {
-        "problem": "Problème",
-        "targetUsers": "Utilisateurs cibles",
-        "alternatives": "Alternatives",
-        "solution": "Solution",
-        "edge": "Différenciation & Atout",
-        "risk": "Timing & Risque clé"
+        "problem": "Le problème",
+        "targetUsers": "Qui le vit",
+        "alternatives": "Ce qu'ils utilisent aujourd'hui",
+        "solution": "Votre solution",
+        "edge": "Votre atout",
+        "risk": "Pourquoi maintenant + plus gros risque"
       },
       "ringBands": {
         "notStarted": "Non commencé",
@@ -212,15 +212,19 @@
       "finalizingTitle": "Clarification de votre idée en cours…",
       "finalizingSlow": "Toujours en cours — cela prend plus de temps que d'habitude. Veuillez patienter.",
       "finalizingNormal": "Analyse de vos réponses et calcul du score de clarté. Cela peut prendre un instant.",
-      "allQuestionsAnswered": "Toutes les questions sont répondues",
+      "allQuestionsAnswered": "Tous les thèmes sont couverts",
       "finalizeDesc": "La finalisation lance l'analyse IA pour évaluer la clarté de votre idée et élaborer votre canevas de concept, puis vous dirige vers votre synthèse. Vous n'avez pas terminé tant que vous n'avez pas finalisé.",
       "generateSummary": "Générer ma synthèse",
       "savingFinalAnswer": "Enregistrement de votre réponse finale…",
       "notDoneYet": "Vous n'avez pas encore terminé — finalisez pour sauvegarder votre score de clarté.",
       "finalizing": "Finalisation…",
-      "progressTitle": "Progression : Question {{current}} sur {{total}}",
-      "allQuestionsAnsweredCount": "Toutes les {{count}} questions répondues",
-      "unlocksAfter": "(Se débloque après Q{{num}})",
+      "progressTitle": "Progression : {{done}} thèmes couverts sur {{total}}",
+      "allQuestionsAnsweredCount": "Les {{count}} thèmes sont couverts",
+      "topicState": {
+        "unclear": "Il manque encore un peu de détail",
+        "weak": "Réponse légère"
+      },
+      "chipsLabel": "Réponses suggérées",
       "ideaJournal": "Journal de l'Idée",
       "journalDefault": "Votre idée affinée sera enregistrée ici automatiquement.",
       "copied": "Copié",
@@ -230,11 +234,34 @@
       "aiUnavailableError": "Le service d'IA est temporairement indisponible. Veuillez réessayer dans un instant.",
       "aiParseError": "Nous n'avons pas pu interpréter cela pour le moment. Veuillez réessayer ou reformuler votre idée.",
       "defaultIdeaName": "Mon Idée",
+      "editAiUnavailable": "Nous n'avons pas pu vérifier votre modification pour le moment, votre réponse précédente a été conservée. Veuillez réessayer dans un instant.",
+      "editNotAccepted":"Cette modification n'était pas assez précise, votre réponse précédente a été conservée. Réessayez ou annulez.",
+      "weakAnswerHint": "pas encore confirmée. Ajoutez des détails à tout moment pour la renforcer.",
+      "fieldsEditHint": "Enregistré tel quel, sans vérification par l'IA. Videz un champ pour revenir à la version de l'IA.",
+      "fieldSaveError": "Impossible d'enregistrer vos modifications. Veuillez réessayer.",
+      "save": "Enregistrer",
+      "regenerateSummary": "Régénérer la synthèse",
+      "creditCost": "{{count}} crédits",
+      "regenerateDesc": "Vous avez modifié des réponses depuis votre dernière synthèse. La régénération crée une nouvelle synthèse à partir de vos réponses mises à jour.",
+      "viewSummary": "Voir ma synthèse",
+      "viewSummaryDesc": "Votre synthèse est à jour avec ces réponses. Modifiez une réponse si vous en voulez une nouvelle.",
+      "summaryOutdated": "Vos réponses ont changé depuis la dernière synthèse.",
+      "fields": {
+        "problem": "Problème",
+        "targetUser": "Utilisateur cible",
+        "existingAlternatives": "Alternatives existantes",
+        "solution": "Solution",
+        "creatorEdge": "Votre atout",
+        "founderAdvantage": "Votre avantage",
+        "whyNow": "Pourquoi maintenant",
+        "riskiestAssumption": "Hypothèse la plus risquée"
+      },
       "aria": {
         "editAnswer": "Modifier votre réponse",
         "copyAnswer": "Copier votre réponse",
         "saveEdit": "Enregistrer la modification",
-        "sendAnswer": "Envoyer la réponse"
+        "sendAnswer": "Envoyer la réponse",
+        "editFields": "Modifier {{step}}"
       },
       "sr": {
         "errorPrefix": "Erreur : ",
@@ -291,6 +318,8 @@
       "emptyTitle": "Aucun résumé d'idée disponible",
       "emptySubtitle": "Complétez les questions du Clarificateur d'idées pour générer votre résumé structuré.",
       "goToClarifier": "Aller au Clarificateur",
+      "unconfirmedTag": "Non confirmé — réponse légère",
+      "fixIt": "Corriger",
       "synthesisComplete": "Synthèse terminée",
       "headerTitle": "Votre Idée - Premier brouillon.",
       "headerSubtitle": "Extrait de vos propres réponses. L'IA a fourni la structure — la propriété reste la vôtre.",
@@ -900,6 +929,20 @@
     "termsOfService": "Conditions d'utilisation"
   },
   "phase3": {
+    "thinAnswersBanner": {
+      "one": "1 de vos réponses était légère, ce résultat peut donc être moins précis.",
+      "many": "{{count}} de vos réponses étaient légères, ce résultat peut donc être moins précis.",
+      "review": "Les revoir"
+    },
+    "summaryStale": {
+      "message": "Vos réponses ont changé depuis votre synthèse.",
+      "action": "Mettez-la d'abord à jour"
+    },
+    "staleUpstream": {
+      "message": "Construit sur une version antérieure de vos réponses précédentes.",
+      "regenerate": "Régénérer",
+      "regenerateWithCost": "Régénérer ({{cost}} crédits)"
+    },
     "resuming": "Reprise de la Phase 3 : Intelligence du Business Plan...",
     "steps": {
       "marketStudy": "Étude de marché et analyse de faisabilité",
@@ -3215,6 +3258,7 @@
       "selectedRegion": "Région sélectionnée",
       "france": "France",
       "franceWithRegion": "France • {{region}}",
+      "regionInternational": "International / Autre",
       "regionNote": "Issu de votre adresse vérifiée — modifiez-la si ce n'est pas exact.",
       "situationTitle": "Que faites-vous actuellement ?",
       "situationSubtitle": "Sélectionnez l'activité qui occupe la majeure partie de votre temps en journée.",
@@ -3251,7 +3295,7 @@
         "social_media": "Réseaux sociaux",
         "graphic_design": "Design graphique",
         "coding": "Développement / Code",
-        "web_design": "Web design",
+        "web_design": "Conception web",
         "writing": "Rédaction",
         "video_editing": "Montage vidéo",
         "photography": "Photographie",
@@ -3303,19 +3347,23 @@
         },
         "company-before": {
           "title": "J'ai déjà créé une entreprise",
-          "desc": "J'ai été fondateur, cofondateur ou micro-entrepreneur."
+          "desc": "Je l'ai immatriculée et gérée."
+        },
+        "run-now": {
+          "title": "Je gère une activité en ce moment",
+          "desc": "J'ai déjà une activité en cours."
         }
       },
       "progressTitle": "Face à une compétence manquante, que préférez-vous ?",
       "progressPreferenceAria": "Préférence de progression",
       "progress": {
         "learn": {
-          "title": "Je veux apprendre moi-même",
-          "desc": "Un accompagnement pas à pas. Je ferai le travail."
+          "title": "Je préfère l'apprendre",
+          "desc": "Expliquez-moi, je m'y mettrai."
         },
         "delegate": {
-          "title": "Je veux déléguer ou recruter",
-          "desc": "Trouver le bon partenaire, service ou outil."
+          "title": "Je préfère le confier",
+          "desc": "Qu'un spécialiste s'en occupe."
         },
         "mixed": {
           "title": "Un peu des deux",
@@ -3323,7 +3371,7 @@
         },
         "help-me-decide": {
           "title": "Aidez-moi à décider",
-          "desc": "Indiquez-moi la solution la plus rapide ou judicieuse."
+          "desc": "Recommandez ce qui convient à chaque situation."
         }
       },
       "progressNote": "Vous pouvez modifier cela à tout moment — nous ferons le point au moment opportun.",
@@ -3455,6 +3503,10 @@
       "regionPrefix": "Région :",
       "businessExperienceCard": "Expérience entrepreneuriale",
       "noPreviousExperience": "Aucune expérience préalable enregistrée",
+      "recordedExperiences": "{{count}} expérience(s) enregistrée(s)",
+      "noFormalExperience": "Aucune expérience formelle indiquée",
+      "projectFallback": "Projet",
+      "atOrganization": "chez {{org}}",
       "howYouPreferToProgress": "Votre méthode de progression préférée",
       "balancedDefault": "Équilibre entre apprentissage et délégation",
       "editProfile": "Modifier le profil",

@@ -6,6 +6,9 @@ import { ArrowRight, ArrowLeft, CheckCircle2, AlertTriangle, Loader2 } from "luc
 import { Button } from "@/components/ui/button";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { useTranslation } from "@/hooks/useTranslation";
+import { UnconfirmedTag } from "@/components/creator/clarifier/UnconfirmedTag";
+import { effectiveFields, summaryIsStale, weakTopics } from "@/lib/clarifier-answers";
+import { useAiCredits } from "@/hooks/queries/creator-ai";
 
 export default function IdeaSummaryPage() {
   const router = useRouter();
@@ -53,17 +56,51 @@ export default function IdeaSummaryPage() {
   const progressionPercent =
     clarityScore >= 85 ? 100 : clarityScore >= 50 ? 66 : 33;
 
-  const canvasItems = [
+  // `topic` = the clarifier topic a card comes from; Concept and Market gap are C-2 syntheses of all topics.
+  const canvasItems: { title: string; value: string; topic?: number }[] = [
     { title: t("creator.phase2.ideaSummary.canvasConcept"), value: conceptVal },
-    { title: t("creator.phase2.ideaSummary.canvasTargetUser"), value: targetUserVal },
-    { title: t("creator.phase2.ideaSummary.canvasCoreProblem"), value: problemVal },
-    { title: t("creator.phase2.ideaSummary.canvasYourSolution"), value: solutionVal },
+    { title: t("creator.phase2.ideaSummary.canvasTargetUser"), value: targetUserVal, topic: 2 },
+    { title: t("creator.phase2.ideaSummary.canvasCoreProblem"), value: problemVal, topic: 1 },
+    { title: t("creator.phase2.ideaSummary.canvasYourSolution"), value: solutionVal, topic: 4 },
     { title: t("creator.phase2.ideaSummary.canvasMarketGap"), value: marketGapVal },
-    { title: t("creator.phase2.ideaSummary.canvasYourEdge"), value: edgeVal },
+    { title: t("creator.phase2.ideaSummary.canvasYourEdge"), value: edgeVal, topic: 5 },
   ];
 
+  // Unconfirmed markers come from the live topic status, never from a saved snapshot.
+  const answers = state.journeyState?.phase2?.clarifierAnswers;
+  const weak = new Set(weakTopics(answers));
+  const ideaId = state.activeIdeaId;
+  // Weak topics without a canvas card (What they use now, Why now + biggest risk) get their own row.
+  const extraWeakRows = [3, 6]
+    .filter((topic) => weak.has(topic))
+    .map((topic) => {
+      const answer = answers?.find((a) => a.questionIndex === topic);
+      return {
+        topic,
+        title: t(topic === 3 ? "creator.phase2.clarifier.stepLabels.alternatives" : "creator.phase2.clarifier.stepLabels.risk"),
+        value: answer ? Object.values(effectiveFields(answer)).join(" · ") : "",
+      };
+    });
+
+  // Same stale rule as the clarifier CTA: an answer changed after the last summary.
+  const phase2 = state.journeyState?.phase2;
+  const summaryStale = !!phase2?.clarifierSessionId && summaryIsStale(answers ?? [], phase2?.clarifierSummarizedAt);
+  const { data: credits } = useAiCredits();
+  const clarifierCost = credits?.costs?.IdeaClarifier;
+  const clarifierHref = (extra?: Record<string, string>) => {
+    const params = new URLSearchParams(extra);
+    if (ideaId) params.set("ideaId", ideaId);
+    const qs = params.toString();
+    return `/dashboard/creator/phase-2/clarifier${qs ? `?${qs}` : ""}`;
+  };
+
   const handleRevisit = () => {
-    router.push("/dashboard/creator/phase-2/clarifier");
+    router.push(clarifierHref());
+  };
+
+  // Explicit click only: the clarifier starts the C-2 regenerate on arrival (spends credits).
+  const handleRegenerate = () => {
+    router.push(clarifierHref({ regenerate: "1" }));
   };
 
   const handleContinue = () => {
@@ -152,6 +189,24 @@ export default function IdeaSummaryPage() {
               </p>
             </div>
 
+            {summaryStale && (
+              <div
+                role="status"
+                className="flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3"
+                style={{ backgroundColor: "var(--dr-bg-yellow)", borderColor: "var(--dr-yellow)" }}
+              >
+                <AlertTriangle className="size-4 shrink-0" style={{ color: "var(--dr-yellow)" }} aria-hidden="true" />
+                <p className="flex-1 min-w-0 text-body" style={{ color: "var(--foreground)" }}>
+                  {t("creator.phase2.clarifier.summaryOutdated")}
+                </p>
+                <Button size="sm" onClick={handleRegenerate}>
+                  {clarifierCost
+                    ? `${t("creator.phase2.clarifier.regenerateSummary")} (${t("creator.phase2.clarifier.creditCost", { count: clarifierCost })})`
+                    : t("creator.phase2.clarifier.regenerateSummary")}
+                </Button>
+              </div>
+            )}
+
             {/* ── Summary card (grid + metrics) ── */}
             <div
               className="rounded-2xl border shadow-sm p-4 sm:p-6 flex flex-col gap-6"
@@ -171,9 +226,32 @@ export default function IdeaSummaryPage() {
                     <p className="text-body leading-relaxed line-clamp-2" style={{ color: "var(--muted-foreground)" }}>
                       {block.value}
                     </p>
+                    {block.topic && weak.has(block.topic) && <UnconfirmedTag topic={block.topic} ideaId={ideaId} />}
                   </div>
                 ))}
               </div>
+
+              {extraWeakRows.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {extraWeakRows.map((row) => (
+                    <div
+                      key={row.topic}
+                      className="rounded-xl border px-4 py-3 flex flex-col gap-1.5"
+                      style={{ backgroundColor: "var(--popover)", borderColor: "var(--stroke-10)" }}
+                    >
+                      <span className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
+                        {row.title}
+                      </span>
+                      {row.value && (
+                        <p className="text-body leading-relaxed line-clamp-2" style={{ color: "var(--muted-foreground)" }}>
+                          {row.value}
+                        </p>
+                      )}
+                      <UnconfirmedTag topic={row.topic} ideaId={ideaId} />
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Metrics card */}
               <div
@@ -261,6 +339,11 @@ export default function IdeaSummaryPage() {
                 </div>
               </div>
             </div>
+
+            <Button variant="outline" onClick={handleRevisit} className="self-start rounded-xl gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              {t("creator.phase2.ideaSummary.revisitClarifier")}
+            </Button>
 
             {/* ── Continue CTA (pill-in-pill) ── */}
             <div className="rounded-full p-2" style={{ backgroundColor: "var(--card)" }}>

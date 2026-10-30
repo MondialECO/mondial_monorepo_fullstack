@@ -11,6 +11,7 @@ using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos;
 using WebApp.Services;
+using WebApp.Services.Ai;
 using WebApp.Services.Implementations;
 using WebApp.Services.Interface;
 using WebApp.Services.Repository.Ai;
@@ -33,21 +34,13 @@ namespace WebApp.Controllers
         private readonly SaveFile _saveFile;
         private readonly IConnectionMultiplexer? _redis;
 
-        // The conversational clarifier asks six focused questions. The script lives
-        // here; the underlying C-2 session contract is unchanged.
-        private static readonly string[] Questions =
-        {
-            "In one sentence, what problem are you solving?",
-            "Who feels this problem most acutely — describe your target user.",
-            "How do they cope today? What are the existing alternatives?",
-            "What's your proposed solution, in a sentence or two?",
-            "What makes your approach different or better, and what relevant experience or advantage do you bring?",
-            "Why is this important now, and what's the single riskiest assumption you're making?",
-        };
+        private const int MaxAnswerLength = 4000;
 
         private readonly MongoDbContext _context;
         private readonly IChatService _chat;
         private readonly ISpMatchingService _spMatching;
+        private readonly IClarifierTurnService _clarifierTurns;
+        private readonly IClarifierChatTurnRunner _chatTurns;
         private readonly ICompanySearchService? _companySearch;
 
         public CreatorPhase2Controller(
@@ -57,15 +50,19 @@ namespace WebApp.Controllers
             MongoDbContext context,
             IChatService chat,
             ISpMatchingService spMatching,
+            IClarifierTurnService clarifierTurns,
+            IClarifierChatTurnRunner chatTurns,
             IServiceProvider services,
             ICompanySearchService? companySearch = null)
         {
+            _chatTurns = chatTurns;
             _journeys = journeys;
             _clarifier = clarifier;
             _saveFile = saveFile;
             _context = context;
             _chat = chat;
             _spMatching = spMatching;
+            _clarifierTurns = clarifierTurns;
             _companySearch = companySearch;
             // Optional: null in dev when Redis is disabled. Lifetime counters then
             // fall back to permissive (we never block the only entry path on infra).
@@ -77,36 +74,89 @@ namespace WebApp.Controllers
             ?? throw new UnauthorizedAccessException("User not authenticated");
 
         // POST /api/creator/journey/phase2/chat-message
-        // Rate-limited via the shared "ai" policy. Persists the user message and the
-        // next scripted question to the journey, so resume-after-abandon works.
+        // Rate-limited via the shared "ai" policy. The AI judges the answer to the current
+        // question (free; C-2 still carries the only credit). Revise keeps the question,
+        // accept moves on. The user message is persisted before the AI call so it survives
+        // an AI failure; the answer records + AI reply land in one versioned write.
         [HttpPost("chat-message")]
         [EnableRateLimiting("ai")]
-        public async Task<IActionResult> ChatMessage([FromBody] ChatMessageRequest request, [FromQuery] string ideaId = null)
+        public async Task<IActionResult> ChatMessage([FromBody] ChatMessageRequest request, [FromQuery] string ideaId = null, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var result = await _chatTurns.RunAsync(GetUserId(), request?.Message, request?.Language, ideaId, cancellationToken);
+                return Ok(ApiResponse.Ok("Message received", result));
+            }
+            catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
+            catch (Exception ex) { return StatusCode(500, ApiResponse.Error(ex.Message, HttpContext.TraceIdentifier)); }
+        }
+
+        // PATCH /api/creator/journey/phase2/clarifier-answer/{questionIndex}
+        // Edit a FINISHED answer. mode "answer": new raw text, re-judged by the AI (a revise keeps
+        // the old answer and returns feedback). mode "fields": direct edit of the extracted fields,
+        // no AI call; an empty value clears that edit. Never appends to the chat transcript.
+        [HttpPatch("clarifier-answer/{questionIndex:int}")]
+        [EnableRateLimiting("ai")]
+        public async Task<IActionResult> EditClarifierAnswer(int questionIndex, [FromBody] EditClarifierAnswerRequest request,
+            [FromQuery] string ideaId = null, CancellationToken cancellationToken = default)
         {
             try
             {
                 var userId = GetUserId();
-                if (string.IsNullOrWhiteSpace(request?.Message))
-                    return BadRequest(ApiResponse.Error("Message is required."));
+                if (questionIndex < 1 || questionIndex > ClarifierScript.TotalTopics)
+                    return BadRequest(ApiResponse.Error("Unknown topic."));
 
-                var journey = await _journeys.AppendChatMessageAsync(userId, "user", request.Message.Trim(), ideaId);
+                var current = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
+                var answers = ClarifierScript.GetAnswers(current.Phase2Data);
+                var answer = answers.FirstOrDefault(a => a.QuestionIndex == questionIndex);
+                if (answer == null || !ClarifierAnswerStatus.IsDone(answer.Status))
+                    return Conflict(ApiResponse.Error("Only finished topics can be edited."));
 
-                // Count user turns to drive the 6-question progression.
-                var userTurns = journey.Phase2Data?.ChatMessages?.Count(m => m.Sender == "user") ?? 0;
-                var allAnswered = userTurns >= Questions.Length;
+                var now = DateTime.UtcNow;
+                ClarifierTopicsResult? turn = null;
+                var applied = true;
 
-                string aiReply = allAnswered
-                    ? "Thanks — that's everything I need. Building your clarified summary now."
-                    : Questions[Math.Min(userTurns, Questions.Length - 1)];
-
-                journey = await _journeys.AppendChatMessageAsync(userId, "ai", aiReply, ideaId);
-
-                return Ok(ApiResponse.Ok("Message received", new
+                if (request?.Mode == "answer")
                 {
-                    messages = journey.Phase2Data?.ChatMessages,
-                    questionIndex = Math.Min(userTurns, Questions.Length),
-                    totalQuestions = Questions.Length,
-                    summaryReady = allAnswered, // client then starts/polls the C-2 session
+                    var text = request.Answer?.Trim();
+                    if (string.IsNullOrWhiteSpace(text))
+                        return BadRequest(ApiResponse.Error("Answer is required."));
+                    if (text.Length > MaxAnswerLength)
+                        return BadRequest(ApiResponse.Error($"Answers are limited to {MaxAnswerLength} characters."));
+
+                    turn = await _clarifierTurns.EvaluateAsync(new ClarifierTopicsInput(
+                        ClarifierScript.Snapshot(answers),
+                        Array.Empty<ClarifierTranscriptLine>(),
+                        text,
+                        questionIndex,
+                        answers.Sum(a => a.Attempts),
+                        answer.Language,
+                        IsEdit: true), cancellationToken);
+                    applied = ClarifierScript.ApplyAnswerEdit(answer, text, turn, now);
+                }
+                else if (request?.Mode == "fields")
+                {
+                    if (request.Fields is not { Count: > 0 })
+                        return BadRequest(ApiResponse.Error("Provide at least one field."));
+                    var error = ClarifierScript.ApplyFieldEdits(answer, request.Fields, now);
+                    if (error != null)
+                        return BadRequest(ApiResponse.Error(error));
+                }
+                else
+                {
+                    return BadRequest(ApiResponse.Error("mode must be \"answer\" or \"fields\"."));
+                }
+
+                await _journeys.SaveClarifierAnswersAsync(userId, answers, ideaId);
+
+                return Ok(ApiResponse.Ok(applied ? "Answer updated" : "Answer needs revision", new
+                {
+                    verdict = applied ? ClarifierVerdict.Accept : ClarifierVerdict.Revise,
+                    feedback = !applied && turn != null && turn.Topics.TryGetValue(questionIndex, out var judged) ? judged.FollowUp : null,
+                    aiUsed = turn?.AiUsed ?? false,
+                    answer,
+                    answers,
                 }));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
@@ -226,6 +276,8 @@ namespace WebApp.Controllers
                     aiParseFailed = false,
                     clarityScore,
                     project = journey.Project,
+                    clarifierSessionId = journey.Phase2Data?.ClarifierSessionId,
+                    clarifierSummarizedAt = journey.Phase2Data?.ClarifierSummarizedAt,
                 }));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
@@ -255,7 +307,8 @@ namespace WebApp.Controllers
                         return StatusCode(429, ApiResponse.Error("Maximum name suggestion attempts reached."));
                 }
 
-                var names = GenerateNames(request.Concept);
+                var language = !string.IsNullOrWhiteSpace(request.Language) ? request.Language : "en";
+                var names = GenerateNames(request.Concept, language);
                 return Ok(ApiResponse.Ok("OK", new { names }));
             }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }
@@ -471,13 +524,15 @@ namespace WebApp.Controllers
         // with evocative affixes, deliberately avoiding the banned generic standalones
         // (Hub / App / Pro / Platform).
         // TODO: swap to IAiProvider when model-router ready — keep contract/shape/limit identical.
-        private static List<string> GenerateNames(string concept)
+        private static List<string> GenerateNames(string concept, string language = "en")
         {
             var words = concept.Split(new[] { ' ', ',', '.', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
-            var root = (words.FirstOrDefault(w => w.Length > 3) ?? words.FirstOrDefault() ?? "Nova").Trim();
+            var root = (words.FirstOrDefault(w => w.Length > 3) ?? words.FirstOrDefault() ?? (language == "fr" ? "Nova" : "Nova")).Trim();
             root = char.ToUpperInvariant(root[0]) + root.Substring(1).ToLowerInvariant();
             var stem = root.Length > 5 ? root.Substring(0, 5) : root;
 
+            // TODO: Replace with LLM-based generation when implementing full language support.
+            // For now, the language parameter is accepted and stored for future use.
             return new List<string>
             {
                 $"{stem}ly",
@@ -490,9 +545,20 @@ namespace WebApp.Controllers
 
         // ---- Request DTOs ----
 
-        public class ChatMessageRequest { public string Message { get; set; } }
+        public class ChatMessageRequest { public string Message { get; set; } public string? Language { get; set; } }
+        public class EditClarifierAnswerRequest
+        {
+            /// <summary>"answer" | "fields".</summary>
+            public string Mode { get; set; }
+            public string? Answer { get; set; }
+            public Dictionary<string, string?>? Fields { get; set; }
+        }
         public class FinalizeClarifierRequest { public string SessionId { get; set; } }
-        public class NameSuggestionsRequest { public string Concept { get; set; } }
+        public class NameSuggestionsRequest
+        {
+            public string Concept { get; set; }
+            public string? Language { get; set; }
+        }
         public class BookDesignerRequest { public string SpId { get; set; } }
 
     }

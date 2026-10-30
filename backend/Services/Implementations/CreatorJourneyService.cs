@@ -40,6 +40,10 @@ namespace WebApp.Services.Implementations
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILegalApplicabilityEngine? _legalEngine;
         private readonly UserManager<ApplicationUser>? _userManager;
+        // Non-HTTP callers (SignalR hubs) have no request query; they hand the
+        // ideaId/expectedVersion in explicitly. Safe because the service is scoped.
+        private string? _explicitIdeaId;
+        private long? _explicitVersion;
         private static readonly ConcurrentDictionary<string, SemaphoreSlim> _creationLocks = new();
         private static readonly TimeSpan PathSwitchWindow = TimeSpan.FromDays(30);
 
@@ -309,11 +313,34 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
+        public void UseExplicitWriteVersion(string ideaId, long expectedVersion)
+        {
+            if (string.IsNullOrWhiteSpace(ideaId))
+                throw new CreatorJourneyException(400, "ideaId is required for Creator changes.");
+            if (expectedVersion < 1)
+                throw new CreatorJourneyException(400, "expectedVersion is required for Creator changes.");
+            _explicitIdeaId = ideaId;
+            _explicitVersion = expectedVersion;
+        }
+
+        public long? ExplicitWriteVersion => _explicitVersion;
+
         /// <summary>Targeted optimistic write on the per-idea source of truth.</summary>
         private async Task WriteIdeaAsync(CreatorIdea idea, UpdateDefinition<CreatorIdea> update)
         {
             if (string.Equals(idea.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase))
                 throw new CreatorJourneyException(422, "This project has been sold and is permanently read-only.");
+
+            if (_explicitIdeaId != null)
+            {
+                if (!string.Equals(_explicitIdeaId, idea.Id, StringComparison.Ordinal))
+                    throw new CreatorJourneyException(400, "Submitted ideaId does not match the workspace idea.");
+                if (!await _creatorIdeas.UpdateAsync(idea.Id, idea.UserId, update, _explicitVersion))
+                    throw new CreatorJourneyException(409, "This idea was updated in another tab. Refresh to load the latest version before continuing.");
+                _explicitVersion++;
+                idea.Version = _explicitVersion!.Value;
+                return;
+            }
 
             var http = _httpContextAccessor?.HttpContext;
             long? expectedVersion = null;
@@ -745,7 +772,8 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
-        public async Task<CreatorJourney> AppendChatMessageAsync(string userId, string sender, string text, string ideaId = null)
+        public async Task<CreatorJourney> AppendChatMessageAsync(string userId, string sender, string text, string ideaId = null,
+            string? kind = null, int? questionIndex = null)
         {
             if (sender != "ai" && sender != "user")
                 throw new CreatorJourneyException(400, "sender must be \"ai\" or \"user\".");
@@ -759,6 +787,8 @@ namespace WebApp.Services.Implementations
                 Sender = sender,
                 Text = text ?? string.Empty,
                 Timestamp = DateTime.UtcNow,
+                Kind = kind,
+                QuestionIndex = questionIndex,
             };
 
             // Idea = source of truth: atomic $push (two concurrent appends both persist).
@@ -768,6 +798,46 @@ namespace WebApp.Services.Implementations
             var p2 = j.Phase2Data ??= new CreatorPhase2Data();
             p2.ChatMessages ??= new List<CreatorChatMessage>();
             p2.ChatMessages.Add(message);
+            return j;
+        }
+
+        public async Task<CreatorJourney> SaveClarifierTurnAsync(string userId, List<ClarifierAnswer> answers,
+            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null, List<string>? chips = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+            var message = new CreatorChatMessage
+            {
+                Id = ObjectId.GenerateNewId().ToString(),
+                Sender = "ai",
+                Text = aiText ?? string.Empty,
+                Timestamp = DateTime.UtcNow,
+                Kind = aiKind,
+                QuestionIndex = aiQuestionIndex,
+                Chips = chips,
+            };
+
+            // One UpdateOne: targeted $set of the topic records (status, extracted, follow-up flags) plus
+            // $push of the reply — never a document replace. WriteIdeaAsync's version check makes it a compare-and-swap.
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
+                .Set(x => x.Phase2Data.ClarifierAnswers, answers)
+                .Push(x => x.Phase2Data.ChatMessages, message));
+
+            var p2 = j.Phase2Data ??= new CreatorPhase2Data();
+            p2.ClarifierAnswers = answers;
+            p2.ChatMessages ??= new List<CreatorChatMessage>();
+            p2.ChatMessages.Add(message);
+            return j;
+        }
+
+        public async Task<CreatorJourney> SaveClarifierAnswersAsync(string userId, List<ClarifierAnswer> answers, string ideaId = null)
+        {
+            var j = await GetOrCreateAsync(userId);
+            var idea = await ResolveIdeaAsync(j, ideaId);
+            OverlayIdea(j, idea);
+            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Phase2Data.ClarifierAnswers, answers));
+            (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierAnswers = answers;
             return j;
         }
 
@@ -786,7 +856,9 @@ namespace WebApp.Services.Implementations
                 p, problem, targetUser, solution, clarityScore, tags, marketGap, creatorEdge,
                 existingAlternatives, whyNow, riskiestAssumption);
 
-            (j.Phase2Data ??= new CreatorPhase2Data()).ClarifierSessionId = clarifierSessionId;
+            var p2 = j.Phase2Data ??= new CreatorPhase2Data();
+            p2.ClarifierSessionId = clarifierSessionId;
+            p2.ClarifierSummarizedAt = DateTime.UtcNow;
             // STEP 2 anchor: the (possibly new) clarifier joins this idea; plan/forecast inherit it.
             if (!string.IsNullOrEmpty(clarifierSessionId))
                 await _clarifiers.SetBusinessIdeaIdAsync(clarifierSessionId, idea.Id);

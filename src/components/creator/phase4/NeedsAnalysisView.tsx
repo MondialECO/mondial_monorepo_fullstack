@@ -208,12 +208,12 @@ export function NeedsAnalysisView({
   const [updatingNeedKey, setUpdatingNeedKey] = useState<string | null>(null);
 
   // Combine ActiveNeeds and CoveredRequirements into one authoritative list
-  const allNeeds: CreatorNeed[] = React.useMemo(() => {
+  const allNeeds: CreatorNeed[] = (() => {
     if (!analysis) return [];
     const active = analysis.activeNeeds || [];
     const covered = analysis.coveredRequirements || [];
     return [...active, ...covered];
-  }, [analysis]);
+  })();
 
   // Expand the first need by default if none expanded
   React.useEffect(() => {

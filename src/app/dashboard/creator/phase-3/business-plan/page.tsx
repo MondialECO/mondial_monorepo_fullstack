@@ -19,6 +19,9 @@ import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import { BusinessPlanFigmaFlow, CHAPTERS_META } from '@/components/creator/business-plan/BusinessPlanFigmaFlow';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
+import { ThinAnswersBanner } from '@/components/creator/clarifier/ThinAnswersBanner';
+import { StaleUpstreamNotice } from '@/components/creator/phase3/StaleUpstreamNotice';
+import { SummaryStaleNotice, useClarifierSummaryStale } from '@/components/creator/phase3/SummaryStaleNotice';
 import {
   useAiCredits,
   useBusinessPlanSessionTimed,
@@ -46,6 +49,7 @@ export default function BusinessPlanPage() {
   const searchParams = useSearchParams();
   const ideaId = searchParams.get('ideaId');
   const { state: { activeIdeaId }, completeStep } = useCreatorProgress();
+  const summaryStale = useClarifierSummaryStale();
   const effectiveIdeaId = ideaId || activeIdeaId || null;
 
   const [loading, setLoading] = useState(true);
@@ -391,6 +395,14 @@ export default function BusinessPlanPage() {
         title={project.name ? t('creator.phase3.businessPlan.projectTitle', { name: project.name }) : t('creator.phase3.businessPlan.defaultTitle')}
         description={t('creator.phase3.businessPlan.defaultDesc')}
       >
+        <ThinAnswersBanner />
+        <SummaryStaleNotice />
+        <StaleUpstreamNotice
+          stale={completed && !summaryStale && (session.data as { upstreamStale?: boolean } | undefined)?.upstreamStale}
+          onRegenerate={handleRegenerate}
+          cost={planCost}
+          disabled={isGenerating || insufficientCredits}
+        />
         {loading && (
           <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center">
             <Loader2 className="h-5 w-5 animate-spin" /> {t('creator.phase3.businessPlan.loadingPlan', 'Loading business plan…')}

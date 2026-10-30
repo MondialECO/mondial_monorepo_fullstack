@@ -181,18 +181,18 @@ describe("Creator Formation and Phase 4 idea scoping", () => {
     await creatorJourneyApi.get(ideaId);
 
     // B. First chatMessage mutation sends expectedVersion=2
-    await creatorJourneyApi.chatMessage("First answer", ideaId);
+    await creatorJourneyApi.chatMessage("First answer", "en", ideaId);
     expect(api.post).toHaveBeenLastCalledWith(
       "/creator/journey/phase2/chat-message",
-      { message: "First answer" },
+      { message: "First answer", language: "en" },
       { params: { ideaId, expectedVersion: 2 } },
     );
 
     // C. Second chatMessage mutation sends expectedVersion=3
-    await creatorJourneyApi.chatMessage("Second answer", ideaId);
+    await creatorJourneyApi.chatMessage("Second answer", "en", ideaId);
     expect(api.post).toHaveBeenLastCalledWith(
       "/creator/journey/phase2/chat-message",
-      { message: "Second answer" },
+      { message: "Second answer", language: "en" },
       { params: { ideaId, expectedVersion: 3 } },
     );
 
@@ -227,11 +227,11 @@ describe("Creator Formation and Phase 4 idea scoping", () => {
     await creatorJourneyApi.get(ideaA);
     await creatorJourneyApi.get(ideaB);
 
-    await creatorJourneyApi.chatMessage("Answer on A", ideaA);
+    await creatorJourneyApi.chatMessage("Answer on A", "en", ideaA);
 
     expect(api.post).toHaveBeenLastCalledWith(
       "/creator/journey/phase2/chat-message",
-      { message: "Answer on A" },
+      { message: "Answer on A", language: "en" },
       { params: { ideaId: ideaA, expectedVersion: 10 } },
     );
 
@@ -241,11 +241,11 @@ describe("Creator Formation and Phase 4 idea scoping", () => {
       headers: { "x-creator-idea-version": "21" },
     });
 
-    await creatorJourneyApi.chatMessage("Answer on B", ideaB);
+    await creatorJourneyApi.chatMessage("Answer on B", "en", ideaB);
 
     expect(api.post).toHaveBeenLastCalledWith(
       "/creator/journey/phase2/chat-message",
-      { message: "Answer on B" },
+      { message: "Answer on B", language: "en" },
       { params: { ideaId: ideaB, expectedVersion: 20 } },
     );
   });

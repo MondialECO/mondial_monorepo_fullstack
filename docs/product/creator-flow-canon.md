@@ -46,6 +46,15 @@ Following the successful RC1 live verification pass on 2026-09-19, the Creator M
 - Flow redesigns or navigation restructuring
 - New funding or banking modules
 
+### Recorded Exceptions (owner-approved, post-RC1)
+
+| Date | Scope | Status | Spec |
+|---|---|---|---|
+| 2026-10-31 | **Phase 2 clarifier topic flow** (fixed opener + 6 AI-judged topics with empty / unclear / weak / clear states, base questions, max one follow-up per topic — replaces the 6 fixed questions and the 5-attempt revise rule); **unconfirmed marker** on `/phase-2/idea-summary` (amber tag + "Fix it" for weak topics); **Phase 3 thin-answers banner** on Market Study, Business Model and Business Plan only (display-only: no new steps, no flow or navigation change, never blocks progress). | Implemented on `dev-hafiz`; live-AI browser verification pending (OpenRouter credit). | [clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md) |
+| 2026-10-31 | **Defect repair, not scope expansion.** (1) Phase 3 regenerate reused the C-2 / Market Study a session was first built from, so Market Study, Business Model and Business Plan could never reflect changed answers — a pre-existing bug that also affects ordinary answer edits, independent of the topic flow. Regenerate now builds from the current upstream (current C-2; current Market Study + version for Business Model), versions still appended newest-last. (2) No stale signal anywhere downstream: Phase 3 screens now show a quiet "Built on an older version" notice with Regenerate (price from `/api/ai/credits`, explicit click only); idea-summary shows the existing "answers changed since the last summary" notice with Regenerate summary. (3) The documented idea-summary **Revisit** button was never rendered; now it is. (4) A weak topic's side-panel pencil opened a field-only edit that could not clear its marker; weak topics now use the AI-verified rewrite. | Implemented on `dev-hafiz`; covered by unit/component tests; browser verification in the same pending pass. | [clarifier-topic-flow-plan.md §5](../implementation/clarifier-topic-flow-plan.md) |
+
+This exception is deliberate and owner-approved. It does not reopen Phase 2 or Phase 3 for other features; the closure declarations below remain in force for everything outside this scope.
+
 ---
 
 ## 0. How to use this doc
@@ -177,6 +186,7 @@ Mandatory Creator-only 3-screen frontend journey gate positioned directly after 
 - **Autosave Rule:** 400ms debounced autosave persists profile data only. Autosave MUST NOT confirm Step 1, confirm Step 2, complete Step 3, complete Quick Start, or unlock the Creator Dashboard. Only explicit CTA button actions change journey confirmation state.
 - **Only Final CTA Completes Quick Start:** Only the explicit `"Start my project"` CTA on Step 3 can mark `step3Confirmed` and `completed: true`. Sequence: flush pending autosave → persist latest data → save succeeds → reconcile profile → profile completeness passes → confirm steps → mark completed → navigate to Creator Dashboard.
 - **Pre-Existing Data Rule:** Pre-existing `ProfessionalProfile` data prepopulates screens but CANNOT skip wizard steps.
+- **Bilingual Display (EN / FR):** Every HumainX option is shown in the active locale: situation, availability, suggested skills, skill levels, previous experience, progress preference, and the "International / Other" region. This applies to the Quick Start and to the Profile Builder (`/dashboard/creator/profile`), including its summary card. The stored values stay the English canonical strings of the backend contract. They are translated at render time only, by the display helpers in `src/lib/humainx-quick-start.ts` (`situationText`, `availabilityText`, `skillText`, `levelText`, `experienceText`, `progressText`, `regionText`). The helpers accept either a UI label or a stored canonical value. Unknown values (custom skills, free-text regions) pass through unchanged. French region names are proper nouns and are not translated.
 - **Sequential Navigation Enforcement:**
   - `step1Confirmed === false` → maximum allowed screen is Step 1.
   - `step1Confirmed === true && step2Confirmed === false` → maximum allowed screen is Step 2.
@@ -374,11 +384,17 @@ The Phase-1 completion gate promotes onboarding to Phase 1 based on verified cor
 
 ---
 
-## 4. Phase 2 — Project Identity (CLOSED & STABLE — 2026-09-18)
+## 4. Phase 2 — Project Identity (CLOSED & STABLE — 2026-09-18 | Language + Layout Enhanced 2026-10-30)
 
 > [!IMPORTANT]
 > **Phase 2 Closure Canon (Declared Closed & Stable: September 18, 2026)**
 > Creator Phase 2 is frozen and declared production-stable. No new features, scope expansions, or visual redesigns are permitted. Maintenance is restricted strictly to critical bug fixes, ensuring the verified 7-step modal studio workflow, 0-credit free steps, and transparent credit metering remain immutable.
+> 
+> **Recent Enhancements (2026-10-29/30, within maintenance scope):**
+> - **Language Support (CORRECTED 2026-10-31 — fixed, not yet live-verified):** EN/FR UI translation works, but the claim that the UI language reached the AI was wrong. The clarifier and concept-name pages read `t.locale`, which is always `undefined` (`t` is the translate function), so **no language was ever sent** to clarifier turns (HTTP and hub), the C-2 summary start, or name suggestions before commit `c11fbcab`; the backend fell back to the stored answer language or "en". Fixed in `c11fbcab` (uses the context `locale`). Not yet verified with live AI — covered by the full French run in [clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md) Part B. The `ClarifierSession.Language` persistence and Phase 3+ inheritance only carry what was actually sent.
+> - **Chat UI Layout (LIVE):** Proper chat interface pattern — header (fixed top, robot avatar + title), chat area (scrollable middle, min-h-[400px] sm:min-h-[500px]), input/finalize CTA (fixed bottom). Right sidebar: sticky progress ring. All states (editing, finalizing, error) use fixed footer pattern.
+>
+> **Freeze exception (2026-10-31):** the clarifier topic flow and the idea-summary unconfirmed marker are an owner-approved post-RC1 change — see *Recorded Exceptions* under the Core Freeze Policy and [clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md).
 
 Phase 2 has been intentionally simplified to a single canonical, linear journey:
 
@@ -398,6 +414,28 @@ Entering `/dashboard/creator/phase-2` automatically sets `entryPath = "already_h
 ### Canonical Journey — Idea Clarifier (LIVE)
 
 A 6-question conversational AI-guided clarifier (core problem, target user, existing alternatives, proposed solution, unfair advantage / founder edge, riskiest assumption & timing). Answers are appended to the journey chat transcript and can be resumed at any time. Produces a live `clarityScore` and `clarifierSessionId`, which finalizes canonical project fields into `CreatorJourneyProject` (and mirrors to `CreatorIdea`). The completed clarifier satisfies the Phase-3 prerequisite chain (Phase 3 C-3 start requires a clarified project).
+
+> [!NOTE]
+> **Superseded on `dev-hafiz` (2026-10-31, freeze exception):** the 6 fixed questions and the 5-attempt revise rule below are replaced by the topic flow ([clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md)). This section will be rewritten to describe the topic flow as LIVE once its live-AI verification passes; until then it records the pre-exception behaviour.
+
+**Per-answer AI validation (since 2026-10-29):**
+- **The AI turn:** every answer to the current question goes through `ClarifierTurnService` (one synchronous AI call, **0 credits**).
+  - **`revise`:** the answer does not answer the question, is too vague ("an app", "everyone"), is nonsense, or is a refusal. The question stays and the AI explains what is missing. After **5 attempts** the answer is accepted as `accepted_weak` and the chat moves on.
+  - **`accept`:** the AI stores structured fields for that question, acknowledges briefly, and asks the next scripted question.
+  - **Language (corrected 2026-10-31):** intended behaviour — the Topbar language is sent with every turn, the C-2 start and name suggestions; the AI answers in the Creator's language and C-2 generates in it; fallback "en". **Actual behaviour before `c11fbcab`: the language was never sent** (`t.locale` was always `undefined`). Fixed in `c11fbcab`; **not yet verified with live AI** (Part B French run).
+- **Source of progress:** `Phase2Data.ClarifierAnswers`, one record per question (`status`, `attempts`, `rawAnswer`, `aiExtracted`, `userEdited`, `language`, `updatedAt`). Progress, the ring, `summaryReady` and the C-2 input derive from these records, **never from counting user chat messages** (the transcript contains rejected attempts). Field map: Q1 `problem`, Q2 `targetUser`, Q3 `existingAlternatives`, Q4 `solution`, Q5 `creatorEdge` + `founderAdvantage`, Q6 `whyNow` + `riskiestAssumption`. Value precedence is user edit, then AI extraction, then raw answer.
+- **Fail-open for new answers:** if the AI is disabled, times out (50s), errors, or returns unusable JSON, or the 40-calls-per-idea cap is reached, the answer is accepted without AI. The user is never blocked by infrastructure.
+- **Editing finished answers** (`PATCH .../phase2/clarifier-answer/{n}`):
+  - `mode: "answer"`: the AI re-judges the new text. A revise **or an AI failure** keeps the previous answer, so an unchecked edit never overwrites a valid one.
+  - `mode: "fields"`: the structured fields are edited directly with no AI call. An empty value reverts to the AI's version.
+  - The transcript is not rewritten. The latest bubble for each question shows its current answer.
+- **Summary states:** finalize stamps `Phase2Data.ClarifierSummarizedAt`.
+  - No summary yet: **Generate my summary**.
+  - Summary exists and no answer changed since: **View my summary** (free).
+  - An answer changed after the summary: **Regenerate summary (N credits)**.
+  - The price comes from `GET /api/ai/credits` → `costs.IdeaClarifier` (currently 20) and is never hardcoded.
+  - **Open billing issue (HIGH PRIORITY, 2026-10-31):** after 3 minutes the page stops polling and shows a timeout, but the C-2 job can still succeed later — the credits stay debited while the result is never attached to the project, and a manual retry debits again. First fix after the topic-flow live verification passes; see [ai-credit-metering-and-visibility.md](../operations/ai-credit-metering-and-visibility.md) and [clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md) *Known gaps*.
+- **Legacy ideas:** ideas created before `ClarifierAnswers` existed derive one accepted record per legacy user message (messages without `questionIndex`).
 
 Following the Clarifier:
 1. **Idea Summary (`/phase-2/idea-summary`):** Displays the structured concept summary and clarity score. The "Revisit" button routes directly back to `/phase-2/clarifier`.
@@ -714,6 +752,8 @@ The Brand Visual Identity Studio provides a calm, generative studio workflow acr
 > **Out-of-Scope Items for Phase 3 Closure (Explicitly Tracked):**
 > 1. *Provisional Section Rewrite Cost:* Single-section AI rewrite is configured and functioning at **5 credits** (`AiJobType.BusinessPlanSectionRewrite`); price remains provisional pending the platform-wide credit cost table review.
 > 2. *Credit Checkout / Purchase Gateway:* Real-currency Stripe/credit card top-up gateway is a platform-wide commercial infrastructure milestone (Phase 4/5 cross-cutting) rather than a Phase 3 gate blocker.
+>
+> **Freeze exception (2026-10-31):** a display-only thin-answers banner on Market Study, Business Model and Business Plan (the C-2 consumers) — no new steps, no flow change. See *Recorded Exceptions* under the Core Freeze Policy and [clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md).
 
 Phase 3 establishes the comprehensive business, market, financial, and legal foundation for the venture across **seven sequential steps**:
 
@@ -1189,6 +1229,8 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
 ---
 
 ## 6. Phase 4 — Construction & Launch Preparation (Canonical Engine — LIVE & FROZEN)
+
+> **Known open issue (tracked 2026-10-31, not fixed):** the frontend test `CanonicalPhase4Writes_UseExactIdeaId` (`tests/creator/frontend/creator-idea-scope.test.ts`) fails on `dev-hafiz` and failed before the clarifier topic-flow work. It expects Phase 4 write requests (e.g. `construction-snapshot/generate`) to send only `{ ideaId }`, but they also send `expectedVersion` — the test and the Phase 4 request contract disagree. Unrelated to the clarifier work; left for a separate Phase 4 fix. Also listed in [34-test-map.md](../system-architecture/34-test-map.md).
 
 Phase 4 bridges strategic formulation and operational execution through seven canonical, interconnected engines. It shifts the venture from *"Understanding the Business"* (Phase 3) into *"Preparing to Build and Launch"*:
 

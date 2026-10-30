@@ -39,6 +39,10 @@ namespace WebApp.Models.DatabaseModels.Ai
         [BsonElement("Status")]
         public string Status { get; set; } = "Pending";
 
+        /// <summary>ISO 639-1 language code. All generated output will be in this language.</summary>
+        [BsonElement("Language")]
+        public string Language { get; set; } = "en";
+
         /// <summary>
         /// Present only while generation is in flight (Pending/Processing).
         /// Indexed with a unique sparse index to guarantee atomic double-click deduplication.

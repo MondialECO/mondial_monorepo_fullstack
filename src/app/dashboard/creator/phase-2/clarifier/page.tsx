@@ -6,39 +6,57 @@ import Image from "next/image";
 import { Loader2, ArrowRight, X, Check, Copy, Send, FileText, Pencil } from "lucide-react";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorAiApi } from "@/lib/api-creator-ai";
-import { creatorJourneyApi } from "@/lib/api-creator-journey";
+import { creatorJourneyApi, getIdeaVersion, setIdeaVersion, type ChatMessageResult } from "@/lib/api-creator-journey";
 import { isTerminalStatus } from "@/types/creator/ai";
 import { toAiError } from "@/lib/ai-errors";
 import {
   POLL_INTERVAL_MS as SHARED_POLL_INTERVAL_MS,
   POLL_MAX_ATTEMPTS as SHARED_POLL_MAX_ATTEMPTS,
   POLL_MAX_MS,
+  useAiCredits,
 } from "@/hooks/queries/creator-ai";
 import { useTranslation } from "@/hooks/useTranslation";
+import { ClarifierStepList } from "@/components/creator/clarifier/ClarifierStepList";
+import { Button } from "@/components/ui/button";
+import {
+  CLARIFIER_TOTAL_TOPICS,
+  buildRawIdea,
+  getClarifierAnswers,
+  editableText,
+  isTopicDone,
+  nextTopic,
+  summaryIsStale,
+} from "@/lib/clarifier-answers";
+import { useSignalRHub } from "@/lib/realtime/use-signalr-hub";
+import { useOneShotSearchParam } from "@/hooks/useOneShotSearchParam";
+import { hubEvent } from "@/lib/realtime/types";
+import type { ClarifierAnswer, ClarifierChatMessage } from "@/types/creator/journey-api";
 
-type Message = {
-  id: string;
-  sender: "ai" | "user";
-  text: string;
-};
+type Message = ClarifierChatMessage;
 
-type CanvasBlock = {
-  title: string;
-  unlockQ: number;
-  value: string;
-  key: string;
-};
+interface ClarifierTurnComplete {
+  turn: ChatMessageResult;
+  ideaVersion: number | null;
+}
 
-const TOTAL_QUESTIONS = 6;
+class ClarifierHubError extends Error {}
+
+// HubConnection.invoke wraps server HubException messages in a generic prefix.
+const hubErrorMessage = (err: unknown) =>
+  err instanceof Error ? err.message.replace(/^.*HubException:\s*/, "") : undefined;
+
+// The opener is rendered locally, never persisted; the backend transcript starts with the first answer.
+const OPENER_ID = "opener";
 
 export default function AIClarifierPage() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const searchParams = useSearchParams();
   const urlIdeaId = searchParams.get("ideaId");
   const { state, setState, refetch } = useCreatorProgress();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const initInFlightRef = useRef(false);
+  const turnCompleteRef = useRef<ClarifierTurnComplete | null>(null);
 
   const effectiveIdeaId = urlIdeaId || state.activeIdeaId;
 
@@ -73,72 +91,59 @@ export default function AIClarifierPage() {
   }, [urlIdeaId, state.activeIdeaId, refetch, router]);
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [answers, setAnswers] = useState<ClarifierAnswer[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [ideaScore, setIdeaScore] = useState(0);
-  const [totalQuestions, setTotalQuestions] = useState(TOTAL_QUESTIONS);
-  const [summaryReady, setSummaryReady] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState<string>("");
+
+  // Real-time turn transport; HTTP chat-message is the fallback when not connected.
+  const clarifierHub = useSignalRHub("clarifier", {
+    events: [
+      hubEvent<string>("ReceiveChunk", (chunk) => setStreamingMessage((prev) => prev + chunk)),
+      hubEvent<ClarifierTurnComplete>("MessageComplete", (data) => {
+        turnCompleteRef.current = data;
+      }),
+    ],
+  });
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [finalizeSlow, setFinalizeSlow] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  // Index into `messages` of the user answer being edited in place (null = not editing).
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  // Question (1–6) whose finished answer is being re-written in the input (null = not editing).
+  const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
+  // AI feedback when a re-written answer was not accepted (the old answer is kept).
+  const [editFeedback, setEditFeedback] = useState<string | null>(null);
 
-  const [canvasBlocks, setCanvasBlocks] = useState<CanvasBlock[]>([
-    { title: "CONCEPT", unlockQ: 2, value: "", key: "concept" },
-    { title: "TARGET USER", unlockQ: 3, value: "", key: "targetUser" },
-    { title: "CORE PROBLEM", unlockQ: 4, value: "", key: "problem" },
-    { title: "YOUR SOLUTION", unlockQ: 5, value: "", key: "solution" },
-    { title: "YOUR EDGE", unlockQ: 6, value: "", key: "creatorEdge" },
-  ]);
+  const phase2 = state.journeyState?.phase2;
+  const { data: credits } = useAiCredits();
 
-  const [journalText, setJournalText] = useState("");
-
-  // Load chat history and current status from global state
+  // Backend-authoritative transcript + answer records → local view state.
   useEffect(() => {
-    const savedMessages = state.journeyState?.phase2?.chatMessages;
-    if (savedMessages && savedMessages.length > 0) {
-      setMessages(savedMessages);
-      // Determine current step based on user answers
-      const userAnswersCount = savedMessages.filter(m => m.sender === "user").length;
-      const step = userAnswersCount + 1;
-      setCurrentStep(step);
-      setIdeaScore(Math.min((step - 1) * 20, 100));
-      setSummaryReady(userAnswersCount >= TOTAL_QUESTIONS);
+    setMessages((phase2?.chatMessages ?? []).filter((m) => m.id !== OPENER_ID && m.id !== "1"));
+    setAnswers(getClarifierAnswers(phase2));
+  }, [phase2]);
 
-      // Re-populate canvas blocks from user answers
-      const userMsgs = savedMessages.filter(m => m.sender === "user");
-      if (userMsgs[0]) setJournalText(userMsgs[0].text);
-      setCanvasBlocks((prev) =>
-        prev.map((block, i) => {
-          const answer = userMsgs[i]?.text;
-          return {
-            ...block,
-            value: answer ? (answer.length > 30 ? answer.substring(0, 28) + "..." : answer) : "",
-          };
-        })
-      );
-    } else {
-      // Initialize with the opener (follow-ups come from the backend).
-      const initialMsgs: Message[] = [{ id: "1", sender: "ai", text: t("creator.phase2.clarifier.opener") }];
-      setMessages(initialMsgs);
-      setCurrentStep(1);
-      setIdeaScore(0);
+  // "Fix it" from the idea summary (?fix=<topic>): open that topic's re-judged edit once the
+  // answers are loaded, and go back to the summary after the edit is accepted.
+  const fixTopic = Number(searchParams.get("fix")) || null;
+  const fixHandledRef = useRef(false);
+  const returnAfterFixRef = useRef(false);
+  useEffect(() => {
+    if (!fixTopic || fixHandledRef.current) return;
+    const answer = answers.find((a) => a.questionIndex === fixTopic);
+    if (!isTopicDone(answer)) return;
+    fixHandledRef.current = true;
+    returnAfterFixRef.current = true;
+    setInputValue(editableText(answer!));
+    setEditingQuestion(fixTopic);
+    setEditFeedback(null);
+  }, [fixTopic, answers]);
 
-      setState((prev) => ({
-        ...prev,
-        journeyState: {
-          ...prev.journeyState,
-          phase2: {
-            ...prev.journeyState.phase2,
-            chatMessages: initialMsgs,
-          },
-        },
-      }));
-    }
-  }, [state.journeyState?.phase2?.chatMessages, setState]);
+  const syncPhase2 = (patch: { chatMessages?: Message[]; clarifierAnswers?: ClarifierAnswer[]; clarifierSessionId?: string | null; clarifierSummarizedAt?: string | null }) =>
+    setState((prev) => ({
+      ...prev,
+      journeyState: { ...prev.journeyState, phase2: { ...prev.journeyState.phase2, ...patch } },
+    }));
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -157,119 +162,88 @@ export default function AIClarifierPage() {
   }, [finalizing]);
 
   const handleSend = async () => {
-    // ── Edit-in-place branch ──
-    // Update the answer at editingIndex instead of appending a new turn, then re-derive
-    // the journal + project mirror. NO backend call: the backend keeps the original text
-    // (chat-message is append-only). Acceptable because the follow-up questions are a
-    // fixed server script (not content-dependent) and finalize builds rawIdea from these
-    // frontend `messages`; the durable backend-synced edit is filed as CI-13. Runs before
-    // the guard below so an answer can still be revised once summaryReady (issue 1).
-    if (editingIndex !== null) {
-      const editText = inputValue.trim();
-      if (!editText) return; // empty/whitespace while editing → no-op, edit stays active
-      const target = messages[editingIndex];
-      if (!target || target.sender !== "user") {
-        setEditingIndex(null);
-        return;
+    const userText = inputValue.trim();
+    if (!userText || isTyping || finalizing) return;
+
+    // ── Re-write a finished answer: the AI re-judges it; a revise keeps the old answer. ──
+    if (editingQuestion !== null) {
+      setIsTyping(true);
+      setEditFeedback(null);
+      try {
+        const res = await creatorJourneyApi.editClarifierAnswer(editingQuestion, { mode: "answer", answer: userText }, effectiveIdeaId);
+        setAnswers(res.answers);
+        syncPhase2({ clarifierAnswers: res.answers });
+        if (res.verdict === "revise") {
+          setEditFeedback(res.aiUsed
+            ? res.feedback ?? t("creator.phase2.clarifier.editNotAccepted")
+            : t("creator.phase2.clarifier.editAiUnavailable"));
+        } else {
+          setEditingQuestion(null);
+          setInputValue("");
+          if (returnAfterFixRef.current) {
+            returnAfterFixRef.current = false;
+            router.push("/dashboard/creator/phase-2/idea-summary");
+          }
+        }
+      } catch (err) {
+        setEditFeedback(toAiError(err).message);
+      } finally {
+        setIsTyping(false);
       }
-
-      const editedMessages = messages.map((m, i) => (i === editingIndex ? { ...m, text: editText } : m));
-      setMessages(editedMessages);
-
-      // 1-based ordinal of this answer among user turns → its journal/project slot
-      // (answer N maps to canvasBlocks[N-1]; answer 6 "Key Risk" maps to no block).
-      const answerOrdinal = editedMessages.slice(0, editingIndex + 1).filter((m) => m.sender === "user").length;
-      if (answerOrdinal === 1) setJournalText(editText);
-      const blockKey = canvasBlocks[answerOrdinal - 1]?.key;
-      setCanvasBlocks((prev) =>
-        prev.map((block, i) =>
-          i === answerOrdinal - 1
-            ? { ...block, value: editText.length > 30 ? editText.substring(0, 28) + "..." : editText }
-            : block
-        )
-      );
-      setState((prev) => ({
-        ...prev,
-        project: blockKey ? { ...prev.project, [blockKey]: editText, exists: true } : prev.project,
-        journeyState: {
-          ...prev.journeyState,
-          phase2: { ...prev.journeyState.phase2, chatMessages: editedMessages },
-        },
-      }));
-
-      setEditingIndex(null);
-      setInputValue("");
       return;
     }
 
-    if (!inputValue.trim() || isTyping || summaryReady || finalizing) return;
-    const userText = inputValue.trim();
-    const userMsgId = Date.now().toString();
+    if (currentTopic === null) return;
     const priorMessages = messages;
 
-    // 1. Optimistically add the user message.
-    const updatedMessages = [...messages, { id: userMsgId, sender: "user" as const, text: userText }];
-    setMessages(updatedMessages);
+    // Optimistic user bubble; the server transcript replaces it on success.
+    setMessages([...messages, { id: `pending-${Date.now()}`, sender: "user", text: userText, questionIndex: currentTopic }]);
     setInputValue("");
-
-    // Mirror the answer onto the project + canvas preview.
-    const blockKey = canvasBlocks[currentStep - 1]?.key;
-    const projectFieldsToUpdate: Record<string, string> = {};
-    if (blockKey) projectFieldsToUpdate[blockKey] = userText;
-    if (currentStep === 1) setJournalText(userText);
-
-    setCanvasBlocks((prev) =>
-      prev.map((block) =>
-        block.unlockQ === currentStep + 1
-          ? { ...block, value: userText.length > 30 ? userText.substring(0, 28) + "..." : userText }
-          : block
-      )
-    );
-
-    setState((prev) => ({
-      ...prev,
-      project: { ...prev.project, ...projectFieldsToUpdate, exists: true },
-      journeyState: {
-        ...prev.journeyState,
-        phase2: { ...prev.journeyState.phase2, chatMessages: updatedMessages },
-      },
-    }));
-
-    // 2. Real AI turn — backend persists the transcript and returns the next question.
     setIsTyping(true);
-    try {
-      const res = await creatorJourneyApi.chatMessage(userText, effectiveIdeaId);
-      const lastAi = [...res.messages].reverse().find((m) => m.sender === "ai");
-      const aiText = lastAi?.text ?? t("creator.phase2.clarifier.thanksContinue");
-      const aiMsgId = (Date.now() + 1).toString();
-      const finalMessages = [...updatedMessages, { id: aiMsgId, sender: "ai" as const, text: aiText }];
-      setMessages(finalMessages);
-      setCurrentStep(res.questionIndex + 1);
-      setTotalQuestions(res.totalQuestions);
-      setIdeaScore(Math.min(Math.round((res.questionIndex / res.totalQuestions) * 100), 100));
-      setSummaryReady(res.summaryReady);
+    setStreamingMessage("");
 
-      setState((prev) => ({
-        ...prev,
-        journeyState: {
-          ...prev.journeyState,
-          phase2: { ...prev.journeyState.phase2, chatMessages: finalMessages },
-        },
-      }));
+    try {
+      const res = clarifierHub.status === "connected" && effectiveIdeaId
+        ? await sendViaHub(userText, effectiveIdeaId)
+        : await creatorJourneyApi.chatMessage(userText, locale, effectiveIdeaId);
+      setMessages(res.messages);
+      setAnswers(res.answers);
+      syncPhase2({ chatMessages: res.messages, clarifierAnswers: res.answers });
     } catch (err) {
       // Roll back the optimistic turn, restore the draft, and surface the reason.
-      const note: Message = { id: `err-${Date.now()}`, sender: "ai", text: toAiError(err).message };
-      setMessages([...priorMessages, note]);
+      const reason = err instanceof ClarifierHubError ? err.message : toAiError(err).message;
+      setMessages([...priorMessages, { id: `err-${Date.now()}`, sender: "ai", text: reason }]);
       setInputValue(userText);
-      setState((prev) => ({
-        ...prev,
-        journeyState: {
-          ...prev.journeyState,
-          phase2: { ...prev.journeyState.phase2, chatMessages: priorMessages },
-        },
-      }));
     } finally {
       setIsTyping(false);
+      setStreamingMessage("");
+    }
+  };
+
+  // Same turn as the HTTP endpoint; the reply arrives as ReceiveChunk events, then
+  // MessageComplete (received before invoke resolves) carries the result + new idea version.
+  const sendViaHub = async (text: string, ideaId: string): Promise<ChatMessageResult> => {
+    const expectedVersion = getIdeaVersion(ideaId);
+    if (!expectedVersion) throw new ClarifierHubError("Idea version is not loaded yet. Refresh and try again.");
+    turnCompleteRef.current = null;
+    try {
+      await clarifierHub.invoke("SendMessage", text, locale, ideaId, expectedVersion);
+    } catch (err) {
+      throw new ClarifierHubError(hubErrorMessage(err) || "Something went wrong. Please try again.");
+    }
+    const done = turnCompleteRef.current as ClarifierTurnComplete | null;
+    if (!done) throw new ClarifierHubError("Something went wrong. Please try again.");
+    if (done.ideaVersion) setIdeaVersion(ideaId, done.ideaVersion);
+    return done.turn;
+  };
+
+  const handleSaveFields = async (questionIndex: number, fields: Record<string, string>) => {
+    try {
+      const res = await creatorJourneyApi.editClarifierAnswer(questionIndex, { mode: "fields", fields }, effectiveIdeaId);
+      setAnswers(res.answers);
+      syncPhase2({ clarifierAnswers: res.answers });
+    } catch (err) {
+      throw new Error(toAiError(err).message);
     }
   };
 
@@ -290,17 +264,21 @@ export default function AIClarifierPage() {
     }
   };
 
-  // Enter edit-in-place for a user answer: pull its text into the input and mark the
-  // index. handleSend's edit branch (stage 3) updates in place instead of appending.
-  const handleEditStart = (index: number) => {
+  // Pull a finished answer's current text into the input; handleSend then re-judges it.
+  const handleEditStart = (questionIndex: number) => {
     if (isTyping || finalizing) return;
-    setInputValue(messages[index].text);
-    setEditingIndex(index);
+    const answer = answers.find((a) => a.questionIndex === questionIndex);
+    if (!isTopicDone(answer)) return;
+    setInputValue(editableText(answer!));
+    setEditingQuestion(questionIndex);
+    setEditFeedback(null);
     setCopiedId(null);
   };
 
   const handleEditCancel = () => {
-    setEditingIndex(null);
+    returnAfterFixRef.current = false;
+    setEditingQuestion(null);
+    setEditFeedback(null);
     setInputValue("");
   };
 
@@ -322,23 +300,16 @@ export default function AIClarifierPage() {
     setFinalizeError(null);
     setFinalizing(true);
     try {
-      const answers = messages.filter((m) => m.sender === "user").map((m) => m.text);
-      const rawIdea = {
-        title: state.project?.name?.trim() || (answers[0]?.slice(0, 60) ?? t("creator.phase2.clarifier.defaultIdeaName", "My Idea")),
-        problemStatement: answers[0] ?? "",
-        targetAudience: answers[1] ?? "",
-        description: answers[3] ?? answers[0] ?? "",
-        existingAlternatives: answers[2] ?? "",
-        founderAdvantage: answers[4] ?? "",
-        whyNow: answers[5] ?? "",
-        riskiestAssumption: answers[5] ?? "",
-      };
+      const rawIdea = buildRawIdea(answers, state.project?.name, t("creator.phase2.clarifier.defaultIdeaName", "My Idea"));
 
       // Start the C-2 AI clarifier (1 credit), poll it, then map onto the project.
-      const { sessionId } = await creatorAiApi.startClarifier({
-        rawIdea,
-        businessIdeaId: effectiveIdeaId ?? undefined,
-      });
+      const { sessionId } = await creatorAiApi.startClarifier(
+        {
+          rawIdea,
+          businessIdeaId: effectiveIdeaId ?? undefined,
+        },
+        locale
+      );
       const session = await pollClarifier(sessionId);
       if (!session) throw new Error(t("creator.phase2.clarifier.timeoutError"));
 
@@ -362,7 +333,7 @@ export default function AIClarifierPage() {
       }
 
       // Compute final values with proper fallbacks BEFORE spreading result.project
-      const firstAnswer = answers[0]?.trim() || "";
+      const firstAnswer = rawIdea.problemStatement.trim();
       const clarityScoreFinal = Math.round(result.clarityScore ?? 50);
       const conceptFinal =
         (result.project?.concept as string) ||
@@ -379,6 +350,10 @@ export default function AIClarifierPage() {
           exists: true,
         },
       }));
+      syncPhase2({
+        clarifierSessionId: result.clarifierSessionId ?? sessionId,
+        clarifierSummarizedAt: result.clarifierSummarizedAt ?? null,
+      });
 
       // Navigate — idea-summary will show data from local state immediately
       router.push("/dashboard/creator/phase-2/idea-summary");
@@ -388,10 +363,53 @@ export default function AIClarifierPage() {
     }
   };
 
-  // Derived progress — driven by answered count so the panel is independent of the
-  // in-flight optimistic step. Kept for the ring, band and step list (stage 2).
-  const answeredCount = messages.filter((m) => m.sender === "user").length;
-  const ringPct = Math.min(Math.round((answeredCount / totalQuestions) * 100), 100);
+  // All progress derives from the topic records — never from counting user messages,
+  // since one message can cover several topics.
+  const totalTopics = CLARIFIER_TOTAL_TOPICS;
+  const answeredCount = answers.filter((a) => isTopicDone(a)).length;
+  const currentTopic = nextTopic(answers);
+  const summaryReady = currentTopic === null;
+  const hasSummary = !!phase2?.clarifierSessionId;
+  const summaryStale = hasSummary && summaryIsStale(answers, phase2?.clarifierSummarizedAt);
+
+  // "Regenerate summary" clicked on the idea summary (?regenerate=1): that click is the consent for
+  // ONE paid run. The flag is stripped from the URL at once (refresh/back/bookmark can't replay it)
+  // and consumed when the answers have loaded; it starts only if the summary is actually stale.
+  // A failure shows the error with the manual "Try again" — never an automatic retry.
+  const takeRegenerateRequest = useOneShotSearchParam("regenerate");
+  useEffect(() => {
+    if (answers.length === 0 || finalizing || !takeRegenerateRequest()) return;
+    if (summaryReady && summaryStale) void handleComplete();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers.length, summaryReady, summaryStale, finalizing]);
+
+  const firstAnswer = answers.find((a) => a.questionIndex === 1);
+  const journalText = isTopicDone(firstAnswer) ? firstAnswer!.rawAnswer : "";
+  // Chips belong to the latest AI message only, while that topic is still being asked.
+  const lastMessage = messages[messages.length - 1];
+  const activeChips = !isTyping && !summaryReady && lastMessage?.sender === "ai" ? lastMessage.chips ?? [] : [];
+  // Only the latest bubble per topic is that topic's answer; earlier ones were followed up.
+  const latestUserMsgByQuestion = new Map<number, string>();
+  let legacyOrdinal = 0;
+  for (const m of messages) {
+    if (m.sender !== "user") continue;
+    const q = m.questionIndex ?? ++legacyOrdinal;
+    latestUserMsgByQuestion.set(q, m.id);
+  }
+  const questionOfMessage = (id: string) => [...latestUserMsgByQuestion].find(([, mid]) => mid === id)?.[0];
+  const ringPct = Math.min(Math.round((answeredCount / totalTopics) * 100), 100);
+
+  // An unchanged summary is free to revisit; only new or edited answers cost credits.
+  // The price is server-configured (Ai:CreditCosts), so never hardcode it in copy.
+  const clarifierCost = credits?.costs?.IdeaClarifier;
+  const regenerateLabel = clarifierCost
+    ? `${t("creator.phase2.clarifier.regenerateSummary")} (${t("creator.phase2.clarifier.creditCost", { count: clarifierCost })})`
+    : t("creator.phase2.clarifier.regenerateSummary");
+  const cta = !hasSummary
+    ? { label: t("creator.phase2.clarifier.generateSummary"), note: t("creator.phase2.clarifier.finalizeDesc"), onClick: handleComplete }
+    : summaryStale
+      ? { label: regenerateLabel, note: t("creator.phase2.clarifier.regenerateDesc"), onClick: handleComplete }
+      : { label: t("creator.phase2.clarifier.viewSummary"), note: t("creator.phase2.clarifier.viewSummaryDesc"), onClick: () => router.push("/dashboard/creator/phase-2/idea-summary") };
 
   const getRingBand = (answered: number, total: number): { label: string; color: string } => {
     if (answered <= 0) return { label: t("creator.phase2.clarifier.ringBands.notStarted"), color: "var(--muted-foreground)" };
@@ -401,7 +419,8 @@ export default function AIClarifierPage() {
     return { label: t("creator.phase2.clarifier.ringBands.allAnswered"), color: "var(--p8-green)" };
   };
 
-  const stepLabels = [
+  // Indexed by topic index − 1 (the panel itself renders in ask order).
+  const topicLabels = [
     t("creator.phase2.clarifier.stepLabels.problem"),
     t("creator.phase2.clarifier.stepLabels.targetUsers"),
     t("creator.phase2.clarifier.stepLabels.alternatives"),
@@ -410,8 +429,7 @@ export default function AIClarifierPage() {
     t("creator.phase2.clarifier.stepLabels.risk"),
   ];
 
-  const band = getRingBand(answeredCount, totalQuestions);
-  const currentQuestion = Math.min(answeredCount + 1, totalQuestions);
+  const band = getRingBand(answeredCount, totalTopics);
   const ringR = 52;
   const ringC = 2 * Math.PI * ringR;
   const ringOffset = ringC * (1 - ringPct / 100);
@@ -426,7 +444,7 @@ export default function AIClarifierPage() {
             {t("creator.phase2.clarifier.mainTitle")}
           </h1>
           <p className="text-base max-w-[780px]" style={{ color: "var(--muted-foreground)" }}>
-            {t("creator.phase2.clarifier.mainSubtitle", { count: totalQuestions })}
+            {t("creator.phase2.clarifier.mainSubtitle", { count: totalTopics })}
           </p>
         </div>
 
@@ -438,56 +456,61 @@ export default function AIClarifierPage() {
 
           {/* LEFT: conversation card */}
           <section
-            className="w-full lg:flex-1 rounded-2xl border shadow-sm p-5 flex flex-col min-w-0"
+            className="w-full flex-1 rounded-2xl border shadow-sm overflow-hidden flex flex-col min-w-0"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
           >
-            {/* ── Assistant header ── */}
-            <div className="flex items-center gap-3 shrink-0">
-              <div
-                className="rounded-full overflow-hidden flex items-center justify-center shrink-0 border"
-                style={{ width: 48, height: 48, backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
-              >
-                {/* Robot avatar — DELIBERATE exception to the lucide-only icon rule: this
-                    is a raster character illustration (artwork), not a symbol. The library
-                    has no equivalent and its Bot glyph would read as empty in this tile.
-                    Native 456x376 → crisp at this ~30px leaf. Source: exported from Figma. */}
-                <Image
-                  src="/icons/phase2/robot.png"
-                  alt={t("creator.phase2.clarifier.aiAssistantAlt", "AI assistant")}
-                  width={30}
-                  height={25}
-                  className="object-contain"
-                />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg font-medium" style={{ color: "var(--foreground)" }}>
-                  {t("creator.phase2.clarifier.title")}
-                </p>
-                <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-                  {t("creator.phase2.clarifier.subtitle", { count: totalQuestions })}
-                </p>
+            {/* ── Assistant header (FIXED TOP) ── */}
+            <div className="px-5 pt-5 pb-3 shrink-0 border-b" style={{ borderColor: "var(--border)" }}>
+              <div className="flex items-center gap-3">
+                <div
+                  className="rounded-full overflow-hidden flex items-center justify-center shrink-0 border"
+                  style={{ width: 48, height: 48, backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
+                >
+                  {/* Robot avatar — DELIBERATE exception to the lucide-only icon rule: this
+                      is a raster character illustration (artwork), not a symbol. The library
+                      has no equivalent and its Bot glyph would read as empty in this tile.
+                      Native 456x376 → crisp at this ~30px leaf. Source: exported from Figma. */}
+                  <Image
+                    src="/icons/phase2/robot.png"
+                    alt={t("creator.phase2.clarifier.aiAssistantAlt", "AI assistant")}
+                    width={30}
+                    height={25}
+                    className="object-contain"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-lg font-medium" style={{ color: "var(--foreground)" }}>
+                    {t("creator.phase2.clarifier.title")}
+                  </p>
+                  <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                    {t("creator.phase2.clarifier.subtitle", { count: totalTopics })}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* ── Transcript surface — scrolls within its own bounds ──
-                DELIBERATE deviation: fixed height, not flex-to-fill like the design.
-                Flexing would couple the row height to the viewport (reintroducing the
-                stage-1 pin) and to the chrome's topbar/footer heights; a predictable
-                scroll container is worth more than matching the flex. Dead space in the
-                shorter column is absorbed by the journal card (stage 6, mt-auto). */}
+            {/* ── Transcript surface — SCROLLABLE MIDDLE ──
+                min-h ensures chat area always has space to scroll,
+                overflow-y-auto keeps messages scrollable like proper chat UI. */}
             <div
-              className="mt-4 flex-1 min-h-0 rounded-2xl border overflow-hidden"
-              style={{ backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
+              className="min-h-[400px] sm:min-h-[500px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
+              style={{ backgroundColor: "var(--popover)" }}
             >
-              <div
-                className="h-[420px] sm:h-[550px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
-              >
-                {messages.map((msg, index) => {
+                {[{ id: OPENER_ID, sender: "ai" as const, text: t("creator.phase2.clarifier.opener") }, ...messages].map((msg) => {
                   const isUser = msg.sender === "user";
                   // Send-failure notes are pushed as ai-sender messages with an "err-" id
                   // (handleSend rollback). Flag them for destructive styling — no logic change.
                   const isError = msg.id.startsWith("err-");
-                  const isEditing = isUser && editingIndex === index;
+                  // "feedback" exists only on older fixed-question transcripts.
+                  const isFeedback = "kind" in msg && msg.kind === "feedback";
+                  const answerQuestion = isUser ? questionOfMessage(msg.id) : undefined;
+                  const answer = answers.find((a) => a.questionIndex === answerQuestion);
+                  // An accepted edit replaces the topic's raw answer; show it in place of the original bubble.
+                  // (A follow-up answer is appended to the raw answer, so the original text is still contained.)
+                  const edited = !!answer && isTopicDone(answer) && !answer.rawAnswer.includes(msg.text);
+                  const text = edited ? answer!.rawAnswer : msg.text;
+                  const canEdit = isTopicDone(answer);
+                  const isEditing = canEdit && editingQuestion === answerQuestion;
                   return (
                     <div
                       key={msg.id}
@@ -506,23 +529,25 @@ export default function AIClarifierPage() {
                       <div
                         className={`rounded-2xl border px-[18px] py-[14px] text-body leading-relaxed ${isUser ? "max-w-[548px]" : "max-w-[580px]"}`}
                         style={{
-                          backgroundColor: isError ? "color-mix(in srgb, var(--destructive) 8%, transparent)" : "var(--card)",
-                          borderColor: isEditing ? "var(--primary)" : isError ? "var(--destructive)" : "var(--border)",
+                          backgroundColor: isError
+                            ? "color-mix(in srgb, var(--destructive) 8%, transparent)"
+                            : isFeedback ? "var(--dr-bg-yellow)" : "var(--card)",
+                          borderColor: isEditing ? "var(--primary)" : isError ? "var(--destructive)" : isFeedback ? "var(--dr-yellow)" : "var(--border)",
                           color: isError ? "var(--destructive)" : "var(--foreground)",
                         }}
                       >
                         <span className="sr-only">{isError ? t("creator.phase2.clarifier.sr.errorPrefix", "Error: ") : isUser ? t("creator.phase2.clarifier.sr.youPrefix", "You: ") : t("creator.phase2.clarifier.sr.assistantPrefix", "Assistant: ")}</span>
-                        {msg.text}
+                        <span className="whitespace-pre-line">{text}</span>
                       </div>
 
                       {/* Edit-in-place + copy actions on user messages. Edit populates
                           the input and marks this index; gated on !isTyping && !finalizing
                           (no summaryReady gate — editing before finalize is the key case).
                           Hidden on the message currently being edited (it's in the input). */}
-                      {isUser && !isEditing && (
+                      {canEdit && !isEditing && (
                         <div className="mt-1.5 flex items-center gap-2">
                           <button
-                            onClick={() => handleEditStart(index)}
+                            onClick={() => answerQuestion && handleEditStart(answerQuestion)}
                             disabled={isTyping || finalizing}
                             aria-label={t("creator.phase2.clarifier.aria.editAnswer", "Edit your answer")}
                             className="inline-flex items-center text-badge transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -533,7 +558,7 @@ export default function AIClarifierPage() {
                             <Pencil className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleCopy(msg.id, msg.text)}
+                            onClick={() => handleCopy(msg.id, text)}
                             aria-label={t("creator.phase2.clarifier.aria.copyAnswer", "Copy your answer")}
                             className="inline-flex items-center gap-1 text-badge transition-colors"
                             style={{ color: copiedId === msg.id ? "var(--p8-green)" : "var(--muted-foreground)" }}
@@ -554,32 +579,43 @@ export default function AIClarifierPage() {
                   );
                 })}
 
-                {/* Thinking indicator — assistant working on the next question */}
+                {/* Streaming message or thinking indicator */}
                 {isTyping && (
                   <div className="flex flex-col items-start">
                     <div
-                      className="rounded-2xl border px-[18px] py-[14px] max-w-[580px] flex items-center gap-2"
+                      className="rounded-2xl border px-[18px] py-[14px] max-w-[580px]"
                       style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
                     >
-                      <span className="sr-only">{t("creator.phase2.clarifier.sr.assistantTyping", "Assistant is typing")}</span>
-                      <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--primary)" }} />
-                      <span className="text-body" style={{ color: "var(--muted-foreground)" }}>
-                        {t("creator.phase2.clarifier.thinking")}
-                      </span>
+                      {streamingMessage ? (
+                        <>
+                          <span className="sr-only">{t("creator.phase2.clarifier.sr.assistantTyping", "Assistant is typing")}</span>
+                          <span className="text-body whitespace-pre-line" style={{ color: "var(--foreground)" }}>
+                            {streamingMessage}
+                            <span className="animate-pulse">▌</span>
+                          </span>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="sr-only">{t("creator.phase2.clarifier.sr.assistantTyping", "Assistant is typing")}</span>
+                          <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--primary)" }} />
+                          <span className="text-body" style={{ color: "var(--muted-foreground)" }}>
+                            {t("creator.phase2.clarifier.thinking")}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
                 <div ref={chatEndRef} />
-              </div>
             </div>
 
-            {/* ── Input row + keyboard hint ──
+            {/* ── Input row + keyboard hint (FIXED BOTTOM) ──
                 Renders while questions remain OR while editing — editing takes precedence
                 so an answer can be revised even after all six are answered (issue 1). Once
                 not editing and summaryReady, the finalize states below render instead. */}
-            {editingIndex !== null || !summaryReady ? (
-              <div className="mt-4 shrink-0">
-                {editingIndex !== null && (
+            {editingQuestion !== null || !summaryReady ? (
+              <div className="px-5 pt-3 pb-5 shrink-0 border-t flex flex-col" style={{ borderColor: "var(--border)" }}>
+                {editingQuestion !== null && (
                   <div className="mb-2 flex items-center justify-between px-1">
                     <span className="text-badge font-medium" style={{ color: "var(--primary)" }}>
                       {t("creator.phase2.clarifier.editingTitle")}
@@ -595,15 +631,24 @@ export default function AIClarifierPage() {
                     </button>
                   </div>
                 )}
+                {editingQuestion === null && activeChips.length > 0 && (
+                  <div role="group" aria-label={t("creator.phase2.clarifier.chipsLabel")} className="mb-2 flex flex-wrap gap-2 px-1">
+                    {activeChips.map((chip) => (
+                      <Button key={chip} type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setInputValue(chip)}>
+                        {chip}
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 <div
                   className="flex items-end gap-2 rounded-xl border p-1.5 focus-within:ring-1 focus-within:ring-[var(--ring)] transition-shadow"
-                  style={{ backgroundColor: "var(--popover)", borderColor: editingIndex !== null ? "var(--primary)" : "var(--border)" }}
+                  style={{ backgroundColor: "var(--popover)", borderColor: editingQuestion !== null ? "var(--primary)" : "var(--border)" }}
                 >
                   <textarea
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyPress}
-                    placeholder={editingIndex !== null ? t("creator.phase2.clarifier.placeholderRevise") : t("creator.phase2.clarifier.placeholderType")}
+                    placeholder={editingQuestion !== null ? t("creator.phase2.clarifier.placeholderRevise") : t("creator.phase2.clarifier.placeholderType")}
                     rows={1}
                     disabled={isTyping}
                     className="flex-1 resize-none bg-transparent outline-none border-none px-3 py-2.5 text-input min-h-[40px] max-h-[120px] placeholder:text-muted-foreground"
@@ -612,21 +657,26 @@ export default function AIClarifierPage() {
                   <button
                     onClick={handleSend}
                     disabled={!inputValue.trim() || isTyping}
-                    aria-label={editingIndex !== null ? t("creator.phase2.clarifier.aria.saveEdit", "Save edit") : t("creator.phase2.clarifier.aria.sendAnswer", "Send answer")}
+                    aria-label={editingQuestion !== null ? t("creator.phase2.clarifier.aria.saveEdit", "Save edit") : t("creator.phase2.clarifier.aria.sendAnswer", "Send answer")}
                     className="flex items-center justify-center rounded-lg shrink-0 transition-opacity disabled:opacity-50"
                     style={{ width: 44, height: 44, backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                   >
                     {isTyping ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : editingIndex !== null ? (
+                    ) : editingQuestion !== null ? (
                       <Check className="h-5 w-5" />
                     ) : (
                       <Send className="h-5 w-5" />
                     )}
                   </button>
                 </div>
+                {editingQuestion !== null && editFeedback && (
+                  <p role="status" className="mt-2 rounded-lg border px-3 py-2 text-caption" style={{ backgroundColor: "var(--dr-bg-yellow)", borderColor: "var(--dr-yellow)", color: "var(--foreground)" }}>
+                    {editFeedback}
+                  </p>
+                )}
                 <p className="mt-2 text-center text-caption" style={{ color: "var(--muted-foreground)" }}>
-                  {editingIndex !== null
+                  {editingQuestion !== null
                     ? t("creator.phase2.clarifier.pressEnterSave")
                     : t("creator.phase2.clarifier.pressEnterSend")}
                 </p>
@@ -635,7 +685,7 @@ export default function AIClarifierPage() {
               /* FINALIZE ERROR — retry is always possible; the six answers stay in
                  messages/state (finalize failure never clears them), so nothing is lost. */
               <div
-                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
+                className="mt-auto shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
                 style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
               >
                 <div
@@ -667,7 +717,7 @@ export default function AIClarifierPage() {
             ) : finalizing ? (
               /* FINALIZING — the AI clarifier is running + being polled. */
               <div
-                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
+                className="mt-auto shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
                 style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
               >
                 <div
@@ -689,7 +739,7 @@ export default function AIClarifierPage() {
               /* FINALIZE CTA — replaces the input entirely; the action a user must take
                  or lose their work. Says what finalizing does, not just the button name. */
               <div
-                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
+                className="mt-auto shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
                 style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
               >
                 <div
@@ -703,24 +753,24 @@ export default function AIClarifierPage() {
                     {t("creator.phase2.clarifier.allQuestionsAnswered")}
                   </h3>
                   <p className="text-caption max-w-sm mx-auto" style={{ color: "var(--muted-foreground)" }}>
-                    {t("creator.phase2.clarifier.finalizeDesc")}
+                    {cta.note}
                   </p>
                 </div>
                 <button
-                  onClick={handleComplete}
+                  onClick={cta.onClick}
                   disabled={finalizing}
                   className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-button font-semibold transition-opacity disabled:opacity-60"
                   style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
-                  {t("creator.phase2.clarifier.generateSummary")} <ArrowRight className="h-4 w-4" />
+                  {cta.label} <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             )}
           </section>
 
-          {/* RIGHT: progress panel */}
+          {/* RIGHT: progress panel (STICKY) */}
           <aside
-            className="w-full lg:w-[300px] rounded-2xl border shadow-sm px-6 pt-9 pb-6 flex flex-col gap-6 shrink-0"
+            className="w-full lg:w-[300px] rounded-2xl border shadow-sm px-6 pt-9 pb-6 flex flex-col gap-6 shrink-0 lg:sticky lg:top-0 lg:h-fit"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
           >
             {/* ── Clarity ring + band label + finalize cue ── */}
@@ -762,11 +812,13 @@ export default function AIClarifierPage() {
                   ring reaching full is therefore always paired with one or the other. */}
               {summaryReady ? (
                 <div className="w-full flex flex-col items-center gap-2 pt-1">
-                  <p className="text-caption text-center" style={{ color: "var(--muted-foreground)" }}>
-                    {t("creator.phase2.clarifier.notDoneYet")}
-                  </p>
+                  {(!hasSummary || summaryStale) && (
+                    <p className="text-caption text-center" style={{ color: "var(--muted-foreground)" }}>
+                      {hasSummary ? t("creator.phase2.clarifier.summaryOutdated") : t("creator.phase2.clarifier.notDoneYet")}
+                    </p>
+                  )}
                   <button
-                    onClick={handleComplete}
+                    onClick={cta.onClick}
                     disabled={finalizing}
                     className="w-full inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-badge font-semibold transition-opacity disabled:opacity-60"
                     style={{ backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
@@ -777,17 +829,10 @@ export default function AIClarifierPage() {
                       </>
                     ) : (
                       <>
-                        {t("creator.phase2.clarifier.generateSummary")} <ArrowRight className="h-4 w-4" />
+                        {cta.label} <ArrowRight className="h-4 w-4" />
                       </>
                     )}
                   </button>
-                </div>
-              ) : answeredCount >= totalQuestions ? (
-                <div className="w-full flex flex-col items-center gap-1.5 pt-1">
-                  <Loader2 className="h-4 w-4 animate-spin" style={{ color: band.color }} />
-                  <p className="text-caption text-center" style={{ color: "var(--muted-foreground)" }}>
-                    {t("creator.phase2.clarifier.savingFinalAnswer")}
-                  </p>
                 </div>
               ) : null}
             </div>
@@ -799,61 +844,17 @@ export default function AIClarifierPage() {
             <div className="flex flex-col gap-3">
               <p className="text-label font-medium" style={{ color: "var(--foreground)" }}>
                 {summaryReady
-                  ? t("creator.phase2.clarifier.allQuestionsAnsweredCount", { count: totalQuestions })
-                  : t("creator.phase2.clarifier.progressTitle", { current: currentQuestion, total: totalQuestions })}
+                  ? t("creator.phase2.clarifier.allQuestionsAnsweredCount", { count: totalTopics })
+                  : t("creator.phase2.clarifier.progressTitle", { done: answeredCount, total: totalTopics })}
               </p>
-              <div className="flex flex-col gap-2">
-                {stepLabels.map((label, idx) => {
-                  const stepNum = idx + 1;
-                  const done = answeredCount >= stepNum;
-                  const current = !done && answeredCount === stepNum - 1;
-                  return (
-                    <div key={label} className="flex items-center gap-2">
-                      {/* status badge: tinted circle drawn separately; lucide supplies
-                          the check glyph (design's filled tick-circle has no library
-                          single-glyph equivalent) or the step number */}
-                      <div
-                        className="flex items-center justify-center rounded-full shrink-0"
-                        style={{
-                          width: 20,
-                          height: 20,
-                          backgroundColor: done
-                            ? "var(--dr-bg-green)"
-                            : current
-                              ? "var(--primary)"
-                              : "var(--muted)",
-                        }}
-                      >
-                        {done ? (
-                          <Check className="h-3.5 w-3.5" strokeWidth={3} style={{ color: "var(--p8-green)" }} />
-                        ) : (
-                          <span
-                            className="text-badge leading-none font-mono"
-                            style={{ color: current ? "var(--primary-foreground)" : "var(--muted-foreground)" }}
-                          >
-                            {stepNum}
-                          </span>
-                        )}
-                      </div>
-                      {/* label + parenthetical (future steps only; completed & current
-                          drop it — a completed step relies on the tick) */}
-                      <div className="flex items-center gap-1 min-w-0">
-                        <span
-                          className={`text-badge ${current ? "font-medium" : ""}`}
-                          style={{ color: "var(--foreground)" }}
-                        >
-                          {label}
-                        </span>
-                        {!done && !current && (
-                          <span className="text-badge" style={{ color: "var(--muted-foreground)" }}>
-                            {t("creator.phase2.clarifier.unlocksAfter", { num: stepNum - 1 })}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <ClarifierStepList
+                answers={answers}
+                currentTopic={currentTopic}
+                topicLabels={topicLabels}
+                disabled={isTyping || finalizing}
+                onSaveFields={handleSaveFields}
+                onRewriteWeak={handleEditStart}
+              />
             </div>
 
             {/* ── Idea Journal ── */}

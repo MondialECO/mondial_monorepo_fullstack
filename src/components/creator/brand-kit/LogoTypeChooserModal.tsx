@@ -1,7 +1,7 @@
 "use client";
 import { useTranslation } from "@/hooks/useTranslation";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import {
   Check,
   CheckCircle2,
@@ -259,35 +259,31 @@ export function LogoTypeChooserModal({
   onKitUpdated,
 }: LogoTypeChooserModalProps) {
   const { t } = useTranslation("creator");
-  const LOGO_TYPE_OPTIONS = useMemo(() => getLogoTypeOptions(t), [t]);
+  const LOGO_TYPE_OPTIONS = getLogoTypeOptions(t);
   const initialType = kit?.logo?.logoType || "symbol_plus_name";
   const [selectedType, setSelectedType] = useState<string>(initialType);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Dynamic context extracted from real kit strategy and direction
-  const businessName = useMemo(() => {
-    return (
-      kit?.strategy?.nameDisplayForm ||
-      kit?.strategy?.businessName ||
-      "AutoInvoice"
-    );
-  }, [kit]);
+  const businessName = (
+    kit?.strategy?.nameDisplayForm ||
+    kit?.strategy?.businessName ||
+    "AutoInvoice"
+  );
 
-  const charLength = useMemo(() => {
-    return businessName.length;
-  }, [businessName]);
+  const charLength = businessName.length;
 
-  const brandInitials = useMemo(() => {
+  const brandInitials = (() => {
     const parts = businessName.trim().split(/\s+/);
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     }
     const firstTwo = businessName.trim().slice(0, 2).toUpperCase();
     return firstTwo || "NL";
-  }, [businessName]);
+  })();
 
-  const firstAppearance = useMemo(() => {
+  const firstAppearance = (() => {
     const raw = kit?.strategy?.firstAppearance;
     if (!raw) return "Invoice header";
     if (raw === "invoice_header") return "Invoice header";
@@ -296,21 +292,16 @@ export function LogoTypeChooserModal({
     if (raw === "product_ui") return "Product UI";
     if (raw === "packaging") return "Packaging";
     return raw.replace(/_/g, " ");
-  }, [kit]);
+  })();
 
-  const directionName = useMemo(() => {
+  const directionName = (() => {
     const candidate = kit?.direction?.candidates?.find(
       (c) => c.key === kit?.direction?.selectedDirectionKey
     );
     return candidate?.name || "Bold & Innovative";
-  }, [kit]);
+  })();
 
-  const selectedOption = useMemo(
-    () =>
-      LOGO_TYPE_OPTIONS.find((o) => o.key === selectedType) ||
-      LOGO_TYPE_OPTIONS[0],
-    [selectedType]
-  );
+  const selectedOption = LOGO_TYPE_OPTIONS.find((o) => o.key === selectedType) || LOGO_TYPE_OPTIONS[0];
 
   const handleConfirm = async () => {
     if (!selectedType || isSubmitting) return;

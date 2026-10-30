@@ -19,6 +19,9 @@ import { Card } from '@/components/ui/card';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import BusinessModelPrintView from '@/components/creator/BusinessModelPrintView';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
+import { ThinAnswersBanner } from '@/components/creator/clarifier/ThinAnswersBanner';
+import { StaleUpstreamNotice } from '@/components/creator/phase3/StaleUpstreamNotice';
+import { SummaryStaleNotice, useClarifierSummaryStale } from '@/components/creator/phase3/SummaryStaleNotice';
 import {
   useAiCredits,
   useBusinessModelSessionTimed,
@@ -60,6 +63,7 @@ export default function BusinessModelPage() {
   const searchParams = useSearchParams();
   const queryIdeaId = searchParams.get('ideaId');
   const { state, completeStep } = useCreatorProgress();
+  const summaryStale = useClarifierSummaryStale();
   const activeIdeaId = state?.activeIdeaId;
   const effectiveIdeaId = queryIdeaId || activeIdeaId || getCreatorWorkspaceIdea() || null;
 
@@ -260,6 +264,14 @@ export default function BusinessModelPage() {
         ) : undefined
       }
     >
+      <ThinAnswersBanner />
+      <SummaryStaleNotice />
+      <StaleUpstreamNotice
+        stale={completed && !summaryStale && (session.data as { upstreamStale?: boolean } | undefined)?.upstreamStale}
+        onRegenerate={handleRegenerate}
+        cost={businessModelCost}
+        disabled={isGenerating || insufficientCredits}
+      />
       <div className="w-full min-w-0 max-w-none space-y-9 pb-16 font-sans">
         {/* Error Banners */}
         {startError && (

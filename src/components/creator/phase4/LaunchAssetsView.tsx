@@ -222,7 +222,7 @@ export function LaunchAssetsView({
     }
   }, [assets, projectName]);
 
-  const isEditorDirty = React.useMemo(() => {
+  const isEditorDirty = (() => {
     if (!assets) return false;
     const destTypeToCompare = destValue.trim() ? destType : 'NotSet';
     const destValueToCompare = destValue.trim();
@@ -251,32 +251,7 @@ export function LaunchAssetsView({
     if (JSON.stringify(sectionsList) !== JSON.stringify(assets.sections || [])) return true;
 
     return false;
-  }, [
-    assets,
-    headline,
-    description,
-    buttonLabel,
-    destType,
-    destValue,
-    problemEyebrow,
-    problemStatement,
-    operationalMomentumStatement,
-    solutionHeader,
-    solutionSubheader,
-    howItWorksHeader,
-    howItWorksSubheader,
-    faqHeader,
-    faqSubheader,
-    finalCtaHeader,
-    finalCtaSubheader,
-    brandName,
-    projectName,
-    footerNotice,
-    plannedSolutions,
-    workflowDetails,
-    faqs,
-    sectionsList,
-  ]);
+  })();
 
   const handleApplyChanges = async () => {
     try {

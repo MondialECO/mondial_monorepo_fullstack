@@ -17,7 +17,7 @@ namespace WebApp.Services.Repository.Ai
         Task<List<MarketStudySession>> ListByIdeaAsync(string businessIdeaId, string ownerUserId, int skip, int limit);
         Task SetRequestIdAsync(string id, string requestId);
         Task SetProcessingAsync(string id);
-        Task AppendGeneratedVersionAsync(string id, BsonDocument content, string requestId);
+        Task AppendGeneratedVersionAsync(string id, BsonDocument content, string requestId, Phase3VersionSource? source = null);
         Task EditCurrentVersionAsync(string id, int versionNumber, BsonDocument content);
         Task SetNeedsReviewAsync(string id, string error);
         Task SetFailedAsync(string id, string error);
@@ -114,7 +114,7 @@ namespace WebApp.Services.Repository.Ai
             await _collection.UpdateOneAsync(x => x.Id == id, update);
         }
 
-        public async Task AppendGeneratedVersionAsync(string id, BsonDocument content, string requestId)
+        public async Task AppendGeneratedVersionAsync(string id, BsonDocument content, string requestId, Phase3VersionSource? source = null)
         {
             var session = await _collection.Find(x => x.Id == id).FirstOrDefaultAsync()
                 ?? throw new KeyNotFoundException($"MarketStudySession {id} not found.");
@@ -129,6 +129,9 @@ namespace WebApp.Services.Repository.Ai
                 Content = (BsonDocument)content.DeepClone(),
                 RequestId = requestId,
                 IsEdited = false,
+                // No new source: keep the current version's source.
+                BuiltFromClarifierSessionId = source?.ClarifierSessionId
+                    ?? session.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion)?.BuiltFromClarifierSessionId,
                 CreatedAt = now,
                 UpdatedAt = now,
             };
@@ -140,6 +143,8 @@ namespace WebApp.Services.Repository.Ai
                 .Set(x => x.Error, null)
                 .Set(x => x.InFlightKey, null)
                 .Set(x => x.UpdatedAt, now);
+            if (!string.IsNullOrWhiteSpace(source?.ClarifierSessionId))
+                update = update.Set(x => x.ClarifierSessionId, source.ClarifierSessionId);
 
             await _collection.UpdateOneAsync(x => x.Id == id, update);
         }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useRouter } from "next/navigation";
 import { BrandKit, BrandLogoVariation } from "@/types/creator/brand-kit";
@@ -150,23 +150,20 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
     },
   ];
 
-  const activeLockup = useMemo(() => {
-    const found = canonicalVariations.find((v) => v.key === selectedVariationKey);
-    return found || canonicalVariations[0];
-  }, [selectedVariationKey, canonicalVariations]);
+  const activeLockup = canonicalVariations.find((v) => v.key === selectedVariationKey) || canonicalVariations[0];
 
   const colors = kit.colors?.roles ?? [];
   const typographyRoles = kit.typography?.roles ?? [];
 
   // Dynamic Asset Count Calculation (Figma 14 Files = 7 SVG Variations + 7 PNG Renders)
-  const totalAssetFiles = useMemo(() => {
+  const totalAssetFiles = (() => {
     const vars = kit.logo?.variations ?? {};
     const count = Object.keys(vars).length;
     return count > 0 ? count * 2 : 14;
-  }, [kit.logo?.variations]);
+  })();
 
   // Dynamic Connected Services / Documents Status
-  const integrations = useMemo(() => {
+  const integrations = (() => {
     const isKitReady =
       kit.status === "complete" ||
       (kit.logo?.variations && Object.keys(kit.logo.variations).length > 0);
@@ -197,7 +194,7 @@ export function BrandKitHubView({ ideaId, initialKit }: BrandKitHubViewProps) {
         isApplied: false,
       },
     ];
-  }, [kit.status, kit.logo?.variations]);
+  })();
 
   const connectedCount = integrations.filter((i) => i.isApplied).length;
 

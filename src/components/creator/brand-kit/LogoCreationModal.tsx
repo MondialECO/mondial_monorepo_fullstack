@@ -1,7 +1,7 @@
 "use client";
 import { useTranslation } from "@/hooks/useTranslation";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { BrandKit, BrandLogoConcept } from "@/types/creator/brand-kit";
 import { brandKitApi } from "@/lib/api-creator-brand-kit";
 import creatorAiApi from "@/lib/api-creator-ai";
@@ -160,15 +160,13 @@ export function LogoCreationModal({
   }, [ideaId, initialKit]);
 
   // Derived context metadata
-  const businessName = useMemo(() => {
-    return (
-      kit?.strategy?.nameDisplayForm ||
-      kit?.strategy?.businessName ||
-      "AutoInvoice"
-    );
-  }, [kit]);
+  const businessName = (
+    kit?.strategy?.nameDisplayForm ||
+    kit?.strategy?.businessName ||
+    "AutoInvoice"
+  );
 
-  const logoTypeName = useMemo(() => {
+  const logoTypeName = (() => {
     const raw = kit?.logo?.logoType;
     if (!raw) return "Symbol + Name";
     if (raw === "symbol_plus_name") return "Symbol + Name";
@@ -178,14 +176,14 @@ export function LogoCreationModal({
     if (raw === "icon") return "Icon";
     if (raw === "minimal") return "Minimal";
     return raw.replace(/_/g, " ");
-  }, [kit]);
+  })();
 
-  const directionName = useMemo(() => {
+  const directionName = (() => {
     const candidate = kit?.direction?.candidates?.find(
       (c) => c.key === kit?.direction?.selectedDirectionKey
     );
     return candidate?.name || "Bold & Innovative";
-  }, [kit]);
+  })();
 
   // Batch Redraw Cap logic (3 max batch regenerations)
   const remainingBatchCap = Math.max(0, 3 - batchRegenerateCount);
@@ -250,13 +248,12 @@ export function LogoCreationModal({
   };
 
   // 3. Per-Tile Concept Selection Handler
-  const handleSelectConcept = useCallback((key: string) => {
+  const handleSelectConcept = (key: string) => {
     setSelectedConceptKey(key);
-  }, []);
+  };
 
   // 4. Per-Tile Regeneration Handler (Isolated State - 2 credits, 3-cap)
-  const handleRegenerateConcept = useCallback(
-    async (conceptKey: string) => {
+  const handleRegenerateConcept = async (conceptKey: string) => {
       setTileErrors((prev) => ({ ...prev, [conceptKey]: null }));
       setRegeneratingKeys((prev) => ({ ...prev, [conceptKey]: true }));
 
@@ -324,12 +321,10 @@ export function LogoCreationModal({
       } finally {
         setRegeneratingKeys((prev) => ({ ...prev, [conceptKey]: false }));
       }
-    },
-    [ideaId, kit?.version]
-  );
+    };
 
   // 5. Compare Mode Selection Toggle
-  const handleToggleCompareSelection = useCallback((key: string) => {
+  const handleToggleCompareSelection = (key: string) => {
     setCompareSelection((prev) => {
       if (prev.includes(key)) {
         return prev.filter((k) => k !== key);
@@ -345,7 +340,7 @@ export function LogoCreationModal({
       setShowCompareOverlay(true);
       return next;
     });
-  }, []);
+  };
 
   // 6. Final Confirmation Handler -> transitions to Variation Set Modal
   const handleConfirmSelection = async () => {
@@ -377,10 +372,7 @@ export function LogoCreationModal({
   };
 
   // Resolve selected concept display title
-  const selectedConcept = useMemo(
-    () => concepts.find((c) => c.key === selectedConceptKey),
-    [concepts, selectedConceptKey]
-  );
+  const selectedConcept = concepts.find((c) => c.key === selectedConceptKey);
 
   const selectedConceptTitle = selectedConcept?.parameters?.descriptor
     ? selectedConcept.parameters.descriptor
