@@ -1230,6 +1230,8 @@ Across the entire 7-step Phase 3 sequence, all rendered metrics, tables, cards, 
 
 ## 6. Phase 4 — Construction & Launch Preparation (Canonical Engine — LIVE & FROZEN)
 
+> **Known open issue (tracked 2026-10-31, not fixed):** the frontend test `CanonicalPhase4Writes_UseExactIdeaId` (`tests/creator/frontend/creator-idea-scope.test.ts`) fails on `dev-hafiz` and failed before the clarifier topic-flow work. It expects Phase 4 write requests (e.g. `construction-snapshot/generate`) to send only `{ ideaId }`, but they also send `expectedVersion` — the test and the Phase 4 request contract disagree. Unrelated to the clarifier work; left for a separate Phase 4 fix. Also listed in [34-test-map.md](../system-architecture/34-test-map.md).
+
 Phase 4 bridges strategic formulation and operational execution through seven canonical, interconnected engines. It shifts the venture from *"Understanding the Business"* (Phase 3) into *"Preparing to Build and Launch"*:
 
 ```text

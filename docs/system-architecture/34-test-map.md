@@ -45,3 +45,11 @@ Mondial ECO maintains a comprehensive multi-tier testing suite spanning C# unit 
    - Rigorous mathematical test suite asserting that post-deal share issuances calculate exact integer share counts, preserve option pools, and update the versioned Cap Table without rounding drift.
 3. **`CreatorStabilization02.test.tsx`**:
    - Frontend integration test validating Creator route stability, profile settings persistence, and mock data immunity.
+
+---
+
+## 4. Known Failing Tests (tracked, not fixed)
+
+| Test | Area | Since | Cause | Status |
+|---|---|---|---|---|
+| `CanonicalPhase4Writes_UseExactIdeaId` (`tests/creator/frontend/creator-idea-scope.test.ts`) | Creator Phase 4 | Pre-existing (failing before the 2026-10-31 clarifier work) | Expects Phase 4 write requests to send only `{ ideaId }`; they also send `expectedVersion` — test and request contract disagree. | Open. Unrelated to the clarifier work; separate Phase 4 fix. |
