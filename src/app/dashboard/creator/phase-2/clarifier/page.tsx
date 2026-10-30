@@ -28,7 +28,7 @@ import {
 } from "@/lib/clarifier-answers";
 import { initializeClarifierWebSocket, getClarifierWebSocket } from "@/lib/clarifier-websocket";
 import type { ClarifierAnswer, ClarifierChatMessage } from "@/types/creator/journey-api";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/app/_providers/AuthProvider";
 
 type Message = ClarifierChatMessage;
 
