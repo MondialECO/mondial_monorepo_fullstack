@@ -17,13 +17,13 @@ import {
 } from "@/hooks/queries/creator-ai";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ClarifierStepList } from "@/components/creator/clarifier/ClarifierStepList";
+import { Button } from "@/components/ui/button";
 import {
-  CLARIFIER_MAX_ATTEMPTS,
-  CLARIFIER_TOTAL_QUESTIONS,
+  CLARIFIER_TOTAL_TOPICS,
   buildRawIdea,
-  currentQuestionIndex,
   getClarifierAnswers,
-  isAnswerDone,
+  isTopicDone,
+  nextTopic,
   summaryIsStale,
 } from "@/lib/clarifier-answers";
 import { useSignalRHub } from "@/lib/realtime/use-signalr-hub";
@@ -171,11 +171,11 @@ export default function AIClarifierPage() {
       return;
     }
 
-    if (currentQuestion === null) return;
+    if (currentTopic === null) return;
     const priorMessages = messages;
 
     // Optimistic user bubble; the server transcript replaces it on success.
-    setMessages([...messages, { id: `pending-${Date.now()}`, sender: "user", text: userText, questionIndex: currentQuestion }]);
+    setMessages([...messages, { id: `pending-${Date.now()}`, sender: "user", text: userText, questionIndex: currentTopic }]);
     setInputValue("");
     setIsTyping(true);
     setStreamingMessage("");
@@ -246,7 +246,7 @@ export default function AIClarifierPage() {
   const handleEditStart = (questionIndex: number) => {
     if (isTyping || finalizing) return;
     const answer = answers.find((a) => a.questionIndex === questionIndex);
-    if (!isAnswerDone(answer)) return;
+    if (!isTopicDone(answer)) return;
     setInputValue(answer!.rawAnswer);
     setEditingQuestion(questionIndex);
     setEditFeedback(null);
@@ -340,18 +340,20 @@ export default function AIClarifierPage() {
     }
   };
 
-  // All progress derives from the answer records — never from counting user messages,
-  // which include rejected attempts.
-  const totalQuestions = CLARIFIER_TOTAL_QUESTIONS;
-  const answeredCount = answers.filter(isAnswerDone).length;
-  const currentQuestion = currentQuestionIndex(answers);
-  const summaryReady = currentQuestion === null;
-  const currentAttempts = answers.find((a) => a.questionIndex === currentQuestion)?.attempts ?? 0;
+  // All progress derives from the topic records — never from counting user messages,
+  // since one message can cover several topics.
+  const totalTopics = CLARIFIER_TOTAL_TOPICS;
+  const answeredCount = answers.filter((a) => isTopicDone(a)).length;
+  const currentTopic = nextTopic(answers);
+  const summaryReady = currentTopic === null;
   const hasSummary = !!phase2?.clarifierSessionId;
   const summaryStale = hasSummary && summaryIsStale(answers, phase2?.clarifierSummarizedAt);
   const firstAnswer = answers.find((a) => a.questionIndex === 1);
-  const journalText = isAnswerDone(firstAnswer) ? firstAnswer!.rawAnswer : "";
-  // Only the latest bubble per question is that question's answer; earlier ones are rejected attempts.
+  const journalText = isTopicDone(firstAnswer) ? firstAnswer!.rawAnswer : "";
+  // Chips belong to the latest AI message only, while that topic is still being asked.
+  const lastMessage = messages[messages.length - 1];
+  const activeChips = !isTyping && !summaryReady && lastMessage?.sender === "ai" ? lastMessage.chips ?? [] : [];
+  // Only the latest bubble per topic is that topic's answer; earlier ones were followed up.
   const latestUserMsgByQuestion = new Map<number, string>();
   let legacyOrdinal = 0;
   for (const m of messages) {
@@ -360,7 +362,7 @@ export default function AIClarifierPage() {
     latestUserMsgByQuestion.set(q, m.id);
   }
   const questionOfMessage = (id: string) => [...latestUserMsgByQuestion].find(([, mid]) => mid === id)?.[0];
-  const ringPct = Math.min(Math.round((answeredCount / totalQuestions) * 100), 100);
+  const ringPct = Math.min(Math.round((answeredCount / totalTopics) * 100), 100);
 
   // An unchanged summary is free to revisit; only new or edited answers cost credits.
   // The price is server-configured (Ai:CreditCosts), so never hardcode it in copy.
@@ -382,7 +384,8 @@ export default function AIClarifierPage() {
     return { label: t("creator.phase2.clarifier.ringBands.allAnswered"), color: "var(--p8-green)" };
   };
 
-  const stepLabels = [
+  // Indexed by topic index − 1 (the panel itself renders in ask order).
+  const topicLabels = [
     t("creator.phase2.clarifier.stepLabels.problem"),
     t("creator.phase2.clarifier.stepLabels.targetUsers"),
     t("creator.phase2.clarifier.stepLabels.alternatives"),
@@ -391,7 +394,7 @@ export default function AIClarifierPage() {
     t("creator.phase2.clarifier.stepLabels.risk"),
   ];
 
-  const band = getRingBand(answeredCount, totalQuestions);
+  const band = getRingBand(answeredCount, totalTopics);
   const ringR = 52;
   const ringC = 2 * Math.PI * ringR;
   const ringOffset = ringC * (1 - ringPct / 100);
@@ -406,7 +409,7 @@ export default function AIClarifierPage() {
             {t("creator.phase2.clarifier.mainTitle")}
           </h1>
           <p className="text-base max-w-[780px]" style={{ color: "var(--muted-foreground)" }}>
-            {t("creator.phase2.clarifier.mainSubtitle", { count: totalQuestions })}
+            {t("creator.phase2.clarifier.mainSubtitle", { count: totalTopics })}
           </p>
         </div>
 
@@ -445,7 +448,7 @@ export default function AIClarifierPage() {
                     {t("creator.phase2.clarifier.title")}
                   </p>
                   <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-                    {t("creator.phase2.clarifier.subtitle", { count: totalQuestions })}
+                    {t("creator.phase2.clarifier.subtitle", { count: totalTopics })}
                   </p>
                 </div>
               </div>
@@ -463,12 +466,15 @@ export default function AIClarifierPage() {
                   // Send-failure notes are pushed as ai-sender messages with an "err-" id
                   // (handleSend rollback). Flag them for destructive styling — no logic change.
                   const isError = msg.id.startsWith("err-");
+                  // "feedback" exists only on older fixed-question transcripts.
                   const isFeedback = "kind" in msg && msg.kind === "feedback";
                   const answerQuestion = isUser ? questionOfMessage(msg.id) : undefined;
                   const answer = answers.find((a) => a.questionIndex === answerQuestion);
-                  // The latest bubble shows the current answer text, so an accepted edit appears in place.
-                  const text = answer && isAnswerDone(answer) ? answer.rawAnswer : msg.text;
-                  const canEdit = isAnswerDone(answer);
+                  // An accepted edit replaces the topic's raw answer; show it in place of the original bubble.
+                  // (A follow-up answer is appended to the raw answer, so the original text is still contained.)
+                  const edited = !!answer && isTopicDone(answer) && !answer.rawAnswer.includes(msg.text);
+                  const text = edited ? answer!.rawAnswer : msg.text;
+                  const canEdit = isTopicDone(answer);
                   const isEditing = canEdit && editingQuestion === answerQuestion;
                   return (
                     <div
@@ -590,6 +596,15 @@ export default function AIClarifierPage() {
                     </button>
                   </div>
                 )}
+                {editingQuestion === null && activeChips.length > 0 && (
+                  <div role="group" aria-label={t("creator.phase2.clarifier.chipsLabel")} className="mb-2 flex flex-wrap gap-2 px-1">
+                    {activeChips.map((chip) => (
+                      <Button key={chip} type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setInputValue(chip)}>
+                        {chip}
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 <div
                   className="flex items-end gap-2 rounded-xl border p-1.5 focus-within:ring-1 focus-within:ring-[var(--ring)] transition-shadow"
                   style={{ backgroundColor: "var(--popover)", borderColor: editingQuestion !== null ? "var(--primary)" : "var(--border)" }}
@@ -623,11 +638,6 @@ export default function AIClarifierPage() {
                 {editingQuestion !== null && editFeedback && (
                   <p role="status" className="mt-2 rounded-lg border px-3 py-2 text-caption" style={{ backgroundColor: "var(--dr-bg-yellow)", borderColor: "var(--dr-yellow)", color: "var(--foreground)" }}>
                     {editFeedback}
-                  </p>
-                )}
-                {editingQuestion === null && currentAttempts > 0 && (
-                  <p className="mt-2 text-center text-caption" style={{ color: "var(--dr-yellow)" }}>
-                    {t("creator.phase2.clarifier.attemptHint", { current: currentAttempts + 1, max: CLARIFIER_MAX_ATTEMPTS })}
                   </p>
                 )}
                 <p className="mt-2 text-center text-caption" style={{ color: "var(--muted-foreground)" }}>
@@ -799,13 +809,13 @@ export default function AIClarifierPage() {
             <div className="flex flex-col gap-3">
               <p className="text-label font-medium" style={{ color: "var(--foreground)" }}>
                 {summaryReady
-                  ? t("creator.phase2.clarifier.allQuestionsAnsweredCount", { count: totalQuestions })
-                  : t("creator.phase2.clarifier.progressTitle", { current: currentQuestion, total: totalQuestions })}
+                  ? t("creator.phase2.clarifier.allQuestionsAnsweredCount", { count: totalTopics })
+                  : t("creator.phase2.clarifier.progressTitle", { done: answeredCount, total: totalTopics })}
               </p>
               <ClarifierStepList
                 answers={answers}
-                currentQuestion={currentQuestion}
-                stepLabels={stepLabels}
+                currentTopic={currentTopic}
+                topicLabels={topicLabels}
                 disabled={isTyping || finalizing}
                 onSaveFields={handleSaveFields}
               />

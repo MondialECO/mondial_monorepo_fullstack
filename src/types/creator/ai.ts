@@ -38,6 +38,8 @@ export interface RawIdeaInput {
   whyNow?: string;
   riskiestAssumption?: string;
   founderAdvantage?: string;
+  /** Raw-idea keys whose clarifier topic ended weak; C-2 and Phase 3 treat them as unconfirmed. */
+  unconfirmedFields?: string[];
   attachments?: string[];
 }
 

@@ -4,20 +4,57 @@ import { useState } from "react";
 import { Check, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/useTranslation";
-import { CLARIFIER_FIELDS, effectiveFields, isAnswerDone } from "@/lib/clarifier-answers";
+import {
+  CLARIFIER_ASK_ORDER,
+  CLARIFIER_TOPIC_FIELDS,
+  effectiveFields,
+  isTopicDone,
+  topicState,
+  type TopicState,
+} from "@/lib/clarifier-answers";
 import type { ClarifierAnswer } from "@/types/creator/journey-api";
 
 type Props = {
   answers: ClarifierAnswer[];
-  currentQuestion: number | null;
-  stepLabels: string[];
+  currentTopic: number | null;
+  /** Labels indexed by topic index − 1. */
+  topicLabels: string[];
   disabled: boolean;
-  onSaveFields: (questionIndex: number, fields: Record<string, string>) => Promise<void>;
+  onSaveFields: (topicIndex: number, fields: Record<string, string>) => Promise<void>;
 };
 
-/** Progress steps; each finished step shows the AI-structured fields, editable without an AI call. */
-export function ClarifierStepList({ answers, currentQuestion, stepLabels, disabled, onSaveFields }: Props) {
+/** Topic marker. Weak must never read as a plain ✓: dashed amber ring + amber check. */
+function TopicMarker({ state, current, position }: { state: TopicState; current: boolean; position: number }) {
+  if (state === "clear") {
+    return (
+      <span className="flex size-5 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: "var(--dr-bg-green)" }}>
+        <Check className="size-3.5" strokeWidth={3} style={{ color: "var(--p8-green)" }} />
+      </span>
+    );
+  }
+  if (state === "weak") {
+    return (
+      <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-dashed" style={{ borderColor: "var(--dr-yellow)" }}>
+        <Check className="size-3" strokeWidth={2} style={{ color: "var(--dr-yellow)" }} />
+      </span>
+    );
+  }
+  const background = current ? "var(--primary)" : state === "unclear" ? "var(--dr-bg-yellow)" : "var(--muted)";
+  const color = current ? "var(--primary-foreground)" : state === "unclear" ? "var(--dr-yellow)" : "var(--muted-foreground)";
+  return (
+    <span
+      className={cn("flex size-5 shrink-0 items-center justify-center rounded-full", state === "unclear" && "border")}
+      style={{ backgroundColor: background, borderColor: "var(--dr-yellow)" }}
+    >
+      <span className="text-badge leading-none font-mono" style={{ color }}>{position}</span>
+    </span>
+  );
+}
+
+/** Topic progress in ask order; each finished topic shows the AI-structured fields, editable without an AI call. */
+export function ClarifierStepList({ answers, currentTopic, topicLabels, disabled, onSaveFields }: Props) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -26,7 +63,7 @@ export function ClarifierStepList({ answers, currentQuestion, stepLabels, disabl
 
   const startEdit = (answer: ClarifierAnswer) => {
     const current = effectiveFields(answer);
-    setDraft(Object.fromEntries(CLARIFIER_FIELDS[answer.questionIndex - 1].map((k) => [k, current[k] ?? ""])));
+    setDraft(Object.fromEntries(CLARIFIER_TOPIC_FIELDS[answer.questionIndex - 1].map((k) => [k, current[k] ?? ""])));
     setError(null);
     setEditing(answer.questionIndex);
   };
@@ -55,49 +92,22 @@ export function ClarifierStepList({ answers, currentQuestion, stepLabels, disabl
 
   return (
     <div className="flex flex-col gap-2">
-      {stepLabels.map((label, idx) => {
-        const stepNum = idx + 1;
-        const answer = answers.find((a) => a.questionIndex === stepNum);
-        const done = isAnswerDone(answer);
-        const weak = answer?.status === "accepted_weak";
-        const current = currentQuestion === stepNum;
+      {CLARIFIER_ASK_ORDER.map((topic, position) => {
+        const label = topicLabels[topic - 1];
+        const answer = answers.find((a) => a.questionIndex === topic);
+        const state = topicState(answer);
+        const done = isTopicDone(answer);
+        const current = currentTopic === topic;
         const fields = done && answer ? effectiveFields(answer) : {};
-        const isEditing = editing === stepNum && !!answer;
+        const isEditing = editing === topic && !!answer;
 
         return (
-          <div key={label} className="flex flex-col gap-1">
+          <div key={topic} className="flex flex-col gap-1">
             <div className="flex items-center gap-2">
-              <div
-                className="flex items-center justify-center rounded-full shrink-0"
-                style={{
-                  width: 20,
-                  height: 20,
-                  backgroundColor: done
-                    ? weak ? "var(--dr-bg-yellow)" : "var(--dr-bg-green)"
-                    : current ? "var(--primary)" : "var(--muted)",
-                }}
-              >
-                {done ? (
-                  <Check className="h-3.5 w-3.5" strokeWidth={3} style={{ color: weak ? "var(--dr-yellow)" : "var(--p8-green)" }} />
-                ) : (
-                  <span
-                    className="text-badge leading-none font-mono"
-                    style={{ color: current ? "var(--primary-foreground)" : "var(--muted-foreground)" }}
-                  >
-                    {stepNum}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1 min-w-0 flex-1">
-                <span className={`text-badge ${current ? "font-medium" : ""}`} style={{ color: "var(--foreground)" }}>
-                  {label}
-                </span>
-                {!done && !current && (
-                  <span className="text-badge" style={{ color: "var(--muted-foreground)" }}>
-                    {t("creator.phase2.clarifier.unlocksAfter", { num: stepNum - 1 })}
-                  </span>
-                )}
-              </div>
+              <TopicMarker state={state} current={current} position={position + 1} />
+              <span className={cn("text-badge min-w-0 flex-1", current && "font-medium")} style={{ color: "var(--foreground)" }}>
+                {label}
+              </span>
               {done && answer && !isEditing && (
                 <Button
                   variant="ghost"
@@ -112,17 +122,24 @@ export function ClarifierStepList({ answers, currentQuestion, stepLabels, disabl
               )}
             </div>
 
-            {weak && !isEditing && (
+            {state === "weak" && !isEditing && (
               <p className="pl-7 text-caption" style={{ color: "var(--dr-yellow)" }}>
+                <span className="font-medium">{t("creator.phase2.clarifier.topicState.weak")}</span>
+                {" — "}
                 {t("creator.phase2.clarifier.weakAnswerHint")}
+              </p>
+            )}
+            {state === "unclear" && (
+              <p className="pl-7 text-caption" style={{ color: "var(--muted-foreground)" }}>
+                {t("creator.phase2.clarifier.topicState.unclear")}
               </p>
             )}
 
             {isEditing ? (
               <div className="pl-7 flex flex-col gap-2">
-                {CLARIFIER_FIELDS[stepNum - 1].map((key, _, keys) => (
+                {CLARIFIER_TOPIC_FIELDS[topic - 1].map((key, _, keys) => (
                   <label key={key} className="flex flex-col gap-1">
-                    {/* Single-field steps are already named by the step label above. */}
+                    {/* Single-field topics are already named by the label above. */}
                     {keys.length > 1 && (
                       <span className="text-caption font-medium" style={{ color: "var(--muted-foreground)" }}>
                         {t(`creator.phase2.clarifier.fields.${key}`)}

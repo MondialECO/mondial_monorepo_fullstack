@@ -930,17 +930,16 @@ export interface Designer {
 
 export interface ChatMessageResult {
   messages: ClarifierChatMessage[];
-  /** Number of finished questions. */
-  questionIndex: number;
-  totalQuestions: number;
+  /** Topics that are clear or weak. */
+  doneCount: number;
+  totalTopics: number;
   summaryReady: boolean;
-  verdict: 'accept' | 'revise';
-  /** 1-based question now awaiting an answer; null when all are done. */
-  currentQuestion: number | null;
-  attempts: number;
-  maxAttempts: number;
+  /** Topic (1–6) the AI just asked about; null when all are done. */
+  currentTopic: number | null;
   aiUsed: boolean;
   answers: ClarifierAnswer[];
+  aiText: string;
+  chips: string[] | null;
 }
 
 export interface EditClarifierAnswerResult {

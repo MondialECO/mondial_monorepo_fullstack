@@ -61,7 +61,7 @@ export type OutputVersionEntry = {
 
 export type ClarifierAnswerStatus = 'pending' | 'accepted' | 'accepted_weak';
 
-/** One record per clarifier question (1–6). Backend-authoritative. */
+/** One record per clarifier topic (1–6). No record = empty; pending = unclear; accepted_weak = weak; accepted = clear. */
 export type ClarifierAnswer = {
   questionIndex: number;
   status: ClarifierAnswerStatus;
@@ -70,6 +70,8 @@ export type ClarifierAnswer = {
   aiExtracted: Record<string, string>;
   userEdited: Record<string, string> | null;
   language: string | null;
+  /** The topic's single AI follow-up has been asked. */
+  followUpUsed?: boolean;
   updatedAt: string;
 };
 
@@ -78,9 +80,12 @@ export type ClarifierChatMessage = {
   sender: 'ai' | 'user';
   text: string;
   timestamp?: string;
-  /** "question" | "feedback" | "ack" on AI turns of the validating clarifier; absent on legacy messages. */
-  kind?: 'question' | 'feedback' | 'ack' | null;
+  /** AI turn kind; "feedback" only on older fixed-question transcripts; absent on legacy messages. */
+  kind?: 'question' | 'followup' | 'feedback' | 'ack' | null;
+  /** Topic (1–6) the message asks about or answers. */
   questionIndex?: number | null;
+  /** Tappable answer options offered with an AI follow-up. */
+  chips?: string[] | null;
 };
 
 export type BackendCreatorJourney = {
