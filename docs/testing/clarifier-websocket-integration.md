@@ -1,475 +1,106 @@
-# Clarifier WebSocket Integration Test Spec
+# Clarifier Real-time Integration Scenarios
 
-**Date:** 2026-10-30  
-**Status:** Ready for QA
+**Updated:** 2026-10-30
+**Scope:** Phase 2 clarifier chat turn over SignalR (`/hubs/clarifier`) and its HTTP fallback.
+**Status:** Scenarios only — **no automated tests exist yet** for the hub or the turn runner.
 
----
-
-## Test Scope
-
-This document outlines integration tests for the Phase 2 Clarifier WebSocket real-time messaging system, including:
-- WebSocket connection lifecycle
-- Streaming message chunks (word-by-word AI responses)
-- HTTP LongPolling fallback
-- Topic evaluation and state progression
-- Language support (EN/FR)
-- Database persistence
+Design reference: [implementation/clarifier-phase2-guide.md §6](../implementation/clarifier-phase2-guide.md).
 
 ---
 
-## Test Categories
+## What is under test
 
-### 1. Connection Lifecycle
+Both transports run the same `ClarifierChatTurnRunner`:
 
-#### 1.1 WebSocket Connection Establishment
-**Test:** `should establish WebSocket connection on page mount`
-
-```typescript
-// Arrange
-const token = await getAuthToken();
-const sessionId = "test-session-123";
-
-// Act
-navigate('/dashboard/creator/phase-2/clarifier?ideaId=test-idea');
-await waitFor(() => {
-  expect(getClarifierWebSocket().isConnected()).toBe(true);
-});
-
-// Assert
-expect(getClarifierWebSocket().isConnected()).toBe(true);
+```
+persist user message → AI verdict (accept/revise) → ApplyTurn → persist answers + AI reply
 ```
 
-#### 1.2 Automatic Reconnection
-**Test:** `should automatically reconnect on disconnect`
-
-```typescript
-// Arrange
-const ws = getClarifierWebSocket();
-await ws.connect();
-
-// Act
-// Simulate disconnect
-simulateNetworkDisconnect();
-await waitFor(() => {
-  expect(ws.isConnected()).toBe(true);
-}, { timeout: 5000 });
-
-// Assert
-expect(ws.isConnected()).toBe(true);
-expect(consoleErrorMock).toHaveBeenCalledWith(
-  expect.stringContaining('WebSocket reconnecting')
-);
-```
-
-#### 1.3 Graceful Fallback to HTTP
-**Test:** `should fallback to HTTP if WebSocket fails`
-
-```typescript
-// Arrange
-mockWebSocketError('ECONNREFUSED');
-const ws = initializeClarifierWebSocket(token);
-
-// Act
-await ws.connect();
-const message = "What is your problem?";
-await handleSend(message);
-
-// Assert
-// Should have fallen back to HTTP endpoint
-expect(mockHttpPost).toHaveBeenCalledWith(
-  '/api/creator-journey/clarifier/message',
-  expect.objectContaining({ message, language: 'en' })
-);
-```
+The hub then replays the AI reply as `ReceiveChunk` events and sends
+`MessageComplete { turn, ideaVersion }`. Most scenarios below are therefore
+**transport parity** checks: the hub must behave exactly like
+`POST /api/creator/journey/phase2/chat-message`.
 
 ---
 
-### 2. Streaming Messages
+## 1. Connection
 
-#### 2.1 Real-time Chunk Streaming
-**Test:** `should stream AI response chunk-by-chunk with typing effect`
+| # | Scenario | Expected |
+|---|---|---|
+| 1.1 | Open the clarifier page while logged in | One connection to `{API_ORIGIN}/hubs/clarifier` (negotiate → WebSocket 101). No console errors. |
+| 1.2 | Open the page with an expired or missing token | Negotiate returns 401. Page still works through HTTP. |
+| 1.3 | Navigate away and back quickly (or React Strict Mode in dev) | Shared connection is reused; no "stopped during negotiation" error. |
+| 1.4 | Kill the backend while the page is open, then restart it | Client reconnects automatically. Sends during the outage use HTTP. |
+| 1.5 | Connection stays idle > 30s | Not dropped (hub is mapped with `DisableRequestTimeout()`). |
 
-```typescript
-// Arrange
-const userMessage = "The problem is...";
-const expectedChunks = ["The ", "problem ", "is ", "that ", "..."];
-const chunks = [];
+## 2. Turn parity (hub vs HTTP)
 
-getClarifierWebSocket().onMessageChunk((chunk) => {
-  chunks.push(chunk);
-});
+Run each scenario once over the hub and once with WebSocket blocked (HTTP).
 
-// Act
-await handleSend(userMessage);
-await waitFor(() => {
-  expect(chunks.length).toBeGreaterThan(0);
-});
+| # | Scenario | Expected (both transports) |
+|---|---|---|
+| 2.1 | Good answer to Q1 | `verdict: accept`, `currentQuestion: 2`, user msg + AI reply in `messages`. |
+| 2.2 | Vague answer | `verdict: revise`, `currentQuestion` unchanged, `attempts` +1. |
+| 2.3 | 5 vague answers to the same question | 5th is accepted as `accepted_weak`; flow moves on. |
+| 2.4 | Empty / whitespace message | Rejected with "Message is required." Nothing persisted. |
+| 2.5 | Message > 4000 chars | Rejected with the length error. |
+| 2.6 | Send after all 6 are answered | Rejected with "All clarifier questions are already answered." (409). |
+| 2.7 | AI disabled or OpenRouter down | Fail-open: answer accepted, `aiUsed: false`. |
+| 2.8 | Refresh after any turn | Transcript and answers reload from the server, identical to what was shown. |
 
-// Assert
-expect(chunks.join("")).toContain("problem");
-expect(screen.getByText(/typing/i)).toBeInTheDocument();
-```
+## 3. Streaming display
 
-#### 2.2 Message Complete Event
-**Test:** `should emit MessageComplete with topic status and next topic`
+| # | Scenario | Expected |
+|---|---|---|
+| 3.1 | Send an answer over the hub | Typing indicator for the AI wait (5–25s), then the reply appears word-by-word with a cursor. |
+| 3.2 | Reply finishes | Cursor disappears; the streamed bubble is replaced by the server transcript (no duplicate bubble). |
+| 3.3 | Send over HTTP | Reply appears at once (no word-by-word effect). |
 
-```typescript
-// Arrange
-let messageCompleteData = null;
-getClarifierWebSocket().onMessageComplete((data) => {
-  messageCompleteData = data;
-});
+> First-chunk latency is **not** a meaningful metric: the first chunk can only arrive after the AI verdict is complete.
 
-// Act
-await handleSend("Solve climate change");
-await waitFor(() => {
-  expect(messageCompleteData).not.toBeNull();
-});
+## 4. Optimistic concurrency
 
-// Assert
-expect(messageCompleteData).toMatchObject({
-  aiMessage: expect.objectContaining({
-    id: expect.any(String),
-    text: expect.any(String),
-    topic: expect.any(String),
-  }),
-  topicStatus: expect.objectContaining({
-    problem: expect.objectContaining({
-      status: expect.stringMatching(/pending|unclear|clear/),
-    }),
-  }),
-  nextTopic: expect.any(String),
-  clarityScore: expect.any(Number),
-  allTopicsCleared: expect.any(Boolean),
-});
-```
+| # | Scenario | Expected |
+|---|---|---|
+| 4.1 | Two sends in a row over the hub | The second succeeds. The client stored `ideaVersion` from the first `MessageComplete`. |
+| 4.2 | Hub send, then an HTTP edit (or the reverse) | Both succeed; the version carries over between transports. |
+| 4.3 | Same idea open in two tabs; send from tab A, then from tab B | Tab B gets "This idea was updated in another tab…" (409). Its bubble rolls back and the draft is restored. |
+| 4.4 | Hub `SendMessage` with an `ideaId` the user doesn't own | Rejected; nothing written. |
+| 4.5 | Hub `SendMessage` with `expectedVersion` 0 | Rejected: "expectedVersion is required for Creator changes." |
 
-#### 2.3 Streaming UI Updates
-**Test:** `should update UI in real-time as chunks arrive`
+## 5. Language
 
-```typescript
-// Arrange
-const screen = render(<ClarifierPage />);
+| # | Scenario | Expected |
+|---|---|---|
+| 5.1 | UI in EN, answer in EN | AI feedback in English. |
+| 5.2 | UI in FR, answer in FR | AI feedback in French. |
+| 5.3 | Same as 5.1/5.2 over HTTP | Identical behaviour (the `language` argument reaches the same runner). |
 
-// Act
-await handleSend("My problem is X");
-const messageBubble = await screen.findByRole('generic', {
-  name: /assistant/i,
-});
+## 6. Errors
 
-// Assert - message should appear immediately
-expect(messageBubble).toBeInTheDocument();
-
-// Assert - typing cursor should appear
-await waitFor(() => {
-  expect(messageBubble.textContent).toContain('▌');
-});
-
-// Assert - cursor should be removed on completion
-await waitFor(() => {
-  expect(messageBubble.textContent).not.toContain('▌');
-}, { timeout: 5000 });
-```
+| # | Scenario | Expected |
+|---|---|---|
+| 6.1 | Any server error during a hub turn | Readable message in the chat (no "HubException:" prefix). The user bubble rolls back and the draft is restored. |
+| 6.2 | Connection drops after the turn was saved but before `MessageComplete` | Error shown. On refresh, the saved turn is visible (the write already happened). |
 
 ---
 
-### 3. Topic Evaluation & State
+## Suggested automated coverage (not yet written)
 
-#### 3.1 Topic Status Persistence
-**Test:** `should persist topic status to database on MessageComplete`
+- **Backend unit:** `ClarifierChatTurnRunner` with mocked `ICreatorJourneyService` + `IClarifierTurnService` for 2.1–2.7.
+- **Backend unit:** `CreatorJourneyService.UseExplicitWriteVersion` (match, mismatch → 409, wrong ideaId → 400, version advances once per write).
+- **Backend integration:** `ClarifierHub` with a test SignalR client — parity with the HTTP endpoint for 2.1 and 4.3.
+- **Frontend:** clarifier page with a mocked `useSignalRHub` — hub path vs HTTP path, error rollback (6.1).
 
-```typescript
-// Arrange
-const sessionId = "session-123";
-const topicBefore = { status: 'pending' };
+## Manual run
 
-// Act
-await handleSend("Clear problem statement");
-await waitFor(() => {
-  expect(dbMock.updateOne).toHaveBeenCalled();
-});
-
-// Assert
-const updateCall = dbMock.updateOne.mock.calls[0];
-expect(updateCall[1].$set.Topics.problem.status).toBe('clear');
-expect(updateCall[1].$set.UpdatedAt).toBeDefined();
-```
-
-#### 3.2 Topic Priority Selection
-**Test:** `should select next topic in priority order: problem → who → solution → alternatives → edge → risk`
-
-```typescript
-// Arrange
-const ws = getClarifierWebSocket();
-let nextTopics = [];
-ws.onMessageComplete((data) => {
-  nextTopics.push(data.nextTopic);
-});
-
-// Act
-await handleSend("Problem: X"); // problem → clear
-await waitFor(() => expect(nextTopics[0]).toBe('who'));
-await handleSend("Who: Y"); // who → clear
-await waitFor(() => expect(nextTopics[1]).toBe('solution'));
-await handleSend("Solution: Z"); // solution → clear
-await waitFor(() => expect(nextTopics[2]).toBe('alternatives'));
-
-// Assert
-expect(nextTopics).toEqual(['who', 'solution', 'alternatives']);
-```
-
-#### 3.3 Follow-up Question Generation
-**Test:** `should generate follow-up if topic is unclear`
-
-```typescript
-// Arrange
-const followUpResponses = [];
-
-// Act
-await handleSend("Something vague"); // Insufficient answer
-await waitFor(() => {
-  const followUp = screen.queryByText(/why is this/i);
-  if (followUp) followUpResponses.push(followUp.textContent);
-});
-
-// Assert
-expect(followUpResponses.length).toBeGreaterThan(0);
-expect(screen.getByRole('button', { name: /edit/i })).toBeDisabled();
-```
-
----
-
-### 4. Language Support
-
-#### 4.1 English (EN) Responses
-**Test:** `should generate AI responses in English when language=en`
-
-```typescript
-// Arrange
-mockLanguage('en');
-
-// Act
-await handleSend("What is the problem?");
-await waitFor(() => {
-  const response = screen.getByText(/the problem/i);
-  expect(response).toBeInTheDocument();
-});
-
-// Assert
-expect(getClarifierWebSocket().connect).toHaveBeenCalledWith(
-  expect.objectContaining({ language: 'en' })
-);
-```
-
-#### 4.2 French (FR) Responses
-**Test:** `should generate AI responses in French when language=fr`
-
-```typescript
-// Arrange
-mockLanguage('fr');
-
-// Act
-await handleSend("Quel est le problème?");
-await waitFor(() => {
-  const response = screen.getByText(/le problème/i);
-  expect(response).toBeInTheDocument();
-});
-
-// Assert
-expect(getClarifierWebSocket().connect).toHaveBeenCalledWith(
-  expect.objectContaining({ language: 'fr' })
-);
-```
-
----
-
-### 5. Error Handling
-
-#### 5.1 WebSocket Error Recovery
-**Test:** `should handle WebSocket errors gracefully`
-
-```typescript
-// Arrange
-getClarifierWebSocket().onError((error) => {
-  console.error('[Clarifier] Error:', error);
-});
-
-// Act
-simulateWebSocketError('TIMEOUT');
-await waitFor(() => {
-  expect(screen.getByText(/error occurred/i)).toBeInTheDocument();
-});
-
-// Assert
-expect(screen.getByRole('button', { name: /try again/i })).toBeEnabled();
-```
-
-#### 5.2 Fallback HTTP Endpoint
-**Test:** `should use HTTP POST /clarifier/message if WebSocket unavailable`
-
-```typescript
-// Arrange
-blockWebSocket();
-
-// Act
-await handleSend("Test message");
-
-// Assert
-expect(mockHttpPost).toHaveBeenCalledWith(
-  '/api/clarifier/message',
-  expect.objectContaining({
-    message: 'Test message',
-    language: 'en',
-  })
-);
-```
-
----
-
-### 6. Performance
-
-#### 6.1 Streaming Latency
-**Test:** `should deliver first chunk within 100ms of sending message`
-
-```typescript
-// Arrange
-let firstChunkTime = null;
-getClarifierWebSocket().onMessageChunk(() => {
-  if (!firstChunkTime) {
-    firstChunkTime = Date.now();
-  }
-});
-
-// Act
-const sendTime = Date.now();
-await handleSend("What's the problem?");
-await waitFor(() => {
-  expect(firstChunkTime).not.toBeNull();
-});
-
-// Assert
-const latency = firstChunkTime - sendTime;
-expect(latency).toBeLessThan(200); // Allow 200ms for test overhead
-```
-
-#### 6.2 Memory Cleanup
-**Test:** `should release event listeners on disconnect`
-
-```typescript
-// Arrange
-const listenerCountBefore = getListenerCount(ws);
-
-// Act
-ws.disconnect();
-
-// Assert
-const listenerCountAfter = getListenerCount(ws);
-expect(listenerCountAfter).toBeLessThan(listenerCountBefore);
-```
-
----
-
-### 7. Database Persistence
-
-#### 7.1 Topics Dictionary Serialization
-**Test:** `should serialize/deserialize Topics dictionary correctly`
-
-```typescript
-// Arrange
-const originalStatus = {
-  problem: { status: 'clear', baseAnswer: 'X', followUpAttempts: 1, updatedAt: new Date() },
-  who: { status: 'unclear', baseAnswer: 'Y', followUpAttempts: 0, updatedAt: new Date() },
-};
-
-// Act
-await updateTopicStatusAsync(sessionId, originalStatus);
-const retrieved = await getTopicStatusAsync(sessionId);
-
-// Assert
-expect(retrieved).toEqual(originalStatus);
-```
-
-#### 7.2 Backward Compatibility (Legacy Sessions)
-**Test:** `should initialize Topics for sessions without Topics field`
-
-```typescript
-// Arrange
-const legacySession = await ClarifierSession.findById(sessionId);
-// Legacy session has no Topics field
-
-// Act
-const status = await getTopicStatusAsync(sessionId);
-
-// Assert
-expect(status).toEqual(InitializeTopics());
-expect(status).toHaveProperty('problem');
-```
-
----
-
-## Manual Testing Checklist
-
-### Connection & Streaming
-- [ ] Open Clarifier page, verify WebSocket connects in DevTools Network tab
-- [ ] Type first answer, observe typing indicator with blinking cursor
-- [ ] Observe text appearing word-by-word (typing effect)
-- [ ] Answer completes and shows next topic in sidebar
-
-### Language Switching
-- [ ] Switch language to FR in settings
-- [ ] Refresh Clarifier page
-- [ ] Verify AI responses are in French
-- [ ] Switch back to EN, verify English responses
-
-### Fallback Scenarios
-- [ ] Disable WebSocket in DevTools (Network throttling → Block WebSocket)
-- [ ] Send message
-- [ ] Verify HTTP fallback is used (check Network tab for POST to /clarifier/message)
-- [ ] Response displays (but without streaming effect)
-
-### State Persistence
-- [ ] Answer all 6 questions
-- [ ] Refresh page
-- [ ] Verify all answers are still visible (loaded from DB)
-- [ ] Edit an answer, verify changes persist
-
----
-
-## Test Execution
-
-### Unit Tests
 ```bash
-npm run test -- backend/Tests/Services/Clarifier/ClarifierTopicServiceTests.cs
-npm run test -- src/__tests__/lib/clarifier-websocket.test.ts
-```
-
-### Integration Tests
-```bash
-npm run test:e2e -- clarifier-websocket-integration
-```
-
-### Manual Testing
-```bash
+# backend (from backend/)  →  http://localhost:5093
+dotnet run
+# frontend (repo root)     →  http://localhost:3000
 npm run dev
-# Navigate to /dashboard/creator/phase-2/clarifier
-# Follow Manual Testing Checklist above
 ```
 
----
-
-## Success Criteria
-
-✅ WebSocket connects on page load  
-✅ Messages stream chunk-by-chunk with <200ms latency  
-✅ Topic status persists to database  
-✅ HTTP fallback works if WebSocket unavailable  
-✅ Language support (EN/FR) works in both modes  
-✅ All 6 topics progress in priority order  
-✅ Backward compatible with legacy sessions  
-✅ Error handling recovers gracefully  
-
----
-
-**Status:** Ready for implementation & QA validation  
-**Effort:** 2-3 days for full test coverage + manual validation
-
+Open `/dashboard/creator/phase-2/clarifier`. In DevTools → Network → WS, select the
+`hubs/clarifier` socket to see `ReceiveChunk` / `MessageComplete` frames. To force
+HTTP, block the request URL pattern `*hubs/clarifier*` and reload.

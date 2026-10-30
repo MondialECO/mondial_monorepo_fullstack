@@ -46,12 +46,12 @@ docs/
 │   └── ...                        # Preserved legacy audits and implementation logs
 │
 ├── implementation/                # Feature Implementation Guides (Current Development)
-│   ├── clarifier-phase2-guide.md  # Phase 2 AI Idea Clarifier (complete with language support & layout)
+│   ├── clarifier-phase2-guide.md  # Phase 2 AI Idea Clarifier (language, layout, SignalR transport)
 │   └── ...                        # Future phase implementations
 │
 └── testing/                       # Feature Testing & QA Validation Plans
-    ├── clarifier-websocket-integration.md  # 21 integration test scenarios (streaming, language, fallback)
-    ├── clarifier-qa-validation.md          # 30-point QA validation report template with metrics
+    ├── clarifier-websocket-integration.md  # Clarifier hub/HTTP parity, concurrency & error scenarios
+    ├── clarifier-qa-validation.md          # Fill-in QA report for those scenarios
     └── ...                                 # Future test specifications
 ```
 
@@ -98,7 +98,7 @@ The [operations/](operations/) directory provides hands-on engineering runbooks:
 
 The [implementation/](implementation/) directory documents in-flight feature implementations:
 
-- **[Phase 2 Clarifier Guide](implementation/clarifier-phase2-guide.md):** Complete implementation of AI Idea Clarifier with full language support (EN/FR), proper chat UI layout pattern (sticky header/footer), and C-2 summary generation. References all modified files, API contracts, testing checklist, and next steps for Phase 3 language inheritance.
+- **[Phase 2 Clarifier Guide](implementation/clarifier-phase2-guide.md):** AI Idea Clarifier — 6 AI-validated questions, language support (EN/FR), chat UI layout, C-2 summary, and the SignalR transport (`/hubs/clarifier`) that shares one turn runner with the HTTP endpoint. Includes API contracts and modified files.
 
 ---
 
@@ -106,12 +106,12 @@ The [implementation/](implementation/) directory documents in-flight feature imp
 
 The [testing/](testing/) directory contains comprehensive test specifications and QA validation:
 
-- **[Clarifier WebSocket Integration](testing/clarifier-websocket-integration.md):** 21 end-to-end integration test scenarios covering WebSocket streaming, chunk delivery, topic flow, language support, fallback mechanisms, database persistence, and error handling.
-- **[Clarifier QA Validation Report](testing/clarifier-qa-validation.md):** 30-point comprehensive QA test template with performance metrics (latency, memory), cross-browser validation, manual testing procedures, and sign-off checklist.
+- **[Clarifier Real-time Scenarios](testing/clarifier-websocket-integration.md):** Connection, hub-vs-HTTP turn parity, streaming display, optimistic concurrency, language and error scenarios. Scenarios only — automated tests not yet written.
+- **[Clarifier QA Validation Report](testing/clarifier-qa-validation.md):** Fill-in QA report for those scenarios, with setup steps and sign-off.
 
 ---
 
-## 5. Historical Archive
+## 6. Historical Archive
 
 The [archive/](archive/) directory preserves point-in-time implementation reports, early codebase audits, and scratch files. All archived documents are clearly marked as non-normative. See [archive/README.md](archive/README.md) for the catalog.
 

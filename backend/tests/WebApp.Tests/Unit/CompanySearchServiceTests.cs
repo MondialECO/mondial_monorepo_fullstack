@@ -244,6 +244,7 @@ namespace WebApp.Tests.Unit
                 Mock.Of<IChatService>(),
                 Mock.Of<ISpMatchingService>(),
                 Mock.Of<WebApp.Services.Ai.IClarifierTurnService>(),
+                Mock.Of<WebApp.Services.Implementations.IClarifierChatTurnRunner>(),
                 Mock.Of<IServiceProvider>(),
                 searchServiceMock.Object);
 
@@ -293,6 +294,7 @@ namespace WebApp.Tests.Unit
                 Mock.Of<IChatService>(),
                 Mock.Of<ISpMatchingService>(),
                 Mock.Of<WebApp.Services.Ai.IClarifierTurnService>(),
+                Mock.Of<WebApp.Services.Implementations.IClarifierChatTurnRunner>(),
                 Mock.Of<IServiceProvider>(),
                 Mock.Of<ICompanySearchService>());
 

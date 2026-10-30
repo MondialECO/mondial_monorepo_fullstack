@@ -52,10 +52,15 @@ AI model responds in selected language
 ```
 
 ### 3. Per-Answer AI Validation
-- 6 fixed questions, each gets one AI turn
-- `ClarifierTurnService.EvaluateAsync()` processes answers
-- Max 5 attempts per question, then `accepted_weak`
+- 6 fixed questions (`ClarifierScript`), each answer gets one AI turn
+- `Services/Ai/ClarifierTurnService.EvaluateAsync()` returns a JSON verdict (accept/revise + extracted fields). Takes 5–25s; fail-open (AI down/timeout/bad JSON → accept)
+- Max 5 attempts per question, then `accepted_weak`; per-idea AI cap 40 calls
 - Feedback returns in user's UI language
+- The whole turn lives in **`ClarifierChatTurnRunner`** — the only place this logic exists:
+  ```
+  persist user message → EvaluateAsync → ClarifierScript.ApplyTurn → SaveClarifierTurnAsync
+  ```
+  Answers live in `CreatorIdea.Phase2Data.ClarifierAnswers`; the transcript in `Phase2Data.ChatMessages`.
 
 ### 4. C-2 Summary Generation
 - **Endpoint:** `POST /creator/journey/phase2/finalize-clarifier`
@@ -70,6 +75,27 @@ AI model responds in selected language
   - `Input`: Raw idea text
   - `Status`: Pending/Processing/Completed/Failed/NeedsReview
   - `Output`: Structured JSON from AI
+
+### 6. Real-time Transport (SignalR) — 2026-10-30
+The chat turn can go over a SignalR hub or plain HTTP. Both call `ClarifierChatTurnRunner`, so behaviour, persistence and errors are identical.
+
+```
+Send
+ ├─ hub connected → ClarifierHub.SendMessage (/hubs/clarifier)
+ └─ otherwise     → POST /api/creator/journey/phase2/chat-message
+        ↓
+  ClarifierChatTurnRunner (evaluate + persist)
+        ↓
+  hub only: ReceiveChunk × N (reply replayed word-by-word, 20ms apart)
+            → MessageComplete { turn, ideaVersion }
+```
+
+- **The reply does not truly stream.** The AI produces a JSON verdict; nothing is showable until it finishes. Chunks are a replay of the final text for the typing effect.
+- **Hub path:** `/hubs/clarifier`. Must stay under `/hubs/*` — the JWT is read from the `access_token` query string only there (`Program.cs` → `OnMessageReceived`). Transports: WebSockets, LongPolling. Mapped with `DisableRequestTimeout()`.
+- **Optimistic concurrency:** HTTP passes `ideaId`/`expectedVersion` in the query. A hub has no request query, so it calls `ICreatorJourneyService.UseExplicitWriteVersion(ideaId, expectedVersion)`. Each write checks and advances that version; the hub returns the final one as `ideaVersion`, and the client stores it with `setIdeaVersion`. A stale version → 409 "updated in another tab".
+- **Errors:** the hub throws `HubException` with the same messages as the HTTP endpoint; `invoke` rejects and the page rolls back the optimistic bubble.
+- **Frontend:** `useSignalRHub("clarifier")` on the shared connection manager (`src/lib/realtime/`). No separate client singleton.
+- **Not rate-limited on the hub.** The `"ai"` rate-limit policy is HTTP-only. The per-idea AI cap still applies.
 
 ---
 
@@ -91,6 +117,15 @@ AI model responds in selected language
 - `backend/Services/Ai/Jobs/IdeaClarifierHandler.cs` — Language extraction & injection
 - `backend/Services/Ai/Prompts/PromptTemplate.cs` — Language constraint in system prompt
 
+### Real-time transport (2026-10-30)
+- `backend/Services/Implementations/ClarifierChatTurnRunner.cs` — shared turn (new)
+- `backend/Hubs/ClarifierHub.cs` — hub calls the runner, replays reply as chunks
+- `backend/Services/Implementations/CreatorJourneyService.cs` — `UseExplicitWriteVersion`
+- `backend/Controllers/CreatorPhase2Controller.cs` — `ChatMessage` delegates to the runner
+- `backend/Program.cs` — `MapHub<ClarifierHub>("/hubs/clarifier")`
+- `src/lib/realtime/types.ts` — `clarifier` hub path
+- `src/app/dashboard/creator/phase-2/clarifier/page.tsx` — hub-first send, HTTP fallback
+
 ### Documentation
 - `CLAUDE.md` — Updated Phase 2 section with language & layout details
 
@@ -100,9 +135,22 @@ AI model responds in selected language
 
 ### Chat Message (Per-Answer)
 ```
-POST /api/creator/journey/phase2/chat-message
+POST /api/creator/journey/phase2/chat-message?ideaId=…&expectedVersion=…
 Body: { message: string, language: 'en' | 'fr' }
-Response: { messages: [...], answers: [...] }
+Response (ChatMessageResult): {
+  messages, answers, questionIndex, totalQuestions, summaryReady,
+  verdict: 'accept' | 'revise', currentQuestion, attempts, maxAttempts, aiUsed, aiText
+}
+Header: X-Creator-Idea-Version (new version)
+```
+
+### Chat Message over SignalR
+```
+Hub:     /hubs/clarifier
+Invoke:  SendMessage(message, language, ideaId, expectedVersion)
+Events:  ReceiveChunk(string)                      — repeated
+         MessageComplete({ turn: ChatMessageResult, ideaVersion: number })
+Errors:  HubException (invoke rejects)
 ```
 
 ### Finalize Clarifier (C-2 Summary)
@@ -181,6 +229,7 @@ dabbd123 feat(clarifier-chat): add language parameter to chat message endpoint
 
 - **Design:** See `CLAUDE.md` → Phase 2 Clarifier section
 - **API Contracts:** Backend controllers and DTOs
+- **Real-time tests:** [clarifier-websocket-integration.md](../testing/clarifier-websocket-integration.md), [clarifier-qa-validation.md](../testing/clarifier-qa-validation.md)
 - **Language Flow:** `IdeaClarifierHandler.cs` lines 54-92
 - **UI Layout:** `clarifier/page.tsx` lines 372-510
 

@@ -320,12 +320,6 @@ if (useRedis)
 // Define CustomUserIdProvider for SignalR
 builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
-// Clarifier adaptive topic service (WebSocket-based)
-builder.Services.AddScoped<WebApp.Services.Clarifier.IClarifierTopicService,
-    WebApp.Services.Clarifier.ClarifierTopicService>();
-builder.Services.AddScoped<WebApp.Services.Clarifier.IClarifierTurnService,
-    WebApp.Services.Clarifier.ClarifierTurnService>();
-
 // Busess ideas, investments, transactions services and repositories
 builder.Services.AddScoped<IBusinessIdeasService, BusinessIdeasService>();
 builder.Services.AddSingleton<BusinessIdeasRepository>();
@@ -917,9 +911,8 @@ catch (Exception ex)
 // timeout or they would be killed after 30s.
 app.MapHub<NotificationHub>("/hubs/notifications").DisableRequestTimeout();
 app.MapHub<ChatHub>("/hubs/chat").DisableRequestTimeout();
-app.MapHub<ClarifierHub>("/api/clarifier", options =>
+app.MapHub<ClarifierHub>("/hubs/clarifier", options =>
 {
-    // Enable WebSocket (default) with LongPolling fallback
     options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets
         | Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
 }).DisableRequestTimeout();

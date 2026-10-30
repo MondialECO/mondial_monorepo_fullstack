@@ -40,6 +40,10 @@ namespace WebApp.Services.Implementations
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILegalApplicabilityEngine? _legalEngine;
         private readonly UserManager<ApplicationUser>? _userManager;
+        // Non-HTTP callers (SignalR hubs) have no request query; they hand the
+        // ideaId/expectedVersion in explicitly. Safe because the service is scoped.
+        private string? _explicitIdeaId;
+        private long? _explicitVersion;
         private static readonly ConcurrentDictionary<string, SemaphoreSlim> _creationLocks = new();
         private static readonly TimeSpan PathSwitchWindow = TimeSpan.FromDays(30);
 
@@ -309,11 +313,34 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
+        public void UseExplicitWriteVersion(string ideaId, long expectedVersion)
+        {
+            if (string.IsNullOrWhiteSpace(ideaId))
+                throw new CreatorJourneyException(400, "ideaId is required for Creator changes.");
+            if (expectedVersion < 1)
+                throw new CreatorJourneyException(400, "expectedVersion is required for Creator changes.");
+            _explicitIdeaId = ideaId;
+            _explicitVersion = expectedVersion;
+        }
+
+        public long? ExplicitWriteVersion => _explicitVersion;
+
         /// <summary>Targeted optimistic write on the per-idea source of truth.</summary>
         private async Task WriteIdeaAsync(CreatorIdea idea, UpdateDefinition<CreatorIdea> update)
         {
             if (string.Equals(idea.ProjectOutcome, "SOLD", StringComparison.OrdinalIgnoreCase))
                 throw new CreatorJourneyException(422, "This project has been sold and is permanently read-only.");
+
+            if (_explicitIdeaId != null)
+            {
+                if (!string.Equals(_explicitIdeaId, idea.Id, StringComparison.Ordinal))
+                    throw new CreatorJourneyException(400, "Submitted ideaId does not match the workspace idea.");
+                if (!await _creatorIdeas.UpdateAsync(idea.Id, idea.UserId, update, _explicitVersion))
+                    throw new CreatorJourneyException(409, "This idea was updated in another tab. Refresh to load the latest version before continuing.");
+                _explicitVersion++;
+                idea.Version = _explicitVersion!.Value;
+                return;
+            }
 
             var http = _httpContextAccessor?.HttpContext;
             long? expectedVersion = null;

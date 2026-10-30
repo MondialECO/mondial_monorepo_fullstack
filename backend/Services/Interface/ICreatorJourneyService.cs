@@ -66,6 +66,15 @@ namespace WebApp.Services.Interface
         Task<CreatorJourney> SaveClarifierTurnAsync(string userId, List<ClarifierAnswer> answers,
             string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null);
 
+        /// <summary>
+        /// Optimistic-concurrency input for callers without an HTTP request (SignalR). Subsequent
+        /// writes in this scope check against it and advance it; read the result from
+        /// <see cref="ExplicitWriteVersion"/>.
+        /// </summary>
+        void UseExplicitWriteVersion(string ideaId, long expectedVersion);
+
+        long? ExplicitWriteVersion { get; }
+
         /// <summary>Persist the clarifier answer records only (edits; no chat message).</summary>
         Task<CreatorJourney> SaveClarifierAnswersAsync(string userId, List<ClarifierAnswer> answers, string ideaId = null);
 

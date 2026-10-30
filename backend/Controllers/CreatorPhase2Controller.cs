@@ -40,6 +40,7 @@ namespace WebApp.Controllers
         private readonly IChatService _chat;
         private readonly ISpMatchingService _spMatching;
         private readonly IClarifierTurnService _clarifierTurns;
+        private readonly IClarifierChatTurnRunner _chatTurns;
         private readonly ICompanySearchService? _companySearch;
 
         public CreatorPhase2Controller(
@@ -50,9 +51,11 @@ namespace WebApp.Controllers
             IChatService chat,
             ISpMatchingService spMatching,
             IClarifierTurnService clarifierTurns,
+            IClarifierChatTurnRunner chatTurns,
             IServiceProvider services,
             ICompanySearchService? companySearch = null)
         {
+            _chatTurns = chatTurns;
             _journeys = journeys;
             _clarifier = clarifier;
             _saveFile = saveFile;
@@ -81,50 +84,8 @@ namespace WebApp.Controllers
         {
             try
             {
-                var userId = GetUserId();
-                var text = request?.Message?.Trim();
-                if (string.IsNullOrWhiteSpace(text))
-                    return BadRequest(ApiResponse.Error("Message is required."));
-                if (text.Length > MaxAnswerLength)
-                    return BadRequest(ApiResponse.Error($"Answers are limited to {MaxAnswerLength} characters."));
-
-                var current = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
-                var answers = ClarifierScript.GetAnswers(current.Phase2Data);
-                if (ClarifierScript.CurrentQuestionIndex(answers) is not int questionIndex)
-                    return Conflict(ApiResponse.Error("All clarifier questions are already answered."));
-
-                await _journeys.AppendChatMessageAsync(userId, "user", text, ideaId, questionIndex: questionIndex);
-
-                // Language: prefer frontend-provided, then previous answer, default to en
-                var language = !string.IsNullOrWhiteSpace(request?.Language)
-                    ? request.Language
-                    : (answers.FirstOrDefault(a => a.Language != null)?.Language ?? "en");
-
-                var turn = await _clarifierTurns.EvaluateAsync(new ClarifierTurnInput(
-                    questionIndex,
-                    text,
-                    ClarifierScript.PriorAnswers(answers, questionIndex),
-                    answers.Sum(a => a.Attempts),
-                    language), cancellationToken);
-
-                var outcome = ClarifierScript.ApplyTurn(answers, questionIndex, text, turn, DateTime.UtcNow);
-                var journey = await _journeys.SaveClarifierTurnAsync(
-                    userId, answers, outcome.AiText, outcome.AiKind, outcome.AiQuestionIndex, ideaId);
-
-                var revise = outcome.Answer.Status == ClarifierAnswerStatus.Pending;
-                return Ok(ApiResponse.Ok("Message received", new
-                {
-                    messages = journey.Phase2Data?.ChatMessages,
-                    questionIndex = answers.Count(a => ClarifierAnswerStatus.IsDone(a.Status)),
-                    totalQuestions = ClarifierScript.TotalQuestions,
-                    summaryReady = ClarifierScript.AllAnswered(answers), // client then starts/polls the C-2 session
-                    verdict = revise ? ClarifierVerdict.Revise : ClarifierVerdict.Accept,
-                    currentQuestion = ClarifierScript.CurrentQuestionIndex(answers),
-                    attempts = outcome.Answer.Attempts,
-                    maxAttempts = ClarifierScript.MaxAttempts,
-                    aiUsed = turn.AiUsed,
-                    answers,
-                }));
+                var result = await _chatTurns.RunAsync(GetUserId(), request?.Message, request?.Language, ideaId, cancellationToken);
+                return Ok(ApiResponse.Ok("Message received", result));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
             catch (UnauthorizedAccessException ex) { return StatusCode(403, ApiResponse.Error(ex.Message)); }

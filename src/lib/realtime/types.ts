@@ -4,6 +4,7 @@ import type { HubConnection } from "@microsoft/signalr";
 export const HUB_PATHS = {
   chat: "/hubs/chat",
   notifications: "/hubs/notifications",
+  clarifier: "/hubs/clarifier",
 } as const;
 
 export type HubName = keyof typeof HUB_PATHS;

@@ -73,17 +73,13 @@ src/
    - **Hub & Versioning:** Standalone calm reference view with bounded 3-snapshot version history, automatic pre-restore backups, upstream cascade warning modals, honest "not connected yet" downstream generators, and client-side ZIP packaging.
 
 
-10. **Phase 2 AI Clarifier (`/dashboard/creator/phase-2/clarifier`) — WebSocket Real-Time (✅ IMPLEMENTED 2026-10-30):**
-   - **Architecture:** ASP.NET Core SignalR WebSocket + HTTP LongPolling fallback. Hub at `ClarifierHub.cs`, topic service at `ClarifierTopicService.cs`, turn service at `ClarifierTurnService.cs`. Frontend client: `lib/clarifier-websocket.ts` (singleton HubConnection). React integration: `clarifier/page.tsx` with streaming message UI.
-   - **Real-Time Flow:** 6 adaptive topics (problem → who → solution → alternatives → edge → risk), not fixed questions. Each user message → AI evaluation → chunk-by-chunk streaming (word-by-word) → `MessageComplete` event with topic status + next topic + clarity score. Language passed throughout (en|fr).
-   - **Streaming:** <200ms first chunk latency, 15+ chunks per response, typing effect with cursor. Chunks via `ReceiveChunk` event; completion + state via `MessageComplete` event carrying full `topicStatus` dictionary, `nextTopic` (or null if complete), `clarityScore` (0–1), `allTopicsCleared` bool.
-   - **Database:** `ClarifierSession.Topics` = Dictionary<string, TopicStatus> where TopicStatus = { Status (pending|unclear|clear), BaseAnswer, FollowUpAttempts, FollowUpText, UpdatedAt }. Persist via `UpdateTopicStatusAsync`. Backward compatible: unset Topics → InitializeTopics() on first read.
-   - **Language support:** `language` param in all WebSocket calls, respects `LanguageProvider`. AI responses + UI in selected language. Persisted to `ClarifierSession.Language`.
-   - **Fallback:** WebSocket unavailable → HTTP POST `/api/clarifier/message` (no streaming, full response at once). Connection error → automatic reconnect with exponential backoff [0ms, 2s, 5s, 10s]. 20-second handshake timeout.
-   - **Layout (Clarifier page):** Header (fixed top, robot avatar + title), chat area (scrollable, flex-1, min-h-[400px] sm:min-h-[500px]), input + finalize CTA (fixed bottom, mt-auto). Right sidebar: sticky progress ring + topic checklist. Streaming message shows typed text + blinking cursor until complete.
-   - **OpenRouter Integration:** `ClarifierTurnService` calls OpenRouter API (google/gemini-3.5-flash, max_tokens=500, temperature=0.7). Falls back to mock responses if API key missing or request fails. Stream parsing: SSE format, `data: {...}` lines, extract `choices[0].delta.content`.
-   - **Testing:** 23 unit tests (ClarifierTopicService, WebSocket client), 21 integration test scenarios, QA validation template with 30 test cases (streaming latency, reconnection, language, fallback, persistence, error handling).
-   - **Deploy:** Backend + frontend ship together. ClarifierHub needs `[Authorize]`. MapHub at `/api/clarifier` with `Transports = WebSocket | LongPolling`. Requires `OpenRouter:ApiKey` in config (graceful fallback if missing).
+10. **Phase 2 AI Clarifier (`/dashboard/creator/phase-2/clarifier`):**
+   - **One turn, two transports.** The turn logic lives ONLY in `ClarifierChatTurnRunner` (persist user msg → `Services/Ai/ClarifierTurnService.EvaluateAsync` judges accept/revise as a JSON completion → `ClarifierScript.ApplyTurn` → `SaveClarifierTurnAsync`). Both `POST /api/creator/journey/phase2/chat-message` and `ClarifierHub.SendMessage` call it — never duplicate it.
+   - **6 scripted questions** (`ClarifierScript`), answers in `CreatorIdea.Phase2Data.ClarifierAnswers`. No "adaptive topics".
+   - **Hub:** `/hubs/clarifier` (must stay under `/hubs/*` — JWT query-string auth in `Program.cs` `OnMessageReceived` only applies there). `SendMessage(message, language, ideaId, expectedVersion)` → `ReceiveChunk` (reply replayed word-by-word AFTER the AI finishes; the verdict can't stream) → `MessageComplete { turn, ideaVersion }`. Errors are `HubException` (invoke rejects).
+   - **Optimistic concurrency:** hubs have no request query, so the hub calls `ICreatorJourneyService.UseExplicitWriteVersion(ideaId, expectedVersion)`; the client must store the returned `ideaVersion` via `setIdeaVersion`.
+   - **Frontend:** `useSignalRHub("clarifier")` (shared connection manager). Connected → hub; otherwise HTTP. Both return `ChatMessageResult`.
+   - **Not rate-limited on the hub** (the `"ai"` policy is HTTP-only); the per-idea AI cap (`MaxAiCallsPerIdea`) still applies.
 
 ## Perf rules (hard rules)
 

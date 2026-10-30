@@ -83,16 +83,6 @@ namespace WebApp.Models.DatabaseModels.Ai
         [BsonElement("Version")]
         public int Version { get; set; } = 1;
 
-        /// <summary>
-        /// Phase 2 Clarifier adaptive topic flow: tracks status of 6 topics
-        /// (problem, who, solution, alternatives, edge, risk). Each topic has
-        /// clearing status, base answer, follow-up attempts, and timestamps.
-        /// Null for legacy 6-question mode; populated by new adaptive flow.
-        /// </summary>
-        [BsonElement("Topics")]
-        [BsonIgnoreIfNull]
-        public Dictionary<string, BsonDocument>? Topics { get; set; }
-
         [BsonElement("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

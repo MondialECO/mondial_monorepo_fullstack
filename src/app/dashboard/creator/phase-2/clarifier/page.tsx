@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Loader2, ArrowRight, X, Check, Copy, Send, FileText, Pencil } from "lucide-react";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { creatorAiApi } from "@/lib/api-creator-ai";
-import { creatorJourneyApi } from "@/lib/api-creator-journey";
+import { creatorJourneyApi, getIdeaVersion, setIdeaVersion, type ChatMessageResult } from "@/lib/api-creator-journey";
 import { isTerminalStatus } from "@/types/creator/ai";
 import { toAiError } from "@/lib/ai-errors";
 import {
@@ -26,11 +26,22 @@ import {
   isAnswerDone,
   summaryIsStale,
 } from "@/lib/clarifier-answers";
-import { initializeClarifierWebSocket, getClarifierWebSocket } from "@/lib/clarifier-websocket";
+import { useSignalRHub } from "@/lib/realtime/use-signalr-hub";
+import { hubEvent } from "@/lib/realtime/types";
 import type { ClarifierAnswer, ClarifierChatMessage } from "@/types/creator/journey-api";
-import { useAuth } from "@/app/_providers/AuthProvider";
 
 type Message = ClarifierChatMessage;
+
+interface ClarifierTurnComplete {
+  turn: ChatMessageResult;
+  ideaVersion: number | null;
+}
+
+class ClarifierHubError extends Error {}
+
+// HubConnection.invoke wraps server HubException messages in a generic prefix.
+const hubErrorMessage = (err: unknown) =>
+  err instanceof Error ? err.message.replace(/^.*HubException:\s*/, "") : undefined;
 
 // The opener is rendered locally, never persisted; the backend transcript starts with the first answer.
 const OPENER_ID = "opener";
@@ -41,10 +52,9 @@ export default function AIClarifierPage() {
   const searchParams = useSearchParams();
   const urlIdeaId = searchParams.get("ideaId");
   const { state, setState, refetch } = useCreatorProgress();
-  const { token } = useAuth();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const initInFlightRef = useRef(false);
-  const wsInitializedRef = useRef(false);
+  const turnCompleteRef = useRef<ClarifierTurnComplete | null>(null);
 
   const effectiveIdeaId = urlIdeaId || state.activeIdeaId;
 
@@ -78,59 +88,21 @@ export default function AIClarifierPage() {
       });
   }, [urlIdeaId, state.activeIdeaId, refetch, router]);
 
-  // WebSocket initialization
-  useEffect(() => {
-    if (!token || wsInitializedRef.current) return;
-    wsInitializedRef.current = true;
-
-    try {
-      const ws = initializeClarifierWebSocket(token);
-      ws.connect().catch((err) => {
-        console.error("[Clarifier] WebSocket connection failed, will fallback to HTTP:", err);
-      });
-
-      // Register callbacks
-      ws.onMessageChunk((chunk) => {
-        setStreamingMessage((prev) => prev + chunk);
-      });
-
-      ws.onMessageComplete((data) => {
-        // Add complete message to messages array
-        const completeMessage: Message = {
-          id: `ai-${Date.now()}`,
-          sender: "ai",
-          text: data.aiMessage.text,
-          questionIndex: currentQuestionIndex(answers),
-        };
-        setMessages((prev) => [...prev, completeMessage]);
-        setStreamingMessage("");
-        setIsTyping(false);
-
-        // Update answers with new topic status
-        if (data.topicStatus) {
-          syncPhase2({ clarifierAnswers: answers });
-        }
-      });
-
-      ws.onError((error) => {
-        console.error("[Clarifier] WebSocket error:", error);
-        setStreamingMessage("");
-        setIsTyping(false);
-      });
-
-      return () => {
-        ws.disconnect();
-      };
-    } catch (err) {
-      console.error("[Clarifier] Failed to initialize WebSocket:", err);
-    }
-  }, [token]);
-
   const [messages, setMessages] = useState<Message[]>([]);
   const [answers, setAnswers] = useState<ClarifierAnswer[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState<string>("");
+
+  // Real-time turn transport; HTTP chat-message is the fallback when not connected.
+  const clarifierHub = useSignalRHub("clarifier", {
+    events: [
+      hubEvent<string>("ReceiveChunk", (chunk) => setStreamingMessage((prev) => prev + chunk)),
+      hubEvent<ClarifierTurnComplete>("MessageComplete", (data) => {
+        turnCompleteRef.current = data;
+      }),
+    ],
+  });
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [finalizeSlow, setFinalizeSlow] = useState(false);
@@ -209,26 +181,38 @@ export default function AIClarifierPage() {
     setStreamingMessage("");
 
     try {
-      // Try WebSocket first
-      const ws = getClarifierWebSocket();
-      if (ws && ws.isConnected()) {
-        await ws.sendMessage(userText, t.locale, effectiveIdeaId || "", currentQuestion.toString());
-        return;
-      }
-
-      // Fallback to HTTP if WebSocket not available
-      console.warn("[Clarifier] WebSocket not connected, using HTTP fallback");
-      const res = await creatorJourneyApi.chatMessage(userText, t.locale, effectiveIdeaId);
+      const res = clarifierHub.status === "connected" && effectiveIdeaId
+        ? await sendViaHub(userText, effectiveIdeaId)
+        : await creatorJourneyApi.chatMessage(userText, t.locale, effectiveIdeaId);
       setMessages(res.messages);
       setAnswers(res.answers);
       syncPhase2({ chatMessages: res.messages, clarifierAnswers: res.answers });
     } catch (err) {
       // Roll back the optimistic turn, restore the draft, and surface the reason.
-      setMessages([...priorMessages, { id: `err-${Date.now()}`, sender: "ai", text: toAiError(err).message }]);
+      const reason = err instanceof ClarifierHubError ? err.message : toAiError(err).message;
+      setMessages([...priorMessages, { id: `err-${Date.now()}`, sender: "ai", text: reason }]);
       setInputValue(userText);
     } finally {
       setIsTyping(false);
+      setStreamingMessage("");
     }
+  };
+
+  // Same turn as the HTTP endpoint; the reply arrives as ReceiveChunk events, then
+  // MessageComplete (received before invoke resolves) carries the result + new idea version.
+  const sendViaHub = async (text: string, ideaId: string): Promise<ChatMessageResult> => {
+    const expectedVersion = getIdeaVersion(ideaId);
+    if (!expectedVersion) throw new ClarifierHubError("Idea version is not loaded yet. Refresh and try again.");
+    turnCompleteRef.current = null;
+    try {
+      await clarifierHub.invoke("SendMessage", text, t.locale, ideaId, expectedVersion);
+    } catch (err) {
+      throw new ClarifierHubError(hubErrorMessage(err) || "Something went wrong. Please try again.");
+    }
+    const done = turnCompleteRef.current as ClarifierTurnComplete | null;
+    if (!done) throw new ClarifierHubError("Something went wrong. Please try again.");
+    if (done.ideaVersion) setIdeaVersion(ideaId, done.ideaVersion);
+    return done.turn;
   };
 
   const handleSaveFields = async (questionIndex: number, fields: Record<string, string>) => {
