@@ -41,8 +41,9 @@ namespace WebApp.Tests.Unit
             foreach (var t in ClarifierScript.Topics)
             {
                 t.Fields.Should().NotBeEmpty();
-                t.ClearExamples.Should().NotBeEmpty($"{t.Key} needs a clear calibration example");
-                t.UnclearExamples.Should().NotBeEmpty($"{t.Key} needs an unclear calibration example");
+                // One example per domain (food/students, freelancer B2B tool, fashion brand) so the AI isn't anchored to one idea.
+                t.ClearExamples.Should().HaveCountGreaterThanOrEqualTo(3, $"{t.Key} needs clear examples from 3 domains");
+                t.UnclearExamples.Should().HaveCountGreaterThanOrEqualTo(3, $"{t.Key} needs unclear examples from 3 domains");
                 new[] { t.Rule, t.BaseEn, t.BaseFr, t.FollowUpEn, t.FollowUpFr }.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s));
             }
         }
@@ -143,6 +144,19 @@ namespace WebApp.Tests.Unit
             outcome.AiKind.Should().Be("followup");
             outcome.AiTopic.Should().Be(1);
             outcome.AiText.Should().Be(ClarifierScript.FallbackFollowUp(1, "en"), "problem never gets a separate base question");
+            outcome.Chips.Should().BeNull("chips only ever come from the AI; there are no fallback chips");
+        }
+
+        [Fact]
+        public void AiFailure_FollowUp_HasNoChips()
+        {
+            var answers = new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted), Rec(2, ClarifierAnswerStatus.Pending) };
+
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 4, "x", ClarifierTopicsResult.FailOpen(), "en", Now);
+
+            outcome.AiTopic.Should().Be(2);
+            outcome.AiKind.Should().Be("followup");
+            outcome.Chips.Should().BeNull();
         }
 
         [Fact]
