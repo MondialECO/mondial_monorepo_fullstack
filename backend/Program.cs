@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -213,6 +214,14 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(identityOptions =
     builder.Configuration["MongoDbSettings:DatabaseName"])
 .AddDefaultTokenProviders();
 
+// Add SignalR for real-time Clarifier WebSocket
+builder.Services.AddSignalR(options =>
+{
+    options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB max
+    options.HandshakeTimeout = TimeSpan.FromSeconds(5);
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+});
+
 // Add Authentication using JWT
 builder.Services.AddAuthentication(options =>
 {
@@ -310,6 +319,10 @@ if (useRedis)
 }
 // Define CustomUserIdProvider for SignalR
 builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
+
+// Clarifier adaptive topic service (WebSocket-based)
+builder.Services.AddScoped<WebApp.Services.Clarifier.IClarifierTopicService,
+    WebApp.Services.Clarifier.ClarifierTopicService>();
 
 // Busess ideas, investments, transactions services and repositories
 builder.Services.AddScoped<IBusinessIdeasService, BusinessIdeasService>();
@@ -902,6 +915,10 @@ catch (Exception ex)
 // timeout or they would be killed after 30s.
 app.MapHub<NotificationHub>("/hubs/notifications").DisableRequestTimeout();
 app.MapHub<ChatHub>("/hubs/chat").DisableRequestTimeout();
+app.MapHub<ClarifierHub>("/api/clarifier", options =>
+{
+    options.Transports = HttpTransportType.WebSocket | HttpTransportType.LongPolling;
+}).DisableRequestTimeout();
 
 app.MapControllers();
 
