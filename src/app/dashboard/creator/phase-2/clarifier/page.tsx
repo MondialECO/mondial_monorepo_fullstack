@@ -121,6 +121,22 @@ export default function AIClarifierPage() {
     setAnswers(getClarifierAnswers(phase2));
   }, [phase2]);
 
+  // "Fix it" from the idea summary (?fix=<topic>): open that topic's re-judged edit once the
+  // answers are loaded, and go back to the summary after the edit is accepted.
+  const fixTopic = Number(searchParams.get("fix")) || null;
+  const fixHandledRef = useRef(false);
+  const returnAfterFixRef = useRef(false);
+  useEffect(() => {
+    if (!fixTopic || fixHandledRef.current) return;
+    const answer = answers.find((a) => a.questionIndex === fixTopic);
+    if (!isTopicDone(answer)) return;
+    fixHandledRef.current = true;
+    returnAfterFixRef.current = true;
+    setInputValue(answer!.rawAnswer);
+    setEditingQuestion(fixTopic);
+    setEditFeedback(null);
+  }, [fixTopic, answers]);
+
   const syncPhase2 = (patch: { chatMessages?: Message[]; clarifierAnswers?: ClarifierAnswer[]; clarifierSessionId?: string | null; clarifierSummarizedAt?: string | null }) =>
     setState((prev) => ({
       ...prev,
@@ -162,6 +178,10 @@ export default function AIClarifierPage() {
         } else {
           setEditingQuestion(null);
           setInputValue("");
+          if (returnAfterFixRef.current) {
+            returnAfterFixRef.current = false;
+            router.push("/dashboard/creator/phase-2/idea-summary");
+          }
         }
       } catch (err) {
         setEditFeedback(toAiError(err).message);
@@ -254,6 +274,7 @@ export default function AIClarifierPage() {
   };
 
   const handleEditCancel = () => {
+    returnAfterFixRef.current = false;
     setEditingQuestion(null);
     setEditFeedback(null);
     setInputValue("");

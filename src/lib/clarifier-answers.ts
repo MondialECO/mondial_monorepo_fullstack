@@ -51,6 +51,14 @@ export function getClarifierAnswers(phase2?: {
     }));
 }
 
+/**
+ * Topics whose live status is weak. The single source for every "unconfirmed" marker in the UI —
+ * an edit that makes a topic clear removes its marker everywhere with no extra sync.
+ */
+export function weakTopics(answers: ClarifierAnswer[] | undefined): number[] {
+  return (answers ?? []).filter((a) => topicState(a) === "weak").map((a) => a.questionIndex);
+}
+
 /** The topic being asked: first in ask order that is empty or unclear; null when all are done. */
 export function nextTopic(answers: ClarifierAnswer[]): number | null {
   for (const t of CLARIFIER_ASK_ORDER) {

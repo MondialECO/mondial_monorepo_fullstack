@@ -6,6 +6,8 @@ import { ArrowRight, ArrowLeft, CheckCircle2, AlertTriangle, Loader2 } from "luc
 import { Button } from "@/components/ui/button";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { useTranslation } from "@/hooks/useTranslation";
+import { UnconfirmedTag } from "@/components/creator/clarifier/UnconfirmedTag";
+import { effectiveFields, weakTopics } from "@/lib/clarifier-answers";
 
 export default function IdeaSummaryPage() {
   const router = useRouter();
@@ -53,14 +55,31 @@ export default function IdeaSummaryPage() {
   const progressionPercent =
     clarityScore >= 85 ? 100 : clarityScore >= 50 ? 66 : 33;
 
-  const canvasItems = [
+  // `topic` = the clarifier topic a card comes from; Concept and Market gap are C-2 syntheses of all topics.
+  const canvasItems: { title: string; value: string; topic?: number }[] = [
     { title: t("creator.phase2.ideaSummary.canvasConcept"), value: conceptVal },
-    { title: t("creator.phase2.ideaSummary.canvasTargetUser"), value: targetUserVal },
-    { title: t("creator.phase2.ideaSummary.canvasCoreProblem"), value: problemVal },
-    { title: t("creator.phase2.ideaSummary.canvasYourSolution"), value: solutionVal },
+    { title: t("creator.phase2.ideaSummary.canvasTargetUser"), value: targetUserVal, topic: 2 },
+    { title: t("creator.phase2.ideaSummary.canvasCoreProblem"), value: problemVal, topic: 1 },
+    { title: t("creator.phase2.ideaSummary.canvasYourSolution"), value: solutionVal, topic: 4 },
     { title: t("creator.phase2.ideaSummary.canvasMarketGap"), value: marketGapVal },
-    { title: t("creator.phase2.ideaSummary.canvasYourEdge"), value: edgeVal },
+    { title: t("creator.phase2.ideaSummary.canvasYourEdge"), value: edgeVal, topic: 5 },
   ];
+
+  // Unconfirmed markers come from the live topic status, never from a saved snapshot.
+  const answers = state.journeyState?.phase2?.clarifierAnswers;
+  const weak = new Set(weakTopics(answers));
+  const ideaId = state.activeIdeaId;
+  // Weak topics without a canvas card (What they use now, Why now + biggest risk) get their own row.
+  const extraWeakRows = [3, 6]
+    .filter((topic) => weak.has(topic))
+    .map((topic) => {
+      const answer = answers?.find((a) => a.questionIndex === topic);
+      return {
+        topic,
+        title: t(topic === 3 ? "creator.phase2.clarifier.stepLabels.alternatives" : "creator.phase2.clarifier.stepLabels.risk"),
+        value: answer ? Object.values(effectiveFields(answer)).join(" · ") : "",
+      };
+    });
 
   const handleRevisit = () => {
     router.push("/dashboard/creator/phase-2/clarifier");
@@ -171,9 +190,32 @@ export default function IdeaSummaryPage() {
                     <p className="text-body leading-relaxed line-clamp-2" style={{ color: "var(--muted-foreground)" }}>
                       {block.value}
                     </p>
+                    {block.topic && weak.has(block.topic) && <UnconfirmedTag topic={block.topic} ideaId={ideaId} />}
                   </div>
                 ))}
               </div>
+
+              {extraWeakRows.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {extraWeakRows.map((row) => (
+                    <div
+                      key={row.topic}
+                      className="rounded-xl border px-4 py-3 flex flex-col gap-1.5"
+                      style={{ backgroundColor: "var(--popover)", borderColor: "var(--stroke-10)" }}
+                    >
+                      <span className="text-label font-medium uppercase tracking-wide" style={{ color: "var(--foreground)" }}>
+                        {row.title}
+                      </span>
+                      {row.value && (
+                        <p className="text-body leading-relaxed line-clamp-2" style={{ color: "var(--muted-foreground)" }}>
+                          {row.value}
+                        </p>
+                      )}
+                      <UnconfirmedTag topic={row.topic} ideaId={ideaId} />
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Metrics card */}
               <div

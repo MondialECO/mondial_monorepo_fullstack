@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
+import { ThinAnswersBanner } from '@/components/creator/clarifier/ThinAnswersBanner';
 import {
   useAiCredits,
   useMarketStudySessionTimed,
@@ -286,6 +287,7 @@ export default function MarketStudyPage() {
         ) : undefined
       }
     >
+      <ThinAnswersBanner />
       <div className="w-full min-w-0 max-w-none space-y-8 pb-16 font-sans">
         {/* Error Banners */}
         {startError && (

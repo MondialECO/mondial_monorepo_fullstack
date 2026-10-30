@@ -318,6 +318,8 @@
       "emptyTitle": "No idea summary available",
       "emptySubtitle": "Complete the Idea Clarifier questions to generate your structured project summary.",
       "goToClarifier": "Go to Clarifier",
+      "unconfirmedTag": "Unconfirmed — thin answer",
+      "fixIt": "Fix it",
       "synthesisComplete": "Synthesis Complete",
       "headerTitle": "Your Idea - First draft.",
       "headerSubtitle": "Extracted from your own insights. AI provided the structure — the ownership is yours.",
@@ -927,6 +929,11 @@
     "termsOfService": "Terms of Service"
   },
   "phase3": {
+    "thinAnswersBanner": {
+      "one": "1 of your answers was thin, so this may be less accurate.",
+      "many": "{{count}} of your answers were thin, so this may be less accurate.",
+      "review": "Review them"
+    },
     "resuming": "Resuming Phase 3: Business Plan Intelligence...",
     "steps": {
       "marketStudy": "Market Study & Feasibility Analysis",

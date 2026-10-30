@@ -318,6 +318,8 @@
       "emptyTitle": "Aucun résumé d'idée disponible",
       "emptySubtitle": "Complétez les questions du Clarificateur d'idées pour générer votre résumé structuré.",
       "goToClarifier": "Aller au Clarificateur",
+      "unconfirmedTag": "Non confirmé — réponse légère",
+      "fixIt": "Corriger",
       "synthesisComplete": "Synthèse terminée",
       "headerTitle": "Votre Idée - Premier brouillon.",
       "headerSubtitle": "Extrait de vos propres réponses. L'IA a fourni la structure — la propriété reste la vôtre.",
@@ -927,6 +929,11 @@
     "termsOfService": "Conditions d'utilisation"
   },
   "phase3": {
+    "thinAnswersBanner": {
+      "one": "1 de vos réponses était légère, ce résultat peut donc être moins précis.",
+      "many": "{{count}} de vos réponses étaient légères, ce résultat peut donc être moins précis.",
+      "review": "Les revoir"
+    },
     "resuming": "Reprise de la Phase 3 : Intelligence du Business Plan...",
     "steps": {
       "marketStudy": "Étude de marché et analyse de faisabilité",

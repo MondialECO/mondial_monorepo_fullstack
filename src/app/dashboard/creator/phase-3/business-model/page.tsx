@@ -19,6 +19,7 @@ import { Card } from '@/components/ui/card';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import BusinessModelPrintView from '@/components/creator/BusinessModelPrintView';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
+import { ThinAnswersBanner } from '@/components/creator/clarifier/ThinAnswersBanner';
 import {
   useAiCredits,
   useBusinessModelSessionTimed,
@@ -260,6 +261,7 @@ export default function BusinessModelPage() {
         ) : undefined
       }
     >
+      <ThinAnswersBanner />
       <div className="w-full min-w-0 max-w-none space-y-9 pb-16 font-sans">
         {/* Error Banners */}
         {startError && (
