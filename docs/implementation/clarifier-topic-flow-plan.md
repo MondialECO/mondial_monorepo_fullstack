@@ -143,8 +143,34 @@ the tests now create an owned idea, as the controller has intentionally required
 - [ ] Calibration: "Students are hungry" as the Problem is **not** clear.
 - [ ] Edit a clear topic, including the two-field topics (Your edge, Why now + biggest risk); the edit persists and later AI turns do not overwrite it.
 - [ ] Weak path end to end, on rendered screens: weak topic in the panel → amber "Unconfirmed — thin answer" tag on idea-summary → banner on Market Study, Business Model and Business Plan → "Fix it" → accepted edit → back on idea-summary the tag is gone, and the banner is gone on all three Phase 3 screens. Includes a two-field topic (Your edge or Why now + biggest risk).
+- [ ] Stale summary: after Fix it (or any answer edit after the summary), idea-summary shows "answers changed since the last summary" + "Regenerate summary (N credits)"; nothing regenerates until clicked; after regenerating the notice is gone. The Revisit button is visible and opens the clarifier.
+- [ ] Stale Phase 3 after a new C-2: Market Study and Business Plan show "Built on an older version" + Regenerate (price from credits API); regenerating builds from the new C-2 and the notice disappears; earlier versions are still in the history.
+- [ ] Chain: regenerate Market Study → Business Model shows the stale notice; regenerating Business Model clears it.
+- [ ] Weak-topic edit routing: the side-panel pencil on a weak topic opens the AI rewrite (not the field editor); on a clear topic it opens the field editor (both fields for Your edge / Why now + biggest risk).
 - [ ] One full run in French: AI follow-ups in French; fallback base questions in French.
 - [ ] Light and dark themes at 1440 and 1920 widths.
+
+### Stale downstream content and edit routing (2026-10-31, defect repair)
+
+- **Idea-summary:** when an answer changed after the last summary (`summaryIsStale`, the same rule
+  as the clarifier CTA), it shows the existing "answers changed" copy with
+  "Regenerate summary (N credits)". The click opens the clarifier with `?regenerate=1`, which starts
+  the C-2 regenerate once, only if still stale. The documented Revisit button is now rendered.
+- **Phase 3 versions record their source** (`BuiltFromClarifierSessionId`; for Business Model also
+  `BuiltFromMarketStudySessionId` + `BuiltFromMarketStudyVersion`). Manual edits and section
+  rewrites inherit the current version's source. History stays append-only (newest-last).
+- **Stale signal (`upstreamStale` on GET):** Market Study / Business Plan — built-from C-2 ≠ the
+  idea's current C-2. Business Model — built-from market study session or version ≠ the idea's
+  current market study (so regenerating Market Study makes Business Model stale). Legacy versions
+  fall back to the session reference / timestamps. UI: quiet "Built on an older version" notice +
+  Regenerate (price from `/api/ai/credits`); nothing runs automatically.
+- **Regenerate uses the current upstream:** current C-2 for Market Study and Business Plan; current
+  market study (and its version) for Business Model. Business Plan's single-section rewrite is
+  unchanged (it is not a regenerate).
+- **Edit routing:** a weak topic is edited only through the AI-verified rewrite (side-panel pencil =
+  "Fix it"); clear topics keep the field-only edit.
+- Tests: `Phase3UpstreamStalenessTests` (rules, per-screen GET, regenerate input per screen),
+  `phase3-stale-upstream-notice.test.tsx`, `clarifier-step-list-edit-routing.test.tsx`.
 
 ### Unconfirmed marker in the UI (2026-10-31)
 
