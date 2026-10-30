@@ -96,6 +96,9 @@ Send
 - **Errors:** the hub throws `HubException` with the same messages as the HTTP endpoint; `invoke` rejects and the page rolls back the optimistic bubble.
 - **Frontend:** `useSignalRHub("clarifier")` on the shared connection manager (`src/lib/realtime/`). No separate client singleton.
 - **Not rate-limited on the hub.** The `"ai"` rate-limit policy is HTTP-only. The per-idea AI cap still applies.
+- **Verified 2026-10-30** end-to-end with a scripted client (connection, turns, persistence, stale-version rejection). Browser UI not yet checked — see the [verification log](../testing/clarifier-websocket-integration.md#verification-log).
+
+> A redesign from fixed questions to an open, topic-based flow is **proposed, not implemented**: [clarifier-topic-flow-plan.md](clarifier-topic-flow-plan.md).
 
 ---
 

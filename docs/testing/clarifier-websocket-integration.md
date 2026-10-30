@@ -85,6 +85,30 @@ Run each scenario once over the hub and once with WebSocket blocked (HTTP).
 
 ---
 
+## Verification log
+
+### 2026-10-30 — hub end-to-end (scripted client, local backend)
+
+Node SignalR client against `http://localhost:5093/hubs/clarifier`, logged in as a real
+Creator test account, on a freshly created idea. Browser UI was **not** exercised.
+
+| ID | Result | Observed |
+|---|---|---|
+| 1.1 | ✅ | Connected over `WebSocketTransport`. Negotiate without / with a bad token → 401. Old `/api/clarifier` → 404. |
+| 2.1 | ✅ | Q1 and Q2 both `verdict: accept`, `aiUsed: true`, advanced to Q2 then Q3. |
+| 2.4 | ✅ | Whitespace message → "Message is required." |
+| 2.6 | ✅ | Idea with all 6 answered → "All clarifier questions are already answered." |
+| 2.8 | ✅ | DB after two turns: answers `1:accepted`, `2:accepted`; 4 chat messages. |
+| 3.1 | ✅ | 22–25 `ReceiveChunk` events per reply; concatenated chunks equal `aiText`. First chunk at 6.4s / 15.0s (AI time), replay ≈ 0.7s. |
+| 4.1 | ✅ | Version chained 1 → 3 → 5 across two sends (two writes per turn). |
+| 4.3 | ✅ | Re-send with the stale version → "This idea was updated in another tab…"; nothing written. |
+| 4.4 | ✅ | Unknown ideaId → "Idea not found or access denied." |
+
+Not covered: 1.2–1.5, 2.2–2.3, 2.5, 2.7, 3.2–3.3, 4.2, 4.5, 5.x, 6.x, and everything in the browser UI.
+
+The test created an extra idea on the test account (left in place; there is no delete
+endpoint). The account's active idea was switched back afterwards.
+
 ## Suggested automated coverage (not yet written)
 
 - **Backend unit:** `ClarifierChatTurnRunner` with mocked `ICreatorJourneyService` + `IClarifierTurnService` for 2.1–2.7.
