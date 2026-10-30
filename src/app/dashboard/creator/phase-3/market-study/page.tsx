@@ -18,6 +18,7 @@ import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { ThinAnswersBanner } from '@/components/creator/clarifier/ThinAnswersBanner';
 import { StaleUpstreamNotice } from '@/components/creator/phase3/StaleUpstreamNotice';
+import { SummaryStaleNotice, useClarifierSummaryStale } from '@/components/creator/phase3/SummaryStaleNotice';
 import {
   useAiCredits,
   useMarketStudySessionTimed,
@@ -60,6 +61,7 @@ export default function MarketStudyPage() {
   const searchParams = useSearchParams();
   const queryIdeaId = searchParams.get('ideaId');
   const { state, completeStep } = useCreatorProgress();
+  const summaryStale = useClarifierSummaryStale();
   const activeIdeaId = state?.activeIdeaId;
   const effectiveIdeaId = queryIdeaId || activeIdeaId || getCreatorWorkspaceIdea() || null;
 
@@ -289,8 +291,9 @@ export default function MarketStudyPage() {
       }
     >
       <ThinAnswersBanner />
+      <SummaryStaleNotice />
       <StaleUpstreamNotice
-        stale={completed && (session.data as { upstreamStale?: boolean } | undefined)?.upstreamStale}
+        stale={completed && !summaryStale && (session.data as { upstreamStale?: boolean } | undefined)?.upstreamStale}
         onRegenerate={handleRegenerate}
         cost={marketStudyCost}
         disabled={isGenerating || insufficientCredits}

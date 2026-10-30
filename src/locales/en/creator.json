@@ -934,6 +934,10 @@
       "many": "{{count}} of your answers were thin, so this may be less accurate.",
       "review": "Review them"
     },
+    "summaryStale": {
+      "message": "Your answers changed since your summary.",
+      "action": "Update it first"
+    },
     "staleUpstream": {
       "message": "Built on an older version of your earlier answers.",
       "regenerate": "Regenerate",

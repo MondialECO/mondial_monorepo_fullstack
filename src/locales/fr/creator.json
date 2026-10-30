@@ -934,6 +934,10 @@
       "many": "{{count}} de vos réponses étaient légères, ce résultat peut donc être moins précis.",
       "review": "Les revoir"
     },
+    "summaryStale": {
+      "message": "Vos réponses ont changé depuis votre synthèse.",
+      "action": "Mettez-la d'abord à jour"
+    },
     "staleUpstream": {
       "message": "Construit sur une version antérieure de vos réponses précédentes.",
       "regenerate": "Régénérer",

@@ -21,6 +21,7 @@ import { BusinessPlanFigmaFlow, CHAPTERS_META } from '@/components/creator/busin
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { ThinAnswersBanner } from '@/components/creator/clarifier/ThinAnswersBanner';
 import { StaleUpstreamNotice } from '@/components/creator/phase3/StaleUpstreamNotice';
+import { SummaryStaleNotice, useClarifierSummaryStale } from '@/components/creator/phase3/SummaryStaleNotice';
 import {
   useAiCredits,
   useBusinessPlanSessionTimed,
@@ -48,6 +49,7 @@ export default function BusinessPlanPage() {
   const searchParams = useSearchParams();
   const ideaId = searchParams.get('ideaId');
   const { state: { activeIdeaId }, completeStep } = useCreatorProgress();
+  const summaryStale = useClarifierSummaryStale();
   const effectiveIdeaId = ideaId || activeIdeaId || null;
 
   const [loading, setLoading] = useState(true);
@@ -394,8 +396,9 @@ export default function BusinessPlanPage() {
         description={t('creator.phase3.businessPlan.defaultDesc')}
       >
         <ThinAnswersBanner />
+        <SummaryStaleNotice />
         <StaleUpstreamNotice
-          stale={completed && (session.data as { upstreamStale?: boolean } | undefined)?.upstreamStale}
+          stale={completed && !summaryStale && (session.data as { upstreamStale?: boolean } | undefined)?.upstreamStale}
           onRegenerate={handleRegenerate}
           cost={planCost}
           disabled={isGenerating || insufficientCredits}
