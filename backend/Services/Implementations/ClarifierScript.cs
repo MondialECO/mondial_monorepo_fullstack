@@ -60,8 +60,9 @@ namespace WebApp.Services.Implementations
         public const string OpenerEn = "Tell me your idea in your own words. However rough it is is fine.";
         public const string OpenerFr = "Racontez-moi votre idée avec vos propres mots. Même si elle est encore brute, c'est parfait.";
 
-        public const string ClosingEn = "Thanks — that's everything I need. Building your clarified summary now.";
-        public const string ClosingFr = "Merci, j'ai tout ce qu'il me faut. Je prépare maintenant votre synthèse clarifiée.";
+        // The summary only starts when the Creator clicks "Generate my summary" — don't claim it already runs.
+        public const string ClosingEn = "Thanks — that's everything I need. You can now generate your summary.";
+        public const string ClosingFr = "Merci, j'ai tout ce qu'il me faut. Vous pouvez maintenant générer votre synthèse.";
 
         public const int MaxFieldLength = 1000;
 
