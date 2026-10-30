@@ -27,6 +27,7 @@ import {
   summaryIsStale,
 } from "@/lib/clarifier-answers";
 import { useSignalRHub } from "@/lib/realtime/use-signalr-hub";
+import { useOneShotSearchParam } from "@/hooks/useOneShotSearchParam";
 import { hubEvent } from "@/lib/realtime/types";
 import type { ClarifierAnswer, ClarifierChatMessage } from "@/types/creator/journey-api";
 
@@ -370,16 +371,16 @@ export default function AIClarifierPage() {
   const hasSummary = !!phase2?.clarifierSessionId;
   const summaryStale = hasSummary && summaryIsStale(answers, phase2?.clarifierSummarizedAt);
 
-  // "Regenerate summary" clicked on the idea summary (?regenerate=1): that click is the consent,
-  // so start the C-2 regenerate once here — only if the summary is actually stale.
-  const regenerateRequested = searchParams.get("regenerate") === "1";
-  const regenerateHandledRef = useRef(false);
+  // "Regenerate summary" clicked on the idea summary (?regenerate=1): that click is the consent for
+  // ONE paid run. The flag is stripped from the URL at once (refresh/back/bookmark can't replay it)
+  // and consumed when the answers have loaded; it starts only if the summary is actually stale.
+  // A failure shows the error with the manual "Try again" — never an automatic retry.
+  const takeRegenerateRequest = useOneShotSearchParam("regenerate");
   useEffect(() => {
-    if (!regenerateRequested || regenerateHandledRef.current || !summaryReady || !summaryStale || finalizing) return;
-    regenerateHandledRef.current = true;
-    void handleComplete();
+    if (answers.length === 0 || finalizing || !takeRegenerateRequest()) return;
+    if (summaryReady && summaryStale) void handleComplete();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [regenerateRequested, summaryReady, summaryStale, finalizing]);
+  }, [answers.length, summaryReady, summaryStale, finalizing]);
 
   const firstAnswer = answers.find((a) => a.questionIndex === 1);
   const journalText = isTopicDone(firstAnswer) ? firstAnswer!.rawAnswer : "";
