@@ -258,6 +258,109 @@ namespace WebApp.Tests.Unit
             outcome.AiText.Should().Be(ClarifierScript.BaseQuestion(2, "en"));
         }
 
+        // ---- off-topic / unreadable ----
+
+        private static ClarifierTopicsResult OffTopic(string relevance = ClarifierRelevance.OffTopic, string? nudge = "Ha, hello! Back to your idea.",
+            string? simple = null, string lang = "en", params string[] chips) =>
+            new() { AiUsed = true, Relevance = relevance, Nudge = nudge, SimpleQuestion = simple, SimpleChips = chips.ToList(), Language = lang };
+
+        [Fact]
+        public void OffTopic_ChangesNoTopic_KeepsTheFollowUp_StoresNothing_AndReasksTheSameQuestion()
+        {
+            var unclear = Rec(2, ClarifierAnswerStatus.Pending, raw: "students");
+            unclear.Attempts = 1;
+            var answers = new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted), unclear };
+
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 2, "hi", OffTopic(), "en", Now,
+                offTopicStreak: 0, sameQuestion: "Which students exactly?");
+
+            answers.Should().HaveCount(2);
+            unclear.Should().BeEquivalentTo(new { Status = ClarifierAnswerStatus.Pending, Attempts = 1, RawAnswer = "students", FollowUpUsed = false });
+            outcome.Should().BeEquivalentTo(new
+            {
+                AiText = "Ha, hello! Back to your idea.\n\nWhich students exactly?", AiKind = "nudge", AiTopic = (int?)2, Chips = (List<string>?)null,
+                OffTopicStreak = 1,
+            });
+        }
+
+        [Fact]
+        public void Unreadable_OnTheOpener_CreatesNoRecord_AndReasksTheOpener()
+        {
+            var answers = new List<ClarifierAnswer>();
+
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 1, "asdf", OffTopic(ClarifierRelevance.Unreadable, nudge: null, lang: "fr"), "fr", Now);
+
+            answers.Should().BeEmpty();
+            outcome.AiText.Should().Be($"{ClarifierScript.NudgeFr}\n\n{ClarifierScript.OpenerFr}");
+        }
+
+        [Fact]
+        public void SecondNonRelevantTurnInARow_ReasksInSimplerWords_WithIdeaChipsForWho()
+        {
+            var answers = new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted) };
+
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 2, "lol", OffTopic(simple: "Who has this problem?", chips: new[] { "dorm students", "commuters" }),
+                "en", Now, offTopicStreak: 1, sameQuestion: "Who has this problem the most?");
+
+            outcome.OffTopicStreak.Should().Be(2);
+            outcome.AiText.Should().EndWith("Who has this problem?");
+            outcome.Chips.Should().Equal("dorm students", "commuters");
+            answers.Should().HaveCount(1, "still nothing stored");
+        }
+
+        [Fact]
+        public void SimplerReask_FallsBackToFixedSimpleQuestion_AndNoChipsForTopicsWithoutChips()
+        {
+            var answers = Enumerable.Range(1, 2).Select(i => Rec(i, ClarifierAnswerStatus.Accepted))
+                .Append(Rec(4, ClarifierAnswerStatus.Accepted)).ToList();
+
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 3, "???", OffTopic(chips: new[] { "should not show" }), "en", Now, offTopicStreak: 3);
+
+            outcome.AiText.Should().EndWith(ClarifierScript.SimpleBaseQuestion(3, "en"));
+            outcome.Chips.Should().BeNull("alternatives does not allow chips");
+        }
+
+        [Fact]
+        public void OnTopicAnswer_ResetsTheStreak()
+        {
+            var answers = new List<ClarifierAnswer>();
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 1, "real answer",
+                Ai(new() { [1] = J("clear", new() { ["problem"] = "Real problem." }) }), "en", Now, offTopicStreak: 2);
+
+            outcome.OffTopicStreak.Should().Be(0);
+            State(answers, 1).Should().Be(ClarifierTopicState.Clear);
+        }
+
+        [Fact]
+        public void AiFailure_KeepsTheFailOpenRule_EvenDuringAStreak()
+        {
+            var answers = new List<ClarifierAnswer>();
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 1, "hi", ClarifierTopicsResult.FailOpen(), "en", Now, offTopicStreak: 1);
+
+            State(answers, 1).Should().Be(ClarifierTopicState.Weak);
+            outcome.OffTopicStreak.Should().Be(0);
+        }
+
+        [Fact]
+        public void SimpleBaseQuestions_ExistForEveryTopicInEnAndFr() =>
+            ClarifierScript.Topics.Should().OnlyContain(t =>
+                !string.IsNullOrWhiteSpace(ClarifierScript.SimpleBaseQuestion(t.Index, "en"))
+                && !string.IsNullOrWhiteSpace(ClarifierScript.SimpleBaseQuestion(t.Index, "fr")));
+
+        [Fact]
+        public void LastQuestionText_TakesTheQuestionAfterTheAck()
+        {
+            var messages = new List<CreatorChatMessage>
+            {
+                new() { Sender = "ai", QuestionIndex = 2, Text = "Nice.\n\nWho has this problem the most?" },
+                new() { Sender = "user", QuestionIndex = 2, Text = "students" },
+                new() { Sender = "ai", QuestionIndex = 2, Text = "Got it.\n\nWhich students exactly?" },
+            };
+
+            ClarifierScript.LastQuestionText(messages, 2).Should().Be("Which students exactly?");
+            ClarifierScript.LastQuestionText(messages, 3).Should().BeNull();
+        }
+
         // ---- clear needs content ----
 
         [Fact]

@@ -64,7 +64,8 @@ namespace WebApp.Services.Interface
 
         /// <summary>Persist the clarifier answer records and the AI reply for one turn in a single write.</summary>
         Task<CreatorJourney> SaveClarifierTurnAsync(string userId, List<ClarifierAnswer> answers,
-            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null, List<string>? chips = null);
+            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null, List<string>? chips = null,
+            int offTopicStreak = 0, int offTopicCount = 0);
 
         /// <summary>
         /// Optimistic-concurrency input for callers without an HTTP request (SignalR). Subsequent

@@ -177,6 +177,13 @@ namespace WebApp.Models.DatabaseModels
 
         /// <summary>One record per clarifier question (1–6). Progress derives from these, never from counting user messages.</summary>
         public List<ClarifierAnswer> ClarifierAnswers { get; set; } = new();
+
+        /// <summary>Consecutive off-topic / unreadable clarifier turns; reset by an on-topic answer.</summary>
+        public int ClarifierOffTopicStreak { get; set; }
+
+        /// <summary>Lifetime off-topic / unreadable turns. Each was an AI call, so it counts toward the per-idea AI cap.</summary>
+        public int ClarifierOffTopicCount { get; set; }
+
         public string ClarifierSessionId { get; set; }
 
         /// <summary>When the last C-2 result was mapped onto the project. An answer updated after this means the summary is stale.</summary>

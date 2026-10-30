@@ -120,6 +120,40 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
+        public void Parse_OffTopic_WithNoTopics_IsAValidResult()
+        {
+            var result = ClarifierTurnService.Parse("""
+                {"topics":{},"relevance":"Off_Topic","nudge":"No worries!","simpleQuestion":"Who has it?",
+                 "simpleChips":["dorm students","night-shift nurses"],"language":"en"}
+                """);
+
+            result.Should().NotBeNull();
+            result!.AiUsed.Should().BeTrue();
+            result.Relevance.Should().Be(ClarifierRelevance.OffTopic);
+            result.Nudge.Should().Be("No worries!");
+            result.SimpleQuestion.Should().Be("Who has it?");
+            result.SimpleChips.Should().Equal("dorm students", "night-shift nurses");
+        }
+
+        [Theory]
+        [InlineData("""{"topics":{"problem":{"status":"clear"}},"relevance":"unreadable"}""", ClarifierRelevance.Unreadable)]
+        [InlineData("""{"topics":{"problem":{"status":"clear"}},"relevance":"maybe"}""", ClarifierRelevance.OnTopic)]
+        [InlineData("""{"topics":{"problem":{"status":"clear"}}}""", ClarifierRelevance.OnTopic)]
+        public void Parse_Relevance_DefaultsToOnTopic(string json, string expected) =>
+            ClarifierTurnService.Parse(json)!.Relevance.Should().Be(expected);
+
+        [Fact]
+        public void Parse_OnTopic_WithNoTopics_StillFailsOpen() =>
+            ClarifierTurnService.Parse("""{"topics":{},"relevance":"on_topic"}""").Should().BeNull();
+
+        [Fact]
+        public void SystemPrompt_HasTheRelevanceRuleAndFields()
+        {
+            ClarifierTurnService.SystemPrompt.Should().Contain(ClarifierTurnService.RelevanceRule);
+            ClarifierTurnService.SystemPrompt.Should().Contain("\"relevance\":\"on_topic|off_topic|unreadable\"");
+        }
+
+        [Fact]
         public void SystemPrompt_RequiresExtractedContentForClear() =>
             ClarifierTurnService.SystemPrompt.Should().Contain(ClarifierTurnService.ClearNeedsContentRule);
 

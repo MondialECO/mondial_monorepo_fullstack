@@ -64,17 +64,23 @@ namespace WebApp.Services.Implementations
                 ? language
                 : (answers.FirstOrDefault(a => a.Language != null)?.Language ?? "en");
 
+            var offTopicStreak = current.Phase2Data?.ClarifierOffTopicStreak ?? 0;
+            var offTopicCount = current.Phase2Data?.ClarifierOffTopicCount ?? 0;
+
             var result = await _clarifierTurns.EvaluateAsync(new ClarifierTopicsInput(
                 ClarifierScript.Snapshot(answers),
                 transcript,
                 text,
                 askedTopic,
-                answers.Sum(a => a.Attempts),
+                answers.Sum(a => a.Attempts) + offTopicCount, // off-topic turns were AI calls too
                 lang), cancellationToken);
 
-            var outcome = ClarifierScript.ApplyTopicsTurn(answers, askedTopic, text, result, lang, DateTime.UtcNow);
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, askedTopic, text, result, lang, DateTime.UtcNow,
+                offTopicStreak, ClarifierScript.LastQuestionText(current.Phase2Data?.ChatMessages, askedTopic));
+            var wasOffTopic = outcome.OffTopicStreak > 0;
             var journey = await _journeys.SaveClarifierTurnAsync(
-                userId, answers, outcome.AiText, outcome.AiKind, outcome.AiTopic, ideaId, outcome.Chips);
+                userId, answers, outcome.AiText, outcome.AiKind, outcome.AiTopic, ideaId, outcome.Chips,
+                outcome.OffTopicStreak, wasOffTopic ? offTopicCount + 1 : offTopicCount);
 
             return new ClarifierChatTurnResponse(
                 Messages: journey.Phase2Data?.ChatMessages,

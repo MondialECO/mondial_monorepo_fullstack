@@ -3,7 +3,8 @@ using WebApp.Services.Ai;
 
 namespace WebApp.Services.Implementations
 {
-    public sealed record ClarifierTurnOutcome(string AiText, string AiKind, int? AiTopic, List<string>? Chips);
+    /// <param name="OffTopicStreak">Consecutive not-on-topic turns after this one (0 once the Creator answers).</param>
+    public sealed record ClarifierTurnOutcome(string AiText, string AiKind, int? AiTopic, List<string>? Chips, int OffTopicStreak = 0);
 
     /// <summary>One clear and one unclear calibration example from one business domain.</summary>
     public sealed record ClarifierExample(string Domain, string Clear, string Unclear);
@@ -166,6 +167,40 @@ namespace WebApp.Services.Implementations
                 "Pouvez-vous ajouter ce qui manque : pourquoi c'est le bon moment, et la seule chose qui pourrait mal tourner ?"),
         };
 
+        /// <summary>After this many not-on-topic turns in a row, re-ask in simpler words (never block).</summary>
+        public const int OffTopicSimplifyAfter = 2;
+
+        public const string NudgeEn = "No problem — let's get back to your idea.";
+        public const string NudgeFr = "Pas de souci — revenons à votre idée.";
+
+        /// <summary>Base questions in very simple words, used when the Creator keeps going off topic and the AI gave none.</summary>
+        public static readonly IReadOnlyDictionary<int, (string En, string Fr)> SimpleBaseQuestions = new Dictionary<int, (string, string)>
+        {
+            [1] = ("What is the main problem you want to fix?", "Quel est le principal problème que vous voulez régler ?"),
+            [2] = ("Which people have this problem?", "Quelles personnes ont ce problème ?"),
+            [3] = ("What do people do today to deal with it?", "Que font les gens aujourd'hui pour s'en sortir ?"),
+            [4] = ("What will you make? An app, a website, a service, or something else?", "Qu'allez-vous créer ? Une application, un site, un service ou autre chose ?"),
+            [5] = ("What makes your idea, or you, different?", "Qu'est-ce qui rend votre idée, ou vous, différent ?"),
+            [6] = ("Why now? And what could go wrong?", "Pourquoi maintenant ? Et qu'est-ce qui pourrait mal tourner ?"),
+        };
+
+        public static string SimpleBaseQuestion(int index, string lang) =>
+            lang == "fr" ? SimpleBaseQuestions[index].Fr : SimpleBaseQuestions[index].En;
+
+        public static string Opener(string lang) => lang == "fr" ? OpenerFr : OpenerEn;
+
+        /// <summary>Only these topics may carry chips (example options never appear in follow-up text).</summary>
+        public static bool TopicAllowsChips(int index) => Topic(index).Key is "who" or "solution";
+
+        /// <summary>The question last asked for <paramref name="topic"/> (an AI reply is "ack\n\nquestion"), or null.</summary>
+        public static string? LastQuestionText(IEnumerable<CreatorChatMessage>? messages, int topic)
+        {
+            var text = messages?.LastOrDefault(m => m.Sender == "ai" && m.QuestionIndex == topic)?.Text;
+            if (string.IsNullOrWhiteSpace(text)) return null;
+            var split = text.LastIndexOf("\n\n", StringComparison.Ordinal);
+            return split >= 0 ? text[(split + 2)..] : text;
+        }
+
         /// <summary>Order topics are asked in. The opener counts as the problem topic's base question.</summary>
         public static readonly int[] AskOrder = { 1, 2, 4, 3, 5, 6 };
 
@@ -271,8 +306,15 @@ namespace WebApp.Services.Implementations
         /// topic is locked and changes only through Edit.
         /// </summary>
         public static ClarifierTurnOutcome ApplyTopicsTurn(List<ClarifierAnswer> answers, int askedTopic, string text,
-            ClarifierTopicsResult result, string? uiLanguage, DateTime now)
+            ClarifierTopicsResult result, string? uiLanguage, DateTime now,
+            int offTopicStreak = 0, string? sameQuestion = null)
         {
+            // Not about the idea ("hi", "asdf"): change no topic, keep the follow-up, store nothing —
+            // nudge and ask the same question again; after a streak, ask it in simpler words. Never block.
+            // (When the AI failed, relevance is unknown and the fail-open rule below applies unchanged.)
+            if (result.AiUsed && result.Relevance != ClarifierRelevance.OnTopic)
+                return OffTopicTurn(askedTopic, result, uiLanguage, offTopicStreak + 1, sameQuestion);
+
             foreach (var def in Topics)
             {
                 var answer = answers.FirstOrDefault(a => a.QuestionIndex == def.Index);
@@ -336,6 +378,23 @@ namespace WebApp.Services.Implementations
                 ? result.NextBaseQuestion
                 : BaseQuestion(nextIndex, lang);
             return new(Join(ack, baseQuestion), "question", nextIndex, null);
+        }
+
+        private static ClarifierTurnOutcome OffTopicTurn(int askedTopic, ClarifierTopicsResult result, string? uiLanguage,
+            int streak, string? sameQuestion)
+        {
+            var lang = FixedTextLanguage(result.Language, uiLanguage);
+            var nudge = result.Nudge ?? (lang == "fr" ? NudgeFr : NudgeEn);
+
+            if (streak >= OffTopicSimplifyAfter)
+            {
+                var simple = result.SimpleQuestion ?? SimpleBaseQuestion(askedTopic, lang);
+                var chips = TopicAllowsChips(askedTopic) && result.SimpleChips.Count > 0 ? result.SimpleChips : null;
+                return new(Join(nudge, simple), "nudge", askedTopic, chips, streak);
+            }
+
+            var again = sameQuestion ?? (askedTopic == AskOrder[0] ? Opener(lang) : BaseQuestion(askedTopic, lang));
+            return new(Join(nudge, again), "nudge", askedTopic, null, streak);
         }
 
         private static string Join(string? ack, string text) => string.IsNullOrWhiteSpace(ack) ? text : $"{ack}\n\n{text}";

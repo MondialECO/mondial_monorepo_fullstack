@@ -808,7 +808,8 @@ namespace WebApp.Services.Implementations
         }
 
         public async Task<CreatorJourney> SaveClarifierTurnAsync(string userId, List<ClarifierAnswer> answers,
-            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null, List<string>? chips = null)
+            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null, List<string>? chips = null,
+            int offTopicStreak = 0, int offTopicCount = 0)
         {
             var j = await GetOrCreateAsync(userId);
             var idea = await ResolveIdeaAsync(j, ideaId);
@@ -824,14 +825,19 @@ namespace WebApp.Services.Implementations
                 Chips = chips,
             };
 
-            // One UpdateOne: targeted $set of the topic records (status, extracted, follow-up flags) plus
-            // $push of the reply — never a document replace. WriteIdeaAsync's version check makes it a compare-and-swap.
+            // One UpdateOne: targeted $set of the topic records (status, extracted, follow-up flags) and the
+            // off-topic counters, plus $push of the reply — never a document replace. WriteIdeaAsync's
+            // version check makes it a compare-and-swap.
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Phase2Data.ClarifierAnswers, answers)
+                .Set(x => x.Phase2Data.ClarifierOffTopicStreak, offTopicStreak)
+                .Set(x => x.Phase2Data.ClarifierOffTopicCount, offTopicCount)
                 .Push(x => x.Phase2Data.ChatMessages, message));
 
             var p2 = j.Phase2Data ??= new CreatorPhase2Data();
             p2.ClarifierAnswers = answers;
+            p2.ClarifierOffTopicStreak = offTopicStreak;
+            p2.ClarifierOffTopicCount = offTopicCount;
             p2.ChatMessages ??= new List<CreatorChatMessage>();
             p2.ChatMessages.Add(message);
             return j;
