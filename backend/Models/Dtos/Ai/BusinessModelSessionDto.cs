@@ -12,6 +12,8 @@ namespace WebApp.Models.Dtos.Ai
         public object? Output { get; set; }
         public List<BusinessModelVersionDto> Versions { get; set; } = new();
         public string? Error { get; set; }
+        /// <summary>The current version was built from a market study that has since changed (new session or newer version).</summary>
+        public bool UpstreamStale { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

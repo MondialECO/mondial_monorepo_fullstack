@@ -21,7 +21,7 @@ namespace WebApp.Services.Repository.Ai
         Task SetProcessingAsync(string id);
 
         /// <summary>Terminal success: append an immutable generated version and make it current.</summary>
-        Task AppendGeneratedVersionAsync(string id, BsonDocument content, string requestId);
+        Task AppendGeneratedVersionAsync(string id, BsonDocument content, string requestId, Phase3VersionSource? source = null);
 
         /// <summary>Edit the current version's editable content in place (no AI run).</summary>
         Task EditCurrentVersionAsync(string id, int versionNumber, BsonDocument content);
@@ -148,7 +148,7 @@ namespace WebApp.Services.Repository.Ai
         /// overwritten) and point <c>CurrentVersion</c> at it. The new version number
         /// is one past the highest existing version.
         /// </summary>
-        public async Task AppendGeneratedVersionAsync(string id, BsonDocument content, string requestId)
+        public async Task AppendGeneratedVersionAsync(string id, BsonDocument content, string requestId, Phase3VersionSource? source = null)
         {
             var session = await _collection.Find(x => x.Id == id).FirstOrDefaultAsync();
             if (session is null)
@@ -156,6 +156,9 @@ namespace WebApp.Services.Repository.Ai
 
             var nextVersion = session.Versions.Count == 0 ? 1 : session.Versions.Max(v => v.Version) + 1;
             var now = DateTime.UtcNow;
+            // No new source (manual edit, single-section rewrite): keep the current version's source.
+            var builtFrom = source?.ClarifierSessionId
+                ?? session.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion)?.BuiltFromClarifierSessionId;
 
             var version = new BusinessPlanVersion
             {
@@ -164,14 +167,18 @@ namespace WebApp.Services.Repository.Ai
                 Content = (BsonDocument)content.DeepClone(), // editable copy starts == generated
                 RequestId = ObjectId.TryParse(requestId, out _) ? requestId : null,
                 IsEdited = requestId == "manual-edit",
+                BuiltFromClarifierSessionId = builtFrom,
                 CreatedAt = now,
                 UpdatedAt = now,
             };
 
+            var update = Builders<BusinessPlanSession>.Update.Push(x => x.Versions, version);
+            if (!string.IsNullOrWhiteSpace(source?.ClarifierSessionId))
+                update = update.Set(x => x.ClarifierSessionId, source.ClarifierSessionId);
+
             await _collection.UpdateOneAsync(
                 x => x.Id == id,
-                Builders<BusinessPlanSession>.Update
-                    .Push(x => x.Versions, version)
+                update
                     .Set(x => x.CurrentVersion, nextVersion)
                     .Set(x => x.Status, "Completed")
                     .Set(x => x.Error, null)

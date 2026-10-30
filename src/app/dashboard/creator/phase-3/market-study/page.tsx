@@ -17,6 +17,7 @@ import { Card } from '@/components/ui/card';
 import { Phase3SetupShell } from '@/components/creator/Phase3SetupShell';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { ThinAnswersBanner } from '@/components/creator/clarifier/ThinAnswersBanner';
+import { StaleUpstreamNotice } from '@/components/creator/phase3/StaleUpstreamNotice';
 import {
   useAiCredits,
   useMarketStudySessionTimed,
@@ -288,6 +289,12 @@ export default function MarketStudyPage() {
       }
     >
       <ThinAnswersBanner />
+      <StaleUpstreamNotice
+        stale={completed && (session.data as { upstreamStale?: boolean } | undefined)?.upstreamStale}
+        onRegenerate={handleRegenerate}
+        cost={marketStudyCost}
+        disabled={isGenerating || insufficientCredits}
+      />
       <div className="w-full min-w-0 max-w-none space-y-8 pb-16 font-sans">
         {/* Error Banners */}
         {startError && (

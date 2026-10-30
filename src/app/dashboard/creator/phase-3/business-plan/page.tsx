@@ -20,6 +20,7 @@ import PlanForecastPrintView from '@/components/creator/PlanForecastPrintView';
 import { BusinessPlanFigmaFlow, CHAPTERS_META } from '@/components/creator/business-plan/BusinessPlanFigmaFlow';
 import { useCreatorProgress } from '@/providers/CreatorProgressProvider';
 import { ThinAnswersBanner } from '@/components/creator/clarifier/ThinAnswersBanner';
+import { StaleUpstreamNotice } from '@/components/creator/phase3/StaleUpstreamNotice';
 import {
   useAiCredits,
   useBusinessPlanSessionTimed,
@@ -393,6 +394,12 @@ export default function BusinessPlanPage() {
         description={t('creator.phase3.businessPlan.defaultDesc')}
       >
         <ThinAnswersBanner />
+        <StaleUpstreamNotice
+          stale={completed && (session.data as { upstreamStale?: boolean } | undefined)?.upstreamStale}
+          onRegenerate={handleRegenerate}
+          cost={planCost}
+          disabled={isGenerating || insufficientCredits}
+        />
         {loading && (
           <div className="flex items-center gap-2 text-muted-foreground py-16 justify-center">
             <Loader2 className="h-5 w-5 animate-spin" /> {t('creator.phase3.businessPlan.loadingPlan', 'Loading business plan…')}

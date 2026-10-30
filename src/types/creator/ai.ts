@@ -168,6 +168,8 @@ export interface MarketStudyVersion {
 
 export interface MarketStudySession {
   sessionId: string;
+  /** Built from a C-2 summary that is no longer the idea's current one (server-computed). */
+  upstreamStale?: boolean;
   status: AiSessionStatus;
   clarifierSessionId: string;
   businessIdeaId?: string | null;
@@ -264,6 +266,8 @@ export interface BusinessModelVersion {
 
 export interface BusinessModelSession {
   sessionId: string;
+  /** Built from a market study that has since changed (server-computed). */
+  upstreamStale?: boolean;
   status: AiSessionStatus;
   marketStudySessionId: string;
   clarifierSessionId?: string;
@@ -483,6 +487,8 @@ export interface LegalRegulatoryFramework {
 
 export interface BusinessPlanSession {
   sessionId: string;
+  /** Built from a C-2 summary that is no longer the idea's current one (server-computed). */
+  upstreamStale?: boolean;
   status: AiSessionStatus;
   clarifierSessionId: string;
   businessIdeaId?: string | null;

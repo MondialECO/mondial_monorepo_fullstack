@@ -11,6 +11,7 @@ using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos.Ai;
 using WebApp.Services.Ai;
+using WebApp.Services.Implementations;
 using WebApp.Services.Ai.Jobs;
 using WebApp.Services.Audit;
 using WebApp.Services.Repository;
@@ -144,6 +145,7 @@ namespace WebApp.Controllers
                 {
                     ["sessionId"] = sessionId,
                     ["marketStudySessionId"] = session.MarketStudySessionId,
+                    ["marketStudyVersion"] = marketStudy.CurrentVersion,
                     ["clarifierSessionId"] = session.ClarifierSessionId,
                     ["creditOperationId"] = sessionId,
                 };
@@ -202,11 +204,35 @@ namespace WebApp.Controllers
             if (!ObjectId.TryParse(sessionId, out _))
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
 
-            var session = await _sessions.GetOwnedAsync(sessionId, CurrentUserId);
+            var owner = CurrentUserId;
+            var session = await _sessions.GetOwnedAsync(sessionId, owner);
             if (session is null)
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
 
-            return Ok(ApiResponse.Ok("OK", ToDto(session, includeVersionContent: true)));
+            var dto = ToDto(session, includeVersionContent: true);
+            var current = session.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion);
+            if (current != null)
+            {
+                var currentStudyId = await CurrentMarketStudySessionIdAsync(session.BusinessIdeaId, owner);
+                var currentStudy = currentStudyId != null ? await _marketStudies.GetOwnedAsync(currentStudyId, owner) : null;
+                dto.UpstreamStale = Phase3UpstreamStaleness.MarketStudyStale(
+                    current.BuiltFromMarketStudySessionId ?? session.MarketStudySessionId,
+                    current.BuiltFromMarketStudyVersion,
+                    current.CreatedAt,
+                    currentStudy?.Id,
+                    currentStudy?.CurrentVersion,
+                    currentStudy?.Versions.FirstOrDefault(v => v.Version == currentStudy.CurrentVersion)?.CreatedAt);
+            }
+            return Ok(ApiResponse.Ok("OK", dto));
+        }
+
+        /// <summary>The idea's current market study session, or null when unknown.</summary>
+        private async Task<string?> CurrentMarketStudySessionIdAsync(string? businessIdeaId, string owner)
+        {
+            if (string.IsNullOrWhiteSpace(businessIdeaId) || !ObjectId.TryParse(businessIdeaId, out _))
+                return null;
+            var id = (await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner))?.Phase3Data?.MarketStudySessionId;
+            return string.IsNullOrWhiteSpace(id) ? null : id;
         }
 
         [HttpGet]
@@ -254,9 +280,13 @@ namespace WebApp.Controllers
             if (session is null)
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
 
-            var marketStudy = await _marketStudies.GetOwnedAsync(session.MarketStudySessionId, owner);
+            // Regenerate from the idea's CURRENT market study (and its current version), not the one
+            // this session was first built from.
+            var marketStudySessionId = await CurrentMarketStudySessionIdAsync(session.BusinessIdeaId, owner) ?? session.MarketStudySessionId;
+            var marketStudy = await _marketStudies.GetOwnedAsync(marketStudySessionId, owner);
             if (marketStudy is null || !string.Equals(marketStudy.Status, "Completed", StringComparison.Ordinal) || marketStudy.Versions.Count == 0)
                 return Conflict(ApiResponse.Error("The source market study session is no longer available or not completed.", HttpContext.TraceIdentifier));
+            var clarifierSessionId = !string.IsNullOrWhiteSpace(marketStudy.ClarifierSessionId) ? marketStudy.ClarifierSessionId : session.ClarifierSessionId;
 
             var (acquired, activeSession) = await _sessions.TryAcquireRegenerateLockAsync(sessionId, owner);
             if (!acquired)
@@ -316,8 +346,9 @@ namespace WebApp.Controllers
                 var input = new BsonDocument
                 {
                     ["sessionId"] = session.Id,
-                    ["marketStudySessionId"] = session.MarketStudySessionId,
-                    ["clarifierSessionId"] = session.ClarifierSessionId,
+                    ["marketStudySessionId"] = marketStudy.Id,
+                    ["marketStudyVersion"] = marketStudy.CurrentVersion,
+                    ["clarifierSessionId"] = clarifierSessionId,
                     ["creditOperationId"] = operationId,
                 };
                 if (session.BusinessIdeaId != null)

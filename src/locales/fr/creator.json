@@ -934,6 +934,11 @@
       "many": "{{count}} de vos réponses étaient légères, ce résultat peut donc être moins précis.",
       "review": "Les revoir"
     },
+    "staleUpstream": {
+      "message": "Construit sur une version antérieure de vos réponses précédentes.",
+      "regenerate": "Régénérer",
+      "regenerateWithCost": "Régénérer ({{cost}} crédits)"
+    },
     "resuming": "Reprise de la Phase 3 : Intelligence du Business Plan...",
     "steps": {
       "marketStudy": "Étude de marché et analyse de faisabilité",

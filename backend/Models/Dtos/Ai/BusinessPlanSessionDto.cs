@@ -18,6 +18,9 @@ namespace WebApp.Models.Dtos.Ai
 
         public string? BusinessIdeaId { get; set; }
 
+        /// <summary>The current version was built from a C-2 summary that is no longer the idea's current one.</summary>
+        public bool UpstreamStale { get; set; }
+
         /// <summary>Active version number; 0 until the first run completes.</summary>
         public int CurrentVersion { get; set; }
 

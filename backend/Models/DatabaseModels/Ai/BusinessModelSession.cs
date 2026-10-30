@@ -120,6 +120,20 @@ namespace WebApp.Models.DatabaseModels.Ai
         [BsonElement("IsEdited")]
         public bool IsEdited { get; set; }
 
+        /// <summary>Market study session this version was generated from; null on versions that predate tracking.</summary>
+        [BsonElement("BuiltFromMarketStudySessionId")]
+        [BsonIgnoreIfNull]
+        public string? BuiltFromMarketStudySessionId { get; set; }
+
+        /// <summary>That market study's current version at generation time.</summary>
+        [BsonElement("BuiltFromMarketStudyVersion")]
+        [BsonIgnoreIfNull]
+        public int? BuiltFromMarketStudyVersion { get; set; }
+
+        [BsonElement("BuiltFromClarifierSessionId")]
+        [BsonIgnoreIfNull]
+        public string? BuiltFromClarifierSessionId { get; set; }
+
         [BsonElement("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

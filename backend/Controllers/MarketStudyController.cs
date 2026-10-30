@@ -11,6 +11,7 @@ using WebApp.Models.DatabaseModels;
 using WebApp.Models.DatabaseModels.Ai;
 using WebApp.Models.Dtos.Ai;
 using WebApp.Services.Ai;
+using WebApp.Services.Implementations;
 using WebApp.Services.Ai.Jobs;
 using WebApp.Services.Audit;
 using WebApp.Services.Repository;
@@ -196,7 +197,21 @@ namespace WebApp.Controllers
             if (session is null)
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
 
-            return Ok(ApiResponse.Ok("OK", ToDto(session, includeVersionContent: true)));
+            var dto = ToDto(session, includeVersionContent: true);
+            var current = session.Versions.FirstOrDefault(v => v.Version == session.CurrentVersion);
+            dto.UpstreamStale = current != null && Phase3UpstreamStaleness.ClarifierStale(
+                current.BuiltFromClarifierSessionId ?? session.ClarifierSessionId,
+                await CurrentClarifierSessionIdAsync(session.BusinessIdeaId, CurrentUserId));
+            return Ok(ApiResponse.Ok("OK", dto));
+        }
+
+        /// <summary>The idea's current C-2 summary session, or null when unknown.</summary>
+        private async Task<string?> CurrentClarifierSessionIdAsync(string? businessIdeaId, string owner)
+        {
+            if (string.IsNullOrWhiteSpace(businessIdeaId) || !ObjectId.TryParse(businessIdeaId, out _))
+                return null;
+            var id = (await _creatorIdeas.GetOwnedAsync(businessIdeaId, owner))?.Phase2Data?.ClarifierSessionId;
+            return string.IsNullOrWhiteSpace(id) ? null : id;
         }
 
         [HttpGet]
@@ -244,7 +259,9 @@ namespace WebApp.Controllers
             if (session is null)
                 return NotFound(ApiResponse.Error("Session not found.", HttpContext.TraceIdentifier));
 
-            var clarifier = await _clarifiers.GetOwnedAsync(session.ClarifierSessionId, owner);
+            // Regenerate from the idea's CURRENT C-2 summary, not the one this session was first built from.
+            var clarifierSessionId = await CurrentClarifierSessionIdAsync(session.BusinessIdeaId, owner) ?? session.ClarifierSessionId;
+            var clarifier = await _clarifiers.GetOwnedAsync(clarifierSessionId, owner);
             if (clarifier is null || !string.Equals(clarifier.Status, "Completed", StringComparison.Ordinal) || clarifier.Output is null)
                 return Conflict(ApiResponse.Error("The source clarifier session is no longer available or not completed.", HttpContext.TraceIdentifier));
 
@@ -306,7 +323,7 @@ namespace WebApp.Controllers
                 var input = new BsonDocument
                 {
                     ["sessionId"] = session.Id,
-                    ["clarifierSessionId"] = session.ClarifierSessionId,
+                    ["clarifierSessionId"] = clarifierSessionId,
                     ["creditOperationId"] = operationId,
                 };
                 if (session.BusinessIdeaId != null)

@@ -156,7 +156,15 @@ namespace WebApp.Services.Ai.Jobs
 
             if (sessionId != null)
             {
-                await _sessions.AppendGeneratedVersionAsync(sessionId, contract, request.Id);
+                string? InputString(string key) => request.InputPayload != null
+                    && request.InputPayload.TryGetValue(key, out var v) && v.IsString && v.AsString.Length > 0 ? v.AsString : null;
+                var builtFromStudy = InputString("marketStudySessionId");
+                int? builtFromStudyVersion = request.InputPayload != null
+                    && request.InputPayload.TryGetValue("marketStudyVersion", out var msv) && msv.IsInt32 ? msv.AsInt32 : null;
+                if (builtFromStudyVersion == null && builtFromStudy != null)
+                    builtFromStudyVersion = (await _marketStudies.GetOwnedAsync(builtFromStudy, request.OwnerUserId))?.CurrentVersion;
+                await _sessions.AppendGeneratedVersionAsync(sessionId, contract, request.Id,
+                    new Phase3VersionSource(InputString("clarifierSessionId"), builtFromStudy, builtFromStudyVersion));
 
                 // Progressive Financial Assumptions: Step 3.2 refines and completes assumptions
                 if (_assumptions != null)

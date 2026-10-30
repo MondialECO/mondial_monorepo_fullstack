@@ -123,6 +123,11 @@ namespace WebApp.Models.DatabaseModels.Ai
         [BsonElement("IsEdited")]
         public bool IsEdited { get; set; }
 
+        /// <summary>C-2 clarifier session this version was generated from; null on versions that predate tracking.</summary>
+        [BsonElement("BuiltFromClarifierSessionId")]
+        [BsonIgnoreIfNull]
+        public string? BuiltFromClarifierSessionId { get; set; }
+
         [BsonElement("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

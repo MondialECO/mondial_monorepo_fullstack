@@ -142,7 +142,7 @@ public class BusinessPlanHandlerTests
         result.OutputPayload!["schemaVersion"].AsInt32.Should().Be(1);
         result.OutputPayload!["executiveSummary"]["overview"].AsString.Should().Be("Autonomous crop monitoring.");
 
-        _sessions.Verify(s => s.AppendGeneratedVersionAsync(sessionId, It.IsAny<BsonDocument>(), request.Id), Times.Once);
+        _sessions.Verify(s => s.AppendGeneratedVersionAsync(sessionId, It.IsAny<BsonDocument>(), request.Id, It.IsAny<Phase3VersionSource?>()), Times.Once);
         _sessions.Verify(s => s.SetNeedsReviewAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
@@ -155,7 +155,7 @@ public class BusinessPlanHandlerTests
         var result = await Handler().InterpretAsync(Request(new BsonDocument("sessionId", sessionId)), Completion(fenced));
 
         result.OutputPayload.Should().NotBeNull();
-        _sessions.Verify(s => s.AppendGeneratedVersionAsync(sessionId, It.IsAny<BsonDocument>(), It.IsAny<string>()), Times.Once);
+        _sessions.Verify(s => s.AppendGeneratedVersionAsync(sessionId, It.IsAny<BsonDocument>(), It.IsAny<string>(), It.IsAny<Phase3VersionSource?>()), Times.Once);
     }
 
     [Fact]
@@ -198,7 +198,7 @@ public class BusinessPlanHandlerTests
 
         result.OutputPayload.Should().BeNull();
         _sessions.Verify(s => s.SetNeedsReviewAsync(sessionId, It.Is<string>(e => e.Length > 0)), Times.Once);
-        _sessions.Verify(s => s.AppendGeneratedVersionAsync(It.IsAny<string>(), It.IsAny<BsonDocument>(), It.IsAny<string>()), Times.Never);
+        _sessions.Verify(s => s.AppendGeneratedVersionAsync(It.IsAny<string>(), It.IsAny<BsonDocument>(), It.IsAny<string>(), It.IsAny<Phase3VersionSource?>()), Times.Never);
         _insights.Verify(i => i.WriteAsync(It.IsAny<AiInsight>()), Times.Never);
     }
 
@@ -251,7 +251,7 @@ public class BusinessPlanHandlerTests
 
         result.OutputPayload.Should().BeNull();
         _sessions.Verify(s => s.SetNeedsReviewAsync(sessionId, It.Is<string>(e => e.Contains(missingSection))), Times.Once);
-        _sessions.Verify(s => s.AppendGeneratedVersionAsync(It.IsAny<string>(), It.IsAny<BsonDocument>(), It.IsAny<string>()), Times.Never);
+        _sessions.Verify(s => s.AppendGeneratedVersionAsync(It.IsAny<string>(), It.IsAny<BsonDocument>(), It.IsAny<string>(), It.IsAny<Phase3VersionSource?>()), Times.Never);
     }
 
     [Fact]
@@ -260,7 +260,7 @@ public class BusinessPlanHandlerTests
         var result = await Handler().InterpretAsync(Request(new BsonDocument("clarifierSessionId", "x")), Completion(ValidJson()));
 
         result.OutputPayload.Should().NotBeNull();
-        _sessions.Verify(s => s.AppendGeneratedVersionAsync(It.IsAny<string>(), It.IsAny<BsonDocument>(), It.IsAny<string>()), Times.Never);
+        _sessions.Verify(s => s.AppendGeneratedVersionAsync(It.IsAny<string>(), It.IsAny<BsonDocument>(), It.IsAny<string>(), It.IsAny<Phase3VersionSource?>()), Times.Never);
         _insights.Verify(i => i.WriteAsync(It.IsAny<AiInsight>()), Times.Never);
     }
 }
