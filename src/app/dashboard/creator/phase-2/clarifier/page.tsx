@@ -26,7 +26,9 @@ import {
   isAnswerDone,
   summaryIsStale,
 } from "@/lib/clarifier-answers";
+import { initializeClarifierWebSocket, getClarifierWebSocket } from "@/lib/clarifier-websocket";
 import type { ClarifierAnswer, ClarifierChatMessage } from "@/types/creator/journey-api";
+import { useAuth } from "@/context/AuthContext";
 
 type Message = ClarifierChatMessage;
 
@@ -39,8 +41,10 @@ export default function AIClarifierPage() {
   const searchParams = useSearchParams();
   const urlIdeaId = searchParams.get("ideaId");
   const { state, setState, refetch } = useCreatorProgress();
+  const { token } = useAuth();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const initInFlightRef = useRef(false);
+  const wsInitializedRef = useRef(false);
 
   const effectiveIdeaId = urlIdeaId || state.activeIdeaId;
 
@@ -74,10 +78,59 @@ export default function AIClarifierPage() {
       });
   }, [urlIdeaId, state.activeIdeaId, refetch, router]);
 
+  // WebSocket initialization
+  useEffect(() => {
+    if (!token || wsInitializedRef.current) return;
+    wsInitializedRef.current = true;
+
+    try {
+      const ws = initializeClarifierWebSocket(token);
+      ws.connect().catch((err) => {
+        console.error("[Clarifier] WebSocket connection failed, will fallback to HTTP:", err);
+      });
+
+      // Register callbacks
+      ws.onMessageChunk((chunk) => {
+        setStreamingMessage((prev) => prev + chunk);
+      });
+
+      ws.onMessageComplete((data) => {
+        // Add complete message to messages array
+        const completeMessage: Message = {
+          id: `ai-${Date.now()}`,
+          sender: "ai",
+          text: data.aiMessage.text,
+          questionIndex: currentQuestionIndex(answers),
+        };
+        setMessages((prev) => [...prev, completeMessage]);
+        setStreamingMessage("");
+        setIsTyping(false);
+
+        // Update answers with new topic status
+        if (data.topicStatus) {
+          syncPhase2({ clarifierAnswers: answers });
+        }
+      });
+
+      ws.onError((error) => {
+        console.error("[Clarifier] WebSocket error:", error);
+        setStreamingMessage("");
+        setIsTyping(false);
+      });
+
+      return () => {
+        ws.disconnect();
+      };
+    } catch (err) {
+      console.error("[Clarifier] Failed to initialize WebSocket:", err);
+    }
+  }, [token]);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [answers, setAnswers] = useState<ClarifierAnswer[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState<string>("");
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [finalizeSlow, setFinalizeSlow] = useState(false);
@@ -153,7 +206,18 @@ export default function AIClarifierPage() {
     setMessages([...messages, { id: `pending-${Date.now()}`, sender: "user", text: userText, questionIndex: currentQuestion }]);
     setInputValue("");
     setIsTyping(true);
+    setStreamingMessage("");
+
     try {
+      // Try WebSocket first
+      const ws = getClarifierWebSocket();
+      if (ws && ws.isConnected()) {
+        await ws.sendMessage(userText, t.locale, effectiveIdeaId || "", currentQuestion.toString());
+        return;
+      }
+
+      // Fallback to HTTP if WebSocket not available
+      console.warn("[Clarifier] WebSocket not connected, using HTTP fallback");
       const res = await creatorJourneyApi.chatMessage(userText, t.locale, effectiveIdeaId);
       setMessages(res.messages);
       setAnswers(res.answers);
@@ -490,18 +554,30 @@ export default function AIClarifierPage() {
                   );
                 })}
 
-                {/* Thinking indicator — assistant working on the next question */}
+                {/* Streaming message or thinking indicator */}
                 {isTyping && (
                   <div className="flex flex-col items-start">
                     <div
-                      className="rounded-2xl border px-[18px] py-[14px] max-w-[580px] flex items-center gap-2"
+                      className="rounded-2xl border px-[18px] py-[14px] max-w-[580px]"
                       style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
                     >
-                      <span className="sr-only">{t("creator.phase2.clarifier.sr.assistantTyping", "Assistant is typing")}</span>
-                      <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--primary)" }} />
-                      <span className="text-body" style={{ color: "var(--muted-foreground)" }}>
-                        {t("creator.phase2.clarifier.thinking")}
-                      </span>
+                      {streamingMessage ? (
+                        <>
+                          <span className="sr-only">{t("creator.phase2.clarifier.sr.assistantTyping", "Assistant is typing")}</span>
+                          <span className="text-body whitespace-pre-line" style={{ color: "var(--foreground)" }}>
+                            {streamingMessage}
+                            <span className="animate-pulse">▌</span>
+                          </span>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="sr-only">{t("creator.phase2.clarifier.sr.assistantTyping", "Assistant is typing")}</span>
+                          <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--primary)" }} />
+                          <span className="text-body" style={{ color: "var(--muted-foreground)" }}>
+                            {t("creator.phase2.clarifier.thinking")}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
