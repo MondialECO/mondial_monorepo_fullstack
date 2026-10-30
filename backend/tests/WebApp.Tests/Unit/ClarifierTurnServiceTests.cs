@@ -120,6 +120,21 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
+        public void SystemPrompt_ForbidsFollowUpsThatIntroduceUnmentionedOptions()
+        {
+            ClarifierTurnService.SystemPrompt.Should().Contain(ClarifierTurnService.FollowUpNoNewFactsRule);
+            ClarifierTurnService.FollowUpNoNewFactsRule.Should().Contain("NEVER introduce options")
+                .And.Contain("ONLY as chips")
+                .And.Contain("only for the topics that allow chips");
+
+            // The rule sits with the followUp instruction, before the chips instruction.
+            var prompt = ClarifierTurnService.SystemPrompt;
+            prompt.IndexOf(ClarifierTurnService.FollowUpNoNewFactsRule, StringComparison.Ordinal)
+                .Should().BeGreaterThan(prompt.IndexOf("write \"followUp\"", StringComparison.Ordinal))
+                .And.BeLessThan(prompt.IndexOf("also give \"chips\"", StringComparison.Ordinal));
+        }
+
+        [Fact]
         public async Task UserPrompt_HasTopicStateFullTranscriptAndLatestMessage()
         {
             Returns("""{"topics":{"problem":{"status":"clear"}}}""");

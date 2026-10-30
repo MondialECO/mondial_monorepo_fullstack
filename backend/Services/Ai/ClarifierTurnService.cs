@@ -135,6 +135,12 @@ namespace WebApp.Services.Ai
             return parsed ?? ClarifierTopicsResult.FailOpen();
         }
 
+        /// <summary>A follow-up asks; it never puts words in the founder's mouth. Options belong in chips only.</summary>
+        public const string FollowUpNoNewFactsRule =
+            "A followUp must NEVER introduce options, products, competitors or facts the founder did not mention " +
+            "(e.g. do not ask \"Why don't Uber Eats or the canteen work?\" when they never named them); ask open questions " +
+            "about what they actually said. Example options may appear ONLY as chips, and only for the topics that allow chips.";
+
         public static readonly string SystemPrompt = BuildSystemPrompt();
 
         private static string BuildSystemPrompt()
@@ -156,6 +162,7 @@ namespace WebApp.Services.Ai
             }
             sb.AppendLine();
             sb.AppendLine("For every topic you mark \"unclear\", write \"followUp\": ONE short, friendly question asking for exactly what its rule is missing, referring to what the founder said.");
+            sb.AppendLine(FollowUpNoNewFactsRule);
             sb.AppendLine("For \"who\" and \"solution\" when unclear, also give \"chips\": 2-4 short tappable answer options (each under 6 words) written for THIS founder's idea — concrete options that fit what they described, never generic or copied from the examples above. If no good options exist, \"chips\" is []. For all other topics \"chips\" is [].");
             sb.AppendLine("The examples above only illustrate the rules across different businesses; never assume the founder's idea is in one of those domains.");
             sb.AppendLine("\"extracted\": only that topic's keys, each a clean 1-2 sentence restatement of what the founder said; never invent facts; {} when empty.");
