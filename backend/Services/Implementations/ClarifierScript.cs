@@ -5,14 +5,39 @@ namespace WebApp.Services.Implementations
 {
     public sealed record ClarifierTurnOutcome(string AiText, string AiKind, int? AiTopic, List<string>? Chips);
 
+    /// <summary>One clear and one unclear calibration example from one business domain.</summary>
+    public sealed record ClarifierExample(string Domain, string Clear, string Unclear);
+
+    /// <summary>A French calibration example, so the judgment bar does not shift with the language.</summary>
+    public sealed record ClarifierFrenchExample(string Text, bool IsClear);
+
     /// <summary>
     /// One clarifier topic. <see cref="Rule"/> and the examples are the single source for the AI
-    /// prompt; the examples must satisfy the rule exactly as written.
+    /// prompt; every clear example satisfies the rule as written and every unclear one visibly fails it.
+    /// Examples span several domains so the AI is never anchored to one idea; they are never chips.
     /// </summary>
     public sealed record ClarifierTopicDef(
         int Index, string Key, string[] Fields, string Rule,
-        string[] ClearExamples, string[] UnclearExamples,
-        string BaseEn, string BaseFr, string FollowUpEn, string FollowUpFr);
+        ClarifierExample[] Examples, ClarifierFrenchExample French,
+        string BaseEn, string BaseFr, string FollowUpEn, string FollowUpFr)
+    {
+        public IEnumerable<string> ClearExamples =>
+            Examples.Select(e => e.Clear).Concat(French.IsClear ? new[] { French.Text } : Array.Empty<string>());
+
+        public IEnumerable<string> UnclearExamples =>
+            Examples.Select(e => e.Unclear).Concat(French.IsClear ? Array.Empty<string>() : new[] { French.Text });
+    }
+
+    /// <summary>Calibration domains (code-only labels; not sent to the AI).</summary>
+    public static class ClarifierDomain
+    {
+        public const string Food = "food-student-app";
+        public const string Freelance = "freelancer-b2b-tool";
+        public const string Fashion = "tall-women-jeans-brand";
+        public const string LocalService = "local-service-tutoring";
+        public const string Marketplace = "two-sided-marketplace-textbooks";
+        public const string Impact = "impact-clothing-repair";
+    }
 
     public static class ClarifierTopicState
     {
@@ -44,73 +69,96 @@ namespace WebApp.Services.Implementations
         {
             new(1, "problem", new[] { "problem" },
                 "A specific, concrete problem (not a general state such as being hungry or busy), and it is clear why it hurts — either stated or obvious from the problem itself.",
-                new[]
+                new ClarifierExample[]
                 {
-                    "Dorm students can't find cheap healthy food.",
-                    "Freelance designers wait 60+ days to get paid because chasing invoices by email feels awkward.",
-                    "Tall women can't find jeans long enough in regular stores, so they pay for tailoring or settle for a bad fit.",
+                    new(ClarifierDomain.Food, "Dorm students can't find cheap healthy food.", "Students are hungry."),
+                    new(ClarifierDomain.Freelance, "Freelance designers wait 60+ days to get paid because chasing invoices feels awkward.", "Freelancers have money problems."),
+                    new(ClarifierDomain.Fashion, "Tall women can't find long-enough jeans in stores, so they pay for tailoring.", "Clothes don't fit well."),
+                    new(ClarifierDomain.LocalService, "Parents can't find a maths tutor nearby under €30/hour, so kids fall behind before exams.", "Kids struggle at school."),
+                    new(ClarifierDomain.Marketplace, "Students pay €80 for textbooks used one term, while last year's students can't resell theirs.", "Textbooks are a problem."),
+                    new(ClarifierDomain.Impact, "People bin clothes with small tears because local repair is rare and expensive.", "Fashion is bad for the planet."),
                 },
-                new[] { "Students are hungry.", "Freelancers have money problems.", "Clothes don't fit well." },
+                new ClarifierFrenchExample("Les étudiants ont du mal.", IsClear: false),
                 "What problem are you fixing?",
                 "Quel problème voulez-vous résoudre ?",
                 "What problem are you fixing, and what happens to people because of it?",
                 "Quel problème résolvez-vous, et que subissent les gens à cause de lui ?"),
             new(2, "who", new[] { "targetUser" },
                 "A specific group of people, narrower than a broad category such as \"students\", \"people\" or \"everyone\".",
-                new[] { "Dorm students.", "Freelance graphic designers who bill clients monthly.", "Women over 1.78 m who buy jeans online." },
-                new[] { "Students.", "Small businesses.", "Everyone who wears clothes." },
+                new ClarifierExample[]
+                {
+                    new(ClarifierDomain.Food, "Dorm students.", "Students."),
+                    new(ClarifierDomain.Freelance, "Freelance graphic designers who bill clients monthly.", "Small businesses."),
+                    new(ClarifierDomain.Fashion, "Women over 1.78 m who buy jeans online.", "Everyone who wears clothes."),
+                    new(ClarifierDomain.LocalService, "Parents of pupils preparing for the brevet exam.", "Parents."),
+                    new(ClarifierDomain.Marketplace, "First-year university students on a tight budget.", "Young people."),
+                    new(ClarifierDomain.Impact, "Office workers who own mid-range clothes they want to keep.", "People who care about the planet."),
+                },
+                new ClarifierFrenchExample("Les artisans indépendants du bâtiment qui facturent à la journée.", IsClear: true),
                 "Who has this problem the most?",
                 "Qui rencontre ce problème le plus ?",
                 "Which group exactly? The more specific, the better.",
                 "Quel groupe précisément ? Plus c'est précis, mieux c'est."),
             new(3, "alternatives", new[] { "existingAlternatives" },
                 "At least one real thing they do or use today (a method, product or app) AND the reason it falls short is stated in words. \"Nothing\" counts only when a reason is given.",
-                new[]
+                new ClarifierExample[]
                 {
-                    "They order Uber Eats, but it's too expensive on a student budget.",
-                    "Spreadsheet reminders — they forget to follow up, and clients ignore plain emails.",
-                    "Nothing — tall-specific brands only ship from abroad and returns cost too much.",
+                    new(ClarifierDomain.Food, "They order Uber Eats, but it's too expensive on a student budget.", "Eat junk."),
+                    new(ClarifierDomain.Freelance, "Spreadsheet reminders — they forget to follow up and clients ignore plain emails.", "Excel."),
+                    new(ClarifierDomain.Fashion, "Nothing — tall-specific brands ship from abroad and returns cost too much.", "Other brands."),
+                    new(ClarifierDomain.LocalService, "Online tutoring, but kids lose focus on video calls.", "Google."),
+                    new(ClarifierDomain.Marketplace, "Facebook groups, but listings get buried and nobody knows a fair price.", "Facebook."),
+                    new(ClarifierDomain.Impact, "A tailor in town, but a simple fix costs more than a new T-shirt.", "Tailors."),
                 },
-                new[] { "Eat junk.", "Excel.", "Other brands." },
+                new ClarifierFrenchExample("Ils utilisent Vinted, mais les frais de port rendent les petits articles trop chers.", IsClear: true),
                 "What do they do about it today?",
                 "Que font-ils aujourd'hui pour y faire face ?",
                 "What's bad about the way they handle it today?",
                 "Qu'est-ce qui ne va pas avec leur façon de faire actuelle ?"),
             new(4, "solution", new[] { "solution" },
                 "What the Creator will build AND its form (app, website, service, physical product, or another concrete form).",
-                new[]
+                new ClarifierExample[]
                 {
-                    "I want to make a meal-sharing app.",
-                    "A web tool that sends polite payment reminders from the freelancer's own email.",
-                    "A direct-to-consumer jeans brand sold online, with inseams up to 40 inches.",
+                    new(ClarifierDomain.Food, "I want to make a meal-sharing app.", "Something to help them eat better."),
+                    new(ClarifierDomain.Freelance, "A web tool that sends polite payment reminders from the freelancer's own email.", "An app."),
+                    new(ClarifierDomain.Fashion, "An online jeans brand with inseams up to 40 inches.", "Something for tall women."),
+                    new(ClarifierDomain.LocalService, "A service where local university students tutor at the pupil's home.", "Better tutoring."),
+                    new(ClarifierDomain.Marketplace, "A campus app where students sell used textbooks to each other.", "A platform."),
+                    new(ClarifierDomain.Impact, "Weekly repair pop-up stands in office lobbies.", "Helping people repair."),
                 },
-                new[] { "Something to help them eat better.", "An app.", "Something for tall women." },
+                new ClarifierFrenchExample("Une application.", IsClear: false),
                 "What do you want to build?",
                 "Que voulez-vous construire ?",
                 "How would someone use it? An app, a website, a service?",
                 "Comment quelqu'un l'utiliserait-il ? Une application, un site web, un service ?"),
             new(5, "edge", new[] { "creatorEdge", "founderAdvantage" },
                 "Something concrete that makes it different from or better than the alternatives, OR a concrete advantage the Creator has (experience, access, skill).",
-                new[]
+                new ClarifierExample[]
                 {
-                    "Meals are cooked by students for students, so it's cheaper than delivery.",
-                    "I freelanced for eight years and already have 300 designers on my newsletter.",
-                    "I'm 1.85 m myself and worked as a pattern maker at a denim factory.",
+                    new(ClarifierDomain.Food, "Meals are cooked by students for students, so it's cheaper than delivery.", "It's better."),
+                    new(ClarifierDomain.Freelance, "I freelanced for eight years and have 300 designers on my newsletter.", "We really care about freelancers."),
+                    new(ClarifierDomain.Fashion, "I'm 1.85 m and worked as a pattern maker at a denim factory.", "Our quality is great."),
+                    new(ClarifierDomain.LocalService, "Our tutors are ex-pupils of the same schools, so they know the exact curriculum.", "Our tutors are good."),
+                    new(ClarifierDomain.Marketplace, "Books are matched by course code, so buyers find the exact edition in seconds.", "It's easier."),
+                    new(ClarifierDomain.Impact, "I'm a trained seamstress and two employers already agreed to host stands.", "We're eco-friendly."),
                 },
-                new[] { "It's better.", "We really care about freelancers.", "Our quality is great." },
+                new ClarifierFrenchExample("J'ai enseigné les maths dix ans et je connais les parents du quartier.", IsClear: true),
                 "Why would people pick yours, and why are you the right person to build it?",
                 "Pourquoi choisirait-on votre solution, et pourquoi êtes-vous la bonne personne pour la construire ?",
                 "Have you lived this problem, or know people who have?",
                 "Avez-vous vécu ce problème, ou connaissez-vous des gens qui l'ont vécu ?"),
             new(6, "whyNowRisk", new[] { "whyNow", "riskiestAssumption" },
                 "BOTH parts: (a) a concrete reason the timing is right now AND (b) one specific thing that could go wrong. Missing either part is unclear.",
-                new[]
+                new ClarifierExample[]
                 {
-                    "Food prices rose a lot this year; the biggest risk is students not trusting food cooked by strangers.",
-                    "Freelancing grew fast since remote work became normal; the biggest risk is clients finding automatic reminders pushy.",
-                    "Most jeans are now bought online; the biggest risk is getting the fit right without try-ons.",
+                    new(ClarifierDomain.Food, "Food prices rose this year; the biggest risk is students not trusting food cooked by strangers.", "Now is a good time."),
+                    new(ClarifierDomain.Freelance, "Freelancing grew with remote work; the biggest risk is clients finding automatic reminders pushy.", "Remote work is growing."),
+                    new(ClarifierDomain.Fashion, "Most jeans are now bought online; the biggest risk is fit without try-ons.", "Returns might be expensive."),
+                    new(ClarifierDomain.LocalService, "Maths results dropped after the reform; the biggest risk is finding enough reliable tutors.", "Tutoring is popular right now."),
+                    new(ClarifierDomain.Marketplace, "Textbook prices rose 15% this year; the biggest risk is too few sellers in the first term.", "Students might not use it."),
+                    new(ClarifierDomain.Impact, "A new EU rule pushes firms to cut textile waste; the biggest risk is staff not bringing clothes in.", "Sustainability is trendy."),
                 },
-                new[] { "Now is a good time.", "Remote work is growing.", "Returns might be expensive." },
+                new ClarifierFrenchExample("C'est le bon moment.", IsClear: false),
                 "Why is now a good time? And what's the one thing that could go wrong?",
                 "Pourquoi est-ce le bon moment ? Et quelle est la seule chose qui pourrait mal tourner ?",
                 "Could you add what's missing: why now is a good time, and the one thing that could go wrong?",

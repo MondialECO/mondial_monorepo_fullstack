@@ -41,9 +41,12 @@ namespace WebApp.Tests.Unit
             foreach (var t in ClarifierScript.Topics)
             {
                 t.Fields.Should().NotBeEmpty();
-                // One example per domain (food/students, freelancer B2B tool, fashion brand) so the AI isn't anchored to one idea.
-                t.ClearExamples.Should().HaveCountGreaterThanOrEqualTo(3, $"{t.Key} needs clear examples from 3 domains");
-                t.UnclearExamples.Should().HaveCountGreaterThanOrEqualTo(3, $"{t.Key} needs unclear examples from 3 domains");
+                // One clear + one unclear example from each of >= 6 business domains, so the AI isn't anchored to one idea.
+                t.Examples.Select(e => e.Domain).Distinct().Should().HaveCountGreaterThanOrEqualTo(6, $"{t.Key} needs examples from 6 domains");
+                t.Examples.Should().OnlyContain(e => !string.IsNullOrWhiteSpace(e.Clear) && !string.IsNullOrWhiteSpace(e.Unclear),
+                    $"{t.Key}: every domain needs both a clear and an unclear example");
+                // A French example keeps the judgment bar the same across languages.
+                t.French.Text.Should().NotBeNullOrWhiteSpace($"{t.Key} needs a French example");
                 new[] { t.Rule, t.BaseEn, t.BaseFr, t.FollowUpEn, t.FollowUpFr }.Should().OnlyContain(s => !string.IsNullOrWhiteSpace(s));
             }
         }
