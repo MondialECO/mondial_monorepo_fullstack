@@ -370,50 +370,46 @@ export default function AIClarifierPage() {
 
           {/* LEFT: conversation card */}
           <section
-            className="w-full lg:flex-1 rounded-2xl border shadow-sm p-5 flex flex-col min-w-0"
+            className="w-full flex-1 rounded-2xl border shadow-sm overflow-hidden flex flex-col min-w-0"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
           >
-            {/* ── Assistant header ── */}
-            <div className="flex items-center gap-3 shrink-0">
-              <div
-                className="rounded-full overflow-hidden flex items-center justify-center shrink-0 border"
-                style={{ width: 48, height: 48, backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
-              >
-                {/* Robot avatar — DELIBERATE exception to the lucide-only icon rule: this
-                    is a raster character illustration (artwork), not a symbol. The library
-                    has no equivalent and its Bot glyph would read as empty in this tile.
-                    Native 456x376 → crisp at this ~30px leaf. Source: exported from Figma. */}
-                <Image
-                  src="/icons/phase2/robot.png"
-                  alt={t("creator.phase2.clarifier.aiAssistantAlt", "AI assistant")}
-                  width={30}
-                  height={25}
-                  className="object-contain"
-                />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg font-medium" style={{ color: "var(--foreground)" }}>
-                  {t("creator.phase2.clarifier.title")}
-                </p>
-                <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-                  {t("creator.phase2.clarifier.subtitle", { count: totalQuestions })}
-                </p>
+            {/* ── Assistant header (FIXED TOP) ── */}
+            <div className="px-5 pt-5 pb-3 shrink-0 border-b" style={{ borderColor: "var(--border)" }}>
+              <div className="flex items-center gap-3">
+                <div
+                  className="rounded-full overflow-hidden flex items-center justify-center shrink-0 border"
+                  style={{ width: 48, height: 48, backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
+                >
+                  {/* Robot avatar — DELIBERATE exception to the lucide-only icon rule: this
+                      is a raster character illustration (artwork), not a symbol. The library
+                      has no equivalent and its Bot glyph would read as empty in this tile.
+                      Native 456x376 → crisp at this ~30px leaf. Source: exported from Figma. */}
+                  <Image
+                    src="/icons/phase2/robot.png"
+                    alt={t("creator.phase2.clarifier.aiAssistantAlt", "AI assistant")}
+                    width={30}
+                    height={25}
+                    className="object-contain"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-lg font-medium" style={{ color: "var(--foreground)" }}>
+                    {t("creator.phase2.clarifier.title")}
+                  </p>
+                  <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                    {t("creator.phase2.clarifier.subtitle", { count: totalQuestions })}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* ── Transcript surface — scrolls within its own bounds ──
-                DELIBERATE deviation: fixed height, not flex-to-fill like the design.
-                Flexing would couple the row height to the viewport (reintroducing the
-                stage-1 pin) and to the chrome's topbar/footer heights; a predictable
-                scroll container is worth more than matching the flex. Dead space in the
-                shorter column is absorbed by the journal card (stage 6, mt-auto). */}
+            {/* ── Transcript surface — SCROLLABLE MIDDLE ──
+                min-h ensures chat area always has space to scroll,
+                overflow-y-auto keeps messages scrollable like proper chat UI. */}
             <div
-              className="mt-4 flex-1 min-h-0 rounded-2xl border overflow-hidden"
-              style={{ backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
+              className="min-h-[400px] sm:min-h-[500px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
+              style={{ backgroundColor: "var(--popover)" }}
             >
-              <div
-                className="h-[420px] sm:h-[550px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
-              >
                 {[{ id: OPENER_ID, sender: "ai" as const, text: t("creator.phase2.clarifier.opener") }, ...messages].map((msg) => {
                   const isUser = msg.sender === "user";
                   // Send-failure notes are pushed as ai-sender messages with an "err-" id
@@ -510,15 +506,14 @@ export default function AIClarifierPage() {
                   </div>
                 )}
                 <div ref={chatEndRef} />
-              </div>
             </div>
 
-            {/* ── Input row + keyboard hint ──
+            {/* ── Input row + keyboard hint (FIXED BOTTOM) ──
                 Renders while questions remain OR while editing — editing takes precedence
                 so an answer can be revised even after all six are answered (issue 1). Once
                 not editing and summaryReady, the finalize states below render instead. */}
             {editingQuestion !== null || !summaryReady ? (
-              <div className="mt-4 shrink-0">
+              <div className="px-5 pt-3 pb-5 shrink-0 border-t flex flex-col" style={{ borderColor: "var(--border)" }}>
                 {editingQuestion !== null && (
                   <div className="mb-2 flex items-center justify-between px-1">
                     <span className="text-badge font-medium" style={{ color: "var(--primary)" }}>
@@ -585,7 +580,7 @@ export default function AIClarifierPage() {
               /* FINALIZE ERROR — retry is always possible; the six answers stay in
                  messages/state (finalize failure never clears them), so nothing is lost. */
               <div
-                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
+                className="mt-auto shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
                 style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
               >
                 <div
@@ -617,7 +612,7 @@ export default function AIClarifierPage() {
             ) : finalizing ? (
               /* FINALIZING — the AI clarifier is running + being polled. */
               <div
-                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
+                className="mt-auto shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
                 style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
               >
                 <div
@@ -639,7 +634,7 @@ export default function AIClarifierPage() {
               /* FINALIZE CTA — replaces the input entirely; the action a user must take
                  or lose their work. Says what finalizing does, not just the button name. */
               <div
-                className="mt-4 shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
+                className="mt-auto shrink-0 rounded-xl border p-5 flex flex-col items-center text-center gap-3"
                 style={{ backgroundColor: "var(--popover)", borderColor: "var(--card-edge)" }}
               >
                 <div
@@ -668,9 +663,9 @@ export default function AIClarifierPage() {
             )}
           </section>
 
-          {/* RIGHT: progress panel */}
+          {/* RIGHT: progress panel (STICKY) */}
           <aside
-            className="w-full lg:w-[300px] rounded-2xl border shadow-sm px-6 pt-9 pb-6 flex flex-col gap-6 shrink-0"
+            className="w-full lg:w-[300px] rounded-2xl border shadow-sm px-6 pt-9 pb-6 flex flex-col gap-6 shrink-0 lg:sticky lg:top-0 lg:h-fit"
             style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
           >
             {/* ── Clarity ring + band label + finalize cue ── */}
