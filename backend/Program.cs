@@ -323,6 +323,8 @@ builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 // Clarifier adaptive topic service (WebSocket-based)
 builder.Services.AddScoped<WebApp.Services.Clarifier.IClarifierTopicService,
     WebApp.Services.Clarifier.ClarifierTopicService>();
+builder.Services.AddScoped<WebApp.Services.Clarifier.IClarifierTurnService,
+    WebApp.Services.Clarifier.ClarifierTurnService>();
 
 // Busess ideas, investments, transactions services and repositories
 builder.Services.AddScoped<IBusinessIdeasService, BusinessIdeasService>();
@@ -917,7 +919,9 @@ app.MapHub<NotificationHub>("/hubs/notifications").DisableRequestTimeout();
 app.MapHub<ChatHub>("/hubs/chat").DisableRequestTimeout();
 app.MapHub<ClarifierHub>("/api/clarifier", options =>
 {
-    options.Transports = HttpTransportType.WebSocket | HttpTransportType.LongPolling;
+    // Enable WebSocket (default) with LongPolling fallback
+    options.Transports = Microsoft.AspNetCore.Http.Connections.HttpTransportType.WebSockets
+        | Microsoft.AspNetCore.Http.Connections.HttpTransportType.LongPolling;
 }).DisableRequestTimeout();
 
 app.MapControllers();

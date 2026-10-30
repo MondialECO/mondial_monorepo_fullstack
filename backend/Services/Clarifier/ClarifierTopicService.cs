@@ -202,12 +202,20 @@ namespace WebApp.Services.Clarifier
             var topicsDoc = new Dictionary<string, MongoDB.Bson.BsonDocument>();
             foreach (var kvp in status)
             {
+                var baseAnswer = string.IsNullOrEmpty(kvp.Value.BaseAnswer)
+                    ? (MongoDB.Bson.BsonValue)MongoDB.Bson.BsonNull.Value
+                    : new MongoDB.Bson.BsonString(kvp.Value.BaseAnswer);
+
+                var followUpText = string.IsNullOrEmpty(kvp.Value.FollowUpText)
+                    ? (MongoDB.Bson.BsonValue)MongoDB.Bson.BsonNull.Value
+                    : new MongoDB.Bson.BsonString(kvp.Value.FollowUpText);
+
                 var doc = new MongoDB.Bson.BsonDocument
                 {
                     { "Status", kvp.Value.Status },
-                    { "BaseAnswer", kvp.Value.BaseAnswer ?? MongoDB.Bson.BsonNull.Value },
+                    { "BaseAnswer", baseAnswer },
                     { "FollowUpAttempts", kvp.Value.FollowUpAttempts },
-                    { "FollowUpText", kvp.Value.FollowUpText ?? MongoDB.Bson.BsonNull.Value },
+                    { "FollowUpText", followUpText },
                     { "UpdatedAt", kvp.Value.UpdatedAt }
                 };
                 topicsDoc[kvp.Key] = doc;
