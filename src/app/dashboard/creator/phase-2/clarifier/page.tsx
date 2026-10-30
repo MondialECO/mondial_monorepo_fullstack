@@ -369,6 +369,18 @@ export default function AIClarifierPage() {
   const summaryReady = currentTopic === null;
   const hasSummary = !!phase2?.clarifierSessionId;
   const summaryStale = hasSummary && summaryIsStale(answers, phase2?.clarifierSummarizedAt);
+
+  // "Regenerate summary" clicked on the idea summary (?regenerate=1): that click is the consent,
+  // so start the C-2 regenerate once here — only if the summary is actually stale.
+  const regenerateRequested = searchParams.get("regenerate") === "1";
+  const regenerateHandledRef = useRef(false);
+  useEffect(() => {
+    if (!regenerateRequested || regenerateHandledRef.current || !summaryReady || !summaryStale || finalizing) return;
+    regenerateHandledRef.current = true;
+    void handleComplete();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regenerateRequested, summaryReady, summaryStale, finalizing]);
+
   const firstAnswer = answers.find((a) => a.questionIndex === 1);
   const journalText = isTopicDone(firstAnswer) ? firstAnswer!.rawAnswer : "";
   // Chips belong to the latest AI message only, while that topic is still being asked.

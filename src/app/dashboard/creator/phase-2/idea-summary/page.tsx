@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { useCreatorProgress } from "@/providers/CreatorProgressProvider";
 import { useTranslation } from "@/hooks/useTranslation";
 import { UnconfirmedTag } from "@/components/creator/clarifier/UnconfirmedTag";
-import { effectiveFields, weakTopics } from "@/lib/clarifier-answers";
+import { effectiveFields, summaryIsStale, weakTopics } from "@/lib/clarifier-answers";
+import { useAiCredits } from "@/hooks/queries/creator-ai";
 
 export default function IdeaSummaryPage() {
   const router = useRouter();
@@ -81,8 +82,25 @@ export default function IdeaSummaryPage() {
       };
     });
 
+  // Same stale rule as the clarifier CTA: an answer changed after the last summary.
+  const phase2 = state.journeyState?.phase2;
+  const summaryStale = !!phase2?.clarifierSessionId && summaryIsStale(answers ?? [], phase2?.clarifierSummarizedAt);
+  const { data: credits } = useAiCredits();
+  const clarifierCost = credits?.costs?.IdeaClarifier;
+  const clarifierHref = (extra?: Record<string, string>) => {
+    const params = new URLSearchParams(extra);
+    if (ideaId) params.set("ideaId", ideaId);
+    const qs = params.toString();
+    return `/dashboard/creator/phase-2/clarifier${qs ? `?${qs}` : ""}`;
+  };
+
   const handleRevisit = () => {
-    router.push("/dashboard/creator/phase-2/clarifier");
+    router.push(clarifierHref());
+  };
+
+  // Explicit click only: the clarifier starts the C-2 regenerate on arrival (spends credits).
+  const handleRegenerate = () => {
+    router.push(clarifierHref({ regenerate: "1" }));
   };
 
   const handleContinue = () => {
@@ -170,6 +188,24 @@ export default function IdeaSummaryPage() {
                 {t("creator.phase2.ideaSummary.headerSubtitle")}
               </p>
             </div>
+
+            {summaryStale && (
+              <div
+                role="status"
+                className="flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3"
+                style={{ backgroundColor: "var(--dr-bg-yellow)", borderColor: "var(--dr-yellow)" }}
+              >
+                <AlertTriangle className="size-4 shrink-0" style={{ color: "var(--dr-yellow)" }} aria-hidden="true" />
+                <p className="flex-1 min-w-0 text-body" style={{ color: "var(--foreground)" }}>
+                  {t("creator.phase2.clarifier.summaryOutdated")}
+                </p>
+                <Button size="sm" onClick={handleRegenerate}>
+                  {clarifierCost
+                    ? `${t("creator.phase2.clarifier.regenerateSummary")} (${t("creator.phase2.clarifier.creditCost", { count: clarifierCost })})`
+                    : t("creator.phase2.clarifier.regenerateSummary")}
+                </Button>
+              </div>
+            )}
 
             {/* ── Summary card (grid + metrics) ── */}
             <div
@@ -303,6 +339,11 @@ export default function IdeaSummaryPage() {
                 </div>
               </div>
             </div>
+
+            <Button variant="outline" onClick={handleRevisit} className="self-start rounded-xl gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              {t("creator.phase2.ideaSummary.revisitClarifier")}
+            </Button>
 
             {/* ── Continue CTA (pill-in-pill) ── */}
             <div className="rounded-full p-2" style={{ backgroundColor: "var(--card)" }}>
