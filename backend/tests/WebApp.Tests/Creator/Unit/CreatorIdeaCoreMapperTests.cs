@@ -74,19 +74,87 @@ public class CreatorIdeaCoreMapperTests
         ideaB.SourceMethod.Should().Be("discovery");
     }
 
-    [Fact]
-    public void A_manual_canonical_edit_is_not_replaced_by_older_ai_history()
+    private static CreatorJourneyProject Summarized()
     {
-        var project = new CreatorJourneyProject
+        var project = new CreatorJourneyProject();
+        CreatorIdeaCoreMapper.ApplyClarifier(
+            project, "Thin problem", "Students", "An app", 42, new List<string> { "food" }, "Old gap", "Old edge",
+            "Old alternatives", "Old timing", "Old risk");
+        return project;
+    }
+
+    [Fact]
+    public void Rerunning_the_summary_overwrites_every_clarifier_owned_field_and_the_score()
+    {
+        var project = Summarized();
+
+        CreatorIdeaCoreMapper.ApplyClarifier(
+            project, "Dorm students can't find cheap healthy food.", "Dorm students", "A meal-sharing app.", 81,
+            new List<string> { "foodtech" }, "Student-cooked meals", "Lived in a dorm three years",
+            "Uber Eats is too expensive", "Food prices rose", "Trust in strangers' cooking");
+
+        project.Should().BeEquivalentTo(new
         {
-            Solution = "Creator's corrected solution",
-            Problem = "Creator's corrected problem",
+            Problem = "Dorm students can't find cheap healthy food.",
+            TargetUser = "Dorm students",
+            Solution = "A meal-sharing app.",
+            Concept = "A meal-sharing app.",
+            MarketGap = "Student-cooked meals",
+            CreatorEdge = "Lived in a dorm three years",
+            ExistingAlternatives = "Uber Eats is too expensive",
+            WhyNow = "Food prices rose",
+            RiskiestAssumption = "Trust in strangers' cooking",
+            Tags = new List<string> { "foodtech" },
+            ClarityScore = 81.0,
+        }, o => o.ExcludingMissingMembers());
+        project.FieldProvenance.Should().OnlyContain(kv => kv.Value == ProjectFieldProvenance.Clarifier);
+        project.FieldProvenance!.Keys.Should().BeEquivalentTo(ProjectFieldProvenance.ClarifierOwned);
+    }
+
+    [Fact]
+    public void A_field_the_creator_edited_by_hand_is_kept_on_a_summary_rerun()
+    {
+        var project = Summarized();
+        project.Problem = "Creator's corrected problem";
+        CreatorIdeaCoreMapper.MarkUserEdited(project, ProjectFieldProvenance.Problem);
+
+        CreatorIdeaCoreMapper.ApplyClarifier(
+            project, "New AI problem", "Dorm students", "A meal-sharing app.", 81, new(), "Gap", "Edge", "Alternatives", "Timing", "Risk");
+
+        project.Problem.Should().Be("Creator's corrected problem");
+        project.FieldProvenance![ProjectFieldProvenance.Problem].Should().Be(ProjectFieldProvenance.UserEdited);
+        project.Solution.Should().Be("A meal-sharing app.", "fields not edited by hand still follow the new summary");
+    }
+
+    [Fact]
+    public void An_empty_value_in_the_new_summary_keeps_the_current_field()
+    {
+        var project = Summarized();
+
+        CreatorIdeaCoreMapper.ApplyClarifier(project, "New problem", "", "", 70, new(), "", "", "", "", "");
+
+        project.Problem.Should().Be("New problem");
+        project.TargetUser.Should().Be("Students");
+        project.WhyNow.Should().Be("Old timing");
+        project.Tags.Should().Equal("food");
+        project.ClarityScore.Should().Be(70);
+    }
+
+    [Fact]
+    public void A_legacy_project_without_provenance_is_treated_as_clarifier_owned()
+    {
+        var legacy = new CreatorJourneyProject
+        {
+            Problem = "Legacy problem", Solution = "Legacy solution", ClarityScore = 55, SourceMethod = "clarifier",
         };
 
         CreatorIdeaCoreMapper.ApplyClarifier(
-            project, "Old AI problem", "Customer", "Old AI solution", 60, new(), "Gap", "Edge", "Alternatives", "Timing", "Risk");
+            legacy, "Re-run problem", "Customer", "Re-run solution", 77, new(), "Gap", "Edge", "Alternatives", "Timing", "Risk");
 
-        project.Problem.Should().Be("Creator's corrected problem");
-        project.Solution.Should().Be("Creator's corrected solution");
+        legacy.Problem.Should().Be("Re-run problem");
+        legacy.Solution.Should().Be("Re-run solution");
+        legacy.ClarityScore.Should().Be(77);
+        legacy.SourceMethod.Should().Be("clarifier");
+        legacy.FieldProvenance.Should().NotBeNull();
     }
 }
