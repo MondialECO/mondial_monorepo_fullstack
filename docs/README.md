@@ -45,9 +45,14 @@ docs/
 │   ├── README.md                  # Historical disclaimer & archive catalog
 │   └── ...                        # Preserved legacy audits and implementation logs
 │
-└── implementation/                # Feature Implementation Guides (Current Development)
-    ├── clarifier-phase2-guide.md  # Phase 2 AI Idea Clarifier (complete with language support & layout)
-    └── ...                        # Future phase implementations
+├── implementation/                # Feature Implementation Guides (Current Development)
+│   ├── clarifier-phase2-guide.md  # Phase 2 AI Idea Clarifier (complete with language support & layout)
+│   └── ...                        # Future phase implementations
+│
+└── testing/                       # Feature Testing & QA Validation Plans
+    ├── clarifier-websocket-integration.md  # 21 integration test scenarios (streaming, language, fallback)
+    ├── clarifier-qa-validation.md          # 30-point QA validation report template with metrics
+    └── ...                                 # Future test specifications
 ```
 
 ---
@@ -94,6 +99,15 @@ The [operations/](operations/) directory provides hands-on engineering runbooks:
 The [implementation/](implementation/) directory documents in-flight feature implementations:
 
 - **[Phase 2 Clarifier Guide](implementation/clarifier-phase2-guide.md):** Complete implementation of AI Idea Clarifier with full language support (EN/FR), proper chat UI layout pattern (sticky header/footer), and C-2 summary generation. References all modified files, API contracts, testing checklist, and next steps for Phase 3 language inheritance.
+
+---
+
+## 5. Testing & QA (Feature Validation)
+
+The [testing/](testing/) directory contains comprehensive test specifications and QA validation:
+
+- **[Clarifier WebSocket Integration](testing/clarifier-websocket-integration.md):** 21 end-to-end integration test scenarios covering WebSocket streaming, chunk delivery, topic flow, language support, fallback mechanisms, database persistence, and error handling.
+- **[Clarifier QA Validation Report](testing/clarifier-qa-validation.md):** 30-point comprehensive QA test template with performance metrics (latency, memory), cross-browser validation, manual testing procedures, and sign-off checklist.
 
 ---
 

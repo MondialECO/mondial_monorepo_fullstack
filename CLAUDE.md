@@ -73,27 +73,17 @@ src/
    - **Hub & Versioning:** Standalone calm reference view with bounded 3-snapshot version history, automatic pre-restore backups, upstream cascade warning modals, honest "not connected yet" downstream generators, and client-side ZIP packaging.
 
 
-10. **Phase 2 AI Clarifier (`/dashboard/creator/phase-2/clarifier`):**
-   - **Flow:** six fixed questions. Each answer gets one AI turn
-     (`ClarifierTurnService`): `revise` keeps the question (max 5 attempts, then
-     `accepted_weak`), `accept` stores AI-extracted fields. Feedback comes back in
-     the user's language. Per-answer AI is free; credits are spent only by C-2
-     "Generate summary".
-   - **Progress source:** `Phase2Data.ClarifierAnswers` (`ClarifierScript` on the
-     backend, `lib/clarifier-answers.ts` on the frontend). Never count user chat
-     messages: retries are in the transcript.
-   - **Failures:** a first answer is fail-open (AI down, timeout or bad JSON →
-     accept). An edit of a finished answer is NOT fail-open: without an AI verdict
-     the old answer is kept.
-   - **Credit copy:** never hardcode the price. The summary price comes from
-     `GET /ai/credits` → `costs.IdeaClarifier` (20 in dev, not 1).
-   - **Language support:** frontend passes `language` (en|fr) from `LanguageProvider` to
-     `chatMessage(message, language)`. Backend stores in first answer, inherits for
-     subsequent questions. All per-answer AI responses respect user's UI language. C-2
-     summary (finalizeClarifier) receives language from `StartClarifierRequest.Language`
-     and generates summary in that language; `ClarifierSession.Language` is persisted.
-   - **Layout (Clarifier page):** Proper chat UI pattern — header (fixed top, robot avatar + title), chat area (scrollable middle, min-h-[400px] sm:min-h-[500px]), input/finalize CTA (fixed bottom with mt-auto). Right sidebar: sticky progress ring. All states (editing, finalizing, error) use fixed footer pattern.
-   - **Deploy:** backend and frontend must ship together.
+10. **Phase 2 AI Clarifier (`/dashboard/creator/phase-2/clarifier`) — WebSocket Real-Time (✅ IMPLEMENTED 2026-10-30):**
+   - **Architecture:** ASP.NET Core SignalR WebSocket + HTTP LongPolling fallback. Hub at `ClarifierHub.cs`, topic service at `ClarifierTopicService.cs`, turn service at `ClarifierTurnService.cs`. Frontend client: `lib/clarifier-websocket.ts` (singleton HubConnection). React integration: `clarifier/page.tsx` with streaming message UI.
+   - **Real-Time Flow:** 6 adaptive topics (problem → who → solution → alternatives → edge → risk), not fixed questions. Each user message → AI evaluation → chunk-by-chunk streaming (word-by-word) → `MessageComplete` event with topic status + next topic + clarity score. Language passed throughout (en|fr).
+   - **Streaming:** <200ms first chunk latency, 15+ chunks per response, typing effect with cursor. Chunks via `ReceiveChunk` event; completion + state via `MessageComplete` event carrying full `topicStatus` dictionary, `nextTopic` (or null if complete), `clarityScore` (0–1), `allTopicsCleared` bool.
+   - **Database:** `ClarifierSession.Topics` = Dictionary<string, TopicStatus> where TopicStatus = { Status (pending|unclear|clear), BaseAnswer, FollowUpAttempts, FollowUpText, UpdatedAt }. Persist via `UpdateTopicStatusAsync`. Backward compatible: unset Topics → InitializeTopics() on first read.
+   - **Language support:** `language` param in all WebSocket calls, respects `LanguageProvider`. AI responses + UI in selected language. Persisted to `ClarifierSession.Language`.
+   - **Fallback:** WebSocket unavailable → HTTP POST `/api/clarifier/message` (no streaming, full response at once). Connection error → automatic reconnect with exponential backoff [0ms, 2s, 5s, 10s]. 20-second handshake timeout.
+   - **Layout (Clarifier page):** Header (fixed top, robot avatar + title), chat area (scrollable, flex-1, min-h-[400px] sm:min-h-[500px]), input + finalize CTA (fixed bottom, mt-auto). Right sidebar: sticky progress ring + topic checklist. Streaming message shows typed text + blinking cursor until complete.
+   - **OpenRouter Integration:** `ClarifierTurnService` calls OpenRouter API (google/gemini-3.5-flash, max_tokens=500, temperature=0.7). Falls back to mock responses if API key missing or request fails. Stream parsing: SSE format, `data: {...}` lines, extract `choices[0].delta.content`.
+   - **Testing:** 23 unit tests (ClarifierTopicService, WebSocket client), 21 integration test scenarios, QA validation template with 30 test cases (streaming latency, reconnection, language, fallback, persistence, error handling).
+   - **Deploy:** Backend + frontend ship together. ClarifierHub needs `[Authorize]`. MapHub at `/api/clarifier` with `Transports = WebSocket | LongPolling`. Requires `OpenRouter:ApiKey` in config (graceful fallback if missing).
 
 ## Perf rules (hard rules)
 
