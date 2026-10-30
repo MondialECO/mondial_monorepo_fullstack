@@ -270,4 +270,47 @@ public class Phase3UpstreamStalenessTests
         _enqueued["marketStudyVersion"].AsInt32.Should().Be(3);
         _enqueued["clarifierSessionId"].AsString.Should().Be(_newClarifier);
     }
+
+    [Fact]
+    public async Task BusinessModel_Regenerate_AfterMarketStudyRegeneratedFromNewC2_SendsTheNewC2()
+    {
+        // The study's session-level reference still names the C-2 it was FIRST built from;
+        // its current version (v2) was built from the new C-2.
+        var studyId = ObjectId.GenerateNewId().ToString();
+        var study = new MarketStudySession
+        {
+            Id = studyId, OwnerUserId = UserId, BusinessIdeaId = _ideaId, ClarifierSessionId = _oldClarifier,
+            Status = "Completed", CurrentVersion = 2,
+            Versions = new()
+            {
+                new MarketStudyVersion { Version = 1, Content = new BsonDocument(), BuiltFromClarifierSessionId = _oldClarifier },
+                new MarketStudyVersion { Version = 2, Content = new BsonDocument(), BuiltFromClarifierSessionId = _newClarifier },
+            },
+        };
+        IdeaWith(clarifierSessionId: _newClarifier, marketStudySessionId: studyId);
+        var model = ModelSession(studyId, studyVersion: 1);
+
+        (await Model(model, study).Regenerate(model.Id)).Should().BeOfType<OkObjectResult>();
+
+        _enqueued!["clarifierSessionId"].AsString.Should().Be(_newClarifier, "the C-2 behind the market study's current version");
+        _enqueued["marketStudyVersion"].AsInt32.Should().Be(2);
+    }
+
+    [Fact]
+    public void ResolveClarifier_PrefersCurrentVersionSource_ThenIdea_ThenSession()
+    {
+        var study = new MarketStudySession
+        {
+            ClarifierSessionId = "session-level", CurrentVersion = 1,
+            Versions = new() { new MarketStudyVersion { Version = 1, BuiltFromClarifierSessionId = "from-version" } },
+        };
+        var idea = new CreatorIdea { Phase2Data = new CreatorPhase2Data { ClarifierSessionId = "idea-current" } };
+
+        BusinessModelController.ResolveClarifierSessionId(study, idea, "fallback").Should().Be("from-version");
+        study.Versions[0].BuiltFromClarifierSessionId = null;
+        BusinessModelController.ResolveClarifierSessionId(study, idea, "fallback").Should().Be("idea-current");
+        BusinessModelController.ResolveClarifierSessionId(study, null, "fallback").Should().Be("session-level");
+        study.ClarifierSessionId = "";
+        BusinessModelController.ResolveClarifierSessionId(study, null, "fallback").Should().Be("fallback");
+    }
 }
