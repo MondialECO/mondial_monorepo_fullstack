@@ -22,6 +22,7 @@ import {
   CLARIFIER_TOTAL_TOPICS,
   buildRawIdea,
   getClarifierAnswers,
+  editableText,
   isTopicDone,
   nextTopic,
   summaryIsStale,
@@ -133,7 +134,7 @@ export default function AIClarifierPage() {
     if (!isTopicDone(answer)) return;
     fixHandledRef.current = true;
     returnAfterFixRef.current = true;
-    setInputValue(answer!.rawAnswer);
+    setInputValue(editableText(answer!));
     setEditingQuestion(fixTopic);
     setEditFeedback(null);
   }, [fixTopic, answers]);
@@ -268,7 +269,7 @@ export default function AIClarifierPage() {
     if (isTyping || finalizing) return;
     const answer = answers.find((a) => a.questionIndex === questionIndex);
     if (!isTopicDone(answer)) return;
-    setInputValue(answer!.rawAnswer);
+    setInputValue(editableText(answer!));
     setEditingQuestion(questionIndex);
     setEditFeedback(null);
     setCopiedId(null);

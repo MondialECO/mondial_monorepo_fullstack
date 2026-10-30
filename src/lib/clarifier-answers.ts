@@ -83,6 +83,15 @@ export function effectiveFields(answer: ClarifierAnswer): Record<string, string>
   return result;
 }
 
+/**
+ * Text to pre-fill when re-writing one topic: that topic's own field text (both parts joined for
+ * two-field topics). The raw answer can be the whole multi-topic opener, so it is only the fallback.
+ */
+export function editableText(answer: ClarifierAnswer): string {
+  const parts = [...new Set(Object.values(effectiveFields(answer)).map((v) => v.trim()).filter(Boolean))];
+  return parts.length > 0 ? parts.join("\n") : answer.rawAnswer;
+}
+
 /** True when any answer changed after the last summary (or the summary predates timestamps). */
 export function summaryIsStale(answers: ClarifierAnswer[], summarizedAt?: string | null): boolean {
   if (!summarizedAt) return true;
