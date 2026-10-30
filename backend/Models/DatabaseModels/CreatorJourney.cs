@@ -156,16 +156,20 @@ namespace WebApp.Models.DatabaseModels
         public string Text { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
-        /// <summary>"question" | "feedback" | "ack" for AI turns; null on user turns and legacy messages.</summary>
+        /// <summary>"question" | "followup" | "ack" for AI turns ("feedback" on older ones); null on user turns and legacy messages.</summary>
         public string? Kind { get; set; }
+        /// <summary>Clarifier topic index (1–6) the message asks about or answers.</summary>
         public int? QuestionIndex { get; set; }
+        /// <summary>Tappable answer options offered with an AI follow-up.</summary>
+        public List<string>? Chips { get; set; }
     }
 
+    /// <summary>Stored topic status. Topic states: no record = empty, Pending = unclear, AcceptedWeak = weak, Accepted = clear.</summary>
     public static class ClarifierAnswerStatus
     {
         public const string Pending = "pending";
         public const string Accepted = "accepted";
-        /// <summary>Accepted after the retry cap was hit; the answer still flows to C-2.</summary>
+        /// <summary>Thin answer accepted to move on (follow-up used up, or AI unavailable). Flows to C-2 flagged as unconfirmed.</summary>
         public const string AcceptedWeak = "accepted_weak";
 
         public static bool IsDone(string? status) => status == Accepted || status == AcceptedWeak;
@@ -181,6 +185,8 @@ namespace WebApp.Models.DatabaseModels
         /// <summary>Direct user edits of the extracted fields; wins over <see cref="AiExtracted"/> per key.</summary>
         public Dictionary<string, string>? UserEdited { get; set; }
         public string? Language { get; set; }
+        /// <summary>True once this topic's single AI follow-up has been asked.</summary>
+        public bool FollowUpUsed { get; set; }
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 

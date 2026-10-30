@@ -802,7 +802,7 @@ namespace WebApp.Services.Implementations
         }
 
         public async Task<CreatorJourney> SaveClarifierTurnAsync(string userId, List<ClarifierAnswer> answers,
-            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null)
+            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null, List<string>? chips = null)
         {
             var j = await GetOrCreateAsync(userId);
             var idea = await ResolveIdeaAsync(j, ideaId);
@@ -815,9 +815,11 @@ namespace WebApp.Services.Implementations
                 Timestamp = DateTime.UtcNow,
                 Kind = aiKind,
                 QuestionIndex = aiQuestionIndex,
+                Chips = chips,
             };
 
-            // The whole list is replaced; WriteIdeaAsync's version check makes this a compare-and-swap.
+            // One UpdateOne: targeted $set of the topic records (status, extracted, follow-up flags) plus
+            // $push of the reply — never a document replace. WriteIdeaAsync's version check makes it a compare-and-swap.
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
                 .Set(x => x.Phase2Data.ClarifierAnswers, answers)
                 .Push(x => x.Phase2Data.ChatMessages, message));

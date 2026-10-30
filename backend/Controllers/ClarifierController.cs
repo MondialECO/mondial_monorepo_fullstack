@@ -170,6 +170,8 @@ namespace WebApp.Controllers
             ["whyNow"] = raw.WhyNow ?? "",
             ["riskiestAssumption"] = raw.RiskiestAssumption ?? "",
             ["founderAdvantage"] = raw.FounderAdvantage ?? "",
+            ["unconfirmedFields"] = new BsonArray((raw.UnconfirmedFields ?? new List<string>())
+                .Where(IdeaClarifierHandler.RawIdeaFields.Contains).Distinct()),
             ["language"] = language,
         };
 

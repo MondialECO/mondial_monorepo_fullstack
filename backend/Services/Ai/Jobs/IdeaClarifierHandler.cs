@@ -44,6 +44,18 @@ namespace WebApp.Services.Ai.Jobs
 
         public AiJobType Type => AiJobType.IdeaClarifier;
 
+        /// <summary>Raw-idea input keys that may be flagged unconfirmed.</summary>
+        public static readonly HashSet<string> RawIdeaFields = new()
+        {
+            "problemStatement", "targetAudience", "description", "existingAlternatives",
+            "whyNow", "riskiestAssumption", "founderAdvantage",
+        };
+
+        private static List<string> UnconfirmedFields(BsonDocument? input) =>
+            input != null && input.TryGetValue("unconfirmedFields", out var v) && v.IsBsonArray
+                ? v.AsBsonArray.Where(x => x.IsString).Select(x => x.AsString).Where(RawIdeaFields.Contains).Distinct().ToList()
+                : new List<string>();
+
         public Task<AiHandlerRequest> PrepareAsync(AiRequest request, CancellationToken cancellationToken = default)
         {
             var input = request.InputPayload;
@@ -63,17 +75,19 @@ namespace WebApp.Services.Ai.Jobs
             var whyNow = Field("whyNow");
             var riskiestAssumption = Field("riskiestAssumption");
             var founderAdvantage = Field("founderAdvantage");
+            var unconfirmed = UnconfirmedFields(input);
+            string Thin(string key) => unconfirmed.Contains(key) ? " [THIN ANSWER — unconfirmed; treat as an assumption, not a fact]" : "";
 
             // User Context layer: the raw idea, labelled. Task layer: the instruction.
             var contextLines = new List<string>();
             if (title.Length > 0) contextLines.Add($"Idea title: {title}");
-            if (problem.Length > 0) contextLines.Add($"Problem statement: {problem}");
-            if (audience.Length > 0) contextLines.Add($"Target audience: {audience}");
-            if (description.Length > 0) contextLines.Add($"Description: {description}");
-            if (alternatives.Length > 0) contextLines.Add($"Existing alternatives the founder is aware of: {alternatives}");
-            if (whyNow.Length > 0) contextLines.Add($"Why now (founder supplied): {whyNow}");
-            if (riskiestAssumption.Length > 0) contextLines.Add($"Riskiest assumption (founder supplied): {riskiestAssumption}");
-            if (founderAdvantage.Length > 0) contextLines.Add($"Founder advantage (founder supplied): {founderAdvantage}");
+            if (problem.Length > 0) contextLines.Add($"Problem statement: {problem}{Thin("problemStatement")}");
+            if (audience.Length > 0) contextLines.Add($"Target audience: {audience}{Thin("targetAudience")}");
+            if (description.Length > 0) contextLines.Add($"Description: {description}{Thin("description")}");
+            if (alternatives.Length > 0) contextLines.Add($"Existing alternatives the founder is aware of: {alternatives}{Thin("existingAlternatives")}");
+            if (whyNow.Length > 0) contextLines.Add($"Why now (founder supplied): {whyNow}{Thin("whyNow")}");
+            if (riskiestAssumption.Length > 0) contextLines.Add($"Riskiest assumption (founder supplied): {riskiestAssumption}{Thin("riskiestAssumption")}");
+            if (founderAdvantage.Length > 0) contextLines.Add($"Founder advantage (founder supplied): {founderAdvantage}{Thin("founderAdvantage")}");
 
             var userContext = contextLines.Count > 0
                 ? string.Join("\n", contextLines)
@@ -89,6 +103,9 @@ namespace WebApp.Services.Ai.Jobs
             var task =
                 "Clarify the business idea above into the structured opportunity " +
                 "defined by the output contract. " +
+                (unconfirmed.Count > 0
+                    ? "Inputs marked [THIN ANSWER] are unconfirmed: do not present them as established facts; phrase anything built on them as an assumption to validate. "
+                    : "") +
                 languageInstruction + " " +
                 "Return only the JSON object.";
 
@@ -123,6 +140,15 @@ namespace WebApp.Services.Ai.Jobs
 
                 // Do NOT throw: the job completes, raw text stays on the response.
                 return new AiHandlerResult(OutputPayload: null);
+            }
+
+            // Weak clarifier topics stay flagged in the stored output, which Phase 3 reads as its baseline.
+            var unconfirmed = UnconfirmedFields(request.InputPayload);
+            if (unconfirmed.Count > 0)
+            {
+                contract["unconfirmedInputs"] = new BsonArray(unconfirmed);
+                contract["unconfirmedInputsNote"] =
+                    "The founder's answers for these inputs were thin and never confirmed. Treat anything derived from them as an assumption to validate, not an established fact.";
             }
 
             var clarityScore = contract.TryGetValue("clarityScore", out var cs) && cs.IsInt32

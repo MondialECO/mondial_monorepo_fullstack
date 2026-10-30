@@ -44,6 +44,12 @@ namespace WebApp.Models.Dtos.Ai
         /// <summary>Founder-provided relevant experience or unfair advantage.</summary>
         public string? FounderAdvantage { get; set; }
 
+        /// <summary>
+        /// Raw-idea field names (e.g. "whyNow") whose clarifier topic ended weak. C-2 and Phase 3
+        /// must treat them as unconfirmed assumptions, never as confirmed answers.
+        /// </summary>
+        public List<string> UnconfirmedFields { get; set; } = new();
+
         /// <summary>Optional supporting reference/attachment URLs.</summary>
         public List<string> Attachments { get; set; } = new();
     }

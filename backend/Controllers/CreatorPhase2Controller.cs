@@ -104,17 +104,17 @@ namespace WebApp.Controllers
             try
             {
                 var userId = GetUserId();
-                if (questionIndex < 1 || questionIndex > ClarifierScript.TotalQuestions)
-                    return BadRequest(ApiResponse.Error("Unknown question."));
+                if (questionIndex < 1 || questionIndex > ClarifierScript.TotalTopics)
+                    return BadRequest(ApiResponse.Error("Unknown topic."));
 
                 var current = await _journeys.GetOrCreateComposedAsync(userId, ideaId);
                 var answers = ClarifierScript.GetAnswers(current.Phase2Data);
                 var answer = answers.FirstOrDefault(a => a.QuestionIndex == questionIndex);
                 if (answer == null || !ClarifierAnswerStatus.IsDone(answer.Status))
-                    return Conflict(ApiResponse.Error("Only answered questions can be edited."));
+                    return Conflict(ApiResponse.Error("Only finished topics can be edited."));
 
                 var now = DateTime.UtcNow;
-                ClarifierTurnResult? turn = null;
+                ClarifierTopicsResult? turn = null;
                 var applied = true;
 
                 if (request?.Mode == "answer")
@@ -125,12 +125,14 @@ namespace WebApp.Controllers
                     if (text.Length > MaxAnswerLength)
                         return BadRequest(ApiResponse.Error($"Answers are limited to {MaxAnswerLength} characters."));
 
-                    turn = await _clarifierTurns.EvaluateAsync(new ClarifierTurnInput(
-                        questionIndex,
+                    turn = await _clarifierTurns.EvaluateAsync(new ClarifierTopicsInput(
+                        ClarifierScript.Snapshot(answers),
+                        Array.Empty<ClarifierTranscriptLine>(),
                         text,
-                        ClarifierScript.PriorAnswers(answers, questionIndex),
+                        questionIndex,
                         answers.Sum(a => a.Attempts),
-                        answer.Language), cancellationToken);
+                        answer.Language,
+                        IsEdit: true), cancellationToken);
                     applied = ClarifierScript.ApplyAnswerEdit(answer, text, turn, now);
                 }
                 else if (request?.Mode == "fields")
@@ -151,7 +153,7 @@ namespace WebApp.Controllers
                 return Ok(ApiResponse.Ok(applied ? "Answer updated" : "Answer needs revision", new
                 {
                     verdict = applied ? ClarifierVerdict.Accept : ClarifierVerdict.Revise,
-                    feedback = turn?.Feedback,
+                    feedback = !applied && turn != null && turn.Topics.TryGetValue(questionIndex, out var judged) ? judged.FollowUp : null,
                     aiUsed = turn?.AiUsed ?? false,
                     answer,
                     answers,
