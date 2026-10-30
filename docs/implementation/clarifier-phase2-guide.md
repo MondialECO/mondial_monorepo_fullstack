@@ -9,12 +9,20 @@
 
 ## Overview
 
-Phase 2 implements the AI-powered Idea Clarifier with full language support (EN/FR) and proper chat UI layout pattern. Users answer 6 structured questions, get AI feedback in their selected language, then finalize with C-2 summary generation.
+Phase 2 implements the AI-powered Idea Clarifier with EN/FR language support (see the correction in §1 — the language only reaches the AI since `c11fbcab`, not yet live-verified) and proper chat UI layout pattern. Users answer 6 structured questions, get AI feedback in their selected language, then finalize with C-2 summary generation.
 
 ## Features Implemented
 
 ### 1. Language Support (EN/FR)
-- **Frontend:** `LanguageProvider` context + `useTranslation()` hook
+
+> **Correction (2026-10-31):** the flow below was not what actually ran. The pages passed
+> `t.locale`, but `t` is the translate function and has no `locale`, so the language was always
+> `undefined` and never reached clarifier turns (HTTP and hub), the C-2 start or name suggestions;
+> the backend fell back to the stored answer language or "en". Fixed in `c11fbcab`
+> (`const { t, locale } = useTranslation()`). Not yet verified with live AI — see the Part B French
+> run in [clarifier-topic-flow-plan.md](clarifier-topic-flow-plan.md).
+
+- **Frontend:** `LanguageProvider` context + `useTranslation()` hook (the language is its `locale`, not `t.locale`)
 - **User Selection:** Topbar language toggle (EN/FR flags)
 - **API Integration:** All endpoints accept `language` parameter
 - **Backend Storage:** `ClarifierSession.Language` persisted in MongoDB
@@ -24,7 +32,7 @@ Phase 2 implements the AI-powered Idea Clarifier with full language support (EN/
 ```
 User selects language (Topbar)
   ↓
-t.locale passed to all API calls (chatMessage, nameSuggestions, startClarifier)
+locale passed to all API calls (chatMessage, hub SendMessage, nameSuggestions, startClarifier) — since c11fbcab
   ↓
 Backend extracts language from request
   ↓
@@ -180,7 +188,7 @@ Response: { names: string[] }
    - Development API key has limited quota
    - Add credits at: https://openrouter.ai/settings/credits
 
-2. **Language Constraint:** Only EN/FR fully tested
+2. **Language Constraint:** Only EN/FR are supported; the language is only sent since `c11fbcab` and has **not yet been verified with live AI**
    - Other ISO codes supported via fallback prompt
    - Recommend testing with additional languages
 

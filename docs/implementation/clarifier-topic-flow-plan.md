@@ -162,7 +162,7 @@ the tests now create an owned idea, as the controller has intentionally required
 - [ ] Stale Phase 3 after a new C-2: Market Study and Business Plan show "Built on an older version" + Regenerate (price from credits API); regenerating builds from the new C-2 and the notice disappears; earlier versions are still in the history.
 - [ ] Chain: regenerate Market Study → Business Model shows the stale notice; regenerating Business Model clears it.
 - [ ] Weak-topic edit routing: the side-panel pencil on a weak topic opens the AI rewrite (not the field editor); on a clear topic it opens the field editor (both fields for Your edge / Why now + biggest risk).
-- [ ] One full run in French: AI follow-ups in French; fallback base questions in French.
+- [ ] One full run in French, end to end (first live check of the language fix `c11fbcab` — before it the language was never sent): the request carries `language: "fr"` over both HTTP and the hub; AI follow-ups and chips in French; fallback base questions in French; the **C-2 summary** is generated in French; **name suggestions** (concept-name) come back in French.
 - [ ] Light and dark themes at 1440 and 1920 widths.
 
 ### Known gaps (recorded, not implemented)
