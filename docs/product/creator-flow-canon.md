@@ -434,6 +434,7 @@ A 6-question conversational AI-guided clarifier (core problem, target user, exis
   - Summary exists and no answer changed since: **View my summary** (free).
   - An answer changed after the summary: **Regenerate summary (N credits)**.
   - The price comes from `GET /api/ai/credits` → `costs.IdeaClarifier` (currently 20) and is never hardcoded.
+  - **Open billing issue (HIGH PRIORITY, 2026-10-31):** after 3 minutes the page stops polling and shows a timeout, but the C-2 job can still succeed later — the credits stay debited while the result is never attached to the project, and a manual retry debits again. First fix after the topic-flow live verification passes; see [ai-credit-metering-and-visibility.md](../operations/ai-credit-metering-and-visibility.md) and [clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md) *Known gaps*.
 - **Legacy ideas:** ideas created before `ClarifierAnswers` existed derive one accepted record per legacy user message (messages without `questionIndex`).
 
 Following the Clarifier:

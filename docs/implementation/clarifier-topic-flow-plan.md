@@ -167,6 +167,14 @@ the tests now create an owned idea, as the controller has intentionally required
 
 ### Known gaps (recorded, not implemented)
 
+- **HIGH PRIORITY — C-2 summary timeout bills without delivering (pre-existing).** The clarifier
+  page polls the C-2 session for at most 3 minutes (shared poll policy), then shows a timeout error.
+  The job keeps running on the server and can still succeed afterwards: the credits were debited at
+  Start and are not refunded (refunds only happen when the job *fails*), but `finalize-clarifier` is
+  never called, so the result is never attached to the project. A manual "Try again" starts a new
+  C-2 session and debits again. Users pay without receiving the output.
+  **First item to fix after Part B passes.** Not implemented now.
+
 - **Business Plan staleness covers only C-2.** `BusinessPlanHandler` (Prepare, HEAD) also consumes,
   none of which drive `upstreamStale` yet:
   - the canonical **Idea Core** (`CreatorIdea.Project`, marked "authoritative") — also changed by

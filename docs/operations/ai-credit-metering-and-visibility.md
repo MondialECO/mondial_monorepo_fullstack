@@ -151,6 +151,9 @@ sequenceDiagram
 ### In-Flight Duplicate Click Guard
 `ForecastSession` and `BusinessPlanSession` utilize an atomic unique index on `InFlightKey` (`{OwnerUserId}:{JobType}:{ParentId}`). Rapid duplicate clicks join the already running active session rather than executing duplicate credit debits.
 
+### Known open issue — client timeout bills without delivering (HIGH PRIORITY, recorded 2026-10-31)
+Affects the Phase 2 C-2 summary (`IdeaClarifier`). The clarifier page stops polling after 3 minutes and shows a timeout, but the job can still succeed afterwards. The debit taken at Start stands (refunds above apply only to *failed* jobs), yet the result is never attached to the project because `finalize-clarifier` is never called. A manual retry starts a new session and debits again. Users pay without receiving the output. First item to fix after the clarifier topic-flow live verification (Part B) passes — see [clarifier-topic-flow-plan.md](../implementation/clarifier-topic-flow-plan.md) *Known gaps*. Not yet implemented.
+
 ---
 
 ## 5. Frontend Visibility & Component Contract
