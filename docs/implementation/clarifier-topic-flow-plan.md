@@ -142,11 +142,30 @@ the tests now create an owned idea, as the controller has intentionally required
 - [ ] At least **2 ideas from different domains** (not only meal-sharing); for each, one thin answer written for that idea is marked **unclear**, not clear.
 - [ ] Calibration: "Students are hungry" as the Problem is **not** clear.
 - [ ] Edit a clear topic, including the two-field topics (Your edge, Why now + biggest risk); the edit persists and later AI turns do not overwrite it.
-- [ ] Weak path end to end: weak in the panel → C-2 summary with its unconfirmed marker → marker **visible on the rendered Phase 3 screens** (not only in response data).
+- [ ] Weak path end to end, on rendered screens: weak topic in the panel → amber "Unconfirmed — thin answer" tag on idea-summary → banner on Market Study, Business Model and Business Plan → "Fix it" → accepted edit → back on idea-summary the tag is gone, and the banner is gone on all three Phase 3 screens. Includes a two-field topic (Your edge or Why now + biggest risk).
 - [ ] One full run in French: AI follow-ups in French; fallback base questions in French.
 - [ ] Light and dark themes at 1440 and 1920 widths.
 
-**Open gap (blocks the weak-path check):** no screen renders the unconfirmed marker yet. Weak
-topics are flagged in the C-2 input/prompt and in the stored C-2 output (`unconfirmedInputs`),
-so Phase 3's AI generators see it, but the idea-summary page and the Phase 3 screens do not
-display it. Needs a UI change before the closing verification.
+### Unconfirmed marker in the UI (2026-10-31)
+
+- **Single source of truth:** the UI reads the live per-topic status (`weakTopics(phase2.clarifierAnswers)`);
+  nothing is saved at finalize. An edit that turns a weak topic clear removes every marker with no
+  sync step. C-2 keeps its own prompt/output snapshot (`unconfirmedFields` / `unconfirmedInputs`)
+  for the AI only.
+- **Idea-summary:** amber tag + "Fix it" on cards that come from one topic — Target user (2),
+  Core problem (1), Your solution (4), Your edge (5). Concept and Market gap are C-2 syntheses, so
+  they get no tag. Weak topics without a card — What they use now (3), Why now + biggest risk (6) —
+  get their own tagged row. "Fix it" opens `clarifier?fix=<topic>` straight into that topic's
+  AI-judged edit (field-only edits don't change status, so they can't clear the marker); an
+  accepted edit returns to idea-summary.
+- **Phase 3 (audit):** C-2 consumers are **Market Study** (passes `clarifierSessionId`),
+  **Business Model** (clarifier session taken from the market study) and **Business Plan** (passes
+  `clarifierSessionId`). Not consumers: Forecast, Compliance, Formation, the Phase 3 hub, Complete.
+  The three consumers show one quiet banner ("N of your answers were thin… Review them" →
+  idea-summary) when at least one topic is weak; nothing otherwise. No per-field tags. Phase 1
+  untouched.
+- Never blocks progress. Theme tokens only (`--dr-bg-yellow`, `--dr-yellow`, `--primary`, `--card`, `--border`).
+- Verified now: component tests (`clarifier-unconfirmed-marker.test.tsx`: banner hidden at 0 weak,
+  count + link, singular, weak → clear drops out, tag link incl. two-field topic 6), tsc, lint.
+  **Not yet seen in a browser:** Phase 3 screens are phase-guarded until Phase 2 has a C-2 summary,
+  and idea-summary needs one too — both need AI credit. Part of the closing checklist above.
