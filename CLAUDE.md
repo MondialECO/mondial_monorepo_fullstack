@@ -92,6 +92,7 @@ src/
      subsequent questions. All per-answer AI responses respect user's UI language. C-2
      summary (finalizeClarifier) receives language from `StartClarifierRequest.Language`
      and generates summary in that language; `ClarifierSession.Language` is persisted.
+   - **Layout (Clarifier page):** Proper chat UI pattern — header (fixed top, robot avatar + title), chat area (scrollable middle, min-h-[400px] sm:min-h-[500px]), input/finalize CTA (fixed bottom with mt-auto). Right sidebar: sticky progress ring. All states (editing, finalizing, error) use fixed footer pattern.
    - **Deploy:** backend and frontend must ship together.
 
 ## Perf rules (hard rules)
