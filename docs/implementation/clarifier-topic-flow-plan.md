@@ -25,18 +25,32 @@ Source of truth: `ClarifierScript.Topics` (backend). The AI prompt is generated 
 rule and the examples below can never drift apart from what the AI sees. Each example
 satisfies its rule exactly as written.
 
-Each topic's examples span **three domains** so the AI is not anchored to one idea:
-(A) food / students, (B) a freelancer B2B tool, (C) a fashion brand for tall women.
-`ClarifierScriptTests` enforces ≥3 clear and ≥3 unclear examples per topic.
+**Calibration examples live only in `ClarifierScript.Topics`** (not copied here, so they cannot
+drift). Every topic has one clear and one unclear one-line example from each of **six domains**,
+plus **one French example** so the judgment bar does not shift with the language:
 
-| # | Topic (key) | Clear when | Clear examples (A · B · C) | Unclear examples (A · B · C) | Base question (EN) |
-|---|---|---|---|---|---|
-| 1 | The problem (`problem`) | A specific, concrete problem (not a general state such as being hungry or busy), and it is clear why it hurts — stated or obvious from the problem itself | "Dorm students can't find cheap healthy food." · "Freelance designers wait 60+ days to get paid because chasing invoices by email feels awkward." · "Tall women can't find jeans long enough in regular stores, so they pay for tailoring or settle for a bad fit." | "Students are hungry." · "Freelancers have money problems." · "Clothes don't fit well." | *(the opener)* |
-| 2 | Who has it (`who`) | A specific group, narrower than "students", "people" or "everyone" | "Dorm students." · "Freelance graphic designers who bill clients monthly." · "Women over 1.78 m who buy jeans online." | "Students." · "Small businesses." · "Everyone who wears clothes." | "Who has this problem the most?" |
-| 3 | What they use now (`alternatives`) | At least one real thing they do or use today AND the reason it falls short is **stated in words**. "Nothing" counts only with a reason | "They order Uber Eats, but it's too expensive on a student budget." · "Spreadsheet reminders — they forget to follow up, and clients ignore plain emails." · "Nothing — tall-specific brands only ship from abroad and returns cost too much." | "Eat junk." · "Excel." · "Other brands." | "What do they do about it today?" |
-| 4 | Your solution (`solution`) | What the Creator will build AND its form (app, website, service, physical product, or another concrete form) | "I want to make a meal-sharing app." · "A web tool that sends polite payment reminders from the freelancer's own email." · "A direct-to-consumer jeans brand sold online, with inseams up to 40 inches." | "Something to help them eat better." · "An app." · "Something for tall women." | "What do you want to build?" |
-| 5 | Your edge (`edge`) | Something concrete that makes it different/better, OR a concrete advantage the Creator has | "Meals are cooked by students for students, so it's cheaper than delivery." · "I freelanced for eight years and already have 300 designers on my newsletter." · "I'm 1.85 m myself and worked as a pattern maker at a denim factory." | "It's better." · "We really care about freelancers." · "Our quality is great." | "Why would people pick yours, and why are you the right person to build it?" |
-| 6 | Why now + biggest risk (`whyNowRisk`) | **Both** a concrete reason the timing is right AND one specific thing that could go wrong | "Food prices rose a lot this year; the biggest risk is students not trusting food cooked by strangers." · "Freelancing grew fast since remote work became normal; the biggest risk is clients finding automatic reminders pushy." · "Most jeans are now bought online; the biggest risk is getting the fit right without try-ons." | "Now is a good time." (neither part) · "Remote work is growing." (no risk) · "Returns might be expensive." (no why-now) | "Why is now a good time? And what's the one thing that could go wrong?" |
+1. food / student app · 2. freelancer B2B tool · 3. tall-women jeans brand ·
+4. local service (home maths tutoring) · 5. two-sided marketplace (second-hand textbooks between students) ·
+6. social / eco impact (clothing repair)
+
+`ClarifierScriptTests` enforces ≥6 distinct domains per topic, each with a clear and an unclear
+example, and a French example per topic. Each unclear example fails its rule for a visible reason
+(general state, broad category, no stated shortfall, form without a "what", no concrete edge,
+missing why-now or risk).
+
+| # | Topic (key) | Clear when | Base question (EN) |
+|---|---|---|---|
+| 1 | The problem (`problem`) | A specific, concrete problem (not a general state such as being hungry or busy), and it is clear why it hurts — stated or obvious from the problem itself | *(the opener)* |
+| 2 | Who has it (`who`) | A specific group, narrower than "students", "people" or "everyone" | "Who has this problem the most?" |
+| 3 | What they use now (`alternatives`) | At least one real thing they do or use today AND the reason it falls short is **stated in words**. "Nothing" counts only with a reason | "What do they do about it today?" |
+| 4 | Your solution (`solution`) | What the Creator will build AND its form (app, website, service, physical product, or another concrete form) | "What do you want to build?" |
+| 5 | Your edge (`edge`) | Something concrete that makes it different/better, OR a concrete advantage the Creator has | "Why would people pick yours, and why are you the right person to build it?" |
+| 6 | Why now + biggest risk (`whyNowRisk`) | **Both** a concrete reason the timing is right AND one specific thing that could go wrong | "Why is now a good time? And what's the one thing that could go wrong?" |
+
+Prompt size (measured from the generated prompt, ≈4 characters per token): system prompt
+5,854 → 7,843 characters (≈1,460 → ≈1,960 tokens, +34%); a typical whole turn ≈1,680 → ≈2,180
+tokens. The extra ~500 input tokens add a negligible prefill cost next to the 5–25 s spent on the
+model's output, so no trimming was needed.
 
 Rule calibration notes (amendment 4 — every topic checked):
 - **Problem** allows an *obvious* harm, so "can't find cheap healthy food" is clear — but a general state is not a problem, so "Students are hungry" is unclear.
@@ -140,6 +154,7 @@ the tests now create an owned idea, as the controller has intentionally required
 
 - [ ] Clear, unclear and chips: chips render and tapping one fills the input; chips are specific to the idea.
 - [ ] At least **2 ideas from different domains** (not only meal-sharing); for each, one thin answer written for that idea is marked **unclear**, not clear.
+- [ ] At least **2 ideas from the newer domains** (local service, two-sided marketplace, social/eco impact); for each, a thin answer written for that idea is marked **unclear**, not clear.
 - [ ] Calibration: "Students are hungry" as the Problem is **not** clear.
 - [ ] Edit a clear topic, including the two-field topics (Your edge, Why now + biggest risk); the edit persists and later AI turns do not overwrite it.
 - [ ] Weak path end to end, on rendered screens: weak topic in the panel → amber "Unconfirmed — thin answer" tag on idea-summary → banner on Market Study, Business Model and Business Plan → "Fix it" → accepted edit → back on idea-summary the tag is gone, and the banner is gone on all three Phase 3 screens. Includes a two-field topic (Your edge or Why now + biggest risk).
@@ -149,6 +164,22 @@ the tests now create an owned idea, as the controller has intentionally required
 - [ ] Weak-topic edit routing: the side-panel pencil on a weak topic opens the AI rewrite (not the field editor); on a clear topic it opens the field editor (both fields for Your edge / Why now + biggest risk).
 - [ ] One full run in French: AI follow-ups in French; fallback base questions in French.
 - [ ] Light and dark themes at 1440 and 1920 widths.
+
+### Known gaps (recorded, not implemented)
+
+- **Business Plan staleness covers only C-2.** `BusinessPlanHandler` (Prepare, HEAD) also consumes,
+  none of which drive `upstreamStale` yet:
+  - the canonical **Idea Core** (`CreatorIdea.Project`, marked "authoritative") — also changed by
+    project edits outside the clarifier (name, tagline, category);
+  - **Market Study** current version (`Phase3Data.MarketStudySessionId`);
+  - **Business Model** current version (`Phase3Data.BusinessModelSessionId`);
+  - **Financial Forecast** current version (`Phase3Data.ForecastSessionId`);
+  - **Formation & team** (`Phase3Data.FormationGenerator`: entity type, skills, roles needed);
+  - **Legal assessment** summary (`Phase3Data.LegalAssessment`: planning readiness, applicable count);
+  - the C-2 output itself (supporting context) — the only input covered today.
+- **Business Plan single-section rewrite** (`POST rewrite-section`) still reads the session's original
+  C-2 (`BusinessPlanController.RewriteSection` → `session.ClarifierSessionId`), so a rewrite after a
+  new summary uses the old C-2. It is not a regenerate, so it was left out of the stale-content repair.
 
 ### Stale downstream content and edit routing (2026-10-31, defect repair)
 
