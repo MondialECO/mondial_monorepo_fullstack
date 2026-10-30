@@ -77,11 +77,11 @@ export function FormationFigmaFlow({
       return formation.recommendationFactors.slice(0, 3).map((f) => f.implication);
     }
     return [
-      startingMode === ‘solo’
-        ? t(‘creator.phase3.formation.startingSoloReason’, ‘You’re starting alone.’)
-        : t(‘creator.phase3.formation.startingTeamReason’, ‘You have a collaborative founding team.’),
-      t(‘creator.phase3.formation.buildingToGrowReason’, ‘You’re building a company designed to grow.’),
-      t(‘creator.phase3.formation.addInvestorsReason’, ‘You may want to add investors or shareholders later.’),
+      startingMode === 'solo'
+        ? t('creator.phase3.formation.startingSoloReason', 'You’re starting alone.')
+        : t('creator.phase3.formation.startingTeamReason', 'You have a collaborative founding team.'),
+      t('creator.phase3.formation.buildingToGrowReason', 'You’re building a company designed to grow.'),
+      t('creator.phase3.formation.addInvestorsReason', 'You may want to add investors or shareholders later.'),
     ];
   })();
 
