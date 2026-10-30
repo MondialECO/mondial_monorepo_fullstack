@@ -49,7 +49,7 @@ const OPENER_ID = "opener";
 
 export default function AIClarifierPage() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const searchParams = useSearchParams();
   const urlIdeaId = searchParams.get("ideaId");
   const { state, setState, refetch } = useCreatorProgress();
@@ -204,7 +204,7 @@ export default function AIClarifierPage() {
     try {
       const res = clarifierHub.status === "connected" && effectiveIdeaId
         ? await sendViaHub(userText, effectiveIdeaId)
-        : await creatorJourneyApi.chatMessage(userText, t.locale, effectiveIdeaId);
+        : await creatorJourneyApi.chatMessage(userText, locale, effectiveIdeaId);
       setMessages(res.messages);
       setAnswers(res.answers);
       syncPhase2({ chatMessages: res.messages, clarifierAnswers: res.answers });
@@ -226,7 +226,7 @@ export default function AIClarifierPage() {
     if (!expectedVersion) throw new ClarifierHubError("Idea version is not loaded yet. Refresh and try again.");
     turnCompleteRef.current = null;
     try {
-      await clarifierHub.invoke("SendMessage", text, t.locale, ideaId, expectedVersion);
+      await clarifierHub.invoke("SendMessage", text, locale, ideaId, expectedVersion);
     } catch (err) {
       throw new ClarifierHubError(hubErrorMessage(err) || "Something went wrong. Please try again.");
     }
@@ -307,7 +307,7 @@ export default function AIClarifierPage() {
           rawIdea,
           businessIdeaId: effectiveIdeaId ?? undefined,
         },
-        t.locale
+        locale
       );
       const session = await pollClarifier(sessionId);
       if (!session) throw new Error(t("creator.phase2.clarifier.timeoutError"));
