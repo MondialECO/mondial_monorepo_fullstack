@@ -375,11 +375,15 @@ The Phase-1 completion gate promotes onboarding to Phase 1 based on verified cor
 
 ---
 
-## 4. Phase 2 — Project Identity (CLOSED & STABLE — 2026-09-18)
+## 4. Phase 2 — Project Identity (CLOSED & STABLE — 2026-09-18 | Language + Layout Enhanced 2026-10-30)
 
 > [!IMPORTANT]
 > **Phase 2 Closure Canon (Declared Closed & Stable: September 18, 2026)**
 > Creator Phase 2 is frozen and declared production-stable. No new features, scope expansions, or visual redesigns are permitted. Maintenance is restricted strictly to critical bug fixes, ensuring the verified 7-step modal studio workflow, 0-credit free steps, and transparent credit metering remain immutable.
+> 
+> **Recent Enhancements (2026-10-29/30, within maintenance scope):**
+> - **Language Support (LIVE):** Full EN/FR bilingual support. User selects language via Topbar. All AI-generated feedback respects user's UI language. Language persisted in `ClarifierSession.Language` and inherited through Phase 3+ chain.
+> - **Chat UI Layout (LIVE):** Proper chat interface pattern — header (fixed top, robot avatar + title), chat area (scrollable middle, min-h-[400px] sm:min-h-[500px]), input/finalize CTA (fixed bottom). Right sidebar: sticky progress ring. All states (editing, finalizing, error) use fixed footer pattern.
 
 Phase 2 has been intentionally simplified to a single canonical, linear journey:
 
@@ -404,7 +408,7 @@ A 6-question conversational AI-guided clarifier (core problem, target user, exis
 - **The AI turn:** every answer to the current question goes through `ClarifierTurnService` (one synchronous AI call, **0 credits**).
   - **`revise`:** the answer does not answer the question, is too vague ("an app", "everyone"), is nonsense, or is a refusal. The question stays and the AI explains what is missing. After **5 attempts** the answer is accepted as `accepted_weak` and the chat moves on.
   - **`accept`:** the AI stores structured fields for that question, acknowledges briefly, and asks the next scripted question.
-  - **Language:** feedback and the next question are written in the language the user wrote in.
+  - **Language (Full EN/FR support since 2026-10-30):** User selects language via Topbar. All feedback and next question generated in selected language. Language persisted in `ClarifierSession.Language`. Inherited into Phase 3+ chain for downstream consistency. C-2 summary generates in same language. Fallback: "en" if missing.
 - **Source of progress:** `Phase2Data.ClarifierAnswers`, one record per question (`status`, `attempts`, `rawAnswer`, `aiExtracted`, `userEdited`, `language`, `updatedAt`). Progress, the ring, `summaryReady` and the C-2 input derive from these records, **never from counting user chat messages** (the transcript contains rejected attempts). Field map: Q1 `problem`, Q2 `targetUser`, Q3 `existingAlternatives`, Q4 `solution`, Q5 `creatorEdge` + `founderAdvantage`, Q6 `whyNow` + `riskiestAssumption`. Value precedence is user edit, then AI extraction, then raw answer.
 - **Fail-open for new answers:** if the AI is disabled, times out (50s), errors, or returns unusable JSON, or the 40-calls-per-idea cap is reached, the answer is accepted without AI. The user is never blocked by infrastructure.
 - **Editing finished answers** (`PATCH .../phase2/clarifier-answer/{n}`):
