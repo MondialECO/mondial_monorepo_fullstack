@@ -235,7 +235,12 @@ namespace WebApp.Services.Ai
                 sb.AppendLine("Conversation so far (oldest first):");
                 sb.AppendLine($"AI: {ClarifierScript.OpenerEn}");
                 foreach (var line in input.Transcript)
-                    sb.AppendLine(line.Sender == "user" ? $"Founder: <message>{line.Text}</message>" : $"AI: {line.Text}");
+                    sb.AppendLine(line.Sender switch
+                    {
+                        "user" => $"Founder: <message>{line.Text}</message>",
+                        "system" => $"(Note: {line.Text})",
+                        _ => $"AI: {line.Text}",
+                    });
                 sb.AppendLine();
                 sb.AppendLine($"LATEST founder message (the AI had asked about \"{asked}\"): <message>{input.LatestMessage}</message>");
                 sb.AppendLine($"If it does not address \"{asked}\" at all, mark \"{asked}\" unclear (not empty) and write its followUp.");

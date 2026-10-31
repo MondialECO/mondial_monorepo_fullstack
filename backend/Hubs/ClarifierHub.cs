@@ -28,7 +28,15 @@ namespace WebApp.Hubs
             _logger = logger;
         }
 
-        public async Task SendMessage(string message, string language, string ideaId, long expectedVersion)
+        public Task SendMessage(string message, string language, string ideaId, long expectedVersion) =>
+            RunTurn(ideaId, expectedVersion, (userId, ct) => _chatTurns.RunAsync(userId, message, language, ideaId, ct));
+
+        /// <summary>"Skip — keep my answer" on the current follow-up. Same events as <see cref="SendMessage"/>.</summary>
+        public Task SkipFollowUp(string language, string ideaId, long expectedVersion) =>
+            RunTurn(ideaId, expectedVersion, (userId, _) => _chatTurns.SkipFollowUpAsync(userId, language, ideaId));
+
+        private async Task RunTurn(string ideaId, long expectedVersion,
+            Func<string, CancellationToken, Task<ClarifierChatTurnResponse>> turn)
         {
             var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? throw new HubException("User not authenticated");
@@ -38,7 +46,7 @@ namespace WebApp.Hubs
             try
             {
                 _journeys.UseExplicitWriteVersion(ideaId, expectedVersion);
-                result = await _chatTurns.RunAsync(userId, message, language, ideaId, ct);
+                result = await turn(userId, ct);
             }
             catch (CreatorJourneyException ex)
             {

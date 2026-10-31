@@ -111,6 +111,46 @@ public class ClarifierChatTurnRunnerTests
     }
 
     [Fact]
+    public async Task Skip_OnAFollowUp_WritesOnce_WithASystemNote_AndNeverCallsTheAi()
+    {
+        Journey(streak: 1, count: 4, answers: new List<ClarifierAnswer>
+        {
+            new() { QuestionIndex = 1, Status = ClarifierAnswerStatus.Accepted, Attempts = 1 },
+            new() { QuestionIndex = 2, Status = ClarifierAnswerStatus.Pending, Attempts = 1, FollowUpUsed = true, RawAnswer = "students" },
+        });
+        var p2 = (await _journeys.Object.GetOrCreateComposedAsync(UserId, "idea-1")).Phase2Data!;
+        p2.ChatMessages!.Add(new CreatorChatMessage { Sender = "ai", Kind = "followup", QuestionIndex = 2, Text = "Which students?" });
+
+        var response = await Runner().SkipFollowUpAsync(UserId, "fr", "idea-1");
+
+        _turns.Verify(t => t.EvaluateAsync(It.IsAny<ClarifierTopicsInput>(), It.IsAny<CancellationToken>()), Times.Never);
+        var turn = _saved.Should().ContainSingle().Subject;
+        turn.Incoming.Should().Be(new ClarifierTurnMessage("system", ClarifierScript.SkipNoteFr, "skip", 2));
+        turn.Reply.Should().BeEquivalentTo(new { Sender = "ai", Text = ClarifierScript.BaseQuestion(4, "fr"), Kind = "question", QuestionIndex = (int?)4 });
+        turn.Answers.Single(a => a.QuestionIndex == 2).Status.Should().Be(ClarifierAnswerStatus.AcceptedWeak);
+        turn.Answers.Sum(a => a.Attempts).Should().Be(2, "a Skip never counts toward the AI cap");
+        turn.OffTopicStreak.Should().Be(0);
+        turn.OffTopicCount.Should().Be(4);
+        response.AiUsed.Should().BeFalse();
+        response.CurrentTopic.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task Skip_WhenTheLatestMessageIsNotAFollowUp_Is409_AndWritesNothing()
+    {
+        Journey(streak: 0, count: 0, answers: new List<ClarifierAnswer>
+        {
+            new() { QuestionIndex = 1, Status = ClarifierAnswerStatus.Accepted },
+            new() { QuestionIndex = 2, Status = ClarifierAnswerStatus.Pending, FollowUpUsed = true },
+        });
+
+        var act = () => Runner().SkipFollowUpAsync(UserId, "en", "idea-1");
+
+        (await act.Should().ThrowAsync<CreatorJourneyException>()).Which.StatusCode.Should().Be(409);
+        _saved.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task OnTopicTurn_ResetsTheStreak_AndKeepsTheCount()
     {
         Journey(streak: 2, count: 4);

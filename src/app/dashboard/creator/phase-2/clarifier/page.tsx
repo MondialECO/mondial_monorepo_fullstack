@@ -17,6 +17,7 @@ import {
 } from "@/hooks/queries/creator-ai";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ClarifierStepList } from "@/components/creator/clarifier/ClarifierStepList";
+import { SkipFollowUpAction } from "@/components/creator/clarifier/SkipFollowUpAction";
 import { Button } from "@/components/ui/button";
 import {
   CLARIFIER_TOTAL_TOPICS,
@@ -204,7 +205,7 @@ export default function AIClarifierPage() {
 
     try {
       const res = clarifierHub.status === "connected" && effectiveIdeaId
-        ? await sendViaHub(userText, effectiveIdeaId)
+        ? await turnViaHub(effectiveIdeaId, "SendMessage", userText, locale)
         : await creatorJourneyApi.chatMessage(userText, locale, effectiveIdeaId);
       setMessages(res.messages);
       setAnswers(res.answers);
@@ -220,14 +221,37 @@ export default function AIClarifierPage() {
     }
   };
 
+  // "Skip — keep my answer" on a follow-up: no AI call; the topic is kept as a thin answer and the
+  // next question follows. Any draft in the input is left alone.
+  const handleSkip = async () => {
+    if (isTyping || finalizing) return;
+    const priorMessages = messages;
+    setIsTyping(true);
+    setStreamingMessage("");
+    try {
+      const res = clarifierHub.status === "connected" && effectiveIdeaId
+        ? await turnViaHub(effectiveIdeaId, "SkipFollowUp", locale)
+        : await creatorJourneyApi.skipFollowUp(locale, effectiveIdeaId);
+      setMessages(res.messages);
+      setAnswers(res.answers);
+      syncPhase2({ chatMessages: res.messages, clarifierAnswers: res.answers });
+    } catch (err) {
+      const reason = err instanceof ClarifierHubError ? err.message : toAiError(err).message;
+      setMessages([...priorMessages, { id: `err-${Date.now()}`, sender: "ai", text: reason }]);
+    } finally {
+      setIsTyping(false);
+      setStreamingMessage("");
+    }
+  };
+
   // Same turn as the HTTP endpoint; the reply arrives as ReceiveChunk events, then
   // MessageComplete (received before invoke resolves) carries the result + new idea version.
-  const sendViaHub = async (text: string, ideaId: string): Promise<ChatMessageResult> => {
+  const turnViaHub = async (ideaId: string, method: "SendMessage" | "SkipFollowUp", ...args: string[]): Promise<ChatMessageResult> => {
     const expectedVersion = getIdeaVersion(ideaId);
     if (!expectedVersion) throw new ClarifierHubError("Idea version is not loaded yet. Refresh and try again.");
     turnCompleteRef.current = null;
     try {
-      await clarifierHub.invoke("SendMessage", text, locale, ideaId, expectedVersion);
+      await clarifierHub.invoke(method, ...args, ideaId, expectedVersion);
     } catch (err) {
       throw new ClarifierHubError(hubErrorMessage(err) || "Something went wrong. Please try again.");
     }
@@ -497,6 +521,14 @@ export default function AIClarifierPage() {
               style={{ backgroundColor: "var(--popover)" }}
             >
                 {[{ id: OPENER_ID, sender: "ai" as const, text: t("creator.phase2.clarifier.opener") }, ...messages].map((msg) => {
+                  // Transcript notes (a Skip) are not a speaker: a quiet centered line.
+                  if (msg.sender === "system") {
+                    return (
+                      <p key={msg.id} className="self-center text-caption text-muted-foreground">
+                        {msg.text}
+                      </p>
+                    );
+                  }
                   const isUser = msg.sender === "user";
                   // Send-failure notes are pushed as ai-sender messages with an "err-" id
                   // (handleSend rollback). Flag them for destructive styling — no logic change.
@@ -631,13 +663,18 @@ export default function AIClarifierPage() {
                     </button>
                   </div>
                 )}
-                {editingQuestion === null && activeChips.length > 0 && (
-                  <div role="group" aria-label={t("creator.phase2.clarifier.chipsLabel")} className="mb-2 flex flex-wrap gap-2 px-1">
-                    {activeChips.map((chip) => (
-                      <Button key={chip} type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setInputValue(chip)}>
-                        {chip}
-                      </Button>
-                    ))}
+                {editingQuestion === null && !isTyping && (activeChips.length > 0 || lastMessage?.kind === "followup") && (
+                  <div className="mb-2 flex flex-wrap items-center gap-2 px-1">
+                    {activeChips.length > 0 && (
+                      <div role="group" aria-label={t("creator.phase2.clarifier.chipsLabel")} className="flex flex-wrap gap-2">
+                        {activeChips.map((chip) => (
+                          <Button key={chip} type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setInputValue(chip)}>
+                            {chip}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                    <SkipFollowUpAction message={lastMessage} disabled={finalizing} onSkip={handleSkip} />
                   </div>
                 )}
                 <div

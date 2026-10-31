@@ -399,6 +399,40 @@ namespace WebApp.Services.Implementations
 
         private static string Join(string? ack, string text) => string.IsNullOrWhiteSpace(ack) ? text : $"{ack}\n\n{text}";
 
+        public const string SkipNoteEn = "Skipped — kept my answer.";
+        public const string SkipNoteFr = "Passé — réponse conservée.";
+
+        public static string SkipNote(string lang) => lang == "fr" ? SkipNoteFr : SkipNoteEn;
+
+        /// <summary>
+        /// The topic a Skip would close: the latest transcript message must be the AI follow-up for the
+        /// topic being asked (unclear, its one follow-up used). Null when there is nothing to skip.
+        /// </summary>
+        public static int? SkippableTopic(IReadOnlyCollection<ClarifierAnswer> answers, IEnumerable<CreatorChatMessage>? messages)
+        {
+            var last = messages?.LastOrDefault();
+            if (last is not { Sender: "ai", Kind: "followup", QuestionIndex: int topic } || NextTopic(answers) != topic)
+                return null;
+            var answer = answers.FirstOrDefault(a => a.QuestionIndex == topic);
+            return StateOf(answer) == ClarifierTopicState.Unclear && answer!.FollowUpUsed ? topic : null;
+        }
+
+        /// <summary>
+        /// "Skip — keep my answer" on a follow-up: no AI call. The topic becomes weak exactly as an unclear
+        /// answer after its one follow-up does; the next topic's fixed base question (or the closing) follows.
+        /// </summary>
+        public static ClarifierTurnOutcome ApplySkip(List<ClarifierAnswer> answers, int topic, string? uiLanguage, DateTime now)
+        {
+            var answer = answers.First(a => a.QuestionIndex == topic);
+            answer.Status = ClarifierAnswerStatus.AcceptedWeak;
+            answer.UpdatedAt = now;
+
+            var lang = uiLanguage == "fr" ? "fr" : "en";
+            return NextTopic(answers) is int next
+                ? new(next == AskOrder[0] ? Opener(lang) : BaseQuestion(next, lang), "question", next, null)
+                : new(Closing(lang), "ack", null, null);
+        }
+
         /// <summary>
         /// Re-judged edit of a finished topic. Applied only when the AI judges the new text clear;
         /// otherwise the previous answer stays (an edit is not fail-open). The attempt still counts

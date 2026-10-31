@@ -225,6 +225,7 @@
         "weak": "Réponse légère"
       },
       "chipsLabel": "Réponses suggérées",
+      "skipFollowUp": "Passer — garder ma réponse",
       "ideaJournal": "Journal de l'Idée",
       "journalDefault": "Votre idée affinée sera enregistrée ici automatiquement.",
       "copied": "Copié",

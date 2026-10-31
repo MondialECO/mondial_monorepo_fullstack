@@ -217,6 +217,13 @@ export const creatorJourneyApi = {
     return unwrap<ChatMessageResult>(res.data);
   },
 
+  /** "Skip — keep my answer" on the current follow-up: no AI call, no credit. */
+  skipFollowUp: async (language: 'en' | 'fr' = 'en', ideaId?: string | null): Promise<ChatMessageResult> => {
+    const res = await api.post('/creator/journey/phase2/chat-message', { skip: true, language }, withIdeaWrite(ideaId));
+    rememberIdeaVersion(res, ideaId);
+    return unwrap<ChatMessageResult>(res.data);
+  },
+
   editClarifierAnswer: async (
     questionIndex: number,
     body: { mode: 'answer'; answer: string } | { mode: 'fields'; fields: Record<string, string> },

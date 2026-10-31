@@ -258,6 +258,55 @@ namespace WebApp.Tests.Unit
             outcome.AiText.Should().Be(ClarifierScript.BaseQuestion(2, "en"));
         }
 
+        // ---- Skip — keep my answer ----
+
+        private static CreatorChatMessage AiMsg(string kind, int? topic) => new() { Sender = "ai", Kind = kind, QuestionIndex = topic, Text = "q" };
+
+        [Fact]
+        public void Skip_MakesTheFollowedUpTopicWeak_KeepsItsAnswer_AndAsksTheNextBaseQuestion()
+        {
+            var who = Rec(2, ClarifierAnswerStatus.Pending, followUpUsed: true, raw: "students");
+            var answers = new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted), who };
+
+            ClarifierScript.SkippableTopic(answers, new[] { AiMsg("followup", 2) }).Should().Be(2);
+            var outcome = ClarifierScript.ApplySkip(answers, 2, "fr", Now);
+
+            State(answers, 2).Should().Be(ClarifierTopicState.Weak);
+            who.RawAnswer.Should().Be("students");
+            who.Attempts.Should().Be(0, "a Skip is not an AI call");
+            outcome.Should().BeEquivalentTo(new
+            {
+                AiText = ClarifierScript.BaseQuestion(4, "fr"), AiKind = "question", AiTopic = (int?)4, Chips = (List<string>?)null,
+            });
+        }
+
+        [Fact]
+        public void Skip_OfTheLastOpenTopic_Closes()
+        {
+            var answers = Enumerable.Range(1, 5).Select(i => Rec(i, ClarifierAnswerStatus.Accepted))
+                .Append(Rec(6, ClarifierAnswerStatus.Pending, followUpUsed: true, raw: "x")).ToList();
+
+            var outcome = ClarifierScript.ApplySkip(answers, 6, "en", Now);
+
+            ClarifierScript.AllAnswered(answers).Should().BeTrue();
+            outcome.Should().BeEquivalentTo(new { AiText = ClarifierScript.ClosingEn, AiKind = "ack", AiTopic = (int?)null });
+        }
+
+        [Fact]
+        public void Skip_IsOnlyPossible_WhileTheLatestMessageIsTheFollowUpOfTheAskedTopic()
+        {
+            var answers = new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted), Rec(2, ClarifierAnswerStatus.Pending, followUpUsed: true) };
+
+            ClarifierScript.SkippableTopic(answers, new[] { AiMsg("question", 2) }).Should().BeNull("a base question is not a follow-up");
+            ClarifierScript.SkippableTopic(answers, new[] { AiMsg("nudge", 2) }).Should().BeNull();
+            ClarifierScript.SkippableTopic(answers, new[] { AiMsg("followup", 2), new CreatorChatMessage { Sender = "user", QuestionIndex = 2 } })
+                .Should().BeNull("the follow-up was already answered");
+            ClarifierScript.SkippableTopic(answers, new[] { AiMsg("followup", 4) }).Should().BeNull("not the asked topic");
+            ClarifierScript.SkippableTopic(answers, null).Should().BeNull();
+            ClarifierScript.SkippableTopic(new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted), Rec(2, ClarifierAnswerStatus.Pending) },
+                new[] { AiMsg("followup", 2) }).Should().BeNull("its follow-up was never used");
+        }
+
         // ---- off-topic / unreadable ----
 
         private static ClarifierTopicsResult OffTopic(string relevance = ClarifierRelevance.OffTopic, string? nudge = "Ha, hello! Back to your idea.",
