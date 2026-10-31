@@ -17,7 +17,10 @@ import {
 } from "@/hooks/queries/creator-ai";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ClarifierStepList } from "@/components/creator/clarifier/ClarifierStepList";
+import { FollowUpCard } from "@/components/creator/clarifier/FollowUpCard";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   CLARIFIER_TOTAL_TOPICS,
   buildRawIdea,
@@ -25,6 +28,7 @@ import {
   editableText,
   isTopicDone,
   nextTopic,
+  topicState,
   summaryIsStale,
 } from "@/lib/clarifier-answers";
 import { useSignalRHub } from "@/lib/realtime/use-signalr-hub";
@@ -204,7 +208,7 @@ export default function AIClarifierPage() {
 
     try {
       const res = clarifierHub.status === "connected" && effectiveIdeaId
-        ? await sendViaHub(userText, effectiveIdeaId)
+        ? await turnViaHub(effectiveIdeaId, "SendMessage", userText, locale)
         : await creatorJourneyApi.chatMessage(userText, locale, effectiveIdeaId);
       setMessages(res.messages);
       setAnswers(res.answers);
@@ -220,14 +224,37 @@ export default function AIClarifierPage() {
     }
   };
 
+  // "Skip — keep my answer" on a follow-up: no AI call; the topic is kept as a thin answer and the
+  // next question follows. Any draft in the input is left alone.
+  const handleSkip = async () => {
+    if (isTyping || finalizing) return;
+    const priorMessages = messages;
+    setIsTyping(true);
+    setStreamingMessage("");
+    try {
+      const res = clarifierHub.status === "connected" && effectiveIdeaId
+        ? await turnViaHub(effectiveIdeaId, "SkipFollowUp", locale)
+        : await creatorJourneyApi.skipFollowUp(locale, effectiveIdeaId);
+      setMessages(res.messages);
+      setAnswers(res.answers);
+      syncPhase2({ chatMessages: res.messages, clarifierAnswers: res.answers });
+    } catch (err) {
+      const reason = err instanceof ClarifierHubError ? err.message : toAiError(err).message;
+      setMessages([...priorMessages, { id: `err-${Date.now()}`, sender: "ai", text: reason }]);
+    } finally {
+      setIsTyping(false);
+      setStreamingMessage("");
+    }
+  };
+
   // Same turn as the HTTP endpoint; the reply arrives as ReceiveChunk events, then
   // MessageComplete (received before invoke resolves) carries the result + new idea version.
-  const sendViaHub = async (text: string, ideaId: string): Promise<ChatMessageResult> => {
+  const turnViaHub = async (ideaId: string, method: "SendMessage" | "SkipFollowUp", ...args: string[]): Promise<ChatMessageResult> => {
     const expectedVersion = getIdeaVersion(ideaId);
     if (!expectedVersion) throw new ClarifierHubError("Idea version is not loaded yet. Refresh and try again.");
     turnCompleteRef.current = null;
     try {
-      await clarifierHub.invoke("SendMessage", text, locale, ideaId, expectedVersion);
+      await clarifierHub.invoke(method, ...args, ideaId, expectedVersion);
     } catch (err) {
       throw new ClarifierHubError(hubErrorMessage(err) || "Something went wrong. Please try again.");
     }
@@ -367,6 +394,9 @@ export default function AIClarifierPage() {
   // since one message can cover several topics.
   const totalTopics = CLARIFIER_TOTAL_TOPICS;
   const answeredCount = answers.filter((a) => isTopicDone(a)).length;
+  // Only clear topics count as clear; weak ones are done but never shown as clear.
+  const clearCount = answers.filter((a) => topicState(a) === "clear").length;
+  const thinCount = answers.filter((a) => topicState(a) === "weak").length;
   const currentTopic = nextTopic(answers);
   const summaryReady = currentTopic === null;
   const hasSummary = !!phase2?.clarifierSessionId;
@@ -388,6 +418,8 @@ export default function AIClarifierPage() {
   // Chips belong to the latest AI message only, while that topic is still being asked.
   const lastMessage = messages[messages.length - 1];
   const activeChips = !isTyping && !summaryReady && lastMessage?.sender === "ai" ? lastMessage.chips ?? [] : [];
+  // The latest message is a follow-up whose topic is still being asked (chips + Skip live in its card).
+  const followUpActive = !isTyping && !summaryReady && editingQuestion === null && lastMessage?.sender === "ai" && lastMessage.kind === "followup";
   // Only the latest bubble per topic is that topic's answer; earlier ones were followed up.
   const latestUserMsgByQuestion = new Map<number, string>();
   let legacyOrdinal = 0;
@@ -440,11 +472,11 @@ export default function AIClarifierPage() {
 
         {/* ── Heading block ── */}
         <div className="space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
+          <h1 className="font-heading text-2xl font-semibold text-foreground sm:text-page-heading">
             {t("creator.phase2.clarifier.mainTitle")}
           </h1>
-          <p className="text-base max-w-[780px]" style={{ color: "var(--muted-foreground)" }}>
-            {t("creator.phase2.clarifier.mainSubtitle", { count: totalTopics })}
+          <p className="max-w-[780px] font-sans text-base leading-relaxed text-muted-foreground">
+            {t("creator.phase2.clarifier.mainSubtitle")}
           </p>
         </div>
 
@@ -456,16 +488,13 @@ export default function AIClarifierPage() {
 
           {/* LEFT: conversation card */}
           <section
-            className="w-full flex-1 rounded-2xl border shadow-sm overflow-hidden flex flex-col min-w-0"
-            style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
+            className="w-full flex-1 rounded-2xl border bg-card p-4 sm:p-5 shadow-sm overflow-hidden flex flex-col gap-4 min-w-0"
+            style={{ borderColor: "var(--card-edge)" }}
           >
             {/* ── Assistant header (FIXED TOP) ── */}
-            <div className="px-5 pt-5 pb-3 shrink-0 border-b" style={{ borderColor: "var(--border)" }}>
+            <div className="shrink-0">
               <div className="flex items-center gap-3">
-                <div
-                  className="rounded-full overflow-hidden flex items-center justify-center shrink-0 border"
-                  style={{ width: 48, height: 48, backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
-                >
+                <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-popover">
                   {/* Robot avatar — DELIBERATE exception to the lucide-only icon rule: this
                       is a raster character illustration (artwork), not a symbol. The library
                       has no equivalent and its Bot glyph would read as empty in this tile.
@@ -479,11 +508,11 @@ export default function AIClarifierPage() {
                   />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-lg font-medium" style={{ color: "var(--foreground)" }}>
+                  <h2 className="font-heading text-lg font-medium text-foreground">
                     {t("creator.phase2.clarifier.title")}
-                  </p>
-                  <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-                    {t("creator.phase2.clarifier.subtitle", { count: totalTopics })}
+                  </h2>
+                  <p className="font-sans text-sm text-muted-foreground">
+                    {t("creator.phase2.clarifier.subtitle")}
                   </p>
                 </div>
               </div>
@@ -493,10 +522,31 @@ export default function AIClarifierPage() {
                 min-h ensures chat area always has space to scroll,
                 overflow-y-auto keeps messages scrollable like proper chat UI. */}
             <div
-              className="min-h-[400px] sm:min-h-[500px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
-              style={{ backgroundColor: "var(--popover)" }}
+              className="min-h-[400px] sm:min-h-[500px] overflow-y-auto rounded-2xl border border-border bg-popover p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
             >
                 {[{ id: OPENER_ID, sender: "ai" as const, text: t("creator.phase2.clarifier.opener") }, ...messages].map((msg) => {
+                  // Transcript notes (a Skip) are not a speaker: a quiet centered line.
+                  if (msg.sender === "system") {
+                    return (
+                      <p key={msg.id} className="self-center text-caption text-muted-foreground">
+                        {msg.text}
+                      </p>
+                    );
+                  }
+                  // AI follow-ups are an elevated card; chips + Skip only on the latest active one.
+                  if (msg.sender === "ai" && "kind" in msg && msg.kind === "followup") {
+                    return (
+                      <div key={msg.id} className="flex flex-col items-start">
+                        <FollowUpCard
+                          message={msg}
+                          active={followUpActive && msg.id === lastMessage?.id}
+                          disabled={finalizing}
+                          onChip={setInputValue}
+                          onSkip={handleSkip}
+                        />
+                      </div>
+                    );
+                  }
                   const isUser = msg.sender === "user";
                   // Send-failure notes are pushed as ai-sender messages with an "err-" id
                   // (handleSend rollback). Flag them for destructive styling — no logic change.
@@ -522,16 +572,20 @@ export default function AIClarifierPage() {
                           {t("creator.phase2.clarifier.editingBadge")}
                         </span>
                       )}
-                      {/* Assistant and user bubbles share bg/border/radius by design —
-                          they differ only by alignment and max width. Off-screen speaker
-                          label distinguishes them for assistive tech. The answer being
-                          edited gets a --primary border to tie it to the input below. */}
+                      {/* AI: neutral --card bubble, left. Creator: --popover card with a subtle
+                          shadow, right. No status pill under replies — topic state lives only
+                          in the panel. Off-screen speaker label for assistive tech. The answer
+                          being edited gets a --primary border to tie it to the input below. */}
                       <div
-                        className={`rounded-2xl border px-[18px] py-[14px] text-body leading-relaxed ${isUser ? "max-w-[548px]" : "max-w-[580px]"}`}
+                        className={
+                          isUser
+                            ? "max-w-full rounded-xl border px-5 py-3 font-sans text-body font-medium leading-relaxed shadow-xs sm:max-w-[648px]"
+                            : "max-w-full rounded-2xl border px-4.5 py-3.5 font-sans text-body leading-relaxed sm:max-w-[580px]"
+                        }
                         style={{
                           backgroundColor: isError
                             ? "color-mix(in srgb, var(--destructive) 8%, transparent)"
-                            : isFeedback ? "var(--dr-bg-yellow)" : "var(--card)",
+                            : isFeedback ? "var(--dr-bg-yellow)" : isUser ? "var(--popover)" : "var(--card)",
                           borderColor: isEditing ? "var(--primary)" : isError ? "var(--destructive)" : isFeedback ? "var(--dr-yellow)" : "var(--border)",
                           color: isError ? "var(--destructive)" : "var(--foreground)",
                         }}
@@ -582,10 +636,7 @@ export default function AIClarifierPage() {
                 {/* Streaming message or thinking indicator */}
                 {isTyping && (
                   <div className="flex flex-col items-start">
-                    <div
-                      className="rounded-2xl border px-[18px] py-[14px] max-w-[580px]"
-                      style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
-                    >
+                    <div className="max-w-full rounded-2xl border border-border bg-card px-4.5 py-3.5 font-sans sm:max-w-[580px]">
                       {streamingMessage ? (
                         <>
                           <span className="sr-only">{t("creator.phase2.clarifier.sr.assistantTyping", "Assistant is typing")}</span>
@@ -614,7 +665,7 @@ export default function AIClarifierPage() {
                 so an answer can be revised even after all six are answered (issue 1). Once
                 not editing and summaryReady, the finalize states below render instead. */}
             {editingQuestion !== null || !summaryReady ? (
-              <div className="px-5 pt-3 pb-5 shrink-0 border-t flex flex-col" style={{ borderColor: "var(--border)" }}>
+              <div className="shrink-0 flex flex-col">
                 {editingQuestion !== null && (
                   <div className="mb-2 flex items-center justify-between px-1">
                     <span className="text-badge font-medium" style={{ color: "var(--primary)" }}>
@@ -631,51 +682,53 @@ export default function AIClarifierPage() {
                     </button>
                   </div>
                 )}
-                {editingQuestion === null && activeChips.length > 0 && (
+                {/* Chips on a latest non-follow-up message (the simpler off-topic re-ask); a
+                    follow-up shows its chips inside its own card. */}
+                {editingQuestion === null && activeChips.length > 0 && lastMessage?.kind !== "followup" && (
                   <div role="group" aria-label={t("creator.phase2.clarifier.chipsLabel")} className="mb-2 flex flex-wrap gap-2 px-1">
                     {activeChips.map((chip) => (
-                      <Button key={chip} type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setInputValue(chip)}>
+                      <Button key={chip} type="button" variant="outline" size="sm" className="rounded-full bg-popover" onClick={() => setInputValue(chip)}>
                         {chip}
                       </Button>
                     ))}
                   </div>
                 )}
+                {/* Input body: bordered --popover field + 44px primary send button. */}
                 <div
-                  className="flex items-end gap-2 rounded-xl border p-1.5 focus-within:ring-1 focus-within:ring-[var(--ring)] transition-shadow"
-                  style={{ backgroundColor: "var(--popover)", borderColor: editingQuestion !== null ? "var(--primary)" : "var(--border)" }}
+                  className="flex items-end gap-2 rounded-xl border bg-popover py-2.5 pl-4 pr-2.5 focus-within:ring-1 focus-within:ring-ring transition-shadow"
+                  style={{ borderColor: editingQuestion !== null ? "var(--primary)" : "var(--border)" }}
                 >
-                  <textarea
+                  <Textarea
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyPress}
                     placeholder={editingQuestion !== null ? t("creator.phase2.clarifier.placeholderRevise") : t("creator.phase2.clarifier.placeholderType")}
                     rows={1}
                     disabled={isTyping}
-                    className="flex-1 resize-none bg-transparent outline-none border-none px-3 py-2.5 text-input min-h-[40px] max-h-[120px] placeholder:text-muted-foreground"
-                    style={{ color: "var(--foreground)" }}
+                    className="min-h-11 max-h-[120px] flex-1 resize-none rounded-none border-0 bg-transparent px-0 py-3 font-sans text-foreground shadow-none focus-visible:ring-0 dark:bg-transparent"
                   />
-                  <button
+                  <Button
                     onClick={handleSend}
                     disabled={!inputValue.trim() || isTyping}
                     aria-label={editingQuestion !== null ? t("creator.phase2.clarifier.aria.saveEdit", "Save edit") : t("creator.phase2.clarifier.aria.sendAnswer", "Send answer")}
-                    className="flex items-center justify-center rounded-lg shrink-0 transition-opacity disabled:opacity-50"
-                    style={{ width: 44, height: 44, backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
+                    size="icon"
+                    className="size-11 rounded-lg"
                   >
                     {isTyping ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <Loader2 className="size-5 animate-spin" />
                     ) : editingQuestion !== null ? (
-                      <Check className="h-5 w-5" />
+                      <Check className="size-5" />
                     ) : (
-                      <Send className="h-5 w-5" />
+                      <Send className="size-5" />
                     )}
-                  </button>
+                  </Button>
                 </div>
                 {editingQuestion !== null && editFeedback && (
                   <p role="status" className="mt-2 rounded-lg border px-3 py-2 text-caption" style={{ backgroundColor: "var(--dr-bg-yellow)", borderColor: "var(--dr-yellow)", color: "var(--foreground)" }}>
                     {editFeedback}
                   </p>
                 )}
-                <p className="mt-2 text-center text-caption" style={{ color: "var(--muted-foreground)" }}>
+                <p className="mt-2 text-center font-sans text-micro text-muted-foreground">
                   {editingQuestion !== null
                     ? t("creator.phase2.clarifier.pressEnterSave")
                     : t("creator.phase2.clarifier.pressEnterSend")}
@@ -795,12 +848,12 @@ export default function AIClarifierPage() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-3xl font-semibold tabular-nums" style={{ color: band.color }}>
+                  <span className="font-mono text-3xl font-semibold tabular-nums" style={{ color: band.color }}>
                     {ringPct}%
                   </span>
                 </div>
               </div>
-              <span className="text-badge font-medium uppercase tracking-wide" style={{ color: band.color }}>
+              <span className="font-sans text-badge font-medium uppercase tracking-wide" style={{ color: band.color }}>
                 {band.label}
               </span>
 
@@ -837,16 +890,20 @@ export default function AIClarifierPage() {
               ) : null}
             </div>
 
-            {/* Divider — drawn as a 1px rule (the design exports it as an image) */}
-            <div className="h-px w-full" style={{ backgroundColor: "var(--border)" }} />
+            <Separator />
 
-            {/* ── Progress line + step list ── */}
-            <div className="flex flex-col gap-3">
-              <p className="text-label font-medium" style={{ color: "var(--foreground)" }}>
-                {summaryReady
-                  ? t("creator.phase2.clarifier.allQuestionsAnsweredCount", { count: totalTopics })
-                  : t("creator.phase2.clarifier.progressTitle", { done: answeredCount, total: totalTopics })}
-              </p>
+            {/* ── "Your idea so far": X / 6 clear + topic list ── */}
+            <div className="flex flex-col gap-4 rounded-2xl border border-border bg-popover p-4 shadow-xs">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="font-sans text-badge font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("creator.phase2.clarifier.ideaSoFar")}
+                </p>
+                <p className="font-mono text-badge font-medium text-foreground">
+                  {thinCount > 0
+                    ? t("creator.phase2.clarifier.clearCountWithThin", { clear: clearCount, total: totalTopics, thin: thinCount })
+                    : t("creator.phase2.clarifier.clearCount", { clear: clearCount, total: totalTopics })}
+                </p>
+              </div>
               <ClarifierStepList
                 answers={answers}
                 currentTopic={currentTopic}

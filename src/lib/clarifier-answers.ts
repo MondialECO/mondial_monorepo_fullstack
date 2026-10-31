@@ -92,6 +92,18 @@ export function editableText(answer: ClarifierAnswer): string {
   return parts.length > 0 ? parts.join("\n") : answer.rawAnswer;
 }
 
+/**
+ * An AI reply is stored as one text: the acknowledgement and the question joined with a blank line
+ * (backend `ClarifierScript.Join`). The question is what follows the LAST blank line — the same rule
+ * as backend `LastQuestionText`. A single paragraph is the question alone.
+ */
+export function splitAiReply(text: string): { ack: string | null; question: string } {
+  const split = text.lastIndexOf("\n\n");
+  if (split < 0) return { ack: null, question: text.trim() };
+  const ack = text.slice(0, split).trim();
+  return { ack: ack || null, question: text.slice(split + 2).trim() };
+}
+
 /** True when any answer changed after the last summary (or the summary predates timestamps). */
 export function summaryIsStale(answers: ClarifierAnswer[], summarizedAt?: string | null): boolean {
   if (!summarizedAt) return true;

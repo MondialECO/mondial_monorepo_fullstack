@@ -657,21 +657,27 @@ namespace WebApp.Services.Implementations
             }
 
             if (r.Tagline != null) p.Tagline = r.Tagline;
-            if (r.Concept != null) p.Concept = r.Concept;
-            if (r.TargetUser != null) p.TargetUser = r.TargetUser;
-            if (r.Problem != null) p.Problem = r.Problem;
-            if (r.Solution != null) p.Solution = r.Solution;
-            if (r.MarketGap != null) p.MarketGap = r.MarketGap;
-            if (r.CreatorEdge != null) p.CreatorEdge = r.CreatorEdge;
-            if (r.ExistingAlternatives != null) p.ExistingAlternatives = r.ExistingAlternatives;
-            if (r.WhyNow != null) p.WhyNow = r.WhyNow;
-            if (r.RiskiestAssumption != null) p.RiskiestAssumption = r.RiskiestAssumption;
+            // Clarifier-owned fields edited by hand are marked user_edited so a summary re-run keeps them.
+            void UserEdit(string field, Action apply)
+            {
+                apply();
+                CreatorIdeaCoreMapper.MarkUserEdited(p, field);
+            }
+            if (r.Concept != null) UserEdit(ProjectFieldProvenance.Concept, () => p.Concept = r.Concept);
+            if (r.TargetUser != null) UserEdit(ProjectFieldProvenance.TargetUser, () => p.TargetUser = r.TargetUser);
+            if (r.Problem != null) UserEdit(ProjectFieldProvenance.Problem, () => p.Problem = r.Problem);
+            if (r.Solution != null) UserEdit(ProjectFieldProvenance.Solution, () => p.Solution = r.Solution);
+            if (r.MarketGap != null) UserEdit(ProjectFieldProvenance.MarketGap, () => p.MarketGap = r.MarketGap);
+            if (r.CreatorEdge != null) UserEdit(ProjectFieldProvenance.CreatorEdge, () => p.CreatorEdge = r.CreatorEdge);
+            if (r.ExistingAlternatives != null) UserEdit(ProjectFieldProvenance.ExistingAlternatives, () => p.ExistingAlternatives = r.ExistingAlternatives);
+            if (r.WhyNow != null) UserEdit(ProjectFieldProvenance.WhyNow, () => p.WhyNow = r.WhyNow);
+            if (r.RiskiestAssumption != null) UserEdit(ProjectFieldProvenance.RiskiestAssumption, () => p.RiskiestAssumption = r.RiskiestAssumption);
             if (r.TargetMarket != null) p.TargetMarket = r.TargetMarket;
             if (r.Geography != null) p.Geography = r.Geography;
             if (r.Category != null) p.Category = r.Category;
             if (r.Sector != null) p.Sector = r.Sector;
-            if (r.Tags != null) p.Tags = r.Tags;
-            if (r.ClarityScore.HasValue) p.ClarityScore = r.ClarityScore.Value;
+            if (r.Tags != null) UserEdit(ProjectFieldProvenance.Tags, () => p.Tags = r.Tags);
+            if (r.ClarityScore.HasValue) UserEdit(ProjectFieldProvenance.ClarityScore, () => p.ClarityScore = r.ClarityScore.Value);
 
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Set(x => x.Project, p));
             return j;
@@ -772,62 +778,39 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
-        public async Task<CreatorJourney> AppendChatMessageAsync(string userId, string sender, string text, string ideaId = null,
-            string? kind = null, int? questionIndex = null)
-        {
-            if (sender != "ai" && sender != "user")
-                throw new CreatorJourneyException(400, "sender must be \"ai\" or \"user\".");
-
-            var j = await GetOrCreateAsync(userId);
-            var idea = await ResolveIdeaAsync(j, ideaId);
-            OverlayIdea(j, idea);
-            var message = new CreatorChatMessage
-            {
-                Id = ObjectId.GenerateNewId().ToString(),
-                Sender = sender,
-                Text = text ?? string.Empty,
-                Timestamp = DateTime.UtcNow,
-                Kind = kind,
-                QuestionIndex = questionIndex,
-            };
-
-            // Idea = source of truth: atomic $push (two concurrent appends both persist).
-            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Push(x => x.Phase2Data.ChatMessages, message));
-
-            // Reflect the persisted append on the returned object (unchanged contract).
-            var p2 = j.Phase2Data ??= new CreatorPhase2Data();
-            p2.ChatMessages ??= new List<CreatorChatMessage>();
-            p2.ChatMessages.Add(message);
-            return j;
-        }
-
-        public async Task<CreatorJourney> SaveClarifierTurnAsync(string userId, List<ClarifierAnswer> answers,
-            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null, List<string>? chips = null)
+        public async Task<CreatorJourney> SaveClarifierTurnAsync(string userId, ClarifierTurnWrite turn, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
             var idea = await ResolveIdeaAsync(j, ideaId);
             OverlayIdea(j, idea);
-            var message = new CreatorChatMessage
+            var now = DateTime.UtcNow;
+            CreatorChatMessage ToMessage(ClarifierTurnMessage m) => new()
             {
                 Id = ObjectId.GenerateNewId().ToString(),
-                Sender = "ai",
-                Text = aiText ?? string.Empty,
-                Timestamp = DateTime.UtcNow,
-                Kind = aiKind,
-                QuestionIndex = aiQuestionIndex,
-                Chips = chips,
+                Sender = m.Sender,
+                Text = m.Text ?? string.Empty,
+                Timestamp = now,
+                Kind = m.Kind,
+                QuestionIndex = m.QuestionIndex,
+                Chips = m.Chips,
             };
+            var messages = new[] { ToMessage(turn.Incoming), ToMessage(turn.Reply) };
 
-            // One UpdateOne: targeted $set of the topic records (status, extracted, follow-up flags) plus
-            // $push of the reply — never a document replace. WriteIdeaAsync's version check makes it a compare-and-swap.
+            // One UpdateOne: targeted $set of the topic records (status, extracted, follow-up flags) and the
+            // off-topic counters, plus $push of both transcript messages — never a document replace.
+            // WriteIdeaAsync's version check makes it a compare-and-swap: a conflict stores nothing.
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Phase2Data.ClarifierAnswers, answers)
-                .Push(x => x.Phase2Data.ChatMessages, message));
+                .Set(x => x.Phase2Data.ClarifierAnswers, turn.Answers)
+                .Set(x => x.Phase2Data.ClarifierOffTopicStreak, turn.OffTopicStreak)
+                .Set(x => x.Phase2Data.ClarifierOffTopicCount, turn.OffTopicCount)
+                .PushEach(x => x.Phase2Data.ChatMessages, messages));
 
             var p2 = j.Phase2Data ??= new CreatorPhase2Data();
-            p2.ClarifierAnswers = answers;
+            p2.ClarifierAnswers = turn.Answers;
+            p2.ClarifierOffTopicStreak = turn.OffTopicStreak;
+            p2.ClarifierOffTopicCount = turn.OffTopicCount;
             p2.ChatMessages ??= new List<CreatorChatMessage>();
-            p2.ChatMessages.Add(message);
+            p2.ChatMessages.AddRange(messages);
             return j;
         }
 
@@ -863,9 +846,28 @@ namespace WebApp.Services.Implementations
             if (!string.IsNullOrEmpty(clarifierSessionId))
                 await _clarifiers.SetBusinessIdeaIdAsync(clarifierSessionId, idea.Id);
 
-            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Project, p)
-                .Set(x => x.Phase2Data, j.Phase2Data));
+            // One UpdateOne with targeted $set: only the clarifier-owned fields, their provenance and
+            // the summary pointers — name, branding and other project data are never rewritten here.
+            var update = Builders<CreatorIdea>.Update
+                .Set(x => x.Phase2Data.ClarifierSessionId, p2.ClarifierSessionId)
+                .Set(x => x.Phase2Data.ClarifierSummarizedAt, p2.ClarifierSummarizedAt);
+            update = idea.Project == null
+                ? update.Set(x => x.Project, p) // legacy document without a Project sub-document
+                : update
+                    .Set(x => x.Project.Problem, p.Problem)
+                    .Set(x => x.Project.TargetUser, p.TargetUser)
+                    .Set(x => x.Project.Solution, p.Solution)
+                    .Set(x => x.Project.ExistingAlternatives, p.ExistingAlternatives)
+                    .Set(x => x.Project.CreatorEdge, p.CreatorEdge)
+                    .Set(x => x.Project.WhyNow, p.WhyNow)
+                    .Set(x => x.Project.RiskiestAssumption, p.RiskiestAssumption)
+                    .Set(x => x.Project.MarketGap, p.MarketGap)
+                    .Set(x => x.Project.Concept, p.Concept)
+                    .Set(x => x.Project.Tags, p.Tags)
+                    .Set(x => x.Project.ClarityScore, p.ClarityScore)
+                    .Set(x => x.Project.SourceMethod, p.SourceMethod)
+                    .Set(x => x.Project.FieldProvenance, p.FieldProvenance);
+            await WriteIdeaAsync(idea, update);
             return j;
         }
 

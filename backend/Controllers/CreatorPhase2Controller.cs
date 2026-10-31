@@ -76,15 +76,18 @@ namespace WebApp.Controllers
         // POST /api/creator/journey/phase2/chat-message
         // Rate-limited via the shared "ai" policy. The AI judges the answer to the current
         // question (free; C-2 still carries the only credit). Revise keeps the question,
-        // accept moves on. The user message is persisted before the AI call so it survives
-        // an AI failure; the answer records + AI reply land in one versioned write.
+        // accept moves on. The user message, answer records and AI reply land in one versioned
+        // write after the AI call (an AI failure is fail-open, so the turn is still written).
+        // { skip: true } is "Skip — keep my answer" on a follow-up: no AI call, no credit.
         [HttpPost("chat-message")]
         [EnableRateLimiting("ai")]
         public async Task<IActionResult> ChatMessage([FromBody] ChatMessageRequest request, [FromQuery] string ideaId = null, CancellationToken cancellationToken = default)
         {
             try
             {
-                var result = await _chatTurns.RunAsync(GetUserId(), request?.Message, request?.Language, ideaId, cancellationToken);
+                var result = request?.Skip == true
+                    ? await _chatTurns.SkipFollowUpAsync(GetUserId(), request.Language, ideaId)
+                    : await _chatTurns.RunAsync(GetUserId(), request?.Message, request?.Language, ideaId, cancellationToken);
                 return Ok(ApiResponse.Ok("Message received", result));
             }
             catch (CreatorJourneyException ex) { return StatusCode(ex.StatusCode, ApiResponse.Error(ex.Message)); }
@@ -545,7 +548,13 @@ namespace WebApp.Controllers
 
         // ---- Request DTOs ----
 
-        public class ChatMessageRequest { public string Message { get; set; } public string? Language { get; set; } }
+        public class ChatMessageRequest
+        {
+            public string Message { get; set; }
+            public string? Language { get; set; }
+            /// <summary>"Skip — keep my answer" on the current follow-up (Message is ignored; no AI call).</summary>
+            public bool Skip { get; set; }
+        }
         public class EditClarifierAnswerRequest
         {
             /// <summary>"answer" | "fields".</summary>

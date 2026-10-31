@@ -86,6 +86,20 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
+        public void GetAnswers_NeverCountsASystemNoteAsAnAnswer()
+        {
+            var p2 = new CreatorPhase2Data
+            {
+                ChatMessages = new List<CreatorChatMessage>
+                {
+                    Msg("user", "a1"), new() { Id = "s1", Sender = "system", Kind = "skip", Text = ClarifierScript.SkipNoteEn }, Msg("user", "a2"),
+                },
+            };
+
+            ClarifierScript.GetAnswers(p2).Select(a => (a.QuestionIndex, a.RawAnswer)).Should().Equal((1, "a1"), (2, "a2"));
+        }
+
+        [Fact]
         public void GetAnswers_IgnoresNewFlowUserMessagesWithoutRecords()
         {
             var p2 = new CreatorPhase2Data
@@ -251,11 +265,229 @@ namespace WebApp.Tests.Unit
         public void NextBaseFromAi_IgnoredWhenItIsForAnotherTopic()
         {
             var answers = new List<ClarifierAnswer>();
-            var result = Ai(new() { [1] = J("clear") }, nextBaseTopic: 5, nextBase: "wrong topic");
+            var result = Ai(new() { [1] = J("clear", new() { ["problem"] = "A real problem." }) }, nextBaseTopic: 5, nextBase: "wrong topic");
 
             var outcome = ClarifierScript.ApplyTopicsTurn(answers, 1, "x", result, "en", Now);
 
             outcome.AiText.Should().Be(ClarifierScript.BaseQuestion(2, "en"));
+        }
+
+        // ---- Skip — keep my answer ----
+
+        private static CreatorChatMessage AiMsg(string kind, int? topic) => new() { Sender = "ai", Kind = kind, QuestionIndex = topic, Text = "q" };
+
+        [Fact]
+        public void Skip_MakesTheFollowedUpTopicWeak_KeepsItsAnswer_AndAsksTheNextBaseQuestion()
+        {
+            var who = Rec(2, ClarifierAnswerStatus.Pending, followUpUsed: true, raw: "students");
+            var answers = new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted), who };
+
+            ClarifierScript.SkippableTopic(answers, new[] { AiMsg("followup", 2) }).Should().Be(2);
+            var outcome = ClarifierScript.ApplySkip(answers, 2, "fr", Now);
+
+            State(answers, 2).Should().Be(ClarifierTopicState.Weak);
+            who.RawAnswer.Should().Be("students");
+            who.Attempts.Should().Be(0, "a Skip is not an AI call");
+            outcome.Should().BeEquivalentTo(new
+            {
+                AiText = ClarifierScript.BaseQuestion(4, "fr"), AiKind = "question", AiTopic = (int?)4, Chips = (List<string>?)null,
+            });
+        }
+
+        [Fact]
+        public void Skip_OfTheLastOpenTopic_Closes()
+        {
+            var answers = Enumerable.Range(1, 5).Select(i => Rec(i, ClarifierAnswerStatus.Accepted))
+                .Append(Rec(6, ClarifierAnswerStatus.Pending, followUpUsed: true, raw: "x")).ToList();
+
+            var outcome = ClarifierScript.ApplySkip(answers, 6, "en", Now);
+
+            ClarifierScript.AllAnswered(answers).Should().BeTrue();
+            outcome.Should().BeEquivalentTo(new { AiText = ClarifierScript.ClosingEn, AiKind = "ack", AiTopic = (int?)null });
+        }
+
+        [Fact]
+        public void Skip_IsOnlyPossible_WhileTheLatestMessageIsTheFollowUpOfTheAskedTopic()
+        {
+            var answers = new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted), Rec(2, ClarifierAnswerStatus.Pending, followUpUsed: true) };
+
+            ClarifierScript.SkippableTopic(answers, new[] { AiMsg("question", 2) }).Should().BeNull("a base question is not a follow-up");
+            ClarifierScript.SkippableTopic(answers, new[] { AiMsg("nudge", 2) }).Should().BeNull();
+            ClarifierScript.SkippableTopic(answers, new[] { AiMsg("followup", 2), new CreatorChatMessage { Sender = "user", QuestionIndex = 2 } })
+                .Should().BeNull("the follow-up was already answered");
+            ClarifierScript.SkippableTopic(answers, new[] { AiMsg("followup", 4) }).Should().BeNull("not the asked topic");
+            ClarifierScript.SkippableTopic(answers, null).Should().BeNull();
+            ClarifierScript.SkippableTopic(new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted), Rec(2, ClarifierAnswerStatus.Pending) },
+                new[] { AiMsg("followup", 2) }).Should().BeNull("its follow-up was never used");
+        }
+
+        // ---- off-topic / unreadable ----
+
+        private static ClarifierTopicsResult OffTopic(string relevance = ClarifierRelevance.OffTopic, string? nudge = "Ha, hello! Back to your idea.",
+            string? simple = null, string lang = "en", params string[] chips) =>
+            new() { AiUsed = true, Relevance = relevance, Nudge = nudge, SimpleQuestion = simple, SimpleChips = chips.ToList(), Language = lang };
+
+        [Fact]
+        public void OffTopic_ChangesNoTopic_KeepsTheFollowUp_StoresNothing_AndReasksTheSameQuestion()
+        {
+            var unclear = Rec(2, ClarifierAnswerStatus.Pending, raw: "students");
+            unclear.Attempts = 1;
+            var answers = new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted), unclear };
+
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 2, "hi", OffTopic(), "en", Now,
+                offTopicStreak: 0, sameQuestion: "Which students exactly?");
+
+            answers.Should().HaveCount(2);
+            unclear.Should().BeEquivalentTo(new { Status = ClarifierAnswerStatus.Pending, Attempts = 1, RawAnswer = "students", FollowUpUsed = false });
+            outcome.Should().BeEquivalentTo(new
+            {
+                AiText = "Ha, hello! Back to your idea.\n\nWhich students exactly?", AiKind = "nudge", AiTopic = (int?)2, Chips = (List<string>?)null,
+                OffTopicStreak = 1,
+            });
+        }
+
+        [Fact]
+        public void Unreadable_OnTheOpener_CreatesNoRecord_AndReasksTheOpener()
+        {
+            var answers = new List<ClarifierAnswer>();
+
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 1, "asdf", OffTopic(ClarifierRelevance.Unreadable, nudge: null, lang: "fr"), "fr", Now);
+
+            answers.Should().BeEmpty();
+            outcome.AiText.Should().Be($"{ClarifierScript.NudgeFr}\n\n{ClarifierScript.OpenerFr}");
+        }
+
+        [Fact]
+        public void SecondNonRelevantTurnInARow_ReasksInSimplerWords_WithIdeaChipsForWho()
+        {
+            var answers = new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted) };
+
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 2, "lol", OffTopic(simple: "Who has this problem?", chips: new[] { "dorm students", "commuters" }),
+                "en", Now, offTopicStreak: 1, sameQuestion: "Who has this problem the most?");
+
+            outcome.OffTopicStreak.Should().Be(2);
+            outcome.AiText.Should().EndWith("Who has this problem?");
+            outcome.Chips.Should().Equal("dorm students", "commuters");
+            answers.Should().HaveCount(1, "still nothing stored");
+        }
+
+        [Fact]
+        public void SimplerReask_FallsBackToFixedSimpleQuestion_AndNoChipsForTopicsWithoutChips()
+        {
+            var answers = Enumerable.Range(1, 2).Select(i => Rec(i, ClarifierAnswerStatus.Accepted))
+                .Append(Rec(4, ClarifierAnswerStatus.Accepted)).ToList();
+
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 3, "???", OffTopic(chips: new[] { "should not show" }), "en", Now, offTopicStreak: 3);
+
+            outcome.AiText.Should().EndWith(ClarifierScript.SimpleBaseQuestion(3, "en"));
+            outcome.Chips.Should().BeNull("alternatives does not allow chips");
+        }
+
+        [Fact]
+        public void OnTopicAnswer_ResetsTheStreak()
+        {
+            var answers = new List<ClarifierAnswer>();
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 1, "real answer",
+                Ai(new() { [1] = J("clear", new() { ["problem"] = "Real problem." }) }), "en", Now, offTopicStreak: 2);
+
+            outcome.OffTopicStreak.Should().Be(0);
+            State(answers, 1).Should().Be(ClarifierTopicState.Clear);
+        }
+
+        [Fact]
+        public void AiFailure_KeepsTheFailOpenRule_EvenDuringAStreak()
+        {
+            var answers = new List<ClarifierAnswer>();
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 1, "hi", ClarifierTopicsResult.FailOpen(), "en", Now, offTopicStreak: 1);
+
+            State(answers, 1).Should().Be(ClarifierTopicState.Weak);
+            outcome.OffTopicStreak.Should().Be(0);
+        }
+
+        [Fact]
+        public void SimpleBaseQuestions_ExistForEveryTopicInEnAndFr() =>
+            ClarifierScript.Topics.Should().OnlyContain(t =>
+                !string.IsNullOrWhiteSpace(ClarifierScript.SimpleBaseQuestion(t.Index, "en"))
+                && !string.IsNullOrWhiteSpace(ClarifierScript.SimpleBaseQuestion(t.Index, "fr")));
+
+        [Fact]
+        public void LastQuestionText_TakesTheQuestionAfterTheAck()
+        {
+            var messages = new List<CreatorChatMessage>
+            {
+                new() { Sender = "ai", QuestionIndex = 2, Text = "Nice.\n\nWho has this problem the most?" },
+                new() { Sender = "user", QuestionIndex = 2, Text = "students" },
+                new() { Sender = "ai", QuestionIndex = 2, Text = "Got it.\n\nWhich students exactly?" },
+            };
+
+            ClarifierScript.LastQuestionText(messages, 2).Should().Be("Which students exactly?");
+            ClarifierScript.LastQuestionText(messages, 3).Should().BeNull();
+        }
+
+        // ---- clear needs content ----
+
+        [Fact]
+        public void ClearWithoutExtractedContent_IsTreatedAsUnclear_AndUsesTheFollowUp()
+        {
+            var answers = new List<ClarifierAnswer>();
+            var result = Ai(new() { [1] = J("clear", followUp: "What happens to them?") });
+
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 1, "something", result, "en", Now);
+
+            State(answers, 1).Should().Be(ClarifierTopicState.Unclear);
+            outcome.AiKind.Should().Be("followup");
+        }
+
+        [Fact]
+        public void ClearWithOnlyWhitespaceContent_IsUnclear()
+        {
+            var answers = Enumerable.Range(1, 5).Select(i => Rec(i, ClarifierAnswerStatus.Accepted)).ToList();
+            var result = Ai(new() { [6] = J("clear", new() { ["whyNow"] = "  ", ["riskiestAssumption"] = "" }) });
+
+            ClarifierScript.ApplyTopicsTurn(answers, 6, "x", result, "en", Now);
+
+            State(answers, 6).Should().Be(ClarifierTopicState.Unclear);
+        }
+
+        [Fact]
+        public void WhyNowRisk_ClearNeedsBothParts()
+        {
+            ClarifierScript.HasRequiredContent(6, new Dictionary<string, string> { ["whyNow"] = "Prices rose." }).Should().BeFalse();
+            ClarifierScript.HasRequiredContent(6, new Dictionary<string, string> { ["whyNow"] = "Prices rose.", ["riskiestAssumption"] = "Trust." }).Should().BeTrue();
+
+            var answers = Enumerable.Range(1, 5).Select(i => Rec(i, ClarifierAnswerStatus.Accepted)).ToList();
+            var outcome = ClarifierScript.ApplyTopicsTurn(answers, 6, "Prices rose.",
+                Ai(new() { [6] = J("clear", new() { ["whyNow"] = "Prices rose." }) }), "en", Now);
+
+            State(answers, 6).Should().Be(ClarifierTopicState.Unclear, "the risk part is missing");
+            outcome.AiTopic.Should().Be(6);
+        }
+
+        [Fact]
+        public void Edge_ClearNeedsOnlyOneOfItsFields()
+        {
+            ClarifierScript.HasRequiredContent(5, new Dictionary<string, string> { ["founderAdvantage"] = "Ex-pattern maker." }).Should().BeTrue();
+            ClarifierScript.HasRequiredContent(5, new Dictionary<string, string>()).Should().BeFalse();
+        }
+
+        [Fact]
+        public void NonAskedTopic_ClearWithoutContent_IsNotUpgradedToClear()
+        {
+            var answers = new List<ClarifierAnswer> { Rec(1, ClarifierAnswerStatus.Accepted), Rec(2, ClarifierAnswerStatus.AcceptedWeak) };
+            var result = Ai(new() { [2] = J("clear"), [4] = J("clear", new() { ["solution"] = "An app for X." }) });
+
+            ClarifierScript.ApplyTopicsTurn(answers, 4, "an app for X", result, "en", Now);
+
+            State(answers, 2).Should().Be(ClarifierTopicState.Weak, "a contentless clear must not upgrade a weak topic");
+        }
+
+        [Fact]
+        public void Edit_ClearWithoutContent_IsRejected()
+        {
+            var answer = Rec(2, ClarifierAnswerStatus.AcceptedWeak, raw: "everyone");
+
+            ClarifierScript.ApplyAnswerEdit(answer, "people", Ai(new() { [2] = J("clear") }), Now).Should().BeFalse();
+            answer.Status.Should().Be(ClarifierAnswerStatus.AcceptedWeak);
         }
 
         // ---- edits ----

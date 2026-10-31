@@ -44,7 +44,7 @@ The **Brand Identity Studio** (`/dashboard/creator/phase-2/brand-studio`) operat
   - Light & Dark theme parity: 100% token-based scrollbars and container borders.
 - **Completed Typography Token Migration (Stages 1, 2, and 3 Complete)**:
   - All arbitrary bracket sizes (`text-[8px]`, `text-[9px]`, `text-[10px]`, `text-[11px]`, `text-[13px]`, `text-[15px]`, `text-[28px]`, `text-[32px]`) are eliminated across the entire Creator workflow (Phase 1, Phase 2 Brand Studio, Phase 3 Intel, Phase 4 Pricing/Offers, Phase 5/6 Crossroads/Sales, Project Studio, Documents, Asset Library, and Print Views).
-  - **Single Source of Truth**: `src/app/globals.css` (lines 155–167) is the sole authority for token values:
+  - **Single Source of Truth**: `src/app/globals.css` (the `--font-size-*` block in `:root`) is the sole authority for token values:
     - `text-page-heading`: 30px
     - `text-section-title`: 16px
     - `text-card-title`: 16px
@@ -56,6 +56,7 @@ The **Brand Identity Studio** (`/dashboard/creator/phase-2/brand-studio`) operat
     - `text-table-header`: 14px
     - `text-footnote`: 14px
     - `text-badge`: 12px
+    - `text-micro`: 11px — Figma body/XXS; only for keyboard hints and panel captions (added 2026-10-31 for the clarifier)
     - `text-stat-lg`: 30px
     - `text-stat-xl`: 36px
   - **Mono-on-Prose Rule (Active Habit)**: `font-mono` is strictly prohibited on descriptive prose paragraphs, milestone lists, and section labels. It is an **active habit on every new screen** to enforce `font-sans` on prose and reserve `font-mono` exclusively for numeric metrics, currency figures, and raw code tokens.

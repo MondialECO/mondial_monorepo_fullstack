@@ -120,6 +120,44 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
+        public void Parse_OffTopic_WithNoTopics_IsAValidResult()
+        {
+            var result = ClarifierTurnService.Parse("""
+                {"topics":{},"relevance":"Off_Topic","nudge":"No worries!","simpleQuestion":"Who has it?",
+                 "simpleChips":["dorm students","night-shift nurses"],"language":"en"}
+                """);
+
+            result.Should().NotBeNull();
+            result!.AiUsed.Should().BeTrue();
+            result.Relevance.Should().Be(ClarifierRelevance.OffTopic);
+            result.Nudge.Should().Be("No worries!");
+            result.SimpleQuestion.Should().Be("Who has it?");
+            result.SimpleChips.Should().Equal("dorm students", "night-shift nurses");
+        }
+
+        [Theory]
+        [InlineData("""{"topics":{"problem":{"status":"clear"}},"relevance":"unreadable"}""", ClarifierRelevance.Unreadable)]
+        [InlineData("""{"topics":{"problem":{"status":"clear"}},"relevance":"maybe"}""", ClarifierRelevance.OnTopic)]
+        [InlineData("""{"topics":{"problem":{"status":"clear"}}}""", ClarifierRelevance.OnTopic)]
+        public void Parse_Relevance_DefaultsToOnTopic(string json, string expected) =>
+            ClarifierTurnService.Parse(json)!.Relevance.Should().Be(expected);
+
+        [Fact]
+        public void Parse_OnTopic_WithNoTopics_StillFailsOpen() =>
+            ClarifierTurnService.Parse("""{"topics":{},"relevance":"on_topic"}""").Should().BeNull();
+
+        [Fact]
+        public void SystemPrompt_HasTheRelevanceRuleAndFields()
+        {
+            ClarifierTurnService.SystemPrompt.Should().Contain(ClarifierTurnService.RelevanceRule);
+            ClarifierTurnService.SystemPrompt.Should().Contain("\"relevance\":\"on_topic|off_topic|unreadable\"");
+        }
+
+        [Fact]
+        public void SystemPrompt_RequiresExtractedContentForClear() =>
+            ClarifierTurnService.SystemPrompt.Should().Contain(ClarifierTurnService.ClearNeedsContentRule);
+
+        [Fact]
         public void SystemPrompt_ForbidsFollowUpsThatIntroduceUnmentionedOptions()
         {
             ClarifierTurnService.SystemPrompt.Should().Contain(ClarifierTurnService.FollowUpNoNewFactsRule);
@@ -152,6 +190,24 @@ namespace WebApp.Tests.Unit
             user.Should().Contain("AI: Who has it?");
             user.Should().Contain("asked about \"solution\"");
             _lastRequest.Model.Should().Be("test-model");
+        }
+
+        [Fact]
+        public async Task UserPrompt_ShowsASkipNoteAsANote_NeverAsFounderText()
+        {
+            Returns("""{"topics":{"problem":{"status":"clear"}}}""");
+
+            await Create().EvaluateAsync(Input(asked: 4, transcript: new[]
+            {
+                new ClarifierTranscriptLine("ai", "Which students exactly?"),
+                new ClarifierTranscriptLine("system", ClarifierScript.SkipNoteEn),
+                new ClarifierTranscriptLine("ai", "How would it work?"),
+            }));
+
+            var user = _lastRequest!.Messages.Last().Content;
+            user.Should().Contain($"(Note: {ClarifierScript.SkipNoteEn})");
+            user.Should().NotContain($"Founder: <message>{ClarifierScript.SkipNoteEn}");
+            user.Should().NotContain($"AI: {ClarifierScript.SkipNoteEn}");
         }
 
         [Fact]

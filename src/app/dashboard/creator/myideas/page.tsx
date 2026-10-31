@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/providers/LanguageProvider";
 import type { CreatorForecastVersion, CreatorJourneyState } from "@/types/creator/creator-journey";
@@ -330,9 +330,12 @@ export default function MyIdeasPage() {
     </Card>
   );
 
+  // Page body by state; the new-idea confirmation renders once, below, in every state.
+  let pageBody: ReactNode;
+
   // 1. EMPTY STATE
   if (!hasIdea) {
-    return (
+    pageBody = (
       <div className="mx-auto w-full max-w-[1140px] py-6">
         <div className="mb-8 space-y-2">
           <div className="text-xs font-bold text-primary uppercase tracking-wider">{t('creator.myideas.phase2ProjectIdentity', 'Phase 2 — Project Identity')}</div>
@@ -369,8 +372,7 @@ export default function MyIdeasPage() {
         </div>
       </div>
     );
-  }
-  if (!isPhase2Complete) {
+  } else if (!isPhase2Complete) {
     const currentStepLabel = (() => {
       const step = journeyState.phase2.currentStep;
       if (step === 6) return "Refining Concept with AI";
@@ -385,7 +387,7 @@ export default function MyIdeasPage() {
 
     const progressPercent = Math.round((journeyState.phase2.currentStep / 12) * 100);
 
-    return (
+    pageBody = (
       <div className="mx-auto w-full max-w-[1140px] py-6">
         <div className="mb-8 space-y-2">
           <div className="text-xs font-bold text-primary uppercase tracking-wider">{t('creator.myideas.phase2ProjectIdentity', 'Phase 2 — Project Identity')}</div>
@@ -432,241 +434,217 @@ export default function MyIdeasPage() {
           </div>
         </Card>
 
-        {/* New-idea confirmation — nothing is deleted; the draft stays switchable. */}
-        {showConfirmStartOver && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-            <Card className="max-w-md w-full border border-border bg-card p-6 shadow-xl space-y-4 rounded-2xl">
-              <div className="flex items-center gap-3 text-primary">
-                <Lightbulb className="w-6 h-6" />
-                <h3 className="font-extrabold text-lg">{t('creator.myideas.startNewIdeaTitle', 'Start a new idea?')}</h3>
+      </div>
+    );
+  } else {
+    // 3. COMPLETED STATE
+    const brandingMethod = project.branding.logoType === "ai"
+      ? "AI Logo Tool"
+      : project.branding.logoType === "designer"
+      ? "Verified M50 Designer"
+      : "Skipped / Not Started";
+
+    pageBody = (
+      <div className="mx-auto w-full max-w-[1140px] py-4">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 sm:mb-8">
+          <div className="space-y-1">
+            <div className="text-xs font-bold text-primary uppercase tracking-wider">{t('creator.myideas.phase2ProjectIdentity', 'Phase 2 — Project Identity')}</div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{t('creator.myideas.myIdea', 'My Idea')}</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              {project.name}{project.category ? ` · ${project.category}` : ""} {'· '}{t('creator.myideas.ideaClarity', 'Idea Clarity')} {project.clarityScore}/100
+            </p>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              onClick={handleEditConcept}
+              className="flex-1 sm:flex-none rounded-xl bg-primary text-primary-foreground hover:bg-primary/95 text-xs font-bold h-10 px-4"
+            >
+              <Pencil className="w-3.5 h-3.5 mr-1.5" />
+              {t('creator.myideas.editConcept', 'Edit Concept')}
+            </Button>
+            <Button
+              onClick={handleStartNewIdea}
+              variant="outline"
+              className="flex-1 sm:flex-none rounded-xl border-border hover:bg-muted text-xs font-bold h-10 px-4"
+            >
+              {t('creator.myideas.startNewIdea', 'Start New Idea')}
+            </Button>
+          </div>
+        </div>
+
+        {ideasSection}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column: First Draft Summary + Clarity Score + Journal */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* {t('creator.myideas.firstDraft', 'Your Idea — First Draft')} */}
+            <Card className="rounded-2xl border-border bg-card shadow-xs p-6 space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-primary" />{t('creator.myideas.firstDraft', 'Your Idea — First Draft')}</h3>
+                <Badge variant="outline" className="text-muted-foreground border-border text-badge font-bold">
+                  {t('creator.myideas.aiStructured', 'AI Structured')}
+                </Badge>
               </div>
-              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                {t('creator.myideas.startNewIdeaDesc', "Your current draft stays in My Ideas — you can switch back to it anytime. We'll start a fresh journey for the new idea.")}
-              </p>
-              {createError && <p className="text-sm text-destructive font-semibold">{createError}</p>}
-              <div className="flex gap-3 pt-2">
-                <Button
-                  onClick={handleStartOver}
-                  disabled={!!busy}
-                  className="flex-1 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold"
-                >
-                  {busy === "new" ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
-                  {t('creator.myideas.yesStartNewIdea', 'Yes, start new idea')}
-                </Button>
-                <Button
-                  onClick={() => { setShowConfirmStartOver(false); setCreateError(null); }}
-                  disabled={!!busy}
-                  variant="outline"
-                  className="flex-1 rounded-xl font-bold border-border"
-                >{t('creator.myideas.cancel', 'Cancel')}</Button>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 border border-border rounded-xl overflow-hidden divide-y md:divide-y-0 md:divide-x divide-border">
+                <div className="divide-y divide-border flex flex-col">
+                  <div className="p-4 flex-1">
+                    <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.concept', 'Concept')}</span>
+                    <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.concept || "—"}</p>
+                  </div>
+                  <div className="p-4 flex-1">
+                    <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.coreProblem', 'Core Problem')}</span>
+                    <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.problem || "—"}</p>
+                  </div>
+                  <div className="p-4 flex-1">
+                    <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.marketGap', 'Market Gap')}</span>
+                    <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.marketGap || "—"}</p>
+                  </div>
+                </div>
+                <div className="divide-y divide-border flex flex-col">
+                  <div className="p-4 flex-1">
+                    <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.targetUser', 'Target User')}</span>
+                    <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.targetUser || "—"}</p>
+                  </div>
+                  <div className="p-4 flex-1">
+                    <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.yourSolution', 'Your Solution')}</span>
+                    <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.solution || "—"}</p>
+                  </div>
+                  <div className="p-4 flex-1">
+                    <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.yourEdge', 'Your Edge')}</span>
+                    <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.creatorEdge || "—"}</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Clarity Score Card */}
+            <Card className="rounded-2xl border-border bg-card shadow-xs p-6 space-y-6">
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                {t('creator.myideas.clarityScore', 'Idea Clarity Score')}
+              </h3>
+
+              <div className="flex flex-col sm:flex-row items-center gap-6 bg-muted/20 p-4 rounded-xl border border-border/50">
+                <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
+                  <svg width="80" height="80" className="-rotate-90">
+                    <circle cx="40" cy="40" r="34" fill="none" stroke="currentColor" strokeWidth="5.5" className="text-muted/20" />
+                    <circle
+                      cx="40" cy="40" r="34"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="5.5"
+                      strokeDasharray={2 * Math.PI * 34}
+                      strokeDashoffset={2 * Math.PI * 34 * (1 - (project.clarityScore || 0) / 100)}
+                      strokeLinecap="round"
+                      className="text-primary transition-all duration-500"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="font-extrabold text-base text-foreground leading-none">{project.clarityScore || 0}</span>
+                    <span className="text-footnote text-muted-foreground font-bold mt-0.5">/ 100</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-center sm:text-left">
+                  {/* Real score only. No invented verdicts, badges, or per-dimension
+                      bars: no such data exists in the journey. */}
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {t('creator.myideas.clarityScoreDesc', 'Scored by the AI clarifier from your refined idea.')}
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+          </div>
+
+          {/* Right Column: Project Identity Details */}
+          <div className="space-y-6">
+            {/* Project Identity */}
+            <Card className="rounded-2xl border-border bg-card shadow-xs p-6 space-y-6">
+              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                <Layout className="w-4 h-4 text-primary" />
+                {t('creator.myideas.projectIdentity', 'Project Identity')}
+              </h3>
+
+              <div className="text-center space-y-3.5 border-b border-border/80 pb-6 flex flex-col items-center">
+                {project.branding.logoAsset ? (
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary to-warning flex items-center justify-center font-black text-2xl text-white shadow-sm shrink-0">
+                    {project.name ? project.name.charAt(0).toUpperCase() : "?"}
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-muted border border-dashed border-border flex items-center justify-center font-bold text-muted-foreground text-xs shrink-0">{t('creator.myideas.noLogo', 'No Logo')}</div>
+                )}
+                <div className="space-y-1">
+                  <h4 className="text-lg font-black text-foreground tracking-tight">{project.name}</h4>
+                  {project.tagline && (
+                    <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">{project.tagline}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  {project.category && (
+                    <Badge variant="outline" className="text-badge font-semibold bg-warning/5 text-warning border-warning/10">
+                      {project.category}
+                    </Badge>
+                  )}
+                  <Badge className="bg-green-500/10 hover:bg-green-500/10 border-0 text-green-600 dark:text-green-400 text-badge font-bold">
+                    {t('creator.myideas.identityReady', '✓ Identity ready')}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {/* Target Audience */}
+                <div className="bg-muted/30 p-3 rounded-xl space-y-1">
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase">{t('creator.myideas.targetAudience', 'Target Audience')}</span>
+                  <p className="text-xs text-foreground font-semibold leading-relaxed">
+                    {project.targetUser || "—"}
+                  </p>
+                </div>
+
+                {/* Branding */}
+                <div className="bg-muted/30 p-3 rounded-xl space-y-2">
+                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.branding', 'Branding')}</span>
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span className="text-foreground">{brandingMethod}</span>
+                    {project.branding.colorPalette && project.branding.colorPalette.length > 0 && (
+                      <div className="flex gap-1 shrink-0">
+                        {project.branding.colorPalette.map((color) => (
+                          <div key={color} className="w-3.5 h-3.5 rounded-full border border-card shadow-xs" style={{ backgroundColor: color }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+
+                {isPhase3Complete && (
+                  <div className="bg-primary/5 border border-primary/10 p-3 rounded-xl space-y-1">
+                    <span className="text-label text-primary font-bold tracking-wider uppercase">{t('creator.myideas.projectIntelligence', 'Project Intelligence')}</span>
+                    <div className="text-xs font-bold text-foreground">{t('creator.myideas.phase3Complete', 'Phase 3 complete')}</div>
+                    <span className="text-caption text-muted-foreground block font-medium">
+                      {(latestForecast?.summary as any)?.year3Revenue
+                        ? `Forecast saved with Year 3 revenue €${(latestForecast?.summary as any)?.year3Revenue.toLocaleString()}.`
+                        : 'Forecast, business plan, compliance, and team recommendations are saved.'}
+                    </span>
+                  </div>
+                )}
               </div>
             </Card>
           </div>
-        )}
+        </div>
+
       </div>
     );
   }
 
-  // 3. COMPLETED STATE
-  const brandingMethod = project.branding.logoType === "ai"
-    ? "AI Logo Tool"
-    : project.branding.logoType === "designer"
-    ? "Verified M50 Designer"
-    : "Skipped / Not Started";
-
   return (
-    <div className="mx-auto w-full max-w-[1140px] py-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6 sm:mb-8">
-        <div className="space-y-1">
-          <div className="text-xs font-bold text-primary uppercase tracking-wider">{t('creator.myideas.phase2ProjectIdentity', 'Phase 2 — Project Identity')}</div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{t('creator.myideas.myIdea', 'My Idea')}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-            {project.name}{project.category ? ` · ${project.category}` : ""} {'· '}{t('creator.myideas.ideaClarity', 'Idea Clarity')} {project.clarityScore}/100
-          </p>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Button
-            onClick={handleEditConcept}
-            className="flex-1 sm:flex-none rounded-xl bg-primary text-primary-foreground hover:bg-primary/95 text-xs font-bold h-10 px-4"
-          >
-            <Pencil className="w-3.5 h-3.5 mr-1.5" />
-            {t('creator.myideas.editConcept', 'Edit Concept')}
-          </Button>
-          <Button
-            onClick={handleStartNewIdea}
-            variant="outline"
-            className="flex-1 sm:flex-none rounded-xl border-border hover:bg-muted text-xs font-bold h-10 px-4"
-          >
-            {t('creator.myideas.startNewIdea', 'Start New Idea')}
-          </Button>
-        </div>
-      </div>
+    <>
+      {pageBody}
 
-      {ideasSection}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: First Draft Summary + Clarity Score + Journal */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* {t('creator.myideas.firstDraft', 'Your Idea — First Draft')} */}
-          <Card className="rounded-2xl border-border bg-card shadow-xs p-6 space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <Flame className="w-4 h-4 text-primary" />{t('creator.myideas.firstDraft', 'Your Idea — First Draft')}</h3>
-              <Badge variant="outline" className="text-muted-foreground border-border text-badge font-bold">
-                {t('creator.myideas.aiStructured', 'AI Structured')}
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 border border-border rounded-xl overflow-hidden divide-y md:divide-y-0 md:divide-x divide-border">
-              <div className="divide-y divide-border flex flex-col">
-                <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.concept', 'Concept')}</span>
-                  <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.concept || "—"}</p>
-                </div>
-                <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.coreProblem', 'Core Problem')}</span>
-                  <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.problem || "—"}</p>
-                </div>
-                <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.marketGap', 'Market Gap')}</span>
-                  <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.marketGap || "—"}</p>
-                </div>
-              </div>
-              <div className="divide-y divide-border flex flex-col">
-                <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.targetUser', 'Target User')}</span>
-                  <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.targetUser || "—"}</p>
-                </div>
-                <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.yourSolution', 'Your Solution')}</span>
-                  <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.solution || "—"}</p>
-                </div>
-                <div className="p-4 flex-1">
-                  <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.yourEdge', 'Your Edge')}</span>
-                  <p className="text-xs sm:text-sm text-foreground font-semibold mt-1 leading-relaxed">{project.creatorEdge || "—"}</p>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Clarity Score Card */}
-          <Card className="rounded-2xl border-border bg-card shadow-xs p-6 space-y-6">
-            <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary" />
-              {t('creator.myideas.clarityScore', 'Idea Clarity Score')}
-            </h3>
-
-            <div className="flex flex-col sm:flex-row items-center gap-6 bg-muted/20 p-4 rounded-xl border border-border/50">
-              <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
-                <svg width="80" height="80" className="-rotate-90">
-                  <circle cx="40" cy="40" r="34" fill="none" stroke="currentColor" strokeWidth="5.5" className="text-muted/20" />
-                  <circle
-                    cx="40" cy="40" r="34"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="5.5"
-                    strokeDasharray={2 * Math.PI * 34}
-                    strokeDashoffset={2 * Math.PI * 34 * (1 - (project.clarityScore || 0) / 100)}
-                    strokeLinecap="round"
-                    className="text-primary transition-all duration-500"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="font-extrabold text-base text-foreground leading-none">{project.clarityScore || 0}</span>
-                  <span className="text-footnote text-muted-foreground font-bold mt-0.5">/ 100</span>
-                </div>
-              </div>
-
-              <div className="space-y-1 text-center sm:text-left">
-                {/* Real score only. No invented verdicts, badges, or per-dimension
-                    bars: no such data exists in the journey. */}
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {t('creator.myideas.clarityScoreDesc', 'Scored by the AI clarifier from your refined idea.')}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-        </div>
-
-        {/* Right Column: Project Identity Details */}
-        <div className="space-y-6">
-          {/* Project Identity */}
-          <Card className="rounded-2xl border-border bg-card shadow-xs p-6 space-y-6">
-            <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-              <Layout className="w-4 h-4 text-primary" />
-              {t('creator.myideas.projectIdentity', 'Project Identity')}
-            </h3>
-
-            <div className="text-center space-y-3.5 border-b border-border/80 pb-6 flex flex-col items-center">
-              {project.branding.logoAsset ? (
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary to-warning flex items-center justify-center font-black text-2xl text-white shadow-sm shrink-0">
-                  {project.name ? project.name.charAt(0).toUpperCase() : "?"}
-                </div>
-              ) : (
-                <div className="w-16 h-16 rounded-2xl bg-muted border border-dashed border-border flex items-center justify-center font-bold text-muted-foreground text-xs shrink-0">{t('creator.myideas.noLogo', 'No Logo')}</div>
-              )}
-              <div className="space-y-1">
-                <h4 className="text-lg font-black text-foreground tracking-tight">{project.name}</h4>
-                {project.tagline && (
-                  <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">{project.tagline}</p>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1.5 justify-center">
-                {project.category && (
-                  <Badge variant="outline" className="text-badge font-semibold bg-warning/5 text-warning border-warning/10">
-                    {project.category}
-                  </Badge>
-                )}
-                <Badge className="bg-green-500/10 hover:bg-green-500/10 border-0 text-green-600 dark:text-green-400 text-badge font-bold">
-                  {t('creator.myideas.identityReady', '✓ Identity ready')}
-                </Badge>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {/* Target Audience */}
-              <div className="bg-muted/30 p-3 rounded-xl space-y-1">
-                <span className="text-label text-muted-foreground font-bold tracking-wider uppercase">{t('creator.myideas.targetAudience', 'Target Audience')}</span>
-                <p className="text-xs text-foreground font-semibold leading-relaxed">
-                  {project.targetUser || "—"}
-                </p>
-              </div>
-
-              {/* Branding */}
-              <div className="bg-muted/30 p-3 rounded-xl space-y-2">
-                <span className="text-label text-muted-foreground font-bold tracking-wider uppercase block">{t('creator.myideas.branding', 'Branding')}</span>
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="text-foreground">{brandingMethod}</span>
-                  {project.branding.colorPalette && project.branding.colorPalette.length > 0 && (
-                    <div className="flex gap-1 shrink-0">
-                      {project.branding.colorPalette.map((color) => (
-                        <div key={color} className="w-3.5 h-3.5 rounded-full border border-card shadow-xs" style={{ backgroundColor: color }} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-
-              {isPhase3Complete && (
-                <div className="bg-primary/5 border border-primary/10 p-3 rounded-xl space-y-1">
-                  <span className="text-label text-primary font-bold tracking-wider uppercase">{t('creator.myideas.projectIntelligence', 'Project Intelligence')}</span>
-                  <div className="text-xs font-bold text-foreground">{t('creator.myideas.phase3Complete', 'Phase 3 complete')}</div>
-                  <span className="text-caption text-muted-foreground block font-medium">
-                    {(latestForecast?.summary as any)?.year3Revenue
-                      ? `Forecast saved with Year 3 revenue €${(latestForecast?.summary as any)?.year3Revenue.toLocaleString()}.`
-                      : 'Forecast, business plan, compliance, and team recommendations are saved.'}
-                  </span>
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* New-idea confirmation — the current idea stays in My Ideas, switchable. */}
+      {/* New-idea confirmation — nothing is deleted; the draft stays switchable. */}
       {showConfirmStartOver && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <Card className="max-w-md w-full border border-border bg-card p-6 shadow-xl space-y-4 rounded-2xl">
@@ -677,6 +655,7 @@ export default function MyIdeasPage() {
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
               {t('creator.myideas.startNewIdeaDesc', "Your current draft stays in My Ideas — you can switch back to it anytime. We'll start a fresh journey for the new idea.")}
             </p>
+            {createError && <p className="text-sm text-destructive font-semibold">{createError}</p>}
             <div className="flex gap-3 pt-2">
               <Button
                 onClick={handleStartOver}
@@ -687,7 +666,7 @@ export default function MyIdeasPage() {
                 {t('creator.myideas.yesStartNewIdea', 'Yes, start new idea')}
               </Button>
               <Button
-                onClick={() => setShowConfirmStartOver(false)}
+                onClick={() => { setShowConfirmStartOver(false); setCreateError(null); }}
                 disabled={!!busy}
                 variant="outline"
                 className="flex-1 rounded-xl font-bold border-border"
@@ -696,6 +675,6 @@ export default function MyIdeasPage() {
           </Card>
         </div>
       )}
-    </div>
+    </>
   );
 }

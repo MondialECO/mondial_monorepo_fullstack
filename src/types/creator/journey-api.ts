@@ -77,11 +77,12 @@ export type ClarifierAnswer = {
 
 export type ClarifierChatMessage = {
   id: string;
-  sender: 'ai' | 'user';
+  /** "system" = a transcript note such as a Skip, never a Creator answer. */
+  sender: 'ai' | 'user' | 'system';
   text: string;
   timestamp?: string;
-  /** AI turn kind; "feedback" only on older fixed-question transcripts; absent on legacy messages. */
-  kind?: 'question' | 'followup' | 'feedback' | 'ack' | null;
+  /** Turn kind; "feedback" only on older fixed-question transcripts; "skip" on a Skip note; absent on legacy messages. */
+  kind?: 'question' | 'followup' | 'nudge' | 'feedback' | 'ack' | 'skip' | null;
   /** Topic (1–6) the message asks about or answers. */
   questionIndex?: number | null;
   /** Tappable answer options offered with an AI follow-up. */

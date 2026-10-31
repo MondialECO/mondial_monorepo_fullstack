@@ -30,8 +30,12 @@ type Props = {
   onRewriteWeak: (topicIndex: number) => void;
 };
 
-/** Topic marker. Weak must never read as a plain ✓: dashed amber ring + amber check. */
-function TopicMarker({ state, current, position }: { state: TopicState; current: boolean; position: number }) {
+/**
+ * 20px topic marker, no step numbers (topics are not fixed questions). Clear: green check.
+ * Weak must never read as a plain ✓: dashed amber ring + amber check. Being asked: a ring with a
+ * centre dot (amber while unclear). Unclear elsewhere: amber ring. Empty: a faint outline circle.
+ */
+function TopicMarker({ state, current }: { state: TopicState; current: boolean }) {
   if (state === "clear") {
     return (
       <span className="flex size-5 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: "var(--dr-bg-green)" }}>
@@ -46,15 +50,18 @@ function TopicMarker({ state, current, position }: { state: TopicState; current:
       </span>
     );
   }
-  const background = current ? "var(--primary)" : state === "unclear" ? "var(--dr-bg-yellow)" : "var(--muted)";
-  const color = current ? "var(--primary-foreground)" : state === "unclear" ? "var(--dr-yellow)" : "var(--muted-foreground)";
-  return (
-    <span
-      className={cn("flex size-5 shrink-0 items-center justify-center rounded-full", state === "unclear" && "border")}
-      style={{ backgroundColor: background, borderColor: "var(--dr-yellow)" }}
-    >
-      <span className="text-badge leading-none font-mono" style={{ color }}>{position}</span>
-    </span>
+  const accent = state === "unclear" ? "var(--dr-yellow)" : "var(--primary)";
+  if (current) {
+    return (
+      <span className="flex size-5 shrink-0 items-center justify-center rounded-full border-2" style={{ borderColor: accent }}>
+        <span className="size-2 rounded-full" style={{ backgroundColor: accent }} />
+      </span>
+    );
+  }
+  return state === "unclear" ? (
+    <span className="size-5 shrink-0 rounded-full border" style={{ borderColor: "var(--dr-yellow)", backgroundColor: "var(--dr-bg-yellow)" }} />
+  ) : (
+    <span className="size-5 shrink-0 rounded-full border border-foreground/20" />
   );
 }
 
@@ -97,7 +104,7 @@ export function ClarifierStepList({ answers, currentTopic, topicLabels, disabled
 
   return (
     <div className="flex flex-col gap-2">
-      {CLARIFIER_ASK_ORDER.map((topic, position) => {
+      {CLARIFIER_ASK_ORDER.map((topic) => {
         const label = topicLabels[topic - 1];
         const answer = answers.find((a) => a.questionIndex === topic);
         const state = topicState(answer);
@@ -107,10 +114,22 @@ export function ClarifierStepList({ answers, currentTopic, topicLabels, disabled
         const isEditing = editing === topic && !!answer;
 
         return (
-          <div key={topic} className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <TopicMarker state={state} current={current} position={position + 1} />
-              <span className={cn("text-badge min-w-0 flex-1", current && "font-medium")} style={{ color: "var(--foreground)" }}>
+          <div
+            key={topic}
+            className={cn(
+              "flex flex-col gap-0.5 rounded-lg border border-transparent p-1",
+              current && "border-border bg-muted/60",
+              state === "empty" && !current && "opacity-70",
+            )}
+          >
+            <div className="flex items-center gap-2.5">
+              <TopicMarker state={state} current={current} />
+              <span
+                className={cn(
+                  "min-w-0 flex-1 font-sans text-badge font-medium",
+                  state === "empty" && !current ? "text-muted-foreground" : "text-foreground",
+                )}
+              >
                 {label}
               </span>
               {done && answer && !isEditing && (
@@ -128,20 +147,20 @@ export function ClarifierStepList({ answers, currentTopic, topicLabels, disabled
             </div>
 
             {state === "weak" && !isEditing && (
-              <p className="pl-7 text-caption" style={{ color: "var(--dr-yellow)" }}>
+              <p className="pl-7.5 font-sans text-micro" style={{ color: "var(--dr-yellow)" }}>
                 <span className="font-medium">{t("creator.phase2.clarifier.topicState.weak")}</span>
                 {" — "}
                 {t("creator.phase2.clarifier.weakAnswerHint")}
               </p>
             )}
             {state === "unclear" && (
-              <p className="pl-7 text-caption" style={{ color: "var(--muted-foreground)" }}>
+              <p className="pl-7.5 font-sans text-micro text-muted-foreground">
                 {t("creator.phase2.clarifier.topicState.unclear")}
               </p>
             )}
 
             {isEditing ? (
-              <div className="pl-7 flex flex-col gap-2">
+              <div className="pl-7.5 flex flex-col gap-2">
                 {CLARIFIER_TOPIC_FIELDS[topic - 1].map((key, _, keys) => (
                   <label key={key} className="flex flex-col gap-1">
                     {/* Single-field topics are already named by the label above. */}
@@ -178,9 +197,9 @@ export function ClarifierStepList({ answers, currentTopic, topicLabels, disabled
               </div>
             ) : (
               Object.keys(fields).length > 0 && (
-                <div className="pl-7 flex flex-col gap-0.5">
+                <div className="pl-7.5 flex flex-col">
                   {Object.entries(fields).map(([key, value]) => (
-                    <p key={key} className="text-caption leading-relaxed line-clamp-3" style={{ color: "var(--muted-foreground)" }}>
+                    <p key={key} className="line-clamp-1 font-sans text-micro leading-relaxed text-muted-foreground" title={value}>
                       {Object.keys(fields).length > 1 && (
                         <span className="font-medium">{t(`creator.phase2.clarifier.fields.${key}`)}: </span>
                       )}

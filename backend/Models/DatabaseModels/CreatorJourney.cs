@@ -104,6 +104,45 @@ namespace WebApp.Models.DatabaseModels
         public string Sector { get; set; } = string.Empty;
         public CreatorBranding Branding { get; set; } = new();
         public int CurrentVersion { get; set; } = 1;
+
+        /// <summary>
+        /// Who last wrote each clarifier-owned field (<see cref="ProjectFieldProvenance"/> keys →
+        /// "clarifier" | "user_edited"), following the Brand Studio "user_refined" pattern. A re-run
+        /// C-2 summary overwrites every clarifier-owned field except those marked user_edited.
+        /// Null on legacy projects, which are treated as clarifier-owned.
+        /// </summary>
+        [MongoDB.Bson.Serialization.Attributes.BsonIgnoreIfNull]
+        public Dictionary<string, string>? FieldProvenance { get; set; }
+    }
+
+    public static class ProjectFieldProvenance
+    {
+        public const string Clarifier = "clarifier";
+        public const string UserEdited = "user_edited";
+
+        // Keys = BSON element names of the clarifier-owned fields on CreatorJourneyProject.
+        public const string Problem = "Problem";
+        public const string TargetUser = "TargetUser";
+        public const string Solution = "Solution";
+        public const string ExistingAlternatives = "ExistingAlternatives";
+        public const string CreatorEdge = "CreatorEdge";
+        public const string WhyNow = "WhyNow";
+        public const string RiskiestAssumption = "RiskiestAssumption";
+        public const string MarketGap = "MarketGap";
+        public const string Concept = "Concept";
+        public const string Tags = "Tags";
+        public const string ClarityScore = "ClarityScore";
+
+        public static readonly string[] ClarifierOwned =
+        {
+            Problem, TargetUser, Solution, ExistingAlternatives, CreatorEdge, WhyNow,
+            RiskiestAssumption, MarketGap, Concept, Tags, ClarityScore,
+        };
+
+        public static bool IsUserEdited(CreatorJourneyProject project, string field) =>
+            project.FieldProvenance != null
+            && project.FieldProvenance.TryGetValue(field, out var source)
+            && source == UserEdited;
     }
 
     public class CreatorBranding
@@ -138,6 +177,13 @@ namespace WebApp.Models.DatabaseModels
 
         /// <summary>One record per clarifier question (1–6). Progress derives from these, never from counting user messages.</summary>
         public List<ClarifierAnswer> ClarifierAnswers { get; set; } = new();
+
+        /// <summary>Consecutive off-topic / unreadable clarifier turns; reset by an on-topic answer.</summary>
+        public int ClarifierOffTopicStreak { get; set; }
+
+        /// <summary>Lifetime off-topic / unreadable turns. Each was an AI call, so it counts toward the per-idea AI cap.</summary>
+        public int ClarifierOffTopicCount { get; set; }
+
         public string ClarifierSessionId { get; set; }
 
         /// <summary>When the last C-2 result was mapped onto the project. An answer updated after this means the summary is stale.</summary>
