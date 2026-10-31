@@ -17,7 +17,7 @@ import {
 } from "@/hooks/queries/creator-ai";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ClarifierStepList } from "@/components/creator/clarifier/ClarifierStepList";
-import { SkipFollowUpAction } from "@/components/creator/clarifier/SkipFollowUpAction";
+import { FollowUpCard } from "@/components/creator/clarifier/FollowUpCard";
 import { Button } from "@/components/ui/button";
 import {
   CLARIFIER_TOTAL_TOPICS,
@@ -412,6 +412,8 @@ export default function AIClarifierPage() {
   // Chips belong to the latest AI message only, while that topic is still being asked.
   const lastMessage = messages[messages.length - 1];
   const activeChips = !isTyping && !summaryReady && lastMessage?.sender === "ai" ? lastMessage.chips ?? [] : [];
+  // The latest message is a follow-up whose topic is still being asked (chips + Skip live in its card).
+  const followUpActive = !isTyping && !summaryReady && editingQuestion === null && lastMessage?.sender === "ai" && lastMessage.kind === "followup";
   // Only the latest bubble per topic is that topic's answer; earlier ones were followed up.
   const latestUserMsgByQuestion = new Map<number, string>();
   let legacyOrdinal = 0;
@@ -527,6 +529,20 @@ export default function AIClarifierPage() {
                       <p key={msg.id} className="self-center text-caption text-muted-foreground">
                         {msg.text}
                       </p>
+                    );
+                  }
+                  // AI follow-ups are an elevated card; chips + Skip only on the latest active one.
+                  if (msg.sender === "ai" && "kind" in msg && msg.kind === "followup") {
+                    return (
+                      <div key={msg.id} className="flex flex-col items-start">
+                        <FollowUpCard
+                          message={msg}
+                          active={followUpActive && msg.id === lastMessage?.id}
+                          disabled={finalizing}
+                          onChip={setInputValue}
+                          onSkip={handleSkip}
+                        />
+                      </div>
                     );
                   }
                   const isUser = msg.sender === "user";
@@ -663,18 +679,15 @@ export default function AIClarifierPage() {
                     </button>
                   </div>
                 )}
-                {editingQuestion === null && !isTyping && (activeChips.length > 0 || lastMessage?.kind === "followup") && (
-                  <div className="mb-2 flex flex-wrap items-center gap-2 px-1">
-                    {activeChips.length > 0 && (
-                      <div role="group" aria-label={t("creator.phase2.clarifier.chipsLabel")} className="flex flex-wrap gap-2">
-                        {activeChips.map((chip) => (
-                          <Button key={chip} type="button" variant="outline" size="sm" className="rounded-full" onClick={() => setInputValue(chip)}>
-                            {chip}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
-                    <SkipFollowUpAction message={lastMessage} disabled={finalizing} onSkip={handleSkip} />
+                {/* Chips on a latest non-follow-up message (the simpler off-topic re-ask); a
+                    follow-up shows its chips inside its own card. */}
+                {editingQuestion === null && activeChips.length > 0 && lastMessage?.kind !== "followup" && (
+                  <div role="group" aria-label={t("creator.phase2.clarifier.chipsLabel")} className="mb-2 flex flex-wrap gap-2 px-1">
+                    {activeChips.map((chip) => (
+                      <Button key={chip} type="button" variant="outline" size="sm" className="rounded-full bg-popover" onClick={() => setInputValue(chip)}>
+                        {chip}
+                      </Button>
+                    ))}
                   </div>
                 )}
                 <div

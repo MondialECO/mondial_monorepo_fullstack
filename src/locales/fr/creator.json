@@ -225,6 +225,7 @@
         "weak": "Réponse légère"
       },
       "chipsLabel": "Réponses suggérées",
+      "chipsPrompt": "Choisissez-en une ou écrivez la vôtre",
       "skipFollowUp": "Passer — garder ma réponse",
       "ideaJournal": "Journal de l'Idée",
       "journalDefault": "Votre idée affinée sera enregistrée ici automatiquement.",
