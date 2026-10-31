@@ -180,10 +180,10 @@
     "enteringClarifier": "Entering Idea Clarifier...",
     "clarifier": {
       "mainTitle": "Let's sharpen your idea",
-      "mainSubtitle": "Describe your idea in your own words. Our AI asks only about what's missing across {{count}} topics, then builds your concept canvas.",
+      "mainSubtitle": "Tell me your idea in your own words. The AI asks only about what's still missing, then builds your concept canvas.",
       "opener": "Tell me your idea in your own words. However rough it is is fine.",
       "title": "AI Idea Clarifier",
-      "subtitle": "{{count}} topics to sharpen your idea",
+      "subtitle": "Ask, refine, done. Usually 5 to 9 messages.",
       "stepLabels": {
         "problem": "The problem",
         "targetUsers": "Who has it",

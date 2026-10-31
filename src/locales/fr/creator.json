@@ -180,10 +180,10 @@
     "enteringClarifier": "Accès au clarificateur d'idées...",
     "clarifier": {
       "mainTitle": "Affinons votre idée",
-      "mainSubtitle": "Décrivez votre idée avec vos propres mots. Notre IA ne pose des questions que sur ce qui manque parmi {{count}} thèmes, puis élabore votre canevas de concept.",
+      "mainSubtitle": "Racontez-moi votre idée avec vos propres mots. L'IA ne pose des questions que sur ce qui manque encore, puis construit votre canevas de concept.",
       "opener": "Racontez-moi votre idée avec vos propres mots. Même si elle est encore brute, c'est parfait.",
       "title": "Clarificateur d'Idée IA",
-      "subtitle": "{{count}} thèmes pour affiner votre idée",
+      "subtitle": "Demander, affiner, terminé. En général 5 à 9 messages.",
       "stepLabels": {
         "problem": "Le problème",
         "targetUsers": "Qui le vit",

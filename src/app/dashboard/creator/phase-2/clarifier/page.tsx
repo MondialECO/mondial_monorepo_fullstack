@@ -467,11 +467,11 @@ export default function AIClarifierPage() {
 
         {/* ── Heading block ── */}
         <div className="space-y-2">
-          <h1 className="text-2xl sm:text-3xl font-semibold" style={{ color: "var(--foreground)" }}>
+          <h1 className="font-heading text-2xl font-semibold text-foreground sm:text-page-heading">
             {t("creator.phase2.clarifier.mainTitle")}
           </h1>
-          <p className="text-base max-w-[780px]" style={{ color: "var(--muted-foreground)" }}>
-            {t("creator.phase2.clarifier.mainSubtitle", { count: totalTopics })}
+          <p className="max-w-[780px] font-sans text-base leading-relaxed text-muted-foreground">
+            {t("creator.phase2.clarifier.mainSubtitle")}
           </p>
         </div>
 
@@ -489,10 +489,7 @@ export default function AIClarifierPage() {
             {/* ── Assistant header (FIXED TOP) ── */}
             <div className="shrink-0">
               <div className="flex items-center gap-3">
-                <div
-                  className="rounded-full overflow-hidden flex items-center justify-center shrink-0 border"
-                  style={{ width: 48, height: 48, backgroundColor: "var(--popover)", borderColor: "var(--border)" }}
-                >
+                <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-popover">
                   {/* Robot avatar — DELIBERATE exception to the lucide-only icon rule: this
                       is a raster character illustration (artwork), not a symbol. The library
                       has no equivalent and its Bot glyph would read as empty in this tile.
@@ -506,11 +503,11 @@ export default function AIClarifierPage() {
                   />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-lg font-medium" style={{ color: "var(--foreground)" }}>
+                  <h2 className="font-heading text-lg font-medium text-foreground">
                     {t("creator.phase2.clarifier.title")}
-                  </p>
-                  <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-                    {t("creator.phase2.clarifier.subtitle", { count: totalTopics })}
+                  </h2>
+                  <p className="font-sans text-sm text-muted-foreground">
+                    {t("creator.phase2.clarifier.subtitle")}
                   </p>
                 </div>
               </div>

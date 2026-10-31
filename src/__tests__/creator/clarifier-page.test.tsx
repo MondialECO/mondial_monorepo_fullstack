@@ -92,4 +92,14 @@ describe('clarifier page', () => {
     expect(screen.queryByRole('button', { name: 'Skip — keep my answer' })).toBeNull();
     expect(screen.queryByText('Pick one or write your own')).toBeNull();
   });
+
+  it('uses the honest intro and header copy, never the fixed-question copy', () => {
+    setProgress();
+    render(<AIClarifierPage />);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Let's sharpen your idea");
+    expect(screen.getByText(/The AI asks only about what's still missing/)).toBeInTheDocument();
+    expect(screen.getByText('Ask, refine, done. Usually 5 to 9 messages.')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/focused questions/i);
+  });
 });
