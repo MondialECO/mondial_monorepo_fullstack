@@ -93,12 +93,24 @@ describe('clarifier page', () => {
     expect(screen.queryByText('Pick one or write your own')).toBeNull();
   });
 
-  it('panel shows "X / 6 clear" (weak is not clear) and no fixed-question captions anywhere', () => {
-    mockAnswers = [...mockAnswers, answer(4, 'accepted_weak', { aiExtracted: { solution: 'Shared meals.' } })];
+  it('panel shows "X / 6 clear" when no topic is weak', () => {
     setProgress();
     render(<AIClarifierPage />);
 
     expect(screen.getByText('1 / 6 clear')).toBeInTheDocument();
+    expect(screen.queryByText(/thin$/)).toBeNull();
+  });
+
+  it('panel adds the thin count next to the clear count (weak is not clear) and no fixed-question captions anywhere', () => {
+    mockAnswers = [
+      ...mockAnswers,
+      answer(4, 'accepted_weak', { aiExtracted: { solution: 'Shared meals.' } }),
+      answer(3, 'accepted_weak', { aiExtracted: { existingAlternatives: 'Cooking at home.' } }),
+    ];
+    setProgress();
+    render(<AIClarifierPage />);
+
+    expect(screen.getByText('1 / 6 clear · 2 thin')).toBeInTheDocument();
     expect(screen.getByText('Your idea so far')).toBeInTheDocument();
     const text = document.body.textContent ?? '';
     expect(text).not.toMatch(/Question \d+ of/i);

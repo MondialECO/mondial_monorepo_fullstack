@@ -396,6 +396,7 @@ export default function AIClarifierPage() {
   const answeredCount = answers.filter((a) => isTopicDone(a)).length;
   // Only clear topics count as clear; weak ones are done but never shown as clear.
   const clearCount = answers.filter((a) => topicState(a) === "clear").length;
+  const thinCount = answers.filter((a) => topicState(a) === "weak").length;
   const currentTopic = nextTopic(answers);
   const summaryReady = currentTopic === null;
   const hasSummary = !!phase2?.clarifierSessionId;
@@ -898,7 +899,9 @@ export default function AIClarifierPage() {
                   {t("creator.phase2.clarifier.ideaSoFar")}
                 </p>
                 <p className="font-mono text-badge font-medium text-foreground">
-                  {t("creator.phase2.clarifier.clearCount", { clear: clearCount, total: totalTopics })}
+                  {thinCount > 0
+                    ? t("creator.phase2.clarifier.clearCountWithThin", { clear: clearCount, total: totalTopics, thin: thinCount })
+                    : t("creator.phase2.clarifier.clearCount", { clear: clearCount, total: totalTopics })}
                 </p>
               </div>
               <ClarifierStepList

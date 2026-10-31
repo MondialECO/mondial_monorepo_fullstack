@@ -221,6 +221,7 @@
       "progressTitle": "Progress: {{done}} of {{total}} topics covered",
       "ideaSoFar": "Your idea so far",
       "clearCount": "{{clear}} / {{total}} clear",
+      "clearCountWithThin": "{{clear}} / {{total}} clear · {{thin}} thin",
       "allQuestionsAnsweredCount": "All {{count}} topics covered",
       "topicState": {
         "unclear": "Needs a little more detail",
