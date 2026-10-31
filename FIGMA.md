@@ -61,6 +61,13 @@ If a Figma color doesn't fit any of the above, ADD a token to BOTH `:root` and `
 Google `<link>`.
 *(Note: Brand Visual Identity Studio uses Inter / DM Sans for all interface headings/body copy and JetBrains Mono for numerals/tokens; Syne Bold is not used for Studio UI. Screens include: Branding Entry single-card `/phase-2/branding`, Studio canvas shell `/phase-2/brand-studio`, Hub reference view `/phase-2/brand-kit`, and compact `/phase-2/complete` summary).*
 
+### Type scale
+Sizes are role tokens from the `--font-size-*` block in `globals.css` (`text-page-heading`, `text-body`,
+`text-caption`, `text-badge`, …; full list in `docs/product/brand-identity-studio-canon.md`). Map Figma
+body/XXS (11px) to `text-micro`, used only for keyboard hints and panel captions; never write
+`text-[11px]`. A Figma size with no matching token gets a new `--font-size-*` + `--text-*` pair, not a
+bracket value.
+
 ### Viewport Responsiveness (1440px → 1920px)
 Figma artboards for this project are authored at **1440px** desktop base. The real web application must maintain seamless responsive layout scaling from **1440px up to 1920px** wide displays (as well as tablet/mobile viewports). Never hardcode fixed pixel widths on page shells — use canonical column containers (`max-w-[680px]`, `max-w-[720px]`, `max-w-[1080px]`, `max-w-[1440px]`) centered with `mx-auto` and fluid paddings.
 
