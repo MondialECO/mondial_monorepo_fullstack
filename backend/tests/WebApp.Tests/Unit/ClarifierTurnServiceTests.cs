@@ -193,6 +193,24 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
+        public async Task UserPrompt_ShowsASkipNoteAsANote_NeverAsFounderText()
+        {
+            Returns("""{"topics":{"problem":{"status":"clear"}}}""");
+
+            await Create().EvaluateAsync(Input(asked: 4, transcript: new[]
+            {
+                new ClarifierTranscriptLine("ai", "Which students exactly?"),
+                new ClarifierTranscriptLine("system", ClarifierScript.SkipNoteEn),
+                new ClarifierTranscriptLine("ai", "How would it work?"),
+            }));
+
+            var user = _lastRequest!.Messages.Last().Content;
+            user.Should().Contain($"(Note: {ClarifierScript.SkipNoteEn})");
+            user.Should().NotContain($"Founder: <message>{ClarifierScript.SkipNoteEn}");
+            user.Should().NotContain($"AI: {ClarifierScript.SkipNoteEn}");
+        }
+
+        [Fact]
         public async Task EditPrompt_JudgesOnlyTheEditedTopic()
         {
             Returns("""{"topics":{"who":{"status":"clear"}}}""");

@@ -86,6 +86,20 @@ namespace WebApp.Tests.Unit
         }
 
         [Fact]
+        public void GetAnswers_NeverCountsASystemNoteAsAnAnswer()
+        {
+            var p2 = new CreatorPhase2Data
+            {
+                ChatMessages = new List<CreatorChatMessage>
+                {
+                    Msg("user", "a1"), new() { Id = "s1", Sender = "system", Kind = "skip", Text = ClarifierScript.SkipNoteEn }, Msg("user", "a2"),
+                },
+            };
+
+            ClarifierScript.GetAnswers(p2).Select(a => (a.QuestionIndex, a.RawAnswer)).Should().Equal((1, "a1"), (2, "a2"));
+        }
+
+        [Fact]
         public void GetAnswers_IgnoresNewFlowUserMessagesWithoutRecords()
         {
             var p2 = new CreatorPhase2Data
