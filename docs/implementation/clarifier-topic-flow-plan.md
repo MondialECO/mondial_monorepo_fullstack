@@ -163,9 +163,18 @@ the tests now create an owned idea, as the controller has intentionally required
 - [ ] Chain: regenerate Market Study → Business Model shows the stale notice; regenerating Business Model clears it.
 - [ ] Weak-topic edit routing: the side-panel pencil on a weak topic opens the AI rewrite (not the field editor); on a clear topic it opens the field editor (both fields for Your edge / Why now + biggest risk).
 - [ ] One full run in French, end to end (first live check of the language fix `c11fbcab` — before it the language was never sent): the request carries `language: "fr"` over both HTTP and the hub; AI follow-ups and chips in French; fallback base questions in French; the **C-2 summary** is generated in French; **name suggestions** (concept-name) come back in French.
+- [ ] Off-topic and unreadable answers: an off-topic "hi" and an unreadable "asdf" each get a nudge, and no topic changes (panel and progress ring unchanged). The second non-relevant answer in a row re-asks the base question in simpler words.
+- [ ] Skip on a follow-up: "Skip — keep my answer" shows only next to a follow-up. Clicking it marks the topic weak, adds the quiet skip note to the transcript and asks the next base question. No AI call is made and no credits are debited.
+- [ ] Fix it, then Regenerate summary: the idea-summary cards and the Market Study inputs show the **new** values, not the ones from the previous summary.
 - [ ] Light and dark themes at 1440 and 1920 widths.
 
 ### Known gaps (recorded, not implemented)
+
+- **Low priority — off-topic turns use up the AI cap, after which junk is stored.** Each off-topic or
+  unreadable turn is an AI call and counts toward the 40-call per-idea cap (`MaxAiCallsPerIdea`).
+  Once the cap is reached, the AI is no longer called and the fail-open rule stores whatever the
+  Creator types (including junk such as "asdf") as a **weak** answer. Weak answers are still marked
+  "Unconfirmed — thin answer" downstream, so the gap is visible, not silent.
 
 - **HIGH PRIORITY — C-2 summary timeout bills without delivering (pre-existing).** The clarifier
   page polls the C-2 session for at most 3 minutes (shared poll policy), then shows a timeout error.
