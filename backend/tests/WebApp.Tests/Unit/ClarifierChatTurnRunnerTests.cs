@@ -8,17 +8,16 @@ using Xunit;
 
 namespace WebApp.Tests.Unit;
 
-/// <summary>The off-topic streak is read from and written back to the idea in the same turn write.</summary>
+/// <summary>A turn is judged in memory and persisted in exactly one write (message + reply + topics + counters).</summary>
 public class ClarifierChatTurnRunnerTests
 {
     private const string UserId = "user-1";
     private readonly Mock<ICreatorJourneyService> _journeys = new();
     private readonly Mock<IClarifierTurnService> _turns = new();
     private ClarifierTopicsInput? _input;
+    private readonly List<ClarifierTurnWrite> _saved = new();
 
-    private (int streak, int count, List<ClarifierAnswer> answers) _saved;
-
-    private void Journey(int streak, int count, List<ClarifierAnswer>? answers = null)
+    private void Journey(int streak, int count, List<ClarifierAnswer>? answers = null, Exception? saveFails = null)
     {
         var journey = new CreatorJourney
         {
@@ -34,13 +33,10 @@ public class ClarifierChatTurnRunnerTests
             },
         };
         _journeys.Setup(j => j.GetOrCreateComposedAsync(UserId, It.IsAny<string>())).ReturnsAsync(journey);
-        _journeys.Setup(j => j.AppendChatMessageAsync(UserId, "user", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<int?>()))
-            .ReturnsAsync(journey);
-        _journeys.Setup(j => j.SaveClarifierTurnAsync(UserId, It.IsAny<List<ClarifierAnswer>>(), It.IsAny<string>(), It.IsAny<string>(),
-                It.IsAny<int?>(), It.IsAny<string>(), It.IsAny<List<string>?>(), It.IsAny<int>(), It.IsAny<int>()))
-            .Callback<string, List<ClarifierAnswer>, string, string, int?, string, List<string>?, int, int>(
-                (_, answers, _, _, _, _, _, streak, count) => _saved = (streak, count, answers))
-            .ReturnsAsync(journey);
+        var save = _journeys.Setup(j => j.SaveClarifierTurnAsync(UserId, It.IsAny<ClarifierTurnWrite>(), It.IsAny<string>()))
+            .Callback<string, ClarifierTurnWrite, string>((_, turn, _) => _saved.Add(turn));
+        if (saveFails != null) save.ThrowsAsync(saveFails);
+        else save.ReturnsAsync(journey);
     }
 
     private void Ai(ClarifierTopicsResult result) =>
@@ -50,6 +46,54 @@ public class ClarifierChatTurnRunnerTests
 
     private ClarifierChatTurnRunner Runner() => new(_journeys.Object, _turns.Object);
 
+    private static ClarifierTopicsResult ClearWho() => new()
+    {
+        AiUsed = true,
+        Topics = new() { [2] = new ClarifierTopicJudgement { Status = ClarifierTopicState.Clear, Extracted = new() { ["targetUser"] = "Dorm students." } } },
+    };
+
+    [Fact]
+    public async Task Success_WritesOnce_WithTheUserMessageReplyTopicsAndCounters()
+    {
+        Journey(streak: 0, count: 0);
+        Ai(ClearWho());
+
+        await Runner().RunAsync(UserId, "dorm students", "en", "idea-1");
+
+        var turn = _saved.Should().ContainSingle().Subject;
+        turn.Incoming.Should().Be(new ClarifierTurnMessage("user", "dorm students", null, 2));
+        turn.Reply.Sender.Should().Be("ai");
+        turn.Answers.Should().Contain(a => a.QuestionIndex == 2 && a.Status == ClarifierAnswerStatus.Accepted);
+        _input!.LatestMessage.Should().Be("dorm students", "the AI sees the new message in memory, before any write");
+        _input.Transcript.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task VersionConflict_Returns409_AndNothingElseIsWritten()
+    {
+        Journey(streak: 0, count: 0, saveFails: new CreatorJourneyException(409, "This idea was updated in another tab."));
+        Ai(ClearWho());
+
+        var act = () => Runner().RunAsync(UserId, "dorm students", "en", "idea-1");
+
+        (await act.Should().ThrowAsync<CreatorJourneyException>()).Which.StatusCode.Should().Be(409);
+        _saved.Should().ContainSingle("the one turn write is the only write attempted");
+        _journeys.Verify(j => j.SaveClarifierTurnAsync(It.IsAny<string>(), It.IsAny<ClarifierTurnWrite>(), It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AiFailure_StillWritesOnce_FailOpen()
+    {
+        Journey(streak: 0, count: 0);
+        Ai(ClarifierTopicsResult.FailOpen());
+
+        await Runner().RunAsync(UserId, "dorm students", "en", "idea-1");
+
+        var turn = _saved.Should().ContainSingle().Subject;
+        turn.Answers.Should().Contain(a => a.QuestionIndex == 2 && a.Status == ClarifierAnswerStatus.AcceptedWeak);
+        turn.Incoming.Text.Should().Be("dorm students");
+    }
+
     [Fact]
     public async Task OffTopicTurn_IncrementsStreakAndCount_LeavesTopicsAlone_AndReasksTheLastQuestion()
     {
@@ -58,9 +102,10 @@ public class ClarifierChatTurnRunnerTests
 
         var response = await Runner().RunAsync(UserId, "hi", "en", "idea-1");
 
-        _saved.streak.Should().Be(1);
-        _saved.count.Should().Be(5);
-        _saved.answers.Should().ContainSingle(a => a.QuestionIndex == 1, "no topic record was created or changed");
+        var turn = _saved.Should().ContainSingle().Subject;
+        turn.OffTopicStreak.Should().Be(1);
+        turn.OffTopicCount.Should().Be(5);
+        turn.Answers.Should().ContainSingle(a => a.QuestionIndex == 1, "no topic record was created or changed");
         response.AiText.Should().Be("Back to it!\n\nWho has this problem the most?");
         _input!.AiCallsSoFar.Should().Be(3 + 4, "off-topic turns count toward the per-idea AI cap");
     }
@@ -69,15 +114,11 @@ public class ClarifierChatTurnRunnerTests
     public async Task OnTopicTurn_ResetsTheStreak_AndKeepsTheCount()
     {
         Journey(streak: 2, count: 4);
-        Ai(new ClarifierTopicsResult
-        {
-            AiUsed = true,
-            Topics = new() { [2] = new ClarifierTopicJudgement { Status = ClarifierTopicState.Clear, Extracted = new() { ["targetUser"] = "Dorm students." } } },
-        });
+        Ai(ClearWho());
 
         await Runner().RunAsync(UserId, "dorm students", "en", "idea-1");
 
-        _saved.streak.Should().Be(0);
-        _saved.count.Should().Be(4);
+        _saved.Single().OffTopicStreak.Should().Be(0);
+        _saved.Single().OffTopicCount.Should().Be(4);
     }
 }

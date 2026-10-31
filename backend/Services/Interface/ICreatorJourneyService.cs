@@ -4,6 +4,17 @@ using WebApp.Models.Dtos;
 
 namespace WebApp.Services.Interface
 {
+    /// <summary>A transcript message of a clarifier turn. Sender: "user", "ai", or "system" (a note such as a Skip).</summary>
+    public sealed record ClarifierTurnMessage(string Sender, string Text, string? Kind, int? QuestionIndex, List<string>? Chips = null);
+
+    /// <summary>Everything one clarifier turn persists.</summary>
+    public sealed record ClarifierTurnWrite(
+        List<ClarifierAnswer> Answers,
+        ClarifierTurnMessage Incoming,
+        ClarifierTurnMessage Reply,
+        int OffTopicStreak,
+        int OffTopicCount);
+
     /// <summary>
     /// Owns the Creator journey (Phases 2–6). The journey document holds artifacts
     /// ONLY; phase/step status is derived on demand by <see cref="ComputePhaseStatusAsync"/>.
@@ -58,14 +69,11 @@ namespace WebApp.Services.Interface
         /// <summary>Append a versioned output (newest LAST), carrying its own phase.</summary>
         Task<CreatorJourney> AppendOutputAsync(string userId, AppendOutputRequest request, string ideaId = null);
 
-        /// <summary>Append a chat message to phase2Data (persisted for abandon/resume).</summary>
-        Task<CreatorJourney> AppendChatMessageAsync(string userId, string sender, string text, string ideaId = null,
-            string? kind = null, int? questionIndex = null);
-
-        /// <summary>Persist the clarifier answer records and the AI reply for one turn in a single write.</summary>
-        Task<CreatorJourney> SaveClarifierTurnAsync(string userId, List<ClarifierAnswer> answers,
-            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null, List<string>? chips = null,
-            int offTopicStreak = 0, int offTopicCount = 0);
+        /// <summary>
+        /// Persist one clarifier turn — the incoming message, the AI reply, the answer records and the
+        /// off-topic counters — in a single versioned write. A failed or conflicting write stores nothing.
+        /// </summary>
+        Task<CreatorJourney> SaveClarifierTurnAsync(string userId, ClarifierTurnWrite turn, string ideaId = null);
 
         /// <summary>
         /// Optimistic-concurrency input for callers without an HTTP request (SignalR). Subsequent

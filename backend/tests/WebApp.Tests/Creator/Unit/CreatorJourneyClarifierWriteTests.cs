@@ -63,6 +63,39 @@ public class CreatorJourneyClarifierWriteTests
         },
     };
 
+    // ---- one write per chat turn ----
+
+    private static ClarifierTurnWrite Turn() => new(
+        new List<ClarifierAnswer> { new() { QuestionIndex = 1, Status = ClarifierAnswerStatus.Accepted, RawAnswer = "idea" } },
+        new ClarifierTurnMessage("user", "idea", null, 1),
+        new ClarifierTurnMessage("ai", "Who has it?", "question", 2),
+        OffTopicStreak: 0,
+        OffTopicCount: 2);
+
+    [Fact]
+    public async Task ClarifierTurn_IsOneUpdate_SettingTopicsAndCounters_AndPushingBothMessages()
+    {
+        var result = await Service(Idea()).SaveClarifierTurnAsync(UserId, Turn(), IdeaId);
+
+        var update = _writes.Should().ContainSingle().Subject;
+        update["$set"].AsBsonDocument.Names.Should().Contain(new[]
+        {
+            "Phase2Data.ClarifierAnswers", "Phase2Data.ClarifierOffTopicStreak", "Phase2Data.ClarifierOffTopicCount",
+        });
+        var pushed = update["$push"]["Phase2Data.ChatMessages"]["$each"].AsBsonArray;
+        pushed.Select(m => m["Sender"].AsString).Should().Equal("user", "ai");
+        result.Phase2Data.ChatMessages.Select(m => m.Text).Should().Equal("idea", "Who has it?");
+    }
+
+    [Fact]
+    public async Task ClarifierTurn_VersionConflict_Is409_AndStoresNothing()
+    {
+        var act = () => Service(Idea(), versionMatches: false).SaveClarifierTurnAsync(UserId, Turn(), IdeaId);
+
+        (await act.Should().ThrowAsync<CreatorJourneyException>()).Which.StatusCode.Should().Be(409);
+        _writes.Should().BeEmpty();
+    }
+
     // ---- PATCH provenance ----
 
     [Fact]

@@ -18,8 +18,9 @@ namespace WebApp.Services.Implementations
     public interface IClarifierChatTurnRunner
     {
         /// <summary>
-        /// One clarifier chat turn: persist the user message, AI-judge every topic from the whole
-        /// transcript, persist the topic records + AI reply in one versioned write. Shared by the
+        /// One clarifier chat turn: AI-judge every topic from the transcript plus the new message (in
+        /// memory), then persist the user message, AI reply, topic records and counters in one versioned
+        /// write — nothing is stored before the AI answers. Shared by the
         /// HTTP endpoint and the SignalR hub. Throws <see cref="CreatorJourneyException"/> for client errors.
         /// </summary>
         Task<ClarifierChatTurnResponse> RunAsync(string userId, string? message, string? language, string? ideaId,
@@ -57,8 +58,6 @@ namespace WebApp.Services.Implementations
                 .Select(m => new ClarifierTranscriptLine(m.Sender, m.Text ?? string.Empty))
                 .ToList();
 
-            await _journeys.AppendChatMessageAsync(userId, "user", text, ideaId, questionIndex: askedTopic);
-
             // Language: prefer frontend-provided, then previous answer, default to en
             var lang = !string.IsNullOrWhiteSpace(language)
                 ? language
@@ -78,9 +77,14 @@ namespace WebApp.Services.Implementations
             var outcome = ClarifierScript.ApplyTopicsTurn(answers, askedTopic, text, result, lang, DateTime.UtcNow,
                 offTopicStreak, ClarifierScript.LastQuestionText(current.Phase2Data?.ChatMessages, askedTopic));
             var wasOffTopic = outcome.OffTopicStreak > 0;
-            var journey = await _journeys.SaveClarifierTurnAsync(
-                userId, answers, outcome.AiText, outcome.AiKind, outcome.AiTopic, ideaId, outcome.Chips,
-                outcome.OffTopicStreak, wasOffTopic ? offTopicCount + 1 : offTopicCount);
+            // The user message is persisted only together with its reply: a failed or conflicting
+            // write stores nothing, and the client rolls back its optimistic bubble.
+            var journey = await _journeys.SaveClarifierTurnAsync(userId, new ClarifierTurnWrite(
+                answers,
+                new ClarifierTurnMessage("user", text, null, askedTopic),
+                new ClarifierTurnMessage("ai", outcome.AiText, outcome.AiKind, outcome.AiTopic, outcome.Chips),
+                outcome.OffTopicStreak,
+                wasOffTopic ? offTopicCount + 1 : offTopicCount), ideaId);
 
             return new ClarifierChatTurnResponse(
                 Messages: journey.Phase2Data?.ChatMessages,

@@ -76,8 +76,8 @@ namespace WebApp.Controllers
         // POST /api/creator/journey/phase2/chat-message
         // Rate-limited via the shared "ai" policy. The AI judges the answer to the current
         // question (free; C-2 still carries the only credit). Revise keeps the question,
-        // accept moves on. The user message is persisted before the AI call so it survives
-        // an AI failure; the answer records + AI reply land in one versioned write.
+        // accept moves on. The user message, answer records and AI reply land in one versioned
+        // write after the AI call (an AI failure is fail-open, so the turn is still written).
         [HttpPost("chat-message")]
         [EnableRateLimiting("ai")]
         public async Task<IActionResult> ChatMessage([FromBody] ChatMessageRequest request, [FromQuery] string ideaId = null, CancellationToken cancellationToken = default)

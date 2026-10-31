@@ -778,68 +778,39 @@ namespace WebApp.Services.Implementations
             return j;
         }
 
-        public async Task<CreatorJourney> AppendChatMessageAsync(string userId, string sender, string text, string ideaId = null,
-            string? kind = null, int? questionIndex = null)
-        {
-            if (sender != "ai" && sender != "user")
-                throw new CreatorJourneyException(400, "sender must be \"ai\" or \"user\".");
-
-            var j = await GetOrCreateAsync(userId);
-            var idea = await ResolveIdeaAsync(j, ideaId);
-            OverlayIdea(j, idea);
-            var message = new CreatorChatMessage
-            {
-                Id = ObjectId.GenerateNewId().ToString(),
-                Sender = sender,
-                Text = text ?? string.Empty,
-                Timestamp = DateTime.UtcNow,
-                Kind = kind,
-                QuestionIndex = questionIndex,
-            };
-
-            // Idea = source of truth: atomic $push (two concurrent appends both persist).
-            await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update.Push(x => x.Phase2Data.ChatMessages, message));
-
-            // Reflect the persisted append on the returned object (unchanged contract).
-            var p2 = j.Phase2Data ??= new CreatorPhase2Data();
-            p2.ChatMessages ??= new List<CreatorChatMessage>();
-            p2.ChatMessages.Add(message);
-            return j;
-        }
-
-        public async Task<CreatorJourney> SaveClarifierTurnAsync(string userId, List<ClarifierAnswer> answers,
-            string aiText, string aiKind, int? aiQuestionIndex, string ideaId = null, List<string>? chips = null,
-            int offTopicStreak = 0, int offTopicCount = 0)
+        public async Task<CreatorJourney> SaveClarifierTurnAsync(string userId, ClarifierTurnWrite turn, string ideaId = null)
         {
             var j = await GetOrCreateAsync(userId);
             var idea = await ResolveIdeaAsync(j, ideaId);
             OverlayIdea(j, idea);
-            var message = new CreatorChatMessage
+            var now = DateTime.UtcNow;
+            CreatorChatMessage ToMessage(ClarifierTurnMessage m) => new()
             {
                 Id = ObjectId.GenerateNewId().ToString(),
-                Sender = "ai",
-                Text = aiText ?? string.Empty,
-                Timestamp = DateTime.UtcNow,
-                Kind = aiKind,
-                QuestionIndex = aiQuestionIndex,
-                Chips = chips,
+                Sender = m.Sender,
+                Text = m.Text ?? string.Empty,
+                Timestamp = now,
+                Kind = m.Kind,
+                QuestionIndex = m.QuestionIndex,
+                Chips = m.Chips,
             };
+            var messages = new[] { ToMessage(turn.Incoming), ToMessage(turn.Reply) };
 
             // One UpdateOne: targeted $set of the topic records (status, extracted, follow-up flags) and the
-            // off-topic counters, plus $push of the reply — never a document replace. WriteIdeaAsync's
-            // version check makes it a compare-and-swap.
+            // off-topic counters, plus $push of both transcript messages — never a document replace.
+            // WriteIdeaAsync's version check makes it a compare-and-swap: a conflict stores nothing.
             await WriteIdeaAsync(idea, Builders<CreatorIdea>.Update
-                .Set(x => x.Phase2Data.ClarifierAnswers, answers)
-                .Set(x => x.Phase2Data.ClarifierOffTopicStreak, offTopicStreak)
-                .Set(x => x.Phase2Data.ClarifierOffTopicCount, offTopicCount)
-                .Push(x => x.Phase2Data.ChatMessages, message));
+                .Set(x => x.Phase2Data.ClarifierAnswers, turn.Answers)
+                .Set(x => x.Phase2Data.ClarifierOffTopicStreak, turn.OffTopicStreak)
+                .Set(x => x.Phase2Data.ClarifierOffTopicCount, turn.OffTopicCount)
+                .PushEach(x => x.Phase2Data.ChatMessages, messages));
 
             var p2 = j.Phase2Data ??= new CreatorPhase2Data();
-            p2.ClarifierAnswers = answers;
-            p2.ClarifierOffTopicStreak = offTopicStreak;
-            p2.ClarifierOffTopicCount = offTopicCount;
+            p2.ClarifierAnswers = turn.Answers;
+            p2.ClarifierOffTopicStreak = turn.OffTopicStreak;
+            p2.ClarifierOffTopicCount = turn.OffTopicCount;
             p2.ChatMessages ??= new List<CreatorChatMessage>();
-            p2.ChatMessages.Add(message);
+            p2.ChatMessages.AddRange(messages);
             return j;
         }
 
