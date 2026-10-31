@@ -219,6 +219,8 @@
       "notDoneYet": "You're not done yet — finalize to save your clarity score.",
       "finalizing": "Finalizing…",
       "progressTitle": "Progress: {{done}} of {{total}} topics covered",
+      "ideaSoFar": "Your idea so far",
+      "clearCount": "{{clear}} / {{total}} clear",
       "allQuestionsAnsweredCount": "All {{count}} topics covered",
       "topicState": {
         "unclear": "Needs a little more detail",

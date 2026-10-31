@@ -93,6 +93,19 @@ describe('clarifier page', () => {
     expect(screen.queryByText('Pick one or write your own')).toBeNull();
   });
 
+  it('panel shows "X / 6 clear" (weak is not clear) and no fixed-question captions anywhere', () => {
+    mockAnswers = [...mockAnswers, answer(4, 'accepted_weak', { aiExtracted: { solution: 'Shared meals.' } })];
+    setProgress();
+    render(<AIClarifierPage />);
+
+    expect(screen.getByText('1 / 6 clear')).toBeInTheDocument();
+    expect(screen.getByText('Your idea so far')).toBeInTheDocument();
+    const text = document.body.textContent ?? '';
+    expect(text).not.toMatch(/Question \d+ of/i);
+    expect(text).not.toMatch(/Unlocks after/i);
+    expect(text).not.toMatch(/Response to Q/i);
+  });
+
   it('uses the honest intro and header copy, never the fixed-question copy', () => {
     setProgress();
     render(<AIClarifierPage />);

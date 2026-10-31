@@ -20,6 +20,7 @@ import { ClarifierStepList } from "@/components/creator/clarifier/ClarifierStepL
 import { FollowUpCard } from "@/components/creator/clarifier/FollowUpCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   CLARIFIER_TOTAL_TOPICS,
   buildRawIdea,
@@ -27,6 +28,7 @@ import {
   editableText,
   isTopicDone,
   nextTopic,
+  topicState,
   summaryIsStale,
 } from "@/lib/clarifier-answers";
 import { useSignalRHub } from "@/lib/realtime/use-signalr-hub";
@@ -392,6 +394,8 @@ export default function AIClarifierPage() {
   // since one message can cover several topics.
   const totalTopics = CLARIFIER_TOTAL_TOPICS;
   const answeredCount = answers.filter((a) => isTopicDone(a)).length;
+  // Only clear topics count as clear; weak ones are done but never shown as clear.
+  const clearCount = answers.filter((a) => topicState(a) === "clear").length;
   const currentTopic = nextTopic(answers);
   const summaryReady = currentTopic === null;
   const hasSummary = !!phase2?.clarifierSessionId;
@@ -843,12 +847,12 @@ export default function AIClarifierPage() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-3xl font-semibold tabular-nums" style={{ color: band.color }}>
+                  <span className="font-mono text-3xl font-semibold tabular-nums" style={{ color: band.color }}>
                     {ringPct}%
                   </span>
                 </div>
               </div>
-              <span className="text-badge font-medium uppercase tracking-wide" style={{ color: band.color }}>
+              <span className="font-sans text-badge font-medium uppercase tracking-wide" style={{ color: band.color }}>
                 {band.label}
               </span>
 
@@ -885,16 +889,18 @@ export default function AIClarifierPage() {
               ) : null}
             </div>
 
-            {/* Divider — drawn as a 1px rule (the design exports it as an image) */}
-            <div className="h-px w-full" style={{ backgroundColor: "var(--border)" }} />
+            <Separator />
 
-            {/* ── Progress line + step list ── */}
-            <div className="flex flex-col gap-3">
-              <p className="text-label font-medium" style={{ color: "var(--foreground)" }}>
-                {summaryReady
-                  ? t("creator.phase2.clarifier.allQuestionsAnsweredCount", { count: totalTopics })
-                  : t("creator.phase2.clarifier.progressTitle", { done: answeredCount, total: totalTopics })}
-              </p>
+            {/* ── "Your idea so far": X / 6 clear + topic list ── */}
+            <div className="flex flex-col gap-4 rounded-2xl border border-border bg-popover p-4 shadow-xs">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="font-sans text-badge font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t("creator.phase2.clarifier.ideaSoFar")}
+                </p>
+                <p className="font-mono text-badge font-medium text-foreground">
+                  {t("creator.phase2.clarifier.clearCount", { clear: clearCount, total: totalTopics })}
+                </p>
+              </div>
               <ClarifierStepList
                 answers={answers}
                 currentTopic={currentTopic}

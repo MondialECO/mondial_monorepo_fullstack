@@ -219,6 +219,8 @@
       "notDoneYet": "Vous n'avez pas encore terminé — finalisez pour sauvegarder votre score de clarté.",
       "finalizing": "Finalisation…",
       "progressTitle": "Progression : {{done}} thèmes couverts sur {{total}}",
+      "ideaSoFar": "Votre idée jusqu'ici",
+      "clearCount": "{{clear}} / {{total}} clairs",
       "allQuestionsAnsweredCount": "Les {{count}} thèmes sont couverts",
       "topicState": {
         "unclear": "Il manque encore un peu de détail",
