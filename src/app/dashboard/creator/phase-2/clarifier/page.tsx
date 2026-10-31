@@ -19,6 +19,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { ClarifierStepList } from "@/components/creator/clarifier/ClarifierStepList";
 import { FollowUpCard } from "@/components/creator/clarifier/FollowUpCard";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   CLARIFIER_TOTAL_TOPICS,
   buildRawIdea,
@@ -482,11 +483,11 @@ export default function AIClarifierPage() {
 
           {/* LEFT: conversation card */}
           <section
-            className="w-full flex-1 rounded-2xl border shadow-sm overflow-hidden flex flex-col min-w-0"
-            style={{ backgroundColor: "var(--card)", borderColor: "var(--card-edge)" }}
+            className="w-full flex-1 rounded-2xl border bg-card p-4 sm:p-5 shadow-sm overflow-hidden flex flex-col gap-4 min-w-0"
+            style={{ borderColor: "var(--card-edge)" }}
           >
             {/* ── Assistant header (FIXED TOP) ── */}
-            <div className="px-5 pt-5 pb-3 shrink-0 border-b" style={{ borderColor: "var(--border)" }}>
+            <div className="shrink-0">
               <div className="flex items-center gap-3">
                 <div
                   className="rounded-full overflow-hidden flex items-center justify-center shrink-0 border"
@@ -519,8 +520,7 @@ export default function AIClarifierPage() {
                 min-h ensures chat area always has space to scroll,
                 overflow-y-auto keeps messages scrollable like proper chat UI. */}
             <div
-              className="min-h-[400px] sm:min-h-[500px] overflow-y-auto p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
-              style={{ backgroundColor: "var(--popover)" }}
+              className="min-h-[400px] sm:min-h-[500px] overflow-y-auto rounded-2xl border border-border bg-popover p-4 flex flex-col gap-3 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border)]"
             >
                 {[{ id: OPENER_ID, sender: "ai" as const, text: t("creator.phase2.clarifier.opener") }, ...messages].map((msg) => {
                   // Transcript notes (a Skip) are not a speaker: a quiet centered line.
@@ -570,16 +570,20 @@ export default function AIClarifierPage() {
                           {t("creator.phase2.clarifier.editingBadge")}
                         </span>
                       )}
-                      {/* Assistant and user bubbles share bg/border/radius by design —
-                          they differ only by alignment and max width. Off-screen speaker
-                          label distinguishes them for assistive tech. The answer being
-                          edited gets a --primary border to tie it to the input below. */}
+                      {/* AI: neutral --card bubble, left. Creator: --popover card with a subtle
+                          shadow, right. No status pill under replies — topic state lives only
+                          in the panel. Off-screen speaker label for assistive tech. The answer
+                          being edited gets a --primary border to tie it to the input below. */}
                       <div
-                        className={`rounded-2xl border px-[18px] py-[14px] text-body leading-relaxed ${isUser ? "max-w-[548px]" : "max-w-[580px]"}`}
+                        className={
+                          isUser
+                            ? "max-w-full rounded-xl border px-5 py-3 font-sans text-body font-medium leading-relaxed shadow-xs sm:max-w-[648px]"
+                            : "max-w-full rounded-2xl border px-4.5 py-3.5 font-sans text-body leading-relaxed sm:max-w-[580px]"
+                        }
                         style={{
                           backgroundColor: isError
                             ? "color-mix(in srgb, var(--destructive) 8%, transparent)"
-                            : isFeedback ? "var(--dr-bg-yellow)" : "var(--card)",
+                            : isFeedback ? "var(--dr-bg-yellow)" : isUser ? "var(--popover)" : "var(--card)",
                           borderColor: isEditing ? "var(--primary)" : isError ? "var(--destructive)" : isFeedback ? "var(--dr-yellow)" : "var(--border)",
                           color: isError ? "var(--destructive)" : "var(--foreground)",
                         }}
@@ -630,10 +634,7 @@ export default function AIClarifierPage() {
                 {/* Streaming message or thinking indicator */}
                 {isTyping && (
                   <div className="flex flex-col items-start">
-                    <div
-                      className="rounded-2xl border px-[18px] py-[14px] max-w-[580px]"
-                      style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
-                    >
+                    <div className="max-w-full rounded-2xl border border-border bg-card px-4.5 py-3.5 font-sans sm:max-w-[580px]">
                       {streamingMessage ? (
                         <>
                           <span className="sr-only">{t("creator.phase2.clarifier.sr.assistantTyping", "Assistant is typing")}</span>
@@ -662,7 +663,7 @@ export default function AIClarifierPage() {
                 so an answer can be revised even after all six are answered (issue 1). Once
                 not editing and summaryReady, the finalize states below render instead. */}
             {editingQuestion !== null || !summaryReady ? (
-              <div className="px-5 pt-3 pb-5 shrink-0 border-t flex flex-col" style={{ borderColor: "var(--border)" }}>
+              <div className="shrink-0 flex flex-col">
                 {editingQuestion !== null && (
                   <div className="mb-2 flex items-center justify-between px-1">
                     <span className="text-badge font-medium" style={{ color: "var(--primary)" }}>
@@ -690,42 +691,42 @@ export default function AIClarifierPage() {
                     ))}
                   </div>
                 )}
+                {/* Input body: bordered --popover field + 44px primary send button. */}
                 <div
-                  className="flex items-end gap-2 rounded-xl border p-1.5 focus-within:ring-1 focus-within:ring-[var(--ring)] transition-shadow"
-                  style={{ backgroundColor: "var(--popover)", borderColor: editingQuestion !== null ? "var(--primary)" : "var(--border)" }}
+                  className="flex items-end gap-2 rounded-xl border bg-popover py-2.5 pl-4 pr-2.5 focus-within:ring-1 focus-within:ring-ring transition-shadow"
+                  style={{ borderColor: editingQuestion !== null ? "var(--primary)" : "var(--border)" }}
                 >
-                  <textarea
+                  <Textarea
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyPress}
                     placeholder={editingQuestion !== null ? t("creator.phase2.clarifier.placeholderRevise") : t("creator.phase2.clarifier.placeholderType")}
                     rows={1}
                     disabled={isTyping}
-                    className="flex-1 resize-none bg-transparent outline-none border-none px-3 py-2.5 text-input min-h-[40px] max-h-[120px] placeholder:text-muted-foreground"
-                    style={{ color: "var(--foreground)" }}
+                    className="min-h-11 max-h-[120px] flex-1 resize-none rounded-none border-0 bg-transparent px-0 py-3 font-sans text-foreground shadow-none focus-visible:ring-0 dark:bg-transparent"
                   />
-                  <button
+                  <Button
                     onClick={handleSend}
                     disabled={!inputValue.trim() || isTyping}
                     aria-label={editingQuestion !== null ? t("creator.phase2.clarifier.aria.saveEdit", "Save edit") : t("creator.phase2.clarifier.aria.sendAnswer", "Send answer")}
-                    className="flex items-center justify-center rounded-lg shrink-0 transition-opacity disabled:opacity-50"
-                    style={{ width: 44, height: 44, backgroundColor: "var(--primary)", color: "var(--primary-foreground)" }}
+                    size="icon"
+                    className="size-11 rounded-lg"
                   >
                     {isTyping ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <Loader2 className="size-5 animate-spin" />
                     ) : editingQuestion !== null ? (
-                      <Check className="h-5 w-5" />
+                      <Check className="size-5" />
                     ) : (
-                      <Send className="h-5 w-5" />
+                      <Send className="size-5" />
                     )}
-                  </button>
+                  </Button>
                 </div>
                 {editingQuestion !== null && editFeedback && (
                   <p role="status" className="mt-2 rounded-lg border px-3 py-2 text-caption" style={{ backgroundColor: "var(--dr-bg-yellow)", borderColor: "var(--dr-yellow)", color: "var(--foreground)" }}>
                     {editFeedback}
                   </p>
                 )}
-                <p className="mt-2 text-center text-caption" style={{ color: "var(--muted-foreground)" }}>
+                <p className="mt-2 text-center font-sans text-micro text-muted-foreground">
                   {editingQuestion !== null
                     ? t("creator.phase2.clarifier.pressEnterSave")
                     : t("creator.phase2.clarifier.pressEnterSend")}

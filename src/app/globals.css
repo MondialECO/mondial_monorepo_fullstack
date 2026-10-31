@@ -81,6 +81,7 @@
   --text-table-header: var(--font-size-table-header);
   --text-footnote: var(--font-size-footnote);
   --text-badge: var(--font-size-badge);
+  --text-micro: var(--font-size-micro);
   --text-stat-lg: var(--font-size-stat-lg);
   --text-stat-xl: var(--font-size-stat-xl);
 }
@@ -164,6 +165,8 @@
   --font-size-table-header: 14px;
   --font-size-footnote: 14px;
   --font-size-badge: 12px;
+  /* Figma body/XXS — keyboard hints and panel captions. */
+  --font-size-micro: 11px;
   --font-size-stat-lg: 30px;
   --font-size-stat-xl: 36px;
 
